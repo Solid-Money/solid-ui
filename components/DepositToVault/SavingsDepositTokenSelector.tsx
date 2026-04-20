@@ -1,22 +1,17 @@
 import React, { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
-import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
-import { Text } from '@/components/ui/text';
-import { WalletTokenList } from '@/components/WalletTokenSelector';
+import { WalletTokenSelectorScreen } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
  * Token selector for the Savings deposit flow (Step 2).
- * Shows tokens from the user's Solid wallet that can be deposited into vaults,
- * with chain names displayed. Selecting a token sets the srcChainId, principalToken,
- * and appropriate vault, then navigates to the deposit form.
+ * Thin wrapper around WalletTokenSelectorScreen that filters by the selected
+ * vault's supported chains/symbols and navigates back to the deposit form.
  */
 const SavingsDepositTokenSelector: React.FC = () => {
   const { setSrcChainId, setPrincipalToken, setModal } = useDepositStore(
@@ -27,38 +22,14 @@ const SavingsDepositTokenSelector: React.FC = () => {
     })),
   );
   const { vault } = useVaultDepositConfig();
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
-    useWalletTokens();
 
-  // Build a list of depositable tokens that match the SELECTED vault's supported tokens
-  const depositableTokens = useMemo(() => {
-    const allTokens = [
-      ...ethereumTokens,
-      ...fuseTokens,
-      ...polygonTokens,
-      ...baseTokens,
-      ...arbitrumTokens,
-    ];
-
-    // Only include (chainId, symbol) pairs supported by the currently-selected vault
-    const supportedSet = new Set<string>();
+  const { supportedChainIds, supportedTokenSymbols } = useMemo(() => {
     const config = vault.depositConfig;
-    if (config) {
-      for (const chainId of config.supportedChains) {
-        for (const symbol of config.supportedTokens) {
-          supportedSet.add(`${chainId}:${symbol.toUpperCase()}`);
-        }
-      }
-    }
-
-    return allTokens.filter(token => {
-      const symbol = token.contractTickerSymbol?.toUpperCase();
-      const key = `${token.chainId}:${symbol}`;
-      if (!supportedSet.has(key)) return false;
-      const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
-      return balance > 0;
-    });
-  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, vault]);
+    return {
+      supportedChainIds: config?.supportedChains ?? [],
+      supportedTokenSymbols: config?.supportedTokens ?? [],
+    };
+  }, [vault]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {
@@ -72,24 +43,20 @@ const SavingsDepositTokenSelector: React.FC = () => {
         : undefined;
 
       setSrcChainId(chainId);
-      setPrincipalToken(tokenKey || symbol);
+      setPrincipalToken(tokenKey || symbol || '');
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
     [setSrcChainId, setPrincipalToken, setModal],
   );
 
   return (
-    <View className="gap-4">
-      <Text className="text-base font-medium opacity-70">
-        Select a token from your wallet to deposit
-      </Text>
-      <WalletTokenList
-        tokens={depositableTokens}
-        onSelect={handleTokenSelect}
-        emptyMessage="No depositable tokens found"
-        emptyDescription="Add funds to your wallet first, then come back to deposit into Savings."
-      />
-    </View>
+    <WalletTokenSelectorScreen
+      supportedChainIds={supportedChainIds}
+      supportedTokenSymbols={supportedTokenSymbols}
+      onSelect={handleTokenSelect}
+      emptyMessage="No depositable tokens found"
+      emptyDescription="Add funds to your wallet first, then come back to deposit into Savings."
+    />
   );
 };
 
