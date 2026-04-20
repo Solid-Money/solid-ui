@@ -10,9 +10,9 @@ import {
 import { ActivityIndicator, Linking, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import { ChevronDown, Fuel, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -677,6 +677,13 @@ export default function CardDepositInternalForm() {
     ADDRESSES.fuse.stargateOftUSDC,
   );
 
+  const isWalletSourceGaslessGated =
+    isProduction && watchedFrom === CardDepositSource.WALLET;
+  const cardDepositMinimumAmount = EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT;
+  const isCardDepositSponsor = isWalletSourceGaslessGated
+    ? Number(watchedAmount || 0) >= Number(cardDepositMinimumAmount)
+    : true;
+
   const schema = useMemo(() => {
     return z.object({
       amount: z
@@ -696,9 +703,23 @@ export default function CardDepositInternalForm() {
                 ? `Maximum borrow amount is ${formatNumber(maxBorrowAmount)} USDC`
                 : `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
           },
+        )
+        .refine(
+          val => {
+            if (!isWalletSourceGaslessGated) return true;
+            return Number(val) >= Number(cardDepositMinimumAmount);
+          },
+          { error: `Minimum $${cardDepositMinimumAmount} USDC` },
         ),
     });
-  }, [balanceAmount, tokenSymbol, watchedFrom, maxBorrowAmount]);
+  }, [
+    balanceAmount,
+    tokenSymbol,
+    watchedFrom,
+    maxBorrowAmount,
+    isWalletSourceGaslessGated,
+    cardDepositMinimumAmount,
+  ]);
 
   const formattedBalance = balanceAmount.toString();
 
@@ -713,10 +734,21 @@ export default function CardDepositInternalForm() {
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
-  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
-  const cardDepositTokenAddress =
-    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as Address | undefined) ||
-    ('' as Address);
+  const storedSrcChainId = useDepositStore(state => state.srcChainId);
+  const setSrcChainId = useDepositStore(state => state.setSrcChainId);
+  // Default to Base (the card funding chain) when no valid src chain is selected,
+  // so the useDepositFromSolidUsdc hook always has a chain to sign the approve on.
+  const cardDepositSrcChainId =
+    storedSrcChainId && BRIDGE_TOKENS[storedSrcChainId]?.tokens?.USDC
+      ? storedSrcChainId
+      : base.id;
+  useEffect(() => {
+    if (storedSrcChainId !== cardDepositSrcChainId) {
+      setSrcChainId(cardDepositSrcChainId);
+    }
+  }, [storedSrcChainId, cardDepositSrcChainId, setSrcChainId]);
+  const cardDepositTokenAddress = BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC
+    ?.address as Address;
   const {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
@@ -1250,6 +1282,17 @@ export default function CardDepositInternalForm() {
           fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
           destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
         />
+      )}
+
+      {isWalletSourceGaslessGated && (
+        <View className="mt-2 flex-row items-start gap-2">
+          <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
+          <Text className="max-w-xs text-sm text-muted-foreground">
+            {isCardDepositSponsor
+              ? 'Gasless deposit'
+              : `Gasless deposit - Please deposit above $${cardDepositMinimumAmount} USDC so we can cover your fees`}
+          </Text>
+        </View>
       )}
 
       <ErrorDisplay
