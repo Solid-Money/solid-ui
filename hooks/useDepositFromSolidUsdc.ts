@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
@@ -20,6 +20,8 @@ import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
 
+export type DepositCategory = 'SAVINGS' | 'CARD';
+
 type DepositResult = {
   balance: bigint | undefined;
   deposit: (amount: string) => Promise<string | undefined>;
@@ -32,6 +34,7 @@ const useDepositFromSolidUsdc = (
   tokenAddress: Address,
   token: string,
   minimumAmount: string = '10',
+  category: DepositCategory = 'SAVINGS',
 ): DepositResult => {
   const { user, safeAA } = useUser();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
@@ -42,6 +45,9 @@ const useDepositFromSolidUsdc = (
   const updateUser = useUserStore(state => state.updateUser);
 
   const safeAddress = user?.safeAddress as Address | undefined;
+  const isCard = category === 'CARD';
+  const targetChainId = isCard ? base.id : mainnet.id;
+  const isTargetChain = srcChainId === targetChainId;
   const isEthereum = srcChainId === mainnet.id;
 
   const { data: blockNumber } = useBlockNumber({
@@ -65,13 +71,13 @@ const useDepositFromSolidUsdc = (
 
   const createEvent = async (amount: string, spender: Address, tokenSymbol: string) => {
     const clientTxId = await createActivity({
-      title: `Deposit ${tokenSymbol}`,
+      title: isCard ? `Deposit ${tokenSymbol} to Card` : `Deposit ${tokenSymbol}`,
       amount,
       symbol: tokenSymbol,
       chainId: srcChainId,
       fromAddress: safeAddress,
       toAddress: spender,
-      type: TransactionType.DEPOSIT,
+      type: isCard ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
     });
     return clientTxId;
   };
@@ -89,7 +95,14 @@ const useDepositFromSolidUsdc = (
         safe_address: user?.safeAddress,
         amount,
         deposit_type: 'solid_wallet',
-        deposit_method: isEthereum ? 'usdc_solid_ethereum' : 'usdc_solid_bridge',
+        deposit_method: isTargetChain
+          ? isCard
+            ? 'usdc_solid_base_card'
+            : 'usdc_solid_ethereum'
+          : isCard
+            ? 'usdc_solid_bridge_card'
+            : 'usdc_solid_bridge',
+        deposit_destination: isCard ? 'card' : 'savings',
         chain_id: srcChainId,
         is_sponsor: Number(amount) >= Number(minimumAmount),
         ...attributionData,
@@ -128,8 +141,13 @@ const useDepositFromSolidUsdc = (
 
       const amountWei = parseUnits(amount, 6);
 
-      // Approve the bridge/deposit address to pull tokens from Safe
-      const chain = isEthereum ? mainnet : { id: srcChainId } as any;
+      // Approve the bridge/deposit address to pull tokens from Safe on the src chain.
+      const chain =
+        srcChainId === mainnet.id
+          ? mainnet
+          : srcChainId === base.id
+            ? base
+            : ({ id: srcChainId } as any);
       const smartAccountClient = await safeAA(chain, user!.suborgId, user!.signWith);
 
       const approveTransaction = {
@@ -171,14 +189,16 @@ const useDepositFromSolidUsdc = (
         });
       }
 
-      // Call backend to pull tokens from Safe and deposit to vault
-      const depositPromise = isEthereum
+      // Call backend to pull tokens from the Solid Safe AA and deliver to the
+      // target (savings vault on Ethereum, or Rain card funding address on Base).
+      const depositPromise = isTargetChain
         ? withRefreshToken(() =>
             createDeposit({
               eoaAddress: safeAddress,
               amount,
               trackingId,
-              vault: VaultType.USDC,
+              vault: isCard ? undefined : VaultType.USDC,
+              category: isCard ? 'CARD' : 'SAVINGS',
             }),
           )
         : withRefreshToken(() =>
@@ -188,6 +208,7 @@ const useDepositFromSolidUsdc = (
               srcChainId,
               amount,
               trackingId,
+              category: isCard ? 'CARD' : 'SAVINGS',
             }),
           );
 
@@ -207,12 +228,21 @@ const useDepositFromSolidUsdc = (
             data: { amount, safeAddress, srcChainId, isSponsor },
           });
 
+          const depositMethod = isTargetChain
+            ? isCard
+              ? 'usdc_solid_base_card'
+              : 'usdc_solid_ethereum'
+            : isCard
+              ? 'usdc_solid_bridge_card'
+              : 'usdc_solid_bridge';
+
           track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
             user_id: user?.userId,
             safe_address: user?.safeAddress,
             amount,
             deposit_type: 'solid_wallet',
-            deposit_method: isEthereum ? 'usdc_solid_ethereum' : 'usdc_solid_bridge',
+            deposit_method: depositMethod,
+            deposit_destination: isCard ? 'card' : 'savings',
             chain_id: srcChainId,
             is_sponsor: isSponsor,
             is_first_deposit: !user?.isDeposited,
@@ -223,8 +253,12 @@ const useDepositFromSolidUsdc = (
           trackIdentity(user?.userId!, {
             last_deposit_amount: parseFloat(amount),
             last_deposit_date: new Date().toISOString(),
-            last_deposit_method: isEthereum ? 'usdc_solid_ethereum' : 'usdc_solid_bridge',
-            last_deposit_chain: isEthereum ? 'ethereum' : String(srcChainId),
+            last_deposit_method: depositMethod,
+            last_deposit_chain: isEthereum
+              ? 'ethereum'
+              : srcChainId === base.id
+                ? 'base'
+                : String(srcChainId),
             ...attributionData,
             attribution_channel: attributionChannel,
           });
