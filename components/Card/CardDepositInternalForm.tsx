@@ -48,7 +48,12 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { useDepositStore } from '@/store/useDepositStore';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, isProduction } from '@/lib/config';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+  isProduction,
+} from '@/lib/config';
 import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
   cn,
@@ -710,7 +715,13 @@ export default function CardDepositInternalForm() {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
     error: walletCardDepositError,
-  } = useDepositFromWallet(cardDepositTokenAddress, 'USDC', '2', '100', 'CARD');
+  } = useDepositFromWallet(
+    cardDepositTokenAddress,
+    'USDC',
+    '2',
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    'CARD',
+  );
 
   // Track form viewed (once on mount)
   useEffect(() => {
