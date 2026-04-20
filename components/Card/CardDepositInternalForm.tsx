@@ -54,7 +54,13 @@ import {
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
   isProduction,
 } from '@/lib/config';
-import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  CardProvider,
+  DepositCategory,
+  Status,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import {
   cn,
   formatNumber,
@@ -719,7 +725,7 @@ export default function CardDepositInternalForm() {
     cardDepositTokenAddress,
     'USDC',
     EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-    'CARD',
+    DepositCategory.CARD,
   );
 
   // Track form viewed (once on mount)

@@ -792,7 +792,7 @@ export type BridgeDeposit = {
     deadline: number;
   };
   trackingId?: string;
-  category?: 'SAVINGS' | 'CARD';
+  category?: DepositCategory;
 };
 
 export type BridgeTransactionRequest = {
@@ -816,8 +816,13 @@ export type Deposit = {
   };
   trackingId?: string;
   vault?: VaultType;
-  category?: 'SAVINGS' | 'CARD';
+  category?: DepositCategory;
 };
+
+export enum DepositCategory {
+  SAVINGS = 'SAVINGS',
+  CARD = 'CARD',
+}
 
 export enum DepositTransactionStatus {
   PENDING = 'pending',
