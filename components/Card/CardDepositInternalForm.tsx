@@ -38,15 +38,29 @@ import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import useCardDeposit from '@/hooks/useCardDeposit';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { useDepositStore } from '@/store/useDepositStore';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, isProduction } from '@/lib/config';
-import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+  isProduction,
+} from '@/lib/config';
+import {
+  CardProvider,
+  DepositCategory,
+  Status,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import {
   cn,
   formatNumber,
@@ -699,6 +713,21 @@ export default function CardDepositInternalForm() {
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
+  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
+  const cardDepositTokenAddress =
+    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as Address | undefined) ||
+    ('' as Address);
+  const {
+    deposit: walletCardDeposit,
+    depositStatus: walletCardDepositStatus,
+    error: walletCardDepositError,
+  } = useDepositFromSolidUsdc(
+    cardDepositTokenAddress,
+    'USDC',
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    DepositCategory.CARD,
+  );
+
   // Track form viewed (once on mount)
   useEffect(() => {
     if (!hasTrackedFormViewedRef.current) {
@@ -900,6 +929,14 @@ export default function CardDepositInternalForm() {
           return;
         }
 
+        if (watchedFrom === CardDepositSource.WALLET && isProduction) {
+          await walletCardDeposit(data.amount);
+          setTransaction({ amount: Number(data.amount) });
+          setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+          reset();
+          return;
+        }
+
         // Check for funding address
         if (!cardDetails) {
           Toast.show({
@@ -985,6 +1022,7 @@ export default function CardDepositInternalForm() {
     [
       watchedFrom,
       deposit,
+      walletCardDeposit,
       estimatedUSDC,
       exchangeRate,
       cardDetails,
@@ -1014,10 +1052,15 @@ export default function CardDepositInternalForm() {
   const isFundingAddressLoading = provider === CardProvider.RAIN && contractsLoading;
   const isWalletDepositPending =
     !isProduction && watchedFrom === CardDepositSource.WALLET && depositStatus === Status.PENDING;
+  const isWalletCardDepositPending =
+    isProduction &&
+    watchedFrom === CardDepositSource.WALLET &&
+    walletCardDepositStatus.status === Status.PENDING;
   const disabled =
     bridgeStatus === Status.PENDING ||
     swapAndBridgeStatus === Status.PENDING ||
     isWalletDepositPending ||
+    isWalletCardDepositPending ||
     (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
     (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
     isFundingAddressLoading ||
@@ -1214,7 +1257,8 @@ export default function CardDepositInternalForm() {
           validationError ||
           bridgeError ||
           swapAndBridgeError ||
-          (!isProduction ? depositError : null)
+          (!isProduction ? depositError : null) ||
+          (isProduction && watchedFrom === CardDepositSource.WALLET ? walletCardDepositError : null)
         }
       />
 
@@ -1229,7 +1273,11 @@ export default function CardDepositInternalForm() {
         <SubmitButton
           disabled={disabled}
           bridgeStatus={
-            !isProduction && watchedFrom === CardDepositSource.WALLET ? depositStatus : bridgeStatus
+            !isProduction && watchedFrom === CardDepositSource.WALLET
+              ? depositStatus
+              : isProduction && watchedFrom === CardDepositSource.WALLET
+                ? walletCardDepositStatus.status
+                : bridgeStatus
           }
           swapAndBridgeStatus={swapAndBridgeStatus}
           onPress={handleSubmit(onSubmit)}
