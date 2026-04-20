@@ -12,7 +12,7 @@ import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { ChevronDown, Fuel, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
-import { base, fuse, mainnet } from 'viem/chains';
+import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -44,6 +44,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { useDepositStore } from '@/store/useDepositStore';
 import { track } from '@/lib/analytics';
@@ -58,6 +59,8 @@ import {
   CardProvider,
   DepositCategory,
   Status,
+  TokenBalance,
+  TokenType,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
@@ -734,21 +737,26 @@ export default function CardDepositInternalForm() {
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
-  const storedSrcChainId = useDepositStore(state => state.srcChainId);
-  const setSrcChainId = useDepositStore(state => state.setSrcChainId);
-  // Default to Base (the card funding chain) when no valid src chain is selected,
-  // so the useDepositFromSolidUsdc hook always has a chain to sign the approve on.
-  const cardDepositSrcChainId =
-    storedSrcChainId && BRIDGE_TOKENS[storedSrcChainId]?.tokens?.USDC
-      ? storedSrcChainId
-      : base.id;
-  useEffect(() => {
-    if (storedSrcChainId !== cardDepositSrcChainId) {
-      setSrcChainId(cardDepositSrcChainId);
-    }
-  }, [storedSrcChainId, cardDepositSrcChainId, setSrcChainId]);
-  const cardDepositTokenAddress = BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC
-    ?.address as Address;
+  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
+  const cardDepositTokenAddress = (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC
+    ?.address ?? '') as Address;
+  const hasSelectedWalletToken =
+    watchedFrom === CardDepositSource.WALLET &&
+    isProduction &&
+    !!cardDepositSrcChainId &&
+    !!cardDepositTokenAddress;
+  const selectedCardWalletToken: TokenBalance | null = useMemo(() => {
+    if (!hasSelectedWalletToken) return null;
+    return {
+      contractTickerSymbol: 'USDC',
+      contractName: 'USD Coin',
+      contractAddress: cardDepositTokenAddress,
+      balance: '0',
+      contractDecimals: 6,
+      type: TokenType.ERC20,
+      chainId: cardDepositSrcChainId,
+    };
+  }, [hasSelectedWalletToken, cardDepositTokenAddress, cardDepositSrcChainId]);
   const {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
@@ -1096,6 +1104,7 @@ export default function CardDepositInternalForm() {
     (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
     (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
     isFundingAddressLoading ||
+    (isWalletSourceGaslessGated && !hasSelectedWalletToken) ||
     !isValid ||
     !watchedAmount;
 
@@ -1188,6 +1197,16 @@ export default function CardDepositInternalForm() {
         showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
         walletTokenSymbol={walletTokenSymbol}
       />
+
+      {isWalletSourceGaslessGated && (
+        <View className="gap-2">
+          <Text className="font-medium opacity-50">Token</Text>
+          <WalletTokenButton
+            selectedToken={selectedCardWalletToken}
+            onPress={() => setModal(CARD_DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+          />
+        </View>
+      )}
 
       {watchedFrom === CardDepositSource.BORROW ? (
         <View className="gap-4 px-2">
