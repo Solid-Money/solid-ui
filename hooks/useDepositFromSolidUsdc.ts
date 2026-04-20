@@ -88,7 +88,12 @@ const useDepositFromSolidUsdc = (
   };
 
   const deposit = async (amount: string) => {
-    if (!token || !srcChainId) return undefined;
+    if (!token) return undefined;
+    if (!srcChainId) {
+      throw new Error(
+        'Source chain is not selected. Please reopen the deposit flow and pick a chain.',
+      );
+    }
 
     const attributionData = useAttributionStore.getState().getAttributionForEvent();
     const attributionChannel = getAttributionChannel(attributionData);
