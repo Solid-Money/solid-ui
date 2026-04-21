@@ -581,13 +581,27 @@ export default function CardDepositInternalForm() {
   // Get all token balances including soUSD
   const { tokens, isLoading: isBalancesLoading } = useBalances();
 
-  // Get Fuse USDC.e balance (production Wallet)
-  const { data: fuseUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
+  // Production "From Wallet" card deposit: read USDC balance from the Solid
+  // Safe AA on the chain the user picked in the token selector. Falls back to
+  // the Fuse-stargate legacy behaviour when the user hasn't picked anything
+  // yet (cardDepositSrcChainId is 0 / unsupported).
+  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
+  const selectedWalletUsdcAddress =
+    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as
+      | Address
+      | undefined) ?? undefined;
+  const hasSelectedWalletUsdc =
+    !!cardDepositSrcChainId && !!selectedWalletUsdcAddress;
+  const walletBalanceChainId = hasSelectedWalletUsdc ? cardDepositSrcChainId : fuse.id;
+  const walletBalanceTokenAddress = hasSelectedWalletUsdc
+    ? (selectedWalletUsdcAddress as Address)
+    : USDC_STARGATE;
+  const { data: walletUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
     abi: erc20Abi,
-    address: USDC_STARGATE,
+    address: walletBalanceTokenAddress,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
-    chainId: fuse.id,
+    chainId: walletBalanceChainId,
     query: { enabled: !!user?.safeAddress && isProduction },
   });
 
@@ -654,7 +668,7 @@ export default function CardDepositInternalForm() {
   // Get borrow APY from Aave
   const { borrowAPY, isLoading: isBorrowAPYLoading } = useAaveBorrowPosition();
 
-  const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
+  const usdcBalanceAmount = walletUsdcBalance ? Number(walletUsdcBalance) / 1e6 : 0;
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
@@ -673,7 +687,11 @@ export default function CardDepositInternalForm() {
         ? isUsdcBalanceLoading
         : isTestnetBalanceLoading
       : isBalancesLoading;
-  const walletTokenSymbol = isProduction ? 'USDC.e' : getCardDepositTokenSymbol(provider);
+  const walletTokenSymbol = isProduction
+    ? cardDepositSrcChainId === fuse.id
+      ? 'USDC.e'
+      : 'USDC'
+    : getCardDepositTokenSymbol(provider);
   const tokenSymbol =
     watchedFrom === CardDepositSource.WALLET
       ? walletTokenSymbol
@@ -775,32 +793,33 @@ export default function CardDepositInternalForm() {
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
-  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
-  const cardDepositTokenAddress = (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC
-    ?.address ?? '') as Address;
   const hasSelectedWalletToken =
     watchedFrom === CardDepositSource.WALLET &&
     isProduction &&
-    !!cardDepositSrcChainId &&
-    !!cardDepositTokenAddress;
+    hasSelectedWalletUsdc;
   const selectedCardWalletToken: TokenBalance | null = useMemo(() => {
-    if (!hasSelectedWalletToken) return null;
+    if (!hasSelectedWalletToken || !selectedWalletUsdcAddress) return null;
     return {
-      contractTickerSymbol: 'USDC',
+      contractTickerSymbol: walletTokenSymbol,
       contractName: 'USD Coin',
-      contractAddress: cardDepositTokenAddress,
+      contractAddress: selectedWalletUsdcAddress,
       balance: '0',
       contractDecimals: 6,
       type: TokenType.ERC20,
       chainId: cardDepositSrcChainId,
     };
-  }, [hasSelectedWalletToken, cardDepositTokenAddress, cardDepositSrcChainId]);
+  }, [
+    hasSelectedWalletToken,
+    selectedWalletUsdcAddress,
+    walletTokenSymbol,
+    cardDepositSrcChainId,
+  ]);
   const {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
     error: walletCardDepositError,
   } = useDepositFromSolidUsdc(
-    cardDepositTokenAddress,
+    (selectedWalletUsdcAddress ?? '') as Address,
     'USDC',
     EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
     DepositCategory.CARD,
