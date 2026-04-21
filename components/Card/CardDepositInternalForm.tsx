@@ -1387,7 +1387,7 @@ export default function CardDepositInternalForm() {
         </TokenDetails>
       )}
 
-      <View className="flex-1" />
+      {watchedFrom !== CardDepositSource.EXTERNAL && <View className="flex-1" />}
 
       {watchedFrom !== CardDepositSource.BORROW &&
         watchedFrom !== CardDepositSource.EXTERNAL && (
