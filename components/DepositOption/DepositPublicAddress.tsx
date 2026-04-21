@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
@@ -15,8 +15,16 @@ const solidLogo = require('@/assets/images/solid-white.png');
 const SUPPORTED_NETWORKS_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
 
-const DepositPublicAddress = () => {
+type DepositPublicAddressProps = {
+  /** Override address shown in copy row and QR. Defaults to user's safe address. */
+  address?: string;
+  /** Custom description rendered under the QR. Replaces default supported-networks section. */
+  description?: ReactNode;
+};
+
+const DepositPublicAddress = ({ address, description }: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
+  const resolvedAddress = address ?? user?.safeAddress ?? '';
 
   const networks = useMemo(() => {
     const displayOrder: Record<string, number> = {
@@ -46,15 +54,15 @@ const DepositPublicAddress = () => {
       <View className="w-full max-w-md rounded-xl bg-card">
         <View className="flex-row items-center justify-center gap-1 pt-4">
           <Text className="text-lg font-medium text-white">
-            {user?.safeAddress ? eclipseAddress(user?.safeAddress, 6, 6) : ''}
+            {resolvedAddress ? eclipseAddress(resolvedAddress, 6, 6) : ''}
           </Text>
-          <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
+          <CopyToClipboard text={resolvedAddress} className="text-primary" />
         </View>
 
         <View className="items-center justify-center px-4 py-4">
           <View className="overflow-hidden rounded-xl">
             <QRCode
-              value={user?.safeAddress || ''}
+              value={resolvedAddress}
               size={200}
               color="white"
               backgroundColor="#181A1A"
@@ -66,41 +74,47 @@ const DepositPublicAddress = () => {
         </View>
 
         <View className="items-center gap-2 px-4 pb-4">
-          <View className="flex-row items-center justify-center">
-            {networks.map((network, index) => (
-              <View
-                key={network.chainId}
-                className={index > 0 ? '-ml-2' : ''}
-                style={{ zIndex: networks.length - index }}
-              >
-                <Image
-                  source={network.icon}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    borderWidth: 1.5,
-                    borderColor: '#1C1C1C',
-                  }}
-                  contentFit="cover"
-                />
+          {description ? (
+            description
+          ) : (
+            <>
+              <View className="flex-row items-center justify-center">
+                {networks.map((network, index) => (
+                  <View
+                    key={network.chainId}
+                    className={index > 0 ? '-ml-2' : ''}
+                    style={{ zIndex: networks.length - index }}
+                  >
+                    <Image
+                      source={network.icon}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: '#1C1C1C',
+                      }}
+                      contentFit="cover"
+                    />
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
 
-          <Text className="max-w-72 text-center text-sm text-muted-foreground">
-            We support tokens on {networkNames} chain
-          </Text>
+              <Text className="max-w-72 text-center text-sm text-muted-foreground">
+                We support tokens on {networkNames} chain
+              </Text>
 
-          <Pressable
-            onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
-            className="web:hover:opacity-50"
-          >
-            <View className="flex-row flex-wrap items-center">
-              <Text className="text-sm font-medium text-white">See supported networks</Text>
-              <ChevronRight size={16} color="white" />
-            </View>
-          </Pressable>
+              <Pressable
+                onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
+                className="web:hover:opacity-50"
+              >
+                <View className="flex-row flex-wrap items-center">
+                  <Text className="text-sm font-medium text-white">See supported networks</Text>
+                  <ChevronRight size={16} color="white" />
+                </View>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     </View>
