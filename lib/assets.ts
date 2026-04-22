@@ -152,7 +152,7 @@ export const ASSETS = {
   },
   'images/cards-desktop.png': {
     module: require('@/assets/images/cards-desktop.png'),
-    hash: 'ae26473b',
+    hash: 'b0fc2da8',
   },
   'images/cards-mobile.png': {
     module: require('@/assets/images/cards-mobile.png'),
