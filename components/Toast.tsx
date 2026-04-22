@@ -97,7 +97,7 @@ const toastConfig = {
     <BaseToast
       text1={text1}
       text2={text2}
-      props={props}
+      props={{ badgeText: '', ...props }}
       classNames={{
         badge: 'border-blue-400',
         badgeText: 'text-blue-400',
