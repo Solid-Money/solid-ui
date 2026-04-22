@@ -13,6 +13,12 @@ interface UserState {
   signupUser: SignupUser;
   safeAddressSynced: Record<string, boolean>;
   redirectFrom: string | null;
+  /**
+   * userId awaiting passkey authentication after the welcome-page user
+   * selection. Scoped to a single session — survives the TurnkeyProvider
+   * re-mount triggered by credentialId changes but is not persisted.
+   */
+  pendingAuthUserId: string | null;
   _hasHydrated: boolean;
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
@@ -24,13 +30,14 @@ interface UserState {
   setSignupUser: (user: SignupUser) => void;
   markSafeAddressSynced: (userId: string) => void;
   setRedirectFrom: (path: string | null) => void;
+  setPendingAuthUserId: (userId: string | null) => void;
   setHasHydrated: (state: boolean) => void;
 }
 
 // Selectors - pure functions for deriving state
 // These can be used with useUserStore(selector) for optimal re-render behavior
 
-/** Get the currently selected user, or the only user if there's just one */
+/** Get the currently selected user */
 export const selectSelectedUser = ({ users }: UserState): User | undefined =>
   users.find(u => u.selected);
 
@@ -48,6 +55,7 @@ export const useUserStore = create<UserState>()(
       signupUser: { username: '' },
       safeAddressSynced: {},
       redirectFrom: null,
+      pendingAuthUserId: null,
       _hasHydrated: false,
       setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),
 
@@ -124,6 +132,8 @@ export const useUserStore = create<UserState>()(
         ),
 
       setRedirectFrom: (path: string | null) => set({ redirectFrom: path }),
+
+      setPendingAuthUserId: (userId: string | null) => set({ pendingAuthUserId: userId }),
     }),
     {
       name: USER.storageKey,
@@ -132,7 +142,7 @@ export const useUserStore = create<UserState>()(
         state?.setHasHydrated(true);
       },
       partialize: state => {
-        const { redirectFrom, ...rest } = state;
+        const { redirectFrom, pendingAuthUserId, ...rest } = state;
         return rest;
       },
     },
