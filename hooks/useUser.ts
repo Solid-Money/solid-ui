@@ -463,10 +463,17 @@ const useUser = (): UseUserReturn => {
     }
   }, [clearBalance, users, unselectUser, updateUser, clearKycLinkId, router, user, intercom]);
 
-  // New: select user by userId (preferred for email-first users)
+  // Authenticate the user identified by `userId` via passkey.
+  //
+  // Callers (the welcome page) must pre-select the user in the store before
+  // invoking this — TurnkeyProvider reads the selected user's credentialId
+  // and uses it as the passkey stamper's `allowCredentials`, so the user must
+  // already be selected by the time the SDK builds its client.
+  //
+  // Errors (including auth failures) are re-thrown so the caller can revert
+  // the pre-selection and surface the failure in the UI.
   const handleSelectUserById = useCallback(
     async (userId: string) => {
-      const previousUserId = user?.userId;
       clearKycLinkId();
 
       // Find the selected user
@@ -492,51 +499,40 @@ const useUser = (): UseUserReturn => {
         return;
       }
 
-      // Always require passkey authentication on all platforms
-      try {
-        if (!httpClient) {
-          throw new Error('Turnkey client is not initialized. Please wait and try again.');
-        }
+      if (!httpClient) {
+        throw new Error('Turnkey client is not initialized. Please wait and try again.');
+      }
 
-        const result = await httpClient.stampGetWhoami(
-          { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
-          StamperType.Passkey,
-        );
+      const result = await httpClient.stampGetWhoami(
+        { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+        StamperType.Passkey,
+      );
 
-        const authedUser = await login(result);
+      const authedUser = await login(result);
 
-        // Update the stored user with fresh tokens and select them
-        if (selectedUser && authedUser) {
-          storeUser({
-            ...selectedUser,
-            selected: true,
-            tokens: authedUser.tokens || undefined,
-          });
-        } else {
-          selectUserById(authedUser?._id ?? userId);
-        }
+      // Update the stored user with fresh tokens and keep them selected
+      if (selectedUser && authedUser) {
+        storeUser({
+          ...selectedUser,
+          selected: true,
+          tokens: authedUser.tokens || undefined,
+        });
+      } else {
+        selectUserById(authedUser?._id ?? userId);
+      }
 
-        // Reset logout flag so future session expiries show the toast
-        setIsLoggingOut(false);
+      // Reset logout flag so future session expiries show the toast
+      setIsLoggingOut(false);
 
-        const { redirectFrom, setRedirectFrom } = useUserStore.getState();
-        if (redirectFrom) {
-          setRedirectFrom(null);
-          router.replace(redirectFrom as any);
-        } else {
-          router.replace(path.HOME);
-        }
-      } catch (_) {
-        // Revert to previous user or clear selection on auth failure
-        if (previousUserId) {
-          selectUserById(previousUserId);
-        } else {
-          unselectUser();
-        }
-        // Don't navigate on error - stay on welcome screen
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else {
+        router.replace(path.HOME);
       }
     },
-    [selectUserById, storeUser, clearKycLinkId, router, user, unselectUser, users, httpClient],
+    [selectUserById, storeUser, clearKycLinkId, router, users, httpClient],
   );
 
   const handleRemoveUsers = useCallback(() => {
