@@ -3,11 +3,12 @@ import * as Application from 'expo-application';
 import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft, Bell } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import { BackButton } from '@/components/ui/back-button';
 import { useDimension } from '@/hooks/useDimension';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import useUser from '@/hooks/useUser';
@@ -43,9 +44,7 @@ export default function Settings() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable onPress={() => router.back()} className="p-2">
-        <ChevronLeft size={24} color="#ffffff" />
-      </Pressable>
+      <BackButton />
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Settings</Text>
     </View>
   );
