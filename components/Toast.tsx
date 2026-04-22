@@ -93,6 +93,17 @@ const toastConfig = {
       }}
     />
   ),
+  info: ({ text1, text2, props }: IBaseToast) => (
+    <BaseToast
+      text1={text1}
+      text2={text2}
+      props={{ badgeText: '', ...props }}
+      classNames={{
+        badge: 'border-blue-400',
+        badgeText: 'text-blue-400',
+      }}
+    />
+  ),
 };
 
 export const toastProps: ToastProps = {
