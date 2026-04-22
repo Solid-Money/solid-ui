@@ -1,5 +1,5 @@
 import React, { ReactNode, useCallback } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -215,40 +215,46 @@ const ResponsiveModal = ({
                 className="relative"
                 style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
               >
-                <ScrollView
-                  className="web:max-h-[80vh]"
-                  contentContainerClassName="pb-4 md:pb-8"
-                  contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
-                  style={useFixedHeightLayout ? { flex: 1 } : undefined}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled
-                  onLayout={e => {
-                    containerHeightRef.current = e.nativeEvent.layout.height;
-                    setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
-                  }}
-                  onContentSizeChange={(_, h) => {
-                    contentHeightRef.current = h;
-                    if (containerHeightRef.current > 0) {
-                      setShowBottomFade(h > containerHeightRef.current + 4);
-                    }
-                  }}
-                  onScroll={e => {
-                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                    const atBottom =
-                      contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
-                    setShowBottomFade(!atBottom);
-                  }}
-                  scrollEventThrottle={16}
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  enabled={Platform.OS !== 'web'}
+                  style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
                 >
-                  <Animated.View
-                    entering={contentEntering}
-                    exiting={contentExiting}
-                    key={contentKey}
+                  <ScrollView
+                    className="web:max-h-[80vh]"
+                    contentContainerClassName="pb-4 md:pb-8"
+                    contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
+                    style={useFixedHeightLayout ? { flex: 1 } : undefined}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled
+                    onLayout={e => {
+                      containerHeightRef.current = e.nativeEvent.layout.height;
+                      setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
+                    }}
+                    onContentSizeChange={(_, h) => {
+                      contentHeightRef.current = h;
+                      if (containerHeightRef.current > 0) {
+                        setShowBottomFade(h > containerHeightRef.current + 4);
+                      }
+                    }}
+                    onScroll={e => {
+                      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                      const atBottom =
+                        contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
+                      setShowBottomFade(!atBottom);
+                    }}
+                    scrollEventThrottle={16}
                   >
-                    {children}
-                  </Animated.View>
-                </ScrollView>
+                    <Animated.View
+                      entering={contentEntering}
+                      exiting={contentExiting}
+                      key={contentKey}
+                    >
+                      {children}
+                    </Animated.View>
+                  </ScrollView>
+                </KeyboardAvoidingView>
                 {showBottomFade && (
                   <View
                     pointerEvents="none"
