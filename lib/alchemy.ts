@@ -23,6 +23,7 @@ interface JsonRpcResponse<T> {
 interface AlchemyTokenBalancesResult {
   address: string;
   tokenBalances: { contractAddress: string; tokenBalance: string | null }[];
+  pageKey?: string;
 }
 
 interface AlchemyTokenMetadata {
@@ -144,12 +145,24 @@ export const fetchAlchemyTokenBalances = async (
   chainId: number,
   address: string,
 ): Promise<BlockscoutTokenBalance[]> => {
-  const balances = await jsonRpc<AlchemyTokenBalancesResult>(chainId, 'alchemy_getTokenBalances', [
-    address,
-    'erc20',
-  ]);
+  // Paginate via pageKey so wallets with >100 tokens aren't truncated.
+  const tokenBalances: { contractAddress: string; tokenBalance: string | null }[] = [];
+  let pageKey: string | undefined;
+  // Safety cap at 10 pages (≈1000 tokens) to bound worst case.
+  for (let i = 0; i < 10; i++) {
+    const params: unknown[] = [address, 'erc20'];
+    if (pageKey) params.push({ pageKey });
+    const page = await jsonRpc<AlchemyTokenBalancesResult>(
+      chainId,
+      'alchemy_getTokenBalances',
+      params,
+    );
+    tokenBalances.push(...(page.tokenBalances ?? []));
+    if (!page.pageKey) break;
+    pageKey = page.pageKey;
+  }
 
-  const nonZero = (balances.tokenBalances ?? []).filter(b => {
+  const nonZero = tokenBalances.filter(b => {
     if (!b.tokenBalance) return false;
     try {
       return BigInt(b.tokenBalance) !== 0n;
