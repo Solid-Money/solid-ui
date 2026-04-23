@@ -192,6 +192,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
   const isApproved = transaction.status === 'approved';
+  const isDeclined = transaction.status === 'declined';
+  const isReversed = transaction.status === 'reversed';
   const postedDate = useMemo(() => {
     const dateStr = isApproved
       ? transaction.authorized_at || transaction.posted_at
@@ -214,18 +216,37 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
+  const statusLabel = isApproved
+    ? 'Pending'
+    : isDeclined
+      ? 'Declined'
+      : isReversed
+        ? 'Reversed'
+        : 'Confirmed';
+  const statusColor = isApproved
+    ? 'text-yellow-500'
+    : isDeclined
+      ? 'text-red-400'
+      : '';
+
   const rows = useMemo(() => {
     const allRows = [
       { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
       {
         key: 'status',
         label: <Label>Status</Label>,
-        value: (
-          <Value className={isApproved ? 'text-yellow-500' : ''}>
-            {isApproved ? 'Pending' : 'Confirmed'}
-          </Value>
-        ),
+        value: <Value className={statusColor}>{statusLabel}</Value>,
       },
+      isDeclined &&
+        transaction.declined_reason && {
+          key: 'reason',
+          label: <Label>Reason</Label>,
+          value: (
+            <Value className="max-w-[60%] text-right text-base">
+              {toTitleCase(transaction.declined_reason)}
+            </Value>
+          ),
+        },
       cashbackInfo && {
         key: 'cashback',
         label: (
@@ -273,7 +294,15 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
 
     return allRows;
-  }, [cashbackInfo, txHash, handleExplorerPress, isApproved]);
+  }, [
+    cashbackInfo,
+    txHash,
+    handleExplorerPress,
+    statusLabel,
+    statusColor,
+    isDeclined,
+    transaction.declined_reason,
+  ]);
 
   const tokenIcon = useMemo(
     () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
