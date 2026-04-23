@@ -161,6 +161,7 @@ export default function CardTransactions() {
         .join(' ') || undefined;
       const initials = getInitials(merchantName);
       const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
+      const isDeclined = transaction.status === 'declined';
       const color = getColorForTransaction(merchantName);
       const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
@@ -218,7 +219,12 @@ export default function CardTransactions() {
             </View>
           </View>
           <View className="items-end">
-            <Text className="text-xl font-semibold text-white">
+            <Text
+              className={cn(
+                'text-xl font-semibold',
+                isDeclined ? 'text-red-400' : 'text-white',
+              )}
+            >
               {formatCardAmount(transaction.amount, provider)}
             </Text>
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (

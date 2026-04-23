@@ -1255,6 +1255,7 @@ export interface CardTransaction {
   merchant_city?: string;
   merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
+  declined_reason?: string;
 }
 
 export interface CardTransactionsResponse {
