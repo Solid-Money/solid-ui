@@ -178,11 +178,13 @@ export const useSendTransactions = (address: string) => {
     queryFn: async () => {
       const fuseTransfers = await fetchTokenTransfer({
         address,
+        chainId: fuse.id,
         filter: 'from',
       });
 
       const ethereumTransfers = await fetchTokenTransfer({
         address,
+        chainId: mainnet.id,
         filter: 'from',
         explorerUrl: explorerUrls[mainnet.id].blockscout,
       });

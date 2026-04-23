@@ -6,6 +6,7 @@ import { base, fuse, mainnet } from 'viem/chains';
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
+import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
@@ -13,7 +14,7 @@ import { publicClient } from '@/lib/wagmi';
 import useUser from './useUser';
 
 // Blockscout response structure for both Ethereum and Fuse
-interface BlockscoutTokenBalance {
+export interface BlockscoutTokenBalance {
   token: {
     address: string;
     address_hash: string;
@@ -34,8 +35,6 @@ interface BlockscoutTokenBalance {
   token_instance: null;
   value: string;
 }
-
-type BlockscoutResponse = BlockscoutTokenBalance[];
 
 type CalculatedTokenValue = {
   soUSDValue: number;
@@ -117,21 +116,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
     basePrice,
     tokenList,
   ] = await Promise.allSettled([
-    fetch(`https://base.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    fetch(`https://polygon.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    fetch(`https://arbitrum.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
+    // Token balances via the data-source dispatcher (Alchemy primary,
+    // Blockscout fallback). Fuse (122) skips Alchemy entirely.
+    fetchTokenBalancesWithFallback(BASE_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(ETHEREUM_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(FUSE_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(POLYGON_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(ARBITRUM_CHAIN_ID, safeAddress),
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.accountant,
       abi: ACCOUNTANT_ABI,
@@ -235,77 +226,68 @@ const fetchTokenBalances = async (safeAddress: string) => {
     );
   };
 
-  // Process Ethereum response (Blockscout)
-  if (ethereumResponse.status === PromiseStatus.FULFILLED && ethereumResponse.value.ok) {
-    const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
-    // Filter out NFTs and only include ERC-20 tokens
-    ethereumTokens = ethereumData
+  // Process Ethereum tokens
+  if (ethereumResponse.status === PromiseStatus.FULFILLED) {
+    ethereumTokens = ethereumResponse.value
       .filter(
         item =>
           item.token.type === TokenType.ERC20 &&
           filterTokenList(tokenListData, ETHEREUM_CHAIN_ID, getAddress(item)),
       )
       .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
-  } else if (ethereumResponse.status === PromiseStatus.REJECTED) {
+  } else {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
   }
 
-  // Process Base response (Blockscout)
-  if (baseResponse.status === PromiseStatus.FULFILLED && baseResponse.value.ok) {
-    const baseData: BlockscoutResponse = await baseResponse.value.json();
-    // Filter out NFTs and only include ERC-20 tokens
-    baseTokens = baseData
+  // Process Base tokens
+  if (baseResponse.status === PromiseStatus.FULFILLED) {
+    baseTokens = baseResponse.value
       .filter(
         item =>
           item.token.type === TokenType.ERC20 &&
           filterTokenList(tokenListData, BASE_CHAIN_ID, getAddress(item)),
       )
       .map(item => convertBlockscoutToTokenBalance(item, BASE_CHAIN_ID));
-  } else if (baseResponse.status === PromiseStatus.REJECTED) {
+  } else {
     console.warn('Failed to fetch Base balances:', baseResponse.reason);
   }
 
-  // Process Fuse response (Blockscout)
-  if (fuseResponse.status === PromiseStatus.FULFILLED && fuseResponse.value.ok) {
-    const fuseData: BlockscoutResponse = await fuseResponse.value.json();
-    // Filter out NFTs and only include ERC-20 tokens
-    fuseTokens = fuseData
+  // Process Fuse tokens (always Blockscout)
+  if (fuseResponse.status === PromiseStatus.FULFILLED) {
+    fuseTokens = fuseResponse.value
       .filter(
         item =>
           item.token.type === TokenType.ERC20 &&
           filterTokenList(tokenListData, FUSE_CHAIN_ID, getAddress(item)),
       )
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
-  } else if (fuseResponse.status === PromiseStatus.REJECTED) {
+  } else {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
   }
 
-  // Process Polygon response (Blockscout)
-  if (polygonResponse.status === PromiseStatus.FULFILLED && polygonResponse.value.ok) {
-    const polygonData: BlockscoutResponse = await polygonResponse.value.json();
-    polygonTokens = polygonData
+  // Process Polygon tokens
+  if (polygonResponse.status === PromiseStatus.FULFILLED) {
+    polygonTokens = polygonResponse.value
       .filter(
         item =>
           item.token.type === TokenType.ERC20 &&
           filterTokenList(tokenListData, POLYGON_CHAIN_ID, getAddress(item)),
       )
       .map(item => convertBlockscoutToTokenBalance(item, POLYGON_CHAIN_ID));
-  } else if (polygonResponse.status === PromiseStatus.REJECTED) {
+  } else {
     console.warn('Failed to fetch Polygon balances:', polygonResponse.reason);
   }
 
-  // Process Arbitrum response (Blockscout)
-  if (arbitrumResponse.status === PromiseStatus.FULFILLED && arbitrumResponse.value.ok) {
-    const arbitrumData: BlockscoutResponse = await arbitrumResponse.value.json();
-    // Filter out NFTs and only include ERC-20 tokens
-    arbitrumTokens = arbitrumData
+  // Process Arbitrum tokens
+  if (arbitrumResponse.status === PromiseStatus.FULFILLED) {
+    arbitrumTokens = arbitrumResponse.value
       .filter(
         item =>
           item.token.type === TokenType.ERC20 &&
           filterTokenList(tokenListData, ARBITRUM_CHAIN_ID, getAddress(item)),
       )
       .map(item => convertBlockscoutToTokenBalance(item, ARBITRUM_CHAIN_ID));
-  } else if (arbitrumResponse.status === PromiseStatus.REJECTED) {
+  } else {
     console.warn('Failed to fetch Arbitrum balances:', arbitrumResponse.reason);
   }
 
@@ -374,7 +356,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
-  let allTokens = [...ethereumTokens, ...fuseTokens, ...polygonTokens, ...baseTokens, ...arbitrumTokens];
+  let allTokens = [
+    ...ethereumTokens,
+    ...fuseTokens,
+    ...polygonTokens,
+    ...baseTokens,
+    ...arbitrumTokens,
+  ];
 
   const isZeroRate = (r: number | null | undefined) =>
     r == null || r === 0 || (typeof r === 'number' && Number.isNaN(r));

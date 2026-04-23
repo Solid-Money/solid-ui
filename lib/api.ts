@@ -3,8 +3,8 @@ import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
 
-import { explorerUrls } from '@/constants/explorers';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
+import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -25,7 +25,6 @@ import {
   AddressBookRequest,
   AddressBookResponse,
   APYsByAsset,
-  BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
@@ -340,28 +339,25 @@ export const fetchTotalAPY = async (): Promise<TotalAPYResponse> => {
 
 export const fetchTokenTransfer = async ({
   address,
+  chainId = fuse.id,
   token,
-  type = 'ERC-20',
   filter = 'to',
-  explorerUrl = explorerUrls[fuse.id].blockscout,
+  explorerUrl,
 }: {
   address: string;
+  chainId?: number;
   token?: string;
-  type?: string;
-  filter?: string;
+  filter?: 'from' | 'to';
+  /** Optional override for the Blockscout explorer URL (used on fallback). */
   explorerUrl?: string;
 }) => {
-  let url = `${explorerUrl}/api/v2/addresses/${address}/token-transfers`;
-  let params = [];
-
-  if (type) params.push(`type=${type}`);
-  if (filter) params.push(`filter=${filter}`);
-  if (token) params.push(`token=${token}`);
-
-  if (params.length) url += `?${params.join('&')}`;
-
-  const response = await axios.get<BlockscoutTransactions>(url);
-  return response.data;
+  return fetchTokenTransferWithFallback({
+    chainId,
+    address,
+    token,
+    filter,
+    blockscoutExplorerUrl: explorerUrl,
+  });
 };
 
 export const fetchTokenPriceUsd = async (token: string) => {
