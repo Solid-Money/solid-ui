@@ -60,54 +60,48 @@ export default function KycWeb() {
 
     // With manual review enabled the SDK never fires `didit:completed` (that
     // only fires for terminal Approved/Declined states), so `onComplete` won't
-    // run for an In Review session. The user then stares at a blank Didit
-    // screen. We listen to the SDK's lower-level events instead:
-    //   - `verification_submitted` fires as soon as the user finishes the
-    //     verification flow (including the questionnaire);
-    //   - `status_updated` fires whenever Didit reports a new status. Per
-    //     the Didit docs the values surfaced here are: Not Started,
-    //     In Progress, Approved, Declined, In Review, Awaiting User,
-    //     Resubmitted, Expired, Abandoned, Kyc Expired. ('Pending' shows up
-    //     in `onComplete` only, not here.)
+    // run for an In Review session and the user just stares at a blank Didit
+    // screen. We listen to `didit:status_updated` to catch the moment Didit
+    // moves the session into a review/terminal state. Per the Didit docs the
+    // values that surface here are: Not Started, In Progress, Approved,
+    // Declined, In Review, Awaiting User, Resubmitted, Expired, Abandoned,
+    // Kyc Expired. ('Pending' shows up in `onComplete` only.)
+    //
+    // Note: `didit:verification_submitted` fires for every step (document,
+    // selfie, questionnaire), so it can't be used to detect that the user
+    // has finished the entire flow.
     DiditSdk.shared.onEvent = event => {
       if (!hasStartedRef.current) return;
+      if (event.type !== 'didit:status_updated') return;
 
-      if (event.type === 'didit:verification_submitted') {
-        hasStartedRef.current = false;
-        onVerificationPending();
-        return;
-      }
-
-      if (event.type === 'didit:status_updated') {
-        const status = event.data?.status;
-        switch (status) {
-          case 'Approved':
-            hasStartedRef.current = false;
-            onVerificationComplete();
-            break;
-          case 'Declined':
-            hasStartedRef.current = false;
-            onVerificationError('Your identity verification was declined.');
-            break;
-          case 'Expired':
-          case 'Kyc Expired':
-            hasStartedRef.current = false;
-            onVerificationError('Your verification session expired. Please try again.');
-            break;
-          case 'Abandoned':
-            hasStartedRef.current = false;
-            onVerificationError('Your verification was abandoned. Please try again.');
-            break;
-          case 'In Review':
-          case 'Resubmitted':
-            hasStartedRef.current = false;
-            onVerificationPending();
-            break;
-          // 'Not Started', 'In Progress', 'Awaiting User' — keep the user in
-          // the widget; they still have something to do or are mid-flow.
-          default:
-            break;
-        }
+      const status = event.data?.status;
+      switch (status) {
+        case 'Approved':
+          hasStartedRef.current = false;
+          onVerificationComplete();
+          break;
+        case 'Declined':
+          hasStartedRef.current = false;
+          onVerificationError('Your identity verification was declined.');
+          break;
+        case 'Expired':
+        case 'Kyc Expired':
+          hasStartedRef.current = false;
+          onVerificationError('Your verification session expired. Please try again.');
+          break;
+        case 'Abandoned':
+          hasStartedRef.current = false;
+          onVerificationError('Your verification was abandoned. Please try again.');
+          break;
+        case 'In Review':
+        case 'Resubmitted':
+          hasStartedRef.current = false;
+          onVerificationPending();
+          break;
+        // 'Not Started', 'In Progress', 'Awaiting User' — keep the user in
+        // the widget; they still have something to do or are mid-flow.
+        default:
+          break;
       }
     };
 
