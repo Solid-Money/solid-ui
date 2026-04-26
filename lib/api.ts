@@ -495,6 +495,35 @@ export const personaSimulateAction = async (
   return response.json();
 };
 
+/**
+ * Card-activation consents collected on /card/ready.
+ * Stored in MongoDB (rainKycAgreements) for compliance retention; not forwarded to Rain.
+ */
+export const submitCardConsents = async (consents: {
+  agreedToEsign: boolean;
+  agreedToAccountOpeningPrivacy: boolean;
+  isTermsOfServiceAccepted: boolean;
+  agreedToCertify: boolean;
+  agreedToNoSolicitation: boolean;
+}): Promise<{ id: string; createdAt: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/consents`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(consents),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 /** Rain KYC (in-house): single multipart POST with application fields + document files. Backend creates Rain application then uploads docs. */
 export const submitRainKyc = async (formData: FormData): Promise<RainKycSubmitResponse> => {
   const jwt = getJWTToken();
