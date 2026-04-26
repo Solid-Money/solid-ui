@@ -27,6 +27,13 @@ export default function KycWeb() {
 
     hasStartedRef.current = true;
 
+    // Reset BEFORE wiring handlers. `DiditSdk.reset()` is a static method that
+    // destroys the singleton (`_instance = null`), so the next `DiditSdk.shared`
+    // access creates a fresh instance. If we attach `onComplete` / `onEvent`
+    // before resetting, the handlers land on the about-to-be-destroyed instance
+    // and the new instance silently has no callbacks at all.
+    DiditSdk.reset();
+
     DiditSdk.shared.onComplete = result => {
       switch (result.type) {
         case 'completed':
@@ -36,8 +43,7 @@ export default function KycWeb() {
           } else if (result.session?.status === 'Declined') {
             onVerificationError('Your identity verification was declined.');
           } else {
-            // 'Pending', 'In Review', etc. — redirect back to activate page
-            // so user sees "Under Review" state instead of blank page
+            // 'Pending' shows up here for manual-review sessions.
             onVerificationPending();
           }
           break;
@@ -105,8 +111,6 @@ export default function KycWeb() {
       }
     };
 
-    // Reset any previous SDK state so the embed container can be reused on retry
-    DiditSdk.reset();
     DiditSdk.shared.startVerification({
       url: verificationUrl,
       configuration: {
