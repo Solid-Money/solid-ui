@@ -52,6 +52,18 @@ export default function KycWeb() {
       }
     };
 
+    // With manual review enabled the SDK does not auto-close after submission
+    // (`onComplete` only fires for terminal Approved/Declined states), leaving
+    // the user staring at a blank Didit screen. The `verification_submitted`
+    // event fires as soon as the questionnaire is submitted, so use it to
+    // proactively send the user to /card/pending where the polling continues.
+    DiditSdk.shared.onEvent = event => {
+      if (event.type === 'didit:verification_submitted' && hasStartedRef.current) {
+        hasStartedRef.current = false;
+        onVerificationPending();
+      }
+    };
+
     // Reset any previous SDK state so the embed container can be reused on retry
     DiditSdk.reset();
     DiditSdk.shared.startVerification({

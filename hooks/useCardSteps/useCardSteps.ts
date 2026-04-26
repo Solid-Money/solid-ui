@@ -11,12 +11,7 @@ import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import {
-  CardProvider,
-  CardStatusResponse,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -102,13 +97,8 @@ export function useCardSteps(
   );
 
   // Card activation state and handlers
-  const {
-    cardActivated,
-    activatingCard,
-    handleActivateCard,
-    syncCardActivationState,
-    pushCardDetails,
-  } = useCardActivation(router);
+  const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
+    useCardActivation(router);
 
   // Sync card activation state with server
   useEffect(() => {
@@ -256,7 +246,7 @@ export function useCardSteps(
         cardStatusResponse?.activationBlocked,
         cardStatusResponse?.activationBlockedReason,
         handleProceedToKyc,
-        handleActivateCard,
+        pushCardReady,
         pushCardDetails,
         {
           cardIssuer,
@@ -276,7 +266,7 @@ export function useCardSteps(
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,
       handleProceedToKyc,
-      handleActivateCard,
+      pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,
