@@ -2,8 +2,7 @@ import { Linking, Platform, Pressable, Text, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { router } from 'expo-router';
-import { ArrowLeft, Bell } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
@@ -54,9 +53,7 @@ export default function Settings() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-3xl font-semibold text-white">Settings</Text>
           <View className="w-6" />
         </View>
