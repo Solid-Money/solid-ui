@@ -12,9 +12,9 @@ import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
-import { EXPO_PUBLIC_BASE_URL } from '@/lib/config';
 import { CardStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 
 type ConsentKey =
   | 'agreedToEsign'
@@ -33,6 +33,15 @@ const initialConsents: ConsentState = {
   agreedToNoSolicitation: false,
 };
 
+const ESIGN_CONSENT_URL =
+  'https://support.solid.xyz/en/articles/14167249-e-sign-electronic-communications-notice';
+const ACCOUNT_OPENING_PRIVACY_URL =
+  'https://support.solid.xyz/en/articles/14285527-account-opening-privacy-notice-fuse-network-lt-solid-xyz';
+const US_CARD_TERMS_URL =
+  'https://support.solid.xyz/en/articles/14285503-fuse-network-ltd-card-terms-for-u-s-consumer-program';
+const INTL_CARD_TERMS_URL = 'https://support.solid.xyz/en/articles/14167026-solid-user-terms';
+const ISSUER_PRIVACY_URL = 'https://www.third-national.com/privacypolicy';
+
 const underlineProps = {
   textClassName: 'text-sm font-bold text-white' as const,
   borderColor: 'rgba(255, 255, 255, 1)' as const,
@@ -44,11 +53,32 @@ export default function CardReady() {
   const [activating, setActivating] = useState(false);
   const [consents, setConsents] = useState<ConsentState>(initialConsents);
 
-  const baseUrl = EXPO_PUBLIC_BASE_URL || 'https://solid.xyz';
+  const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
+  const isUS = countryCode?.toUpperCase() === 'US';
+  const cardTermsUrl = isUS ? US_CARD_TERMS_URL : INTL_CARD_TERMS_URL;
+
+  const requiredKeys = useMemo<ConsentKey[]>(
+    () =>
+      isUS
+        ? [
+            'agreedToEsign',
+            'agreedToAccountOpeningPrivacy',
+            'isTermsOfServiceAccepted',
+            'agreedToCertify',
+            'agreedToNoSolicitation',
+          ]
+        : [
+            'agreedToEsign',
+            'isTermsOfServiceAccepted',
+            'agreedToCertify',
+            'agreedToNoSolicitation',
+          ],
+    [isUS],
+  );
 
   const allAccepted = useMemo(
-    () => (Object.keys(consents) as ConsentKey[]).every(key => consents[key]),
-    [consents],
+    () => requiredKeys.every(key => consents[key]),
+    [requiredKeys, consents],
   );
 
   const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
@@ -59,7 +89,13 @@ export default function CardReady() {
     try {
       setActivating(true);
 
-      await withRefreshToken(() => submitCardConsents(consents));
+      await withRefreshToken(() =>
+        submitCardConsents({
+          ...consents,
+          // Non-US users never see this consent; send false so the field is always present.
+          agreedToAccountOpeningPrivacy: isUS ? consents.agreedToAccountOpeningPrivacy : false,
+        }),
+      );
 
       const card = await withRefreshToken(() => createCard());
       if (!card) throw new Error('Failed to create card');
@@ -94,49 +130,39 @@ export default function CardReady() {
       <View className="mt-4 w-full gap-3">
         <ConsentRow checked={consents.agreedToEsign} onToggle={() => toggle('agreedToEsign')}>
           I accept the{' '}
-          <Underline
-            inline
-            {...underlineProps}
-            onPress={() => Linking.openURL(`${baseUrl}/legal/esign-consent`)}
-          >
+          <Underline inline {...underlineProps} onPress={() => Linking.openURL(ESIGN_CONSENT_URL)}>
             E-Sign Consent
           </Underline>
           .
         </ConsentRow>
 
-        <ConsentRow
-          checked={consents.agreedToAccountOpeningPrivacy}
-          onToggle={() => toggle('agreedToAccountOpeningPrivacy')}
-        >
-          I accept the{' '}
-          <Underline
-            inline
-            {...underlineProps}
-            onPress={() => Linking.openURL(`${baseUrl}/legal/account-opening-privacy`)}
+        {isUS && (
+          <ConsentRow
+            checked={consents.agreedToAccountOpeningPrivacy}
+            onToggle={() => toggle('agreedToAccountOpeningPrivacy')}
           >
-            Account Opening Privacy Notice
-          </Underline>
-          .
-        </ConsentRow>
+            I accept the{' '}
+            <Underline
+              inline
+              {...underlineProps}
+              onPress={() => Linking.openURL(ACCOUNT_OPENING_PRIVACY_URL)}
+            >
+              Account Opening Privacy Notice
+            </Underline>
+            .
+          </ConsentRow>
+        )}
 
         <ConsentRow
           checked={consents.isTermsOfServiceAccepted}
           onToggle={() => toggle('isTermsOfServiceAccepted')}
         >
           I accept the{' '}
-          <Underline
-            inline
-            {...underlineProps}
-            onPress={() => Linking.openURL(`${baseUrl}/legal/card-terms`)}
-          >
+          <Underline inline {...underlineProps} onPress={() => Linking.openURL(cardTermsUrl)}>
             Solid Card Terms
           </Underline>{' '}
           and the{' '}
-          <Underline
-            inline
-            {...underlineProps}
-            onPress={() => Linking.openURL(`${baseUrl}/legal/issuer-privacy`)}
-          >
+          <Underline inline {...underlineProps} onPress={() => Linking.openURL(ISSUER_PRIVACY_URL)}>
             Issuer Privacy Policy
           </Underline>
           .
