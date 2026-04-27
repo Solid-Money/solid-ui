@@ -70,13 +70,19 @@ export function useDiditSession() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
       if (kycStatus === KycStatus.APPROVED) {
-        // Didit KYC approved: only go to ready page when Rain is also approved.
-        // Otherwise redirect to activate page so the user sees the dynamic
-        // step-one button (e.g. "Provide more info" for Rain needsInformation).
+        // Didit KYC approved: route by Rain status. Approved -> ready.
+        // Manual review (Rain pending/manualReview, which maps to backend
+        // kycStatus = under_review) -> pending so the user sees the review
+        // state. Anything else (needsInformation/needsVerification) ->
+        // activate so they see the step-one button.
         try {
           const cardStatusResponse = await withRefreshToken(() => getCardStatus());
           if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
             router.replace(path.CARD_READY as any);
+            return;
+          }
+          if (cardStatusResponse?.kycStatus === KycStatus.UNDER_REVIEW) {
+            router.replace(path.CARD_PENDING as any);
             return;
           }
         } catch {
@@ -131,18 +137,19 @@ export function useDiditSession() {
         const status = await withRefreshToken(() => getDiditVerificationStatus());
         if (!status) return;
 
-        if (status.status === 'Approved' || status.kycStatus === 'approved') {
-          clearInterval(interval);
-          onVerificationComplete();
-        } else if (status.status === 'Declined' || status.kycStatus === 'rejected') {
-          clearInterval(interval);
-          onVerificationError('Your identity verification was declined. Please try again.');
-        } else if (
-          status.status === 'In Review' ||
-          status.kycStatus === KycStatus.UNDER_REVIEW
-        ) {
+        // Backend kycStatus is the canonical source — it reflects the full
+        // pipeline (Didit + Rain) so check it before the Didit-only
+        // status.status. A Didit `Approved` with kycStatus `under_review`
+        // means manual review is in progress and should route to pending.
+        if (status.kycStatus === KycStatus.UNDER_REVIEW || status.status === 'In Review') {
           clearInterval(interval);
           onVerificationPending();
+        } else if (status.kycStatus === KycStatus.REJECTED || status.status === 'Declined') {
+          clearInterval(interval);
+          onVerificationError('Your identity verification was declined. Please try again.');
+        } else if (status.kycStatus === KycStatus.APPROVED || status.status === 'Approved') {
+          clearInterval(interval);
+          onVerificationComplete();
         }
       } catch {
         // silently retry on network errors
