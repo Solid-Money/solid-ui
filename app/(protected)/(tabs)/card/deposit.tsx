@@ -3,10 +3,10 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { Address, formatUnits } from 'viem';
 
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -216,9 +216,7 @@ const DepositToCard = () => {
     <PageLayout desktopOnly contentClassName="px-4 py-8">
       <View className="mx-auto h-full w-full max-w-md">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-center text-xl font-semibold md:text-2xl">Deposit to card</Text>
           <View className="w-6" />
         </View>
