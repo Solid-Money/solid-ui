@@ -1,6 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
+import { Text, View } from 'react-native';
 
 import EmailIcon from '@/assets/images/email';
 import LegalIcon from '@/assets/images/legal';
@@ -9,6 +7,7 @@ import MessageCircle from '@/assets/images/messages';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import { BackButton } from '@/components/ui/back-button';
 import { useDimension } from '@/hooks/useDimension';
 import { openIntercom } from '@/lib/intercom';
 import { cn } from '@/lib/utils';
@@ -53,9 +52,7 @@ export default function Help() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable onPress={() => router.back()} className="p-2">
-        <ChevronLeft size={24} color="#ffffff" />
-      </Pressable>
+      <BackButton />
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Help & Support</Text>
     </View>
   );
@@ -65,9 +62,7 @@ export default function Help() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-3xl font-semibold text-white">Help & Support</Text>
           <View className="w-6" />
         </View>

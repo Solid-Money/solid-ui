@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { ArrowLeft } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
 import { DesktopCarousel } from '@/components/Onboarding';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
@@ -137,12 +137,9 @@ export default function SignupPasskey() {
       <View className="my-auto items-center">
         {/* Back button - positioned above form on desktop */}
         {isDesktop && (
-          <Pressable
-            onPress={handleBack}
-            className="mb-20 h-10 w-10 items-center justify-center self-start rounded-full bg-white/10 web:hover:bg-white/20"
-          >
-            <ArrowLeft size={20} color="#ffffff" />
-          </Pressable>
+          <View className="mb-20 self-start">
+            <BackButton onPress={handleBack} />
+          </View>
         )}
 
         {/* Passkey Icon */}
@@ -192,12 +189,7 @@ export default function SignupPasskey() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <Pressable
-              onPress={handleBack}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-            >
-              <ArrowLeft size={20} color="#ffffff" />
-            </Pressable>
+            <BackButton onPress={handleBack} />
           </View>
 
           {/* Content - positioned at top, centered horizontally */}

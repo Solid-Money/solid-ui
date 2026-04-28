@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -246,12 +246,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 pt-8">
         <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-            className="web:hover:opacity-70"
-          >
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Verify identity
           </Text>

@@ -5,12 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopCarousel } from '@/components/Onboarding';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import Input from '@/components/ui/input';
@@ -207,12 +207,9 @@ export default function SignupEmail() {
       <View className="my-auto">
         {/* Back button - positioned above form on desktop */}
         {isDesktop && (
-          <Pressable
-            onPress={handleBack}
-            className="mb-20 h-10 w-10 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/20"
-          >
-            <ArrowLeft size={20} color="#ffffff" />
-          </Pressable>
+          <View className="mb-20">
+            <BackButton onPress={handleBack} />
+          </View>
         )}
 
         {/* Header */}
@@ -316,12 +313,7 @@ export default function SignupEmail() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <Pressable
-              onPress={handleBack}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-            >
-              <ArrowLeft size={20} color="#ffffff" />
-            </Pressable>
+            <BackButton onPress={handleBack} />
           </View>
 
           {/* Content - flex between to push button to bottom */}

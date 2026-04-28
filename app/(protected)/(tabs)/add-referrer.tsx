@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 
 import InfoError from '@/assets/images/info-error';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -68,9 +68,7 @@ export default function AddReferrer() {
       <View className="mx-auto w-full max-w-lg flex-1 justify-center gap-10 px-4 py-8">
         <View className="mx-auto w-full gap-5 md:gap-5">
           <View className="flex-row items-center justify-between">
-            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-              <ArrowLeft color="white" />
-            </Pressable>
+            <BackButton />
             <Text className="text-center text-lg font-semibold text-white md:text-xl">
               Enter your friend&apos;s referral code
             </Text>
