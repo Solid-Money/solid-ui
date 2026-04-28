@@ -12,12 +12,23 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import {
   useAgentApiKeys,
+  useAgentBalance,
+  useAgentDeposited,
   useAgentQuery,
   useGenerateAgentApiKey,
   useProvisionAgent,
   useRevokeAgentApiKey,
 } from '@/hooks/useAgent';
 import { eclipseAddress } from '@/lib/utils';
+
+const formatUsdc = (raw?: bigint) => {
+  if (raw === undefined) return '—';
+  const value = Number(raw) / 1_000_000;
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 export default function AgentPage() {
   const agentQuery = useAgentQuery();
@@ -26,11 +37,14 @@ export default function AgentPage() {
   const generateApiKey = useGenerateAgentApiKey();
   const revokeApiKey = useRevokeAgentApiKey();
 
-  const [revealedKey, setRevealedKey] = useState<string | null>(null);
-
   const agent = agentQuery.data;
   const isProvisioned = !!agent?.agentEoaAddress;
-  const hasDeposited = !!agent?.hasDepositedToAgentWallet;
+
+  const balanceQuery = useAgentBalance(agent?.agentEoaAddress);
+  const depositedQuery = useAgentDeposited(isProvisioned);
+  const hasDeposited = depositedQuery.data ?? false;
+
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   const handleProvision = async () => {
     try {
@@ -71,9 +85,8 @@ export default function AgentPage() {
           <View className="gap-3 rounded-twice border border-border bg-card p-5">
             <Text className="text-lg font-semibold">Set up your agent</Text>
             <Text className="text-sm text-muted-foreground">
-              We'll create a new EOA under your existing Turnkey wallet, gated by a per-tx cap and
-              recipient allowlist. Idle USD principal stays in your soUSD vault and keeps earning
-              yield.
+              We'll create a new EOA under your existing Turnkey wallet that can sign x402
+              payments on Base. Start earning yield on idle USDC in your agent wallet.
             </Text>
             <Button onPress={handleProvision} disabled={provision.isPending}>
               <Text>{provision.isPending ? 'Setting up…' : 'Set up Agent'}</Text>
@@ -95,25 +108,17 @@ export default function AgentPage() {
               <Text className="font-mono text-sm" selectable>
                 {eclipseAddress(agent.agentEoaAddress!, 8, 6)}
               </Text>
-              <View className="mt-2 flex-row items-center justify-between gap-2">
-                <View>
-                  <Text className="text-xs uppercase text-muted-foreground">Daily cap</Text>
-                  <Text className="text-base font-semibold">
-                    ${(agent.dailyCapUsdc / 1_000_000).toFixed(2)}
+              <View className="mt-2 gap-1">
+                <Text className="text-xs uppercase text-muted-foreground">
+                  USDC balance on Base
+                </Text>
+                {balanceQuery.isLoading ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <Text className="text-2xl font-semibold">
+                    {formatUsdc(balanceQuery.data)}
                   </Text>
-                </View>
-                <View>
-                  <Text className="text-xs uppercase text-muted-foreground">Spent today</Text>
-                  <Text className="text-base font-semibold">
-                    ${(agent.dailySpentUsdc / 1_000_000).toFixed(2)}
-                  </Text>
-                </View>
-                <View>
-                  <Text className="text-xs uppercase text-muted-foreground">Allowlist</Text>
-                  <Text className="text-base font-semibold">
-                    {agent.recipientAllowlist.length}
-                  </Text>
-                </View>
+                )}
               </View>
               <Button
                 variant="secondary"
@@ -121,8 +126,7 @@ export default function AgentPage() {
                   Toast.show({
                     type: 'info',
                     text1: 'Deposit flow coming soon',
-                    text2:
-                      'Borrow against soUSD on Fuse and bridge USDC to the agent EOA on Base.',
+                    text2: 'Bridge USDC to the agent EOA on Base from the Solid app.',
                     props: { badgeText: 'Soon' },
                   })
                 }
@@ -139,14 +143,8 @@ export default function AgentPage() {
                     Authenticate AI tools that pay through your agent wallet.
                   </Text>
                 </View>
-                <Button
-                  size="sm"
-                  onPress={handleGenerate}
-                  disabled={generateApiKey.isPending}
-                >
-                  <Text>
-                    {generateApiKey.isPending ? 'Generating…' : 'Generate API key'}
-                  </Text>
+                <Button size="sm" onPress={handleGenerate} disabled={generateApiKey.isPending}>
+                  <Text>{generateApiKey.isPending ? 'Generating…' : 'Generate API key'}</Text>
                 </Button>
               </View>
               <ApiKeyList
