@@ -3,13 +3,14 @@ import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 're
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, RotateCw } from 'lucide-react-native';
+import { RotateCw } from 'lucide-react-native';
 
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -156,14 +157,7 @@ export default function CardTransactions() {
       <View className="mx-auto w-full max-w-[600px] flex-1">
         <View className="px-8 pt-8">
           <View className="mb-8 flex-row items-center justify-between">
-            <Pressable
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace(path.CARD_DETAILS)
-              }
-              className="web:hover:opacity-70"
-            >
-              <ArrowLeft color="white" />
-            </Pressable>
+            <BackButton fallbackHref={path.CARD_DETAILS} />
             <Text className="text-center text-xl font-semibold text-white md:text-2xl">
               Solid card transactions
             </Text>

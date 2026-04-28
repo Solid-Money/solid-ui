@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 
 import Checkmark from '@/assets/images/checkmark';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
@@ -60,9 +60,7 @@ export default function Email() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable onPress={() => router.back()} className="p-2">
-        <ChevronLeft size={24} color="#ffffff" />
-      </Pressable>
+      <BackButton />
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Email</Text>
     </View>
   );
@@ -72,9 +70,7 @@ export default function Email() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-3xl font-semibold text-white">Email</Text>
           <View className="w-6" />
         </View>
