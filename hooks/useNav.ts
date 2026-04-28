@@ -28,12 +28,17 @@ const card: MenuItem = {
   href: path.CARD,
 };
 
+const agent: MenuItem = {
+  label: 'Agent',
+  href: path.AGENT,
+};
+
 const useNav = () => {
   const points: MenuItem = {
     label: isProduction ? 'Points' : 'Rewards',
     href: isProduction ? path.POINTS : path.REWARDS,
   };
-  const menuItems: MenuItem[] = [home, savings, card, points, activity];
+  const menuItems: MenuItem[] = [home, savings, card, points, agent, activity];
   return {
     menuItems,
   };

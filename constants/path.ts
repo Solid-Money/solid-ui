@@ -46,6 +46,7 @@ type Path = {
   QUEST_WALLET: Route;
   QR_SCANNER: Route;
   RESCUE_TOKEN: Href;
+  AGENT: Href;
 };
 
 export const path: Path = {
@@ -96,4 +97,5 @@ export const path: Path = {
   // Note: Type assertion needed because Expo Router types are regenerated at dev server start
   QR_SCANNER: '/qr-scanner' as Route,
   RESCUE_TOKEN: '/rescue-token' as Href,
+  AGENT: '/agent' as Href,
 };
