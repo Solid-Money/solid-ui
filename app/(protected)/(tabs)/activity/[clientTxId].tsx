@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
-import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
+import { ArrowUpRight, X } from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
 import Diamond from '@/assets/images/diamond';
@@ -13,6 +13,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
@@ -122,12 +123,9 @@ const Back = memo(function Back({ title, className }: BackProps) {
 
   return (
     <View className="relative flex-row items-center justify-center">
-      <Pressable
-        onPress={handleBackPress}
-        className="absolute left-0 web:hover:opacity-70"
-      >
-        <ChevronLeft color="white" />
-      </Pressable>
+      <View className="absolute left-0">
+        <BackButton onPress={handleBackPress} />
+      </View>
       <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
     </View>
   );

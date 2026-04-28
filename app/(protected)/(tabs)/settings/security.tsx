@@ -1,14 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import { BackButton } from '@/components/ui/back-button';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
@@ -149,14 +148,7 @@ export default function Security() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable
-        onPress={() => router.back()}
-        className="p-2"
-        accessibilityLabel="Go back"
-        accessibilityRole="button"
-      >
-        <ChevronLeft size={24} color="#ffffff" />
-      </Pressable>
+      <BackButton />
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Security</Text>
     </View>
   );
@@ -166,14 +158,7 @@ export default function Security() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            className="web:hover:opacity-70"
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-3xl font-semibold text-white">Security</Text>
           <View className="w-6" />
         </View>
