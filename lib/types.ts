@@ -168,6 +168,8 @@ export interface User {
   points?: number;
   credentialId?: string;
   externalWalletAddress?: string;
+  agentEoaAddress?: Address;
+  hasDepositedToAgentWallet?: boolean;
 }
 
 export type BlockscoutTransaction = {
@@ -673,6 +675,8 @@ export enum TransactionType {
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
+  AGENT_X402_PAYMENT = 'agent_x402_payment',
+  AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
 }
 
 export enum TransactionDirection {

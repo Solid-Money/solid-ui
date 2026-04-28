@@ -2539,6 +2539,106 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
   return response.data;
 };
 
+// =====================================================================
+// Agent Wallet
+// =====================================================================
+
+export type AgentSummary = {
+  agentEoaAddress?: string;
+  hasDepositedToAgentWallet: boolean;
+  dailyCapUsdc: number;
+  recipientAllowlist: string[];
+  dailySpentUsdc: number;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
+
+const agentEndpoint = (path: string) =>
+  `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/agents${path}`;
+
+const agentJsonHeaders = () => {
+  const jwt = getJWTToken();
+  return {
+    'Content-Type': 'application/json',
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+export const provisionAgent = async (): Promise<{ agentEoaAddress: string }> => {
+  const response = await fetch(agentEndpoint('/provision'), {
+    method: 'POST',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchAgent = async (): Promise<AgentSummary> => {
+  const response = await fetch(agentEndpoint('/me'), {
+    method: 'GET',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const updateAgent = async (
+  data: { dailyCapUsdc?: number; recipientAllowlist?: string[] },
+): Promise<AgentSummary> => {
+  const response = await fetch(agentEndpoint('/me'), {
+    method: 'PATCH',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchAgentApiKeys = async (): Promise<AgentApiKeySummary[]> => {
+  const response = await fetch(agentEndpoint('/me/api-keys'), {
+    method: 'GET',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const generateAgentApiKey = async (
+  name?: string,
+): Promise<GenerateAgentApiKeyResponse> => {
+  const response = await fetch(agentEndpoint('/me/api-keys'), {
+    method: 'POST',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const revokeAgentApiKey = async (id: string): Promise<void> => {
+  const response = await fetch(agentEndpoint(`/me/api-keys/${id}`), {
+    method: 'DELETE',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+};
+
 export const fetchAddressBook = async (): Promise<AddressBookResponse[]> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
