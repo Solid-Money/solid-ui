@@ -36,6 +36,7 @@ export const useAgentQuery = () =>
 
 /**
  * On-chain USDC balance for the agent EOA on Base. 6-decimal raw bigint.
+ * Mirrors the polling cadence used by useBalances for the Safe wallet.
  */
 export const useAgentBalance = (agentEoaAddress?: string) =>
   useQuery<bigint>({
@@ -51,8 +52,9 @@ export const useAgentBalance = (agentEoaAddress?: string) =>
         args: [agentEoaAddress as Address],
       });
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
   });
 
 /**
