@@ -49,7 +49,7 @@ export default function CardPending() {
 
   return (
     <CardStatusPage
-      title="Your card is on its way!"
+      title="Your ID verification is under review!"
       description={
         'Thanks for your submission. Your\nidentity is now being verified. You will be\nnotified by mail once you get approved'
       }
