@@ -169,7 +169,6 @@ export interface User {
   credentialId?: string;
   externalWalletAddress?: string;
   agentEoaAddress?: Address;
-  hasDepositedToAgentWallet?: boolean;
 }
 
 export type BlockscoutTransaction = {
@@ -1534,6 +1533,21 @@ export interface AddressBookResponse {
   walletAddress: string;
   skipped2faAt?: Date;
 }
+
+export type AgentSummary = {
+  agentEoaAddress?: string;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
 
 export interface WhatsNewStep {
   imageUrl: string;

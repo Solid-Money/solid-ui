@@ -24,6 +24,9 @@ import {
   ActivityEvents,
   AddressBookRequest,
   AddressBookResponse,
+  AgentApiKeySummary,
+  AgentSummary,
+  GenerateAgentApiKeyResponse,
   APYsByAsset,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -2543,25 +2546,6 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
 // Agent Wallet
 // =====================================================================
 
-export type AgentSummary = {
-  agentEoaAddress?: string;
-  hasDepositedToAgentWallet: boolean;
-  dailyCapUsdc: number;
-  recipientAllowlist: string[];
-  dailySpentUsdc: number;
-};
-
-export type AgentApiKeySummary = {
-  id: string;
-  prefix: string;
-  name?: string;
-  createdAt: string;
-  lastUsedAt?: string;
-  revokedAt?: string;
-};
-
-export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
-
 const agentEndpoint = (path: string) =>
   `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/agents${path}`;
 
@@ -2594,17 +2578,23 @@ export const fetchAgent = async (): Promise<AgentSummary> => {
   return response.json();
 };
 
-export const updateAgent = async (
-  data: { dailyCapUsdc?: number; recipientAllowlist?: string[] },
-): Promise<AgentSummary> => {
-  const response = await fetch(agentEndpoint('/me'), {
-    method: 'PATCH',
-    headers: agentJsonHeaders(),
+/**
+ * Returns true iff the user has at least one successful AGENT_WALLET_DEPOSIT
+ * activity. Cached on the UI side to avoid re-querying on every render.
+ */
+export const fetchAgentHasDeposited = async (): Promise<boolean> => {
+  const jwt = getJWTToken();
+  const url = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity?scope=agent&type=agent_wallet_deposit&status=success&limit=1`;
+  const response = await fetch(url, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
     credentials: 'include',
-    body: JSON.stringify(data),
   });
   if (!response.ok) throw response;
-  return response.json();
+  const json = (await response.json()) as { totalDocs?: number; docs?: unknown[] };
+  return (json.totalDocs ?? json.docs?.length ?? 0) > 0;
 };
 
 export const fetchAgentApiKeys = async (): Promise<AgentApiKeySummary[]> => {
