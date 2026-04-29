@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { useLocalSearchParams } from 'expo-router';
 
 import ApiKeyList from '@/components/Agent/ApiKeyList';
 import ApiKeyRevealModal from '@/components/Agent/ApiKeyRevealModal';
@@ -19,6 +20,7 @@ import {
   useProvisionAgent,
   useRevokeAgentApiKey,
 } from '@/hooks/useAgent';
+import { isProduction } from '@/lib/config';
 import { eclipseAddress } from '@/lib/utils';
 
 const formatUsdc = (raw?: bigint) => {
@@ -30,19 +32,68 @@ const formatUsdc = (raw?: bigint) => {
   })}`;
 };
 
+/**
+ * Render-state override for visual debugging. Pass via query param:
+ *   /agent?status=loading
+ *   /agent?status=not_provisioned
+ *   /agent?status=provisioned
+ *   /agent?status=deposited        (provisioned + Switch flipped + balance set)
+ *
+ * Disabled in production builds — the param is ignored when isProduction.
+ */
+type AgentStatusOverride = 'loading' | 'not_provisioned' | 'provisioned' | 'deposited';
+const VALID_OVERRIDES: AgentStatusOverride[] = [
+  'loading',
+  'not_provisioned',
+  'provisioned',
+  'deposited',
+];
+const DEMO_AGENT_ADDRESS = '0x0000000000000000000000000000000000000000';
+const DEMO_BALANCE_USDC = 12_345_670n; // $12.34
+
 export default function AgentPage() {
+  const { status } = useLocalSearchParams<{ status?: string }>();
+  const statusOverride: AgentStatusOverride | undefined =
+    !isProduction && VALID_OVERRIDES.includes(status as AgentStatusOverride)
+      ? (status as AgentStatusOverride)
+      : undefined;
+
   const agentQuery = useAgentQuery();
   const provision = useProvisionAgent();
   const apiKeysQuery = useAgentApiKeys();
   const generateApiKey = useGenerateAgentApiKey();
   const revokeApiKey = useRevokeAgentApiKey();
 
-  const agent = agentQuery.data;
-  const isProvisioned = !!agent?.agentEoaAddress;
+  const liveAgent = agentQuery.data;
+  const liveIsProvisioned = !!liveAgent?.agentEoaAddress;
 
-  const balanceQuery = useAgentBalance(agent?.agentEoaAddress);
+  // Derived view-model: the override wins when set, otherwise we use live
+  // backend data. Keeping the live hooks running unconditionally so the
+  // override can be toggled on/off without remounting.
+  const isLoading =
+    statusOverride === 'loading' || (statusOverride === undefined && agentQuery.isLoading);
+  const isProvisioned =
+    statusOverride === 'provisioned' ||
+    statusOverride === 'deposited' ||
+    (statusOverride === undefined && liveIsProvisioned);
+  const agentEoaAddress: string | undefined =
+    statusOverride === 'provisioned' || statusOverride === 'deposited'
+      ? DEMO_AGENT_ADDRESS
+      : liveAgent?.agentEoaAddress;
+
+  const balanceQuery = useAgentBalance(agentEoaAddress);
   const depositedQuery = useAgentDeposited(isProvisioned);
-  const hasDeposited = depositedQuery.data ?? false;
+  const hasDeposited =
+    statusOverride === 'deposited'
+      ? true
+      : statusOverride === 'provisioned'
+        ? false
+        : (depositedQuery.data ?? false);
+  const balance =
+    statusOverride === 'deposited' || statusOverride === 'provisioned'
+      ? DEMO_BALANCE_USDC
+      : balanceQuery.data;
+  const balanceLoading = statusOverride === undefined ? balanceQuery.isLoading : false;
 
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
@@ -85,7 +136,7 @@ export default function AgentPage() {
           </View>
         ) : null}
 
-        {agentQuery.isLoading ? (
+        {isLoading ? (
           <View className="items-center py-12">
             <ActivityIndicator />
           </View>
@@ -123,19 +174,19 @@ export default function AgentPage() {
             <View className="gap-3 rounded-twice border border-border bg-card p-5">
               <View className="flex-row items-center justify-between gap-2">
                 <Text className="text-sm text-muted-foreground">Agent wallet address</Text>
-                <CopyToClipboard text={agent.agentEoaAddress!} />
+                <CopyToClipboard text={agentEoaAddress ?? ''} />
               </View>
               <Text className="font-mono text-sm" selectable>
-                {eclipseAddress(agent.agentEoaAddress!, 8, 6)}
+                {agentEoaAddress ? eclipseAddress(agentEoaAddress, 8, 6) : ''}
               </Text>
               <View className="mt-2 gap-1">
                 <Text className="text-xs uppercase text-muted-foreground">
                   USDC balance on Base
                 </Text>
-                {balanceQuery.isLoading ? (
+                {balanceLoading ? (
                   <ActivityIndicator size="small" />
                 ) : (
-                  <Text className="text-2xl font-semibold">{formatUsdc(balanceQuery.data)}</Text>
+                  <Text className="text-2xl font-semibold">{formatUsdc(balance)}</Text>
                 )}
               </View>
               <Button
