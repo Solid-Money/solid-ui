@@ -2,7 +2,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { AgentApiKeySummary } from '@/lib/api';
+import { AgentApiKeySummary } from '@/lib/types';
 
 type Props = {
   apiKeys: AgentApiKeySummary[] | undefined;
@@ -54,9 +54,7 @@ const ApiKeyList = ({ apiKeys, isLoading, onRevoke, revokingId }: Props) => {
             disabled={revokingId === k.id}
             onPress={() => onRevoke(k.id)}
           >
-            <Text className="text-sm">
-              {revokingId === k.id ? 'Revoking…' : 'Revoke'}
-            </Text>
+            <Text className="text-sm">{revokingId === k.id ? 'Revoking…' : 'Revoke'}</Text>
           </Button>
         </View>
       ))}

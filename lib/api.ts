@@ -26,7 +26,6 @@ import {
   AddressBookResponse,
   AgentApiKeySummary,
   AgentSummary,
-  GenerateAgentApiKeyResponse,
   APYsByAsset,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -61,6 +60,7 @@ import {
   ExtensionCardsResponse,
   FromCurrency,
   FullRewardsConfig,
+  GenerateAgentApiKeyResponse,
   GetLifiQuoteParams,
   HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
@@ -2607,9 +2607,7 @@ export const fetchAgentApiKeys = async (): Promise<AgentApiKeySummary[]> => {
   return response.json();
 };
 
-export const generateAgentApiKey = async (
-  name?: string,
-): Promise<GenerateAgentApiKeyResponse> => {
+export const generateAgentApiKey = async (name?: string): Promise<GenerateAgentApiKeyResponse> => {
   const response = await fetch(agentEndpoint('/me/api-keys'), {
     method: 'POST',
     headers: agentJsonHeaders(),
