@@ -8,7 +8,7 @@ const IntegrationSnippet = () => {
   const snippet = AGENT_INTEGRATION_CURL();
   return (
     <View className="gap-3">
-      <Text className="text-sm text-white/60">
+      <Text className="max-w-xl text-sm text-white/60">
         Paste this curl example into a script or n8n node, or copy the AI prompt template from the
         page header to wire up Claude Desktop / ChatGPT instructions.
       </Text>
