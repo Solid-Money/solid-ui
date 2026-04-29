@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
@@ -19,12 +18,6 @@ type Props = {
 };
 
 const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
-  const [confirmed, setConfirmed] = useState(false);
-
-  useEffect(() => {
-    if (!open) setConfirmed(false);
-  }, [open]);
-
   return (
     <Dialog open={open} onOpenChange={isOpen => !isOpen && onClose()}>
       <DialogContent className="max-w-lg">
@@ -43,17 +36,11 @@ const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
               </Text>
               <CopyToClipboard text={apiKey} />
             </View>
-            <Button
-              onPress={() => {
-                setConfirmed(true);
-                onClose();
-              }}
-            >
+            <Button onPress={onClose}>
               <Text>I&apos;ve saved it</Text>
             </Button>
           </View>
         ) : null}
-        {confirmed ? null : null}
       </DialogContent>
     </Dialog>
   );

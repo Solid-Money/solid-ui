@@ -168,7 +168,6 @@ export interface User {
   points?: number;
   credentialId?: string;
   externalWalletAddress?: string;
-  agentEoaAddress?: Address;
 }
 
 export type BlockscoutTransaction = {

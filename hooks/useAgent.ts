@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, erc20Abi } from 'viem';
 import { base } from 'viem/chains';
 
@@ -11,12 +11,9 @@ import {
   provisionAgent,
   revokeAgentApiKey,
 } from '@/lib/api';
-import {
-  AgentApiKeySummary,
-  AgentSummary,
-  GenerateAgentApiKeyResponse,
-} from '@/lib/types';
+import { AgentApiKeySummary, AgentSummary, GenerateAgentApiKeyResponse } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { getStargateToken } from '@/lib/utils/stargate';
 import { publicClient } from '@/lib/wagmi';
 
 const AGENT_QUERY_KEY = ['agent'] as const;
@@ -25,7 +22,9 @@ const AGENT_BALANCE_QUERY_KEY = (address?: string) =>
   ['agent', 'balance', address?.toLowerCase()] as const;
 const AGENT_DEPOSITED_QUERY_KEY = ['agent', 'has-deposited'] as const;
 
-const BASE_USDC_ADDRESS: Address = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+// Reuse the canonical Base USDC mapping the Stargate bridge already
+// maintains — keeps both feature surfaces in sync if it ever changes.
+const BASE_USDC_ADDRESS = getStargateToken(base.id) as Address | null;
 
 export const useAgentQuery = () =>
   useQuery<AgentSummary>({
@@ -36,23 +35,28 @@ export const useAgentQuery = () =>
 
 /**
  * On-chain USDC balance for the agent EOA on Base. 6-decimal raw bigint.
- * Mirrors the polling cadence used by useBalances for the Safe wallet.
+ * Mirrors the polling cadence and resilience options of useBalances for the
+ * Safe wallet (hooks/useBalances.ts).
  */
 export const useAgentBalance = (agentEoaAddress?: string) =>
   useQuery<bigint>({
     queryKey: AGENT_BALANCE_QUERY_KEY(agentEoaAddress),
-    enabled: !!agentEoaAddress,
+    enabled: !!agentEoaAddress && !!BASE_USDC_ADDRESS,
     queryFn: async () => {
-      if (!agentEoaAddress) return 0n;
       const client = publicClient(base.id);
       return client.readContract({
-        address: BASE_USDC_ADDRESS,
+        address: BASE_USDC_ADDRESS as Address,
         abi: erc20Abi,
         functionName: 'balanceOf',
         args: [agentEoaAddress as Address],
       });
     },
     staleTime: 5_000,
+    gcTime: 5 * 60 * 1000,
+    retry: 3,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 30000),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     refetchInterval: 5_000,
     refetchIntervalInBackground: false,
   });
