@@ -31,17 +31,14 @@ const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
         <DialogHeader>
           <DialogTitle>Your new API key</DialogTitle>
           <DialogDescription>
-            This is the only time you'll see the full key. Copy it now and store it securely. If
-            you lose it, generate a new one.
+            This is the only time you&apos;ll see the full key. Copy it now and store it securely.
+            If you lose it, generate a new one.
           </DialogDescription>
         </DialogHeader>
         {apiKey ? (
           <View className="gap-3">
             <View className="flex-row items-center justify-between gap-2 rounded-twice border border-border bg-background p-3">
-              <Text
-                className="flex-1 break-all font-mono text-xs"
-                selectable
-              >
+              <Text className="flex-1 break-all font-mono text-xs" selectable>
                 {apiKey}
               </Text>
               <CopyToClipboard text={apiKey} />
@@ -52,7 +49,7 @@ const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
                 onClose();
               }}
             >
-              <Text>I've saved it</Text>
+              <Text>I&apos;ve saved it</Text>
             </Button>
           </View>
         ) : null}
