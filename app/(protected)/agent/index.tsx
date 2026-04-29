@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import * as Clipboard from 'expo-clipboard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import { KeyRound, Plus } from 'lucide-react-native';
+import { FileText, KeyRound, Plus } from 'lucide-react-native';
 
+import AgentDepositModal from '@/components/Agent/AgentDepositModal';
 import ApiKeyList from '@/components/Agent/ApiKeyList';
 import ApiKeyRevealModal from '@/components/Agent/ApiKeyRevealModal';
 import IntegrationSnippet from '@/components/Agent/IntegrationSnippet';
@@ -11,6 +14,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { AGENT_PROMPT_TEMPLATE } from '@/constants/agentPromptTemplate';
 import {
   useAgentApiKeys,
   useAgentBalance,
@@ -51,13 +55,15 @@ const VALID_OVERRIDES: AgentStatusOverride[] = [
 const DEMO_AGENT_ADDRESS = '0x0000000000000000000000000000000000000000';
 const DEMO_BALANCE_USDC = 12_345_670n; // $12.34
 
-const handleDepositComingSoon = () =>
+const handleCopyPrompt = async () => {
+  await Clipboard.setStringAsync(AGENT_PROMPT_TEMPLATE);
   Toast.show({
-    type: 'info',
-    text1: 'Deposit flow coming soon',
-    text2: 'Will mirror borrow-against-savings: Aave borrow USDC on Fuse + Stargate to Base.',
-    props: { badgeText: 'Soon' },
+    type: 'success',
+    text1: 'Prompt template copied',
+    text2: 'Paste into Claude Desktop or ChatGPT instructions',
+    props: { badgeText: 'Copied' },
   });
+};
 
 export default function AgentPage() {
   const { status } = useLocalSearchParams<{ status?: string }>();
@@ -76,9 +82,6 @@ export default function AgentPage() {
   const liveAgent = agentQuery.data;
   const liveIsProvisioned = !!liveAgent?.agentEoaAddress;
 
-  // Derived view-model: the override wins when set, otherwise we use live
-  // backend data. Keeping the live hooks running unconditionally so the
-  // override can be toggled on/off without remounting.
   const isLoading =
     statusOverride === 'loading' || (statusOverride === undefined && agentQuery.isLoading);
   const isProvisioned =
@@ -98,6 +101,7 @@ export default function AgentPage() {
   const balanceLoading = statusOverride === undefined ? balanceQuery.isLoading : false;
 
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [depositOpen, setDepositOpen] = useState(false);
 
   const handleProvision = async () => {
     try {
@@ -135,8 +139,6 @@ export default function AgentPage() {
           </View>
         ) : !isProvisioned ? (
           <View className="items-center rounded-2xl bg-[#1C1C1C] px-6 pb-8 pt-10">
-            {/* Placeholder for hero artwork — keep the height stable so the
-                later swap to a real Image doesn't shift the layout. */}
             <View className="mb-6 h-[268px] w-full rounded-xl bg-white/5" />
             <Text className="mt-2 text-center text-2xl font-bold text-white">
               Set up your Agent Wallet
@@ -161,21 +163,18 @@ export default function AgentPage() {
             <ProvisionedHeader
               isScreenMedium={isScreenMedium}
               isGenerating={generateApiKey.isPending}
-              onDeposit={handleDepositComingSoon}
+              onDeposit={() => setDepositOpen(true)}
               onGenerateApiKey={handleGenerate}
+              onCopyPrompt={handleCopyPrompt}
             />
 
-            {/* Wallet + API keys side-by-side on desktop, stacked on mobile */}
             <View className="flex-col gap-6 md:flex-row">
               <View className="flex-1">
-                <WalletAddressCard
-                  address={agentEoaAddress}
-                  balance={balance}
-                  balanceLoading={balanceLoading}
-                />
+                <BalanceCard balance={balance} balanceLoading={balanceLoading} />
               </View>
               <View className="flex-1">
                 <ApiKeysCard
+                  address={agentEoaAddress}
                   apiKeys={apiKeysQuery.data}
                   isLoading={apiKeysQuery.isLoading}
                   onRevoke={id => revokeApiKey.mutate(id)}
@@ -198,6 +197,11 @@ export default function AgentPage() {
           onClose={() => setRevealedKey(null)}
           apiKey={revealedKey}
         />
+        <AgentDepositModal
+          open={depositOpen}
+          onClose={() => setDepositOpen(false)}
+          agentEoaAddress={agentEoaAddress}
+        />
       </View>
     </PageLayout>
   );
@@ -208,6 +212,7 @@ interface ProvisionedHeaderProps {
   isGenerating: boolean;
   onDeposit: () => void;
   onGenerateApiKey: () => void;
+  onCopyPrompt: () => void;
 }
 
 function ProvisionedHeader({
@@ -215,6 +220,7 @@ function ProvisionedHeader({
   isGenerating,
   onDeposit,
   onGenerateApiKey,
+  onCopyPrompt,
 }: ProvisionedHeaderProps) {
   if (isScreenMedium) {
     return (
@@ -224,6 +230,16 @@ function ProvisionedHeader({
           <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
         </View>
         <View className="flex-row items-center gap-2">
+          <Button
+            variant="secondary"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            onPress={onCopyPrompt}
+          >
+            <View className="flex-row items-center gap-2">
+              <FileText size={18} color="white" />
+              <Text className="text-base font-bold text-white">Copy prompt</Text>
+            </View>
+          </Button>
           <Button
             variant="secondary"
             className="h-12 rounded-xl border-0 bg-[#303030] px-6"
@@ -252,8 +268,6 @@ function ProvisionedHeader({
     );
   }
 
-  // Mobile: title above, circular action buttons below — same shape as
-  // the spendable-balance hero on /card/details.
   return (
     <View className="gap-6">
       <View className="gap-1">
@@ -270,10 +284,16 @@ function ProvisionedHeader({
               <KeyRound size={22} color="white" />
             )
           }
-          label="Generate key"
+          label="API key"
           onPress={onGenerateApiKey}
           variant="dark"
           disabled={isGenerating}
+        />
+        <CircleAction
+          icon={<FileText size={22} color="white" />}
+          label="Prompt"
+          onPress={onCopyPrompt}
+          variant="dark"
         />
       </View>
     </View>
@@ -304,32 +324,38 @@ function CircleAction({ icon, label, onPress, variant = 'brand', disabled }: Cir
   );
 }
 
-interface WalletAddressCardProps {
-  address?: string;
+interface BalanceCardProps {
   balance?: bigint;
   balanceLoading: boolean;
 }
 
-function WalletAddressCard({ address, balance, balanceLoading }: WalletAddressCardProps) {
+/**
+ * Mirrors /card/details `SpendingBalanceCard` styling — green LinearGradient
+ * over a rounded-[20px] base, big balance up top, secondary stat under it.
+ */
+function BalanceCard({ balance, balanceLoading }: BalanceCardProps) {
+  const formatted = balanceLoading ? null : formatUsdc(balance);
   return (
-    <View className="h-full gap-4 rounded-2xl bg-[#1C1C1C] p-6">
-      <View>
-        <Text className="text-sm text-white/60">USDC balance on Base</Text>
-        {balanceLoading ? (
-          <ActivityIndicator size="small" color="white" className="mt-2 self-start" />
-        ) : (
-          <Text className="text-[40px] font-semibold leading-tight text-white">
-            {formatUsdc(balance)}
-          </Text>
-        )}
-      </View>
-      <View>
-        <Text className="text-sm text-white/60">Agent wallet address</Text>
-        <View className="mt-1 flex-row items-center gap-2">
-          <Text className="font-mono text-base text-white" selectable>
-            {address ? eclipseAddress(address, 8, 6) : ''}
-          </Text>
-          <CopyToClipboard text={address ?? ''} />
+    <View className="relative h-full overflow-hidden rounded-[20px] px-[36px] py-[30px]">
+      <LinearGradient
+        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      <View className="flex-1 justify-between">
+        <View>
+          <Text className="mb-2 text-base text-white/60">USDC balance on Base</Text>
+          {balanceLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-[50px] font-semibold text-white">{formatted}</Text>
+          )}
+        </View>
+        <View>
+          <Text className="mb-1 text-lg font-medium text-white/50">Earning</Text>
+          <Text className="text-2xl font-semibold text-white">Yield on idle USDC</Text>
         </View>
       </View>
     </View>
@@ -337,13 +363,14 @@ function WalletAddressCard({ address, balance, balanceLoading }: WalletAddressCa
 }
 
 interface ApiKeysCardProps {
+  address?: string;
   apiKeys: Parameters<typeof ApiKeyList>[0]['apiKeys'];
   isLoading: boolean;
   onRevoke: (id: string) => void;
   revokingId?: string;
 }
 
-function ApiKeysCard({ apiKeys, isLoading, onRevoke, revokingId }: ApiKeysCardProps) {
+function ApiKeysCard({ address, apiKeys, isLoading, onRevoke, revokingId }: ApiKeysCardProps) {
   return (
     <View className="h-full gap-3 rounded-2xl bg-[#1C1C1C] p-6">
       <View className="gap-1">
@@ -352,6 +379,17 @@ function ApiKeysCard({ apiKeys, isLoading, onRevoke, revokingId }: ApiKeysCardPr
           Authenticate AI tools that pay through your agent wallet.
         </Text>
       </View>
+      {address ? (
+        <View className="rounded-xl bg-[#262626] p-3">
+          <Text className="text-xs uppercase text-white/60">Agent wallet address</Text>
+          <View className="mt-1 flex-row items-center gap-2">
+            <Text className="font-mono text-sm text-white" selectable>
+              {eclipseAddress(address, 8, 6)}
+            </Text>
+            <CopyToClipboard text={address} />
+          </View>
+        </View>
+      ) : null}
       <ApiKeyList
         apiKeys={apiKeys}
         isLoading={isLoading}
