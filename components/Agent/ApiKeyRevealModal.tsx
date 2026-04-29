@@ -30,8 +30,8 @@ const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
         </DialogHeader>
         {apiKey ? (
           <View className="gap-3">
-            <View className="flex-row items-center justify-between gap-2 rounded-twice border border-border bg-background p-3">
-              <Text className="flex-1 break-all font-mono text-xs" selectable>
+            <View className="flex-row items-center justify-between gap-2 rounded-xl bg-[#262626] p-3">
+              <Text className="flex-1 break-all font-mono text-xs text-white" selectable>
                 {apiKey}
               </Text>
               <CopyToClipboard text={apiKey} />

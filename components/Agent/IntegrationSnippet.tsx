@@ -25,9 +25,9 @@ const IntegrationSnippet = () => {
         Use these to wire up your AI tool. Paste the prompt template into Claude Desktop or ChatGPT
         custom GPTs, and the curl example into a script or n8n node.
       </Text>
-      <View className="rounded-twice border border-border bg-background p-3">
+      <View className="rounded-xl bg-[#262626] p-3">
         <View className="flex-row items-start justify-between gap-2">
-          <Text className="flex-1 break-all font-mono text-xs" selectable>
+          <Text className="flex-1 break-all font-mono text-xs text-white" selectable>
             {snippet}
           </Text>
           <CopyToClipboard text={snippet} />
