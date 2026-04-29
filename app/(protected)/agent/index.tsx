@@ -224,8 +224,8 @@ function ProvisionedHeader({
 }: ProvisionedHeaderProps) {
   if (isScreenMedium) {
     return (
-      <View className="items-center gap-6">
-        <View className="items-center gap-1">
+      <View className="mx-auto flex-row items-end justify-between">
+        <View className="gap-1">
           <Text className="text-5xl font-semibold">Agent Wallet</Text>
           <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
         </View>
