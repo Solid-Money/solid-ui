@@ -72,9 +72,7 @@ export default function AgentPage() {
       <View className="mx-auto w-full max-w-3xl gap-6 px-4 py-6 md:py-10">
         <View className="gap-1">
           <Text className="text-3xl font-semibold md:text-5xl">Agent Wallet</Text>
-          <Text className="text-base text-muted-foreground">
-            Your Solid Wallet is now Agentic
-          </Text>
+          <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
         </View>
 
         {agentQuery.isLoading ? (
@@ -85,7 +83,7 @@ export default function AgentPage() {
           <View className="gap-3 rounded-twice border border-border bg-card p-5">
             <Text className="text-lg font-semibold">Set up your agent</Text>
             <Text className="text-sm text-muted-foreground">
-              We'll create a new EOA under your existing Turnkey wallet that can sign x402
+              We&apos;ll create a new EOA under your existing Turnkey wallet that can sign x402
               payments on Base. Start earning yield on idle USDC in your agent wallet.
             </Text>
             <Button onPress={handleProvision} disabled={provision.isPending}>
@@ -115,9 +113,7 @@ export default function AgentPage() {
                 {balanceQuery.isLoading ? (
                   <ActivityIndicator size="small" />
                 ) : (
-                  <Text className="text-2xl font-semibold">
-                    {formatUsdc(balanceQuery.data)}
-                  </Text>
+                  <Text className="text-2xl font-semibold">{formatUsdc(balanceQuery.data)}</Text>
                 )}
               </View>
               <Button
@@ -151,9 +147,7 @@ export default function AgentPage() {
                 apiKeys={apiKeysQuery.data}
                 isLoading={apiKeysQuery.isLoading}
                 onRevoke={id => revokeApiKey.mutate(id)}
-                revokingId={
-                  revokeApiKey.isPending ? (revokeApiKey.variables as string) : undefined
-                }
+                revokingId={revokeApiKey.isPending ? (revokeApiKey.variables as string) : undefined}
               />
             </View>
 
