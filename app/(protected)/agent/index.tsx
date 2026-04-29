@@ -89,11 +89,14 @@ export default function AgentPage() {
               payments on Base. Start earning yield on idle USDC in your agent wallet.
             </Text>
             <Button
-              className="mt-4 w-full"
+              variant="brand"
               onPress={handleProvision}
               disabled={provision.isPending}
+              className="mt-6 h-12 w-full rounded-xl"
             >
-              <Text>{provision.isPending ? 'Setting up…' : 'Set up Agent'}</Text>
+              <Text className="text-base font-bold text-primary-foreground">
+                {provision.isPending ? 'Setting up…' : 'Set up Agent'}
+              </Text>
             </Button>
           </View>
         ) : (
