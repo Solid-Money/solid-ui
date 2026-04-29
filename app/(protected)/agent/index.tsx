@@ -69,11 +69,21 @@ export default function AgentPage() {
 
   return (
     <PageLayout showNavbar scrollable>
-      <View className="mx-auto w-full max-w-3xl gap-6 px-4 py-6 md:py-10">
-        <View className="gap-1">
-          <Text className="text-3xl font-semibold md:text-5xl">Agent Wallet</Text>
-          <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
-        </View>
+      <View
+        className={
+          isProvisioned
+            ? 'mx-auto w-full max-w-3xl gap-6 px-4 py-6 md:py-10'
+            : 'mx-auto w-full max-w-lg gap-6 px-4 pt-8'
+        }
+      >
+        {isProvisioned ? (
+          <View className="gap-1">
+            <Text className="text-3xl font-semibold md:text-5xl">Agent Wallet</Text>
+            <Text className="text-base text-muted-foreground">
+              Your Solid Wallet is now Agentic
+            </Text>
+          </View>
+        ) : null}
 
         {agentQuery.isLoading ? (
           <View className="items-center py-12">
@@ -81,8 +91,11 @@ export default function AgentPage() {
           </View>
         ) : !isProvisioned ? (
           <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
+            {/* Placeholder for hero artwork — keep the height stable so the
+                later swap to a real Image doesn't shift the layout. */}
+            <View className="mb-6 h-[268px] w-full rounded-xl bg-white/5" />
             <Text className="mt-2 text-center text-2xl font-bold text-white">
-              Set up your agent
+              Set up your Agent Wallet
             </Text>
             <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
               We&apos;ll create a new EOA under your existing Turnkey wallet that can sign x402
@@ -95,7 +108,7 @@ export default function AgentPage() {
               className="mt-6 h-12 w-full rounded-xl"
             >
               <Text className="text-base font-bold text-primary-foreground">
-                {provision.isPending ? 'Setting up…' : 'Set up Agent'}
+                {provision.isPending ? 'Setting up…' : 'Set up Agent Wallet'}
               </Text>
             </Button>
           </View>
