@@ -24,6 +24,8 @@ import {
   ActivityEvents,
   AddressBookRequest,
   AddressBookResponse,
+  AgentApiKeySummary,
+  AgentSummary,
   APYsByAsset,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -58,6 +60,7 @@ import {
   ExtensionCardsResponse,
   FromCurrency,
   FullRewardsConfig,
+  GenerateAgentApiKeyResponse,
   GetLifiQuoteParams,
   HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
@@ -2537,6 +2540,91 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
     },
   );
   return response.data;
+};
+
+// =====================================================================
+// Agent Wallet
+// =====================================================================
+
+const agentEndpoint = (path: string) =>
+  `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/agents${path}`;
+
+const agentJsonHeaders = () => {
+  const jwt = getJWTToken();
+  return {
+    'Content-Type': 'application/json',
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+export const provisionAgent = async (): Promise<{ agentEoaAddress: string }> => {
+  const response = await fetch(agentEndpoint('/provision'), {
+    method: 'POST',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchAgent = async (): Promise<AgentSummary> => {
+  const response = await fetch(agentEndpoint('/me'), {
+    method: 'GET',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Returns true iff the user has at least one successful AGENT_WALLET_DEPOSIT
+ * activity. Cached on the UI side to avoid re-querying on every render.
+ */
+export const fetchAgentHasDeposited = async (): Promise<boolean> => {
+  const jwt = getJWTToken();
+  const url = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity?scope=agent&type=agent_wallet_deposit&status=success&limit=1`;
+  const response = await fetch(url, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  const json = (await response.json()) as { totalDocs?: number; docs?: unknown[] };
+  return (json.totalDocs ?? json.docs?.length ?? 0) > 0;
+};
+
+export const fetchAgentApiKeys = async (): Promise<AgentApiKeySummary[]> => {
+  const response = await fetch(agentEndpoint('/me/api-keys'), {
+    method: 'GET',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const generateAgentApiKey = async (name?: string): Promise<GenerateAgentApiKeyResponse> => {
+  const response = await fetch(agentEndpoint('/me/api-keys'), {
+    method: 'POST',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const revokeAgentApiKey = async (id: string): Promise<void> => {
+  const response = await fetch(agentEndpoint(`/me/api-keys/${id}`), {
+    method: 'DELETE',
+    headers: agentJsonHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
 };
 
 export const fetchAddressBook = async (): Promise<AddressBookResponse[]> => {

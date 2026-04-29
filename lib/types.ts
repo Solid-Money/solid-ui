@@ -673,6 +673,8 @@ export enum TransactionType {
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
+  AGENT_X402_PAYMENT = 'agent_x402_payment',
+  AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
 }
 
 export enum TransactionDirection {
@@ -1530,6 +1532,21 @@ export interface AddressBookResponse {
   walletAddress: string;
   skipped2faAt?: Date;
 }
+
+export type AgentSummary = {
+  agentEoaAddress?: string;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
 
 export interface WhatsNewStep {
   imageUrl: string;
