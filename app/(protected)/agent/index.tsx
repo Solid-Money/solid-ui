@@ -129,7 +129,7 @@ export default function AgentPage() {
       <View
         className={
           isProvisioned
-            ? 'mx-auto w-full max-w-5xl gap-6 px-4 py-6 md:py-10'
+            ? 'mx-auto w-full max-w-7xl gap-10 px-4 py-6 md:gap-12 md:py-12'
             : 'mx-auto w-full max-w-lg gap-6 px-4 pt-8'
         }
       >
@@ -224,8 +224,8 @@ function ProvisionedHeader({
 }: ProvisionedHeaderProps) {
   if (isScreenMedium) {
     return (
-      <View className="flex-row items-end justify-between">
-        <View className="gap-1">
+      <View className="items-center gap-6">
+        <View className="items-center gap-1">
           <Text className="text-5xl font-semibold">Agent Wallet</Text>
           <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
         </View>
@@ -330,31 +330,33 @@ interface BalanceCardProps {
 }
 
 /**
- * Mirrors /card/details `SpendingBalanceCard` styling — green LinearGradient
- * over a rounded-[20px] base, big balance up top, secondary stat under it.
+ * Mirrors /card/details `SpendingBalanceCard` shape — rounded-[20px] base
+ * with a LinearGradient overlay, big balance up top, secondary stat under
+ * it. Blue palette so the agent page reads distinctly from the green card
+ * page, purple savings, and yellow rewards.
  */
 function BalanceCard({ balance, balanceLoading }: BalanceCardProps) {
   const formatted = balanceLoading ? null : formatUsdc(balance);
   return (
-    <View className="relative h-full overflow-hidden rounded-[20px] px-[36px] py-[30px]">
+    <View className="relative h-full min-h-[260px] overflow-hidden rounded-[20px] px-[36px] py-[30px]">
       <LinearGradient
-        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        colors={['rgba(74, 144, 226, 1)', 'rgba(120, 192, 250, 0.55)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.6, y: 1 }}
         pointerEvents="none"
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-      <View className="flex-1 justify-between">
+      <View className="flex-1 justify-between gap-12">
         <View>
-          <Text className="mb-2 text-base text-white/60">USDC balance on Base</Text>
+          <Text className="mb-2 text-base text-white/70">Spendable balance</Text>
           {balanceLoading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-[50px] font-semibold text-white">{formatted}</Text>
+            <Text className="text-[50px] font-semibold leading-tight text-white">{formatted}</Text>
           )}
         </View>
         <View>
-          <Text className="mb-1 text-lg font-medium text-white/50">Earning</Text>
+          <Text className="mb-1 text-lg font-medium text-white/60">Earning</Text>
           <Text className="text-2xl font-semibold text-white">Yield on idle USDC</Text>
         </View>
       </View>
