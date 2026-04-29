@@ -80,13 +80,19 @@ export default function AgentPage() {
             <ActivityIndicator />
           </View>
         ) : !isProvisioned ? (
-          <View className="gap-3 rounded-twice border border-border bg-card p-5">
-            <Text className="text-lg font-semibold">Set up your agent</Text>
-            <Text className="text-sm text-muted-foreground">
+          <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
+            <Text className="mt-2 text-center text-2xl font-bold text-white">
+              Set up your agent
+            </Text>
+            <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
               We&apos;ll create a new EOA under your existing Turnkey wallet that can sign x402
               payments on Base. Start earning yield on idle USDC in your agent wallet.
             </Text>
-            <Button onPress={handleProvision} disabled={provision.isPending}>
+            <Button
+              className="mt-4 w-full"
+              onPress={handleProvision}
+              disabled={provision.isPending}
+            >
               <Text>{provision.isPending ? 'Setting up…' : 'Set up Agent'}</Text>
             </Button>
           </View>

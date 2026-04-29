@@ -215,6 +215,12 @@ export default function ProtectedLayout() {
           presentation: 'fullScreenModal',
         }}
       />
+      <Stack.Screen
+        name="agent/index"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
