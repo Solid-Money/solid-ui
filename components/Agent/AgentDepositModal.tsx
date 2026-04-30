@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Image } from 'expo-image';
 
+import { BorrowSlider } from '@/components/Card/BorrowSlider';
 import ResponsiveModal from '@/components/ResponsiveModal';
+import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
-import { getAsset } from '@/lib/assets';
 import { Status } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 
-const SO_USD_LTV = 0.7; // mirror SO_USD_LTV in lib/utils/borrowAndBridge.ts
-const MIN_BORROW_USDC = 1; // smallest amount worth a userOp + Stargate fee
+const SO_USD_LTV = 70n;
 
 const MODAL_OPEN = { name: 'agent-deposit', number: 1 } as const;
 const MODAL_CLOSE = { name: 'close', number: 0 } as const;
@@ -24,28 +25,41 @@ type Props = {
 };
 
 const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
-  const [amount, setAmount] = useState('');
-  const { totalSupplied, totalBorrowed, isLoading: positionLoading } = useAaveBorrowPosition();
+  const [sliderValue, setSliderValue] = useState(0);
+  const {
+    totalSupplied,
+    totalBorrowed,
+    borrowAPY,
+    isLoading: positionLoading,
+  } = useAaveBorrowPosition();
   const { borrowAndDeposit, bridgeStatus } = useBorrowAndDepositToAgent(agentEoaAddress);
 
-  const maxBorrowable = useMemo(
-    () => Math.max(0, totalSupplied * SO_USD_LTV - totalBorrowed),
+  // Mirror /card/details borrow form: cap at 69% of supplied minus existing
+  // debt. The 69 vs 70 LTV is intentional to give a 1% safety margin against
+  // rounding when the on-chain supply value is computed.
+  const maxBorrowAmount = useMemo(
+    () => Math.max(0, totalSupplied * 0.69 - totalBorrowed),
     [totalSupplied, totalBorrowed],
   );
 
+  const collateralRequired = useMemo(() => {
+    if (sliderValue <= 0) return 0;
+    // supply = borrow * 100 / (LTV * exchangeRate). soUSD ↔ USD is ~1:1
+    // for the in-modal estimate.
+    return (sliderValue * 100) / Number(SO_USD_LTV);
+  }, [sliderValue]);
+
   useEffect(() => {
-    if (!open) setAmount('');
+    if (!open) setSliderValue(0);
   }, [open]);
 
-  const parsedAmount = Number(amount);
-  const amountValid =
-    !Number.isNaN(parsedAmount) && parsedAmount >= MIN_BORROW_USDC && parsedAmount <= maxBorrowable;
   const submitting = bridgeStatus === Status.PENDING;
+  const amountValid = sliderValue > 0 && sliderValue <= maxBorrowAmount;
 
   const handleSubmit = async () => {
     if (!amountValid || !agentEoaAddress) return;
     try {
-      await borrowAndDeposit(amount);
+      await borrowAndDeposit(sliderValue.toString());
       Toast.show({
         type: 'success',
         text1: 'Deposit submitted',
@@ -77,87 +91,74 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
       containerClassName="min-h-[42rem] overflow-y-auto flex-1"
       contentKey="agent-deposit"
     >
-      <View className="gap-4">
-        <Text className="font-medium opacity-50">Borrow against Savings</Text>
+      <View className="flex-1 gap-3">
+        <View className="gap-4 px-2">
+          <BorrowSlider
+            value={sliderValue}
+            onValueChange={setSliderValue}
+            min={0}
+            max={maxBorrowAmount}
+          />
+        </View>
 
-        {/* Amount input — same shape as Card's AmountInput */}
-        <View className="gap-2">
-          <Text className="font-medium opacity-50">Amount to borrow</Text>
-          <View className="w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3">
-            <TextInput
-              keyboardType="decimal-pad"
-              className="text-2xl font-semibold text-white web:w-full web:focus:outline-none"
-              value={amount}
-              placeholder="0.0"
-              placeholderTextColor="#666"
-              onChangeText={setAmount}
-              editable={!submitting}
-            />
-            <View className="flex-row items-center gap-2">
-              <Image
-                source={getAsset('images/usdc-4x.png')}
-                alt="USDC"
-                style={{ width: 34, height: 34 }}
-              />
-              <Text className="text-lg font-semibold text-white">USDC</Text>
+        <TokenDetails className="mt-3">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+              {positionLoading ? (
+                <Skeleton className="h-5 w-16 rounded-md" />
+              ) : (
+                <Text className="native:text-lg text-base font-semibold">
+                  {formatNumber(borrowAPY, 2)}%
+                </Text>
+              )}
             </View>
           </View>
-        </View>
-
-        {/* Borrow position summary — mirror BalanceDisplay */}
-        <View className="flex-row items-center justify-between rounded-2xl bg-accent px-5 py-4">
-          <View className="gap-1">
-            <Text className="text-sm opacity-50">Available to borrow</Text>
-            {positionLoading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text className="text-xl font-semibold text-white">
-                ${maxBorrowable.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <View className="flex-row items-center gap-2">
+              <Text className="native:text-lg text-base text-muted-foreground">
+                Collateral Required
               </Text>
-            )}
+            </View>
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+              {!sliderValue ? (
+                <Skeleton className="h-5 w-20 rounded-md" />
+              ) : (
+                <Text className="native:text-lg text-base font-semibold">
+                  {formatNumber(collateralRequired)} soUSD
+                </Text>
+              )}
+            </View>
           </View>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={positionLoading || submitting || maxBorrowable <= 0}
-            onPress={() => setAmount(maxBorrowable.toFixed(2))}
-          >
-            <Text className="text-sm font-semibold opacity-70">Max</Text>
-          </Button>
-        </View>
-
-        {/* Position breakdown */}
-        <View className="rounded-2xl bg-accent px-5 py-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-sm opacity-50">Currently borrowed</Text>
-            <Text className="text-sm font-medium text-white">
-              ${totalBorrowed.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          <View className="px-5 py-6 md:p-5">
+            <Text className="native:text-base text-sm text-muted-foreground">
+              Use your soUSD as collateral to borrow USDC and fund your agent wallet on Base while
+              earning yield.{' '}
+              <Text
+                onPress={() => {
+                  Linking.openURL(
+                    'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
+                  );
+                }}
+                className="text-base font-medium leading-5 text-[#94F27F] web:hover:opacity-70"
+              >
+                Learn more.
+              </Text>
             </Text>
           </View>
-          <View className="mt-2 flex-row items-center justify-between">
-            <Text className="text-sm opacity-50">Supplied as collateral</Text>
-            <Text className="text-sm font-medium text-white">
-              ${totalSupplied.toLocaleString(undefined, { maximumFractionDigits: 2 })} soUSD
-            </Text>
-          </View>
-        </View>
+        </TokenDetails>
 
         <Button
           variant="brand"
-          className="mt-2 h-12 w-full rounded-xl"
+          className="h-12 rounded-2xl"
           disabled={!amountValid || submitting}
           onPress={handleSubmit}
         >
-          <View className="flex-row items-center gap-2">
-            {submitting ? <ActivityIndicator size="small" color="black" /> : null}
-            <Text className="text-base font-bold text-primary-foreground">
-              {submitting
-                ? 'Borrowing + bridging…'
-                : amountValid
-                  ? `Borrow $${parsedAmount.toFixed(2)}`
-                  : 'Enter an amount'}
-            </Text>
-          </View>
+          {submitting ? (
+            <ActivityIndicator color="black" />
+          ) : (
+            <Text className="native:text-lg text-base font-bold text-black">Deposit</Text>
+          )}
         </Button>
       </View>
     </ResponsiveModal>
