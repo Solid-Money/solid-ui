@@ -1548,6 +1548,32 @@ export type AgentApiKeySummary = {
 
 export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
 
+/**
+ * Envelope returned by the Turnkey SDK's `stampX` methods. `body` is the
+ * exact stringified bytes the SDK signed — we MUST forward it verbatim;
+ * re-serializing on the server changes key order and breaks the stamp.
+ */
+export type SignedTurnkeyRequest = {
+  url: string;
+  body: string;
+  stamp: { stampHeaderName: string; stampHeaderValue: string };
+};
+
+export type ProvisioningActivity = {
+  url: string;
+  body: Record<string, unknown>;
+};
+
+export type ProvisioningInitResponse = {
+  provisioningId: string;
+  activity: ProvisioningActivity;
+};
+
+export type ProvisioningStepInput = {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+};
+
 export interface WhatsNewStep {
   imageUrl: string;
   title: string;
