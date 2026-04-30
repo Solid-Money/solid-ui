@@ -14,9 +14,13 @@ import {
   provisionAgentUser,
   provisionAgentWalletAccount,
   revokeAgentApiKey,
-  type SignedTurnkeyRequest,
 } from '@/lib/api';
-import { AgentApiKeySummary, AgentSummary, GenerateAgentApiKeyResponse } from '@/lib/types';
+import {
+  AgentApiKeySummary,
+  AgentSummary,
+  GenerateAgentApiKeyResponse,
+  SignedTurnkeyRequest,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { getStargateToken } from '@/lib/utils/stargate';
 import { publicClient } from '@/lib/wagmi';
