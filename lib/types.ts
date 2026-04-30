@@ -1566,6 +1566,13 @@ export type ProvisioningActivity = {
 
 export type ProvisioningInitResponse = {
   provisioningId: string;
+  subOrganizationId: string;
+  /**
+   * Set when the agent's wallet path was already derived in Turnkey from a
+   * prior failed provisioning attempt. The `activity` in this case is the
+   * createUsers body — the client should skip the wallet-account stamp.
+   */
+  agentEoaAddress?: string;
   activity: ProvisioningActivity;
 };
 
