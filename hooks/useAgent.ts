@@ -99,33 +99,49 @@ export const useProvisionAgent = () => {
 
   return useMutation({
     mutationFn: async () => {
-      // 1. Backend mints the provisioning record + first activity body.
-      const { provisioningId, activity: walletAcctActivity } = await withRefreshToken(() =>
-        provisionAgentInit(),
-      );
+      // 1. Backend mints the provisioning record + first activity body. If
+      //    a prior attempt already derived the wallet account, the response
+      //    carries an agentEoaAddress and `activity` is the createUsers
+      //    body — we skip step 2 in that case.
+      const initResult = await withRefreshToken(() => provisionAgentInit());
+      const { provisioningId, subOrganizationId } = initResult;
+      const skipWalletAccount = !!initResult.agentEoaAddress;
 
-      // 2. Establish a Turnkey read-write session — one passkey gesture if
-      //    we don't already have a live session with enough headroom.
-      await ensureSession({ getSession, refreshSession, loginWithPasskey });
+      // 2. Establish a Turnkey read-write session against the user's
+      //    sub-org — one passkey gesture if we don't already have a live
+      //    session with enough headroom. Sessions minted against the
+      //    parent org can't sign sub-org activities (PUBLIC_KEY_NOT_FOUND).
+      await ensureSession({
+        getSession,
+        refreshSession,
+        loginWithPasskey,
+        organizationId: subOrganizationId,
+      });
 
       if (!httpClient) {
         throw new Error('Turnkey httpClient is not initialized');
       }
 
-      // 3. Stamp + relay createWalletAccounts (silent; uses session API key).
-      const signed1 = await httpClient.stampCreateWalletAccounts(
-        walletAcctActivity.body as Parameters<typeof httpClient.stampCreateWalletAccounts>[0],
-        StamperType.ApiKey,
-      );
-      if (!signed1) throw new Error('Failed to stamp createWalletAccounts');
-      const { activity: usersActivity } = await provisionAgentWalletAccount({
-        provisioningId,
-        signed: signed1 as SignedTurnkeyRequest,
-      });
+      // 3. Stamp + relay createWalletAccounts unless init already adopted
+      //    an existing path. `nextActivity` carries whatever step we owe
+      //    next: createWalletAccounts (normal) or createUsers (skipped).
+      let nextActivity = initResult.activity;
+      if (!skipWalletAccount) {
+        const signed1 = await httpClient.stampCreateWalletAccounts(
+          nextActivity.body as Parameters<typeof httpClient.stampCreateWalletAccounts>[0],
+          StamperType.ApiKey,
+        );
+        if (!signed1) throw new Error('Failed to stamp createWalletAccounts');
+        const { activity } = await provisionAgentWalletAccount({
+          provisioningId,
+          signed: signed1 as SignedTurnkeyRequest,
+        });
+        nextActivity = activity;
+      }
 
       // 4. Stamp + relay createUsers.
       const signed2 = await httpClient.stampCreateUsers(
-        usersActivity.body as Parameters<typeof httpClient.stampCreateUsers>[0],
+        nextActivity.body as Parameters<typeof httpClient.stampCreateUsers>[0],
         StamperType.ApiKey,
       );
       if (!signed2) throw new Error('Failed to stamp createUsers');
@@ -179,10 +195,16 @@ const ensureSession = async (deps: {
   getSession: ReturnType<typeof useTurnkey>['getSession'];
   refreshSession: ReturnType<typeof useTurnkey>['refreshSession'];
   loginWithPasskey: ReturnType<typeof useTurnkey>['loginWithPasskey'];
+  organizationId: string;
 }) => {
   const existing = await deps.getSession();
   const nowSeconds = Date.now() / 1000;
-  if (existing && existing.expiry > nowSeconds + SESSION_HEADROOM_SECONDS) {
+  // Reuse if the live session is for the right org and has enough headroom.
+  if (
+    existing &&
+    existing.organizationId === deps.organizationId &&
+    existing.expiry > nowSeconds + SESSION_HEADROOM_SECONDS
+  ) {
     try {
       await deps.refreshSession({ expirationSeconds: '900' });
       return;
@@ -190,7 +212,10 @@ const ensureSession = async (deps: {
       // Fall through to a fresh passkey login.
     }
   }
-  await deps.loginWithPasskey({ expirationSeconds: '900' });
+  await deps.loginWithPasskey({
+    expirationSeconds: '900',
+    organizationId: deps.organizationId,
+  });
 };
 
 export const useAgentApiKeys = () =>
