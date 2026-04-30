@@ -76,8 +76,11 @@ import {
   MppCredentialsResponse,
   Points,
   PromotionsBannerResponse,
+  ProvisioningActivity,
+  ProvisioningInitResponse,
   ProvisioningSessionRequest,
   ProvisioningSessionResponse,
+  ProvisioningStepInput,
   RainConsumerType,
   RainContractResponseDto,
   RainKycSubmitResponse,
@@ -2558,15 +2561,31 @@ const agentJsonHeaders = () => {
   };
 };
 
-export const provisionAgent = async (): Promise<{ agentEoaAddress: string }> => {
-  const response = await fetch(agentEndpoint('/provision'), {
+const postAgentJson = async <T>(path: string, body?: unknown): Promise<T> => {
+  const response = await fetch(agentEndpoint(path), {
     method: 'POST',
     headers: agentJsonHeaders(),
     credentials: 'include',
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) throw response;
   return response.json();
 };
+
+export const provisionAgentInit = (): Promise<ProvisioningInitResponse> =>
+  postAgentJson('/provision/init');
+
+export const provisionAgentWalletAccount = (
+  input: ProvisioningStepInput,
+): Promise<{ activity: ProvisioningActivity }> => postAgentJson('/provision/wallet-account', input);
+
+export const provisionAgentUser = (
+  input: ProvisioningStepInput,
+): Promise<{ activity: ProvisioningActivity }> => postAgentJson('/provision/user', input);
+
+export const provisionAgentPolicy = (
+  input: ProvisioningStepInput,
+): Promise<{ agentEoaAddress: string }> => postAgentJson('/provision/policy', input);
 
 export const fetchAgent = async (): Promise<AgentSummary> => {
   const response = await fetch(agentEndpoint('/me'), {
