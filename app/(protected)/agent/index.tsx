@@ -224,7 +224,7 @@ function ProvisionedHeader({
 }: ProvisionedHeaderProps) {
   if (isScreenMedium) {
     return (
-      <View className="mx-auto flex-row items-end justify-between">
+      <View className="flex-row items-center justify-between">
         <View className="gap-1">
           <Text className="text-5xl font-semibold">Agent Wallet</Text>
           <Text className="text-base text-muted-foreground">Your Solid Wallet is now Agentic</Text>
@@ -340,7 +340,7 @@ function BalanceCard({ balance, balanceLoading }: BalanceCardProps) {
   return (
     <View className="relative h-full min-h-[260px] overflow-hidden rounded-[20px] px-[36px] py-[30px]">
       <LinearGradient
-        colors={['rgba(0, 117, 255, 1)', 'rgba(120, 192, 250, 0.55)']}
+        colors={['rgba(4, 96, 203, 1)', 'rgba(120, 192, 250, 0.55)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.6, y: 1 }}
         pointerEvents="none"
