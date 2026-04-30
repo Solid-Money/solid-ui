@@ -2,10 +2,11 @@ import { View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
-import { AGENT_INTEGRATION_CURL } from '@/constants/agentPromptTemplate';
+import { buildAgentIntegrationCurl } from '@/constants/agentPromptTemplate';
+import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
 
 const IntegrationSnippet = () => {
-  const snippet = AGENT_INTEGRATION_CURL();
+  const snippet = buildAgentIntegrationCurl({ baseUrl: EXPO_PUBLIC_FLASH_API_BASE_URL });
   return (
     <View className="gap-3">
       <Text className="max-w-xl text-sm text-white/60">

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { ChevronRight, Wallet } from 'lucide-react-native';
 
+import AgentDepositExternalForm from '@/components/Agent/AgentDepositExternalForm';
 import { BorrowSlider } from '@/components/Card/BorrowSlider';
-import ResponsiveModal from '@/components/ResponsiveModal';
+import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
@@ -15,8 +17,14 @@ import { formatNumber } from '@/lib/utils';
 
 const SO_USD_LTV = 70n;
 
-const MODAL_OPEN = { name: 'agent-deposit', number: 1 } as const;
-const MODAL_CLOSE = { name: 'close', number: 0 } as const;
+type Step = 'options' | 'borrow' | 'external';
+
+const STEP_NUMBER: Record<Step, number> = { options: 1, borrow: 2, external: 2 };
+const stepState = (step: Step): ModalState => ({
+  name: `agent-deposit-${step}`,
+  number: STEP_NUMBER[step],
+});
+const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 
 type Props = {
   open: boolean;
@@ -25,6 +33,108 @@ type Props = {
 };
 
 const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
+  // External-wallet path is web-only — thirdweb's connector flow doesn't run
+  // inside the React Native runtime. Mobile users keep the borrow path.
+  const externalEnabled = Platform.OS === 'web';
+
+  const [step, setStep] = useState<Step>(externalEnabled ? 'options' : 'borrow');
+  const [previousStep, setPreviousStep] = useState<Step>(step);
+
+  useEffect(() => {
+    if (!open) {
+      setStep(externalEnabled ? 'options' : 'borrow');
+      setPreviousStep(externalEnabled ? 'options' : 'borrow');
+    }
+  }, [open, externalEnabled]);
+
+  const goTo = useCallback(
+    (next: Step) => {
+      setPreviousStep(step);
+      setStep(next);
+    },
+    [step],
+  );
+
+  const title = useMemo(() => {
+    if (step === 'options') return 'Deposit to Agent Wallet';
+    if (step === 'borrow') return 'Borrow against savings';
+    return 'Deposit from external wallet';
+  }, [step]);
+
+  const showBack = step !== 'options' && externalEnabled;
+
+  return (
+    <ResponsiveModal
+      currentModal={open ? stepState(step) : CLOSE_STATE}
+      previousModal={open ? stepState(previousStep) : CLOSE_STATE}
+      isOpen={open}
+      onOpenChange={value => {
+        if (!value) onClose();
+      }}
+      trigger={null}
+      title={title}
+      contentKey={`agent-deposit-${step}`}
+      containerClassName="min-h-[42rem] overflow-y-auto flex-1"
+      showBackButton={showBack}
+      onBackPress={() => goTo('options')}
+    >
+      {step === 'options' && externalEnabled ? (
+        <DepositOptions onSelect={goTo} />
+      ) : step === 'external' && agentEoaAddress ? (
+        <AgentDepositExternalForm agentEoaAddress={agentEoaAddress} onSuccess={onClose} />
+      ) : (
+        <AgentDepositBorrowForm agentEoaAddress={agentEoaAddress} onSuccess={onClose} />
+      )}
+    </ResponsiveModal>
+  );
+};
+
+const DepositOptions = ({ onSelect }: { onSelect: (step: Step) => void }) => (
+  <View className="gap-y-2.5">
+    <OptionItem
+      title="Borrow against savings"
+      description="Borrow USDC against your soUSD on Fuse — keeps the principal earning yield."
+      onPress={() => onSelect('borrow')}
+    />
+    <OptionItem
+      title="From external wallet"
+      description="Send USDC directly from MetaMask or any other wallet on Base. No yield."
+      onPress={() => onSelect('external')}
+    />
+  </View>
+);
+
+const OptionItem = ({
+  title,
+  description,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  onPress: () => void;
+}) => (
+  <Button
+    variant="ghost"
+    className="h-auto flex-row items-center justify-between rounded-2xl bg-primary/10 px-5 py-4 disabled:opacity-100 disabled:web:hover:opacity-100"
+    onPress={onPress}
+  >
+    <View className="flex-row items-center gap-3">
+      <Wallet color="white" size={24} />
+      <View className="max-w-[16rem] gap-1">
+        <Text className="text-lg font-semibold">{title}</Text>
+        <Text className="text-sm text-muted-foreground">{description}</Text>
+      </View>
+    </View>
+    <ChevronRight color="white" size={20} />
+  </Button>
+);
+
+type BorrowFormProps = {
+  agentEoaAddress?: string;
+  onSuccess: () => void;
+};
+
+const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: BorrowFormProps) => {
   const [sliderValue, setSliderValue] = useState(0);
   const {
     totalSupplied,
@@ -34,9 +144,6 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
   } = useAaveBorrowPosition();
   const { borrowAndDeposit, bridgeStatus } = useBorrowAndDepositToAgent(agentEoaAddress);
 
-  // Mirror /card/details borrow form: cap at 69% of supplied minus existing
-  // debt. The 69 vs 70 LTV is intentional to give a 1% safety margin against
-  // rounding when the on-chain supply value is computed.
   const maxBorrowAmount = useMemo(
     () => Math.max(0, totalSupplied * 0.69 - totalBorrowed),
     [totalSupplied, totalBorrowed],
@@ -44,14 +151,8 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
 
   const collateralRequired = useMemo(() => {
     if (sliderValue <= 0) return 0;
-    // supply = borrow * 100 / (LTV * exchangeRate). soUSD ↔ USD is ~1:1
-    // for the in-modal estimate.
     return (sliderValue * 100) / Number(SO_USD_LTV);
   }, [sliderValue]);
-
-  useEffect(() => {
-    if (!open) setSliderValue(0);
-  }, [open]);
 
   const submitting = bridgeStatus === Status.PENDING;
   const amountValid = sliderValue > 0 && sliderValue <= maxBorrowAmount;
@@ -67,7 +168,7 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
           'Borrowed against soUSD on Fuse and sent via Stargate. Funds arrive on Base in ~1–5 min.',
         props: { badgeText: 'Success' },
       });
-      onClose();
+      onSuccess();
     } catch (err) {
       Toast.show({
         type: 'error',
@@ -79,89 +180,76 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
   };
 
   return (
-    <ResponsiveModal
-      currentModal={open ? MODAL_OPEN : MODAL_CLOSE}
-      previousModal={open ? MODAL_CLOSE : MODAL_OPEN}
-      isOpen={open}
-      onOpenChange={value => {
-        if (!value && !submitting) onClose();
-      }}
-      trigger={null}
-      title="Deposit to Agent Wallet"
-      containerClassName="min-h-[42rem] overflow-y-auto flex-1"
-      contentKey="agent-deposit"
-    >
-      <View className="flex-1 gap-3">
-        <View className="gap-4 px-2">
-          <BorrowSlider
-            value={sliderValue}
-            onValueChange={setSliderValue}
-            min={0}
-            max={maxBorrowAmount}
-          />
-        </View>
+    <View className="flex-1 gap-3">
+      <View className="gap-4 px-2">
+        <BorrowSlider
+          value={sliderValue}
+          onValueChange={setSliderValue}
+          min={0}
+          max={maxBorrowAmount}
+        />
+      </View>
 
-        <TokenDetails className="mt-3">
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              {positionLoading ? (
-                <Skeleton className="h-5 w-16 rounded-md" />
-              ) : (
-                <Text className="native:text-lg text-base font-semibold">
-                  {formatNumber(borrowAPY, 2)}%
-                </Text>
-              )}
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <View className="flex-row items-center gap-2">
-              <Text className="native:text-lg text-base text-muted-foreground">
-                Collateral Required
+      <TokenDetails className="mt-3">
+        <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+          <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
+          <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+            {positionLoading ? (
+              <Skeleton className="h-5 w-16 rounded-md" />
+            ) : (
+              <Text className="native:text-lg text-base font-semibold">
+                {formatNumber(borrowAPY, 2)}%
               </Text>
-            </View>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              {!sliderValue ? (
-                <Skeleton className="h-5 w-20 rounded-md" />
-              ) : (
-                <Text className="native:text-lg text-base font-semibold">
-                  {formatNumber(collateralRequired)} soUSD
-                </Text>
-              )}
-            </View>
+            )}
           </View>
-          <View className="px-5 py-6 md:p-5">
-            <Text className="native:text-base text-sm text-muted-foreground">
-              Use your soUSD as collateral to borrow USDC and fund your agent wallet on Base while
-              earning yield.{' '}
-              <Text
-                onPress={() => {
-                  Linking.openURL(
-                    'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
-                  );
-                }}
-                className="text-base font-medium leading-5 text-[#94F27F] web:hover:opacity-70"
-              >
-                Learn more.
-              </Text>
+        </View>
+        <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+          <View className="flex-row items-center gap-2">
+            <Text className="native:text-lg text-base text-muted-foreground">
+              Collateral Required
             </Text>
           </View>
-        </TokenDetails>
+          <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+            {!sliderValue ? (
+              <Skeleton className="h-5 w-20 rounded-md" />
+            ) : (
+              <Text className="native:text-lg text-base font-semibold">
+                {formatNumber(collateralRequired)} soUSD
+              </Text>
+            )}
+          </View>
+        </View>
+        <View className="px-5 py-6 md:p-5">
+          <Text className="native:text-base text-sm text-muted-foreground">
+            Use your soUSD as collateral to borrow USDC and fund your agent wallet on Base while
+            earning yield.{' '}
+            <Text
+              onPress={() => {
+                Linking.openURL(
+                  'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
+                );
+              }}
+              className="text-base font-medium leading-5 text-[#94F27F] web:hover:opacity-70"
+            >
+              Learn more.
+            </Text>
+          </Text>
+        </View>
+      </TokenDetails>
 
-        <Button
-          variant="brand"
-          className="h-12 rounded-2xl"
-          disabled={!amountValid || submitting}
-          onPress={handleSubmit}
-        >
-          {submitting ? (
-            <ActivityIndicator color="black" />
-          ) : (
-            <Text className="native:text-lg text-base font-bold text-black">Deposit</Text>
-          )}
-        </Button>
-      </View>
-    </ResponsiveModal>
+      <Button
+        variant="brand"
+        className="h-12 rounded-2xl"
+        disabled={!amountValid || submitting}
+        onPress={handleSubmit}
+      >
+        {submitting ? (
+          <ActivityIndicator color="black" />
+        ) : (
+          <Text className="native:text-lg text-base font-bold text-black">Deposit</Text>
+        )}
+      </Button>
+    </View>
   );
 };
 

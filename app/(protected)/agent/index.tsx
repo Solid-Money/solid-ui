@@ -14,7 +14,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { AGENT_PROMPT_TEMPLATE } from '@/constants/agentPromptTemplate';
+import { buildAgentPromptTemplate } from '@/constants/agentPromptTemplate';
 import {
   useAgentApiKeys,
   useAgentBalance,
@@ -24,7 +24,7 @@ import {
   useRevokeAgentApiKey,
 } from '@/hooks/useAgent';
 import { useDimension } from '@/hooks/useDimension';
-import { isProduction } from '@/lib/config';
+import { EXPO_PUBLIC_FLASH_API_BASE_URL, isProduction } from '@/lib/config';
 import { eclipseAddress } from '@/lib/utils';
 
 const formatUsdc = (raw?: bigint) => {
@@ -56,7 +56,8 @@ const DEMO_AGENT_ADDRESS = '0x0000000000000000000000000000000000000000';
 const DEMO_BALANCE_USDC = 12_345_670n; // $12.34
 
 const handleCopyPrompt = async () => {
-  await Clipboard.setStringAsync(AGENT_PROMPT_TEMPLATE);
+  const template = buildAgentPromptTemplate({ baseUrl: EXPO_PUBLIC_FLASH_API_BASE_URL });
+  await Clipboard.setStringAsync(template);
   Toast.show({
     type: 'success',
     text1: 'Prompt template copied',
