@@ -2558,15 +2558,53 @@ const agentJsonHeaders = () => {
   };
 };
 
-export const provisionAgent = async (): Promise<{ agentEoaAddress: string }> => {
-  const response = await fetch(agentEndpoint('/provision'), {
+/**
+ * Envelope returned by the Turnkey SDK's `stampX` methods. `body` is the
+ * exact stringified bytes the SDK signed — we MUST forward it verbatim;
+ * re-serializing on the server changes key order and breaks the stamp.
+ */
+export type SignedTurnkeyRequest = {
+  url: string;
+  body: string;
+  stamp: { stampHeaderName: string; stampHeaderValue: string };
+};
+
+export type ProvisioningActivity = {
+  url: string;
+  body: Record<string, unknown>;
+};
+
+const postAgentJson = async <T>(path: string, body?: unknown): Promise<T> => {
+  const response = await fetch(agentEndpoint(path), {
     method: 'POST',
     headers: agentJsonHeaders(),
     credentials: 'include',
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) throw response;
   return response.json();
 };
+
+export const provisionAgentInit = (): Promise<{
+  provisioningId: string;
+  activity: ProvisioningActivity;
+}> => postAgentJson('/provision/init');
+
+export const provisionAgentWalletAccount = (input: {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+}): Promise<{ activity: ProvisioningActivity }> =>
+  postAgentJson('/provision/wallet-account', input);
+
+export const provisionAgentUser = (input: {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+}): Promise<{ activity: ProvisioningActivity }> => postAgentJson('/provision/user', input);
+
+export const provisionAgentPolicy = (input: {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+}): Promise<{ agentEoaAddress: string }> => postAgentJson('/provision/policy', input);
 
 export const fetchAgent = async (): Promise<AgentSummary> => {
   const response = await fetch(agentEndpoint('/me'), {
