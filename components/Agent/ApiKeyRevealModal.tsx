@@ -1,14 +1,8 @@
 import { View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 
 type Props = {
@@ -17,32 +11,39 @@ type Props = {
   apiKey: string | null;
 };
 
+const MODAL_STATE: ModalState = { name: 'agent-api-key-reveal', number: 1 };
+const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
+
 const ApiKeyRevealModal = ({ open, onClose, apiKey }: Props) => {
   return (
-    <Dialog open={open} onOpenChange={isOpen => !isOpen && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Your new API key</DialogTitle>
-          <DialogDescription>
-            This is the only time you&apos;ll see the full key. Copy it now and store it securely.
-            If you lose it, generate a new one.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveModal
+      currentModal={MODAL_STATE}
+      previousModal={CLOSE_STATE}
+      isOpen={open}
+      onOpenChange={isOpen => !isOpen && onClose()}
+      trigger={null}
+      title="Your new API key"
+      contentKey="agent-api-key-reveal"
+      shouldAnimate={false}
+    >
+      <View className="gap-4">
+        <Text className="text-base text-muted-foreground">
+          This is the only time you&apos;ll see the full key. Copy it now and store it securely. If
+          you lose it, generate a new one.
+        </Text>
         {apiKey ? (
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between gap-2 rounded-xl bg-[#262626] p-3">
-              <Text className="flex-1 break-all font-mono text-xs text-white" selectable>
-                {apiKey}
-              </Text>
-              <CopyToClipboard text={apiKey} />
-            </View>
-            <Button onPress={onClose}>
-              <Text>I&apos;ve saved it</Text>
-            </Button>
+          <View className="flex-row items-center justify-between gap-2 rounded-xl bg-[#262626] p-3">
+            <Text className="flex-1 break-all font-mono text-xs text-white" selectable>
+              {apiKey}
+            </Text>
+            <CopyToClipboard text={apiKey} />
           </View>
         ) : null}
-      </DialogContent>
-    </Dialog>
+        <Button variant="brand" className="h-14 rounded-2xl" onPress={onClose}>
+          <Text className="text-base font-bold">I&apos;ve saved it</Text>
+        </Button>
+      </View>
+    </ResponsiveModal>
   );
 };
 
