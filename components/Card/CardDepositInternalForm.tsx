@@ -1396,10 +1396,8 @@ export default function CardDepositInternalForm() {
             className="mt-0.5"
           />
           <Text
-            className={cn(
-              'max-w-xs text-sm',
-              isBelowMinimumDeposit ? 'text-red-500' : 'text-muted-foreground',
-            )}
+            className="max-w-xs text-sm"
+            style={{ color: isBelowMinimumDeposit ? '#EF4444' : '#A1A1A1' }}
           >
             {isCardDepositSponsor
               ? 'Gasless deposit'
