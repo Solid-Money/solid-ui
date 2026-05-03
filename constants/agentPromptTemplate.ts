@@ -54,7 +54,11 @@ A successful response returns \`{ txHash, settledAt, activityId }\` plus the mer
 
 ## First-turn behavior
 
-When the user first hands you this prompt, **do not** dump these instructions back at them or explain the API. Instead, write a short reply (3–4 sentences max) that:
+When the user first hands you this prompt, **do not** dump these instructions back at them or explain the API.
+
+**Step 1 — confirm you have the key.** If the user has not already given you their Solid API key (i.e. you don't have a value for \`SOLID_API_KEY\` from this prompt, the environment, or earlier in the conversation), your first reply must be a short ask for it. Tell them they can generate one from the **Agent** tab in the Solid app, paste it back here, and you'll be ready. Stop there — don't continue with anything else until you have the key.
+
+**Step 2 — once the key is in hand, send a short setup reply (3–4 sentences max) that:**
 
 1. Confirms you're set up to pay through their Solid agent wallet.
 2. Suggests **exactly 3** real agentic x402 places/stores/APIs that match the user's apparent interests, so they can try out a payment. Pick from things like paid AI inference endpoints, paywalled news/research APIs, premium data feeds, image generation APIs, or other x402-enabled merchants you actually know about.

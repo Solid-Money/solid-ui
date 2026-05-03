@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ChevronRight, Wallet } from 'lucide-react-native';
 
@@ -12,6 +12,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
+import { isProduction } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
@@ -33,19 +34,15 @@ type Props = {
 };
 
 const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
-  // External-wallet path is web-only — thirdweb's connector flow doesn't run
-  // inside the React Native runtime. Mobile users keep the borrow path.
-  const externalEnabled = Platform.OS === 'web';
-
-  const [step, setStep] = useState<Step>(externalEnabled ? 'options' : 'borrow');
-  const [previousStep, setPreviousStep] = useState<Step>(step);
+  const [step, setStep] = useState<Step>('options');
+  const [previousStep, setPreviousStep] = useState<Step>('options');
 
   useEffect(() => {
     if (!open) {
-      setStep(externalEnabled ? 'options' : 'borrow');
-      setPreviousStep(externalEnabled ? 'options' : 'borrow');
+      setStep('options');
+      setPreviousStep('options');
     }
-  }, [open, externalEnabled]);
+  }, [open]);
 
   const goTo = useCallback(
     (next: Step) => {
@@ -61,7 +58,7 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
     return 'Deposit from external wallet';
   }, [step]);
 
-  const showBack = step !== 'options' && externalEnabled;
+  const showBack = step !== 'options';
 
   return (
     <ResponsiveModal
@@ -78,10 +75,10 @@ const AgentDepositModal = ({ open, onClose, agentEoaAddress }: Props) => {
       showBackButton={showBack}
       onBackPress={() => goTo('options')}
     >
-      {step === 'options' && externalEnabled ? (
+      {step === 'options' ? (
         <DepositOptions onSelect={goTo} />
       ) : step === 'external' && agentEoaAddress ? (
-        <AgentDepositExternalForm agentEoaAddress={agentEoaAddress} onSuccess={onClose} />
+        <AgentDepositExternalForm agentEoaAddress={agentEoaAddress} />
       ) : (
         <AgentDepositBorrowForm agentEoaAddress={agentEoaAddress} onSuccess={onClose} />
       )}
@@ -98,7 +95,7 @@ const DepositOptions = ({ onSelect }: { onSelect: (step: Step) => void }) => (
     />
     <OptionItem
       title="From external wallet"
-      description="Send USDC directly from MetaMask or any other wallet on Base. No yield."
+      description="Send USDC directly from any wallet on Base via QR/address copy. No yield."
       onPress={() => onSelect('external')}
     />
   </View>
@@ -181,6 +178,18 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: BorrowFormProps)
 
   return (
     <View className="flex-1 gap-3">
+      {!isProduction && (
+        <View className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-3">
+          <Text className="text-sm font-medium text-yellow-300">
+            Borrow contract available only in production
+          </Text>
+          <Text className="mt-1 text-xs text-yellow-200/70">
+            soUSD and the Aave borrow market aren&apos;t deployed in this environment. The borrow
+            flow will fail — use the external-wallet option to fund the agent on Base for testing.
+          </Text>
+        </View>
+      )}
+
       <View className="gap-4 px-2">
         <BorrowSlider
           value={sliderValue}
