@@ -1,5 +1,5 @@
 import { ReactNode, useMemo } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -56,20 +56,29 @@ const DepositPublicAddress = ({ address, description }: DepositPublicAddressProp
           <Text className="text-lg font-medium text-white">
             {resolvedAddress ? eclipseAddress(resolvedAddress, 6, 6) : ''}
           </Text>
-          <CopyToClipboard text={resolvedAddress} className="text-primary" />
+          {resolvedAddress ? (
+            <CopyToClipboard text={resolvedAddress} className="text-primary" />
+          ) : null}
         </View>
 
         <View className="items-center justify-center px-4 py-4">
-          <View className="overflow-hidden rounded-xl">
-            <QRCode
-              value={resolvedAddress}
-              size={200}
-              color="white"
-              backgroundColor="#181A1A"
-              logo={solidLogo}
-              logoSize={50}
-              logoBackgroundColor="transparent"
-            />
+          <View
+            className="items-center justify-center overflow-hidden rounded-xl"
+            style={{ width: 200, height: 200, backgroundColor: '#181A1A' }}
+          >
+            {resolvedAddress ? (
+              <QRCode
+                value={resolvedAddress}
+                size={200}
+                color="white"
+                backgroundColor="#181A1A"
+                logo={solidLogo}
+                logoSize={50}
+                logoBackgroundColor="transparent"
+              />
+            ) : (
+              <ActivityIndicator color="white" />
+            )}
           </View>
         </View>
 
