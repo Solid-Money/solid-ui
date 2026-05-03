@@ -1162,8 +1162,9 @@ export default function CardDepositInternalForm() {
     try {
       schema.parse({ amount: watchedAmount });
       return null;
-    } catch (error: any) {
-      return error.errors?.[0]?.message || null;
+    } catch (error: unknown) {
+      const err = error as { issues?: { message?: string }[] };
+      return err.issues?.[0]?.message ?? null;
     }
   }, [watchedAmount, schema]);
 
