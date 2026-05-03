@@ -14,7 +14,7 @@ import { publicClient } from '@/lib/wagmi';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
-import { erc20Abi, pad, TransactionReceipt } from 'viem';
+import { erc20Abi, maxUint256, pad, TransactionReceipt } from 'viem';
 import { readContract } from 'viem/actions';
 import { fuse, mainnet } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
@@ -48,6 +48,10 @@ type RepayAndWithdrawCollateralResult = {
 const RATE_SCALE = 1_000_000n;
 const LIQ_THRESHOLD_BPS = 8_000n; // 80%
 const TARGET_HEALTH_FACTOR_BPS = 10_200n; // 1.02x
+// Buffer added to the approval when the user is fully repaying their debt.
+// Aave's debt accrues interest every block, so the live debt at execution
+// time is slightly higher than the snapshot the UI shows.
+const REPAY_INTEREST_BUFFER_BPS = 50n; // 0.5%
 
 const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
   const { user, safeAA } = useUser();
@@ -94,10 +98,24 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
         const totalBorrowedWei = parseUnits(totalBorrowed.toFixed(6), 6);
         const totalSuppliedSoUSDWei = parseUnits(totalSupplied.toFixed(6), 6);
         const totalSuppliedUsdWei = (totalSuppliedSoUSDWei * rate) / RATE_SCALE;
+        // When the user is repaying the full borrowed snapshot we treat this as a
+        // "max repay": pass MaxUint256 to Aave's repay() so it consumes exactly
+        // the live debt (which has accrued past the snapshot), approve a small
+        // buffer to cover that accrual, and withdraw all collateral. Without this
+        // the repay leaves a tiny dust debt and the bundled withdraw reverts on
+        // the health factor check.
+        const isMaxRepay = repayAmountWei >= totalBorrowedWei && totalBorrowedWei > 0n;
+        const approveAmountWei = isMaxRepay
+          ? totalBorrowedWei + (totalBorrowedWei * REPAY_INTEREST_BUFFER_BPS) / 10_000n
+          : repayAmountWei;
+        const repayCallAmountWei = isMaxRepay ? maxUint256 : repayAmountWei;
         const cappedRepayWei =
           repayAmountWei > totalBorrowedWei ? totalBorrowedWei : repayAmountWei;
-        const remainingBorrowWei =
-          totalBorrowedWei > cappedRepayWei ? totalBorrowedWei - cappedRepayWei : 0n;
+        const remainingBorrowWei = isMaxRepay
+          ? 0n
+          : totalBorrowedWei > cappedRepayWei
+            ? totalBorrowedWei - cappedRepayWei
+            : 0n;
         const requiredCollateralValueWei =
           remainingBorrowWei === 0n
             ? 0n
@@ -115,13 +133,13 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
         const repayApproveCalldata = encodeFunctionData({
           abi: erc20Abi,
           functionName: 'approve',
-          args: [ADDRESSES.fuse.aaveV3Pool, repayAmountWei],
+          args: [ADDRESSES.fuse.aaveV3Pool, approveAmountWei],
         });
 
         const repayCalldata = encodeFunctionData({
           abi: AaveV3Pool_ABI,
           functionName: 'repay',
-          args: [USDC_STARGATE, repayAmountWei, 2, user.safeAddress as Address],
+          args: [USDC_STARGATE, repayCallAmountWei, 2, user.safeAddress as Address],
         });
 
         const withdrawCalldata = encodeFunctionData({
