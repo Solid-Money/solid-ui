@@ -333,12 +333,15 @@ export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
 export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   const ARBITRUM_CHAIN = 'arbitrum';
 
-  if (cardDetails?.funding_instructions?.chain === ARBITRUM_CHAIN) {
-    return cardDetails?.funding_instructions?.address;
+  if (
+    cardDetails?.funding_instructions?.chain === ARBITRUM_CHAIN &&
+    cardDetails?.funding_instructions?.address
+  ) {
+    return cardDetails.funding_instructions.address;
   }
 
   return cardDetails?.additional_funding_instructions?.find(
-    instruction => instruction.chain === ARBITRUM_CHAIN,
+    instruction => instruction.chain === ARBITRUM_CHAIN && instruction.address,
   )?.address;
 };
 
@@ -370,9 +373,12 @@ export function getCardFundingAddress(
   provider: CardProvider | null | undefined,
   contracts: RainContractResponseDto[] | null | undefined,
 ): string | undefined {
-  if (provider === CardProvider.RAIN && contracts?.length) {
-    const rainContract = contracts.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
-    if (rainContract?.depositAddress) return rainContract.depositAddress;
+  if (provider === CardProvider.RAIN) {
+    if (!contracts?.length) return undefined;
+    const rainContract = contracts.find(
+      c => Number(c.chainId) === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+    );
+    return rainContract?.depositAddress || undefined;
   }
   return cardDetails ? getArbitrumFundingAddress(cardDetails) : undefined;
 }
