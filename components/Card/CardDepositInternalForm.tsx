@@ -742,6 +742,11 @@ export default function CardDepositInternalForm() {
   const isCardDepositSponsor = isWalletSourceGaslessGated
     ? Number(watchedAmount || 0) >= Number(cardDepositMinimumAmount)
     : true;
+  const isBelowMinimumDeposit =
+    isWalletSourceGaslessGated &&
+    !!watchedAmount &&
+    Number(watchedAmount) > 0 &&
+    Number(watchedAmount) < Number(cardDepositMinimumAmount);
 
   const schema = useMemo(() => {
     return z.object({
@@ -762,23 +767,9 @@ export default function CardDepositInternalForm() {
                 ? `Maximum borrow amount is ${formatNumber(maxBorrowAmount)} USDC`
                 : `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
           },
-        )
-        .refine(
-          val => {
-            if (!isWalletSourceGaslessGated) return true;
-            return Number(val) >= Number(cardDepositMinimumAmount);
-          },
-          { error: `Minimum $${cardDepositMinimumAmount} USDC` },
         ),
     });
-  }, [
-    balanceAmount,
-    tokenSymbol,
-    watchedFrom,
-    maxBorrowAmount,
-    isWalletSourceGaslessGated,
-    cardDepositMinimumAmount,
-  ]);
+  }, [balanceAmount, tokenSymbol, watchedFrom, maxBorrowAmount]);
 
   const formattedBalance = balanceAmount.toString();
 
@@ -1399,8 +1390,17 @@ export default function CardDepositInternalForm() {
 
       {isWalletSourceGaslessGated && (
         <View className="mt-2 flex-row items-start gap-2">
-          <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
-          <Text className="max-w-xs text-sm text-muted-foreground">
+          <Fuel
+            color={isBelowMinimumDeposit ? '#EF4444' : '#A1A1A1'}
+            size={16}
+            className="mt-0.5"
+          />
+          <Text
+            className={cn(
+              'max-w-xs text-sm',
+              isBelowMinimumDeposit ? 'text-red-500' : 'text-muted-foreground',
+            )}
+          >
             {isCardDepositSponsor
               ? 'Gasless deposit'
               : `Gasless deposit - Please deposit above $${cardDepositMinimumAmount} USDC so we can cover your fees`}
