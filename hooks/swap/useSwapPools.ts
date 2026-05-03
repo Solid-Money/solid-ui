@@ -50,19 +50,20 @@ export function useSwapPools(
           }) as Address,
       );
 
-      const poolsData = await getMultiplePools({
-        variables: {
-          poolIds: poolsAddresses.map(address => address.toLowerCase()),
-        },
-      });
-
-      // const poolsLiquidities = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-      //     address
-      // }).read.liquidity()))
-
-      // const poolsGlobalStates = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-      //     address
-      // }).read.globalState()))
+      let poolsData;
+      try {
+        poolsData = await getMultiplePools({
+          variables: {
+            poolIds: poolsAddresses.map(address => address.toLowerCase()),
+          },
+        });
+      } catch (err) {
+        // Subgraph 404 / network failure — degrade to "no pools" instead of
+        // surfacing an unhandled rejection that crashes the consumer screen.
+        console.warn('Algebra pool subgraph query failed:', err);
+        setExistingPools([]);
+        return;
+      }
 
       const pools =
         poolsData.data &&

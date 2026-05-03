@@ -105,6 +105,8 @@ type Addresses = {
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
+    aaveAlgebraAdapter: Address;
+    aSoUSD: Address;
     soFuseBoringQueue: Address;
     soEthVault: Address;
     soEthTeller: Address;
@@ -173,6 +175,8 @@ export const ADDRESSES: Addresses = {
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',
+    aaveAlgebraAdapter: '0x9888085600B3A5712caBF68De3847376DFB95d3e',
+    aSoUSD: '0xeb1017EFa183397F90C6D0d8a890a0cb7fC81632',
     soFuseBoringQueue: isProduction
       ? '0x8a6612ff8bA43C4c8A1e7DD5c0eE2d7CBEDF0E66'
       : '0x5FD429278E39342920CD6629574f9E0c4766c675',
