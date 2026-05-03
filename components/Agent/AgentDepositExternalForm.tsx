@@ -1,12 +1,10 @@
-import { Linking, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { ChevronRight, Info } from 'lucide-react-native';
+import { Info } from 'lucide-react-native';
 
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { Text } from '@/components/ui/text';
 
-const SUPPORTED_NETWORKS_URL =
-  'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
 const baseIcon = require('@/assets/images/base.png');
 
 type Props = {
@@ -38,15 +36,6 @@ const AgentDepositExternalForm = ({ agentEoaAddress }: Props) => {
               Send only USDC on Base to this address. Other tokens or chains may result in permanent
               loss of funds.
             </Text>
-            <Pressable
-              onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
-              className="web:hover:opacity-50"
-            >
-              <View className="flex-row flex-wrap items-center">
-                <Text className="text-sm font-medium text-white">See supported networks</Text>
-                <ChevronRight size={16} color="white" />
-              </View>
-            </Pressable>
           </>
         }
       />
