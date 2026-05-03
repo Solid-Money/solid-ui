@@ -2248,46 +2248,14 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
 };
 
 /**
- * Complete card details reveal flow.
- * When a provider is supplied the correct path is used directly.
- * Otherwise falls back to the previous heuristic (try Rain first when PEM is
- * configured, then Bridge on 400).
+ * Complete card details reveal flow. Rain is the only supported provider;
+ * Bridge is deprecated and no longer dispatched, even if the caller passes it.
  */
 export const revealCardDetailsComplete = async (
-  provider?: CardProvider,
+  _provider?: CardProvider,
 ): Promise<CardDetailsRevealResponse> => {
-  if (provider === CardProvider.RAIN) {
-    return revealCardDetailsCompleteRain();
-  }
-  if (provider === CardProvider.BRIDGE) {
-    return revealCardDetailsCompleteBridge();
-  }
-
-  // Fallback when provider is unknown: try Rain if PEM configured, else Bridge
-  if (EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
-    try {
-      return await revealCardDetailsCompleteRain();
-    } catch (e: unknown) {
-      if (e instanceof Response && e.status === 400) {
-        return revealCardDetailsCompleteBridge();
-      }
-      throw e;
-    }
-  }
-  return revealCardDetailsCompleteBridge();
+  return revealCardDetailsCompleteRain();
 };
-
-function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
-  return (async () => {
-    const nonceData = await generateClientNonceData();
-    const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
-    return revealCardDetails(
-      ephemeralKeyResponse.ephemeral_key,
-      nonceData.clientSecret,
-      nonceData.clientTimestamp,
-    );
-  })();
-}
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(
