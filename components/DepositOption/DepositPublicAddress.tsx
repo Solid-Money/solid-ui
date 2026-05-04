@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
@@ -20,9 +21,11 @@ type DepositPublicAddressProps = {
   address?: string;
   /** Custom description rendered under the QR. Replaces default supported-networks section. */
   description?: ReactNode;
+  /** When provided, renders a "Done" CTA that invokes this handler. */
+  onDone?: () => void;
 };
 
-const DepositPublicAddress = ({ address, description }: DepositPublicAddressProps = {}) => {
+const DepositPublicAddress = ({ address, description, onDone }: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
   const resolvedAddress = address ?? user?.safeAddress ?? '';
 
@@ -126,6 +129,14 @@ const DepositPublicAddress = ({ address, description }: DepositPublicAddressProp
           )}
         </View>
       </View>
+      <Text className="mt-4 text-sm text-muted-foreground">
+        Allow 30-60 seconds for processing.
+      </Text>
+      {onDone ? (
+        <Button variant="brand" className="mt-4 h-12 w-full rounded-2xl" onPress={onDone}>
+          <Text className="text-lg font-semibold text-black">Done</Text>
+        </Button>
+      ) : null}
     </View>
   );
 };

@@ -237,7 +237,7 @@ const useDepositOption = ({
     }
 
     if (isPublicAddress) {
-      return <DepositPublicAddress />;
+      return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
 
     if (isDepositDirectly) {
