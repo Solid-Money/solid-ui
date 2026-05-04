@@ -17,6 +17,7 @@ export default function KycNative() {
     markStarted,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   } = useDiditSession();
 
@@ -40,7 +41,10 @@ export default function KycNative() {
           if (result.session.status === VerificationStatus.Approved) {
             onVerificationComplete();
           } else if (result.session.status === VerificationStatus.Declined) {
-            onVerificationError('Your identity verification was declined.');
+            // Redirect to /card/activate so the user sees specific Didit warnings
+            // (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) instead of a
+            // generic declined screen with a retry button that loops.
+            onVerificationDeclined();
           } else {
             // 'Pending', 'In Review', etc. — redirect back to activate page
             // so user sees "Under Review" state instead of blank page
@@ -71,6 +75,7 @@ export default function KycNative() {
     initSession,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   ]);
 

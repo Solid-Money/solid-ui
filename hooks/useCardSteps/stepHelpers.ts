@@ -9,6 +9,7 @@ import {
   CardProvider,
   CardStatus,
   KycStatus,
+  KycWarning,
   RainApplicationStatus,
 } from '@/lib/types';
 
@@ -31,7 +32,7 @@ export function buildCardSteps(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
-    kycWarnings?: string[] | null;
+    kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
   },
 ): Step[] {

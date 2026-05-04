@@ -118,6 +118,29 @@ export function useDiditSession() {
     redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW);
   }, [redirectBasedOnKycStatus]);
 
+  /**
+   * Didit terminal Declined: ID failed validation (e.g. expired doc, missing DOB, blocklist).
+   * Bounce back to /card/activate?kycStatus=rejected so the step-1 description renders the
+   * specific warnings (formatted via DIDIT_WARNING_DESCRIPTIONS / short_description) and the
+   * user clicks "Retry KYC" — which spins up a fresh Didit session via initSession. Without
+   * this redirect the user gets stuck on /kyc with a generic error and a "Try again" button
+   * that loops the same broken document.
+   */
+  const onVerificationDeclined = useCallback(() => {
+    Toast.show({
+      type: 'error',
+      text1: 'Verification declined',
+      text2: 'Review the details and try again with a valid document.',
+      props: { badgeText: '' },
+    });
+    redirectBasedOnKycStatus(KycStatus.REJECTED);
+  }, [redirectBasedOnKycStatus]);
+
+  /**
+   * Hard failure (network error, session creation failed, SDK reported `failed`). Stays on
+   * /kyc and shows the error UI with a Try-again button — distinct from Declined, which is a
+   * KYC outcome we want surfaced on /card/activate alongside the warnings.
+   */
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
       type: 'error',
@@ -146,7 +169,7 @@ export function useDiditSession() {
           onVerificationPending();
         } else if (status.kycStatus === KycStatus.REJECTED || status.status === 'Declined') {
           clearInterval(interval);
-          onVerificationError('Your identity verification was declined. Please try again.');
+          onVerificationDeclined();
         } else if (status.kycStatus === KycStatus.APPROVED || status.status === 'Approved') {
           clearInterval(interval);
           onVerificationComplete();
@@ -157,7 +180,13 @@ export function useDiditSession() {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [session.phase, onVerificationComplete, onVerificationError, onVerificationPending]);
+  }, [
+    session.phase,
+    onVerificationComplete,
+    onVerificationDeclined,
+    onVerificationError,
+    onVerificationPending,
+  ]);
 
   // Auto-init on mount
   useEffect(() => {
@@ -170,6 +199,7 @@ export function useDiditSession() {
     markStarted,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   };
 }
