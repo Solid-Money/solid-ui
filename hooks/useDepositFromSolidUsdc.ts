@@ -134,7 +134,7 @@ const useDepositFromSolidUsdc = (
 
       const isSponsor = Number(amount) >= Number(minimumAmount);
 
-      if (!isSponsor) {
+      if (!isCard && !isSponsor) {
         throw new Error(`Minimum deposit amount is $${minimumAmount}`);
       }
 
