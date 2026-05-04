@@ -76,6 +76,7 @@ const useCardDeposit = (): CardDepositResult => {
           type: 'error',
           text1: 'Deposits not available',
           text2: 'This card does not support deposits',
+          props: { badgeText: '' },
         });
         return;
       }
