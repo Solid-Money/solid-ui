@@ -928,6 +928,7 @@ export default function CardDepositInternalForm() {
             type: 'error',
             text1: 'Deposits not available',
             text2: 'This card does not support deposits to the funding chain',
+            props: { badgeText: '' },
           });
           return;
         }
@@ -1054,6 +1055,7 @@ export default function CardDepositInternalForm() {
             type: 'error',
             text1: 'Deposits not available',
             text2: 'This card does not support deposits to the funding chain',
+            props: { badgeText: '' },
           });
           return;
         }
