@@ -5,6 +5,7 @@ import {
   BridgeRejectionReason,
   CardProvider,
   KycStatus,
+  KycWarning,
   RainApplicationStatus,
 } from '@/lib/types';
 
@@ -79,19 +80,37 @@ const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
   INVALID_DATE: 'A date on the document is invalid',
 };
 
-function formatDiditWarning(tag: string): string {
-  return (
-    DIDIT_WARNING_DESCRIPTIONS[tag] ??
-    tag
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/^\w/, (c) => c.toUpperCase())
-  );
+/** Convert a SCREAMING_SNAKE_CASE tag into a Title-Cased phrase. */
+function formatRiskTag(tag: string): string {
+  return tag
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, c => c.toUpperCase());
 }
 
-function formatKycWarnings(warnings: string[]): string {
-  if (warnings.length === 0) return '';
-  return warnings.map(formatDiditWarning).join('\n- ');
+/**
+ * Pick the best display text for a single warning:
+ *   1. Our DIDIT_WARNING_DESCRIPTIONS override (when we want friendlier wording than Didit's)
+ *   2. Didit's `short_description` (always set for documented warnings)
+ *   3. Didit's `long_description` (rare fallback if a partial payload arrives)
+ *   4. The risk tag formatted into Title Case
+ */
+function formatDiditWarning(warning: KycWarning): string {
+  const risk = warning.risk ?? '';
+  if (risk && DIDIT_WARNING_DESCRIPTIONS[risk]) {
+    return DIDIT_WARNING_DESCRIPTIONS[risk];
+  }
+  if (warning.short_description) return warning.short_description;
+  if (warning.long_description) return warning.long_description;
+  return risk ? formatRiskTag(risk) : '';
+}
+
+function formatKycWarnings(warnings: KycWarning[]): string {
+  if (!warnings || warnings.length === 0) return '';
+  return warnings
+    .map(formatDiditWarning)
+    .filter(line => line.length > 0)
+    .join('\n- ');
 }
 
 /**
@@ -178,7 +197,7 @@ export function getStepDescription(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
-    kycWarnings?: string[] | null;
+    kycWarnings?: KycWarning[] | null;
   },
 ): string {
   // Only use Rain description for recognized Rain application statuses

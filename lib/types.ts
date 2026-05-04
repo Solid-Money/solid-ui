@@ -435,6 +435,22 @@ export interface CardDetailsResponseDto extends CardResponse {
   provider?: CardProvider;
 }
 
+/**
+ * A single warning entry surfaced for a user's KYC. Mirrors Didit's per-block warning shape:
+ * `risk` is the tag (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) — same key space as
+ * DIDIT_WARNING_DESCRIPTIONS overrides; `short_description` / `long_description` are Didit's
+ * pre-formatted user-facing copy. Backend also synthesises one of these (with
+ * `risk: 'CARD_ACTIVATION_FAILED'`) when Rain rejects the forwarded application.
+ */
+export interface KycWarning {
+  risk: string;
+  log_type?: string;
+  short_description?: string;
+  long_description?: string;
+  feature?: string;
+  node_id?: string;
+}
+
 export interface CardStatusResponse {
   status?: CardStatus;
   activationBlocked?: boolean;
@@ -444,8 +460,8 @@ export interface CardStatusResponse {
   provider?: CardProvider;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
   kycStatus?: KycStatus;
-  /** Warning tags or reasons from Didit verification (e.g. DOCUMENT_EXPIRED). */
-  kycWarnings?: string[];
+  /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
+  kycWarnings?: KycWarning[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */

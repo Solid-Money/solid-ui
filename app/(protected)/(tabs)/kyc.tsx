@@ -16,6 +16,7 @@ export default function KycWeb() {
     markStarted,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   } = useDiditSession();
   const hasStartedRef = useRef(false);
@@ -41,7 +42,10 @@ export default function KycWeb() {
           if (result.session?.status === 'Approved') {
             onVerificationComplete();
           } else if (result.session?.status === 'Declined') {
-            onVerificationError('Your identity verification was declined.');
+            // Redirect to /card/activate so the user sees specific Didit warnings
+            // (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) instead of a
+            // generic "declined" screen with a retry button that loops.
+            onVerificationDeclined();
           } else {
             // 'Pending' shows up here for manual-review sessions.
             onVerificationPending();
@@ -82,7 +86,7 @@ export default function KycWeb() {
           break;
         case 'Declined':
           hasStartedRef.current = false;
-          onVerificationError('Your identity verification was declined.');
+          onVerificationDeclined();
           break;
         case 'Expired':
         case 'Kyc Expired':
@@ -120,6 +124,7 @@ export default function KycWeb() {
     initSession,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   ]);
 
