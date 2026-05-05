@@ -424,7 +424,7 @@ interface SpendingBalanceCardProps {
 
 function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
-  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(0)) : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? cashback.totalUsdValue.toFixed(2) : '0.00';
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
@@ -1052,7 +1052,7 @@ interface CashbackDisplayProps {
 }
 
 function CashbackDisplay({ cashback }: CashbackDisplayProps) {
-  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(2)) : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? cashback.totalUsdValue.toFixed(2) : '0.00';
 
   const cashbackPercentage = cashback?.percentage || 0;
 
