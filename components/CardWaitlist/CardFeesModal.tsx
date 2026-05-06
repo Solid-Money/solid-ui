@@ -79,7 +79,7 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
           <Text className="text-base font-semibold text-muted-foreground">More details</Text>
           <View className="gap-5">
             <DetailItem
-              icon={getAsset('images/dollar-yellow.png')}
+              icon={getAsset('images/dollar-green.png')}
               title="No hidden fees"
               description={
                 <View>
@@ -96,12 +96,12 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
               }
             />
             <DetailItem
-              icon={getAsset('images/dollar-yellow.png')}
+              icon={getAsset('images/globe-green.png')}
               title="Global acceptance"
               description="Spend anywhere Visa is accepted"
             />
             <DetailItem
-              icon={getAsset('images/dollar-yellow.png')}
+              icon={getAsset('images/star-green.png')}
               title="Borrow against savings"
               description="Keep earning on your savings while spending"
             />
