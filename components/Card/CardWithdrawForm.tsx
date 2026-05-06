@@ -243,7 +243,7 @@ export default function CardWithdrawForm() {
   const availableFormatted = isCollateral ? collateralFormatted : formattedBalance;
 
   return (
-    <View className="flex-1 gap-3">
+    <View className="gap-3">
       {/* Amount */}
       <View className="gap-2">
         <View className="flex-row items-center justify-between">
@@ -310,13 +310,11 @@ export default function CardWithdrawForm() {
         />
       </View>
 
-      <View className="flex-1">
-        {(validationError ?? formState.errors.amount?.message) ? (
-          <Text className="text-sm text-red-500">
-            {validationError ?? formState.errors.amount?.message}
-          </Text>
-        ) : null}
-      </View>
+      {(validationError ?? formState.errors.amount?.message) ? (
+        <Text className="text-sm text-red-500">
+          {validationError ?? formState.errors.amount?.message}
+        </Text>
+      ) : null}
 
       <Button
         variant="brand"
