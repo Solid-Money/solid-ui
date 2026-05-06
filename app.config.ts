@@ -243,7 +243,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    // React Compiler is memory-heavy at transform time (per-function IR +
+    // memoization metadata). Long-running dev sessions with HMR accumulate
+    // this state and can OOM the Metro/SSR process. Keep it on for prod
+    // builds, opt-in for dev via EXPO_REACT_COMPILER=true.
+    reactCompiler:
+      IS_PROD ||
+      process.env.NODE_ENV === 'production' ||
+      process.env.EXPO_REACT_COMPILER === 'true',
   },
   extra: {
     router: {},

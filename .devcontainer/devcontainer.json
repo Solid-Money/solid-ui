@@ -4,9 +4,6 @@
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "remoteEnv": {
-    "NODE_OPTIONS": "--max-old-space-size=8192"
-  },
   "forwardPorts": [8081, 19000, 19001, 19002],
   "portsAttributes": {
     "8081": { "label": "Expo / Metro" },

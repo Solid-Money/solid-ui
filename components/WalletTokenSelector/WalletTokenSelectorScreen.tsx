@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { formatUnits } from 'viem';
 
 import { Text } from '@/components/ui/text';
-import { WalletTokenList } from '@/components/WalletTokenSelector';
+import WalletTokenList from '@/components/WalletTokenSelector/WalletTokenList';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 
