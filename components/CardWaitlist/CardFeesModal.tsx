@@ -103,7 +103,7 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
             />
             <DetailItem
               icon={getAsset('images/dollar-yellow.png')}
-              title="Borrow agains savings"
+              title="Borrow against savings"
               description="Keep earning on your savings while spending"
             />
             <DetailItem

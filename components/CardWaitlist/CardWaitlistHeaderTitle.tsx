@@ -5,7 +5,7 @@ import { Text } from '@/components/ui/text';
 const CardWaitlistHeaderTitle = () => {
   return (
     <View>
-      <Text className="text-3xl font-semibold">Free Visa Vard</Text>
+      <Text className="text-3xl font-semibold">Free Visa Card</Text>
     </View>
   );
 };
