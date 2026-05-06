@@ -57,13 +57,14 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
           colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
+          className="overflow-hidden"
           style={{ borderRadius: 20, overflow: 'hidden' }}
         >
           <View className="relative p-5">
-            <View className="absolute right-0 top-0">
+            <View className="absolute top-0" style={{ right: -125 }}>
               <Image
                 source={getAsset('images/cards.png')}
-                style={{ width: 140, height: 160 }}
+                style={{ width: 250, height: 280 }}
                 contentFit="contain"
               />
             </View>
