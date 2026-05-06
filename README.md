@@ -79,6 +79,14 @@ Solid is a React Native/Expo mobile application that provides users with:
 - iOS Simulator or Android Emulator
 - Expo CLI
 
+> **Linux / GitHub Codespaces:** React Native DevTools (Electron-based) needs GTK/ATK system libraries. If you see `libatk-1.0.so.0: cannot open shared object file` when running `npm run start`, install:
+> ```bash
+> sudo apt-get install -y libatk1.0-0 libatk-bridge2.0-0 libcups2 libnss3 \
+>   libgtk-3-0 libgbm1 libxss1 libasound2 libxshmfence1 libxkbcommon0 \
+>   libdrm2 libpango-1.0-0 libcairo2
+> ```
+> Codespaces users get this automatically via `.devcontainer/devcontainer.json`.
+
 ### Installation
 
 1. **Clone the repository**

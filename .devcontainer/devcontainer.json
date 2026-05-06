@@ -1,0 +1,28 @@
+{
+  "name": "solid-ui",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "remoteEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=8192"
+  },
+  "forwardPorts": [8081, 19000, 19001, 19002],
+  "portsAttributes": {
+    "8081": { "label": "Expo / Metro" },
+    "19000": { "label": "Expo Dev Tools" },
+    "19001": { "label": "Expo Manifest" },
+    "19002": { "label": "Expo Tunnel" }
+  },
+  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends libatk1.0-0 libatk-bridge2.0-0 libcups2 libnss3 libgtk-3-0 libgbm1 libxss1 libasound2 libxshmfence1 libxkbcommon0 libdrm2 libpango-1.0-0 libcairo2 && sudo rm -rf /var/lib/apt/lists/*",
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "expo.vscode-expo-tools",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
