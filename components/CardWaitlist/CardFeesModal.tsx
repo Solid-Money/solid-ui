@@ -26,9 +26,7 @@ type DetailItemProps = {
 
 const DetailItem = ({ icon, title, description }: DetailItemProps) => (
   <View className="flex-row gap-3">
-    <View className="h-12 w-12 items-center justify-center rounded-full bg-[#94F27F26]">
-      <Image source={icon} style={{ width: 28, height: 28 }} contentFit="contain" />
-    </View>
+    <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
     <View className="flex-1 gap-1">
       <Text className="text-base font-semibold">{title}</Text>
       {typeof description === 'string' ? (
