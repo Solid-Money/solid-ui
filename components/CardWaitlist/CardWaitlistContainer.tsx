@@ -17,7 +17,7 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
       start={isScreenMedium ? { x: 0.5, y: 0 } : { x: 0, y: 0.5 }}
       end={isScreenMedium ? { x: 0.6, y: 1 } : { x: 1, y: 0.7 }}
       className="overflow-hidden rounded-twice web:md:flex web:md:flex-row"
-      style={{ minHeight: 500, ...(Platform.OS === 'web' ? {} : { borderRadius: 20 }) }}
+      style={{ minHeight: 450, ...(Platform.OS === 'web' ? {} : { borderRadius: 20 }) }}
     >
       {isScreenMedium ? (
         <ImageBackground
