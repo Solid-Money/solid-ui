@@ -39,7 +39,8 @@ const ACCOUNT_OPENING_PRIVACY_URL =
   'https://support.solid.xyz/en/articles/14285527-account-opening-privacy-notice-fuse-network-lt-solid-xyz';
 const US_CARD_TERMS_URL =
   'https://support.solid.xyz/en/articles/14285503-fuse-network-ltd-card-terms-for-u-s-consumer-program';
-const INTL_CARD_TERMS_URL = 'https://support.solid.xyz/en/articles/14167026-solid-user-terms';
+const INTL_CARD_TERMS_URL =
+  'https://support.solid.xyz/en/articles/14167076-card-terms-for-international-consumer-program';
 const ISSUER_PRIVACY_URL = 'https://www.third-national.com/privacypolicy';
 
 const underlineProps = {
