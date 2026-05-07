@@ -184,7 +184,21 @@ const useTransferToWallet = (
       waitForTransactionReceipt(publicClient(srcChainId), {
         hash: txHash as `0x${string}`,
       })
-        .then(() => {
+        .then(receipt => {
+          // viem resolves with the receipt regardless of execution outcome.
+          // A reverted on-chain transaction is `status: 'reverted'` — treat
+          // that as FAILED, not SUCCESS.
+          if (receipt.status !== 'success') {
+            updateActivity(capturedTrackingId!, {
+              status: TransactionStatus.FAILED,
+              metadata: {
+                error: 'Transaction reverted on-chain',
+                failedAt: new Date().toISOString(),
+              },
+            });
+            return;
+          }
+
           updateActivity(capturedTrackingId!, { status: TransactionStatus.SUCCESS });
 
           track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
