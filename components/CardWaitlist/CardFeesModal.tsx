@@ -134,7 +134,7 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
         </View>
 
         <AuthButton>
-          <GetCardButton className="w-full" />
+          <GetCardButton className="w-full" onPress={() => onOpenChange(false)} />
         </AuthButton>
       </View>
     </ResponsiveModal>
