@@ -9,12 +9,14 @@ import { cn } from '@/lib/utils';
 
 interface GetCardButtonProps {
   className?: string;
+  onPress?: () => void;
 }
 
-const GetCardButton = ({ className }: GetCardButtonProps) => {
+const GetCardButton = ({ className, onPress }: GetCardButtonProps) => {
   const router = useRouter();
 
   const handleGetCard = async () => {
+    onPress?.();
     track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
       source: 'card_waitlist',
     });

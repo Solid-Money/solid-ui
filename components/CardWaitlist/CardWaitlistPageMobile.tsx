@@ -18,7 +18,7 @@ const CardWaitlistPageMobile = () => {
       scrollable={false}
       additionalContent={<CardFeesModal isOpen={feesOpen} onOpenChange={setFeesOpen} />}
     >
-      <View className="flex-1 px-5 pb-4 pt-2">
+      <View className="flex-1 px-5 pb-24 pt-2">
         <View className="flex-1 items-center justify-center">
           <Image
             source={getAsset('images/cards.png')}
