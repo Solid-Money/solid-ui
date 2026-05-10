@@ -114,9 +114,16 @@ function formatKycWarnings(warnings: KycWarning[]): string {
 }
 
 /**
- * User-friendly KYC description per Rain application state
+ * User-friendly KYC description per Rain application state.
+ * For NEEDS_INFORMATION, surface the specific rejection reasons (Rain only sends
+ * temporary, user-actionable labels for this state). Other states stay generic —
+ * final rejections (DENIED/LOCKED/CANCELED) intentionally do not expose the
+ * underlying compliance labels (e.g. SANCTIONS, PEP).
  */
-export function getKYCDescription(rainApplicationStatus?: RainApplicationStatus | null): string {
+export function getKYCDescription(
+  rainApplicationStatus?: RainApplicationStatus | null,
+  kycWarnings?: KycWarning[] | null,
+): string {
   if (!rainApplicationStatus) return DEFAULT_KYC_DESCRIPTION;
   switch (rainApplicationStatus) {
     case RainApplicationStatus.APPROVED:
@@ -133,8 +140,13 @@ export function getKYCDescription(rainApplicationStatus?: RainApplicationStatus 
       return 'This application was canceled. Contact support if you need to start over.';
     case RainApplicationStatus.NEEDS_VERIFICATION:
       return "Verify your identity to continue. You'll be redirected to complete verification.";
-    case RainApplicationStatus.NEEDS_INFORMATION:
+    case RainApplicationStatus.NEEDS_INFORMATION: {
+      const formatted = formatKycWarnings(kycWarnings ?? []);
+      if (formatted.length > 0) {
+        return `We need a bit more information to process your application:\n- ${formatted}`;
+      }
       return 'We need a bit more information to process your application.';
+    }
     case RainApplicationStatus.NOT_STARTED:
     default:
       return DEFAULT_KYC_DESCRIPTION;
@@ -205,11 +217,11 @@ export function getStepDescription(
     options?.rainApplicationStatus &&
     Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
 
-  if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
-    return getKYCDescription(options.rainApplicationStatus);
-  }
-
   const warnings = options?.kycWarnings ?? [];
+
+  if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
+    return getKYCDescription(options.rainApplicationStatus, warnings);
+  }
 
   // Didit KYC rejected or expired before reaching Rain — show rejection reasons
   if (options?.kycStatus === KycStatus.REJECTED) {
