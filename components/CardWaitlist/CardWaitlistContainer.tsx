@@ -1,4 +1,4 @@
-import { ImageBackground, Platform } from 'react-native';
+import { ImageBackground, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useDimension } from '@/hooks/useDimension';
@@ -12,13 +12,25 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <LinearGradient
-      colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
-      start={isScreenMedium ? { x: 0.5, y: 0 } : { x: 0, y: 0.5 }}
-      end={isScreenMedium ? { x: 0.6, y: 1 } : { x: 1, y: 0.7 }}
-      className="overflow-hidden rounded-twice web:md:flex web:md:flex-row"
+    <View
+      className="relative overflow-hidden rounded-twice web:md:flex web:md:flex-row"
       style={{ minHeight: 470, ...(Platform.OS === 'web' ? {} : { borderRadius: 20 }) }}
     >
+      <LinearGradient
+        colors={['rgba(148, 242, 127, 0.2)', 'rgba(148, 242, 127, 0.032)']}
+        locations={[0.1965, 0.7962]}
+        start={{ x: 0.19, y: 0.11 }}
+        end={{ x: 0.81, y: 0.89 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+        }}
+      />
       {isScreenMedium ? (
         <ImageBackground
           source={getAsset('images/cards-desktop.png')}
@@ -37,7 +49,7 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
       ) : (
         <>{children}</>
       )}
-    </LinearGradient>
+    </View>
   );
 };
 
