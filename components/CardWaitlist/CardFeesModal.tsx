@@ -101,11 +101,6 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
               description="Spend anywhere Visa is accepted"
             />
             <DetailItem
-              icon={getAsset('images/star-green.png')}
-              title="Borrow against savings"
-              description="Keep earning on your savings while spending"
-            />
-            <DetailItem
               icon={getAsset('images/card-safe.png')}
               title="Safe by design"
               description="Non-custodial, secured by passkeys"
