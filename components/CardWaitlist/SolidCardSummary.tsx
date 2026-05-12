@@ -7,12 +7,15 @@ import { cn } from '@/lib/utils';
 type FeatureItemProps = {
   icon: React.ReactNode;
   label: string;
+  classNames?: {
+    text?: string
+  };
 };
 
-const FeatureItem = ({ icon, label }: FeatureItemProps) => (
+const FeatureItem = ({ icon, label, classNames }: FeatureItemProps) => (
   <View className="flex-row items-center gap-2">
     <View className="h-9 w-9 items-center justify-center rounded-full bg-[#94F27F26]">{icon}</View>
-    <Text className="text-xl font-medium">{label}</Text>
+    <Text className={cn("text-xl font-medium", classNames?.text)}>{label}</Text>
   </View>
 );
 
@@ -50,9 +53,9 @@ const SolidCardSummary = ({
       <View className={cn(compact ? 'gap-3' : 'flex-row flex-wrap gap-x-8 gap-y-3')}>
         <FeatureItem icon={<CreditCard size={22} color="#94F27F" />} label="Virtual card" />
         <FeatureItem icon={<CashbackBadge />} label="3% Cashback" />
-        {compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} />}
+        {compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} classNames={{text:"pt-1"}} />}
       </View>
-      {!compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} />}
+      {!compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} classNames={{text:"pt-1"}} />}
     </View>
   );
 };
