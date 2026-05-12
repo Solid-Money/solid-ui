@@ -52,7 +52,7 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
       contentClassName="md:max-w-md"
       shouldAnimate={false}
     >
-      <View className="gap-6">
+      <View className="gap-10">
         <LinearGradient
           colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
           start={{ x: 0, y: 0 }}
@@ -61,10 +61,10 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
           style={{ borderRadius: 20, overflow: 'hidden' }}
         >
           <View className="relative p-5">
-            <View className="absolute top-0" style={{ right: -125 }}>
+            <View className="absolute top-0" style={{ right: '-42%' }}>
               <Image
                 source={getAsset('images/cards.png')}
-                style={{ width: 250, height: 280 }}
+                style={{ width: 340, height: 340 }}
                 contentFit="contain"
               />
             </View>
@@ -99,11 +99,6 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
               icon={getAsset('images/globe-green.png')}
               title="Global acceptance"
               description="Spend anywhere Visa is accepted"
-            />
-            <DetailItem
-              icon={getAsset('images/star-green.png')}
-              title="Borrow against savings"
-              description="Keep earning on your savings while spending"
             />
             <DetailItem
               icon={getAsset('images/card-safe.png')}
