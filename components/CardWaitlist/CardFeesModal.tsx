@@ -52,7 +52,7 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
       contentClassName="md:max-w-md"
       shouldAnimate={false}
     >
-      <View className="gap-6">
+      <View className="gap-10">
         <LinearGradient
           colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
           start={{ x: 0, y: 0 }}
