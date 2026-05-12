@@ -61,10 +61,10 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
           style={{ borderRadius: 20, overflow: 'hidden' }}
         >
           <View className="relative p-5">
-            <View className="absolute top-0" style={{ right: -125 }}>
+            <View className="absolute top-0" style={{ right: '-42%' }}>
               <Image
                 source={getAsset('images/cards.png')}
-                style={{ width: 250, height: 280 }}
+                style={{ width: 340, height: 340 }}
                 contentFit="contain"
               />
             </View>
