@@ -42,7 +42,7 @@ const SolidCardSummary = ({
         >
           Solid card
         </Text>
-        <Text className="max-w-48 text-sm text-muted-foreground md:text-base">
+        <Text className="max-w-48 text-sm text-white/70 md:text-base">
           The essential card for your everyday needs.
         </Text>
       </View>
