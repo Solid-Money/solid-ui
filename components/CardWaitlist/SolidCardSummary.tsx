@@ -17,7 +17,7 @@ const FeatureItem = ({ icon, label }: FeatureItemProps) => (
 );
 
 const CashbackBadge = () => (
-  <Text className="text-[11px] font-medium text-brand">3%</Text>
+  <Text className="text-base text-brand">3%</Text>
 );
 
 type SolidCardSummaryProps = {
@@ -48,11 +48,11 @@ const SolidCardSummary = ({
       </View>
       <Text className="text-lg font-semibold text-brand">Free</Text>
       <View className={cn(compact ? 'gap-3' : 'flex-row flex-wrap gap-x-8 gap-y-3')}>
-        <FeatureItem icon={<CreditCard size={16} color="#94F27F" />} label="Virtual card" />
+        <FeatureItem icon={<CreditCard size={22} color="#94F27F" />} label="Virtual card" />
         <FeatureItem icon={<CashbackBadge />} label="3% Cashback" />
-        {compact && <FeatureItem icon={<Tag size={16} color="#94F27F" />} label={topUpLabel} />}
+        {compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} />}
       </View>
-      {!compact && <FeatureItem icon={<Tag size={16} color="#94F27F" />} label={topUpLabel} />}
+      {!compact && <FeatureItem icon={<Tag size={22} color="#94F27F" />} label={topUpLabel} />}
     </View>
   );
 };
