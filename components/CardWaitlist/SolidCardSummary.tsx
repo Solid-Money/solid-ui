@@ -12,7 +12,7 @@ type FeatureItemProps = {
 const FeatureItem = ({ icon, label }: FeatureItemProps) => (
   <View className="flex-row items-center gap-2">
     <View className="h-9 w-9 items-center justify-center rounded-full bg-[#94F27F26]">{icon}</View>
-    <Text className="text-base font-medium">{label}</Text>
+    <Text className="text-xl font-medium">{label}</Text>
   </View>
 );
 
