@@ -19,11 +19,11 @@ const CardWelcomePopup = ({ isOpen, onClose }: CardWelcomePopupProps) => {
         className="w-[90vw] max-w-[480px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0"
       >
         <View className="relative">
-          <View className="h-64 w-full items-center justify-center bg-[#7CE672]">
+          <View className="h-64 w-full">
             <Image
               source={getAsset('images/welcome-card.png')}
-              style={{ width: 160, height: 220 }}
-              contentFit="contain"
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
             />
           </View>
 
