@@ -12,18 +12,12 @@ import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import {
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  KeyRound,
-  Plus,
-  Settings,
-} from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
+import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import ManagePinModal from '@/components/Card/ManagePinModal';
@@ -48,10 +42,11 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
+import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
+import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
@@ -67,6 +62,21 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
+
+  const { state: debugState } = useLocalSearchParams<{ state?: string }>();
+  const isDebugWelcome = !isProduction && debugState === 'welcome';
+
+  const storeShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.shouldShowWelcomePopup,
+  );
+  const setShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.setShouldShowWelcomePopup,
+  );
+  const shouldShowWelcomePopup = isDebugWelcome || storeShouldShowWelcomePopup;
+  const handleCloseWelcomePopup = useCallback(
+    () => setShouldShowWelcomePopup(false),
+    [setShouldShowWelcomePopup],
+  );
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -200,6 +210,8 @@ export default function CardDetails() {
           onOpenChange={setIsAddToWalletModalOpen}
           trigger={null}
         />
+
+        <CardWelcomePopup isOpen={shouldShowWelcomePopup} onClose={handleCloseWelcomePopup} />
       </PageLayout>
     );
   }
@@ -245,6 +257,8 @@ export default function CardDetails() {
         onOpenChange={setIsAddToWalletModalOpen}
         trigger={null}
       />
+
+      <CardWelcomePopup isOpen={shouldShowWelcomePopup} onClose={handleCloseWelcomePopup} />
     </PageLayout>
   );
 }
