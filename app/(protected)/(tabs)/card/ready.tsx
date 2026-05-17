@@ -14,6 +14,7 @@ import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { CardStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
 
 type ConsentKey =
@@ -55,6 +56,9 @@ export default function CardReady() {
   const [consents, setConsents] = useState<ConsentState>(initialConsents);
 
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
+  const setShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.setShouldShowWelcomePopup,
+  );
   const isUS = countryCode?.toUpperCase() === 'US';
   const cardTermsUrl = isUS ? US_CARD_TERMS_URL : INTL_CARD_TERMS_URL;
 
@@ -104,6 +108,7 @@ export default function CardReady() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
       if (card.status !== CardStatus.PENDING) {
+        setShouldShowWelcomePopup(true);
         router.replace(path.CARD_DETAILS);
       } else {
         Toast.show({
