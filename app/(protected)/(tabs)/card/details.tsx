@@ -12,7 +12,7 @@ import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -42,7 +42,7 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
+import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
@@ -63,10 +63,16 @@ export default function CardDetails() {
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
-  const shouldShowWelcomePopup = useCardWelcomePopupStore(state => state.shouldShowWelcomePopup);
+  const { state: debugState } = useLocalSearchParams<{ state?: string }>();
+  const isDebugWelcome = !isProduction && debugState === 'welcome';
+
+  const storeShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.shouldShowWelcomePopup,
+  );
   const setShouldShowWelcomePopup = useCardWelcomePopupStore(
     state => state.setShouldShowWelcomePopup,
   );
+  const shouldShowWelcomePopup = isDebugWelcome || storeShouldShowWelcomePopup;
   const handleCloseWelcomePopup = useCallback(
     () => setShouldShowWelcomePopup(false),
     [setShouldShowWelcomePopup],
