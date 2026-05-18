@@ -7,7 +7,10 @@ import { base, fuse, mainnet } from 'viem/chains';
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
+import {
+  fetchTokenBalancesWithFallback,
+  getLastTokenBalancesTrace,
+} from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
@@ -583,6 +586,35 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const baseRejected = baseResponse.status === PromiseStatus.REJECTED;
     if (baseRejected || Date.now() - lastBaseDiagnosticAt > BASE_DIAGNOSTIC_THROTTLE_MS) {
       lastBaseDiagnosticAt = Date.now();
+
+      const baseTrace = getLastTokenBalancesTrace(BASE_CHAIN_ID);
+
+      // Ground-truth: read Base USDC balance directly on-chain so we can
+      // tell the difference between "user has no USDC" and "Alchemy/Blockscout
+      // hide it for some reason". One extra eth_call per minute is acceptable
+      // for the diagnostic window.
+      let baseUsdcOnChainBalance: string | null = null;
+      let baseUsdcOnChainError: string | undefined;
+      try {
+        const balance = await readContract(publicClient(base.id), {
+          address: ADDRESSES.base.usdc,
+          abi: [
+            {
+              inputs: [{ name: 'account', type: 'address' }],
+              name: 'balanceOf',
+              outputs: [{ name: '', type: 'uint256' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ] as const,
+          functionName: 'balanceOf',
+          args: [safeAddress as `0x${string}`],
+        });
+        baseUsdcOnChainBalance = balance.toString();
+      } catch (e) {
+        baseUsdcOnChainError = e instanceof Error ? e.message : String(e);
+      }
+
       Sentry.captureMessage('balances.diagnostic.base', {
         level: 'info',
         tags: { type: 'balances_diagnostic', chain: 'base' },
@@ -618,6 +650,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
             .filter(t => t.chainId === BASE_CHAIN_ID)
             .map(t => t.address?.toLowerCase()),
           baseError: baseRejected ? String(baseResponse.reason) : undefined,
+          // Which provider actually answered, and why Alchemy was bypassed if it was.
+          baseFetchSource: baseTrace?.source ?? 'unknown',
+          baseAlchemyError: baseTrace?.alchemyError,
+          baseBlockscoutError: baseTrace?.blockscoutError,
+          baseTraceRawCount: baseTrace?.rawCount,
+          // On-chain ground truth for Base USDC at the same safeAddress.
+          baseUsdcOnChainBalance,
+          baseUsdcOnChainError,
+          baseUsdcConfiguredAddress: ADDRESSES.base.usdc.toLowerCase(),
         },
       });
     }

@@ -13,6 +13,29 @@ import type { BlockscoutTokenBalance } from '@/hooks/useBalances';
  * Fuse (122) is always Blockscout (not supported by Alchemy).
  */
 
+/**
+ * Source attribution for the most recent token-balances fetch per chain.
+ * Read by the Sentry diagnostic in useBalances to attribute empty results
+ * to either Alchemy or the Blockscout fallback. Updated by
+ * `fetchTokenBalancesWithFallback` on every call.
+ * TODO: remove together with the balances diagnostics after fix.
+ */
+export type TokenBalancesFetchSource = 'alchemy' | 'blockscout' | 'none';
+
+export interface TokenBalancesFetchTrace {
+  source: TokenBalancesFetchSource;
+  alchemyError?: string;
+  blockscoutError?: string;
+  rawCount: number;
+  timestamp: number;
+}
+
+const lastTokenBalancesTrace = new Map<number, TokenBalancesFetchTrace>();
+
+export const getLastTokenBalancesTrace = (
+  chainId: number,
+): TokenBalancesFetchTrace | undefined => lastTokenBalancesTrace.get(chainId);
+
 const BLOCKSCOUT_URLS: Record<number, string> = {
   [mainnet.id]: 'https://eth.blockscout.com',
   [base.id]: 'https://base.blockscout.com',
@@ -65,17 +88,56 @@ export const fetchTokenBalancesWithFallback = async (
   chainId: number,
   address: string,
 ): Promise<BlockscoutTokenBalance[]> => {
+  const recordTrace = (trace: TokenBalancesFetchTrace) => {
+    lastTokenBalancesTrace.set(chainId, trace);
+  };
+
   if (!isAlchemyChain(chainId)) {
-    return fetchBlockscoutTokenBalances(chainId, address);
+    try {
+      const result = await fetchBlockscoutTokenBalances(chainId, address);
+      recordTrace({ source: 'blockscout', rawCount: result.length, timestamp: Date.now() });
+      return result;
+    } catch (err) {
+      recordTrace({
+        source: 'none',
+        blockscoutError: err instanceof Error ? err.message : String(err),
+        rawCount: 0,
+        timestamp: Date.now(),
+      });
+      throw err;
+    }
   }
+
   try {
-    return await fetchAlchemyTokenBalances(chainId, address);
-  } catch (err) {
+    const result = await fetchAlchemyTokenBalances(chainId, address);
+    recordTrace({ source: 'alchemy', rawCount: result.length, timestamp: Date.now() });
+    return result;
+  } catch (alchemyErr) {
+    const alchemyMessage = alchemyErr instanceof Error ? alchemyErr.message : String(alchemyErr);
     console.warn(
       `[data-source] alchemy balances failed for chain ${chainId}, falling back to blockscout`,
-      err,
+      alchemyErr,
     );
-    return fetchBlockscoutTokenBalances(chainId, address);
+    try {
+      const result = await fetchBlockscoutTokenBalances(chainId, address);
+      recordTrace({
+        source: 'blockscout',
+        alchemyError: alchemyMessage,
+        rawCount: result.length,
+        timestamp: Date.now(),
+      });
+      return result;
+    } catch (blockscoutErr) {
+      recordTrace({
+        source: 'none',
+        alchemyError: alchemyMessage,
+        blockscoutError:
+          blockscoutErr instanceof Error ? blockscoutErr.message : String(blockscoutErr),
+        rawCount: 0,
+        timestamp: Date.now(),
+      });
+      throw blockscoutErr;
+    }
   }
 };
 
