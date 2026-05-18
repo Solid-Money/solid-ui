@@ -185,13 +185,13 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
             title: `Repay and withdraw collateral`,
             shortTitle: `Repay and withdraw collateral`,
             amount: amountToRepay,
-            symbol: 'USDC',
+            symbol: 'USDC.e', // Source symbol - bridging USDC.e
             chainId: fuse.id,
             fromAddress: user.safeAddress,
             toAddress: ADDRESSES.fuse.aaveV3Pool,
             metadata: {
               description: `Repay ${amountToRepay} USDC debt and withdraw ${amountToRepay} USDC collateral`,
-              sourceSymbol: 'USDC',
+              sourceSymbol: 'USDC.e', // Track source symbol for display
               tokenAddress: USDC_STARGATE,
             },
           },
