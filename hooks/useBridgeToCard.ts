@@ -218,14 +218,14 @@ const useBridgeToCard = (): BridgeResult => {
             title: `Deposit USDC to Card`,
             shortTitle: `Deposit USDC`,
             amount,
-            symbol: 'USDC.e', // Source symbol - bridging USDC.e
+            symbol: 'USDC',
             chainId: fuse.id,
             fromAddress: user.safeAddress,
             toAddress: destinationAddress,
             metadata: {
               description: `Bridge ${amount} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
-              sourceSymbol: 'USDC.e', // Track source symbol for display
+              sourceSymbol: 'USDC',
               tokenAddress: USDC_STARGATE,
             },
           },
