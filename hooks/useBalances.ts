@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
@@ -13,12 +12,6 @@ import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/ut
 import { publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
-
-// Throttle for the Arbitrum diagnostic Sentry message — emit at most once
-// per minute per session so we don't flood Sentry from the 5s poll cadence.
-// TODO: remove together with the captureMessage call after diagnosis.
-let lastArbitrumDiagnosticAt = 0;
-const ARBITRUM_DIAGNOSTIC_THROTTLE_MS = 60_000;
 
 // Blockscout response structure for both Ethereum and Fuse
 export interface BlockscoutTokenBalance {
@@ -526,52 +519,6 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const polygonTokensFinal = allTokens.filter(t => t.chainId === POLYGON_CHAIN_ID);
   const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
-
-  // TODO: remove after diagnosing why Arbitrum USDC isn't visible on native.
-  // Throttled to 1/min per session; always emitted on Arbitrum fetch rejection.
-  try {
-    const arbRejected = arbitrumResponse.status === PromiseStatus.REJECTED;
-    if (
-      arbRejected ||
-      Date.now() - lastArbitrumDiagnosticAt > ARBITRUM_DIAGNOSTIC_THROTTLE_MS
-    ) {
-      lastArbitrumDiagnosticAt = Date.now();
-      Sentry.captureMessage('balances.diagnostic.arbitrum', {
-        level: 'info',
-        tags: { type: 'balances_diagnostic', chain: 'arbitrum' },
-        extra: {
-          safeAddress,
-          arbitrumStatus: arbitrumResponse.status,
-          arbitrumRawCount:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.length
-              : 0,
-          arbitrumRawSymbols:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.map(t => t.token.symbol)
-              : [],
-          arbitrumRawAddresses:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.map(t =>
-                  (t.token.address || t.token.address_hash || '').toLowerCase(),
-                )
-              : [],
-          arbitrumFilteredCount: arbitrumTokensFinal.length,
-          arbitrumFilteredSymbols: arbitrumTokensFinal.map(t => t.contractTickerSymbol),
-          arbitrumFilteredAddresses: arbitrumTokensFinal.map(t =>
-            (t.contractAddress || '').toLowerCase(),
-          ),
-          tokenListLen: tokenListData.length,
-          tokenListArbitrumCount: tokenListData.filter(
-            t => t.chainId === ARBITRUM_CHAIN_ID,
-          ).length,
-          arbitrumError: arbRejected ? String(arbitrumResponse.reason) : undefined,
-        },
-      });
-    }
-  } catch {
-    // Diagnostic must never break the balance fetch.
-  }
 
   return {
     ...totals,
