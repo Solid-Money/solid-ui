@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
@@ -6,35 +5,13 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
-import { ADDRESSES, EXPO_PUBLIC_ALCHEMY_API_KEY } from '@/lib/config';
-import {
-  fetchTokenBalancesWithFallback,
-  getLastTokenBalancesTrace,
-} from '@/lib/data-source';
+import { ADDRESSES } from '@/lib/config';
+import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
-
-// Throttle for the Arbitrum diagnostic Sentry message — emit at most once
-// per minute per session so we don't flood Sentry from the 5s poll cadence.
-// TODO: remove together with the captureMessage call after diagnosis.
-let lastArbitrumDiagnosticAt = 0;
-const ARBITRUM_DIAGNOSTIC_THROTTLE_MS = 60_000;
-
-// TODO: remove together with the captureMessage call after diagnosis.
-let lastBaseDiagnosticAt = 0;
-const BASE_DIAGNOSTIC_THROTTLE_MS = 60_000;
-
-// First 3 chars of the Alchemy key baked into this build plus its total
-// length, so the Sentry diagnostic can confirm web (Vercel) and native
-// (Expo) builds actually resolved the same EXPO_PUBLIC_ALCHEMY_API_KEY at
-// build time. Empty string means the var was missing in the build env.
-// TODO: remove together with the diagnostic.
-const ALCHEMY_KEY_FINGERPRINT = EXPO_PUBLIC_ALCHEMY_API_KEY
-  ? `${EXPO_PUBLIC_ALCHEMY_API_KEY.slice(0, 3)}…(len=${EXPO_PUBLIC_ALCHEMY_API_KEY.length})`
-  : 'EMPTY';
 
 // Blockscout response structure for both Ethereum and Fuse
 export interface BlockscoutTokenBalance {
@@ -542,141 +519,6 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const polygonTokensFinal = allTokens.filter(t => t.chainId === POLYGON_CHAIN_ID);
   const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
-
-  // TODO: remove after diagnosing why Arbitrum USDC isn't visible on native.
-  // Throttled to 1/min per session; always emitted on Arbitrum fetch rejection.
-  try {
-    const arbRejected = arbitrumResponse.status === PromiseStatus.REJECTED;
-    if (
-      arbRejected ||
-      Date.now() - lastArbitrumDiagnosticAt > ARBITRUM_DIAGNOSTIC_THROTTLE_MS
-    ) {
-      lastArbitrumDiagnosticAt = Date.now();
-      Sentry.captureMessage('balances.diagnostic.arbitrum', {
-        level: 'info',
-        tags: { type: 'balances_diagnostic', chain: 'arbitrum' },
-        extra: {
-          safeAddress,
-          arbitrumStatus: arbitrumResponse.status,
-          arbitrumRawCount:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.length
-              : 0,
-          arbitrumRawSymbols:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.map(t => t.token.symbol)
-              : [],
-          arbitrumRawAddresses:
-            arbitrumResponse.status === PromiseStatus.FULFILLED
-              ? arbitrumResponse.value.map(t =>
-                  (t.token.address || t.token.address_hash || '').toLowerCase(),
-                )
-              : [],
-          arbitrumFilteredCount: arbitrumTokensFinal.length,
-          arbitrumFilteredSymbols: arbitrumTokensFinal.map(t => t.contractTickerSymbol),
-          arbitrumFilteredAddresses: arbitrumTokensFinal.map(t =>
-            (t.contractAddress || '').toLowerCase(),
-          ),
-          tokenListLen: tokenListData.length,
-          tokenListArbitrumCount: tokenListData.filter(
-            t => t.chainId === ARBITRUM_CHAIN_ID,
-          ).length,
-          arbitrumError: arbRejected ? String(arbitrumResponse.reason) : undefined,
-          alchemyKeyFingerprint: ALCHEMY_KEY_FINGERPRINT,
-        },
-      });
-    }
-  } catch {
-    // Diagnostic must never break the balance fetch.
-  }
-
-  // TODO: remove after diagnosing why Base USDC isn't visible on native.
-  // Throttled to 1/min per session; always emitted on Base fetch rejection.
-  try {
-    const baseRejected = baseResponse.status === PromiseStatus.REJECTED;
-    if (baseRejected || Date.now() - lastBaseDiagnosticAt > BASE_DIAGNOSTIC_THROTTLE_MS) {
-      lastBaseDiagnosticAt = Date.now();
-
-      const baseTrace = getLastTokenBalancesTrace(BASE_CHAIN_ID);
-
-      // Ground-truth: read Base USDC balance directly on-chain so we can
-      // tell the difference between "user has no USDC" and "Alchemy/Blockscout
-      // hide it for some reason". One extra eth_call per minute is acceptable
-      // for the diagnostic window.
-      let baseUsdcOnChainBalance: string | null = null;
-      let baseUsdcOnChainError: string | undefined;
-      try {
-        const balance = await readContract(publicClient(base.id), {
-          address: ADDRESSES.base.usdc,
-          abi: [
-            {
-              inputs: [{ name: 'account', type: 'address' }],
-              name: 'balanceOf',
-              outputs: [{ name: '', type: 'uint256' }],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ] as const,
-          functionName: 'balanceOf',
-          args: [safeAddress as `0x${string}`],
-        });
-        baseUsdcOnChainBalance = balance.toString();
-      } catch (e) {
-        baseUsdcOnChainError = e instanceof Error ? e.message : String(e);
-      }
-
-      Sentry.captureMessage('balances.diagnostic.base', {
-        level: 'info',
-        tags: { type: 'balances_diagnostic', chain: 'base' },
-        extra: {
-          safeAddress,
-          baseStatus: baseResponse.status,
-          baseRawCount:
-            baseResponse.status === PromiseStatus.FULFILLED ? baseResponse.value.length : 0,
-          baseRawSymbols:
-            baseResponse.status === PromiseStatus.FULFILLED
-              ? baseResponse.value.map(t => t.token.symbol)
-              : [],
-          baseRawAddresses:
-            baseResponse.status === PromiseStatus.FULFILLED
-              ? baseResponse.value.map(t =>
-                  (t.token.address || t.token.address_hash || '').toLowerCase(),
-                )
-              : [],
-          baseRawValues:
-            baseResponse.status === PromiseStatus.FULFILLED
-              ? baseResponse.value.map(t => t.value)
-              : [],
-          baseFilteredCount: baseTokensFinal.length,
-          baseFilteredSymbols: baseTokensFinal.map(t => t.contractTickerSymbol),
-          baseFilteredAddresses: baseTokensFinal.map(t =>
-            (t.contractAddress || '').toLowerCase(),
-          ),
-          baseFilteredBalances: baseTokensFinal.map(t => t.balance),
-          baseFilteredQuoteRates: baseTokensFinal.map(t => t.quoteRate),
-          tokenListLen: tokenListData.length,
-          tokenListBaseCount: tokenListData.filter(t => t.chainId === BASE_CHAIN_ID).length,
-          tokenListBaseAddresses: tokenListData
-            .filter(t => t.chainId === BASE_CHAIN_ID)
-            .map(t => t.address?.toLowerCase()),
-          baseError: baseRejected ? String(baseResponse.reason) : undefined,
-          // Which provider actually answered, and why Alchemy was bypassed if it was.
-          baseFetchSource: baseTrace?.source ?? 'unknown',
-          baseAlchemyError: baseTrace?.alchemyError,
-          baseBlockscoutError: baseTrace?.blockscoutError,
-          baseTraceRawCount: baseTrace?.rawCount,
-          // On-chain ground truth for Base USDC at the same safeAddress.
-          baseUsdcOnChainBalance,
-          baseUsdcOnChainError,
-          baseUsdcConfiguredAddress: ADDRESSES.base.usdc.toLowerCase(),
-          // Build-time fingerprint of the Alchemy key to compare web vs native.
-          alchemyKeyFingerprint: ALCHEMY_KEY_FINGERPRINT,
-        },
-      });
-    }
-  } catch {
-    // Diagnostic must never break the balance fetch.
-  }
 
   return {
     ...totals,
