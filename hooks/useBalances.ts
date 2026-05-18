@@ -20,6 +20,10 @@ import useUser from './useUser';
 let lastArbitrumDiagnosticAt = 0;
 const ARBITRUM_DIAGNOSTIC_THROTTLE_MS = 60_000;
 
+// TODO: remove together with the captureMessage call after diagnosis.
+let lastBaseDiagnosticAt = 0;
+const BASE_DIAGNOSTIC_THROTTLE_MS = 60_000;
+
 // Blockscout response structure for both Ethereum and Fuse
 export interface BlockscoutTokenBalance {
   token: {
@@ -566,6 +570,54 @@ const fetchTokenBalances = async (safeAddress: string) => {
             t => t.chainId === ARBITRUM_CHAIN_ID,
           ).length,
           arbitrumError: arbRejected ? String(arbitrumResponse.reason) : undefined,
+        },
+      });
+    }
+  } catch {
+    // Diagnostic must never break the balance fetch.
+  }
+
+  // TODO: remove after diagnosing why Base USDC isn't visible on native.
+  // Throttled to 1/min per session; always emitted on Base fetch rejection.
+  try {
+    const baseRejected = baseResponse.status === PromiseStatus.REJECTED;
+    if (baseRejected || Date.now() - lastBaseDiagnosticAt > BASE_DIAGNOSTIC_THROTTLE_MS) {
+      lastBaseDiagnosticAt = Date.now();
+      Sentry.captureMessage('balances.diagnostic.base', {
+        level: 'info',
+        tags: { type: 'balances_diagnostic', chain: 'base' },
+        extra: {
+          safeAddress,
+          baseStatus: baseResponse.status,
+          baseRawCount:
+            baseResponse.status === PromiseStatus.FULFILLED ? baseResponse.value.length : 0,
+          baseRawSymbols:
+            baseResponse.status === PromiseStatus.FULFILLED
+              ? baseResponse.value.map(t => t.token.symbol)
+              : [],
+          baseRawAddresses:
+            baseResponse.status === PromiseStatus.FULFILLED
+              ? baseResponse.value.map(t =>
+                  (t.token.address || t.token.address_hash || '').toLowerCase(),
+                )
+              : [],
+          baseRawValues:
+            baseResponse.status === PromiseStatus.FULFILLED
+              ? baseResponse.value.map(t => t.value)
+              : [],
+          baseFilteredCount: baseTokensFinal.length,
+          baseFilteredSymbols: baseTokensFinal.map(t => t.contractTickerSymbol),
+          baseFilteredAddresses: baseTokensFinal.map(t =>
+            (t.contractAddress || '').toLowerCase(),
+          ),
+          baseFilteredBalances: baseTokensFinal.map(t => t.balance),
+          baseFilteredQuoteRates: baseTokensFinal.map(t => t.quoteRate),
+          tokenListLen: tokenListData.length,
+          tokenListBaseCount: tokenListData.filter(t => t.chainId === BASE_CHAIN_ID).length,
+          tokenListBaseAddresses: tokenListData
+            .filter(t => t.chainId === BASE_CHAIN_ID)
+            .map(t => t.address?.toLowerCase()),
+          baseError: baseRejected ? String(baseResponse.reason) : undefined,
         },
       });
     }
