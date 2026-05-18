@@ -5,6 +5,11 @@ import { BlockscoutTransaction, BlockscoutTransactions, TokenType } from '@/lib/
 
 import type { BlockscoutTokenBalance } from '@/hooks/useBalances';
 
+// Dedicated axios instance: the global axios in lib/api.ts has a request
+// interceptor that injects the Solid backend Bearer JWT on iOS/Android, which
+// Alchemy rejects with 401. Using axios.create() bypasses that interceptor.
+const alchemyAxios = axios.create();
+
 /**
  * Thin Alchemy JSON-RPC client plus mappers that shape responses into the
  * existing `BlockscoutTokenBalance` / `BlockscoutTransactions` types so
@@ -60,7 +65,7 @@ interface AlchemyAssetTransfersResult {
 const jsonRpc = async <T>(chainId: number, method: string, params: unknown[]): Promise<T> => {
   const url = ALCHEMY_CHAIN_URLS[chainId];
   if (!url) throw new Error(`No Alchemy URL configured for chain ${chainId}`);
-  const response = await axios.post<JsonRpcResponse<T>>(
+  const response = await alchemyAxios.post<JsonRpcResponse<T>>(
     url,
     { jsonrpc: '2.0', id: 1, method, params },
     { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
@@ -104,7 +109,7 @@ const alchemyGetTokenMetadataBatch = async (
   }));
 
   try {
-    const response = await axios.post<JsonRpcResponse<AlchemyTokenMetadata>[]>(url, body, {
+    const response = await alchemyAxios.post<JsonRpcResponse<AlchemyTokenMetadata>[]>(url, body, {
       timeout: ALCHEMY_REQUEST_TIMEOUT_MS,
     });
     const data = Array.isArray(response.data) ? response.data : [];

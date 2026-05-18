@@ -6,7 +6,7 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_ALCHEMY_API_KEY } from '@/lib/config';
 import {
   fetchTokenBalancesWithFallback,
   getLastTokenBalancesTrace,
@@ -26,6 +26,15 @@ const ARBITRUM_DIAGNOSTIC_THROTTLE_MS = 60_000;
 // TODO: remove together with the captureMessage call after diagnosis.
 let lastBaseDiagnosticAt = 0;
 const BASE_DIAGNOSTIC_THROTTLE_MS = 60_000;
+
+// First 6 chars of the Alchemy key baked into this build, so the Sentry
+// diagnostic can confirm web (Vercel) and native (Expo) builds actually
+// resolved the same EXPO_PUBLIC_ALCHEMY_API_KEY at build time. Empty string
+// means the var was missing in the build env.
+// TODO: remove together with the diagnostic.
+const ALCHEMY_KEY_FINGERPRINT = EXPO_PUBLIC_ALCHEMY_API_KEY
+  ? `${EXPO_PUBLIC_ALCHEMY_API_KEY.slice(0, 6)}…(len=${EXPO_PUBLIC_ALCHEMY_API_KEY.length})`
+  : 'EMPTY';
 
 // Blockscout response structure for both Ethereum and Fuse
 export interface BlockscoutTokenBalance {
@@ -573,6 +582,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
             t => t.chainId === ARBITRUM_CHAIN_ID,
           ).length,
           arbitrumError: arbRejected ? String(arbitrumResponse.reason) : undefined,
+          alchemyKeyFingerprint: ALCHEMY_KEY_FINGERPRINT,
         },
       });
     }
@@ -659,6 +669,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
           baseUsdcOnChainBalance,
           baseUsdcOnChainError,
           baseUsdcConfiguredAddress: ADDRESSES.base.usdc.toLowerCase(),
+          // Build-time fingerprint of the Alchemy key to compare web vs native.
+          alchemyKeyFingerprint: ALCHEMY_KEY_FINGERPRINT,
         },
       });
     }
