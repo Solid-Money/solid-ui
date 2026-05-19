@@ -926,9 +926,9 @@ export default function CardDepositInternalForm() {
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
-          type: TransactionType.CARD_TRANSACTION,
-          title: `Card Deposit`,
-          shortTitle: `Card Deposit`,
+          type: TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
+          title: `Borrow and deposit to Card`,
+          shortTitle: `Borrow and deposit to Card`,
           amount: data.amount,
           symbol: sourceSymbol,
           chainId: fuse.id,
@@ -936,7 +936,7 @@ export default function CardDepositInternalForm() {
           toAddress: borrowFundingAddress,
           status: TransactionStatus.PENDING,
           metadata: {
-            description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+            description: `Borrow and deposit ${data.amount} ${sourceSymbol} to card`,
             processingStatus: 'bridging',
             tokenAddress: sourceTokenAddress,
           },
@@ -1053,9 +1053,9 @@ export default function CardDepositInternalForm() {
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
-          type: TransactionType.CARD_TRANSACTION,
-          title: `Card Deposit`,
-          shortTitle: `Card Deposit`,
+          type: TransactionType.BRIDGE_DEPOSIT,
+          title: `Deposit ${sourceSymbol} to Card`,
+          shortTitle: `Deposit ${sourceSymbol}`,
           amount: data.amount,
           symbol: sourceSymbol,
           chainId: fuse.id,
