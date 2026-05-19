@@ -1345,7 +1345,8 @@ export interface ActivityEvents {
 
 export interface UpdateActivityEvent {
   status?: TransactionStatus;
-  txHash?: string;
+  hash?: string;
+  url?: string;
   userOpHash?: string;
   metadata?: Record<string, any>;
 }

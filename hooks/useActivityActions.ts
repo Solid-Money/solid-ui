@@ -155,7 +155,8 @@ export function useActivityActions() {
       withRefreshToken(() =>
         updateActivityEvent(clientTxId, {
           status: backendStatus,
-          txHash: updates.hash,
+          hash: updates.hash,
+          url: updates.url,
           userOpHash: updates.userOpHash,
           metadata: updates.metadata,
         }),
