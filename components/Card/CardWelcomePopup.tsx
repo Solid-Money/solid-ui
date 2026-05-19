@@ -36,7 +36,7 @@ const CardWelcomePopup = ({ isOpen, onClose }: CardWelcomePopupProps) => {
             <Text className="text-base font-medium text-white/70">
               Your account is verified and your virtual Solid card is officially live. You can now
               view your card details, add it to your digital wallet, and start spending online
-              instantly while your physical card is on its way.
+              instantly.
             </Text>
           </View>
 
