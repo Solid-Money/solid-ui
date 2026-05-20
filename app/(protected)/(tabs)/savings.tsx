@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
@@ -112,6 +112,17 @@ export default function Savings() {
   const isLoading = isBalanceLoading || isTransactionsLoading;
   const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
 
+  // Only show the full-page loader on the very first load. When the user
+  // switches vaults the per-vault queries refetch (isLoading flips true) — we
+  // must NOT unmount the page for that, or the vault tabs feel "stuck" on
+  // Android while reanimated components remount. Inline skeletons in the
+  // savings detail section cover the refetch instead.
+  const hasInitialDataLoadedRef = useRef(false);
+  if (!isLoading && !hasInitialDataLoadedRef.current) {
+    hasInitialDataLoadedRef.current = true;
+  }
+  const isInitialLoading = isLoading && !hasInitialDataLoadedRef.current;
+
   const displayPrefix = useMemo(() => {
     if (VAULTS[selectedVault].name === 'USDC') {
       return '$';
@@ -169,7 +180,7 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isInitialLoading} stickyHeader={stickyHeader}>
       <View className="mx-auto w-full max-w-7xl gap-10 px-4 pb-8 md:gap-7 md:pb-12">
         {isScreenMedium ? (
           <View className="flex-row gap-4">
@@ -217,42 +228,46 @@ export default function Savings() {
                       <TooltipPopover text="Redeemable amount: balance x exchange rate" />
                     </View>
                     <View className="flex-row items-center">
-                      <SavingCountUp
-                        prefix={displayPrefix}
-                        suffix={displaySuffix ?? ''}
-                        balance={balance ?? 0}
-                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
-                        decimals={currentVault.decimals}
-                        apy={vaultAPY}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        userDepositTransactions={userDepositTransactions}
-                        exchangeRate={exchangeRate}
-                        tokenAddress={currentVault.vaults[0].address}
-                        vault={currentVault.name}
-                        summary={savingsSummary}
-                        classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-                        }}
-                        styles={{
-                          wholeText: {
-                            fontSize: isScreenMedium ? 70 : fontSize(3),
-                            fontWeight: 'medium',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                            marginRight: -2,
-                          },
-                          decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                            fontWeight: '300',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                          },
-                          suffixText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                          },
-                        }}
-                      />
+                      {isLoading ? (
+                        <Skeleton className="h-11 w-44 rounded-md bg-purple/50 md:h-[70px] md:w-60" />
+                      ) : (
+                        <SavingCountUp
+                          prefix={displayPrefix}
+                          suffix={displaySuffix ?? ''}
+                          balance={balance ?? 0}
+                          decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
+                          decimals={currentVault.decimals}
+                          apy={vaultAPY}
+                          lastTimestamp={firstDepositTimestamp ?? 0}
+                          userDepositTransactions={userDepositTransactions}
+                          exchangeRate={exchangeRate}
+                          tokenAddress={currentVault.vaults[0].address}
+                          vault={currentVault.name}
+                          summary={savingsSummary}
+                          classNames={{
+                            wrapper: 'text-foreground',
+                            decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          }}
+                          styles={{
+                            wholeText: {
+                              fontSize: isScreenMedium ? 70 : fontSize(3),
+                              fontWeight: 'medium',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                              marginRight: -2,
+                            },
+                            decimalText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                              fontWeight: '300',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                            },
+                            suffixText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                            },
+                          }}
+                        />
+                      )}
                     </View>
                   </View>
                   <View className="gap-1">
@@ -263,45 +278,49 @@ export default function Savings() {
                       <TooltipPopover text="Profit to date: total value - total deposited" />
                     </View>
                     <View className="flex-row items-center">
-                      <SavingCountUp
-                        prefix={displayPrefix}
-                        suffix={displaySuffix ?? ''}
-                        balance={balance ?? 0}
-                        decimals={currentVault.decimals}
-                        apy={vaultAPY}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
-                        userDepositTransactions={userDepositTransactions}
-                        exchangeRate={exchangeRate}
-                        tokenAddress={currentVault.vaults[0].address}
-                        vault={currentVault.name}
-                        summary={savingsSummary}
-                        classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-                        }}
-                        styles={{
-                          wholeText: {
-                            fontSize: isScreenMedium ? 40 : fontSize(3),
-                            fontWeight: 'medium',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                            marginRight: -2,
-                          },
-                          decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                            fontWeight: '300',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                          },
-                          suffixText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                          },
-                        }}
-                      />
+                      {isLoading ? (
+                        <Skeleton className="h-9 w-32 rounded-md bg-purple/50 md:h-10 md:w-40" />
+                      ) : (
+                        <SavingCountUp
+                          prefix={displayPrefix}
+                          suffix={displaySuffix ?? ''}
+                          balance={balance ?? 0}
+                          decimals={currentVault.decimals}
+                          apy={vaultAPY}
+                          lastTimestamp={firstDepositTimestamp ?? 0}
+                          mode={SavingMode.CURRENT}
+                          inputsReady={
+                            !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
+                          }
+                          userDepositTransactions={userDepositTransactions}
+                          exchangeRate={exchangeRate}
+                          tokenAddress={currentVault.vaults[0].address}
+                          vault={currentVault.name}
+                          summary={savingsSummary}
+                          classNames={{
+                            wrapper: 'text-foreground',
+                            decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          }}
+                          styles={{
+                            wholeText: {
+                              fontSize: isScreenMedium ? 40 : fontSize(3),
+                              fontWeight: 'medium',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                              marginRight: -2,
+                            },
+                            decimalText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                              fontWeight: '300',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                            },
+                            suffixText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                            },
+                          }}
+                        />
+                      )}
                     </View>
                   </View>
                 </View>
@@ -412,42 +431,46 @@ export default function Savings() {
                       <TooltipPopover text="Redeemable amount: balance x exchange rate" />
                     </View>
                     <View className="flex-row items-center">
-                      <SavingCountUp
-                        prefix={displayPrefix}
-                        suffix={displaySuffix ?? ''}
-                        balance={balance ?? 0}
-                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
-                        decimals={currentVault.decimals}
-                        apy={vaultAPY}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        userDepositTransactions={userDepositTransactions}
-                        exchangeRate={exchangeRate}
-                        tokenAddress={currentVault.vaults[0].address}
-                        vault={currentVault.name}
-                        summary={savingsSummary}
-                        classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-                        }}
-                        styles={{
-                          wholeText: {
-                            fontSize: isScreenMedium ? 70 : fontSize(3),
-                            fontWeight: 'medium',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                            marginRight: -2,
-                          },
-                          decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                            fontWeight: '300',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                          },
-                          suffixText: {
-                            fontSize: fontSize(2),
-                          },
-                        }}
-                      />
+                      {isLoading ? (
+                        <Skeleton className="h-11 w-44 rounded-md bg-purple/50" />
+                      ) : (
+                        <SavingCountUp
+                          prefix={displayPrefix}
+                          suffix={displaySuffix ?? ''}
+                          balance={balance ?? 0}
+                          decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
+                          decimals={currentVault.decimals}
+                          apy={vaultAPY}
+                          lastTimestamp={firstDepositTimestamp ?? 0}
+                          userDepositTransactions={userDepositTransactions}
+                          exchangeRate={exchangeRate}
+                          tokenAddress={currentVault.vaults[0].address}
+                          vault={currentVault.name}
+                          summary={savingsSummary}
+                          classNames={{
+                            wrapper: 'text-foreground',
+                            decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          }}
+                          styles={{
+                            wholeText: {
+                              fontSize: isScreenMedium ? 70 : fontSize(3),
+                              fontWeight: 'medium',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                              marginRight: -2,
+                            },
+                            decimalText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                              fontWeight: '300',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                            },
+                            suffixText: {
+                              fontSize: fontSize(2),
+                            },
+                          }}
+                        />
+                      )}
                     </View>
                   </View>
                   <View className="gap-1">
@@ -458,45 +481,49 @@ export default function Savings() {
                       <TooltipPopover text="Profit to date: total value - total deposited" />
                     </View>
                     <View className="flex-row items-center">
-                      <SavingCountUp
-                        prefix={displayPrefix}
-                        suffix={displaySuffix ?? ''}
-                        balance={balance ?? 0}
-                        decimals={currentVault.decimals}
-                        apy={vaultAPY}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
-                        userDepositTransactions={userDepositTransactions}
-                        exchangeRate={exchangeRate}
-                        tokenAddress={currentVault.vaults[0].address}
-                        vault={currentVault.name}
-                        summary={savingsSummary}
-                        classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-                        }}
-                        styles={{
-                          wholeText: {
-                            fontSize: isScreenMedium ? 40 : fontSize(3),
-                            fontWeight: 'medium',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                            marginRight: -2,
-                          },
-                          decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                            fontWeight: '300',
-                            fontFamily: 'MonaSans_500Medium',
-                            color: '#ffffff',
-                          },
-                          suffixText: {
-                            fontSize: fontSize(2),
-                          },
-                        }}
-                      />
+                      {isLoading ? (
+                        <Skeleton className="h-11 w-32 rounded-md bg-purple/50" />
+                      ) : (
+                        <SavingCountUp
+                          prefix={displayPrefix}
+                          suffix={displaySuffix ?? ''}
+                          balance={balance ?? 0}
+                          decimals={currentVault.decimals}
+                          apy={vaultAPY}
+                          lastTimestamp={firstDepositTimestamp ?? 0}
+                          mode={SavingMode.CURRENT}
+                          inputsReady={
+                            !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
+                          }
+                          userDepositTransactions={userDepositTransactions}
+                          exchangeRate={exchangeRate}
+                          tokenAddress={currentVault.vaults[0].address}
+                          vault={currentVault.name}
+                          summary={savingsSummary}
+                          classNames={{
+                            wrapper: 'text-foreground',
+                            decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          }}
+                          styles={{
+                            wholeText: {
+                              fontSize: isScreenMedium ? 40 : fontSize(3),
+                              fontWeight: 'medium',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                              marginRight: -2,
+                            },
+                            decimalText: {
+                              fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                              fontWeight: '300',
+                              fontFamily: 'MonaSans_500Medium',
+                              color: '#ffffff',
+                            },
+                            suffixText: {
+                              fontSize: fontSize(2),
+                            },
+                          }}
+                        />
+                      )}
                     </View>
                   </View>
                 </View>
