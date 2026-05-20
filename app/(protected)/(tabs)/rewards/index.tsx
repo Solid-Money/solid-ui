@@ -49,7 +49,7 @@ export default function Rewards() {
       <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-24 pt-6 md:gap-10 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
-            <Text className="text-5xl font-semibold">Rewards</Text>
+            <Text className="text-3xl font-semibold">Rewards</Text>
           </View>
         ) : (
           <Text className="text-3xl font-semibold">Rewards</Text>

@@ -121,7 +121,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         const icon = options.tabBarIcon?.({
           focused: isFocused,
           color: isFocused ? 'white' : 'rgba(255, 255, 255, 1)',
-          size: 24,
+          size: Platform.OS === 'web' ? 36 : 40,
         });
 
         return (

@@ -20,6 +20,7 @@ const DepositImage = () => {
         ...(!isScreenMedium && { marginLeft: 'auto', marginRight: 'auto' }),
         width: isScreenMedium ? 300 : 186,
         height: isScreenMedium ? 300 : 202,
+        marginTop: isScreenMedium ? -10 : 0,
       }}
       alt="Deposit illustration"
     />

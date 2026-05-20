@@ -57,7 +57,9 @@ export default function TabLayout() {
           title: 'Home',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={homeAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={homeAnimation} focused={focused} size={size} />
+          ),
           href: path.HOME,
         }}
       />
@@ -69,8 +71,8 @@ export default function TabLayout() {
           title: 'Savings',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => (
-            <LottieTabIcon source={lightningAnimation} focused={focused} />
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={lightningAnimation} focused={focused} size={size} />
           ),
           href: path.SAVINGS,
         }}
@@ -92,7 +94,9 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={cardAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={cardAnimation} focused={focused} size={size} />
+          ),
           href: path.CARD,
         }}
       />
@@ -113,7 +117,9 @@ export default function TabLayout() {
           title: 'Activity',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={bellAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={bellAnimation} focused={focused} size={size} />
+          ),
           href: path.ACTIVITY,
         }}
       />
