@@ -40,7 +40,8 @@ const SavingsAnalytics = () => {
     historicalVault,
   );
   const currentVaultName = VAULTS[selectedVault]?.name?.toLowerCase();
-  const { data: vaultBreakdown } = useVaultBreakdown(currentVaultName);
+  const { data: vaultBreakdown, isLoading: isVaultBreakdownLoading } =
+    useVaultBreakdown(currentVaultName);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -136,7 +137,9 @@ const SavingsAnalytics = () => {
 
       {selectedTab === Tab.VAULT_BREAKDOWN && (
         <>
-          {vaultBreakdown && vaultBreakdown.length > 0 ? (
+          {isVaultBreakdownLoading ? (
+            <ChartFallback />
+          ) : vaultBreakdown && vaultBreakdown.length > 0 ? (
             <View className="flex-col gap-4 md:flex-row md:justify-between">
               <VaultBreakdownTable
                 data={vaultBreakdown}
