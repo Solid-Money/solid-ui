@@ -140,7 +140,7 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
-  const stickyHeader = isScreenMedium ? (
+  const pageHeader = isScreenMedium ? (
     <View className="mx-auto w-full max-w-7xl px-4 pt-12">
       <DesktopHeader
         isCardFrozen={isCardFrozen}
@@ -163,7 +163,8 @@ export default function CardDetails() {
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly isLoading={isLoading} stickyHeader={stickyHeader}>
+      <PageLayout desktopOnly isLoading={isLoading}>
+        {pageHeader}
         <View className="mx-auto w-full max-w-7xl px-4 pb-12">
           {/* Row 1: Spending Balance Card + Card Image */}
           <View className="mt-12 flex-row gap-6">
@@ -218,7 +219,8 @@ export default function CardDetails() {
 
   // Mobile layout
   return (
-    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isLoading}>
+      {pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
@@ -313,7 +315,7 @@ function DesktopHeader({
 
   return (
     <View className="flex-row justify-between">
-      <Text className="text-5xl font-semibold">Card</Text>
+      <Text className="text-3xl font-semibold">Card</Text>
       <View className="flex-row items-center gap-2">
         <Button
           variant="secondary"

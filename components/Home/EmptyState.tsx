@@ -51,7 +51,7 @@ export default function HomeEmptyState() {
               <>
                 <View className="max-w-2xl flex-1 justify-between gap-6">
                   <View className="gap-3">
-                    <Text className="text-4.5xl font-semibold text-foreground">
+                    <Text className="text-4.5xl font-medium text-foreground">
                       Welcome to Solid
                     </Text>
                     <DepositDescription />
@@ -64,7 +64,7 @@ export default function HomeEmptyState() {
               <>
                 <DepositImage />
                 <View className="items-center gap-3">
-                  <Text className="text-2xl font-bold text-foreground">Welcome to Solid</Text>
+                  <Text className="text-2xl font-medium text-foreground">Welcome to Solid</Text>
                   <DepositDescription />
                 </View>
                 <DepositButton />
@@ -141,7 +141,7 @@ function SolidBenefitCard({
       <Image source={icon} style={{ width: 40, height: 40 }} contentFit="contain" />
       <Text
         className={cn(
-          'max-w-52 text-2xl font-semibold leading-[1.1] text-foreground md:max-w-64 md:text-3xl',
+          'max-w-52 text-2xl font-medium leading-[1.1] text-foreground md:max-w-64 md:text-3xl',
           classNames?.headline,
         )}
       >

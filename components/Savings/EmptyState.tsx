@@ -30,7 +30,7 @@ export default function SavingsEmptyState() {
         <View>
           {isScreenMedium ? (
             <View className="flex-row items-center justify-between">
-              <Text className="text-5xl font-semibold">Savings</Text>
+              <Text className="text-3xl font-semibold">Savings</Text>
               <View className="flex-row gap-2">
                 <DashboardHeaderButtons hideSend hideDeposit />
                 <DepositTrigger
