@@ -25,17 +25,23 @@ interface OrderPhysicalCardModalProps {
 const MODAL_STATE: ModalState = { name: 'order-physical-card', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 
+// Rain embosses firstName + lastName as the displayName on physical cards
+// and only allows alphanumeric characters, spaces, periods, and hyphens.
+const PHYSICAL_CARD_NAME_REGEX = /^[a-zA-Z0-9 .\-]+$/;
+const PHYSICAL_CARD_NAME_MESSAGE =
+  'Only letters, numbers, spaces, periods, and hyphens are allowed';
+
 const shippingSchema = z.object({
   firstName: z
     .string()
     .min(1, { message: 'First name is required' })
     .max(50)
-    .regex(/^[a-zA-Z -]+$/, { message: 'Only Latin characters, spaces, and hyphens' }),
+    .regex(PHYSICAL_CARD_NAME_REGEX, { message: PHYSICAL_CARD_NAME_MESSAGE }),
   lastName: z
     .string()
     .min(1, { message: 'Last name is required' })
     .max(50)
-    .regex(/^[a-zA-Z -]+$/, { message: 'Only Latin characters, spaces, and hyphens' }),
+    .regex(PHYSICAL_CARD_NAME_REGEX, { message: PHYSICAL_CARD_NAME_MESSAGE }),
   line1: z.string().min(1, { message: 'Address is required' }).max(100),
   line2: z.string().max(100).optional().or(z.literal('')),
   city: z.string().min(1, { message: 'City is required' }).max(50),
