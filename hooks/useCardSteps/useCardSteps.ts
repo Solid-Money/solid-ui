@@ -227,9 +227,10 @@ export function useCardSteps(
       }
       return;
     }
-    if (status === RainApplicationStatus.NOT_STARTED || !status) {
-      handleProceedToKyc();
-    }
+    // NOT_STARTED, null, or any unrecognized status (e.g. backend's synthetic
+    // 'didit_forward_failed' when a non-Latin name or missing SSN blocks the
+    // Didit→Rain forward) — let the user resubmit through Didit.
+    handleProceedToKyc();
   }, [
     cardStatusResponse?.rainApplicationStatus,
     cardStatusResponse?.applicationExternalVerificationLink,
