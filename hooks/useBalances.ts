@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
-import { base, fuse, mainnet } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
@@ -111,9 +111,11 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ethBalance,
     fuseBalance,
     baseBalance,
+    arbitrumBalance,
     ethPrice,
     fusePrice,
     basePrice,
+    arbitrumPrice,
     tokenList,
   ] = await Promise.allSettled([
     // Token balances via the data-source dispatcher (Alchemy primary,
@@ -142,9 +144,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
     getBalance(publicClient(base.id), {
       address: safeAddress as `0x${string}`,
     }),
+    getBalance(publicClient(arbitrum.id), {
+      address: safeAddress as `0x${string}`,
+    }),
     fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
     fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
     fetchTokenPriceUsd(NATIVE_TOKENS[base.id]),
+    fetchTokenPriceUsd(NATIVE_TOKENS[arbitrum.id]),
     fetchTokenList({
       isActive: true,
     }),
@@ -353,6 +359,27 @@ const fetchTokenBalances = async (safeAddress: string) => {
       chainId: BASE_CHAIN_ID,
       commonId: baseEthTokenFromList?.commonId,
       tokenId: baseEthTokenFromList?.tokenId,
+    });
+  }
+
+  if (arbitrumBalance.status === PromiseStatus.FULFILLED && Number(arbitrumBalance.value)) {
+    const arbitrumPriceValue =
+      arbitrumPrice.status === PromiseStatus.FULFILLED ? Number(arbitrumPrice.value) : 0;
+    const arbitrumEthTokenFromList = tokenListData.find(
+      token => token.chainId === ARBITRUM_CHAIN_ID && token.symbol === 'ETH',
+    );
+    arbitrumTokens.push({
+      contractTickerSymbol: 'ETH',
+      contractName: 'Ether',
+      contractAddress: zeroAddress,
+      balance: arbitrumBalance.value.toString(),
+      quoteRate: arbitrumPriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: ARBITRUM_CHAIN_ID,
+      commonId: arbitrumEthTokenFromList?.commonId,
+      tokenId: arbitrumEthTokenFromList?.tokenId,
     });
   }
 
