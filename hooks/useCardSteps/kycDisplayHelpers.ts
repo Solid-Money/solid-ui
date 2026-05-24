@@ -267,8 +267,15 @@ export function getStepDescription(
     return 'Additional verification steps are required. Please continue to complete the process.';
   }
 
-  // Didit under review — user should wait
+  // Didit under review — user should wait. Duplicate IP/device filters land
+  // here (Didit dashboard sets them to "review" so the suspicious applicant
+  // doesn't reach Rain). When warnings are attached, surface them so the user
+  // knows what's being checked instead of seeing a generic "few minutes" copy
+  // for what is actually a manual review.
   if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
+    if (warnings.length > 0) {
+      return `Your application is under additional review:\n- ${formatKycWarnings(warnings)}\n\nWe'll update you when the review is complete.`;
+    }
     return 'Your information is being reviewed. This usually takes a few minutes.';
   }
 
