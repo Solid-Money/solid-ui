@@ -254,7 +254,6 @@ export function useCardSteps(
           kycStatus: cardStatusResponse?.kycStatus,
           kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
-          handleContactSupport: openIntercom,
         },
       ),
     [

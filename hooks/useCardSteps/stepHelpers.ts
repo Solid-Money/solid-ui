@@ -13,12 +13,7 @@ import {
   RainApplicationStatus,
 } from '@/lib/types';
 
-import {
-  getStepButtonText,
-  getStepDescription,
-  hasUnretryableFraudWarning,
-  isStepButtonDisabled,
-} from './kycDisplayHelpers';
+import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';
 
 /**
@@ -39,7 +34,6 @@ export function buildCardSteps(
     kycStatus?: KycStatus | null;
     kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
-    handleContactSupport?: () => void;
   },
 ): Step[] {
   const stepOptions =
@@ -67,22 +61,10 @@ export function buildCardSteps(
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
     : 'All is set! Click on "Activate card" to review the agreements and issue your new card.';
 
-  // Didit declined this user via a duplicate/blocklist filter — no Rain
-  // application exists yet, so the Rain handler would just call handleProceedToKyc
-  // (NOT_STARTED branch) and loop them through Didit again. Route to support first.
-  const isFraudRejected =
-    options?.kycStatus === KycStatus.REJECTED &&
-    hasUnretryableFraudWarning(options?.kycWarnings);
-
-  const kycStepOnPress = (() => {
-    if (isFraudRejected && options?.handleContactSupport) {
-      return options.handleContactSupport;
-    }
-    if (options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress) {
-      return options.handleRainKYCPress;
-    }
-    return handleProceedToKyc;
-  })();
+  const kycStepOnPress =
+    options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress
+      ? options.handleRainKYCPress
+      : handleProceedToKyc;
 
   return [
     {
