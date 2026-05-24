@@ -2,25 +2,10 @@ import { z } from 'zod';
 
 import type { RainDocumentType } from '@/lib/types';
 
-/**
- * Rain requires the card display name to contain only Latin characters.
- * Allows Basic Latin + Latin Extended (accented) letters, spaces, hyphens, apostrophes, and periods.
- */
-const LATIN_NAME_REGEX = /^[a-zA-ZÀ-ÖØ-öø-ÿĀ-ſ\s\-'.]+$/;
-const LATIN_NAME_MESSAGE = 'Only Latin characters are allowed (no Cyrillic, Arabic, CJK, etc.)';
-
 export const rainKycFormSchema = z
   .object({
-    firstName: z
-      .string()
-      .min(1, 'First name is required')
-      .max(50)
-      .regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
-    lastName: z
-      .string()
-      .min(1, 'Last name is required')
-      .max(50)
-      .regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
+    firstName: z.string().min(1, 'First name is required').max(50),
+    lastName: z.string().min(1, 'Last name is required').max(50),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
     nationalId: z.string().min(1, 'National ID / SSN is required'),
     countryOfIssue: z.string().length(2, 'Use 2-letter country code'),
