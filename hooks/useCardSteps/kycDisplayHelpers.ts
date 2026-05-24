@@ -73,12 +73,34 @@ const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
   SCREEN_CAPTURE_DETECTED: 'A photo of a screen was detected — please use the original document',
   PRINTED_COPY_DETECTED: 'A printed copy was detected — please use the original document',
   PORTRAIT_MANIPULATION_DETECTED: 'The portrait on the document appears to have been altered',
-  POSSIBLE_DUPLICATED_USER: 'A duplicate account was detected',
+  POSSIBLE_DUPLICATED_USER: 'This identity is already linked to another verified account',
+  DUPLICATED_IP: 'This network has already been used to verify another account',
+  DUPLICATED_DEVICE: 'This device has already been used to verify another account',
   DOCUMENT_NUMBER_NOT_DETECTED: 'Document number could not be read',
   NAME_NOT_DETECTED: 'Name could not be read from the document',
   DATE_OF_BIRTH_NOT_DETECTED: 'Date of birth could not be read from the document',
   INVALID_DATE: 'A date on the document is invalid',
 };
+
+/**
+ * Didit risk tags where a fresh KYC retry can't clear the flag — the user has been
+ * matched by a duplicate / blocklist filter, so spinning up a new Didit session
+ * just produces the same Declined outcome. Surface "Contact support" instead of
+ * "Retry KYC" so the user doesn't loop.
+ */
+const UNRETRYABLE_FRAUD_RISKS: ReadonlySet<string> = new Set([
+  'DUPLICATED_IP',
+  'DUPLICATED_DEVICE',
+  'POSSIBLE_DUPLICATED_USER',
+  'ID_DOCUMENT_IN_BLOCKLIST',
+]);
+
+export function hasUnretryableFraudWarning(
+  warnings: KycWarning[] | null | undefined,
+): boolean {
+  if (!warnings || warnings.length === 0) return false;
+  return warnings.some(w => Boolean(w.risk) && UNRETRYABLE_FRAUD_RISKS.has(w.risk));
+}
 
 /** Convert a SCREAMING_SNAKE_CASE tag into a Title-Cased phrase. */
 function formatRiskTag(tag: string): string {
@@ -223,9 +245,15 @@ export function getStepDescription(
     return getKYCDescription(options.rainApplicationStatus, warnings);
   }
 
-  // Didit KYC rejected or expired before reaching Rain — show rejection reasons
+  // Didit KYC rejected or expired before reaching Rain — show rejection reasons.
+  // For fraud/duplicate filters (DUPLICATED_IP, DUPLICATED_DEVICE, ...) a fresh
+  // Didit session will hit the same flag, so the description points to support
+  // instead of inviting a retry.
   if (options?.kycStatus === KycStatus.REJECTED) {
     if (warnings.length > 0) {
+      if (hasUnretryableFraudWarning(warnings)) {
+        return `We couldn't approve your application:\n- ${formatKycWarnings(warnings)}`;
+      }
       return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
     }
     return 'Your identity verification was declined. Please try again with a valid ID.';
@@ -319,6 +347,7 @@ export function getStepButtonText(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
+    kycWarnings?: KycWarning[] | null;
   },
 ): string | undefined {
   const isRecognizedRainStatus =
@@ -329,8 +358,13 @@ export function getStepButtonText(
     return getKYCButtonText(options.rainApplicationStatus);
   }
 
-  // Didit KYC rejected — allow retry
+  // Didit KYC rejected — usually allow retry, but when the decline is from a
+  // duplicate/blocklist filter (IP, device, identity) a retry will hit the
+  // same flag, so route the user to support instead.
   if (options?.kycStatus === KycStatus.REJECTED) {
+    if (hasUnretryableFraudWarning(options.kycWarnings)) {
+      return 'Contact support';
+    }
     return 'Retry KYC';
   }
 
