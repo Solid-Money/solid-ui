@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Info } from 'lucide-react-native';
 
@@ -6,10 +6,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import {
-  useCreateOnrampAutomation,
-  useOnrampAutomation,
-} from '@/hooks/useOnrampAutomation';
+import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import type { OnrampAutomationRail } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -54,26 +51,8 @@ const Row = ({
 
 export const VirtualAccountDetailsModal = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { data, isLoading: isQueryLoading } = useOnrampAutomation();
-  const createMutation = useCreateOnrampAutomation();
+  const { data: automation, isLoading } = useOnrampAutomation();
   const [rail, setRail] = useState<OnrampAutomationRail>('ach');
-  const hasTriggeredCreate = useRef(false);
-
-  useEffect(() => {
-    if (
-      !isQueryLoading &&
-      !data &&
-      !createMutation.isPending &&
-      !createMutation.isError &&
-      !hasTriggeredCreate.current
-    ) {
-      hasTriggeredCreate.current = true;
-      createMutation.mutate('ach');
-    }
-  }, [isQueryLoading, data, createMutation]);
-
-  const automation = data ?? createMutation.data;
-  const isLoading = isQueryLoading || createMutation.isPending;
 
   if (isLoading) {
     return (
@@ -89,9 +68,9 @@ export const VirtualAccountDetailsModal = () => {
         <Text className="text-base text-white">Could not load your bank details.</Text>
         <Button
           className="h-12 rounded-2xl px-6"
-          onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+          onPress={() => setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS)}
         >
-          <Text className="text-base font-bold text-black">Close</Text>
+          <Text className="text-base font-bold text-black">Try again</Text>
         </Button>
       </View>
     );
@@ -104,7 +83,7 @@ export const VirtualAccountDetailsModal = () => {
       <View className="items-center gap-2">
         <Text className="text-2xl font-bold text-white">Deposit USD</Text>
         <Text className="text-center text-base text-gray-400">
-          Send a transfer from your bank — funds arrive as USDC in your Solid balance.
+          Send a transfer from your bank — funds arrive as soUSD in your Solid balance.
         </Text>
       </View>
 

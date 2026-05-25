@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -7,25 +7,26 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { DepositMethod, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
-import { useDimension } from './useDimension';
-
 const useDepositBuyCryptoOptions = () => {
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
-  const { isScreenMedium } = useDimension();
   const { data: cardStatus } = useCardStatus();
+  useEffect(() => {
+    console.warn(cardStatus);
+  }, [cardStatus]);
+  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
     });
-
-    const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
 
     if (!isRainApproved) {
       setModal(DEPOSIT_MODAL.CLOSE);
@@ -33,16 +34,19 @@ const useDepositBuyCryptoOptions = () => {
       return;
     }
 
-    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
-  }, [cardStatus?.rainApplicationStatus, router, setModal]);
+    if (existingAutomation) {
+      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+      return;
+    }
+
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
+  }, [existingAutomation, isRainApproved, router, setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [
       {
         text: 'Bank Deposit',
-        subtitle: isScreenMedium
-          ? 'Wire or ACH from your bank.\nFunds arrive as USDC.'
-          : 'Wire or ACH from your bank. Funds arrive as USDC.',
+        subtitle: 'Wire or ACH from your bank.',
         chipText: 'Cheapest',
         icon: (
           <Image
@@ -55,7 +59,7 @@ const useDepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleBankDepositPress, isScreenMedium],
+    [handleBankDepositPress],
   );
 
   const filteredOptions =
