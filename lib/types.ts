@@ -637,6 +637,40 @@ export interface RainContractResponseDto {
   onramp?: RainContractOnrampDto;
 }
 
+export type OnrampAutomationRail = 'ach' | 'wire';
+
+export interface OnrampAutomationDepositAddressDto {
+  type: 'fiat';
+  beneficiaryName: string;
+  beneficiaryAddress: string;
+  beneficiaryBankName: string;
+  beneficiaryBankAddress: string;
+  accountNumber: string;
+  routingNumber: string;
+}
+
+export interface OnrampAutomationSourceDto {
+  currency: 'usd';
+  rail: OnrampAutomationRail;
+}
+
+export interface OnrampAutomationDestinationDto {
+  currency: string;
+  rail: string;
+  address: { type: 'onchain'; address: string };
+}
+
+export interface OnrampAutomationResponseDto {
+  id: string;
+  rainAutomationId: string;
+  status: 'active' | 'deleted' | 'failed';
+  source: OnrampAutomationSourceDto;
+  destination: OnrampAutomationDestinationDto;
+  depositAddress: OnrampAutomationDepositAddressDto;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export enum LayerZeroTransactionStatus {
   INFLIGHT = 'INFLIGHT',
   CONFIRMING = 'CONFIRMING',

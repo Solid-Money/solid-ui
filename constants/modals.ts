@@ -75,6 +75,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_token_selector',
     number: 17,
   },
+  OPEN_VIRTUAL_ACCOUNT_DETAILS: {
+    name: 'open_virtual_account_details',
+    number: 18,
+  },
 };
 
 export const SEND_MODAL = {

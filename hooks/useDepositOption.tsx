@@ -19,6 +19,7 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
+import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -128,6 +129,8 @@ const useDepositOption = ({
   const isDepositDirectlyTokens =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
+  const isVirtualAccountDetails =
+    currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -252,6 +255,10 @@ const useDepositOption = ({
       return <DepositDirectlyTokens />;
     }
 
+    if (isVirtualAccountDetails) {
+      return <VirtualAccountDetailsModal />;
+    }
+
     if (isTokenSelector) {
       if (depositFromSolid) {
         return <SavingsDepositTokenSelector />;
@@ -280,6 +287,7 @@ const useDepositOption = ({
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
     if (isDepositDirectlyTokens) return 'deposit-directly-tokens';
     if (isTokenSelector) return 'token-selector';
+    if (isVirtualAccountDetails) return 'virtual-account-details';
     return 'deposit-options';
   };
 
@@ -297,6 +305,7 @@ const useDepositOption = ({
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
+    if (isVirtualAccountDetails) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
     return 'Add funds';
