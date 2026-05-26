@@ -3,8 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Wallet } from 'lucide-react-native';
-import { formatUnits, zeroAddress } from 'viem';
-import { useBalance } from 'wagmi';
+import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -14,10 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import useUser from '@/hooks/useUser';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { TokenType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -37,56 +35,78 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
       setModal: state.setModal,
     })),
   );
-  const { user } = useUser();
 
-  const tokenType = selectedToken?.type || TokenType.ERC20;
-  const isNative = tokenType === TokenType.NATIVE;
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, isLoading } =
+    useWalletTokens();
 
-  const { data: balanceNative, isLoading: isBalanceNativeLoading } = useBalance({
-    address: user?.safeAddress as `0x${string}` | undefined,
-    chainId: selectedToken?.chainId,
-    query: {
-      enabled: !!user?.safeAddress && !!selectedToken && isNative,
-    },
-  });
+  // Use the live token from useWalletTokens (5s polling + SSE-invalidated) so
+  // the balance stays current after a previous send. The `selectedToken`
+  // snapshot in the store is captured at selection time and would otherwise
+  // show a stale balance — and wagmi's useBalance has a 5-minute default
+  // staleTime that isn't invalidated by the safe-account send flow.
+  const liveToken = useMemo(() => {
+    if (!selectedToken) return null;
+    const allTokens = [
+      ...ethereumTokens,
+      ...fuseTokens,
+      ...polygonTokens,
+      ...baseTokens,
+      ...arbitrumTokens,
+    ];
+    const fresh = allTokens.find(
+      t =>
+        t.contractAddress === selectedToken.contractAddress && t.chainId === selectedToken.chainId,
+    );
+    return fresh ?? selectedToken;
+  }, [selectedToken, ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens]);
 
-  const { data: balanceERC20, isLoading: isBalanceERC20Loading } = useBalance({
-    address: user?.safeAddress as `0x${string}` | undefined,
-    token:
-      selectedToken && !isNative && selectedToken.contractAddress !== zeroAddress
-        ? (selectedToken.contractAddress as `0x${string}`)
-        : undefined,
-    chainId: selectedToken?.chainId,
-    query: {
-      enabled: !!user?.safeAddress && !!selectedToken && !isNative,
-    },
-  });
-
-  const balance = isNative ? balanceNative?.value : balanceERC20?.value;
-  const isLoading = isNative ? isBalanceNativeLoading : isBalanceERC20Loading;
+  const balanceWei = useMemo(() => {
+    if (!liveToken) return 0n;
+    try {
+      return BigInt(liveToken.balance || '0');
+    } catch {
+      return 0n;
+    }
+  }, [liveToken]);
 
   const balanceAmount = useMemo(() => {
-    if (!selectedToken) return 0;
-    if (balance) {
-      return Number(formatUnits(balance, selectedToken.contractDecimals));
-    }
-    return Number(
-      formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals),
-    );
-  }, [selectedToken, balance]);
+    if (!liveToken) return 0;
+    return Number(formatUnits(balanceWei, liveToken.contractDecimals));
+  }, [liveToken, balanceWei]);
 
   const sendSchema = useMemo(() => {
     return z.object({
       amount: z
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
-        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
-        })
-        .transform(val => Number(val)),
+        .refine(
+          val => {
+            if (!liveToken) return false;
+            try {
+              return parseUnits(val, liveToken.contractDecimals) > 0n;
+            } catch {
+              return false;
+            }
+          },
+          { error: 'Amount must be greater than 0' },
+        )
+        // Compare in wei so floating-point precision can't enable Send for
+        // amounts that round above the on-chain balance.
+        .refine(
+          val => {
+            if (!liveToken) return false;
+            try {
+              return parseUnits(val, liveToken.contractDecimals) <= balanceWei;
+            } catch {
+              return false;
+            }
+          },
+          {
+            error: `Available balance is ${formatNumber(balanceAmount)} ${liveToken?.contractTickerSymbol || ''}`,
+          },
+        ),
     });
-  }, [selectedToken, balanceAmount]);
+  }, [liveToken, balanceAmount, balanceWei]);
 
   const {
     control,
@@ -102,9 +122,9 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   });
 
   const balanceUSD = useMemo(() => {
-    if (!selectedToken) return 0;
-    return Number(amount) * (selectedToken?.quoteRate || 0);
-  }, [selectedToken, amount]);
+    if (!liveToken) return 0;
+    return Number(amount) * (liveToken?.quoteRate || 0);
+  }, [liveToken, amount]);
 
   useEffect(() => {
     if (amount) setValue('amount', amount);
@@ -121,18 +141,21 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   const handleTokenSelectorPress = useCallback(() => {
     track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTOR_OPENED, {
       source: 'send_modal',
-      current_token: selectedToken?.contractTickerSymbol || null,
+      current_token: liveToken?.contractTickerSymbol || null,
     });
     setModal(SEND_MODAL.OPEN_TOKEN_SELECTOR);
-  }, [setModal, selectedToken]);
+  }, [setModal, liveToken]);
 
   const handleMaxPress = useCallback(() => {
-    if (selectedToken && balanceAmount > 0) {
-      const maxAmount = balanceAmount.toString();
-      setAmount(maxAmount);
-      setValue('amount', maxAmount);
-    }
-  }, [setAmount, setValue, selectedToken, balanceAmount]);
+    if (!liveToken || balanceWei === 0n) return;
+    // Format from the BigInt directly so the resulting decimal string
+    // round-trips through parseUnits exactly. Routing through Number()
+    // (then `.toString()`) drops low-order digits and can make parseUnits
+    // round above the actual balance, causing the on-chain transfer to revert.
+    const maxAmount = formatUnits(balanceWei, liveToken.contractDecimals);
+    setAmount(maxAmount);
+    setValue('amount', maxAmount);
+  }, [setAmount, setValue, liveToken, balanceWei]);
 
   const onSubmit = useCallback(
     (data: any) => {
@@ -150,15 +173,15 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
         <View className="gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-medium opacity-70">Amount</Text>
-            {selectedToken && (
+            {liveToken && (
               <View className="flex-row items-center gap-2">
                 <Wallet size={16} color="#ffffff80" />
                 <Text className="text-base opacity-50">
-                  {isLoading
+                  {isLoading && balanceWei === 0n
                     ? '...'
-                    : `${formatNumber(balanceAmount)} ${selectedToken.contractTickerSymbol}`}
+                    : `${formatNumber(balanceAmount)} ${liveToken.contractTickerSymbol}`}
                 </Text>
-                {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
+                {balanceWei > 0n && <Max onPress={handleMaxPress} />}
               </View>
             )}
           </View>
