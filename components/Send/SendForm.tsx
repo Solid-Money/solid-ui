@@ -113,6 +113,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     handleSubmit,
     formState: { errors, isValid },
     setValue,
+    trigger,
   } = useForm({
     resolver: zodResolver(sendSchema),
     mode: Platform.OS === 'web' ? 'onChange' : undefined,
@@ -155,7 +156,12 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     const maxAmount = formatUnits(balanceWei, liveToken.contractDecimals);
     setAmount(maxAmount);
     setValue('amount', maxAmount);
-  }, [setAmount, setValue, liveToken, balanceWei]);
+    // RHF's onChange mode validates on the Controller's input change event,
+    // not on programmatic setValue. Without an explicit trigger, isValid
+    // stays at its prior value and Review stays disabled when the user
+    // hits Max without typing first.
+    trigger('amount');
+  }, [setAmount, setValue, trigger, liveToken, balanceWei]);
 
   const onSubmit = useCallback(
     (data: any) => {
