@@ -1,5 +1,5 @@
 diff --git a/node_modules/@didit-protocol/sdk-react-native/app.plugin.js b/node_modules/@didit-protocol/sdk-react-native/app.plugin.js
-index 7943542..b2c9988 100644
+index 7943542..45ae038 100644
 --- a/node_modules/@didit-protocol/sdk-react-native/app.plugin.js
 +++ b/node_modules/@didit-protocol/sdk-react-native/app.plugin.js
 @@ -12,7 +12,7 @@ const MAVEN_REPO =
@@ -7,7 +7,7 @@ index 7943542..b2c9988 100644
  
  const PODSPEC_URL =
 -  'https://raw.githubusercontent.com/didit-protocol/sdk-ios/main/DiditSDK.podspec';
-+  'https://raw.githubusercontent.com/didit-protocol/sdk-ios/3.2.13/DiditSDK.podspec';
++  'https://raw.githubusercontent.com/didit-protocol/sdk-ios/3.2.9/DiditSDK.podspec';
  
  const POD_LINE = `  pod 'DiditSDK', :podspec => '${PODSPEC_URL}'`;
  
