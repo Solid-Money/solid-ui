@@ -130,14 +130,14 @@ export default function RescueToken() {
   const handleRescue = async () => {
     if (!usdcBalance || usdcBalance <= 0n) return;
     try {
-      const txHash = await rescue(usdcBalance);
+      const { transactionHash } = await rescue(usdcBalance);
       Toast.show({
         type: 'success',
         text1: 'Tokens rescued',
         text2: `${formatNumber(usdcAmount)} USDC sent to your Solid wallet`,
         props: {
-          link: `https://etherscan.io/tx/${txHash}`,
-          linkText: eclipseAddress(txHash),
+          link: `https://etherscan.io/tx/${transactionHash}`,
+          linkText: eclipseAddress(transactionHash),
           image: { type: 'image', source: getAsset('images/usdc-4x.png') },
         },
       });

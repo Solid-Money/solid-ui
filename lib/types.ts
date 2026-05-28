@@ -689,6 +689,7 @@ export enum TransactionType {
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
+  RESCUE_TOKEN = 'rescue_token',
 }
 
 export enum TransactionDirection {
