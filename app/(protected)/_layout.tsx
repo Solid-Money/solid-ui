@@ -215,6 +215,13 @@ export default function ProtectedLayout() {
           presentation: 'fullScreenModal',
         }}
       />
+      <Stack.Screen
+        name="rescue-token"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }
