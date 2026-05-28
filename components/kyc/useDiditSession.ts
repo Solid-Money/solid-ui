@@ -10,6 +10,7 @@ import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useKycStore } from '@/store/useKycStore';
 
 export type SessionState =
   | { phase: 'loading' }
@@ -23,6 +24,7 @@ const POLL_INTERVAL_MS = 5000;
 export function useDiditSession() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const kycFlow = useKycStore(state => state.kycFlow);
   const [session, setSession] = useState<SessionState>({ phase: 'loading' });
   const sdkInitializedRef = useRef(false);
 
@@ -69,6 +71,14 @@ export function useDiditSession() {
       setSession({ phase: 'completed' });
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
+      // VA flow: KYC is just a gate for opening the virtual account. Always
+      // surface the pending submission page after KYC — the user re-enters
+      // the VA flow via Deposit when their KYC + Rain status is approved.
+      if (kycFlow === 'va') {
+        router.replace(path.CARD_PENDING as any);
+        return;
+      }
+
       if (kycStatus === KycStatus.APPROVED) {
         // Didit KYC approved: route by Rain status. Approved -> ready.
         // Manual review (Rain pending/manualReview, which maps to backend
@@ -95,7 +105,7 @@ export function useDiditSession() {
         router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
       }
     },
-    [queryClient, router],
+    [kycFlow, queryClient, router],
   );
 
   const onVerificationComplete = useCallback(() => {

@@ -12,10 +12,12 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { DepositMethod, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useKycStore } from '@/store/useKycStore';
 
 const useDepositBuyCryptoOptions = () => {
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
+  const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
   useEffect(() => {
     console.warn(cardStatus);
@@ -29,6 +31,7 @@ const useDepositBuyCryptoOptions = () => {
     });
 
     if (!isRainApproved) {
+      setKycFlow('va');
       setModal(DEPOSIT_MODAL.CLOSE);
       router.push(path.KYC);
       return;
@@ -40,7 +43,7 @@ const useDepositBuyCryptoOptions = () => {
     }
 
     setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
-  }, [existingAutomation, isRainApproved, router, setModal]);
+  }, [existingAutomation, isRainApproved, router, setKycFlow, setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [

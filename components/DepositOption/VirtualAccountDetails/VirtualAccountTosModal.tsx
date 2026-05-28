@@ -1,21 +1,57 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import {
-  useCreateOnrampAutomation,
-  useOnrampAutomation,
-} from '@/hooks/useOnrampAutomation';
+import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { EXPO_PUBLIC_BASE_URL } from '@/lib/config';
 import { useDepositStore } from '@/store/useDepositStore';
 
-const TOS_POINTS = [
-  'A persistent virtual bank account will be issued in your name for ACH and Wire deposits.',
-  'Incoming USD is converted to USDC by Rain and automatically deposited into the soUSD vault on your behalf.',
-  'You agree to Rain Payments’ Terms of Service and Privacy Policy and confirm you are the account holder.',
-  'Deposits are subject to ACH (cutoff 4:00 PM ET) and Wire (cutoff 5:45 PM ET) banking hours. Settlement may take 1–3 business days.',
+const baseUrl = EXPO_PUBLIC_BASE_URL || 'https://solid.xyz';
+
+const underlineProps = {
+  textClassName: 'text-sm font-bold text-white' as const,
+  borderColor: 'rgba(255, 255, 255, 1)' as const,
+};
+
+const TOS_POINTS: { key: string; content: ReactNode }[] = [
+  {
+    key: 'issuance',
+    content:
+      'A persistent virtual bank account will be issued in your name for ACH and Wire deposits.',
+  },
+  {
+    key: 'conversion',
+    content:
+      'Incoming USD is converted to USDC by Rain and automatically deposited into the soUSD vault on your behalf.',
+  },
+  {
+    key: 'agreement',
+    content: (
+      <>
+        You agree to Rain Payments’{' '}
+        <Underline
+          inline
+          {...underlineProps}
+          onPress={() => Linking.openURL(`${baseUrl}/legal/card-terms`)}
+        >
+          Terms of Service
+        </Underline>{' '}
+        and{' '}
+        <Underline
+          inline
+          {...underlineProps}
+          onPress={() => Linking.openURL(`${baseUrl}/legal/issuer-privacy`)}
+        >
+          Privacy Policy
+        </Underline>{' '}
+        and confirm you are the account holder.
+      </>
+    ),
+  },
 ];
 
 export const VirtualAccountTosModal = () => {
@@ -50,9 +86,9 @@ export const VirtualAccountTosModal = () => {
 
       <View className="gap-3 rounded-2xl bg-[#1C1C1C] p-4">
         {TOS_POINTS.map(point => (
-          <View key={point} className="flex-row items-start gap-3">
+          <View key={point.key} className="flex-row items-start gap-3">
             <View className="mt-1 h-1.5 w-1.5 rounded-full bg-[#94F27F]" />
-            <Text className="flex-1 text-sm leading-5 text-white">{point}</Text>
+            <Text className="flex-1 text-sm leading-5 text-white">{point.content}</Text>
           </View>
         ))}
       </View>
@@ -71,7 +107,8 @@ export const VirtualAccountTosModal = () => {
           {agreed && <Check size={14} color="#000" />}
         </View>
         <Text className="flex-1 text-sm leading-5 text-white">
-          I agree to the terms above and authorize Rain to issue a virtual bank account on my behalf.
+          I agree to the terms above and authorize Rain to issue a virtual bank account on my
+          behalf.
         </Text>
       </Pressable>
 
