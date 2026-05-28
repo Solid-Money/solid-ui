@@ -114,4 +114,8 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.WALLET_TRANSFER,
   },
+  [TransactionType.RESCUE_TOKEN]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.WALLET_TRANSFER,
+  },
 };
