@@ -691,6 +691,7 @@ export enum TransactionType {
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
   AGENT_X402_PAYMENT = 'agent_x402_payment',
   AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
+  RESCUE_TOKEN = 'rescue_token',
 }
 
 export enum TransactionDirection {
