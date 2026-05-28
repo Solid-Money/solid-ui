@@ -2775,6 +2775,21 @@ export const removePushToken = async (token: string) => {
   return response.json();
 };
 
+export const trackUserPlatform = async (platform: typeof Platform.OS) => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/platforms`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ platform }),
+  });
+  if (!response.ok) throw response;
+};
+
 export const fetchSavingsSummary = async (
   vault: string = 'USDC',
 ): Promise<SavingsSummaryResponse> => {
