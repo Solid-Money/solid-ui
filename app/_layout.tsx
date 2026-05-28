@@ -46,6 +46,7 @@ import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
+import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
@@ -202,6 +203,9 @@ export default Sentry.wrap(function RootLayout() {
 
   // Push notification lifecycle: token refresh + notification tap handling
   usePushNotifications();
+
+  // Record platform (ios/android/web) on the user once per session
+  useTrackUserPlatform();
 
   // App Tracking Transparency (iOS only)
   const {
