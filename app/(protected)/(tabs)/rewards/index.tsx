@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
+import { RotateCw } from 'lucide-react-native';
 
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
@@ -21,7 +22,7 @@ import { useRewards } from '@/store/useRewardsStore';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
-  const { data: rewardsData, isLoading } = useRewardsUserData();
+  const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
 
   const bannerData = useMemo(() => {
@@ -37,6 +38,23 @@ export default function Rewards() {
       <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />,
     ];
   }, [rewardsData]);
+
+  if (isError && !isLoading) {
+    return (
+      <PageLayout>
+        <View className="flex-1 items-center justify-center px-4 py-12">
+          <Text className="mb-4 text-gray-400">Failed to load rewards</Text>
+          <Pressable
+            onPress={() => refetch()}
+            className="flex-row items-center rounded-lg bg-[#2E2E2E] px-4 py-2"
+          >
+            <RotateCw size={16} color="white" className="mr-2" />
+            <Text className="text-white">Try Again</Text>
+          </Pressable>
+        </View>
+      </PageLayout>
+    );
+  }
 
   if (isLoading || !rewardsData) {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
