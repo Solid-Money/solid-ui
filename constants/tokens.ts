@@ -1,7 +1,7 @@
 import { Token } from '@cryptoalgebra/fuse-sdk';
 
 import { ImageSourcePropType } from 'react-native';
-import { arbitrum, base, fuse, mainnet } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet } from 'viem/chains';
 import {
   BUSD,
   FUSD_V2,
@@ -43,6 +43,7 @@ export const NATIVE_TOKENS: Record<number, string> = {
   [fuse.id]: 'fuse-network-token',
   [base.id]: 'ETH',
   [arbitrum.id]: 'ETH',
+  [bsc.id]: 'BNB',
 };
 
 /** CoinGecko API coin ids */
@@ -51,6 +52,7 @@ export const NATIVE_COINGECKO_TOKENS: Record<number, string> = {
   [fuse.id]: 'fuse-network-token',
   [base.id]: 'ethereum',
   [arbitrum.id]: 'ethereum',
+  [bsc.id]: 'binancecoin',
 };
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {
