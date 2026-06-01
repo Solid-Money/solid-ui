@@ -45,8 +45,8 @@ export default function Home() {
   const updateUser = useUserStore(state => state.updateUser);
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const intercom = useIntercom();
-  const { data: cardStatus } = useCardStatus();
-  const { data: cardDetails } = useCardDetails();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
+  const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { data: spinStatus } = useSpinStatus();
   const { data: giveaway } = useCurrentGiveaway();
   const countdown = useGiveawayCountdown(giveaway?.giveawayDate);
@@ -88,8 +88,9 @@ export default function Home() {
     hasTriggeredInitialRefresh.current = false;
   }, [user?.safeAddress]);
 
-  const { data: userDepositTransactions, isLoading: isDepositsLoading } =
-    useUserTransactions(user?.safeAddress);
+  const { data: userDepositTransactions, isLoading: isDepositsLoading } = useUserTransactions(
+    user?.safeAddress,
+  );
 
   const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
@@ -117,6 +118,14 @@ export default function Home() {
   }, [user, intercom]);
 
   const isInitialLoading = isBalanceLoading || isLoadingTokens || isDepositsLoading;
+  const isCardBalanceLoading = isCardStatusLoading || (userHasCard && isCardDetailsLoading);
+  const isHeadlineLoading =
+    isLoadingTokens ||
+    isBalanceLoading ||
+    isTotalSavingsLoading ||
+    isCardBalanceLoading ||
+    totalSavingsUSD === undefined;
+  const headlineBalance = totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance;
 
   if (!isInitialLoading && !balance && !isDeposited && !hasTokens) {
     return <HomeEmptyState />;
@@ -132,17 +141,15 @@ export default function Home() {
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center gap-2">
-                {isLoadingTokens ||
-                isBalanceLoading ||
-                isTotalSavingsLoading ||
-                totalSavingsUSD === undefined ? (
+                {isHeadlineLoading ? (
                   <Skeleton className="h-[4.5rem] w-56 rounded-xl" />
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
+                    count={headlineBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
+                    animateOnMount={false}
                     classNames={{
                       wrapper: 'text-foreground',
                       decimalSeparator: 'text-2xl',
@@ -168,10 +175,7 @@ export default function Home() {
             </View>
             <DashboardHeaderButtons hideWithdraw />
           </View>
-        ) : isLoadingTokens ||
-          isBalanceLoading ||
-          isTotalSavingsLoading ||
-          totalSavingsUSD === undefined ? (
+        ) : isHeadlineLoading ? (
           <View className="items-center pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />
             <View className="mt-8 flex-row justify-center gap-6">
@@ -181,16 +185,14 @@ export default function Home() {
             </View>
           </View>
         ) : (
-          <DashboardHeaderMobile
-            balance={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
-            mode={SavingMode.BALANCE_ONLY}
-          />
+          <DashboardHeaderMobile balance={headlineBalance} mode={SavingMode.BALANCE_ONLY} />
         )}
         {isScreenMedium ? (
           <DesktopCards
             totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
+            isLoadingCard={isCardBalanceLoading}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
           />
@@ -199,6 +201,7 @@ export default function Home() {
             totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
+            isLoadingCard={isCardBalanceLoading}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
           />

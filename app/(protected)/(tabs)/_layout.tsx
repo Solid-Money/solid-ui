@@ -20,7 +20,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        animation: Platform.OS !== 'web' ? 'shift' : 'none',
+        animation: 'none',
         freezeOnBlur: Platform.OS !== 'web',
         sceneStyle: { backgroundColor: '#121212' },
         tabBarActiveTintColor: 'white',

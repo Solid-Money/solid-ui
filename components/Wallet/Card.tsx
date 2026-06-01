@@ -43,6 +43,7 @@ const Card = ({ balance, className, tokens, isLoading, decimalPlaces }: CardProp
                 count={balance ?? 0}
                 isTrailingZero={false}
                 decimalPlaces={decimalPlaces}
+                animateOnMount={false}
                 classNames={{
                   wrapper: 'text-foreground',
                   decimalSeparator: 'text-2xl md:text-3xl font-semibold',
