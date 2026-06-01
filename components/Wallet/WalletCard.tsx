@@ -40,6 +40,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
                   count={balance ?? 0}
                   isTrailingZero={false}
                   decimalPlaces={decimalPlaces}
+                  animateOnMount={false}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-3xl font-semibold',

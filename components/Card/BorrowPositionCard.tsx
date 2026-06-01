@@ -140,7 +140,7 @@ export function BorrowPositionCard({
               )}
               <View className="flex-row items-center gap-1">
                 <Text className="text-base font-medium text-white/70">Net APY earned</Text>
-                <View className="mt-1">
+                <View>
                   <TooltipPopover
                     text="This is the yield you will earn on your borrowed savings balance"
                     analyticsContext="borrow_position_net_apy"
@@ -225,7 +225,7 @@ export function BorrowPositionCard({
           )}
           <View className="flex-row items-center gap-1">
             <Text className="text-base font-medium text-white/70">Net APY earned</Text>
-            <View className="mt-1">
+            <View>
               <TooltipPopover
                 text="This is the yield you will earn on your borrowed savings balance"
                 analyticsContext="borrow_position_net_apy"

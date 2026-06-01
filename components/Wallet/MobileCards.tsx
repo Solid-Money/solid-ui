@@ -10,6 +10,7 @@ type MobileCardsProps = {
   totalUSDExcludingVaultTokens: number;
   topThreeTokens: TokenBalance[];
   isLoadingTokens: boolean;
+  isLoadingCard?: boolean;
   userHasCard: boolean;
   cardBalance: number;
 };
@@ -18,6 +19,7 @@ export default function MobileCards({
   totalUSDExcludingVaultTokens,
   topThreeTokens,
   isLoadingTokens,
+  isLoadingCard,
   userHasCard,
   cardBalance,
 }: MobileCardsProps) {
@@ -47,13 +49,20 @@ export default function MobileCards({
             balance={cardBalance}
             className="h-full w-full"
             tokens={[USDC_TOKEN_BALANCE]}
-            isLoading={isLoadingTokens}
+            isLoading={isLoadingCard}
             decimalPlaces={2}
           />
         ) : null,
         <SavingCard key="saving" className="h-full w-full" decimalPlaces={2} />,
       ].filter(Boolean),
-    [totalUSDExcludingVaultTokens, topThreeTokens, isLoadingTokens, userHasCard, cardBalance],
+    [
+      totalUSDExcludingVaultTokens,
+      topThreeTokens,
+      isLoadingTokens,
+      isLoadingCard,
+      userHasCard,
+      cardBalance,
+    ],
   );
 
   const totalCards = cards.length;

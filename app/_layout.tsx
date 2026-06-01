@@ -320,14 +320,14 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
+    <SafeAreaProvider style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <TurnkeyProvider>
         <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={getInfoClient()}>
                 <Intercom>
-                  <GestureHandlerRootView>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
                     <BottomSheetModalProvider>
                       {Platform.OS === 'web' && (
                         <Head>

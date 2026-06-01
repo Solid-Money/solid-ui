@@ -32,6 +32,7 @@ const DashboardHeaderMobile = ({
           lastTimestamp={lastTimestamp ?? 0}
           mode={mode}
           decimalPlaces={decimalPlaces}
+          animateOnMount={false}
           classNames={{
             wrapper: 'text-foreground',
           }}

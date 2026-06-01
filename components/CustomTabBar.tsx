@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
 
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Text } from '@/components/ui/text';
@@ -14,8 +15,26 @@ type TabButtonProps = {
   onLongPress: () => void;
 };
 
+const ACTIVE_TAB_COLOR = 'white';
+const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
+
 function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonProps) {
   const [pressed, setPressed] = useState(false);
+  const focusProgress = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const labelColor = isFocused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR;
+
+  useEffect(() => {
+    Animated.timing(focusProgress, {
+      toValue: isFocused ? 1 : 0,
+      duration: 140,
+      useNativeDriver: true,
+    }).start();
+  }, [focusProgress, isFocused]);
+
+  const nativeFocusOpacity = focusProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.5, 1],
+  });
 
   const handlePressIn = () => {
     setPressed(true);
@@ -56,22 +75,24 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
       style={styles.tabButton}
     >
       <View style={[styles.tabContent, animationStyle as ViewStyle]}>
-        <View
+        <Animated.View
           style={[
             styles.iconWrapper,
             (Platform.OS === 'web' ? { transition: 'opacity 150ms ease-in-out' } : {}) as ViewStyle,
-            Platform.OS === 'web' ? { opacity: isFocused ? 1 : 0.5 } : {},
+            Platform.OS === 'web'
+              ? { opacity: isFocused ? 1 : 0.5 }
+              : { opacity: nativeFocusOpacity },
           ]}
         >
           {icon}
-        </View>
+        </Animated.View>
         <Text
           // @ts-ignore - web CSS properties
           style={[
             styles.tabLabel,
             // @ts-ignore - web CSS transition property
             activeTransitionStyle,
-            { color: isFocused ? 'white' : 'rgba(255, 255, 255, 0.5)' },
+            { color: labelColor },
           ]}
         >
           {label}
@@ -106,7 +127,10 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+            navigation.dispatch({
+              ...CommonActions.navigate(route),
+              target: state.key,
+            });
           }
         };
 
@@ -120,7 +144,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         // Get the icon
         const icon = options.tabBarIcon?.({
           focused: isFocused,
-          color: isFocused ? 'white' : 'rgba(255, 255, 255, 1)',
+          color: ACTIVE_TAB_COLOR,
           size: Platform.OS === 'web' ? 36 : 40,
         });
 
