@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
@@ -12,16 +10,10 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { DepositMethod, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useKycStore } from '@/store/useKycStore';
 
 const useDepositBuyCryptoOptions = () => {
-  const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
-  const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
-  useEffect(() => {
-    console.warn(cardStatus);
-  }, [cardStatus]);
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
 
@@ -30,20 +22,16 @@ const useDepositBuyCryptoOptions = () => {
       deposit_method: 'bank_transfer',
     });
 
-    if (!isRainApproved) {
-      setKycFlow('va');
-      setModal(DEPOSIT_MODAL.CLOSE);
-      router.push(path.KYC);
-      return;
-    }
-
     if (existingAutomation) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
       return;
     }
 
-    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
-  }, [existingAutomation, isRainApproved, router, setKycFlow, setModal]);
+    // No automation yet — show the Apply intro. The intro CTA decides whether
+    // to send the user through KYC or straight to the ToS modal based on their
+    // current Rain approval status.
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+  }, [existingAutomation, setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [

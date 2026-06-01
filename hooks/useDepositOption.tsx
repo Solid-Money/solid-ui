@@ -19,6 +19,7 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
+import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
@@ -133,6 +134,7 @@ const useDepositOption = ({
   const isVirtualAccountDetails =
     currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
   const isVirtualAccountTos = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS.name;
+  const isVirtualAccountApply = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -255,6 +257,10 @@ const useDepositOption = ({
 
     if (isDepositDirectlyTokens) {
       return <DepositDirectlyTokens />;
+    }
+
+    if (isVirtualAccountApply) {
+      return <VirtualAccountApplyModal />;
     }
 
     if (isVirtualAccountTos) {

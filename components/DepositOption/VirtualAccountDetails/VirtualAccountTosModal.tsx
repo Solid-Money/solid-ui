@@ -1,13 +1,15 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { BadgeCheck, Check } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { EXPO_PUBLIC_BASE_URL } from '@/lib/config';
+import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const baseUrl = EXPO_PUBLIC_BASE_URL || 'https://solid.xyz';
@@ -57,8 +59,10 @@ const TOS_POINTS: { key: string; content: ReactNode }[] = [
 export const VirtualAccountTosModal = () => {
   const setModal = useDepositStore(state => state.setModal);
   const { data: existingAutomation } = useOnrampAutomation();
+  const { data: cardStatus } = useCardStatus();
   const createMutation = useCreateOnrampAutomation();
   const [agreed, setAgreed] = useState(false);
+  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
 
   // Defensive: if an automation already exists, skip ToS straight to details.
   useEffect(() => {
@@ -77,6 +81,18 @@ export const VirtualAccountTosModal = () => {
 
   return (
     <View className="flex-1 gap-4">
+      {isRainApproved && (
+        <View className="flex-row items-center gap-3 rounded-2xl bg-[#142A11] px-4 py-3">
+          <BadgeCheck size={20} color="#94F27F" />
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-[#94F27F]">You’re approved</Text>
+            <Text className="text-xs leading-4 text-[#A5D89A]">
+              Accept the terms below to issue your virtual bank account.
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View className="items-center gap-2 px-2">
         <Text className="text-2xl font-bold text-white">Before you continue</Text>
         <Text className="text-center text-base text-gray-400">
