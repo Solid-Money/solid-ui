@@ -38,7 +38,15 @@ const useNav = () => {
     label: isProduction ? 'Points' : 'Rewards',
     href: isProduction ? path.POINTS : path.REWARDS,
   };
-  const menuItems: MenuItem[] = [home, savings, card, points, agent, activity];
+  const menuItems: MenuItem[] = [
+    home,
+    savings,
+    card,
+    points,
+    // Agent wallet is not yet released to production — hide the tab there.
+    ...(isProduction ? [] : [agent]),
+    activity,
+  ];
   return {
     menuItems,
   };
