@@ -242,18 +242,25 @@ const useDepositFromSolidEth = (
             data: { amount, safeAddress, srcChainId, isSponsor },
           });
 
-          track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-            user_id: user?.userId,
-            safe_address: user?.safeAddress,
-            amount,
-            deposit_type: 'solid_wallet',
-            deposit_method: 'eth_solid',
-            chain_id: srcChainId,
-            is_sponsor: isSponsor,
-            is_first_deposit: !user?.isDeposited,
-            ...attributionData,
-            attribution_channel: attributionChannel,
-          });
+          // Amplitude emitted server-side as "Savings Deposit Completed";
+          // suppress client Amplitude to avoid double-counting (Firebase + GTM
+          // still fire).
+          track(
+            TRACKING_EVENTS.DEPOSIT_COMPLETED,
+            {
+              user_id: user?.userId,
+              safe_address: user?.safeAddress,
+              amount,
+              deposit_type: 'solid_wallet',
+              deposit_method: 'eth_solid',
+              chain_id: srcChainId,
+              is_sponsor: isSponsor,
+              is_first_deposit: !user?.isDeposited,
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            },
+            { amplitude: false },
+          );
 
           trackIdentity(user?.userId!, {
             last_deposit_amount: parseFloat(amount),

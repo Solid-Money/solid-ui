@@ -205,8 +205,22 @@ const trackFirebaseEvent = async (event: string, params: Record<string, any>) =>
   }
 };
 
+export type TrackOptions = {
+  /**
+   * Whether to send this event to Amplitude. Defaults to true. Set to `false`
+   * for events that are now emitted server-side (backend Amplitude) to avoid
+   * double-counting. Firebase and GTM still fire, so web conversion / ad
+   * attribution is preserved.
+   */
+  amplitude?: boolean;
+};
+
 // Main track function with automatic attribution enrichment
-export const track = (event: string, params: Record<string, any> = {}) => {
+export const track = (
+  event: string,
+  params: Record<string, any> = {},
+  options: TrackOptions = {},
+) => {
   // Don't track events locally
   if (__DEV__) {
     return;
@@ -218,6 +232,8 @@ export const track = (event: string, params: Record<string, any> = {}) => {
       console.warn('Invalid event name provided to track():', event);
       return;
     }
+
+    const { amplitude = true } = options;
 
     // Get attribution data from store
     const attributionStore = useAttributionStore.getState();
@@ -244,9 +260,10 @@ export const track = (event: string, params: Record<string, any> = {}) => {
     // Sanitize all params once - remove undefined/null values and ensure serializable
     const sanitizedParams = sanitize(enrichedParams);
 
-    // Track to all providers in parallel
+    // Track to all providers in parallel. Amplitude can be opted out per-call
+    // for events now emitted server-side; Firebase + GTM always fire.
     Promise.allSettled([
-      Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)),
+      amplitude ? Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)) : undefined,
       trackFirebaseEvent(event, sanitizedParams),
       Promise.resolve(trackGTMEvent(event, sanitizedParams)),
     ]);

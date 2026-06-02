@@ -336,14 +336,24 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
           throw error;
         }
 
-        track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_COMPLETED, {
-          amount: amountToBorrow,
-          transaction_hash: transaction_result.transactionHash,
-          fee: transaction.value,
-          from_chain: fuse.id,
-          to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-          source: 'useBridgeToCard',
-        });
+        // Amplitude is emitted server-side as "Card Borrow Completed" (backend
+        // CardWelcomeBonusCron, once the BORROW_AND_DEPOSIT_TO_CARD activity
+        // settles on the card funding chain); suppress the client Amplitude event
+        // to avoid double-counting. Firebase + GTM still fire. Note: the generic
+        // bridge/swap-to-card hooks (useBridgeToCard, useSwapAndBridgeToCard) are
+        // NOT borrows and keep firing Amplitude.
+        track(
+          TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_COMPLETED,
+          {
+            amount: amountToBorrow,
+            transaction_hash: transaction_result.transactionHash,
+            fee: transaction.value,
+            from_chain: fuse.id,
+            to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+            source: 'useBridgeToCard',
+          },
+          { amplitude: false },
+        );
 
         Sentry.addBreadcrumb({
           message: 'Bridge to Card transaction successful',
