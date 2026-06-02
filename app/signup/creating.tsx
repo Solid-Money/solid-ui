@@ -254,16 +254,23 @@ export default function SignupCreating() {
         attribution_channel: attributionChannel,
       });
 
-      track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
-        user_id: user._id,
-        username: user.username,
-        email: user.email,
-        referral_code: referralCode,
-        safe_address: safeAddress,
-        has_passkey: selectedUser.hasPasskey,
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      // Amplitude is emitted server-side as "Account Created" (backend signup
+      // flow); suppress the client Amplitude event to avoid double-counting.
+      // Firebase + GTM still fire here to preserve web conversion attribution.
+      track(
+        TRACKING_EVENTS.SIGNUP_COMPLETED,
+        {
+          user_id: user._id,
+          username: user.username,
+          email: user.email,
+          referral_code: referralCode,
+          safe_address: safeAddress,
+          has_passkey: selectedUser.hasPasskey,
+          ...attributionData,
+          attribution_channel: attributionChannel,
+        },
+        { amplitude: false },
+      );
 
       // Navigate to home/notifications or redirectFrom page
       setStep('complete');
