@@ -785,21 +785,28 @@ const useDepositFromEOA = (
       });
 
       // Track deposit success with attribution for ROI measurement
-      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        eoa_address: eoaAddress,
-        amount,
-        transaction_hash: txHash,
-        deposit_type: 'connected_wallet',
-        deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
-        chain_id: srcChainId,
-        chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
-        is_sponsor: isSponsor,
-        is_first_deposit: !user?.isDeposited,
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      // Amplitude is emitted server-side as "Savings Deposit Completed" (backend
+      // connect-wallet deposit workflow); suppress the client Amplitude event to
+      // avoid double-counting. Firebase + GTM still fire for web attribution.
+      track(
+        TRACKING_EVENTS.DEPOSIT_COMPLETED,
+        {
+          user_id: user?.userId,
+          safe_address: user?.safeAddress,
+          eoa_address: eoaAddress,
+          amount,
+          transaction_hash: txHash,
+          deposit_type: 'connected_wallet',
+          deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
+          chain_id: srcChainId,
+          chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
+          is_sponsor: isSponsor,
+          is_first_deposit: !user?.isDeposited,
+          ...attributionData,
+          attribution_channel: attributionChannel,
+        },
+        { amplitude: false },
+      );
 
       trackIdentity(user?.userId, {
         last_deposit_amount: parseFloat(amount),

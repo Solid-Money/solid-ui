@@ -246,19 +246,27 @@ const useDepositFromSolidUsdc = (
               ? 'usdc_solid_bridge_card'
               : 'usdc_solid_bridge';
 
-          track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-            user_id: user?.userId,
-            safe_address: user?.safeAddress,
-            amount,
-            deposit_type: 'solid_wallet',
-            deposit_method: depositMethod,
-            deposit_destination: isCard ? 'card' : 'savings',
-            chain_id: srcChainId,
-            is_sponsor: isSponsor,
-            is_first_deposit: !user?.isDeposited,
-            ...attributionData,
-            attribution_channel: attributionChannel,
-          });
+          // Amplitude emitted server-side by the backend connect-wallet deposit
+          // workflow ("Savings Deposit Completed" for savings, "Card Deposit
+          // Completed" for card); suppress client Amplitude to avoid double-
+          // counting. Firebase + GTM still fire for web attribution.
+          track(
+            TRACKING_EVENTS.DEPOSIT_COMPLETED,
+            {
+              user_id: user?.userId,
+              safe_address: user?.safeAddress,
+              amount,
+              deposit_type: 'solid_wallet',
+              deposit_method: depositMethod,
+              deposit_destination: isCard ? 'card' : 'savings',
+              chain_id: srcChainId,
+              is_sponsor: isSponsor,
+              is_first_deposit: !user?.isDeposited,
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            },
+            { amplitude: false },
+          );
 
           trackIdentity(user?.userId!, {
             last_deposit_amount: parseFloat(amount),
