@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
@@ -8,6 +8,7 @@ type BridgeToken = {
   name?: string;
   fullName?: string;
   address: string;
+  decimals?: number;
   icon?: ImageSourcePropType;
   version?: string;
   isPermit?: boolean;
@@ -155,8 +156,23 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     },
     name: 'Fuse',
     icon: require('@/assets/images/fuse.png'),
-    sort: 5,
+    sort: 6,
     bridgeSpeed: 0,
+  },
+  [bsc.id]: {
+    tokens: {
+      USDC: {
+        name: 'USDC',
+        fullName: 'Binance-Peg USD Coin',
+        address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
+        decimals: 18,
+        isPermit: false,
+      },
+    },
+    name: 'BNB Chain',
+    icon: require('@/assets/images/bsc.png'),
+    sort: 5,
+    bridgeSpeed: 2,
   },
 };
 

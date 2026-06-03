@@ -1,17 +1,19 @@
-import { arbitrum, base, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, mainnet, polygon } from 'viem/chains';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from '@/lib/config';
 
 /**
  * Alchemy is the primary on-chain data provider for these chains;
  * Blockscout is used as fallback on Alchemy failure. Fuse (122) is not
- * supported by Alchemy and always uses Blockscout.
+ * supported by Alchemy and always uses Blockscout. BSC (56) is Alchemy-only
+ * (Blockscout has no BSC instance).
  */
 export const ALCHEMY_SUPPORTED_CHAIN_IDS: ReadonlySet<number> = new Set([
   mainnet.id,
   base.id,
   polygon.id,
   arbitrum.id,
+  bsc.id,
 ]);
 
 export const ALCHEMY_CHAIN_URLS: Record<number, string> = {
@@ -19,6 +21,7 @@ export const ALCHEMY_CHAIN_URLS: Record<number, string> = {
   [base.id]: `https://base-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [polygon.id]: `https://polygon-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [arbitrum.id]: `https://arb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
+  [bsc.id]: `https://bnb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 };
 
 export const isAlchemyChain = (chainId: number): boolean =>
