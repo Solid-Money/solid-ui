@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { formatUnits } from 'viem';
-import { base, fuse, mainnet } from 'viem/chains';
+import { base, bsc, fuse, mainnet } from 'viem/chains';
 
 import SavingsIcon from '@/assets/images/savings';
 import WalletIcon from '@/assets/images/wallet';
@@ -36,12 +36,14 @@ const CHAIN_ICONS: Record<number, any> = {
   [mainnet.id]: getAsset('images/eth.png'),
   [fuse.id]: getAsset('images/fuse-4x.png'),
   [base.id]: getAsset('images/base.png'),
+  [bsc.id]: getAsset('images/bsc.png'),
 };
 
 const CHAIN_NAMES: Record<number, string> = {
   [mainnet.id]: 'Ethereum',
   [fuse.id]: 'Fuse',
   [base.id]: 'Base',
+  [bsc.id]: 'BNB Chain',
 };
 
 const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
