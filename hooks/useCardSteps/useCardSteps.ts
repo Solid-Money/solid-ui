@@ -196,11 +196,9 @@ export function useCardSteps(
     const status = cardStatusResponse?.rainApplicationStatus;
     const link = cardStatusResponse?.applicationExternalVerificationLink;
 
-    if (
-      status === RainApplicationStatus.DENIED ||
-      status === RainApplicationStatus.LOCKED ||
-      status === RainApplicationStatus.CANCELED
-    ) {
+    // DENIED is a final decision with no action — it renders no button, so it is not
+    // handled here. LOCKED/CANCELED still offer a "Contact support" button.
+    if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
       openIntercom();
       return;
     }
