@@ -167,6 +167,8 @@ export function getKYCButtonText(
     case RainApplicationStatus.MANUAL_REVIEW:
       return 'Under Review';
     case RainApplicationStatus.DENIED:
+      // Final decision — verification cannot be overridden or resubmitted, so no action button.
+      return undefined;
     case RainApplicationStatus.LOCKED:
     case RainApplicationStatus.CANCELED:
       return 'Contact support';
@@ -187,11 +189,14 @@ export function isRainKYCButtonDisabled(
   rainApplicationStatus?: RainApplicationStatus | null,
 ): boolean {
   if (!rainApplicationStatus) return false;
-  // DENIED/LOCKED/CANCELED show "Contact support" and open Intercom — keep enabled
+  // No actionable button for APPROVED (step complete), PENDING/MANUAL_REVIEW (under review),
+  // or DENIED (final decision — cannot override or resubmit).
+  // LOCKED/CANCELED keep an enabled "Contact support" button that opens Intercom.
   return (
     rainApplicationStatus === RainApplicationStatus.APPROVED ||
     rainApplicationStatus === RainApplicationStatus.PENDING ||
-    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW
+    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW ||
+    rainApplicationStatus === RainApplicationStatus.DENIED
   );
 }
 
@@ -228,7 +233,7 @@ export function getStepDescription(
     if (warnings.length > 0) {
       return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
     }
-    return 'Your identity verification was declined. Please try again with a valid ID.';
+    return 'Your identity verification was declined. Please contact support for more information.';
   }
 
   // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
@@ -329,9 +334,9 @@ export function getStepButtonText(
     return getKYCButtonText(options.rainApplicationStatus);
   }
 
-  // Didit KYC rejected — allow retry
+  // Didit KYC rejected — final decision; cannot be overridden or resubmitted, so no action button.
   if (options?.kycStatus === KycStatus.REJECTED) {
-    return 'Retry KYC';
+    return undefined;
   }
 
   // Didit incomplete — user needs to continue
@@ -392,6 +397,11 @@ export function isStepButtonDisabled(
 
   // Didit under review — disable button, user must wait
   if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
+    return true;
+  }
+
+  // Didit rejected — final decision, no action available
+  if (options?.kycStatus === KycStatus.REJECTED && !isRecognizedRainStatus) {
     return true;
   }
 
