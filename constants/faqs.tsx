@@ -19,7 +19,7 @@ const faqs: Faq[] = [
   {
     question: 'What is SoUSD?',
     answer:
-      'SoUSD is a **yield-bearing stablecoin**. Unlike typical 1:1 pegged stablecoins, SoUSD represents your share in a growing vault. Its value **increases over time** as interest accrues — no need to stake or manage positions.\n\nSoUSD is gasless, cross-chain, and composable — ready for use in payments, swaps, lending, and more.',
+      'SoUSD is a **yield-bearing stablecoin**. Unlike typical 1:1 pegged stablecoins, SoUSD represents your share in a growing vault. Its value **increases over time** as interest accrues — no need to stake or manage positions.\n\nSoUSD is gasless, cross-chain, and composable — ready for use in payments, lending, and more.',
   },
   {
     question: "Why didn't I receive 1 SoUSD per 1 USDC?",
