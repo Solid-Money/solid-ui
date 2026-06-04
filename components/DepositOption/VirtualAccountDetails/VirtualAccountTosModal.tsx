@@ -8,11 +8,8 @@ import { Underline } from '@/components/ui/underline';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
-import { EXPO_PUBLIC_BASE_URL } from '@/lib/config';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-
-const baseUrl = EXPO_PUBLIC_BASE_URL || 'https://solid.xyz';
 
 const underlineProps = {
   textClassName: 'text-sm font-bold text-white' as const,
@@ -29,30 +26,6 @@ const TOS_POINTS: { key: string; content: ReactNode }[] = [
     key: 'conversion',
     content:
       'Incoming USD is converted to USDC by Rain and automatically deposited into the soUSD vault on your behalf.',
-  },
-  {
-    key: 'agreement',
-    content: (
-      <>
-        You agree to Rain Payments’{' '}
-        <Underline
-          inline
-          {...underlineProps}
-          onPress={() => Linking.openURL(`${baseUrl}/legal/card-terms`)}
-        >
-          Terms of Service
-        </Underline>{' '}
-        and{' '}
-        <Underline
-          inline
-          {...underlineProps}
-          onPress={() => Linking.openURL(`${baseUrl}/legal/issuer-privacy`)}
-        >
-          Privacy Policy
-        </Underline>{' '}
-        and confirm you are the account holder.
-      </>
-    ),
   },
 ];
 
@@ -123,10 +96,27 @@ export const VirtualAccountTosModal = () => {
           {agreed && <Check size={14} color="#000" />}
         </View>
         <Text className="flex-1 text-sm leading-5 text-white">
-          I agree to the terms above and authorize Rain to issue a virtual bank account on my
-          behalf.
+          I accept the{' '}
+          <Underline
+            inline
+            {...underlineProps}
+            onPress={() =>
+              Linking.openURL(
+                'https://support.solid.xyz/en/articles/15324239-solid-virtual-account-user-terms-of-service',
+              )
+            }
+          >
+            Virtual Account User Terms of Service
+          </Underline>
+          .
         </Text>
       </Pressable>
+
+      <Text className="text-xs leading-4 text-gray-400">
+        Solid is a financial technology company, not a bank. Banking services are provided by SSB,
+        Member FDIC. Funds deposited at SSB are eligible for FDIC insurance up to $250,000 per
+        depositor, per insured bank, subject to applicable limitations and FDIC rules.
+      </Text>
 
       {createMutation.isError && (
         <Text className="text-center text-sm text-red-400">
@@ -135,7 +125,7 @@ export const VirtualAccountTosModal = () => {
       )}
 
       <Button
-        className="mt-auto h-14 rounded-2xl sm:mt-8"
+        className="h-14 rounded-2xl"
         style={{
           backgroundColor: agreed && !createMutation.isPending ? '#94F27F' : '#3A3A3A',
         }}
@@ -145,7 +135,7 @@ export const VirtualAccountTosModal = () => {
         {createMutation.isPending ? (
           <ActivityIndicator color="#000" />
         ) : (
-          <Text className="text-base font-bold text-black">Accept and continue</Text>
+          <Text className="text-base font-bold text-black">Get my Virtual Account</Text>
         )}
       </Button>
     </View>

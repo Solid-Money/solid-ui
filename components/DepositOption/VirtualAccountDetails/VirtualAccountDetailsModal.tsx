@@ -1,24 +1,11 @@
-import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Info } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
-import type { OnrampAutomationRail } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-
-const TAB_CONFIG: { key: OnrampAutomationRail; label: string }[] = [
-  { key: 'ach', label: 'ACH' },
-  { key: 'wire', label: 'Wire' },
-];
-
-const RAIL_FOOTER: Record<OnrampAutomationRail, string> = {
-  ach: 'ACH cutoff is 4:00 PM ET. Funds typically settle in 1–3 business days.',
-  wire: 'Wire cutoff is 5:45 PM ET. Funds typically settle the same business day.',
-};
 
 const Row = ({
   label,
@@ -52,7 +39,6 @@ const Row = ({
 export const VirtualAccountDetailsModal = () => {
   const setModal = useDepositStore(state => state.setModal);
   const { data: automation, isLoading } = useOnrampAutomation();
-  const [rail, setRail] = useState<OnrampAutomationRail>('ach');
 
   if (isLoading) {
     return (
@@ -87,37 +73,14 @@ export const VirtualAccountDetailsModal = () => {
         </Text>
       </View>
 
-      <View className="mt-2 flex-row gap-2 rounded-2xl bg-[#1C1C1C] p-1">
-        {TAB_CONFIG.map(tab => {
-          const isActive = rail === tab.key;
-          return (
-            <Button
-              key={tab.key}
-              className={`h-10 flex-1 rounded-xl ${isActive ? 'bg-[#2C2C2C]' : 'bg-transparent'}`}
-              onPress={() => setRail(tab.key)}
-            >
-              <Text
-                className={`text-base font-medium ${isActive ? 'text-white' : 'text-gray-400'}`}
-              >
-                {tab.label}
-              </Text>
-            </Button>
-          );
-        })}
-      </View>
-
       <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
         <Row label="Beneficiary name" value={depositAddress.beneficiaryName} withDivider />
         <Row label="Beneficiary address" value={depositAddress.beneficiaryAddress} withDivider />
         <Row label="Bank name" value={depositAddress.beneficiaryBankName} withDivider />
         <Row label="Bank address" value={depositAddress.beneficiaryBankAddress} withDivider />
+        <Row label="Payment method" value="ACH / WIRE" withDivider />
         <Row label="Account number" value={depositAddress.accountNumber} withDivider />
         <Row label="Routing number" value={depositAddress.routingNumber} />
-      </View>
-
-      <View className="flex-row items-start gap-3 rounded-2xl bg-[#1C1C1C] px-4 py-4">
-        <Info size={20} color="#94F27F" />
-        <Text className="flex-1 text-sm leading-5 text-gray-400">{RAIL_FOOTER[rail]}</Text>
       </View>
 
       <Button
