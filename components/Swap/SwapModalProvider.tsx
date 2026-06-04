@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -135,6 +135,11 @@ const SwapModalProvider = () => {
     transaction,
     handleTransactionStatusPress,
   ]);
+
+  // Swap is not available on iOS — never render the swap modal there.
+  if (Platform.OS === 'ios') {
+    return null;
+  }
 
   return (
     <ResponsiveModal

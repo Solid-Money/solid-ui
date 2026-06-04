@@ -432,7 +432,7 @@ export default function ActivityTransactions({
             </Text>
             {tab === ActivityTab.WALLET && (
               <Text className="mt-2 text-center text-sm text-muted-foreground">
-                Start by making a swap or sending tokens
+                Start by making a deposit or creating a card
               </Text>
             )}
           </>

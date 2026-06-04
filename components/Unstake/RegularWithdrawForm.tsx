@@ -230,7 +230,7 @@ const RegularWithdrawForm = () => {
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
-        text1: 'Swap transaction submitted',
+        text1: 'Withdrawal transaction submitted',
         text2: `${data.amount} ${selectedToken?.contractTickerSymbol || 'soUSD'}`,
         props: {
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
@@ -243,7 +243,7 @@ const RegularWithdrawForm = () => {
     } catch (_error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while swapping',
+        text1: 'Error while withdrawing',
       });
     }
   };
