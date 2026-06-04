@@ -85,6 +85,7 @@ export const ASSETS = {
     module: require('@/assets/images/brl-fiat-currency.tsx'),
     hash: '75a2ebe8',
   },
+  'images/bsc.png': { module: require('@/assets/images/bsc.png'), hash: '4135f6a8' },
   'images/buy_crypto.png': { module: require('@/assets/images/buy_crypto.png'), hash: 'a072a946' },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
   'images/card-effortless.png': {

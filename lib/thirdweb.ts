@@ -1,5 +1,5 @@
 import { createThirdwebClient, defineChain } from 'thirdweb';
-import { arbitrum, base, mainnet, polygon } from 'thirdweb/chains';
+import { arbitrum, base, bsc, mainnet, polygon } from 'thirdweb/chains';
 
 import { darkTheme } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
@@ -50,7 +50,7 @@ const fuse = defineChain({
   },
 });
 
-const chains = [mainnet, fuse, polygon, base, arbitrum];
+const chains = [mainnet, fuse, polygon, base, arbitrum, bsc];
 
 export const getChain = (chainId: number) => {
   return chains.find(chain => chain.id === chainId);

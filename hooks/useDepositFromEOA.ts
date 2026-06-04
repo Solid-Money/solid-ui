@@ -425,7 +425,13 @@ const useDepositFromEOA = (
         },
       });
 
-      const amountWei = parseUnits(amount, 6);
+      // Source token decimals (defaults to 6). Some chains' USDC is not 6
+      // decimals (e.g. Binance-Peg USDC on BNB Chain is 18), so derive it from
+      // the bridge config rather than hardcoding.
+      const srcDecimals =
+        Object.values(BRIDGE_TOKENS[srcChainId]?.tokens ?? {}).find(t => t.name === token)
+          ?.decimals ?? 6;
+      const amountWei = parseUnits(amount, srcDecimals);
 
       let txHash: `0x${string}` | undefined;
       let transaction: { transactionHash: `0x${string}` } | undefined = {
