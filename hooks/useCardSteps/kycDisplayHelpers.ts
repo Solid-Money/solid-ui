@@ -135,7 +135,7 @@ export function getKYCDescription(
     case RainApplicationStatus.MANUAL_REVIEW:
       return "Your application is being reviewed by our team. We'll update you when a decision is reached.";
     case RainApplicationStatus.DENIED:
-      return "We couldn't verify your identity. Please contact support for more information.";
+      return "We couldn't verify your identity.";
     case RainApplicationStatus.LOCKED:
       return 'Your application is on hold. Contact support for assistance.';
     case RainApplicationStatus.CANCELED:
@@ -235,7 +235,7 @@ export function getStepDescription(
     if (warnings.length > 0) {
       return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
     }
-    return 'Your identity verification was declined. Please contact support for more information.';
+    return 'Your identity verification was declined.';
   }
 
   // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
