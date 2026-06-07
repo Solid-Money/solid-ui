@@ -73,7 +73,10 @@ const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
   SCREEN_CAPTURE_DETECTED: 'A photo of a screen was detected — please use the original document',
   PRINTED_COPY_DETECTED: 'A printed copy was detected — please use the original document',
   PORTRAIT_MANIPULATION_DETECTED: 'The portrait on the document appears to have been altered',
-  POSSIBLE_DUPLICATED_USER: 'A duplicate account was detected',
+  POSSIBLE_DUPLICATED_USER: 'This identity is already linked to another verified account',
+  DUPLICATED_IP: 'This network has already been used to verify another account',
+  DUPLICATED_DEVICE: 'This device has already been used to verify another account',
+  DUPLICATED_DEVICE_FINGERPRINT: 'This device has already been used to verify another account',
   DOCUMENT_NUMBER_NOT_DETECTED: 'Document number could not be read',
   NAME_NOT_DETECTED: 'Name could not be read from the document',
   DATE_OF_BIRTH_NOT_DETECTED: 'Date of birth could not be read from the document',
@@ -230,22 +233,31 @@ export function getStepDescription(
 
   // Didit KYC rejected or expired before reaching Rain — show rejection reasons
   if (options?.kycStatus === KycStatus.REJECTED) {
-    if (warnings.length > 0) {
-      return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `We couldn't verify your identity:\n- ${formatted}`;
     }
     return 'Your identity verification was declined.';
   }
 
   // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
   if (options?.kycStatus === KycStatus.INCOMPLETE && !isRecognizedRainStatus) {
-    if (warnings.length > 0) {
-      return `Additional verification required:\n- ${formatKycWarnings(warnings)}`;
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `Additional verification required:\n- ${formatted}`;
     }
     return 'Additional verification steps are required. Please continue to complete the process.';
   }
 
-  // Didit under review — user should wait
+  // Didit under review — user should wait. Duplicate IP/device filters land here
+  // (Didit sets these to "review" so the suspicious applicant doesn't reach Rain).
+  // When warnings are attached, surface them so the user knows what is being checked
+  // instead of a generic "few minutes" copy for what is actually a manual review.
   if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `Your application is under additional review:\n- ${formatted}\n\nWe'll update you when the review is complete.`;
+    }
     return 'Your information is being reviewed. This usually takes a few minutes.';
   }
 
