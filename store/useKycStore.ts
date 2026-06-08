@@ -3,6 +3,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import mmkvStorage from '@/lib/mmvkStorage';
 
+export type KycFlow = 'card' | 'va';
+
 interface KycState {
   kycLinkId: string | null;
   setKycLinkId: (kycLinkId: string) => void;
@@ -14,6 +16,10 @@ interface KycState {
   diditSessionId: string | null;
   setDiditSessionId: (sessionId: string) => void;
   clearDiditSessionId: () => void;
+  /** Which product initiated KYC — drives post-KYC routing. */
+  kycFlow: KycFlow | null;
+  setKycFlow: (flow: KycFlow) => void;
+  clearKycFlow: () => void;
 }
 
 const KYC_STORAGE_KEY = 'kyc-store';
@@ -24,6 +30,7 @@ export const useKycStore = create<KycState>()(
       kycLinkId: null,
       processingUntil: null,
       diditSessionId: null,
+      kycFlow: null,
 
       setKycLinkId: (kycLinkId: string) => {
         set({ kycLinkId });
@@ -47,6 +54,14 @@ export const useKycStore = create<KycState>()(
 
       clearDiditSessionId: () => {
         set({ diditSessionId: null });
+      },
+
+      setKycFlow: (flow: KycFlow) => {
+        set({ kycFlow: flow });
+      },
+
+      clearKycFlow: () => {
+        set({ kycFlow: null });
       },
     }),
     {

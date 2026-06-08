@@ -310,6 +310,10 @@ export const ASSETS = {
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
   'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: '5ea4a65b' },
+  'images/identity-review.png': {
+    module: require('@/assets/images/identity-review.png'),
+    hash: '6fe74800',
+  },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
   'images/invite-yellow.png': {
     module: require('@/assets/images/invite-yellow.png'),

@@ -71,6 +71,8 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   MppCredentialsResponse,
+  OnrampAutomationRail,
+  OnrampAutomationResponseDto,
   Points,
   PromotionsBannerResponse,
   ProvisioningSessionRequest,
@@ -870,6 +872,53 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Rain onramp automation: persistent virtual bank account (ACH + Wire).
+ * Returns 404 when the user has not yet created an automation.
+ */
+export const getOnrampAutomation = async (): Promise<OnrampAutomationResponseDto | null> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramp-automations`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Creates an onramp automation for the current user. Idempotent — the backend
+ * returns the existing automation if one is already active. Throws a Response
+ * with status 412 if Rain KYC is incomplete.
+ */
+export const createOnrampAutomation = async (
+  rail: OnrampAutomationRail = 'ach',
+): Promise<OnrampAutomationResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramp-automations`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({ rail }),
   });
 
   if (!response.ok) throw response;

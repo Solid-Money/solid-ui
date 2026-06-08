@@ -40,14 +40,16 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
-    useShallow(state => ({
-      kycLinkId: state.kycLinkId,
-      processingUntil: state.processingUntil,
-      setProcessingUntil: state.setProcessingUntil,
-      clearProcessingUntil: state.clearProcessingUntil,
-    })),
-  );
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil, setKycFlow } =
+    useKycStore(
+      useShallow(state => ({
+        kycLinkId: state.kycLinkId,
+        processingUntil: state.processingUntil,
+        setProcessingUntil: state.setProcessingUntil,
+        clearProcessingUntil: state.clearProcessingUntil,
+        setKycFlow: state.setKycFlow,
+      })),
+    );
   // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
   const cardIssuer =
     cardStatusResponse?.rainApplicationStatus != null
@@ -118,9 +120,12 @@ export function useCardSteps(
 
     // Default to Rain KYC; only Bridge goes through Bridge flow
     if (cardIssuer !== CardProvider.BRIDGE) {
+      setKycFlow('card');
       router.push(path.KYC as any);
       return;
     }
+
+    setKycFlow('card');
 
     // Check country access (Bridge flow)
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
@@ -189,6 +194,7 @@ export function useCardSteps(
     countryStore,
     cardsEndorsement?.status,
     cardIssuer,
+    setKycFlow,
   ]);
 
   // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)
