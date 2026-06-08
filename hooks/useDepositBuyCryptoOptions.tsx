@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
@@ -14,6 +15,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const { data: cardStatus } = useCardStatus();
+  const isTestUser = useIsTestUser();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
 
@@ -53,10 +55,10 @@ const useDepositBuyCryptoOptions = () => {
     [handleBankDepositPress],
   );
 
-  const filteredOptions =
-    Platform.OS === 'ios'
-      ? buyCryptoOptions.filter(option => option.method !== 'credit_card')
-      : buyCryptoOptions;
+  const filteredOptions = buyCryptoOptions
+    // Bank Deposit is gated behind the test-features allow list for now.
+    .filter(option => option.method !== 'bank_transfer' || isTestUser)
+    .filter(option => Platform.OS !== 'ios' || option.method !== 'credit_card');
 
   return { buyCryptoOptions: filteredOptions };
 };
