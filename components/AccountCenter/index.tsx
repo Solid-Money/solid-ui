@@ -1,6 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronDown } from 'lucide-react-native';
+import { ChevronDown, Astroid } from 'lucide-react-native';
 
 import ProfileIcon from '@/assets/images/profile';
 import SettingsIcon from '@/assets/images/settings';
@@ -58,6 +58,19 @@ const onAccountCenterSettingsPress = () => {
   router.push(path.SETTINGS);
 };
 
+const AccountCenterAgent = () => {
+  return (
+    <>
+      <Astroid size={20} color="#fff" />
+      <Text className="text-base font-semibold">Agent</Text>
+    </>
+  );
+};
+
+const onAccountCenterAgentPress = () => {
+  router.push(path.AGENT);
+};
+
 const AccountCenterSignOut = () => {
   return (
     <>
@@ -68,9 +81,11 @@ const AccountCenterSignOut = () => {
 };
 
 export {
+  AccountCenterAgent,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
   AccountCenterUsername,
+  onAccountCenterAgentPress,
   onAccountCenterSettingsPress,
 };

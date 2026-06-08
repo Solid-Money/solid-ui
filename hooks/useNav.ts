@@ -28,25 +28,13 @@ const card: MenuItem = {
   href: path.CARD,
 };
 
-const agent: MenuItem = {
-  label: 'Agent',
-  href: path.AGENT,
-};
-
 const useNav = () => {
   const points: MenuItem = {
     label: isProduction ? 'Points' : 'Rewards',
     href: isProduction ? path.POINTS : path.REWARDS,
   };
-  const menuItems: MenuItem[] = [
-    home,
-    savings,
-    card,
-    points,
-    // Agent wallet is not yet released to production — hide the tab there.
-    ...(isProduction ? [] : [agent]),
-    activity,
-  ];
+  // Agent lives in the account-center menu, not the navbar.
+  const menuItems: MenuItem[] = [home, savings, card, points, activity];
   return {
     menuItems,
   };
