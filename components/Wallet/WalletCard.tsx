@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import WalletIcon from '@/assets/images/wallet';
 import CountUp from '@/components/CountUp';
@@ -40,6 +40,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
                   count={balance ?? 0}
                   isTrailingZero={false}
                   decimalPlaces={decimalPlaces}
+                  animateOnMount={false}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-3xl font-semibold',
@@ -73,7 +74,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
             content={
               <Text className="max-w-[16.2rem] text-base">
                 Displaying top three tokens by balance. Wallet can contain any ERC-20 and native
-                token in Ethereum and Fuse for Swap and Send.
+                token in Ethereum and Fuse for {Platform.OS === 'ios' ? 'Send' : 'Swap and Send'}.
               </Text>
             }
           />

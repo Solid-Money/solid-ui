@@ -149,7 +149,7 @@ export default function Savings() {
   const projectedEarnings =
     balance && vaultAPY ? balance * (exchangeRate ?? 1) * (vaultAPY / 100) : 0;
 
-  const stickyHeader = (
+  const pageHeader = (
     <View className="mx-auto w-full max-w-7xl px-4 pb-[40px] pt-6 md:pb-7 md:pt-12">
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
@@ -180,7 +180,8 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout isLoading={isInitialLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isInitialLoading}>
+      {pageHeader}
       <View className="mx-auto w-full max-w-7xl gap-10 px-4 pb-8 md:gap-7 md:pb-12">
         {isScreenMedium ? (
           <View className="flex-row gap-4">

@@ -76,6 +76,7 @@ const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
   POSSIBLE_DUPLICATED_USER: 'This identity is already linked to another verified account',
   DUPLICATED_IP: 'This network has already been used to verify another account',
   DUPLICATED_DEVICE: 'This device has already been used to verify another account',
+  DUPLICATED_DEVICE_FINGERPRINT: 'This device has already been used to verify another account',
   DOCUMENT_NUMBER_NOT_DETECTED: 'Document number could not be read',
   NAME_NOT_DETECTED: 'Name could not be read from the document',
   DATE_OF_BIRTH_NOT_DETECTED: 'Date of birth could not be read from the document',
@@ -135,7 +136,7 @@ export function getKYCDescription(
     case RainApplicationStatus.MANUAL_REVIEW:
       return "Your application is being reviewed by our team. We'll update you when a decision is reached.";
     case RainApplicationStatus.DENIED:
-      return "We couldn't verify your identity. Please contact support for more information.";
+      return "We couldn't verify your identity.";
     case RainApplicationStatus.LOCKED:
       return 'Your application is on hold. Contact support for assistance.';
     case RainApplicationStatus.CANCELED:
@@ -169,6 +170,8 @@ export function getKYCButtonText(
     case RainApplicationStatus.MANUAL_REVIEW:
       return 'Under Review';
     case RainApplicationStatus.DENIED:
+      // Final decision — verification cannot be overridden or resubmitted, so no action button.
+      return undefined;
     case RainApplicationStatus.LOCKED:
     case RainApplicationStatus.CANCELED:
       return 'Contact support';
@@ -189,11 +192,14 @@ export function isRainKYCButtonDisabled(
   rainApplicationStatus?: RainApplicationStatus | null,
 ): boolean {
   if (!rainApplicationStatus) return false;
-  // DENIED/LOCKED/CANCELED show "Contact support" and open Intercom — keep enabled
+  // No actionable button for APPROVED (step complete), PENDING/MANUAL_REVIEW (under review),
+  // or DENIED (final decision — cannot override or resubmit).
+  // LOCKED/CANCELED keep an enabled "Contact support" button that opens Intercom.
   return (
     rainApplicationStatus === RainApplicationStatus.APPROVED ||
     rainApplicationStatus === RainApplicationStatus.PENDING ||
-    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW
+    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW ||
+    rainApplicationStatus === RainApplicationStatus.DENIED
   );
 }
 
@@ -227,28 +233,30 @@ export function getStepDescription(
 
   // Didit KYC rejected or expired before reaching Rain — show rejection reasons
   if (options?.kycStatus === KycStatus.REJECTED) {
-    if (warnings.length > 0) {
-      return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `We couldn't verify your identity:\n- ${formatted}`;
     }
-    return 'Your identity verification was declined. Please try again with a valid ID.';
+    return 'Your identity verification was declined.';
   }
 
   // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
   if (options?.kycStatus === KycStatus.INCOMPLETE && !isRecognizedRainStatus) {
-    if (warnings.length > 0) {
-      return `Additional verification required:\n- ${formatKycWarnings(warnings)}`;
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `Additional verification required:\n- ${formatted}`;
     }
     return 'Additional verification steps are required. Please continue to complete the process.';
   }
 
-  // Didit under review — user should wait. Duplicate IP/device filters land
-  // here (Didit dashboard sets them to "review" so the suspicious applicant
-  // doesn't reach Rain). When warnings are attached, surface them so the user
-  // knows what's being checked instead of seeing a generic "few minutes" copy
-  // for what is actually a manual review.
+  // Didit under review — user should wait. Duplicate IP/device filters land here
+  // (Didit sets these to "review" so the suspicious applicant doesn't reach Rain).
+  // When warnings are attached, surface them so the user knows what is being checked
+  // instead of a generic "few minutes" copy for what is actually a manual review.
   if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
-    if (warnings.length > 0) {
-      return `Your application is under additional review:\n- ${formatKycWarnings(warnings)}\n\nWe'll update you when the review is complete.`;
+    const formatted = formatKycWarnings(warnings);
+    if (formatted) {
+      return `Your application is under additional review:\n- ${formatted}\n\nWe'll update you when the review is complete.`;
     }
     return 'Your information is being reviewed. This usually takes a few minutes.';
   }
@@ -338,9 +346,9 @@ export function getStepButtonText(
     return getKYCButtonText(options.rainApplicationStatus);
   }
 
-  // Didit KYC rejected — allow retry
+  // Didit KYC rejected — final decision; cannot be overridden or resubmitted, so no action button.
   if (options?.kycStatus === KycStatus.REJECTED) {
-    return 'Retry KYC';
+    return undefined;
   }
 
   // Didit incomplete — user needs to continue
@@ -401,6 +409,11 @@ export function isStepButtonDisabled(
 
   // Didit under review — disable button, user must wait
   if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
+    return true;
+  }
+
+  // Didit rejected — final decision, no action available
+  if (options?.kycStatus === KycStatus.REJECTED && !isRecognizedRainStatus) {
     return true;
   }
 

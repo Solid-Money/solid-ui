@@ -125,14 +125,21 @@ export const useCardDepositPoller = () => {
             // Track deposit completed via fallback mechanism
             // Note: This should rarely trigger since SSE is the primary update mechanism
             // If this fires frequently, investigate SSE reliability
-            track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
-              amount: Number(activity.amount),
-              token_symbol: activity.symbol,
-              chain_id: activity.chainId,
-              tx_hash: activity.hash,
-              // Flag to identify updates from fallback vs SSE in analytics
-              source: 'fallback_poller',
-            });
+            // Amplitude is emitted server-side as "Card Deposit Completed" (backend
+            // connect-wallet deposit workflow, CARD category); suppress client
+            // Amplitude to avoid double-counting. Firebase + GTM still fire.
+            track(
+              TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED,
+              {
+                amount: Number(activity.amount),
+                token_symbol: activity.symbol,
+                chain_id: activity.chainId,
+                tx_hash: activity.hash,
+                // Flag to identify updates from fallback vs SSE in analytics
+                source: 'fallback_poller',
+              },
+              { amplitude: false },
+            );
           }),
         );
 

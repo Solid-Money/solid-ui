@@ -132,7 +132,7 @@ export default function Welcome() {
       </View>
 
       {/* Subtitle */}
-      <Text className="native:text-lg mb-8 px-4 text-center text-base font-normal leading-tight text-white/60">
+      <Text className="mb-8 px-4 text-center text-base font-normal leading-tight text-white/60">
         Please select your account to continue, you will be asked to login with your passkey.
       </Text>
 

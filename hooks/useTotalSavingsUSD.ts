@@ -49,9 +49,11 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
   const { data: exchangeRateFuse, isLoading: isLoadingRateFuse } = useVaultExchangeRate(
     fuseVault?.name ?? usdcVault.name,
   );
+  const hasFuseBalance = !!fuseVault && (balanceFuse ?? 0) > 0;
   const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useQuery({
     queryKey: ['fusePriceUsd'],
     queryFn: fetchFusePrice,
+    enabled: hasFuseBalance,
     staleTime: 5_000,
     refetchInterval: 5_000,
   });
@@ -60,19 +62,19 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
     isLoadingBalanceUsdc ||
     isLoadingBalanceFuse ||
     isLoadingRateUsdc ||
-    isLoadingRateFuse ||
-    isLoadingFusePrice;
+    (hasFuseBalance && (isLoadingRateFuse || isLoadingFusePrice));
 
   const data = useMemo(() => {
     if (isLoading) return undefined;
     const rateUsdc = exchangeRateUsdc ?? 1;
     const rateFuse = exchangeRateFuse ?? 1;
-    const fusePrice = Number(fusePriceUsd) || 0;
+    const fusePrice = hasFuseBalance ? Number(fusePriceUsd) || 0 : 0;
     const redeemableUsdc = (balanceUsdc ?? 0) * rateUsdc;
-    const redeemableFuse = fuseVault ? (balanceFuse ?? 0) * rateFuse * fusePrice : 0;
+    const redeemableFuse = hasFuseBalance ? (balanceFuse ?? 0) * rateFuse * fusePrice : 0;
     return redeemableUsdc + redeemableFuse;
   }, [
     isLoading,
+    hasFuseBalance,
     balanceUsdc,
     balanceFuse,
     exchangeRateUsdc,

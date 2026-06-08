@@ -49,8 +49,10 @@ export const useCardDetails = () => {
     () => ({
       ...detailsQuery,
       data: mergedData,
-      isLoading: detailsQuery.isLoading,
+      isLoading:
+        detailsQuery.isLoading ||
+        (provider === CardProvider.RAIN && !!detailsQuery.data && balanceQuery.isLoading),
     }),
-    [detailsQuery, mergedData],
+    [detailsQuery, mergedData, provider, balanceQuery.isLoading],
   );
 };
