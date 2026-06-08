@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
 import { InfoCenterSupport, useInfoCenterSupportPress } from '@/components/InfoCenter';
-import { isProduction } from '@/lib/config';
 import useUser from '@/hooks/useUser';
 
 import {
@@ -77,11 +76,9 @@ const AccountCenterDropdown = () => {
             <AccountCenterUsername />
           </View>
           <View className="mx-[30px] h-px bg-border/50" />
-          {!isProduction && (
-            <Pressable className={rowClassName} onPress={handleAgentPress}>
-              <AccountCenterAgent />
-            </Pressable>
-          )}
+          <Pressable className={rowClassName} onPress={handleAgentPress}>
+            <AccountCenterAgent />
+          </Pressable>
           <Pressable className={rowClassName} onPress={handleSettingsPress}>
             <AccountCenterSettings />
           </Pressable>

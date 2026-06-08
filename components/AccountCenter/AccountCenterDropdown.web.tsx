@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { isProduction } from '@/lib/config';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
@@ -52,14 +51,12 @@ const AccountCenterDropdown = () => {
           <AccountCenterUsername />
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border/50" />
-        {!isProduction && (
-          <DropdownMenuItem
-            className={cn(dropdownMenuItemClassName)}
-            onPress={onAccountCenterAgentPress}
-          >
-            <AccountCenterAgent />
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem
+          className={cn(dropdownMenuItemClassName)}
+          onPress={onAccountCenterAgentPress}
+        >
+          <AccountCenterAgent />
+        </DropdownMenuItem>
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName)}
           onPress={onAccountCenterSettingsPress}
