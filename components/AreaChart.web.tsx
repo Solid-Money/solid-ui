@@ -83,9 +83,7 @@ const Chart = ({
           tickLine={false}
         />
 
-        <Tooltip
-          content={<ChartTooltip data={chartData} formatToolTip={formatToolTip} isPriceChange />}
-        />
+        <Tooltip content={<ChartTooltip data={chartData} formatToolTip={formatToolTip} />} />
 
         <Area
           type="linear"
