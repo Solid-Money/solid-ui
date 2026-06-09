@@ -215,6 +215,29 @@ export type TrackOptions = {
   amplitude?: boolean;
 };
 
+// Enrich event params with attribution + device/session context so every
+// event (including screen views) carries the same top-level properties
+// (utm_source, utm_campaign, attribution_channel, ...) instead of burying
+// them in a nested object. Shared by track() and trackAmplitudeScreen().
+const enrichEventParams = (params: Record<string, any>) => {
+  const attributionData = useAttributionStore.getState().getAttributionForEvent();
+
+  return {
+    ...params,
+    // Attribution data (UTM params, referral codes, etc.)
+    ...attributionData,
+    // Attribution channel for easier filtering
+    attribution_channel: getAttributionChannel(attributionData),
+    // Device/session tracking for anonymous-to-identified user bridging
+    amplitude_device_id: getAmplitudeDeviceId(),
+    amplitude_session_id: getAmplitudeSessionId(),
+    // Platform context
+    platform: Platform.OS,
+    // Timestamp
+    timestamp: Date.now(),
+  };
+};
+
 // Main track function with automatic attribution enrichment
 export const track = (
   event: string,
@@ -235,30 +258,9 @@ export const track = (
 
     const { amplitude = true } = options;
 
-    // Get attribution data from store
-    const attributionStore = useAttributionStore.getState();
-    const attributionData = attributionStore.getAttributionForEvent();
-    const deviceId = getAmplitudeDeviceId();
-    const sessionId = getAmplitudeSessionId();
-
-    // Enrich params with attribution and device context
-    const enrichedParams = {
-      ...params,
-      // Attribution data (UTM params, referral codes, etc.)
-      ...attributionData,
-      // Attribution channel for easier filtering
-      attribution_channel: getAttributionChannel(attributionData),
-      // Device/session tracking for anonymous-to-identified user bridging
-      amplitude_device_id: deviceId,
-      amplitude_session_id: sessionId,
-      // Platform context
-      platform: Platform.OS,
-      // Timestamp
-      timestamp: Date.now(),
-    };
-
-    // Sanitize all params once - remove undefined/null values and ensure serializable
-    const sanitizedParams = sanitize(enrichedParams);
+    // Enrich with attribution + device context, then sanitize once
+    // (remove undefined/null values and ensure serializable).
+    const sanitizedParams = sanitize(enrichEventParams(params));
 
     // Track to all providers in parallel. Amplitude can be opted out per-call
     // for events now emitted server-side; Firebase + GTM always fire.
@@ -280,10 +282,14 @@ const trackAmplitudeScreen = (pathname: string, params: Record<string, any>) => 
   }
 
   try {
-    trackAmplitude(AmplitudeEvent.PAGE_VIEWED, {
-      pathname,
-      params,
-    });
+    // Enrich with attribution + device context and flatten route params to
+    // top-level properties so utm_source / utm_campaign are queryable in
+    // Amplitude (matching how track() enriches every other event), instead
+    // of arriving as a nested `params` object.
+    trackAmplitude(
+      AmplitudeEvent.PAGE_VIEWED,
+      sanitize(enrichEventParams({ pathname, ...params })),
+    );
   } catch (error) {
     console.error('Error tracking Amplitude screen:', error);
   }
