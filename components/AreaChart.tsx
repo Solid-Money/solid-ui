@@ -57,7 +57,6 @@ const ChartContent = ({
   const [tooltipData, setTooltipData] = useState<{
     price: string;
     date: string;
-    priceChange: number | null;
   } | null>(null);
 
   const { currentIndex, isActive } = LineChart.useChart();
@@ -84,16 +83,9 @@ const ChartContent = ({
             return `$${formatNumber(value)}`;
           };
 
-          const prevData = index > 0 ? data[index - 1] : null;
-          const change =
-            prevData && currentData
-              ? calculatePercentageChange(prevData.value, currentData.value)
-              : null;
-
           setTooltipData({
             price: formatToolTip ? formatToolTip(currentData.value) : format(currentData.value),
             date: formatChartTooltipDate(currentData.time),
-            priceChange: change,
           });
           setTooltipVisible(true);
         }
@@ -267,20 +259,7 @@ const ChartContent = ({
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#18181B' }}>
             {tooltipData.price}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            {tooltipData.priceChange !== null && (
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: tooltipData.priceChange < 0 ? '#EF4444' : '#22C55E',
-                }}
-              >
-                {formatNumber(tooltipData.priceChange, 2)}%
-              </Text>
-            )}
-            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{tooltipData.date}</Text>
-          </View>
+          <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>{tooltipData.date}</Text>
         </View>
       )}
     </>
