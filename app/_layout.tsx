@@ -195,6 +195,7 @@ export const queryClient = new QueryClient({
 export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+  const [analyticsReady, setAnalyticsReady] = useState(false);
 
   const hasSelectedUser = useUserStore(state => state.users.some(u => u.selected));
 
@@ -220,7 +221,9 @@ export default Sentry.wrap(function RootLayout() {
     if (!splashScreenHidden) return;
     if (Platform.OS === 'ios' && !attReady) return;
 
-    initAnalytics(isTrackingAllowed).catch(e => console.warn('Analytics init error:', e));
+    initAnalytics(isTrackingAllowed)
+      .catch(e => console.warn('Analytics init error:', e))
+      .finally(() => setAnalyticsReady(true));
   }, [splashScreenHidden, attReady, isTrackingAllowed]);
 
   useEffect(() => {
@@ -310,8 +313,14 @@ export default Sentry.wrap(function RootLayout() {
   // - Amplitude: tracks on all platforms
   // - Firebase: tracks on web only
   useEffect(() => {
+    // Wait until analytics is initialized before tracking screen views. On
+    // web the SDK has no proxy/serverUrl configured until init() runs, so an
+    // early Page Viewed would be queued and flushed to the wrong endpoint (or
+    // lost). Gating on analyticsReady also re-fires this effect once init
+    // completes, capturing the landing screen with full attribution context.
+    if (!analyticsReady) return;
     trackScreen(pathname, params);
-  }, [pathname, params]);
+  }, [pathname, params, analyticsReady]);
 
   useEffect(() => {
     if (fontError) {
@@ -324,14 +333,14 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <SafeAreaProvider style={{ flex: 1 }}>
       <TurnkeyProvider>
         <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={getInfoClient()}>
                 <Intercom>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
+                  <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
                     <BottomSheetModalProvider>
                       {Platform.OS === 'web' && (
                         <Head>
