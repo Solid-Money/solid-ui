@@ -7,10 +7,12 @@ import { InfoCenterSupport, useInfoCenterSupportPress } from '@/components/InfoC
 import useUser from '@/hooks/useUser';
 
 import {
+  AccountCenterAgent,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
   AccountCenterUsername,
+  onAccountCenterAgentPress,
   onAccountCenterSettingsPress,
 } from '.';
 
@@ -33,6 +35,11 @@ const AccountCenterDropdown = () => {
 
   const handleSettingsPress = useCallback(
     () => dismissAndRun(onAccountCenterSettingsPress),
+    [dismissAndRun],
+  );
+
+  const handleAgentPress = useCallback(
+    () => dismissAndRun(onAccountCenterAgentPress),
     [dismissAndRun],
   );
 
@@ -69,6 +76,9 @@ const AccountCenterDropdown = () => {
             <AccountCenterUsername />
           </View>
           <View className="mx-[30px] h-px bg-border/50" />
+          <Pressable className={rowClassName} onPress={handleAgentPress}>
+            <AccountCenterAgent />
+          </Pressable>
           <Pressable className={rowClassName} onPress={handleSettingsPress}>
             <AccountCenterSettings />
           </Pressable>

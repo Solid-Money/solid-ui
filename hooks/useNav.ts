@@ -33,6 +33,7 @@ const useNav = () => {
     label: isProduction ? 'Points' : 'Rewards',
     href: isProduction ? path.POINTS : path.REWARDS,
   };
+  // Agent lives in the account-center menu, not the navbar.
   const menuItems: MenuItem[] = [home, savings, card, points, activity];
   return {
     menuItems,

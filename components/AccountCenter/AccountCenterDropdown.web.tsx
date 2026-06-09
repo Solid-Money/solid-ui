@@ -11,10 +11,12 @@ import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
 import {
+  AccountCenterAgent,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
   AccountCenterUsername,
+  onAccountCenterAgentPress,
   onAccountCenterSettingsPress,
 } from '.';
 
@@ -49,6 +51,12 @@ const AccountCenterDropdown = () => {
           <AccountCenterUsername />
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border/50" />
+        <DropdownMenuItem
+          className={cn(dropdownMenuItemClassName)}
+          onPress={onAccountCenterAgentPress}
+        >
+          <AccountCenterAgent />
+        </DropdownMenuItem>
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName)}
           onPress={onAccountCenterSettingsPress}

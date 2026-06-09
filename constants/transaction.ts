@@ -110,4 +110,12 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.IN,
     category: TransactionCategory.WALLET_TRANSFER,
   },
+  [TransactionType.AGENT_X402_PAYMENT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.WALLET_TRANSFER,
+  },
+  [TransactionType.AGENT_WALLET_DEPOSIT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.WALLET_TRANSFER,
+  },
 };

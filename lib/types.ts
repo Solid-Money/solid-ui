@@ -724,6 +724,8 @@ export enum TransactionType {
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
   RESCUE_TOKEN = 'rescue_token',
+  AGENT_X402_PAYMENT = 'agent_x402_payment',
+  AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
 }
 
 export enum TransactionDirection {
@@ -1582,6 +1584,54 @@ export interface AddressBookResponse {
   walletAddress: string;
   skipped2faAt?: Date;
 }
+
+export type AgentSummary = {
+  agentEoaAddress?: string;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
+
+/**
+ * Envelope returned by the Turnkey SDK's `stampX` methods. `body` is the
+ * exact stringified bytes the SDK signed — we MUST forward it verbatim;
+ * re-serializing on the server changes key order and breaks the stamp.
+ */
+export type SignedTurnkeyRequest = {
+  url: string;
+  body: string;
+  stamp: { stampHeaderName: string; stampHeaderValue: string };
+};
+
+export type ProvisioningActivity = {
+  url: string;
+  body: Record<string, unknown>;
+};
+
+export type ProvisioningInitResponse = {
+  provisioningId: string;
+  subOrganizationId: string;
+  /**
+   * Set when the agent's wallet path was already derived in Turnkey from a
+   * prior failed provisioning attempt. The `activity` in this case is the
+   * createUsers body — the client should skip the wallet-account stamp.
+   */
+  agentEoaAddress?: string;
+  activity: ProvisioningActivity;
+};
+
+export type ProvisioningStepInput = {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+};
 
 export interface WhatsNewStep {
   imageUrl: string;

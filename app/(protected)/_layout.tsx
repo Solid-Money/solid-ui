@@ -222,6 +222,12 @@ export default function ProtectedLayout() {
           animation: 'slide_from_right',
         }}
       />
+      <Stack.Screen
+        name="agent/index"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
