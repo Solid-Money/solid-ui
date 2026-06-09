@@ -1,6 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronDown, Astroid } from 'lucide-react-native';
+import { ChevronDown, Bot } from 'lucide-react-native';
 
 import ProfileIcon from '@/assets/images/profile';
 import SettingsIcon from '@/assets/images/settings';
@@ -61,7 +61,7 @@ const onAccountCenterSettingsPress = () => {
 const AccountCenterAgent = () => {
   return (
     <>
-      <Astroid size={20} color="#fff" />
+      <Bot size={20} color="#fff" />
       <Text className="text-base font-semibold">Agent</Text>
     </>
   );
