@@ -70,7 +70,7 @@ const CardDepositModalProvider = () => {
     if (isClose) {
       hasTrackedOpenRef.current = false;
       hasTrackedTransactionStatusRef.current = false;
-      setSource(undefined); // Clear source so it defaults to BORROW next time
+      setSource(undefined); // Clear source so the next open re-selects from the user's balances
     }
   }, [isClose, setSource]);
 
