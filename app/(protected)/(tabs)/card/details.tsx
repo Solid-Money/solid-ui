@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Linking,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -32,8 +24,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -42,10 +32,9 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
+import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
-import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
@@ -194,14 +183,9 @@ export default function CardDetails() {
             </View>
           </View>
 
-          {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
-          <View className="mt-6 flex-row items-start gap-6">
-            <View className="flex-[3]">
-              <BorrowPositionCard variant="desktop" className="min-h-[180px]" />
-            </View>
-            <View className="h-[180px] flex-[2]">
-              <DepositBonusBanner />
-            </View>
+          {/* Row 3: Borrow Position Card */}
+          <View className="mt-6">
+            <BorrowPositionCard variant="desktop" className="min-h-[180px]" />
           </View>
         </View>
 
@@ -244,7 +228,6 @@ export default function CardDetails() {
             isRain={provider === CardProvider.RAIN}
           />
           <BorrowPositionCard className="mb-4" />
-          <DepositBonusBanner />
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
@@ -920,141 +903,6 @@ function CardActions({
   );
 }
 
-function DepositBonusBanner() {
-  const { isScreenMedium } = useDimension();
-  const { isEnabled: configIsEnabled, percentage, cap, isLoading } = useCardDepositBonusConfig();
-  const isEnabled = EXPO_PUBLIC_ENVIRONMENT === 'qa' ? true : configIsEnabled;
-  const { setModal, setSource } = useCardDepositStore();
-
-  const learnMoreUrl = 'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings';
-
-  const handleLearnMorePress = useCallback((e: any) => {
-    e?.stopPropagation();
-    void Linking.openURL(learnMoreUrl);
-  }, []);
-
-  const handleBannerPress = useCallback(() => {
-    setSource(CardDepositSource.BORROW);
-    setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
-  }, [setModal, setSource]);
-
-  // Don't render while loading or if disabled
-  if (isLoading || !isEnabled) {
-    return null;
-  }
-
-  const bonusPercentage = Math.round(percentage * 100);
-  const capFormatted = cap >= 1000 ? `$${cap / 1000}K` : `$${cap}`;
-
-  if (isScreenMedium) {
-    return (
-      <Pressable
-        onPress={handleBannerPress}
-        className="relative h-full overflow-hidden rounded-2xl web:hover:opacity-90"
-      >
-        <LinearGradient
-          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          pointerEvents="none"
-          style={styles.gradientOverlay}
-        />
-        <View className="flex-1 flex-row">
-          {/* Left content */}
-          <View className="flex-1 justify-between p-6">
-            {/* Badge */}
-            <View className="self-start rounded-full bg-[#FFD151]/20 px-4 py-1">
-              <Text className="text-base font-bold text-[#FFD151]">
-                Get {bonusPercentage}% bonus for deposit
-              </Text>
-            </View>
-
-            {/* Description and Learn more */}
-            <View className="mt-4">
-              <Text className="text-base font-medium text-[#FFD151]">
-                For users that deposit to savings{'\n'}
-                and then borrow-deposit to the card.
-              </Text>
-              <View className="mt-1 flex-row items-center">
-                <Text className="text-base font-medium  text-[#FFD151]">Up to {capFormatted}</Text>
-                <Pressable
-                  onPress={handleLearnMorePress}
-                  className="ml-3 flex-row items-center gap-1"
-                  accessibilityRole="link"
-                >
-                  <Text className="text-base font-bold  text-[#FFD151]">Learn more</Text>
-                  <ChevronRight size={20} color="#FFD151" />
-                </Pressable>
-              </View>
-            </View>
-          </View>
-
-          {/* Right side - Percentage with circles background */}
-          <View className="items-center justify-center pr-6">
-            <View className="relative items-center justify-center">
-              <Image
-                source={getAsset('images/percentage_circles.png')}
-                style={styles.percentageCircles}
-                contentFit="contain"
-              />
-              <Text className="absolute text-5xl font-extralight text-[#FFD151]">
-                +{bonusPercentage}%
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Pressable>
-    );
-  }
-
-  // Mobile layout
-  return (
-    <Pressable
-      onPress={handleBannerPress}
-      className="relative mb-4 overflow-hidden rounded-2xl web:hover:opacity-90"
-    >
-      <LinearGradient
-        colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-        style={styles.gradientOverlay}
-      />
-      <View className="flex-row p-5">
-        {/* Left content */}
-        <View className="flex-1">
-          {/* Badge */}
-          <View className="mb-3 self-start rounded-full bg-[#FFD151]/20 px-3 py-1.5">
-            <Text className="text-sm font-bold text-[#FFD151]">
-              Get {bonusPercentage}% bonus for deposit
-            </Text>
-          </View>
-
-          {/* Description and Learn more */}
-          <View>
-            <Text className="text-base font-medium leading-6 text-[#FFD151]">
-              For users that deposit to savings and then borrow-deposit to the card.
-            </Text>
-            <View className="mt-1 flex-row items-center gap-2">
-              <Text className="text-base font-medium leading-6 text-[#FFD151]">
-                Up to {capFormatted}
-              </Text>
-              <Pressable
-                onPress={handleLearnMorePress}
-                className="flex-row items-center gap-1"
-                accessibilityRole="link"
-              >
-                <Text className="text-base font-bold text-[#FFD151]">Learn more</Text>
-                <ChevronRight size={18} color="#FFD151" />
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 interface CashbackDisplayProps {
   cashback?: {
     monthlyFuseAmount: number;
@@ -1170,14 +1018,6 @@ const styles = StyleSheet.create({
   transactionAvatar: { width: 43, height: 43 },
 
   // Gradient overlays (used with LinearGradient)
-  gradientOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
   gradientOverlayWithOpacity: {
     position: 'absolute',
     left: 0,
@@ -1212,8 +1052,4 @@ const styles = StyleSheet.create({
 
   // Text styles
   lineHeight20: { lineHeight: 20 },
-
-  // Deposit bonus banner
-  percentageCircles: { width: 140, height: 140 },
-  percentageCirclesMobile: { width: 100, height: 100 },
 });
