@@ -91,36 +91,45 @@ type FormData = { amount: string; from: CardDepositSource };
 type SourceSelectorProps = {
   control: Control<FormData>;
   from: CardDepositSource;
-  showBorrowOption: boolean;
-  /** When false, only Wallet option is shown (testnet). */
-  showSavingsAndBorrowOptions: boolean;
+  /** Funding sources to list, already ordered (funded source first). */
+  sources: CardDepositSource[];
   /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
   walletTokenSymbol: string;
 };
+
+/** Display labels for each funding source shown in the selector. */
+const SOURCE_LABELS: Record<CardDepositSource, string> = {
+  [CardDepositSource.WALLET]: 'Wallet',
+  [CardDepositSource.SAVINGS]: 'Savings',
+  [CardDepositSource.BORROW]: 'Borrow against Savings',
+  [CardDepositSource.EXTERNAL]: 'External Wallet',
+  [CardDepositSource.COLLATERAL]: 'Collateral',
+};
+
+/** Renders the icon associated with a funding source. */
+function SourceIcon({ source, size }: { source: CardDepositSource; size: number }) {
+  if (source === CardDepositSource.SAVINGS || source === CardDepositSource.BORROW) {
+    return <Leaf color="#A1A1A1" size={size} />;
+  }
+  return <WalletIcon color="#A1A1A1" size={size} />;
+}
 
 function SourceSelectorNative({
   value,
   onChange,
   from,
-  showBorrowOption,
-  showSavingsAndBorrowOptions,
+  sources,
   walletTokenSymbol,
 }: {
   value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
   from: CardDepositSource;
-  showBorrowOption: boolean;
-  showSavingsAndBorrowOptions: boolean;
+  sources: CardDepositSource[];
   walletTokenSymbol: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const getDisplayText = useCallback(() => {
-    if (value === CardDepositSource.WALLET) return 'Wallet';
-    if (value === CardDepositSource.SAVINGS) return 'Savings';
-    if (value === CardDepositSource.EXTERNAL) return 'External Wallet';
-    return 'Borrow against Savings';
-  }, [value]);
+  const getDisplayText = useCallback(() => SOURCE_LABELS[value], [value]);
 
   const getTokenSymbol = useCallback(() => {
     if (from === CardDepositSource.WALLET) return walletTokenSymbol;
@@ -136,13 +145,7 @@ function SourceSelectorNative({
         onPress={() => setIsOpen(!isOpen)}
       >
         <View className="flex-row items-center gap-2">
-          {value === CardDepositSource.WALLET || value === CardDepositSource.EXTERNAL ? (
-            <WalletIcon color="#A1A1A1" size={24} />
-          ) : value === CardDepositSource.SAVINGS ? (
-            <Leaf color="#A1A1A1" size={24} />
-          ) : (
-            <Leaf color="#A1A1A1" size={24} />
-          )}
+          <SourceIcon source={value} size={24} />
           <Text className="text-lg font-semibold">{getDisplayText()}</Text>
         </View>
         <View className="flex-row items-center gap-2">
@@ -154,50 +157,19 @@ function SourceSelectorNative({
       </Pressable>
       {isOpen && (
         <View className="mt-1 overflow-hidden rounded-2xl bg-accent">
-          {showSavingsAndBorrowOptions && showBorrowOption && (
+          {sources.map(source => (
             <Pressable
+              key={source}
               className="flex-row items-center gap-2 px-4 py-3"
               onPress={() => {
-                onChange(CardDepositSource.BORROW);
+                onChange(source);
                 setIsOpen(false);
               }}
             >
-              <Leaf color="#A1A1A1" size={20} />
-              <Text className="text-lg">Borrow against Savings</Text>
+              <SourceIcon source={source} size={20} />
+              <Text className="text-lg">{SOURCE_LABELS[source]}</Text>
             </Pressable>
-          )}
-          {showSavingsAndBorrowOptions && (
-            <Pressable
-              className="flex-row items-center gap-2 px-4 py-3"
-              onPress={() => {
-                onChange(CardDepositSource.SAVINGS);
-                setIsOpen(false);
-              }}
-            >
-              <Leaf color="#A1A1A1" size={20} />
-              <Text className="text-lg">Savings</Text>
-            </Pressable>
-          )}
-          <Pressable
-            className="flex-row items-center gap-2 px-4 py-3"
-            onPress={() => {
-              onChange(CardDepositSource.WALLET);
-              setIsOpen(false);
-            }}
-          >
-            <WalletIcon color="#A1A1A1" size={20} />
-            <Text className="text-lg">Wallet</Text>
-          </Pressable>
-          <Pressable
-            className="flex-row items-center gap-2 px-4 py-3"
-            onPress={() => {
-              onChange(CardDepositSource.EXTERNAL);
-              setIsOpen(false);
-            }}
-          >
-            <WalletIcon color="#A1A1A1" size={20} />
-            <Text className="text-lg">External Wallet</Text>
-          </Pressable>
+          ))}
         </View>
       )}
     </View>
@@ -208,23 +180,16 @@ function SourceSelectorWeb({
   value,
   onChange,
   from,
-  showBorrowOption,
-  showSavingsAndBorrowOptions,
+  sources,
   walletTokenSymbol,
 }: {
   value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
   from: CardDepositSource;
-  showBorrowOption: boolean;
-  showSavingsAndBorrowOptions: boolean;
+  sources: CardDepositSource[];
   walletTokenSymbol: string;
 }) {
-  const getDisplayText = useCallback(() => {
-    if (value === CardDepositSource.WALLET) return 'Wallet';
-    if (value === CardDepositSource.SAVINGS) return 'Savings';
-    if (value === CardDepositSource.EXTERNAL) return 'External Wallet';
-    return 'Borrow against Savings';
-  }, [value]);
+  const getDisplayText = useCallback(() => SOURCE_LABELS[value], [value]);
 
   const getTokenSymbol = useCallback(() => {
     if (from === CardDepositSource.WALLET) return walletTokenSymbol;
@@ -238,13 +203,7 @@ function SourceSelectorWeb({
       <DropdownMenuTrigger asChild>
         <Pressable className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
           <View className="flex-row items-center gap-2">
-            {value === CardDepositSource.WALLET || value === CardDepositSource.EXTERNAL ? (
-              <WalletIcon color="#A1A1A1" size={24} />
-            ) : value === CardDepositSource.SAVINGS ? (
-              <Leaf color="#A1A1A1" size={24} />
-            ) : (
-              <Leaf color="#A1A1A1" size={24} />
-            )}
+            <SourceIcon source={value} size={24} />
             <Text className="text-lg font-semibold">{getDisplayText()}</Text>
           </View>
           <View className="flex-row items-center gap-2">
@@ -254,50 +213,22 @@ function SourceSelectorWeb({
         </Pressable>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="-mt-4 w-full min-w-[380px] rounded-b-2xl rounded-t-none border-0">
-        {showSavingsAndBorrowOptions && showBorrowOption && (
+        {sources.map(source => (
           <DropdownMenuItem
-            onPress={() => onChange(CardDepositSource.BORROW)}
+            key={source}
+            onPress={() => onChange(source)}
             className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
           >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Borrow against Savings</Text>
+            <SourceIcon source={source} size={20} />
+            <Text className="text-lg">{SOURCE_LABELS[source]}</Text>
           </DropdownMenuItem>
-        )}
-        {showSavingsAndBorrowOptions && (
-          <DropdownMenuItem
-            onPress={() => onChange(CardDepositSource.SAVINGS)}
-            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-          >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Savings</Text>
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          onPress={() => onChange(CardDepositSource.WALLET)}
-          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-        >
-          <WalletIcon color="#A1A1A1" size={20} />
-          <Text className="text-lg">Wallet</Text>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onPress={() => onChange(CardDepositSource.EXTERNAL)}
-          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-        >
-          <WalletIcon color="#A1A1A1" size={20} />
-          <Text className="text-lg">External Wallet</Text>
-        </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function SourceSelector({
-  control,
-  from,
-  showBorrowOption,
-  showSavingsAndBorrowOptions,
-  walletTokenSymbol,
-}: SourceSelectorProps) {
+function SourceSelector({ control, from, sources, walletTokenSymbol }: SourceSelectorProps) {
   return (
     <View className="gap-2">
       <Text className="font-medium opacity-50">From</Text>
@@ -310,8 +241,7 @@ function SourceSelector({
               value={value}
               onChange={onChange}
               from={from}
-              showBorrowOption={showBorrowOption}
-              showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+              sources={sources}
               walletTokenSymbol={walletTokenSymbol}
             />
           ) : (
@@ -319,8 +249,7 @@ function SourceSelector({
               value={value}
               onChange={onChange}
               from={from}
-              showBorrowOption={showBorrowOption}
-              showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+              sources={sources}
               walletTokenSymbol={walletTokenSymbol}
             />
           )
@@ -618,7 +547,9 @@ export default function CardDepositInternalForm() {
     mode: 'onChange',
     defaultValues: {
       amount: '',
-      from: source ?? (isProduction ? CardDepositSource.BORROW : CardDepositSource.WALLET),
+      // Never start on Borrow. When no source is explicitly chosen, the funded
+      // source is selected once balances load (see the effect below).
+      from: source ?? CardDepositSource.WALLET,
     },
   });
 
@@ -1222,6 +1153,58 @@ export default function CardDepositInternalForm() {
   const showBorrowOption = isProduction;
   const showSavingsAndBorrowOptions = isProduction;
 
+  // Order the funding sources so the one the user actually has funds in is
+  // shown first. Savings vs Wallet are sorted by balance (highest first);
+  // Borrow against Savings is never first; External Wallet stays last.
+  const sortedSources = useMemo<CardDepositSource[]>(() => {
+    if (!showSavingsAndBorrowOptions) {
+      return [CardDepositSource.WALLET, CardDepositSource.EXTERNAL];
+    }
+
+    const balanceSources = [
+      { source: CardDepositSource.WALLET, balance: usdcBalanceAmount },
+      { source: CardDepositSource.SAVINGS, balance: soUsdBalanceAmount },
+    ]
+      .sort((a, b) => b.balance - a.balance)
+      .map(item => item.source);
+
+    return [
+      ...balanceSources,
+      ...(showBorrowOption ? [CardDepositSource.BORROW] : []),
+      CardDepositSource.EXTERNAL,
+    ];
+  }, [showSavingsAndBorrowOptions, showBorrowOption, usdcBalanceAmount, soUsdBalanceAmount]);
+
+  // The funded source the form should open on — the first ordered option, which
+  // is always Wallet or Savings (never Borrow).
+  const defaultSource = sortedSources[0];
+
+  // When the modal is opened without an explicit source (the default "Add funds"
+  // entry, which previously defaulted to Borrow), select the source the user has
+  // funds in once balances have loaded.
+  const hasAppliedDefaultSourceRef = useRef(false);
+  useEffect(() => {
+    if (hasAppliedDefaultSourceRef.current) return;
+    // Respect an explicitly chosen source (borrow banner, options screen, token selector).
+    if (source) {
+      hasAppliedDefaultSourceRef.current = true;
+      return;
+    }
+    // Wait until balances are known so we land on the source that has funds.
+    if (isBalancesLoading || (isProduction && isUsdcBalanceLoading)) return;
+    hasAppliedDefaultSourceRef.current = true;
+    if (defaultSource && defaultSource !== watchedFrom) {
+      setValue('from', defaultSource);
+    }
+  }, [
+    source,
+    isBalancesLoading,
+    isUsdcBalanceLoading,
+    defaultSource,
+    watchedFrom,
+    setValue,
+  ]);
+
   // Reset to 'savings' if user is on 'borrow' but doesn't have permission
   useEffect(() => {
     if (watchedFrom === CardDepositSource.BORROW && !showBorrowOption) {
@@ -1260,8 +1243,7 @@ export default function CardDepositInternalForm() {
       <SourceSelector
         control={control}
         from={watchedFrom}
-        showBorrowOption={showBorrowOption}
-        showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+        sources={sortedSources}
         walletTokenSymbol={walletTokenSymbol}
       />
 
