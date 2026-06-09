@@ -333,7 +333,10 @@ interface BalanceCardProps {
 /**
  * Mirrors /card/details `SpendingBalanceCard` shape — rounded-[20px] base
  * with a LinearGradient overlay, big balance up top, secondary stat under
- * it. Purple palette matching the savings page.
+ * it. The gradient is a separate childless layer at 0.3 opacity (zIndex -1)
+ * over the dark page, so it reads as the same dark purple as the savings
+ * page while the sibling content stays full-opacity. Don't nest the content
+ * inside the LinearGradient — the opacity would fade the text too.
  */
 function BalanceCard({ balance, balanceLoading }: BalanceCardProps) {
   const formatted = balanceLoading ? null : formatUsdc(balance);
@@ -344,7 +347,15 @@ function BalanceCard({ balance, balanceLoading }: BalanceCardProps) {
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.6, y: 1 }}
         pointerEvents="none"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.3,
+        }}
       />
       <View className="flex-1 justify-between gap-12">
         <View>
