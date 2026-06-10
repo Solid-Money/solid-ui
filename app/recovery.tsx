@@ -2,18 +2,23 @@ import React, { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
+import { DesktopCarousel } from '@/components/Onboarding';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 
 // Validation schemas
 const emailSchema = z.object({
@@ -40,6 +45,8 @@ const STEPS = {
 type Step = (typeof STEPS)[keyof typeof STEPS];
 
 export default function RecoveryPasskey() {
+  const router = useRouter();
+  const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession } = useTurnkey();
 
   const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
@@ -160,30 +167,78 @@ export default function RecoveryPasskey() {
     }
   }, [email]);
 
+  const handleBack = useCallback(() => {
+    router.replace(path.ONBOARDING);
+  }, [router]);
+
+  // Active step's form content - shared between mobile and desktop layouts.
+  const stepContent = (
+    <View className="w-full max-w-[440px]">
+      {step === STEPS.EMAIL_INPUT && (
+        <EmailInput onSubmit={handleSendOtp} loading={loading} apiError={apiError} />
+      )}
+      {step === STEPS.OTP_VERIFY && (
+        <OtpVerify
+          email={email}
+          onSubmit={handleVerifyOtp}
+          onResend={handleResendOtp}
+          loading={loading}
+          apiError={apiError}
+        />
+      )}
+      {step === STEPS.ADD_PASSKEY && (
+        <AddPasskey onSubmit={handleAddPasskey} loading={loading} error={apiError} />
+      )}
+      {step === STEPS.SUCCESS && <Success />}
+    </View>
+  );
+
+  // Mobile Layout
+  if (!isDesktop) {
+    return (
+      <SafeAreaView className="flex-1 bg-background text-foreground">
+        <View className="flex-1">
+          {/* Header with back button */}
+          <View className="flex-row items-center px-6 py-3">
+            <BackButton onPress={handleBack} />
+          </View>
+
+          {/* Content - centered vertically */}
+          <View className="flex-1 items-center justify-center px-6 pb-8">{stepContent}</View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Desktop Layout - Split Screen
   return (
-    <SafeAreaView className="flex-1 bg-background text-foreground">
-      <View className="mx-auto w-full max-w-lg px-4 pt-12">
-        <Text className="mb-8 text-center text-xl font-semibold text-white md:text-2xl">
-          Passkey Recovery
-        </Text>
-        {step === STEPS.EMAIL_INPUT && (
-          <EmailInput onSubmit={handleSendOtp} loading={loading} apiError={apiError} />
-        )}
-        {step === STEPS.OTP_VERIFY && (
-          <OtpVerify
-            email={email}
-            onSubmit={handleVerifyOtp}
-            onResend={handleResendOtp}
-            loading={loading}
-            apiError={apiError}
+    <View className="flex-1 flex-row bg-background">
+      {/* Left Section - Interactive Carousel */}
+      <DesktopCarousel />
+
+      {/* Right Section - Form (70%) */}
+      <View className="relative flex-1">
+        {/* Logo at top center */}
+        <View className="absolute left-0 right-0 top-6 items-center">
+          <Image
+            source={getAsset('images/solid-logo-4x.png')}
+            alt="Solid logo"
+            style={{ width: 40, height: 44 }}
+            contentFit="contain"
           />
-        )}
-        {step === STEPS.ADD_PASSKEY && (
-          <AddPasskey onSubmit={handleAddPasskey} loading={loading} error={apiError} />
-        )}
-        {step === STEPS.SUCCESS && <Success />}
+        </View>
+
+        {/* Form Content - centered vertically, with back button above the form */}
+        <View className="flex-1 items-center justify-center px-8">
+          <View className="w-full max-w-[440px]">
+            <View className="mb-10">
+              <BackButton onPress={handleBack} />
+            </View>
+            {stepContent}
+          </View>
+        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -211,52 +266,62 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
   const displayError = fieldError || apiError;
 
   return (
-    <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Enter your email</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
-          We&apos;ll send a verification code to recover your account
+    <>
+      <View className="mb-8">
+        <Text className="mb-4 text-center text-[34px] font-medium -tracking-[1px] text-white">
+          Passkey Recovery
         </Text>
+        <Text className="text-center text-base font-medium text-white/60">
+          We&apos;ll send a verification code{'\n'}to recover your account
+        </Text>
+      </View>
 
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              id="email"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              className="bg-[#2F2F2F] font-normal"
-              error={!!errors.email}
-              autoCorrect={false}
-              autoFocus
-            />
-          )}
-        />
-        {displayError && (
-          <View className="mb-4 flex-row items-center gap-2">
+      <View className="mb-6 gap-5">
+        <View>
+          <Text className="mb-2 text-base font-medium text-white/60">Email</Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                id="email"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                className="bg-[#2F2F2F] font-normal"
+                error={!!errors.email}
+                autoCorrect={false}
+                autoFocus
+              />
+            )}
+          />
+        </View>
+
+        {displayError ? (
+          <View className="flex-row items-center gap-2">
             <InfoError />
             <Text className="text-sm text-red-400">{displayError}</Text>
           </View>
-        )}
-        <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
-          onPress={handleSubmit(onSubmit)}
-          disabled={!isValid || loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#cccccc" />
-          ) : (
-            <Text className="text-base font-bold text-black">Send Code</Text>
-          )}
-        </Button>
+        ) : null}
       </View>
-    </View>
+
+      <Button
+        variant="brand"
+        className="h-14 w-full rounded-xl font-semibold"
+        onPress={handleSubmit(onSubmit)}
+        disabled={!isValid || loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="gray" />
+        ) : (
+          <Text className="text-base font-bold">Send code</Text>
+        )}
+      </Button>
+    </>
   );
 }
 
@@ -293,58 +358,61 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
   }, [reset, onResend]);
 
   return (
-    <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">
+    <>
+      <View className="mb-8">
+        <Text className="mb-4 text-center text-[34px] font-medium -tracking-[1px] text-white">
           Enter verification code
         </Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+        <Text className="text-center text-base font-medium text-white/60">
           We sent a 6-digit code to {maskedEmail}
         </Text>
-
-        <View className="mb-6">
-          <Controller
-            control={control}
-            name="otpCode"
-            render={({ field: { onChange, value } }) => (
-              <OtpInput
-                value={value}
-                onChange={onChange}
-                length={6}
-                autoFocus
-                error={!!displayError}
-                disabled={loading}
-              />
-            )}
-          />
-          {displayError && (
-            <View className="mt-4 flex-row items-center justify-center gap-2">
-              <InfoError />
-              <Text className="text-sm text-red-400">{displayError}</Text>
-            </View>
-          )}
-        </View>
-        <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
-          onPress={handleSubmit(onSubmit)}
-          disabled={!isValid || loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#cccccc" />
-          ) : (
-            <Text className="text-base font-bold text-black">Verify</Text>
-          )}
-        </Button>
-
-        <Button
-          className="h-11 w-full rounded-xl bg-transparent"
-          onPress={handleResend}
-          disabled={loading}
-        >
-          <Text className="text-base text-white/60">Resend Code</Text>
-        </Button>
       </View>
-    </View>
+
+      <View className="mb-6">
+        <Controller
+          control={control}
+          name="otpCode"
+          render={({ field: { onChange, value } }) => (
+            <OtpInput
+              value={value}
+              onChange={onChange}
+              length={6}
+              autoFocus
+              error={!!displayError}
+              disabled={loading}
+            />
+          )}
+        />
+        {displayError ? (
+          <View className="mt-4 flex-row items-center justify-center gap-2">
+            <InfoError />
+            <Text className="text-sm text-red-400">{displayError}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <Button
+        variant="brand"
+        className="mb-3 h-14 w-full rounded-xl font-semibold"
+        onPress={handleSubmit(onSubmit)}
+        disabled={!isValid || loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="gray" />
+        ) : (
+          <Text className="text-base font-bold">Verify</Text>
+        )}
+      </Button>
+
+      <Button
+        variant="ghost"
+        className="h-14 w-full rounded-xl"
+        onPress={handleResend}
+        disabled={loading}
+      >
+        <Text className="text-base font-medium text-white/60">Resend code</Text>
+      </Button>
+    </>
   );
 }
 
@@ -357,32 +425,36 @@ interface AddPasskeyProps {
 
 function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
   return (
-    <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Add Passkey</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
-          Create a new passkey to access your account
+    <>
+      <View className="mb-8">
+        <Text className="mb-4 text-center text-[34px] font-medium -tracking-[1px] text-white">
+          Add passkey
         </Text>
-
-        <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
-          onPress={onSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#cccccc" />
-          ) : (
-            <Text className="text-base font-bold text-black">Create Passkey</Text>
-          )}
-        </Button>
-        {error && (
-          <View className="mb-4 flex-row items-center gap-2">
-            <InfoError />
-            <Text className="text-sm text-red-400">{error}</Text>
-          </View>
-        )}
+        <Text className="text-center text-base font-medium text-white/60">
+          Create a new passkey to access{'\n'}your account
+        </Text>
       </View>
-    </View>
+
+      {error ? (
+        <View className="mb-6 flex-row items-center gap-2">
+          <InfoError />
+          <Text className="text-sm text-red-400">{error}</Text>
+        </View>
+      ) : null}
+
+      <Button
+        variant="brand"
+        className="h-14 w-full rounded-xl font-semibold"
+        onPress={onSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="gray" />
+        ) : (
+          <Text className="text-base font-bold">Create passkey</Text>
+        )}
+      </Button>
+    </>
   );
 }
 
@@ -390,20 +462,23 @@ function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
 function Success() {
   const router = useRouter();
   return (
-    <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Success</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
-          Your passkey has been created successfully
+    <>
+      <View className="mb-8">
+        <Text className="mb-4 text-center text-[34px] font-medium -tracking-[1px] text-white">
+          Success
         </Text>
-
-        <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
-          onPress={() => router.replace(path.HOME)}
-        >
-          <Text className="text-base font-bold text-black">Home</Text>
-        </Button>
+        <Text className="text-center text-base font-medium text-white/60">
+          Your passkey has been created{'\n'}successfully
+        </Text>
       </View>
-    </View>
+
+      <Button
+        variant="brand"
+        className="h-14 w-full rounded-xl font-semibold"
+        onPress={() => router.replace(path.HOME)}
+      >
+        <Text className="text-base font-bold">Go to home</Text>
+      </Button>
+    </>
   );
 }
