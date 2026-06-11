@@ -11,6 +11,7 @@ type ObserveModule = typeof import('expo-observe');
 // to no-ops instead of crashing the app at startup.
 let observe: ObserveModule | undefined;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   observe = require('expo-observe');
 } catch {
   observe = undefined;
