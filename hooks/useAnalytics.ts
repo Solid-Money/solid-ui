@@ -596,12 +596,13 @@ export const useMaxAPY = (vault?: VaultType) => {
   const sevenDay = apys?.sevenDay ?? 0;
 
   // Use the greater of the 15d/30d APY as a stable baseline. Only surface the
-  // 7d APY when it isn't wildly inflated relative to that baseline (< 2x),
-  // otherwise it can show a misleadingly high short-term spike.
+  // 7d APY when it beats that baseline but isn't wildly inflated (< 2x),
+  // otherwise it can show a misleadingly high short-term spike. In all other
+  // cases fall back to the baseline (the highest stable APY).
   const baselineAPY = Math.max(thirtyDay, fifteenDay);
   const baselineDays = baselineAPY === thirtyDay ? ApyToDays.thirtyDay : ApyToDays.fifteenDay;
 
-  const useSevenDay = sevenDay < 2 * baselineAPY;
+  const useSevenDay = sevenDay > baselineAPY && sevenDay < 2 * baselineAPY;
   const maxAPY = useSevenDay ? sevenDay : baselineAPY;
   const maxAPYDays = useSevenDay ? ApyToDays.sevenDay : baselineDays;
 
