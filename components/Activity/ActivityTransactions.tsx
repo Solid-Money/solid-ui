@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useLayerZeroStatuses } from '@/hooks/useLayerZeroStatuses';
 import { useProcessingActivitiesPolling } from '@/hooks/useTransactionReceiptPolling';
@@ -18,6 +19,7 @@ import {
   ActivityEvent,
   ActivityGroup,
   ActivityTab,
+  CardProvider,
   LayerZeroTransactionStatus,
   TransactionStatus,
   TransactionType,
@@ -94,12 +96,23 @@ export default function ActivityTransactions({
 
   const { data: cardData } = useCardTransactions();
   const cardTransactions = useMemo(() => cardData?.pages.flatMap(p => p.data) || [], [cardData]);
+  const { provider } = useCardProvider();
+
+  // The LayerZero → card-transaction cross-check below matches the LZ
+  // destination tx hash against crypto_transaction_details.tx_hash, which only
+  // the deprecated Bridge card API returns. Rain card transactions carry no
+  // crypto tx details, so under Rain the check could never pass and would pin
+  // every successful BRIDGE_DEPOSIT at "Pending" forever — Rain rows trust the
+  // activity status instead (completed server-side from Rain collateral
+  // webhooks).
+  const isBridgeCardProvider = provider === CardProvider.BRIDGE;
 
   // Identify recent successful bridge deposits to check status for
   // Only check transactions from the last 24 hours to avoid checking history forever
   // Note: completedBridgeTxHashesRef is read here but not in deps array since refs don't trigger re-renders
   // The filtering happens on each render, which is fine since activities changes trigger the re-render anyway
   const bridgeDepositHashes = useMemo(() => {
+    if (!isBridgeCardProvider) return [];
     const now = Date.now() / 1000;
     return activities
       .filter(
@@ -112,7 +125,7 @@ export default function ActivityTransactions({
       )
       .map(a => a.hash)
       .filter(Boolean) as string[];
-  }, [activities]);
+  }, [activities, isBridgeCardProvider]);
 
   const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
 
