@@ -6,7 +6,10 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
-import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
+import {
+  deduplicateTransactions,
+  resolveCardDepositTransferTx,
+} from '@/lib/utils/deduplicateTransactions';
 
 function makeActivity(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
   return {
@@ -109,6 +112,37 @@ describe('deduplicateTransactions — connect-wallet card deposit', () => {
     });
     const result = deduplicateTransactions([base, savings]);
     expect(result).toHaveLength(2);
+  });
+});
+
+describe('resolveCardDepositTransferTx', () => {
+  const cardDeposit = makeActivity({
+    clientTxId: 'mqdtqm1z-0xxndjzj',
+    title: 'Deposit USDC to Card',
+    hash: '0x1e6e5edd8850a6d072aa7cb592843b2638c1604b1a48b0cfdffc9ea56456cfe7', // approve userOp
+    toAddress: '0x9e852a0d1bd9738d52b90a5e907138575822d69e',
+  });
+  const transferSend = makeActivity({
+    clientTxId: 'blockscout_8453_0xeb41_outgoing',
+    type: TransactionType.SEND,
+    title: 'Send USDC',
+    hash: '0xeb41c0c152e3183d217a60ccae5ab5a4818366bdca58149e71e9b8172688733d', // real transfer
+    toAddress: '0x9e852a0d1bd9738d52b90a5e907138575822d69e',
+    url: 'https://base.blockscout.com/tx/0xeb41c0c152e3183d217a60ccae5ab5a4818366bdca58149e71e9b8172688733d',
+  });
+
+  it('returns the sibling Send transfer tx (hash + url) for a card deposit', () => {
+    const result = resolveCardDepositTransferTx(cardDeposit, [cardDeposit, transferSend]);
+    expect(result).toEqual({ hash: transferSend.hash, url: transferSend.url });
+  });
+
+  it('returns undefined when there is no sibling transfer', () => {
+    expect(resolveCardDepositTransferTx(cardDeposit, [cardDeposit])).toBeUndefined();
+  });
+
+  it('returns undefined for non card-deposit types', () => {
+    const send = makeActivity({ clientTxId: 's', type: TransactionType.SEND });
+    expect(resolveCardDepositTransferTx(send, [send, transferSend])).toBeUndefined();
   });
 });
 

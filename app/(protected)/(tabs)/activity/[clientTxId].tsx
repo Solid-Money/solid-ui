@@ -43,6 +43,7 @@ import {
   getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
+import { resolveCardDepositTransferTx } from '@/lib/utils/deduplicateTransactions';
 import { getChain } from '@/lib/wagmi';
 
 type RowProps = {
@@ -510,27 +511,32 @@ export default function ActivityDetail() {
     await cancelOnchainWithdraw(finalActivity.requestId);
   }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
 
-  // Prefer the stored explorer url, but fall back to deriving one from the tx
-  // hash + chain when it's missing. Connect-wallet card deposits (and other
-  // activities updated only with a hash) have no `url`, so without this the
-  // Explorer row was hidden and the deposit had no link to view on-chain.
-  const explorerUrl = useMemo(() => {
-    if (finalActivity?.url) return finalActivity.url;
-    if (finalActivity?.hash && finalActivity?.chainId) {
+  // Resolve the tx to show in the Explorer row. For card deposits, prefer the
+  // sibling on-chain USDC transfer (indexed by the blockscout sync as a Send)
+  // over the activity's own hash, which for connect-wallet deposits is the
+  // approve userOp rather than the actual transfer. Derive the url from
+  // hash + chain when the matched tx has none (the card_deposit row stores a
+  // hash but no url, so otherwise the Explorer row stayed hidden).
+  const explorerTx = useMemo((): { hash?: string; url?: string } => {
+    if (!finalActivity) return {};
+    const transfer = resolveCardDepositTransferTx(finalActivity, cachedActivities);
+    const hash = transfer?.hash ?? finalActivity.hash;
+    let url = transfer?.url ?? finalActivity.url;
+    if (!url && hash && finalActivity.chainId) {
       const explorerBase = getChain(finalActivity.chainId)?.blockExplorers?.default?.url;
-      if (explorerBase) return `${explorerBase}/tx/${finalActivity.hash}`;
+      if (explorerBase) url = `${explorerBase}/tx/${hash}`;
     }
-    return undefined;
-  }, [finalActivity?.url, finalActivity?.hash, finalActivity?.chainId]);
+    return { hash, url };
+  }, [finalActivity, cachedActivities]);
 
   const handleExplorerPress = useCallback(() => {
-    if (explorerUrl) Linking.openURL(explorerUrl);
-  }, [explorerUrl]);
+    if (explorerTx.url) Linking.openURL(explorerTx.url);
+  }, [explorerTx.url]);
 
   const rows = useMemo(() => {
     if (!finalActivity) return [];
 
-    const { fromAddress, toAddress, status, metadata, hash } = finalActivity;
+    const { fromAddress, toAddress, status, metadata } = finalActivity;
 
     return [
       fromAddress && {
@@ -578,15 +584,15 @@ export default function ActivityDetail() {
             </Value>
           ),
         },
-      explorerUrl &&
-        hash && {
+      explorerTx.url &&
+        explorerTx.hash && {
           key: 'explorer',
           label: <Label>Explorer</Label>,
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
                 <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
-                  {eclipseAddress(hash)}
+                  {eclipseAddress(explorerTx.hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
               </View>
@@ -609,7 +615,8 @@ export default function ActivityDetail() {
     isDetected,
     isProcessing,
     currentTime,
-    explorerUrl,
+    explorerTx.url,
+    explorerTx.hash,
     handleExplorerPress,
   ]);
 

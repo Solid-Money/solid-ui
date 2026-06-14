@@ -82,12 +82,40 @@ function isDuplicate(a: ActivityEvent, b: ActivityEvent): boolean {
  * when they collide, and (b) suppress the Blockscout-synced SEND that mirrors
  * the on-chain transfer of a card deposit.
  */
-const CARD_DEPOSIT_ACTIVITY_TYPES: readonly TransactionType[] = [
+export const CARD_DEPOSIT_ACTIVITY_TYPES: readonly TransactionType[] = [
   TransactionType.BRIDGE_DEPOSIT,
   TransactionType.CARD_TRANSACTION,
   TransactionType.CARD_DEPOSIT,
   TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
 ];
+
+/**
+ * For a card-deposit activity, find the sibling on-chain USDC transfer that the
+ * Blockscout/Alchemy sync indexed as a separate "Send" (the real money
+ * movement). The card-deposit row's own hash is, for connect-wallet deposits,
+ * the approve userOp — not the transfer — so the UI should link to this Send's
+ * tx instead. Matches the same toAddress + chain + 5-minute window used by the
+ * Send-dedup pass. Returns the transfer's hash (and url, if synced).
+ */
+export function resolveCardDepositTransferTx(
+  activity: ActivityEvent,
+  allActivities: ActivityEvent[],
+): { hash: string; url?: string } | undefined {
+  if (!activity?.toAddress || !CARD_DEPOSIT_ACTIVITY_TYPES.includes(activity.type)) {
+    return undefined;
+  }
+  const toAddress = activity.toAddress.toLowerCase();
+  const ts = parseInt(activity.timestamp || '0');
+  const send = allActivities.find(
+    a =>
+      a.type === TransactionType.SEND &&
+      !!a.hash &&
+      a.toAddress?.toLowerCase() === toAddress &&
+      a.chainId === activity.chainId &&
+      Math.abs(parseInt(a.timestamp || '0') - ts) < 300,
+  );
+  return send?.hash ? { hash: send.hash, url: send.url } : undefined;
+}
 
 /**
  * Check if a transaction is a card deposit
