@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { FileText, KeyRound, Plus } from 'lucide-react-native';
@@ -24,6 +25,7 @@ import {
   useRevokeAgentApiKey,
 } from '@/hooks/useAgent';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_FLASH_API_BASE_URL, isProduction } from '@/lib/config';
 import { eclipseAddress } from '@/lib/utils';
 
@@ -140,7 +142,11 @@ export default function AgentPage() {
           </View>
         ) : !isProvisioned ? (
           <View className="items-center rounded-2xl bg-[#1C1C1C] px-6 pb-8 pt-10">
-            <View className="mb-6 h-[268px] w-full rounded-xl bg-white/5" />
+            <Image
+              source={getAsset('images/agent-wallet.png')}
+              contentFit="contain"
+              className="mb-6 h-[268px] w-full"
+            />
             <Text className="mt-2 text-center text-2xl font-bold text-white">
               Set up your Agent Wallet
             </Text>
