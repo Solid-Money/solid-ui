@@ -50,6 +50,7 @@ import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
+import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -123,6 +124,10 @@ Sentry.init({
   // tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
 });
 
+// EAS Observe: native-side startup/performance metric collection begins at
+// launch, so configure dispatching before the app renders.
+configureObserve();
+
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
 }
@@ -192,7 +197,7 @@ export const queryClient = new QueryClient({
   },
 });
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const [analyticsReady, setAnalyticsReady] = useState(false);
@@ -307,6 +312,14 @@ export default Sentry.wrap(function RootLayout() {
       }
     }
   }, [appIsReady, splashScreenHidden]);
+
+  // EAS Observe: record time-to-interactive once the splash screen is gone
+  // and the first real frame is visible.
+  useEffect(() => {
+    if (splashScreenHidden) {
+      markAppInteractive();
+    }
+  }, [splashScreenHidden]);
 
   // Track screen views on all platforms (web, iOS, Android)
   // trackScreen() handles platform-specific routing internally:
@@ -432,4 +445,8 @@ export default Sentry.wrap(function RootLayout() {
       </TurnkeyProvider>
     </SafeAreaProvider>
   );
-});
+}
+
+// withObserve wraps the layout with AppMetricsRoot so EAS Observe records
+// time-to-first-render without a manual markFirstRender() call.
+export default Sentry.wrap(withObserve(RootLayout));
