@@ -58,7 +58,7 @@ export const ASSETS = {
   },
   'images/agent-wallet.png': {
     module: require('@/assets/images/agent-wallet.png'),
-    hash: 'e00cafea',
+    hash: '297f7f78',
   },
   'images/apple-google-pay.png': {
     module: require('@/assets/images/apple-google-pay.png'),
