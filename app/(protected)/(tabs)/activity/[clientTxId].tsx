@@ -43,6 +43,7 @@ import {
   getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
+import { getChain } from '@/lib/wagmi';
 
 type RowProps = {
   label: React.ReactNode;
@@ -177,14 +178,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   activity,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName = (
-    transaction.merchant_name?.trim() ||
-    transaction.description?.trim() ||
-    'Unknown'
-  );
-  const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
-    .filter(Boolean)
-    .join(' ') || undefined;
+  const merchantName =
+    transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
+  const merchantLocation =
+    [transaction.merchant_city, transaction.merchant_country].filter(Boolean).join(' ') ||
+    undefined;
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
 
@@ -221,11 +219,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       : isReversed
         ? 'Reversed'
         : 'Confirmed';
-  const statusColor = isApproved
-    ? 'text-yellow-500'
-    : isDeclined
-      ? 'text-red-400'
-      : '';
+  const statusColor = isApproved ? 'text-yellow-500' : isDeclined ? 'text-red-400' : '';
 
   const rows = useMemo(() => {
     const allRows = [
@@ -516,14 +510,27 @@ export default function ActivityDetail() {
     await cancelOnchainWithdraw(finalActivity.requestId);
   }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
 
+  // Prefer the stored explorer url, but fall back to deriving one from the tx
+  // hash + chain when it's missing. Connect-wallet card deposits (and other
+  // activities updated only with a hash) have no `url`, so without this the
+  // Explorer row was hidden and the deposit had no link to view on-chain.
+  const explorerUrl = useMemo(() => {
+    if (finalActivity?.url) return finalActivity.url;
+    if (finalActivity?.hash && finalActivity?.chainId) {
+      const explorerBase = getChain(finalActivity.chainId)?.blockExplorers?.default?.url;
+      if (explorerBase) return `${explorerBase}/tx/${finalActivity.hash}`;
+    }
+    return undefined;
+  }, [finalActivity?.url, finalActivity?.hash, finalActivity?.chainId]);
+
   const handleExplorerPress = useCallback(() => {
-    if (finalActivity?.url) Linking.openURL(finalActivity.url);
-  }, [finalActivity?.url]);
+    if (explorerUrl) Linking.openURL(explorerUrl);
+  }, [explorerUrl]);
 
   const rows = useMemo(() => {
     if (!finalActivity) return [];
 
-    const { fromAddress, toAddress, status, metadata, url, hash } = finalActivity;
+    const { fromAddress, toAddress, status, metadata, hash } = finalActivity;
 
     return [
       fromAddress && {
@@ -571,7 +578,7 @@ export default function ActivityDetail() {
             </Value>
           ),
         },
-      url &&
+      explorerUrl &&
         hash && {
           key: 'explorer',
           label: <Label>Explorer</Label>,
@@ -602,6 +609,7 @@ export default function ActivityDetail() {
     isDetected,
     isProcessing,
     currentTime,
+    explorerUrl,
     handleExplorerPress,
   ]);
 

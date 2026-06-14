@@ -52,6 +52,49 @@ describe('deduplicateTransactions — connect-wallet card deposit', () => {
     expect(result[0].hash).toBe(frontend.hash);
   });
 
+  it('removes the Blockscout-synced Send that mirrors a Wallet→card deposit', () => {
+    // Real shape: the frontend card_deposit (approve userOp hash) and the
+    // Blockscout-synced "Send USDC" (the on-chain transfer hash) share the same
+    // card funding toAddress + timestamp but have different hashes.
+    const cardDeposit = makeActivity({
+      clientTxId: 'mqdtqm1z-0xxndjzj',
+      title: 'Deposit USDC to Card',
+      hash: '0x1e6e5edd8850a6d072aa7cb592843b2638c1604b1a48b0cfdffc9ea56456cfe7',
+      userOpHash: '0x5f5b9152b8ef76d3b55adc363efbe5cf7fcda5643eb02e74339be32531473553',
+      toAddress: '0x9e852a0d1bd9738d52b90a5e907138575822d69e',
+      metadata: { source: 'transaction-hook' },
+    });
+    const blockscoutSend = makeActivity({
+      clientTxId: 'blockscout_8453_0xeb41_outgoing',
+      type: TransactionType.SEND,
+      title: 'Send USDC',
+      shortTitle: 'Send',
+      hash: '0xeb41c0c152e3183d217a60ccae5ab5a4818366bdca58149e71e9b8172688733d',
+      toAddress: '0x9e852a0d1bd9738d52b90a5e907138575822d69e',
+      metadata: { source: 'blockscout' },
+    });
+    const result = deduplicateTransactions([blockscoutSend, cardDeposit]);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe(TransactionType.CARD_DEPOSIT);
+  });
+
+  it('keeps an unrelated Send to a different address', () => {
+    const cardDeposit = makeActivity({
+      clientTxId: 'dep-x',
+      toAddress: '0x9e852a0d1bd9738d52b90a5e907138575822d69e',
+      hash: '0xaaaa000000000000000000000000000000000000000000000000000000000001',
+    });
+    const unrelatedSend = makeActivity({
+      clientTxId: 'send-x',
+      type: TransactionType.SEND,
+      title: 'Send USDC',
+      toAddress: '0x1111111111111111111111111111111111111111',
+      hash: '0xbbbb000000000000000000000000000000000000000000000000000000000002',
+    });
+    const result = deduplicateTransactions([cardDeposit, unrelatedSend]);
+    expect(result).toHaveLength(2);
+  });
+
   it('still keeps a savings deposit and its _savings step separate', () => {
     const base = makeActivity({
       clientTxId: 'dep-1',
