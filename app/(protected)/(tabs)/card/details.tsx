@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -23,6 +24,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
@@ -276,25 +283,15 @@ function DesktopHeader({
   isRain,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
-  const manageRef = useRef<View>(null);
+  const insets = useSafeAreaInsets();
+  const contentInsets = {
+    top: insets.top,
+    bottom: insets.bottom,
+    left: 12,
+    right: 12,
+  };
 
   const showManageDropdown = isRain || !isCardFrozen || canUnfreeze;
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!isManageOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (manageRef.current) {
-        // Check if click is outside the dropdown container
-        const node = manageRef.current as unknown as HTMLElement;
-        if (!node.contains(e.target as Node)) {
-          setIsManageOpen(false);
-        }
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isManageOpen]);
 
   return (
     <View className="flex-row justify-between">
@@ -322,60 +319,55 @@ function DesktopHeader({
           </View>
         </Button>
         {showManageDropdown && (
-          <View ref={manageRef} className="relative">
-            <Button
-              variant="secondary"
-              className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-              onPress={() => setIsManageOpen(prev => !prev)}
-            >
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-bold text-white">Manage</Text>
-                <View style={{ transform: [{ rotate: isManageOpen ? '180deg' : '0deg' }] }}>
-                  <ChevronDown size={18} color="white" />
+          <DropdownMenu onOpenChange={setIsManageOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-base font-bold text-white">Manage</Text>
+                  <View style={{ transform: [{ rotate: isManageOpen ? '180deg' : '0deg' }] }}>
+                    <ChevronDown size={18} color="white" />
+                  </View>
                 </View>
-              </View>
-            </Button>
-            {isManageOpen && (
-              <View className="absolute right-0 top-14 z-50 min-w-[180px] rounded-xl bg-[#303030] py-2">
-                {isRain && (
-                  <ManagePinModal
-                    trigger={
-                      <Pressable
-                        className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
-                        onPress={() => setIsManageOpen(false)}
-                      >
-                        <KeyRound size={18} color="white" />
-                        <Text className="text-base font-bold text-white">PIN</Text>
-                      </Pressable>
-                    }
-                  />
-                )}
-                {(!isCardFrozen || canUnfreeze) && (
-                  <Pressable
-                    className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
-                    onPress={() => {
-                      setIsManageOpen(false);
-                      onFreezeToggle();
-                    }}
-                    disabled={isFreezing}
-                  >
-                    {isFreezing ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Image
-                        source={getAsset('images/freeze_button_icon.png')}
-                        style={styles.mediumIcon}
-                        contentFit="contain"
-                      />
-                    )}
-                    <Text className="text-base font-bold text-white">
-                      {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </View>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              insets={contentInsets}
+              className="min-w-[180px] rounded-xl border-0 bg-[#303030] p-0 py-2"
+            >
+              {isRain && (
+                <ManagePinModal
+                  trigger={
+                    <DropdownMenuItem className="flex-row items-center gap-3 rounded-none px-5 py-3 web:cursor-pointer web:hover:bg-[#404040]">
+                      <KeyRound size={18} color="white" />
+                      <Text className="text-base font-bold text-white">PIN</Text>
+                    </DropdownMenuItem>
+                  }
+                />
+              )}
+              {(!isCardFrozen || canUnfreeze) && (
+                <DropdownMenuItem
+                  className="flex-row items-center gap-3 rounded-none px-5 py-3 web:cursor-pointer web:hover:bg-[#404040]"
+                  onPress={onFreezeToggle}
+                  disabled={isFreezing}
+                >
+                  {isFreezing ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Image
+                      source={getAsset('images/freeze_button_icon.png')}
+                      style={styles.mediumIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text className="text-base font-bold text-white">
+                    {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+                  </Text>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
