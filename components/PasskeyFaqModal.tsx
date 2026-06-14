@@ -23,10 +23,11 @@ const PasskeyFaqModal = ({ isOpen, onOpenChange }: PasskeyFaqModalProps) => {
       onOpenChange={onOpenChange}
       trigger={null}
       contentKey="passkey-faq"
-      contentClassName="md:max-w-md"
+      contentClassName="md:max-w-[40rem] md:px-4 md:pt-4"
+      containerClassName="gap-0"
       shouldAnimate={false}
     >
-      <View className="gap-6">
+      <View>
         <View className="items-center">
           <LottieView
             source={require('@/assets/animations/vault.json')}
@@ -36,8 +37,10 @@ const PasskeyFaqModal = ({ isOpen, onOpenChange }: PasskeyFaqModalProps) => {
             resizeMode="contain"
           />
         </View>
-        <Text className="native:text-2xl text-xl font-semibold">Passkey FAQ</Text>
-        <FAQ faqs={passkeyFaqs} />
+        <View className="gap-6">
+          <Text className="native:text-2xl text-xl font-semibold">Passkey FAQ</Text>
+          <FAQ faqs={passkeyFaqs} />
+        </View>
       </View>
     </ResponsiveModal>
   );
