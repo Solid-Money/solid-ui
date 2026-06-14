@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -502,14 +502,9 @@ export default function ActivityDetail() {
     if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
       return 'Complete';
     }
-    return transactionDetails?.category ?? 'Unknown';
-  }, [
-    finalActivity?.type,
-    finalActivity?.status,
-    finalActivity?.metadata?.destination,
-    isDeposit,
-    transactionDetails?.category,
-  ]);
+    if (!finalActivity) return 'Unknown';
+    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+  }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
