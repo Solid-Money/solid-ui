@@ -21,6 +21,7 @@ import {
   OnboardingPage,
   OnboardingPagination,
 } from '@/components/Onboarding';
+import PasskeyFaqModal from '@/components/PasskeyFaqModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -47,13 +48,15 @@ export default function Onboarding() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showRecoveryLink, setShowRecoveryLink] = useState(false);
+  const [showPasskeyFaq, setShowPasskeyFaq] = useState(false);
   const scrollX = useSharedValue(0);
 
   // Responsive layout for small screens (iPhone SE)
   const isSmallScreen = screenHeight < 700;
   // Fixed button area height - content area uses flex: 1 to fill remaining space.
-  // Grows to fit the account-recovery prompt that appears after a failed login.
-  const buttonAreaHeight = (isSmallScreen ? 200 : 240) + (showRecoveryLink ? 44 : 0);
+  // Grows to fit the help prompt (Passkey FAQs / account recovery) shown after a failed login,
+  // which can wrap onto two lines on smaller screens.
+  const buttonAreaHeight = (isSmallScreen ? 200 : 240) + (showRecoveryLink ? 64 : 0);
 
   // Track screen width as shared value for use in worklets
   const widthSV = useSharedValue(screenWidth);
@@ -125,10 +128,15 @@ export default function Onboarding() {
   const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
 
   // Surfaced below the Login button after a failed login attempt so users who
-  // can't authenticate (e.g. lost passkey) can start account recovery.
+  // can't authenticate (e.g. lost passkey) can read the Passkey FAQs or start
+  // account recovery.
   const recoveryLink = showRecoveryLink ? (
     <View className="flex-row flex-wrap items-center justify-center">
-      <Text className="text-sm text-white/60">Have trouble logging in? </Text>
+      <Text className="text-sm text-white/60">Have trouble logging in? See our </Text>
+      <Pressable onPress={() => setShowPasskeyFaq(true)} className="web:hover:opacity-70">
+        <Text className="text-sm font-bold text-white">Passkey FAQs</Text>
+      </Pressable>
+      <Text className="text-sm text-white/60"> or </Text>
       <Pressable
         onPress={handleRecoverAccount}
         className="flex-row items-center web:hover:opacity-70"
@@ -230,6 +238,8 @@ export default function Onboarding() {
             </View>
           </SafeAreaView>
         </AnimatedGradientBackground>
+
+        <PasskeyFaqModal isOpen={showPasskeyFaq} onOpenChange={setShowPasskeyFaq} />
       </View>
     );
   }
@@ -330,6 +340,8 @@ export default function Onboarding() {
           </View>
         </View>
       </View>
+
+      <PasskeyFaqModal isOpen={showPasskeyFaq} onOpenChange={setShowPasskeyFaq} />
     </View>
   );
 }
