@@ -8,7 +8,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
@@ -221,7 +221,7 @@ const Transaction = ({
     if (isRefunded) return 'Refunded';
     if (isCancelled) return 'Cancelled';
     if (isSuccess && isDeposit) return 'Complete';
-    return transactionDetails?.category ?? 'Unknown';
+    return getTransactionCategory(type, title) ?? 'Unknown';
   };
 
   const formatTimestamp = () => {
