@@ -141,12 +141,15 @@ export default function AgentPage() {
             <ActivityIndicator color="white" />
           </View>
         ) : !isProvisioned ? (
-          <View className="items-center rounded-2xl bg-[#1C1C1C] px-6 pb-8 pt-10">
+          <View className="relative items-center overflow-hidden rounded-2xl bg-[#1C1C1C] px-6 pb-8 pt-10">
             <Image
               source={getAsset('images/agent-wallet.png')}
               contentFit="contain"
-              className="mb-6 h-[268px] w-full"
+              contentPosition="top"
+              pointerEvents="none"
+              className="absolute left-0 right-0 top-0 h-[400px] w-full"
             />
+            <View className="h-[300px] w-full" />
             <Text className="mt-2 text-center text-2xl font-bold text-white">
               Set up your Agent Wallet
             </Text>
