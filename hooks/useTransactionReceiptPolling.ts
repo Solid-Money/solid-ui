@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { getTransactionReceipt } from 'viem/actions';
 
+import { isSourceReceiptFinalizable } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { ActivityEvent, TransactionStatus } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
@@ -17,7 +18,11 @@ export const useTransactionReceiptPolling = (activity: ActivityEvent | null | un
     !!activity &&
     activity.status === TransactionStatus.PROCESSING &&
     !!activity.hash &&
-    !!activity.chainId;
+    !!activity.chainId &&
+    // Cross-chain card deposits stay PROCESSING after the source tx mines —
+    // the bridge to the card funding address takes minutes and is confirmed by
+    // the Rain collateral webhook, not the source-chain receipt.
+    isSourceReceiptFinalizable(activity.type);
 
   return useQuery({
     queryKey: ['tx-receipt-poll', activity?.clientTxId, activity?.hash],
@@ -70,6 +75,9 @@ export const useProcessingActivitiesPolling = (activities: ActivityEvent[]) => {
           a.status === TransactionStatus.PROCESSING &&
           a.hash &&
           a.chainId &&
+          // Don't finalize cross-chain card deposits on their source-chain
+          // receipt; they complete via the Rain collateral webhook.
+          isSourceReceiptFinalizable(a.type) &&
           !confirmedRef.current.has(a.clientTxId),
       ),
     [activities],
