@@ -42,6 +42,7 @@ function AddFundsToWalletForm() {
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       isNative: tokenData?.isNative ?? false,
+      decimals: tokenData?.decimals,
     };
   }, [srcChainId, principalToken]);
 
@@ -51,8 +52,10 @@ function AddFundsToWalletForm() {
     selectedTokenInfo.isNative,
   );
 
+  // Derive decimals from the bridge config so 18-decimal stablecoins (e.g.
+  // Binance-Peg USDC/USDT on BNB Chain) display and validate correctly.
   const isStablecoin = principalToken === 'USDC' || principalToken === 'USDT';
-  const decimals = isStablecoin ? 6 : 18;
+  const decimals = selectedTokenInfo.decimals ?? (isStablecoin ? 6 : 18);
   const isLoading = transferStatus.status === Status.PENDING;
 
   const formattedBalance = balance ? formatUnits(balance, decimals) : '0';
