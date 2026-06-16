@@ -26,6 +26,9 @@ import { PanGestureProvider, usePanGesture } from './PanGestureContext';
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 
+const PLATFORM_KEY: 'web' | 'android' | 'ios' =
+  Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+
 type BannerData = React.ReactElement[];
 
 type BannerItemProps = {
@@ -134,8 +137,11 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
 
   const defaultData = useMemo(() => {
-    if (promotionsBanner?.length) {
-      const sorted = [...promotionsBanner].sort((a, b) => a.sort - b.sort);
+    const platformBanners = promotionsBanner?.filter(
+      item => !item.platforms || item.platforms[PLATFORM_KEY] !== false,
+    );
+    if (platformBanners?.length) {
+      const sorted = [...platformBanners].sort((a, b) => a.sort - b.sort);
       return sorted.map((item, i) => (
         <PromoImageBanner
           key={`promo-${item.slug}-${i}`}

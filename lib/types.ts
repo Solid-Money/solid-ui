@@ -1647,12 +1647,19 @@ export interface WhatsNew {
   createdAt: string;
 }
 
+export interface PromotionsBannerPlatforms {
+  web: boolean;
+  android: boolean;
+  ios: boolean;
+}
+
 export interface PromotionsBannerItem {
   imageURL: string;
   mobileImageURL?: string;
   slug: string;
   sort: number;
   link?: string;
+  platforms?: PromotionsBannerPlatforms;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];
