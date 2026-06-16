@@ -117,9 +117,14 @@ const useTransferToWallet = (
         data: { amount, eoaAddress, safeAddress, srcChainId, token },
       });
 
-      // Determine decimals based on token
+      // Determine decimals from the bridge config; some chains use 18-decimal
+      // stablecoins (e.g. Binance-Peg USDC/USDT on BNB Chain). Fall back to the
+      // stablecoin/native default when the token has no explicit decimals.
       const isStablecoin = token === 'USDC' || token === 'USDT';
-      const decimals = isStablecoin ? 6 : 18;
+      const tokenConfig = Object.values(BRIDGE_TOKENS[srcChainId]?.tokens ?? {}).find(
+        t => t.name === token,
+      );
+      const decimals = tokenConfig?.decimals ?? (isStablecoin ? 6 : 18);
       const amountWei = parseUnits(amount, decimals);
 
       // Switch to the correct chain
