@@ -1066,6 +1066,14 @@ export interface RewardsUserData {
   cashbackRate: number;
   cashbackThisMonth: number;
   maxCashbackMonthly: number;
+  /** Whether the user has joined the new rewards program. */
+  hasOptedIn?: boolean;
+  /** The user's old Solid Points total prior to conversion. */
+  legacyPoints?: number;
+  /** Legacy Carryover Credit granted from old points under the new economy. */
+  legacyCarryoverPoints?: number;
+  /** Tier the user starts in after carryover is applied (Core or Prime). */
+  startingTier?: RewardsTier;
 }
 
 export interface TierBenefit {
