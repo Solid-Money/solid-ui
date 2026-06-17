@@ -17,6 +17,14 @@ const IOS_WALLET_APP_EXTENSIONS = [
   },
 ];
 
+// Notification Service Extension (rich push images). Created on every prebuild
+// by ./plugins/withIosNotificationServiceExtension, so it is always registered
+// for EAS signing (unlike the wallet extensions, which are conditional).
+const IOS_NOTIFICATION_SERVICE_EXTENSION = {
+  targetName: 'SolidNotificationService',
+  bundleIdentifier: 'app.solid.xyz.SolidNotificationService',
+};
+
 const hasIosWalletExtensionTargets = () => {
   try {
     const project = fs.readFileSync(IOS_PROJECT_PATH, 'utf8');
@@ -208,6 +216,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
+    // Adds the iOS Notification Service Extension so rich-push images render.
+    './plugins/withIosNotificationServiceExtension',
     [
       '@sentry/react-native/expo',
       {
@@ -254,18 +264,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     router: {},
     eas: {
       projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
-      ...(ENABLE_IOS_WALLET_EXTENSIONS
-        ? {
-            build: {
-              experimental: {
-                ios: {
-                  // Only ask EAS to sign wallet extensions when the native Xcode targets exist.
-                  appExtensions: IOS_WALLET_APP_EXTENSIONS,
-                },
-              },
-            },
-          }
-        : {}),
+      build: {
+        experimental: {
+          ios: {
+            // The NSE is always created at prebuild; wallet extensions are only
+            // signed when their native Xcode targets exist.
+            appExtensions: [
+              IOS_NOTIFICATION_SERVICE_EXTENSION,
+              ...(ENABLE_IOS_WALLET_EXTENSIONS ? IOS_WALLET_APP_EXTENSIONS : []),
+            ],
+          },
+        },
+      },
     },
   },
   runtimeVersion: {
