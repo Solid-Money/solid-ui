@@ -17,9 +17,9 @@ const IOS_WALLET_APP_EXTENSIONS = [
   },
 ];
 
-// Notification Service Extension (rich push images). Created on every prebuild
-// by ./plugins/withIosNotificationServiceExtension, so it is always registered
-// for EAS signing (unlike the wallet extensions, which are conditional).
+// Notification Service Extension (rich push images), added at prebuild by
+// ./plugins/withIosNotificationServiceExtension. Gated behind
+// ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION (see below).
 const IOS_NOTIFICATION_SERVICE_EXTENSION = {
   targetName: 'SolidNotificationService',
   bundleIdentifier: 'app.solid.xyz.SolidNotificationService',
@@ -46,6 +46,22 @@ if (SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && !HAS_IOS_WALLET_EXTENSION_TARGETS) {
 
 const ENABLE_IOS_WALLET_EXTENSIONS =
   SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && HAS_IOS_WALLET_EXTENSION_TARGETS;
+
+// Off by default. The NSE is a second iOS target that needs its own
+// provisioning profile, which EAS can only create in INTERACTIVE mode — a
+// non-interactive CI build aborts at the credentials step if it isn't set up
+// yet. Enable (ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION=true) only after the
+// app.solid.xyz.SolidNotificationService credentials exist in EAS.
+const ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION =
+  process.env.ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION === 'true';
+
+// App extensions EAS should sign for this build. Empty unless explicitly enabled.
+const IOS_APP_EXTENSIONS = [
+  ...(ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION
+    ? [IOS_NOTIFICATION_SERVICE_EXTENSION]
+    : []),
+  ...(ENABLE_IOS_WALLET_EXTENSIONS ? IOS_WALLET_APP_EXTENSIONS : []),
+];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -217,7 +233,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
     // Adds the iOS Notification Service Extension so rich-push images render.
-    './plugins/withIosNotificationServiceExtension',
+    // Gated: only when its EAS credentials are set up (see flag above), else
+    // non-interactive CI builds fail at the credentials step.
+    ...(ENABLE_IOS_NOTIFICATION_SERVICE_EXTENSION
+      ? ['./plugins/withIosNotificationServiceExtension']
+      : []),
     [
       '@sentry/react-native/expo',
       {
@@ -264,18 +284,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     router: {},
     eas: {
       projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
-      build: {
-        experimental: {
-          ios: {
-            // The NSE is always created at prebuild; wallet extensions are only
-            // signed when their native Xcode targets exist.
-            appExtensions: [
-              IOS_NOTIFICATION_SERVICE_EXTENSION,
-              ...(ENABLE_IOS_WALLET_EXTENSIONS ? IOS_WALLET_APP_EXTENSIONS : []),
-            ],
-          },
-        },
-      },
+      // Only register app extensions for signing when at least one is enabled,
+      // so a default build has a single target and needs no extra credentials.
+      ...(IOS_APP_EXTENSIONS.length > 0
+        ? {
+            build: {
+              experimental: {
+                ios: {
+                  appExtensions: IOS_APP_EXTENSIONS,
+                },
+              },
+            },
+          }
+        : {}),
     },
   },
   runtimeVersion: {
