@@ -210,7 +210,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // a white alpha-mask silhouette, so a transparent-background logo is
         // required; `color` tints the icon/accent. The large image shown in the
         // notification body comes from the FCM payload (backend imageUrl).
-        icon: './assets/images/solid-logo.png',
+        icon: './assets/images/solid-status-bar.png',
         color: '#94F27F',
       },
     ],
