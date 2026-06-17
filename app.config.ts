@@ -198,7 +198,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-notifications',
       {
-        icon: './assets/images/adaptive-icon.png',
+        // Android small (status-bar) notification icon. Android renders this as
+        // a white alpha-mask silhouette, so a transparent-background logo is
+        // required; `color` tints the icon/accent. The large image shown in the
+        // notification body comes from the FCM payload (backend imageUrl).
+        icon: './assets/images/solid-logo.png',
+        color: '#94F27F',
       },
     ],
     '@react-native-firebase/app',
