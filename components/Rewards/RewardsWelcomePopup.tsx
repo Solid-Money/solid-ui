@@ -41,20 +41,20 @@ const RewardsWelcomePopup = ({
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="w-[90vw] max-w-[480px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0"
+        className="w-[90vw] max-w-[480px] border-0 border-none bg-[#1C1C1E] p-0"
       >
         <View className="relative">
-          <View className="relative h-64 w-full overflow-hidden">
+          <View className="relative h-64 w-full">
             <Image
               source={getAsset('images/reward-popup-background.png')}
-              style={{ width: '100%', height: '100%' }}
+              style={{ width: '100%', height: '100%', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
               contentFit="cover"
             />
             <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
               <Image
                 source={getAsset('images/reward-star.png')}
                 contentFit="contain"
-                style={{ width: 188, height: 231, marginTop: -20 }}
+                style={{ width: 450, height: 450 }}
               />
             </View>
           </View>
