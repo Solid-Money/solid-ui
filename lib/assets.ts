@@ -526,6 +526,10 @@ export const ASSETS = {
     module: require('@/assets/images/solid-purple-large.png'),
     hash: 'ff520374',
   },
+  'images/solid-status-bar.png': {
+    module: require('@/assets/images/solid-status-bar.png'),
+    hash: '6467d3dd'
+  },
   'images/solid-tokens.png': {
     module: require('@/assets/images/solid-tokens.png'),
     hash: 'ea2832f8',
