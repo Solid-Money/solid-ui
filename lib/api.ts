@@ -1205,6 +1205,21 @@ export const fetchRewardsUserData = async (): Promise<RewardsUserData> => {
   return response.json();
 };
 
+export const optInToRewards = async (): Promise<RewardsUserData> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/opt-in`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };

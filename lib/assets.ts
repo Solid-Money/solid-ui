@@ -433,6 +433,14 @@ export const ASSETS = {
     module: require('@/assets/images/reveal_card_details_icon.png'),
     hash: 'd1c558ce',
   },
+  'images/reward-popup-background.png': {
+    module: require('@/assets/images/reward-popup-background.png'),
+    hash: '1c87fc08',
+  },
+  'images/reward-star.png': {
+    module: require('@/assets/images/reward-star.png'),
+    hash: '5a43a288',
+  },
   'images/rocket-lavender.png': {
     module: require('@/assets/images/rocket-lavender.png'),
     hash: 'fbcfcb9b',
