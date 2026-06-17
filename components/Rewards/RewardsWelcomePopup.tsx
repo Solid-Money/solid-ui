@@ -80,9 +80,9 @@ const RewardsWelcomePopup = ({
             ) : (
               <View className="gap-4">
                 <Text className="text-base font-medium text-white/70">
-                  Your old Solid Points are moving into Solid Rewards. We're converting your previous
+                  {`Your old Solid Points are moving into Solid Rewards. We're converting your previous
                   points into a Legacy Carryover Credit so your progress counts in the new rewards
-                  program.
+                  program.`}
                 </Text>
                 <View className="gap-1">
                   <Text className="text-base font-medium text-white/70">
