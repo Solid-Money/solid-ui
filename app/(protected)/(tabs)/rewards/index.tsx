@@ -9,21 +9,26 @@ import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
+import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { useRewardsUserData } from '@/hooks/useRewards';
+import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
+import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
   const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
+  const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
+  const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
+  const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
 
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
@@ -62,6 +67,12 @@ export default function Rewards() {
 
   const { currentTier, totalPoints, nextTier, nextTierPoints } = rewardsData;
 
+  // The new rewards program requires an explicit opt-in. `hasOptedIn` defaults to
+  // true when the backend doesn't yet send it, so we never prompt prematurely.
+  const hasOptedIn = rewardsData.hasOptedIn ?? true;
+  const legacyPoints = rewardsData.legacyPoints ?? 0;
+  const showWelcomePopup = !hasOptedIn && !welcomeDismissed;
+
   return (
     <PageLayout isLoading={isLoading}>
       <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-24 pt-6 md:gap-10 md:py-12">
@@ -91,6 +102,21 @@ export default function Rewards() {
         <HomeBanners data={bannerData} />
         <CardBanner />
       </View>
+
+      <RewardsWelcomePopup
+        isOpen={showWelcomePopup}
+        variant={legacyPoints > 0 ? 'existing' : 'new'}
+        oldPoints={legacyPoints}
+        legacyCarryoverPoints={rewardsData.legacyCarryoverPoints ?? 0}
+        startingTier={rewardsData.startingTier ?? currentTier}
+        isJoining={isJoining}
+        onAgree={() =>
+          joinRewards(undefined, {
+            onSuccess: () => setWelcomeDismissed(true),
+          })
+        }
+        onClose={() => setWelcomeDismissed(true)}
+      />
     </PageLayout>
   );
 }
