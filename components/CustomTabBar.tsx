@@ -1,11 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { CommonActions } from '@react-navigation/native';
 
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Text } from '@/components/ui/text';
+
+// Height of the visible content zone (icons + labels + top padding) that sits
+// above the bottom safe-area inset. Combined with the dynamic bottom inset this
+// reproduces the original height of 80 (45 + 35) on devices without a large
+// system bar, while keeping the icon/label band a constant size everywhere.
+const TAB_BAR_CONTENT_HEIGHT = 45;
+// Baseline bottom spacing. Matches the previously hardcoded paddingBottom so
+// devices whose safe-area inset is smaller — notched iOS (~34), gesture-nav
+// Android (~16-24) and web (0) — keep their exact current layout. Only devices
+// with a larger inset (e.g. Android 3-button navigation, ~48) get extra spacing
+// so the tab bar clears the system navigation bar instead of overlapping it.
+const TAB_BAR_MIN_BOTTOM_INSET = 35;
 
 type TabButtonProps = {
   label: string;
@@ -106,11 +119,24 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
 const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+
+  // Lift the tab bar above the system navigation bar / home indicator using the
+  // real bottom inset, never shrinking below the legacy baseline. Read-only —
+  // this does not alter the inset context, so other components (ResponsiveModal,
+  // SafeAreaView, ScrollViews) are unaffected.
+  const bottomInset = Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_INSET);
+
   // Filter to only show the main visible tabs
   const visibleRoutes = state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name));
 
   return (
-    <View style={styles.tabBar}>
+    <View
+      style={[
+        styles.tabBar,
+        { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
+      ]}
+    >
       {TabBarBackground && <TabBarBackground />}
       {visibleRoutes.map(route => {
         const { options } = descriptors[route.key];
@@ -166,9 +192,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 80,
+    // height and paddingBottom are applied dynamically from the safe-area inset
     paddingTop: 10,
-    paddingBottom: 35,
     backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
