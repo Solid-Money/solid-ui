@@ -36,7 +36,7 @@ export default function CircularProgress({
       <Svg
         width={size}
         height={size}
-        style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}
+        style={{ position: 'absolute', transform: [{ rotate: '135deg' }] }}
       >
         <Circle
           cx={center}

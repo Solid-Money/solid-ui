@@ -24,10 +24,11 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
 
   const cashbackUsd = cardDetails?.cashback?.totalUsdValue ?? 0;
   const percentage = cardDetails?.cashback?.percentage ?? 3;
+  const showSkeleton = isLoading && !cardDetails;
 
   return (
-    <Pressable onPress={() => router.push(path.REWARDS)} className={cn('flex-1', className)}>
-      <View className="justify-between gap-6 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
+    <Pressable onPress={() => router.push(path.POINTS)} className={cn('flex-1', className)}>
+      <View className="gap-3 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
         <Image
           source={getAsset('images/green-diamond-background.png')}
           alt="Cashback"
@@ -37,7 +38,7 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
         <View className="gap-1">
           <Text className="text-base font-medium text-muted-foreground">Cashback</Text>
           <View className="flex-row items-end gap-2">
-            {isLoading ? (
+            {showSkeleton ? (
               <Skeleton className="h-8 w-16 rounded-xl" />
             ) : (
               <CountUp
@@ -51,13 +52,13 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
                 }}
                 styles={{
                   wholeText: {
-                    fontSize: fontSize(1.875),
+                    fontSize: fontSize(2.25),
                     fontWeight: '600',
                     fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                   },
                   decimalText: {
-                    fontSize: fontSize(1.875),
+                    fontSize: fontSize(2.25),
                     fontWeight: '600',
                     fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
