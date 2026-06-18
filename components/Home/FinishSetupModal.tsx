@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Check, ChevronRight } from 'lucide-react-native';
@@ -19,6 +20,8 @@ interface FinishSetupModalProps {
 
 const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSetupModalProps) => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 35) + 24;
 
   const handleCta = () => {
     onClose();
@@ -56,7 +59,7 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
               Finish setting up
             </Text>
             <Text className="max-w-xs text-center text-base text-muted-foreground">
-              Complete 3 simple steps to start using all benefits
+              Complete 3 simple steps to{'\n'}start using all benefits
             </Text>
           </View>
 
@@ -81,13 +84,15 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
           </View>
         </View>
 
-        <View className="gap-5">
+        <View className="gap-5" style={{ paddingBottom: bottomPadding }}>
           {firstIncomplete && (
             <Button
               className="h-14 rounded-2xl border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
               onPress={handleCta}
             >
-              <Text className="text-base font-bold text-primary">{firstIncomplete.cta}</Text>
+              <Text className="text-base font-bold text-primary-foreground">
+                {firstIncomplete.cta}
+              </Text>
             </Button>
           )}
           <Pressable

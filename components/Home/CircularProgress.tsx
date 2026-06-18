@@ -25,8 +25,10 @@ export default function CircularProgress({
 }: CircularProgressProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  const arcLength = circumference * 0.75;
+  const arcGapLength = circumference - arcLength;
   const progress = total > 0 ? Math.min(Math.max(completed / total, 0), 1) : 0;
-  const dashOffset = circumference * (1 - progress);
+  const progressLength = arcLength * progress;
   const center = size / 2;
 
   return (
@@ -42,19 +44,22 @@ export default function CircularProgress({
           r={radius}
           stroke="rgba(255,255,255,0.15)"
           strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <Circle
-          cx={center}
-          cy={center}
-          r={radius}
-          stroke="#94F27F"
-          strokeWidth={strokeWidth}
           strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
+          strokeDasharray={[arcLength, arcGapLength]}
           fill="none"
         />
+        {progress > 0 && (
+          <Circle
+            cx={center}
+            cy={center}
+            r={radius}
+            stroke="#94F27F"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={[progressLength, circumference - progressLength]}
+            fill="none"
+          />
+        )}
       </Svg>
       <Text className="text-base font-semibold text-foreground">
         {completed} <Text className="font-normal text-muted-foreground">/ {total}</Text>

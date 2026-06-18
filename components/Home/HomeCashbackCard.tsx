@@ -27,11 +27,11 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
 
   return (
     <Pressable onPress={() => router.push(path.REWARDS)} className={cn('flex-1', className)}>
-      <View className="h-full justify-between gap-6 rounded-twice bg-card p-5">
+      <View className="justify-between gap-6 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
         <Image
           source={getAsset('images/green-diamond-background.png')}
           alt="Cashback"
-          style={{ width: 70, height: 70 }}
+          style={{ width: 84, height: 84 }}
           contentFit="contain"
         />
         <View className="gap-1">
