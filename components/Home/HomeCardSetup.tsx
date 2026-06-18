@@ -30,7 +30,7 @@ const HomeCardSetup = ({ depositCompleted, className }: HomeCardSetupProps) => {
             <View className="flex-1 gap-1 pr-4">
               <Text className="text-2xl font-semibold text-foreground">Finish setting up</Text>
               <Text className="text-sm leading-tight text-muted-foreground">
-                Complete 3 simple steps to start using all benefits
+                Complete 3 simple steps to{'\n'}start using all benefits
               </Text>
             </View>
             <CircularProgress completed={completedCount} total={total} />

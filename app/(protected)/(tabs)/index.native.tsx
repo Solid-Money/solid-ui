@@ -136,7 +136,7 @@ export default function Home() {
             depositCompleted={depositCompleted}
             isLoading={isLoadingTokens}
           />
-          <View className="flex-row gap-3">
+          <View className="flex-row items-start gap-3">
             <HomeCashbackCard />
             <HomeSavingsStatCard />
           </View>
