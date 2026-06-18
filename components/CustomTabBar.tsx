@@ -19,6 +19,13 @@ const TAB_BAR_CONTENT_HEIGHT = 45;
 // with a larger inset (e.g. Android 3-button navigation, ~48) get extra spacing
 // so the tab bar clears the system navigation bar instead of overlapping it.
 const TAB_BAR_MIN_BOTTOM_INSET = 35;
+// Extra clearance added on top of the *real* inset on Android only. Android
+// system navigation bars sit flush with the bottom inset, and the icon+label
+// content slightly overflows the visible band, so on devices with a tall
+// navigation bar (3-button nav) the label can still touch it. Added to the real
+// inset (not the floor) so gesture-nav devices barely change; iOS (thin home
+// indicator) and web have no such overlap and are deliberately excluded.
+const TAB_BAR_ANDROID_EXTRA_INSET = 16;
 
 type TabButtonProps = {
   label: string;
@@ -122,10 +129,14 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const insets = useSafeAreaInsets();
 
   // Lift the tab bar above the system navigation bar / home indicator using the
-  // real bottom inset, never shrinking below the legacy baseline. Read-only —
-  // this does not alter the inset context, so other components (ResponsiveModal,
-  // SafeAreaView, ScrollViews) are unaffected.
-  const bottomInset = Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_INSET);
+  // real bottom inset (plus a little extra on Android, see constant), never
+  // shrinking below the legacy baseline. Read-only — this does not alter the
+  // inset context, so other components (ResponsiveModal, SafeAreaView,
+  // ScrollViews) are unaffected.
+  const bottomInset = Math.max(
+    insets.bottom + (Platform.OS === 'android' ? TAB_BAR_ANDROID_EXTRA_INSET : 0),
+    TAB_BAR_MIN_BOTTOM_INSET,
+  );
 
   // Filter to only show the main visible tabs
   const visibleRoutes = state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name));
