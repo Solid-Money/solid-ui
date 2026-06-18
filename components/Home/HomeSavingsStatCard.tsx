@@ -25,9 +25,9 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
     <Pressable onPress={() => router.push(path.SAVINGS)} className={cn('flex-1', className)}>
       <View className="h-full justify-between gap-6 rounded-twice bg-card p-5">
         <Image
-          source={getAsset('images/flash-lavender.png')}
+          source={getAsset('images/flash-lavender-background.png')}
           alt="Savings"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 70, height: 70 }}
           contentFit="contain"
         />
         <View className="gap-1">

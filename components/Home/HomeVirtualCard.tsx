@@ -75,7 +75,7 @@ const HomeVirtualCard = ({
             )}
           </View>
           <Image
-            source={getAsset('images/cards-mobile.png')}
+            source={getAsset('images/card.png')}
             alt="Solid card"
             style={{ width: 130, height: 90 }}
             contentFit="contain"
