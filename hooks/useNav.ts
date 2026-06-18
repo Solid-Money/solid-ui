@@ -1,7 +1,6 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { isProduction } from '@/lib/config';
 
 type MenuItem = {
   label: string;
@@ -33,11 +32,15 @@ const agent: MenuItem = {
   href: path.AGENT,
 };
 
+// The new rewards program is not launched yet, so the nav points to the
+// legacy Points page in all environments. To launch rewards, point this back
+// to path.REWARDS (the /rewards route and opt-in popup remain in the app).
+const points: MenuItem = {
+  label: 'Points',
+  href: path.POINTS,
+};
+
 const useNav = () => {
-  const points: MenuItem = {
-    label: isProduction ? 'Points' : 'Rewards',
-    href: isProduction ? path.POINTS : path.REWARDS,
-  };
   const menuItems: MenuItem[] = [home, savings, card, points, agent, activity];
   return {
     menuItems,
