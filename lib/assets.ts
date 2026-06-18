@@ -528,7 +528,7 @@ export const ASSETS = {
   },
   'images/solid-status-bar.png': {
     module: require('@/assets/images/solid-status-bar.png'),
-    hash: '6467d3dd'
+    hash: '6467d3dd',
   },
   'images/solid-tokens.png': {
     module: require('@/assets/images/solid-tokens.png'),

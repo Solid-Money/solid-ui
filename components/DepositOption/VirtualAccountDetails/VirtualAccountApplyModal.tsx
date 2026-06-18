@@ -23,18 +23,34 @@ export const VirtualAccountApplyModal = () => {
   const setModal = useDepositStore(state => state.setModal);
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
-  const isRainApproved =
-    cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
 
   const handleApply = useCallback(() => {
-    if (isRainApproved) {
+    const rainStatus = cardStatus?.rainApplicationStatus;
+
+    // Rain already approved — go straight to the VA terms of service.
+    if (rainStatus === RainApplicationStatus.APPROVED) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
       return;
     }
+
     setKycFlow('va');
     setModal(DEPOSIT_MODAL.CLOSE);
+
+    // Didit is already done and Rain just needs its external verification /
+    // information step — land on the pending page, which surfaces the
+    // "Complete verification" / "Provide information" CTA, instead of
+    // restarting the already-approved Didit document flow.
+    if (
+      rainStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
+      rainStatus === RainApplicationStatus.NEEDS_INFORMATION
+    ) {
+      router.push(path.CARD_PENDING);
+      return;
+    }
+
+    // No Rain application yet — start the Didit KYC gate.
     router.push(path.KYC);
-  }, [isRainApproved, router, setKycFlow, setModal]);
+  }, [cardStatus, router, setKycFlow, setModal]);
 
   return (
     <View className="flex-1 gap-4">
