@@ -23,7 +23,7 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
 
   return (
     <Pressable onPress={() => router.push(path.SAVINGS)} className={cn('flex-1', className)}>
-      <View className="justify-between gap-6 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
+      <View className="gap-3 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
         <Image
           source={getAsset('images/flash-lavender-background.png')}
           alt="Savings"
@@ -38,7 +38,7 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
             <Text
               className="text-foreground"
               style={{
-                fontSize: fontSize(1.875),
+                fontSize: fontSize(2.25),
                 fontFamily: 'MonaSans_600SemiBold',
                 fontWeight: '600',
               }}

@@ -21,7 +21,7 @@ interface FinishSetupModalProps {
 const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSetupModalProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const bottomPadding = Math.max(insets.bottom, 35) + 24;
+  const bottomPadding = Math.max(insets.bottom, 35) + 40;
 
   const handleCta = () => {
     onClose();
@@ -89,8 +89,15 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
             <Button
               className="h-14 rounded-2xl border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
               onPress={handleCta}
+              style={{ paddingVertical: 0 }}
             >
-              <Text className="text-base font-bold text-primary-foreground">
+              <Text
+                className="w-full flex-shrink text-center text-base font-bold text-primary-foreground"
+                style={{ lineHeight: 22 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
                 {firstIncomplete.cta}
               </Text>
             </Button>
