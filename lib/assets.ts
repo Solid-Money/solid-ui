@@ -118,6 +118,10 @@ export const ASSETS = {
     module: require('@/assets/images/card-withdraw.png'),
     hash: 'd076a41d',
   },
+  'images/card.png': {
+    module: require('@/assets/images/card.png'),
+    hash: '0fc3742c'
+  },
   'images/card.tsx': { module: require('@/assets/images/card.tsx'), hash: '896e9355' },
   'images/card_actions_details.png': {
     module: require('@/assets/images/card_actions_details.png'),
@@ -261,6 +265,10 @@ export const ASSETS = {
     module: require('@/assets/images/fingetprint.tsx'),
     hash: '0b09bf2a',
   },
+  'images/flash-lavender-background.png': {
+    module: require('@/assets/images/flash-lavender-background.png'),
+    hash: '343e70d3'
+  },
   'images/flash-lavender.png': {
     module: require('@/assets/images/flash-lavender.png'),
     hash: '12ae990c',
@@ -300,6 +308,10 @@ export const ASSETS = {
   'images/gray_onboarding_bg.png': {
     module: require('@/assets/images/gray_onboarding_bg.png'),
     hash: 'b4c20e0b',
+  },
+  'images/green-diamond-background.png': {
+    module: require('@/assets/images/green-diamond-background.png'),
+    hash: '77e8c90d'
   },
   'images/green-diamond.png': {
     module: require('@/assets/images/green-diamond.png'),
