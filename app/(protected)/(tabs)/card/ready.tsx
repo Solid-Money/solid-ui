@@ -9,11 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
-import { path } from '@/constants/path';
-import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
+import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { CardStatus } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { getActiveCardRoute, withRefreshToken } from '@/lib/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -52,6 +51,7 @@ const underlineProps = {
 export default function CardReady() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: cardStatusResponse } = useCardStatus();
   const [activating, setActivating] = useState(false);
   const [consents, setConsents] = useState<ConsentState>(initialConsents);
 
@@ -109,7 +109,9 @@ export default function CardReady() {
 
       if (card.status !== CardStatus.PENDING) {
         setShouldShowWelcomePopup(true);
-        router.replace(path.CARD_DETAILS);
+        // BD users land on the issuance flow to complete the minimum-deposit
+        // step before reaching card details; everyone else goes to details.
+        router.replace(getActiveCardRoute(cardStatusResponse));
       } else {
         Toast.show({
           type: 'success',
