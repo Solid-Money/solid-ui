@@ -1,12 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
 import {
   fetchRewardsConfig,
   fetchRewardsUserData,
   fetchTierBenefits,
-  getJWTToken,
+  optInToRewards,
 } from '@/lib/api';
+import { RewardsUserData } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 const REWARDS = 'rewards';
@@ -17,7 +18,6 @@ export const useRewardsUserData = () => {
     queryFn: async () => {
       return await withRefreshToken(() => fetchRewardsUserData());
     },
-    enabled: !!getJWTToken(),
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
   });
@@ -25,7 +25,6 @@ export const useRewardsUserData = () => {
 
 export const useTierBenefits = () => {
   return useQuery({
-    enabled: !!getJWTToken(),
     queryKey: [REWARDS, 'tierBenefits'],
     queryFn: fetchTierBenefits,
     staleTime: secondsToMilliseconds(60),
@@ -34,9 +33,19 @@ export const useTierBenefits = () => {
 
 export const useRewardsConfig = () => {
   return useQuery({
-    enabled: !!getJWTToken(),
     queryKey: [REWARDS, 'config'],
     queryFn: fetchRewardsConfig,
     staleTime: minutesToMilliseconds(5),
+  });
+};
+
+export const useOptInToRewards = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => await withRefreshToken(() => optInToRewards()),
+    onSuccess: (data: RewardsUserData) => {
+      queryClient.setQueryData([REWARDS, 'userData'], data);
+      void queryClient.invalidateQueries({ queryKey: [REWARDS] });
+    },
   });
 };
