@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
@@ -13,6 +14,7 @@ import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -99,6 +101,13 @@ export function useCardSteps(
   // Card activation state and handlers
   const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
     useCardActivation(router);
+
+  // Opens the existing "deposit to card" popup (used by the BD minimum-deposit step).
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
+  const openDepositModal = useCallback(
+    () => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM),
+    [setCardDepositModal],
+  );
 
   // Sync card activation state with server
   useEffect(() => {
@@ -252,6 +261,9 @@ export function useCardSteps(
           kycStatus: cardStatusResponse?.kycStatus,
           kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
+          country: cardStatusResponse?.country,
+          cardCollateralDeposited: cardStatusResponse?.cardCollateralDeposited,
+          openDepositModal,
         },
       ),
     [
@@ -263,11 +275,14 @@ export function useCardSteps(
       cardStatusResponse?.rainApplicationStatus,
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,
+      cardStatusResponse?.country,
+      cardStatusResponse?.cardCollateralDeposited,
       handleProceedToKyc,
       pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,
+      openDepositModal,
     ],
   );
 

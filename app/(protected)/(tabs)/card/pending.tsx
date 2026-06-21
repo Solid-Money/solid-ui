@@ -5,7 +5,7 @@ import { CardStatusPage } from '@/components/Card/CardStatusPage';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { CardStatus, KycStatus, RainApplicationStatus } from '@/lib/types';
-import { hasCard } from '@/lib/utils';
+import { getActiveCardRoute, hasCard } from '@/lib/utils';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -18,7 +18,9 @@ export default function CardPending() {
 
     // User already has a card (e.g. status synced after this tab was open).
     if (hasCard(cardStatusResponse) && cardStatusResponse.status !== CardStatus.PENDING) {
-      router.replace(path.CARD_DETAILS);
+      // BD users still owe a minimum deposit — route them through the issuance
+      // flow (activate) rather than straight to card details.
+      router.replace(getActiveCardRoute(cardStatusResponse));
       return;
     }
 

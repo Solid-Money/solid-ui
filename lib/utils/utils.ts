@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type ClassValue, clsx } from 'clsx';
 import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
@@ -6,6 +7,8 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
+import { CARD_DEPOSIT_REQUIRED_COUNTRY, MINIMUM_CARD_DEPOSIT_CENTS } from '@/constants/card';
+import { path } from '@/constants/path';
 import { refreshToken } from '@/lib/api';
 import {
   ADDRESSES,
@@ -395,3 +398,28 @@ export const hasCard = (cardStatus: CardStatusResponse | null | undefined): bool
 export const hasCardStatusWithRainApplication = (
   cardStatus: CardStatusResponse | null | undefined,
 ): boolean => Boolean(cardStatus?.rainApplicationStatus);
+
+/**
+ * Whether the user's residence country requires a minimum card deposit before
+ * spending (Bangladesh). Uses the KYC residence country from the backend
+ * (`cardStatus.country`), not the IP/manual country, so the rule matches the
+ * user's actual `country`.
+ */
+export const requiresCardDeposit = (country: string | null | undefined): boolean =>
+  country?.toUpperCase() === CARD_DEPOSIT_REQUIRED_COUNTRY;
+
+/** Whether the user has deposited at least the minimum required collateral (cents). */
+export const hasMetCardDeposit = (depositedCents: number | null | undefined): boolean =>
+  (depositedCents ?? 0) >= MINIMUM_CARD_DEPOSIT_CENTS;
+
+/**
+ * Where an active-card user should land. Users from a deposit-required country
+ * who haven't met the minimum are kept in the issuance flow (activate page) so
+ * they complete the "deposit at least $5" step instead of being sent to an
+ * empty, cost-incurring card. Everyone else goes to card details.
+ */
+export const getActiveCardRoute = (cardStatus: CardStatusResponse | null | undefined): Href =>
+  requiresCardDeposit(cardStatus?.country) &&
+  !hasMetCardDeposit(cardStatus?.cardCollateralDeposited)
+    ? path.CARD_ACTIVATE
+    : path.CARD_DETAILS;

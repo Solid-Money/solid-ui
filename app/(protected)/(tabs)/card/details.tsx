@@ -31,9 +31,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
@@ -41,16 +43,32 @@ import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
-import { cn } from '@/lib/utils/utils';
+import { cn, hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
+  const router = useRouter();
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
+  const { data: cardStatusResponse } = useCardStatus();
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
+
+  // BD users must fund their card with a minimum deposit before they can use
+  // it. Card details is the authoritative gate: bounce unfunded BD users back
+  // to the issuance flow no matter how they got here (card creation redirect,
+  // home card widget, dashboard banner, deep link).
+  const mustDepositFirst =
+    requiresCardDeposit(cardStatusResponse?.country) &&
+    !hasMetCardDeposit(cardStatusResponse?.cardCollateralDeposited);
+
+  useEffect(() => {
+    if (mustDepositFirst) {
+      router.replace(path.CARD_ACTIVATE);
+    }
+  }, [mustDepositFirst, router]);
 
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
@@ -159,7 +177,7 @@ export default function CardDetails() {
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly isLoading={isLoading} stickyHeader={stickyHeader}>
+      <PageLayout desktopOnly isLoading={isLoading || mustDepositFirst} stickyHeader={stickyHeader}>
         <View className="mx-auto w-full max-w-7xl px-4 pb-12">
           {/* Row 1: Spending Balance Card + Card Image */}
           <View className="mt-12 flex-row gap-6">
@@ -209,7 +227,7 @@ export default function CardDetails() {
 
   // Mobile layout
   return (
-    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isLoading || mustDepositFirst} stickyHeader={stickyHeader}>
       <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
