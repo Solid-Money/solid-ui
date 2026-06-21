@@ -115,7 +115,10 @@ export default function Rewards() {
             onSuccess: () => setWelcomeDismissed(true),
           })
         }
-        onClose={() => setWelcomeDismissed(true)}
+        onClose={() => {
+          setWelcomeDismissed(true);
+          router.replace(path.HOME);
+        }}
       />
     </PageLayout>
   );
