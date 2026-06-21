@@ -466,6 +466,17 @@ export interface CardStatusResponse {
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
+  /**
+   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Drives the
+   * country-specific issuance steps (the Bangladesh minimum-deposit step).
+   */
+  country?: string;
+  /**
+   * Total Rain collateral the user has deposited to their card, in cents. Only
+   * populated for countries that require a minimum card deposit (Bangladesh),
+   * so the UI can mark the "deposit at least $5" step complete.
+   */
+  cardCollateralDeposited?: number;
 }
 
 export interface SubmitPersonaKycRequest {
