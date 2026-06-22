@@ -14,6 +14,12 @@ interface HomeCashbackCardProps {
   className?: string;
 }
 
+// Fixed height for the stat value so the loading skeleton and the loaded amount
+// occupy exactly the same vertical space. Without this the card shrinks while the
+// amount is loading and grows back once it resolves. Kept in sync with
+// HomeSavingsStatCard so the two cards stay the same height in every state.
+const STAT_VALUE_HEIGHT = Math.round(fontSize(1.875) * 1.3);
+
 /**
  * Compact "Cashback" stat card. Shows total cashback earned (from card details)
  * and the headline cashback rate. Sits next to the savings card on home.
@@ -37,34 +43,38 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
         <View className="gap-1">
           <Text className="text-base font-medium text-muted-foreground">Cashback</Text>
           <View className="flex-row items-end gap-2">
-            {isLoading ? (
-              <Skeleton className="h-8 w-16 rounded-xl" />
-            ) : (
-              <CountUp
-                prefix="$"
-                count={cashbackUsd}
-                isTrailingZero={false}
-                decimalPlaces={cashbackUsd > 0 ? 2 : 0}
-                classNames={{
-                  wrapper: 'text-foreground',
-                  decimalSeparator: 'text-lg font-semibold',
-                }}
-                styles={{
-                  wholeText: {
-                    fontSize: fontSize(1.875),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                  decimalText: {
-                    fontSize: fontSize(1.875),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                }}
-              />
-            )}
+            <View style={{ height: STAT_VALUE_HEIGHT, justifyContent: 'flex-end' }}>
+              {isLoading ? (
+                <Skeleton className="w-16 rounded-xl" style={{ height: STAT_VALUE_HEIGHT }} />
+              ) : (
+                <CountUp
+                  prefix="$"
+                  count={cashbackUsd}
+                  isTrailingZero={false}
+                  decimalPlaces={cashbackUsd > 0 ? 2 : 0}
+                  classNames={{
+                    wrapper: 'text-foreground',
+                    decimalSeparator: 'text-lg font-semibold',
+                  }}
+                  styles={{
+                    wholeText: {
+                      fontSize: fontSize(1.875),
+                      lineHeight: STAT_VALUE_HEIGHT,
+                      fontWeight: '600',
+                      fontFamily: 'MonaSans_600SemiBold',
+                      color: '#ffffff',
+                    },
+                    decimalText: {
+                      fontSize: fontSize(1.875),
+                      lineHeight: STAT_VALUE_HEIGHT,
+                      fontWeight: '600',
+                      fontFamily: 'MonaSans_600SemiBold',
+                      color: '#ffffff',
+                    },
+                  }}
+                />
+              )}
+            </View>
             <Text className="mb-1 max-w-[5.5rem] text-xs leading-tight text-muted-foreground">
               Up to {percentage}% Cashback
             </Text>
