@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
@@ -11,6 +12,8 @@ interface RewardBenefitProps {
   title: string;
   description: string;
   descriptionNode?: ReactNode;
+  tooltip?: string;
+  tooltipAnalyticsContext?: string;
   iconSize?: number;
 }
 
@@ -20,8 +23,27 @@ const RewardBenefit = ({
   title,
   description,
   descriptionNode,
+  tooltip,
+  tooltipAnalyticsContext,
   iconSize = 50,
 }: RewardBenefitProps) => {
+  const renderDescription = () => {
+    if (descriptionNode) {
+      return descriptionNode;
+    }
+
+    if (tooltip) {
+      return (
+        <View className="flex-row items-center gap-1">
+          <Text className="shrink text-base opacity-70">{description}</Text>
+          <TooltipPopover text={tooltip} analyticsContext={tooltipAnalyticsContext} />
+        </View>
+      );
+    }
+
+    return <Text className="text-base opacity-70">{description}</Text>;
+  };
+
   return (
     <View className="flex-row items-center gap-2">
       {iconText ? (
@@ -40,9 +62,7 @@ const RewardBenefit = ({
       ) : null}
       <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold leading-5">{title}</Text>
-        <View className="mt-0.5">
-          {descriptionNode ?? <Text className="text-base opacity-70">{description}</Text>}
-        </View>
+        <View className="mt-0.5">{renderDescription()}</View>
       </View>
     </View>
   );
