@@ -13,7 +13,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardStatus, KycStatus, RainApplicationStatus } from '@/lib/types';
-import { hasCard } from '@/lib/utils';
+import { getActiveCardRoute, hasCard } from '@/lib/utils';
 import { useKycStore } from '@/store/useKycStore';
 
 const POLL_INTERVAL_MS = 5000;
@@ -65,7 +65,9 @@ export default function CardPending() {
 
     // User already has a card (e.g. status synced after this tab was open).
     if (hasCard(cardStatusResponse) && cardStatusResponse.status !== CardStatus.PENDING) {
-      router.replace(path.CARD_DETAILS);
+      // BD users still owe a minimum deposit — route them through the issuance
+      // flow (activate) rather than straight to card details.
+      router.replace(getActiveCardRoute(cardStatusResponse));
       return;
     }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Router } from 'expo-router';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { MINIMUM_CARD_DEPOSIT_USD } from '@/constants/card';
 import { path } from '@/constants/path';
 import {
   BridgeCustomerEndorsement,
@@ -12,6 +13,7 @@ import {
   KycWarning,
   RainApplicationStatus,
 } from '@/lib/types';
+import { hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils';
 
 import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';
@@ -34,6 +36,12 @@ export function buildCardSteps(
     kycStatus?: KycStatus | null;
     kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
+    /** KYC residence country (ISO alpha-2); enables the BD minimum-deposit step. */
+    country?: string | null;
+    /** Total collateral deposited to the card, in cents (BD users). */
+    cardCollateralDeposited?: number | null;
+    /** Opens the existing "deposit to card" popup. */
+    openDepositModal?: () => void;
   },
 ): Step[] {
   const stepOptions =
@@ -66,9 +74,14 @@ export function buildCardSteps(
       ? options.handleRainKYCPress
       : handleProceedToKyc;
 
-  return [
+  // Bangladesh users must fund their card with a minimum collateral deposit
+  // before spending. The step is inserted after "Activate your card" and is
+  // marked complete from the summed positive Rain collateral the backend returns.
+  const showDepositStep = requiresCardDeposit(options?.country);
+  const cardDepositMet = hasMetCardDeposit(options?.cardCollateralDeposited);
+
+  const steps: Omit<Step, 'id'>[] = [
     {
-      id: 1,
       title: 'Complete KYC',
       description,
       completed: isKycComplete || cardActivated,
@@ -78,7 +91,6 @@ export function buildCardSteps(
       onPress: isButtonDisabled ? undefined : kycStepOnPress,
     },
     {
-      id: 2,
       title: 'Activate your card',
       description: orderCardDesc,
       completed: cardActivated,
@@ -86,16 +98,35 @@ export function buildCardSteps(
       buttonText: activationBlocked || !isKycComplete ? undefined : 'Activate card',
       onPress: activationBlocked || !isKycComplete ? undefined : pushCardReady,
     },
-    {
-      id: 3,
-      title: 'Start spending :)',
-      description: 'Congratulations! your card is ready',
-      buttonText: 'To the card',
-      completed: false,
-      status: cardActivated ? 'completed' : 'pending',
-      onPress: pushCardDetails,
-    },
   ];
+
+  if (showDepositStep) {
+    steps.push({
+      title: `Deposit at least $${MINIMUM_CARD_DEPOSIT_USD}`,
+      description: cardDepositMet
+        ? 'Your card is funded — you’re ready to spend.'
+        : `Add at least $${MINIMUM_CARD_DEPOSIT_USD} to your card to start spending.`,
+      completed: cardDepositMet,
+      status: cardDepositMet ? 'completed' : 'pending',
+      // A card must be activated before it can be funded, so only offer the
+      // deposit action once step 2 is done and the minimum isn't met yet.
+      buttonText: cardActivated && !cardDepositMet ? 'Deposit' : undefined,
+      onPress: cardActivated && !cardDepositMet ? options?.openDepositModal : undefined,
+    });
+  }
+
+  steps.push({
+    title: 'Start spending :)',
+    description: 'Congratulations! your card is ready',
+    buttonText: 'To the card',
+    completed: false,
+    status: cardActivated ? 'completed' : 'pending',
+    onPress: pushCardDetails,
+  });
+
+  // Number steps by position so the indicator shows 1..N sequentially and the
+  // activate step stays id 2 (used by the "Card creation pending" override).
+  return steps.map((step, index) => ({ ...step, id: index + 1 }));
 }
 
 /**
