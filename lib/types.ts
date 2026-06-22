@@ -508,6 +508,13 @@ export enum RainApplicationStatus {
   NEEDS_VERIFICATION = 'needsVerification',
   NEEDS_INFORMATION = 'needsInformation',
   NOT_STARTED = 'notStarted',
+  /**
+   * Synthetic status (not a Rain API value) set by the backend when forwarding
+   * the approved Didit verification to Rain fails server-side. The failure
+   * reason is surfaced as a `CARD_ACTIVATION_FAILED` kycWarning. These errors
+   * are rarely user-resolvable, so the UI offers "Contact support".
+   */
+  DIDIT_FORWARD_FAILED = 'didit_forward_failed',
 }
 
 export interface RainKycSubmitResponse {

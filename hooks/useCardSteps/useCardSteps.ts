@@ -206,8 +206,13 @@ export function useCardSteps(
     const link = cardStatusResponse?.applicationExternalVerificationLink;
 
     // DENIED is a final decision with no action — it renders no button, so it is not
-    // handled here. LOCKED/CANCELED still offer a "Contact support" button.
-    if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
+    // handled here. LOCKED/CANCELED still offer a "Contact support" button, as does
+    // DIDIT_FORWARD_FAILED (Rain rejected the forwarded application — not user-fixable).
+    if (
+      status === RainApplicationStatus.LOCKED ||
+      status === RainApplicationStatus.CANCELED ||
+      status === RainApplicationStatus.DIDIT_FORWARD_FAILED
+    ) {
       openIntercom();
       return;
     }

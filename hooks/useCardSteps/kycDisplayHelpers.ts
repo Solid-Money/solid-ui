@@ -92,16 +92,53 @@ function formatRiskTag(tag: string): string {
 }
 
 /**
+ * Risk tag the backend uses for the synthetic warning it attaches when forwarding
+ * the approved Didit verification to Rain fails. Its `short_description` carries
+ * Rain's raw error message (see {@link extractUserFacingReason}).
+ */
+const CARD_ACTIVATION_FAILED_RISK = 'CARD_ACTIVATION_FAILED';
+
+/**
+ * Distil the user-facing line out of a Rain forward-failure message.
+ *
+ * Rain rejects an invalid application with a multi-clause JSON-schema validation
+ * string, comma-separated, e.g.:
+ *   "body must have required property 'sumsubShareToken', body must have required
+ *    property 'personaShareToken', body/address/line1 must NOT have more than 100
+ *    characters, body must match exactly one schema in oneOf, ..."
+ * The leading clauses are generic oneOf/required noise; the third clause is
+ * typically the informative, field-specific one. When there are fewer than three
+ * comma-separated clauses there is nothing to distil, so the whole message is
+ * shown. The full message is always retained server-side (and in the warning) for
+ * debugging — only the displayed text is trimmed.
+ */
+export function extractUserFacingReason(raw: string | undefined | null): string {
+  const message = (raw ?? '').trim();
+  if (!message) return '';
+  const clauses = message
+    .split(',')
+    .map(clause => clause.trim())
+    .filter(Boolean);
+  if (clauses.length >= 3) return clauses[2];
+  return message;
+}
+
+/**
  * Pick the best display text for a single warning:
  *   1. Our DIDIT_WARNING_DESCRIPTIONS override (when we want friendlier wording than Didit's)
- *   2. Didit's `short_description` (always set for documented warnings)
- *   3. Didit's `long_description` (rare fallback if a partial payload arrives)
- *   4. The risk tag formatted into Title Case
+ *   2. Rain forward failures (CARD_ACTIVATION_FAILED): only the informative clause of
+ *      Rain's raw validation message — never the whole multi-clause string
+ *   3. Didit's `short_description` (always set for documented warnings)
+ *   4. Didit's `long_description` (rare fallback if a partial payload arrives)
+ *   5. The risk tag formatted into Title Case
  */
 function formatDiditWarning(warning: KycWarning): string {
   const risk = warning.risk ?? '';
   if (risk && DIDIT_WARNING_DESCRIPTIONS[risk]) {
     return DIDIT_WARNING_DESCRIPTIONS[risk];
+  }
+  if (risk === CARD_ACTIVATION_FAILED_RISK) {
+    return extractUserFacingReason(warning.short_description || warning.long_description);
   }
   if (warning.short_description) return warning.short_description;
   if (warning.long_description) return warning.long_description;
@@ -150,6 +187,16 @@ export function getKYCDescription(
       }
       return 'We need a bit more information to process your application.';
     }
+    case RainApplicationStatus.DIDIT_FORWARD_FAILED: {
+      // Server-side failure forwarding the approved verification to Rain. Surface
+      // the (distilled) reason so the user knows what happened, but steer them to
+      // support — retrying the verification does not fix these.
+      const formatted = formatKycWarnings(kycWarnings ?? []);
+      if (formatted.length > 0) {
+        return `We couldn't complete your card application:\n- ${formatted}\n\nPlease contact support to continue.`;
+      }
+      return "We couldn't complete your card application. Please contact support to continue.";
+    }
     case RainApplicationStatus.NOT_STARTED:
     default:
       return DEFAULT_KYC_DESCRIPTION;
@@ -175,6 +222,10 @@ export function getKYCButtonText(
     case RainApplicationStatus.LOCKED:
     case RainApplicationStatus.CANCELED:
       return 'Contact support';
+    case RainApplicationStatus.DIDIT_FORWARD_FAILED:
+      // Rain rejected the forwarded application (e.g. data validation). Rarely
+      // user-resolvable, so offer support instead of a retry that would loop.
+      return 'Contact support';
     case RainApplicationStatus.NEEDS_VERIFICATION:
       return 'Complete verification';
     case RainApplicationStatus.NEEDS_INFORMATION:
@@ -194,7 +245,7 @@ export function isRainKYCButtonDisabled(
   if (!rainApplicationStatus) return false;
   // No actionable button for APPROVED (step complete), PENDING/MANUAL_REVIEW (under review),
   // or DENIED (final decision — cannot override or resubmit).
-  // LOCKED/CANCELED keep an enabled "Contact support" button that opens Intercom.
+  // LOCKED/CANCELED/DIDIT_FORWARD_FAILED keep an enabled "Contact support" button that opens Intercom.
   return (
     rainApplicationStatus === RainApplicationStatus.APPROVED ||
     rainApplicationStatus === RainApplicationStatus.PENDING ||
