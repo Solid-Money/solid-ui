@@ -6,12 +6,24 @@ import { useRewardsConfig } from '@/hooks/useRewards';
 
 import RewardBenefit from './RewardBenefit';
 
+// Amount deposited counts toward Save points across every supported vault.
+const SAVE_DEPOSIT_TOOLTIP =
+  'Amount deposited is calculated across the USDC, FUSE and ETH vaults';
+
+interface EarningMethod {
+  icon: string;
+  title: string;
+  description: string;
+  tooltip?: string;
+  tooltipAnalyticsContext?: string;
+}
+
 const EarnPointsSection = () => {
   const { data: config, isLoading } = useRewardsConfig();
   const { isScreenMedium } = useDimension();
 
   // Format earning methods based on config
-  const getEarningMethods = () => {
+  const getEarningMethods = (): EarningMethod[] => {
     if (!config) {
       // Fallback values while loading
       return [
@@ -19,6 +31,8 @@ const EarnPointsSection = () => {
           icon: 'images/save-yellow.png',
           title: 'Save',
           description: 'Earn points for deposits',
+          tooltip: SAVE_DEPOSIT_TOOLTIP,
+          tooltipAnalyticsContext: 'rewards_save_deposit_vaults',
         },
         {
           icon: 'images/spend-yellow.png',
@@ -52,7 +66,13 @@ const EarnPointsSection = () => {
     const swapDesc = `${swapPoints.toLocaleString()} points per $1 swapped`;
 
     return [
-      { icon: 'images/save-yellow.png', title: 'Save', description: holdingDesc },
+      {
+        icon: 'images/save-yellow.png',
+        title: 'Save',
+        description: holdingDesc,
+        tooltip: SAVE_DEPOSIT_TOOLTIP,
+        tooltipAnalyticsContext: 'rewards_save_deposit_vaults',
+      },
       { icon: 'images/spend-yellow.png', title: 'Spend', description: spendDesc },
       { icon: 'images/invite-yellow.png', title: 'Invite friends', description: referralDesc },
       { icon: 'images/swap-yellow.png', title: 'Swap', description: swapDesc },
@@ -84,6 +104,8 @@ const EarnPointsSection = () => {
                 icon={method.icon}
                 title={method.title}
                 description={method.description}
+                tooltip={method.tooltip}
+                tooltipAnalyticsContext={method.tooltipAnalyticsContext}
               />
             </View>
           ))}
