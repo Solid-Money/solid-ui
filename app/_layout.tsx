@@ -1,7 +1,7 @@
 import '@/global.css';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Appearance, AppState, Platform } from 'react-native';
+import { Appearance, AppState, Platform, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -347,6 +347,9 @@ function RootLayout() {
 
   return (
     <SafeAreaProvider style={{ flex: 1 }}>
+      {Platform.OS === 'android' && (
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      )}
       <TurnkeyProvider>
         <LazyThirdwebProvider>
           <WagmiProvider config={config}>

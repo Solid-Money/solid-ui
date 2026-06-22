@@ -3,12 +3,13 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
 import CountUp from '@/components/CountUp';
+import { HOME_STAT_VALUE_TEXT_STYLE } from '@/components/Home/homeStatValueStyle';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { getAsset } from '@/lib/assets';
-import { cn, fontSize } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface HomeCashbackCardProps {
   className?: string;
@@ -48,21 +49,11 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
                 decimalPlaces={cashbackUsd > 0 ? 2 : 0}
                 classNames={{
                   wrapper: 'text-foreground',
-                  decimalSeparator: 'text-lg font-semibold',
                 }}
                 styles={{
-                  wholeText: {
-                    fontSize: fontSize(2.25),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                  decimalText: {
-                    fontSize: fontSize(2.25),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
+                  wholeText: HOME_STAT_VALUE_TEXT_STYLE,
+                  decimalText: HOME_STAT_VALUE_TEXT_STYLE,
+                  decimalSeparator: HOME_STAT_VALUE_TEXT_STYLE,
                 }}
               />
             )}

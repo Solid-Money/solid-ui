@@ -2,12 +2,13 @@ import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
+import { HOME_STAT_VALUE_TEXT_STYLE } from '@/components/Home/homeStatValueStyle';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { getAsset } from '@/lib/assets';
-import { cn, fontSize, formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 interface HomeSavingsStatCardProps {
   className?: string;
@@ -35,14 +36,7 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
           {isAPYsLoading ? (
             <Skeleton className="h-8 w-20 rounded-xl" />
           ) : (
-            <Text
-              className="text-foreground"
-              style={{
-                fontSize: fontSize(2.25),
-                fontFamily: 'MonaSans_600SemiBold',
-                fontWeight: '600',
-              }}
-            >
+            <Text className="text-foreground" style={HOME_STAT_VALUE_TEXT_STYLE}>
               {formatNumber(maxAPY ?? 0, 1)}%
             </Text>
           )}
