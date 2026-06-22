@@ -87,7 +87,8 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
         <View className="gap-5" style={{ paddingBottom: bottomPadding }}>
           {firstIncomplete && (
             <Button
-              className="h-14 rounded-2xl border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
+              variant="brand"
+              className="h-14 rounded-2xl"
               onPress={handleCta}
               style={{ paddingVertical: 0 }}
             >
