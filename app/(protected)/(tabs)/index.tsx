@@ -30,7 +30,7 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { fontSize, hasCard } from '@/lib/utils';
+import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -126,6 +126,7 @@ export default function Home() {
     isCardBalanceLoading ||
     totalSavingsUSD === undefined;
   const headlineBalance = totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance;
+  const mobileHeaderBalance = isHeadlineLoading ? null : formatBalanceUSD(headlineBalance);
 
   if (!isInitialLoading && !balance && !isDeposited && !hasTokens) {
     return <HomeEmptyState />;
@@ -135,7 +136,7 @@ export default function Home() {
   // fallbacks from LazyWalletTabs and LazyHomeBanners to be visible immediately.
   // This improves perceived performance - users see content structure right away.
   return (
-    <PageLayout>
+    <PageLayout mobileTitle={mobileHeaderBalance}>
       <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-0 py-0 pb-20 md:gap-12 md:px-4 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">

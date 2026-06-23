@@ -1,4 +1,4 @@
-import { ImageBackground, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -92,7 +92,7 @@ const RewardsDashboard = ({
 
   return (
     <View
-      className="relative gap-20 rounded-twice p-6 md:px-10 md:py-8"
+      className="relative gap-10 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
       style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
     >
       <LinearGradient
@@ -112,24 +112,17 @@ const RewardsDashboard = ({
         }}
       />
       {!isScreenMedium && (
-        <ImageBackground
+        <Image
           source={getAsset('images/points_large.png')}
-          resizeMode="contain"
+          contentFit="contain"
+          pointerEvents="none"
           style={{
             position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
+            right: -225,
+            top: -22,
+            width: 600,
+            height: 276,
             zIndex: 0,
-            pointerEvents: 'none',
-          }}
-          imageStyle={{
-            width: 800,
-            height: 600,
-            marginTop: isScreenMedium ? -120 : -180,
-            marginRight: isScreenMedium ? -120 : -300,
-            marginLeft: 'auto',
           }}
         />
       )}

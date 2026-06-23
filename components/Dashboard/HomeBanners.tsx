@@ -133,7 +133,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
-  const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
+  const BANNER_HEIGHT = isScreenMedium ? 220 : propData ? 200 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
 
   const defaultData = useMemo(() => {
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     gap: 4,
-    marginTop: 0,
+    marginTop: 8,
   },
   dotStyle: {
     backgroundColor: '#616161',

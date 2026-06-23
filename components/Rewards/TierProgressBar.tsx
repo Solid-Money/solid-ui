@@ -25,7 +25,7 @@ const TierProgressBar = ({
 }: TierProgressBarProps) => {
   const { setSelectedTierModalId } = useRewards();
   const { isScreenMedium } = useDimension();
-  const progress = nextTier ? Math.min((currentPoints / nextTierPoints) * 100, 100) : 100;
+  const progress = nextTier ? Math.min((currentPoints / nextTierPoints) * 100, 100) : 0;
 
   const animatedProgress = useAnimatedStyle(
     () => ({
@@ -34,7 +34,11 @@ const TierProgressBar = ({
     [progress],
   );
 
-  const pointsNeeded = nextTier ? Math.max(0, nextTierPoints - currentPoints) : 0;
+  if (!nextTier) {
+    return null;
+  }
+
+  const pointsNeeded = Math.max(0, nextTierPoints - currentPoints);
 
   return (
     <View className="flex-1 gap-2">
@@ -43,32 +47,30 @@ const TierProgressBar = ({
           style={[{ backgroundColor: '#FFD151', height: '100%' }, animatedProgress]}
         ></Animated.View>
       </View>
-      {nextTier && (
-        <View className="flex-row items-center justify-between">
-          <Text className="text-base text-rewards/70">{toTitleCase(currentTier)}</Text>
-          <View className="flex-row items-center gap-5">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-base">{formatNumber(pointsNeeded, 0, 0)} more points to</Text>
-              <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
-              <Image
-                source={getTierIcon(nextTier)}
-                contentFit="contain"
-                style={{ width: 16, height: 16 }}
-              />
-            </View>
-
-            {isScreenMedium && (
-              <Pressable
-                onPress={() => setSelectedTierModalId(currentTier)}
-                className="flex-row items-center hover:opacity-70"
-              >
-                <Text className="text-base">View benefits</Text>
-                <ChevronRightIcon size={16} color="white" />
-              </Pressable>
-            )}
+      <View className="flex-row items-center justify-between">
+        <Text className="text-base text-rewards/70">{toTitleCase(currentTier)}</Text>
+        <View className="flex-row items-center gap-5">
+          <View className="flex-row items-center gap-1">
+            <Text className="text-base">{formatNumber(pointsNeeded, 0, 0)} more points to</Text>
+            <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
+            <Image
+              source={getTierIcon(nextTier)}
+              contentFit="contain"
+              style={{ width: 16, height: 16 }}
+            />
           </View>
+
+          {isScreenMedium && (
+            <Pressable
+              onPress={() => setSelectedTierModalId(currentTier)}
+              className="flex-row items-center hover:opacity-70"
+            >
+              <Text className="text-base">View benefits</Text>
+              <ChevronRightIcon size={16} color="white" />
+            </Pressable>
+          )}
         </View>
-      )}
+      </View>
     </View>
   );
 };

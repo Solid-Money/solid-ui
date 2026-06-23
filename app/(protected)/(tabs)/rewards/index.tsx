@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { RotateCw } from 'lucide-react-native';
@@ -29,6 +29,19 @@ export default function Rewards() {
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
+
+  // The new rewards program requires an explicit opt-in. `hasOptedIn` defaults to
+  // true when the backend doesn't yet send it, so we never prompt prematurely.
+  const hasOptedIn = rewardsData?.hasOptedIn ?? true;
+  const rewardsLocked = Boolean(rewardsData && !hasOptedIn);
+  const legacyPoints = rewardsData?.legacyPoints ?? 0;
+  const showWelcomePopup = rewardsLocked && !welcomeDismissed;
+
+  useEffect(() => {
+    if (rewardsLocked && welcomeDismissed) {
+      router.replace(path.HOME);
+    }
+  }, [rewardsLocked, welcomeDismissed]);
 
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
@@ -67,11 +80,25 @@ export default function Rewards() {
 
   const { currentTier, totalPoints, nextTier, nextTierPoints } = rewardsData;
 
-  // The new rewards program requires an explicit opt-in. `hasOptedIn` defaults to
-  // true when the backend doesn't yet send it, so we never prompt prematurely.
-  const hasOptedIn = rewardsData.hasOptedIn ?? true;
-  const legacyPoints = rewardsData.legacyPoints ?? 0;
-  const showWelcomePopup = !hasOptedIn && !welcomeDismissed;
+  if (rewardsLocked) {
+    return (
+      <PageLayout isLoading={welcomeDismissed}>
+        <RewardsWelcomePopup
+          isOpen={showWelcomePopup}
+          variant={legacyPoints > 0 ? 'existing' : 'new'}
+          oldPoints={legacyPoints}
+          legacyCarryoverPoints={rewardsData.legacyCarryoverPoints ?? 0}
+          startingTier={rewardsData.startingTier ?? currentTier}
+          isJoining={isJoining}
+          onAgree={() => joinRewards()}
+          onClose={() => {
+            setWelcomeDismissed(true);
+            router.replace(path.HOME);
+          }}
+        />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout isLoading={isLoading}>
@@ -102,24 +129,6 @@ export default function Rewards() {
         <HomeBanners data={bannerData} />
         <CardBanner />
       </View>
-
-      <RewardsWelcomePopup
-        isOpen={showWelcomePopup}
-        variant={legacyPoints > 0 ? 'existing' : 'new'}
-        oldPoints={legacyPoints}
-        legacyCarryoverPoints={rewardsData.legacyCarryoverPoints ?? 0}
-        startingTier={rewardsData.startingTier ?? currentTier}
-        isJoining={isJoining}
-        onAgree={() =>
-          joinRewards(undefined, {
-            onSuccess: () => setWelcomeDismissed(true),
-          })
-        }
-        onClose={() => {
-          setWelcomeDismissed(true);
-          router.replace(path.HOME);
-        }}
-      />
     </PageLayout>
   );
 }

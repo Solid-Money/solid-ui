@@ -27,7 +27,7 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { hasCard } from '@/lib/utils';
+import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -108,10 +108,12 @@ export default function Home() {
 
   const isBalanceSectionLoading =
     isLoadingTokens || isBalanceLoading || isTotalSavingsLoading || totalSavingsUSD === undefined;
+  const headlineBalance = totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance;
+  const mobileHeaderBalance = isBalanceSectionLoading ? null : formatBalanceUSD(headlineBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
 
   return (
-    <PageLayout>
+    <PageLayout mobileTitle={mobileHeaderBalance}>
       <View className="mb-5 w-full gap-8 pb-20">
         {isBalanceSectionLoading ? (
           <View className="items-center pt-6">
@@ -123,10 +125,7 @@ export default function Home() {
             </View>
           </View>
         ) : (
-          <DashboardHeaderMobile
-            balance={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
-            mode={SavingMode.BALANCE_ONLY}
-          />
+          <DashboardHeaderMobile balance={headlineBalance} mode={SavingMode.BALANCE_ONLY} />
         )}
 
         <View className="gap-3 px-4">

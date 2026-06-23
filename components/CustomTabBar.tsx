@@ -127,6 +127,7 @@ const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const currentRouteName = state.routes[state.index]?.name;
 
   // Lift the tab bar above the system navigation bar / home indicator using the
   // real bottom inset (plus a little extra on Android, see constant), never
@@ -140,6 +141,10 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
   // Filter to only show the main visible tabs
   const visibleRoutes = state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name));
+
+  if (currentRouteName === 'settings') {
+    return null;
+  }
 
   return (
     <View

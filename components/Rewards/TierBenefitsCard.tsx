@@ -15,7 +15,7 @@ const TierBenefitsCard = ({ label, icon, onPress }: TierBenefitsCardProps) => {
   const { isScreenMedium } = useDimension();
   return (
     <Pressable
-      className="flex-1 rounded-twice bg-card p-5 hover:opacity-90 md:px-8 md:py-6"
+      className="w-full rounded-twice bg-card p-5 hover:opacity-90 md:flex-1 md:px-8 md:py-6"
       onPress={onPress}
     >
       <View className="flex-row items-center justify-between">
