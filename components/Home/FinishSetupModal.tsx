@@ -83,11 +83,8 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
 
         <View className="gap-5">
           {firstIncomplete && (
-            <Button
-              className="h-14 rounded-2xl border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
-              onPress={handleCta}
-            >
-              <Text className="text-base font-bold text-primary">{firstIncomplete.cta}</Text>
+            <Button variant="brand" className="h-14 rounded-2xl" onPress={handleCta}>
+              <Text className="text-base font-bold">{firstIncomplete.cta}</Text>
             </Button>
           )}
           <Pressable

@@ -13,6 +13,11 @@ interface HomeSavingsStatCardProps {
   className?: string;
 }
 
+// Fixed height for the stat value so the loading skeleton and the loaded APY occupy
+// the same vertical space. Kept in sync with HomeCashbackCard so the two cards stay
+// the same height in every state (loading and loaded).
+const STAT_VALUE_HEIGHT = Math.round(fontSize(1.875) * 1.3);
+
 /**
  * Compact "Savings" stat card showing the headline savings APY.
  * Sits next to the cashback card on home and links to the savings screen.
@@ -32,20 +37,23 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
         />
         <View className="gap-1">
           <Text className="text-base font-medium text-muted-foreground">Savings</Text>
-          {isAPYsLoading ? (
-            <Skeleton className="h-8 w-20 rounded-xl" />
-          ) : (
-            <Text
-              className="text-foreground"
-              style={{
-                fontSize: fontSize(1.875),
-                fontFamily: 'MonaSans_600SemiBold',
-                fontWeight: '600',
-              }}
-            >
-              {formatNumber(maxAPY ?? 0, 1)}%
-            </Text>
-          )}
+          <View style={{ height: STAT_VALUE_HEIGHT, justifyContent: 'flex-end' }}>
+            {isAPYsLoading ? (
+              <Skeleton className="w-20 rounded-xl" style={{ height: STAT_VALUE_HEIGHT }} />
+            ) : (
+              <Text
+                className="text-foreground"
+                style={{
+                  fontSize: fontSize(1.875),
+                  lineHeight: STAT_VALUE_HEIGHT,
+                  fontFamily: 'MonaSans_600SemiBold',
+                  fontWeight: '600',
+                }}
+              >
+                {formatNumber(maxAPY ?? 0, 1)}%
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     </Pressable>
