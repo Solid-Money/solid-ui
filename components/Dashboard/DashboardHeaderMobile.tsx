@@ -24,7 +24,7 @@ const DashboardHeaderMobile = ({
 
   return (
     <View className="gap-8">
-      <View className="flex-row items-center justify-center pt-6">
+      <View className="flex-row items-center justify-center pt-1">
         <SavingCountUp
           prefix="$"
           balance={balance ?? 0}
@@ -38,21 +38,21 @@ const DashboardHeaderMobile = ({
           }}
           styles={{
             wholeText: {
-              fontSize: 60,
-              fontWeight: '600',
-              fontFamily: 'MonaSans_600SemiBold',
+              fontSize: 50,
+              fontWeight: '500',
+              fontFamily: 'MonaSans_500Medium',
               color: '#ffffff',
             },
             decimalText: {
-              fontSize: isScreenMedium ? 60 : 30,
-              fontWeight: isScreenMedium ? '600' : '400',
-              fontFamily: isScreenMedium ? 'MonaSans_600SemiBold' : 'MonaSans_400Regular',
-              color: '#ffffff',
+              fontSize: isScreenMedium ? 50 : 50,
+              fontWeight: isScreenMedium ? '500' : '500',
+              fontFamily: isScreenMedium ? 'MonaSans_500Medium' : 'MonaSans_500Medium',
+              color: '#666666',
             },
             decimalSeparator: {
-              fontSize: isScreenMedium ? 60 : 30,
-              fontWeight: isScreenMedium ? '600' : '400',
-              fontFamily: isScreenMedium ? 'MonaSans_600SemiBold' : 'MonaSans_400Regular',
+              fontSize: isScreenMedium ? 50 : 50,
+              fontWeight: isScreenMedium ? '500' : '500',
+              fontFamily: isScreenMedium ? 'MonaSans_500Medium' : 'MonaSans_500Medium',
               color: '#ffffff',
             },
           }}

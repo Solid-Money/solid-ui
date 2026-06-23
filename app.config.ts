@@ -56,6 +56,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/images/adaptive-icon.png',
   scheme: 'solid',
   userInterfaceStyle: 'automatic',
+  androidStatusBar: {
+    barStyle: 'light-content',
+    backgroundColor: '#00000000',
+    translucent: true,
+  },
   owner: 'fuseio',
   ios: {
     icon: './assets/images/ios-icon.png',

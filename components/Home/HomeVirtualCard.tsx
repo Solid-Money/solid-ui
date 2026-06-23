@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 
 import CountUp from '@/components/CountUp';
 import HomeCardSetup from '@/components/Home/HomeCardSetup';
+import { HOME_STAT_VALUE_TEXT_STYLE } from '@/components/Home/homeStatValueStyle';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getAsset } from '@/lib/assets';
-import { fontSize } from '@/lib/utils';
 
 interface HomeVirtualCardProps {
   userHasCard: boolean;
@@ -32,6 +32,7 @@ const HomeVirtualCard = ({
   className,
 }: HomeVirtualCardProps) => {
   const router = useRouter();
+  const hasFractionalCardBalance = Math.round((cardBalance ?? 0) * 100) % 100 !== 0;
 
   if (!userHasCard) {
     return <HomeCardSetup depositCompleted={depositCompleted} className={className} />;
@@ -39,47 +40,44 @@ const HomeVirtualCard = ({
 
   return (
     <Pressable onPress={() => router.push(path.CARD_DETAILS)} className={className}>
-      <View className="overflow-hidden rounded-twice bg-card p-5">
-        <Text className="text-base font-medium text-muted-foreground">Virtual card</Text>
-        <View className="mt-3 flex-row items-center justify-between">
-          <View className="gap-1">
-            <Text className="text-base font-medium text-foreground">Card balance</Text>
-            {isLoading ? (
-              <Skeleton className="h-9 w-28 rounded-xl" />
-            ) : (
-              <CountUp
-                prefix="$"
-                count={cardBalance ?? 0}
-                isTrailingZero={false}
-                decimalPlaces={2}
-                classNames={{
-                  wrapper: 'text-foreground',
-                  decimalSeparator: 'text-2xl font-semibold',
-                }}
-                styles={{
-                  wholeText: {
-                    fontSize: fontSize(1.875),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                    marginRight: -1,
-                  },
-                  decimalText: {
-                    fontSize: fontSize(1.875),
-                    fontWeight: '600',
-                    fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                }}
-              />
-            )}
-          </View>
-          <Image
-            source={getAsset('images/card.png')}
-            alt="Solid card"
-            style={{ width: 130, height: 90 }}
-            contentFit="contain"
-          />
+      <View className="relative overflow-hidden rounded-twice bg-card" style={{ height: 141 }}>
+        <Text
+          className="absolute font-medium text-muted-foreground"
+          style={{ fontSize: 14, left: 20, lineHeight: 15.4, top: 24 }}
+        >
+          Virtual card
+        </Text>
+        <Image
+          source={getAsset('images/card.png')}
+          alt="Solid card"
+          style={{ height: 68, position: 'absolute', right: 28, top: 36, width: 116 }}
+          contentFit="contain"
+        />
+        <Text
+          className="absolute font-semibold text-foreground"
+          style={{ fontSize: 18, left: 20, lineHeight: 21.6, top: 52 }}
+        >
+          Card balance
+        </Text>
+        <View className="absolute left-5" style={{ top: 72 }}>
+          {isLoading ? (
+            <Skeleton className="h-10 w-24 rounded-xl" />
+          ) : (
+            <CountUp
+              prefix="$"
+              count={cardBalance ?? 0}
+              isTrailingZero={false}
+              decimalPlaces={hasFractionalCardBalance ? 2 : 0}
+              classNames={{
+                wrapper: 'text-foreground',
+              }}
+              styles={{
+                wholeText: HOME_STAT_VALUE_TEXT_STYLE,
+                decimalText: HOME_STAT_VALUE_TEXT_STYLE,
+                decimalSeparator: HOME_STAT_VALUE_TEXT_STYLE,
+              }}
+            />
+          )}
         </View>
       </View>
     </Pressable>
