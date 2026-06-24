@@ -13,9 +13,11 @@ import { LottieTabIcon } from '@/components/LottieTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
+  const isTestUser = useIsTestUser();
 
   return (
     <Tabs
@@ -168,6 +170,14 @@ export default function TabLayout() {
           title: 'Rewards',
           tabBarIcon: ({ color }) => <Star size={28} color={color} />,
           href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="stocks"
+        options={{
+          title: 'Stocks',
+          headerShown: false,
+          href: isTestUser ? path.STOCKS : null,
         }}
       />
       <Tabs.Screen
