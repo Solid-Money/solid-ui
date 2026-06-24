@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from 'react-native-toast-message';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { path } from '@/constants/path';
@@ -26,10 +26,35 @@ export function useDiditSession() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const kycFlow = useKycStore(state => state.kycFlow);
+  // Debug deep-link: /kyc?state=<phase> previews a static screen (see switch in
+  // initSession). Read once here so initSession can branch on it.
+  const debugState = useLocalSearchParams<{ state?: string }>().state;
   const [session, setSession] = useState<SessionState>({ phase: 'loading' });
   const sdkInitializedRef = useRef(false);
 
   const initSession = useCallback(async () => {
+    // Debug deep-link: /kyc?state=<phase> renders a static screen without
+    // creating a real Didit session — handy for previewing these states
+    // directly (e.g. /kyc?state=unavailable). Dynamic phases (ready/started)
+    // need a live session and are intentionally not deep-linkable.
+    switch (debugState) {
+      case 'unavailable':
+        setSession({
+          phase: 'unavailable',
+          message: 'Identity verification is temporarily unavailable. Please try again shortly.',
+        });
+        return;
+      case 'error':
+        setSession({ phase: 'error', message: 'Failed to create verification session' });
+        return;
+      case 'loading':
+        setSession({ phase: 'loading' });
+        return;
+      case 'completed':
+        setSession({ phase: 'completed' });
+        return;
+    }
+
     setSession({ phase: 'loading' });
     sdkInitializedRef.current = false;
 
@@ -76,7 +101,7 @@ export function useDiditSession() {
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, []);
+  }, [debugState]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });

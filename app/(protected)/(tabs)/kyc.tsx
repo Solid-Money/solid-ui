@@ -160,7 +160,7 @@ export default function KycWeb() {
         {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
 
         {session.phase === 'unavailable' && (
-          <KycUnavailable message={session.message} onRetry={initSession} />
+          <KycUnavailable message={session.message} onRetry={initSession} showBackButton={false} />
         )}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
