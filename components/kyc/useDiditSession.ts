@@ -15,6 +15,7 @@ import { useKycStore } from '@/store/useKycStore';
 export type SessionState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
+  | { phase: 'unavailable'; message: string }
   | { phase: 'ready'; verificationUrl: string; sessionToken: string }
   | { phase: 'started' }
   | { phase: 'completed' };
@@ -56,6 +57,21 @@ export function useDiditSession() {
         sessionToken: res.session_token,
       });
     } catch (e: any) {
+      // VERIFICATION_UNAVAILABLE (503): the org-wide Didit credit balance is
+      // depleted, so no session can be created for anyone. Surface a calm,
+      // branded "temporarily unavailable" page rather than the red hard-error
+      // state + toast — it's transient and not the user's fault.
+      const isUnavailable =
+        e?.code === 'VERIFICATION_UNAVAILABLE' || e?.status === 503 || e?.statusCode === 503;
+      if (isUnavailable) {
+        setSession({
+          phase: 'unavailable',
+          message:
+            e?.message ||
+            'Identity verification is temporarily unavailable. Please try again shortly.',
+        });
+        return;
+      }
       const message = e?.message || 'Failed to create verification session';
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });

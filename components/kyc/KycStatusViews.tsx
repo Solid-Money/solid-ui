@@ -24,6 +24,32 @@ export function KycError({ message, onRetry }: { message: string; onRetry: () =>
   );
 }
 
+/**
+ * Shown when session creation fails because identity verification is
+ * temporarily unavailable (backend VERIFICATION_UNAVAILABLE — depleted Didit
+ * credit). Distinct from KycError: this is a transient, not-your-fault state,
+ * so it reads calmer (no red) and nudges the user to retry later.
+ */
+export function KycUnavailable({ message, onRetry }: { message?: string; onRetry: () => void }) {
+  const body =
+    message ??
+    'We can’t start identity verification right now. Please try again in a little while.';
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8 py-20">
+      <Text className="text-center text-lg font-semibold text-white">
+        Verification temporarily unavailable
+      </Text>
+      <Text className="text-center text-[#ACACAC]">{body}</Text>
+      <Button variant="brand" onPress={onRetry} className="h-12 rounded-xl px-8">
+        <Text className="font-semibold text-primary-foreground">Try again</Text>
+      </Button>
+      <Text className="text-center text-xs text-[#6B6B6B]">
+        If this keeps happening, contact support.
+      </Text>
+    </View>
+  );
+}
+
 export function KycCompleted() {
   return (
     <View className="flex-1 items-center justify-center py-20">
