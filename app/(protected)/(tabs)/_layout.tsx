@@ -172,14 +172,16 @@ export default function TabLayout() {
           href: null,
         }}
       />
-      <Tabs.Screen
-        name="stocks"
-        options={{
-          title: 'Stocks',
-          headerShown: false,
-          href: isTestUser ? path.STOCKS : null,
-        }}
-      />
+      {isTestUser && (
+        <Tabs.Screen
+          name="stocks"
+          options={{
+            title: 'Stocks',
+            headerShown: false,
+            href: path.STOCKS,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="referral"
         options={{
