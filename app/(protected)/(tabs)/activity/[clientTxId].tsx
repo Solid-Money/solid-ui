@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -43,6 +43,8 @@ import {
   getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
+import { resolveCardDepositTransferTx } from '@/lib/utils/deduplicateTransactions';
+import { getChain } from '@/lib/wagmi';
 
 type RowProps = {
   label: React.ReactNode;
@@ -177,14 +179,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   activity,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName = (
-    transaction.merchant_name?.trim() ||
-    transaction.description?.trim() ||
-    'Unknown'
-  );
-  const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
-    .filter(Boolean)
-    .join(' ') || undefined;
+  const merchantName =
+    transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
+  const merchantLocation =
+    [transaction.merchant_city, transaction.merchant_country].filter(Boolean).join(' ') ||
+    undefined;
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
 
@@ -221,11 +220,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       : isReversed
         ? 'Reversed'
         : 'Confirmed';
-  const statusColor = isApproved
-    ? 'text-yellow-500'
-    : isDeclined
-      ? 'text-red-400'
-      : '';
+  const statusColor = isApproved ? 'text-yellow-500' : isDeclined ? 'text-red-400' : '';
 
   const rows = useMemo(() => {
     const allRows = [
@@ -502,14 +497,9 @@ export default function ActivityDetail() {
     if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
       return 'Complete';
     }
-    return transactionDetails?.category ?? 'Unknown';
-  }, [
-    finalActivity?.type,
-    finalActivity?.status,
-    finalActivity?.metadata?.destination,
-    isDeposit,
-    transactionDetails?.category,
-  ]);
+    if (!finalActivity) return 'Unknown';
+    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+  }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
@@ -521,14 +511,32 @@ export default function ActivityDetail() {
     await cancelOnchainWithdraw(finalActivity.requestId);
   }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
 
+  // Resolve the tx to show in the Explorer row. For card deposits, prefer the
+  // sibling on-chain USDC transfer (indexed by the blockscout sync as a Send)
+  // over the activity's own hash, which for connect-wallet deposits is the
+  // approve userOp rather than the actual transfer. Derive the url from
+  // hash + chain when the matched tx has none (the card_deposit row stores a
+  // hash but no url, so otherwise the Explorer row stayed hidden).
+  const explorerTx = useMemo((): { hash?: string; url?: string } => {
+    if (!finalActivity) return {};
+    const transfer = resolveCardDepositTransferTx(finalActivity, cachedActivities);
+    const hash = transfer?.hash ?? finalActivity.hash;
+    let url = transfer?.url ?? finalActivity.url;
+    if (!url && hash && finalActivity.chainId) {
+      const explorerBase = getChain(finalActivity.chainId)?.blockExplorers?.default?.url;
+      if (explorerBase) url = `${explorerBase}/tx/${hash}`;
+    }
+    return { hash, url };
+  }, [finalActivity, cachedActivities]);
+
   const handleExplorerPress = useCallback(() => {
-    if (finalActivity?.url) Linking.openURL(finalActivity.url);
-  }, [finalActivity?.url]);
+    if (explorerTx.url) Linking.openURL(explorerTx.url);
+  }, [explorerTx.url]);
 
   const rows = useMemo(() => {
     if (!finalActivity) return [];
 
-    const { fromAddress, toAddress, status, metadata, url, hash } = finalActivity;
+    const { fromAddress, toAddress, status, metadata } = finalActivity;
 
     return [
       fromAddress && {
@@ -576,15 +584,15 @@ export default function ActivityDetail() {
             </Value>
           ),
         },
-      url &&
-        hash && {
+      explorerTx.url &&
+        explorerTx.hash && {
           key: 'explorer',
           label: <Label>Explorer</Label>,
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
                 <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
-                  {eclipseAddress(hash)}
+                  {eclipseAddress(explorerTx.hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
               </View>
@@ -607,6 +615,8 @@ export default function ActivityDetail() {
     isDetected,
     isProcessing,
     currentTime,
+    explorerTx.url,
+    explorerTx.hash,
     handleExplorerPress,
   ]);
 

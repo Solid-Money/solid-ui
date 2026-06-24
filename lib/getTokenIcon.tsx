@@ -17,6 +17,10 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
   // Fallback to default token icons based on symbol
   switch (tokenSymbol?.toUpperCase()) {
     case 'USDC':
+    // Bridged USDC variants (e.g. USDC.e on Fuse/Arbitrum, used by the
+    // borrow-and-deposit-to-card flow) share the USDC icon. Without this the
+    // detail page fell back to the "U" placeholder.
+    case 'USDC.E':
       return {
         type: 'image',
         source: getAsset('images/usdc-4x.png'),
