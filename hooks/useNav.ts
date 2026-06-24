@@ -28,13 +28,18 @@ const card: MenuItem = {
   href: path.CARD,
 };
 
+const stocks: MenuItem = {
+  label: 'Stocks',
+  href: path.STOCKS,
+};
+
 const useNav = () => {
   const points: MenuItem = {
     label: isProduction ? 'Points' : 'Rewards',
     href: isProduction ? path.POINTS : path.REWARDS,
   };
   // Agent lives in the account-center menu, not the navbar.
-  const menuItems: MenuItem[] = [home, savings, card, points, activity];
+  const menuItems: MenuItem[] = [home, savings, card, stocks, points, activity];
   return {
     menuItems,
   };
