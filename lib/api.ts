@@ -804,7 +804,6 @@ export const getPhysicalCardShippingData = async (): Promise<{
 
 export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   const jwt = getJWTToken();
-  return null;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/status`, {
     credentials: 'include',
