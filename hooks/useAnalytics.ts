@@ -603,8 +603,21 @@ export const useMaxAPY = (vault?: VaultType) => {
   const baselineDays = baselineAPY === thirtyDay ? ApyToDays.thirtyDay : ApyToDays.fifteenDay;
 
   const useSevenDay = sevenDay < 8 || (sevenDay > baselineAPY && sevenDay < 2 * baselineAPY);
-  const maxAPY = useSevenDay ? sevenDay : baselineAPY;
-  const maxAPYDays = useSevenDay ? ApyToDays.sevenDay : baselineDays;
+  const candidateAPY = useSevenDay ? sevenDay : baselineAPY;
+  const candidateDays = useSevenDay ? ApyToDays.sevenDay : baselineDays;
+
+  // Never surface a negative APY — fall back to the smallest positive value.
+  const smallestPositive = [
+    { apy: sevenDay, days: ApyToDays.sevenDay },
+    { apy: fifteenDay, days: ApyToDays.fifteenDay },
+    { apy: thirtyDay, days: ApyToDays.thirtyDay },
+  ]
+    .filter(e => e.apy > 0)
+    .sort((a, b) => a.apy - b.apy)[0];
+
+  const maxAPY = candidateAPY >= 0 ? candidateAPY : (smallestPositive?.apy ?? 0);
+  const maxAPYDays =
+    candidateAPY >= 0 ? candidateDays : (smallestPositive?.days ?? ApyToDays.thirtyDay);
 
   return {
     maxAPY,
