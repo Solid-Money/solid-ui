@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useRef, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Edge, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurTargetView } from 'expo-blur';
+import { usePathname } from 'expo-router';
 
 import { useDimension } from '@/hooks/useDimension';
 
@@ -16,6 +17,33 @@ import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
 
 const MOBILE_NAVBAR_DIVIDER_OFFSET = 1;
+const MOBILE_NAVBAR_TITLE_REVEAL_OFFSET = 28;
+
+const MOBILE_NAVBAR_TITLES: Record<string, string> = {
+  '/': 'Home',
+  '/activity': 'Activity',
+  '/agent': 'Agent',
+  '/bank-transfer': 'Bank Transfer',
+  '/card': 'Card',
+  '/card-onboard': 'Card',
+  '/card/details': 'Card',
+  '/card/details/transactions': 'Transactions',
+  '/overview': 'Overview',
+  '/points': 'Points',
+  '/points/leaderboard': 'Leaderboard',
+  '/rewards': 'Rewards',
+  '/rewards/benefits': 'Rewards benefits',
+  '/savings': 'Savings',
+  '/savings-old': 'Savings',
+};
+
+const MOBILE_NAVBAR_TITLE_PREFIXES: [string, string][] = [
+  ['/activity/', 'Activity'],
+  ['/card-onboard/', 'Card'],
+  ['/card/', 'Card'],
+  ['/points/', 'Points'],
+  ['/rewards/', 'Rewards'],
+];
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -27,6 +55,7 @@ interface PageLayoutProps {
   showNavbar?: boolean;
   desktopOnly?: boolean; // Only show navbar on desktop (isScreenMedium)
   useDesktopBreakpoint?: boolean; // Use isDesktop instead of isScreenMedium
+  mobileTitle?: string | null; // Overrides the route-derived mobile navbar title. Use null to hide it.
 
   // Custom headers
   customMobileHeader?: ReactNode; // Custom header for mobile (replaces NavbarMobile)
@@ -46,6 +75,29 @@ interface PageLayoutProps {
   className?: string;
   contentClassName?: string;
 }
+
+const toTitleCase = (value: string) =>
+  value
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, character => character.toUpperCase())
+    .trim();
+
+const getDefaultMobileNavbarTitle = (pathname: string) => {
+  const normalizedPathname = pathname.replace(/\/+$/, '') || '/';
+  const configuredTitle = MOBILE_NAVBAR_TITLES[normalizedPathname];
+
+  if (configuredTitle) return configuredTitle;
+
+  const prefixTitle = MOBILE_NAVBAR_TITLE_PREFIXES.find(([prefix]) =>
+    normalizedPathname.startsWith(prefix),
+  )?.[1];
+
+  if (prefixTitle) return prefixTitle;
+
+  const lastSegment = normalizedPathname.split('/').filter(Boolean).at(-1);
+
+  return lastSegment ? toTitleCase(lastSegment) : undefined;
+};
 
 /**
  * PageLayout - Flexible wrapper component for all pages
@@ -90,6 +142,7 @@ export default function PageLayout({
   showNavbar = true,
   desktopOnly = false,
   useDesktopBreakpoint = false,
+  mobileTitle,
   customMobileHeader,
   customDesktopHeader,
   scrollable = true,
@@ -100,10 +153,15 @@ export default function PageLayout({
   contentClassName = '',
 }: PageLayoutProps) {
   const { isScreenMedium, isDesktop } = useDimension();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const mobileBlurTargetRef = useRef<View>(null);
   const [mobileNavbarOffset, setMobileNavbarOffset] = useState(0);
   const [isMobileNavbarScrolled, setIsMobileNavbarScrolled] = useState(false);
+  const [isMobileTitleVisible, setIsMobileTitleVisible] = useState(false);
+  const defaultMobileTitle = useMemo(() => getDefaultMobileNavbarTitle(pathname), [pathname]);
+  const resolvedMobileTitle =
+    mobileTitle === undefined ? defaultMobileTitle : mobileTitle || undefined;
 
   // Determine which breakpoint to use
   const isLargeScreen = useDesktopBreakpoint ? isDesktop : isScreenMedium;
@@ -115,11 +173,18 @@ export default function PageLayout({
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
   const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
 
-  const handleMobileScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const isScrolled = event.nativeEvent.contentOffset.y > MOBILE_NAVBAR_DIVIDER_OFFSET;
+  const handleMobileScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const scrollOffsetY = event.nativeEvent.contentOffset.y;
+      const isScrolled = scrollOffsetY > MOBILE_NAVBAR_DIVIDER_OFFSET;
+      const isTitleVisible =
+        !!resolvedMobileTitle && scrollOffsetY > MOBILE_NAVBAR_TITLE_REVEAL_OFFSET;
 
-    setIsMobileNavbarScrolled(current => (current === isScrolled ? current : isScrolled));
-  }, []);
+      setIsMobileNavbarScrolled(current => (current === isScrolled ? current : isScrolled));
+      setIsMobileTitleVisible(current => (current === isTitleVisible ? current : isTitleVisible));
+    },
+    [resolvedMobileTitle],
+  );
 
   // Render navbar/header content
   const renderNavbar = (isOverlay = false) => {
@@ -135,6 +200,8 @@ export default function PageLayout({
           blurTarget={isOverlay ? mobileBlurTargetRef : undefined}
           onContentOffsetChange={isOverlay ? setMobileNavbarOffset : undefined}
           showDivider={isOverlay && isMobileNavbarScrolled}
+          showTitle={isOverlay && isMobileTitleVisible}
+          title={resolvedMobileTitle}
           topInset={isOverlay ? insets.top : 0}
         />
       ))
@@ -159,7 +226,7 @@ export default function PageLayout({
         contentContainerStyle={
           mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined
         }
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}
         stickyHeaderIndices={stickyHeader && !isScreenMedium ? [0] : undefined}

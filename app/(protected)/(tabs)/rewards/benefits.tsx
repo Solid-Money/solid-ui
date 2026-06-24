@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -9,13 +10,33 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useTierBenefits } from '@/hooks/useRewards';
+import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 
 export default function RewardsBenefits() {
   const { isScreenMedium } = useDimension();
   const { data: tierBenefits, isLoading } = useTierBenefits();
+  const {
+    data: rewardsData,
+    isLoading: isRewardsUserDataLoading,
+    isError: isRewardsUserDataError,
+  } = useRewardsUserData();
 
-  if (isLoading || !tierBenefits) {
+  const hasOptedIn = rewardsData?.hasOptedIn ?? true;
+  const rewardsLocked = Boolean(rewardsData && !hasOptedIn);
+
+  useEffect(() => {
+    if (rewardsLocked || isRewardsUserDataError) {
+      router.replace(path.REWARDS);
+    }
+  }, [isRewardsUserDataError, rewardsLocked]);
+
+  if (
+    isRewardsUserDataLoading ||
+    isRewardsUserDataError ||
+    rewardsLocked ||
+    isLoading ||
+    !tierBenefits
+  ) {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
   }
 
