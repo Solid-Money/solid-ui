@@ -88,12 +88,12 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
           {firstIncomplete && (
             <Button
               variant="brand"
-              className="h-14 rounded-2xl"
+              className="h-14 rounded-2xl border-0"
               onPress={handleCta}
               style={{ paddingVertical: 0 }}
             >
               <Text
-                className="w-full flex-shrink text-center text-base font-bold text-primary-foreground"
+                className="w-full flex-shrink text-center text-base font-bold text-brand-foreground"
                 style={{ lineHeight: 22 }}
                 numberOfLines={1}
                 adjustsFontSizeToFit

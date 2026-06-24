@@ -33,6 +33,8 @@ const SolidCardSummary = ({
   compact = false,
   className,
 }: SolidCardSummaryProps) => {
+  const compactFeatureText = compact ? 'flex-shrink text-lg leading-6' : undefined;
+
   return (
     <View className={cn('gap-5', className)}>
       <View className="gap-2">
@@ -45,13 +47,21 @@ const SolidCardSummary = ({
       </View>
       <Text className="text-lg font-semibold text-brand">Free</Text>
       <View className={cn(compact ? 'gap-3' : 'flex-row flex-wrap gap-x-8 gap-y-3')}>
-        <FeatureItem icon={<CreditCard size={22} color="#94F27F" />} label="Virtual card" />
-        <FeatureItem icon={<CashbackBadge />} label="3% Cashback" />
+        <FeatureItem
+          icon={<CreditCard size={22} color="#94F27F" />}
+          label="Virtual card"
+          classNames={{ text: compactFeatureText }}
+        />
+        <FeatureItem
+          icon={<CashbackBadge />}
+          label="3% Cashback"
+          classNames={{ text: compactFeatureText }}
+        />
         {compact && (
           <FeatureItem
             icon={<Tag size={20} color="#94F27F" />}
             label={topUpLabel}
-            classNames={{ container: 'items-start' }}
+            classNames={{ container: 'items-start', text: compactFeatureText }}
           />
         )}
       </View>

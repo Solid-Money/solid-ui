@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,7 @@ import { RewardsTier, TierBenefits } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
+import RewardComingSoon from './RewardComingSoon';
 import TierProgressBar from './TierProgressBar';
 
 // Transform API tier benefits to display items with dynamic icons
@@ -23,6 +25,7 @@ interface DashboardBenefitItem {
   iconText?: string;
   title: string;
   description: string;
+  descriptionNode?: ReactNode;
 }
 
 const transformTierBenefitsForDashboard = (
@@ -44,6 +47,7 @@ const transformTierBenefitsForDashboard = (
       icon: 'images/dollar-yellow.png',
       title: depositTitle,
       description: 'On your savings',
+      descriptionNode: currentTier !== RewardsTier.CORE ? <RewardComingSoon /> : undefined,
     },
     {
       iconText: tierBenefits.cardCashback.title, // e.g., "2%", "3%", "5%"
@@ -182,6 +186,7 @@ const RewardsDashboard = ({
               iconText={benefit.iconText}
               title={benefit.title}
               description={benefit.description}
+              descriptionNode={benefit.descriptionNode}
             />
           ))}
 

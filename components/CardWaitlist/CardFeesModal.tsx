@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -8,6 +9,7 @@ import GetCardButton from '@/components/CardWaitlist/GetCardButton';
 import SolidCardSummary from '@/components/CardWaitlist/SolidCardSummary';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 
 const MODAL_STATE: ModalState = { name: 'card-fees', number: 1 };
@@ -39,6 +41,20 @@ const DetailItem = ({ icon, title, description }: DetailItemProps) => (
 );
 
 const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
+  const { isScreenMedium } = useDimension();
+  const insets = useSafeAreaInsets();
+  const [heroWidth, setHeroWidth] = React.useState(0);
+  const measuredHeroWidth = heroWidth || (isScreenMedium ? 448 : 340);
+  const artworkWidth = isScreenMedium
+    ? Math.min(Math.max(measuredHeroWidth * 0.7, 260), 340)
+    : Math.min(Math.max(measuredHeroWidth * 0.9, 300), 340);
+  const artworkRight = isScreenMedium ? -measuredHeroWidth * 0.42 : -measuredHeroWidth * 0.5 + 10;
+  const artworkTop = isScreenMedium ? 0 : 10;
+  const summaryMaxWidth = isScreenMedium
+    ? undefined
+    : Math.min(Math.max(measuredHeroWidth * 0.52, 178), 205);
+  const bottomScrollPadding = isScreenMedium ? 0 : Math.max(insets.bottom, 24) + 56;
+
   return (
     <ResponsiveModal
       currentModal={MODAL_STATE}
@@ -52,26 +68,30 @@ const CardFeesModal = ({ isOpen, onOpenChange }: CardFeesModalProps) => {
       contentClassName="md:max-w-md"
       shouldAnimate={false}
     >
-      <View className="gap-10">
+      <View className="gap-10" style={{ paddingBottom: bottomScrollPadding }}>
         <LinearGradient
           colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="overflow-hidden"
           style={{ borderRadius: 20, overflow: 'hidden' }}
+          onLayout={event => setHeroWidth(event.nativeEvent.layout.width)}
         >
           <View className="relative p-5">
-            <View className="absolute top-0" style={{ right: '-42%' }}>
+            <View
+              pointerEvents="none"
+              className="absolute"
+              style={{ right: artworkRight, top: artworkTop, zIndex: 0 }}
+            >
               <Image
                 source={getAsset('images/cards.png')}
-                style={{ width: 340, height: 340 }}
+                style={{ width: artworkWidth, height: artworkWidth }}
                 contentFit="contain"
               />
             </View>
-            <SolidCardSummary
-              compact
-              topUpLabel={'Zero top-up fee,\nzero monthly fee'}
-            />
+            <View style={{ zIndex: 1, maxWidth: summaryMaxWidth }}>
+              <SolidCardSummary compact topUpLabel={'Zero top-up fee,\nzero monthly fee'} />
+            </View>
           </View>
         </LinearGradient>
 
