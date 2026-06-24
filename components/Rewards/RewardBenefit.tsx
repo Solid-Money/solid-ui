@@ -29,7 +29,12 @@ const RewardBenefit = ({
 }: RewardBenefitProps) => {
   const renderDescription = () => {
     if (descriptionNode) {
-      return descriptionNode;
+      return (
+        <View className="flex-row flex-wrap items-center gap-2">
+          <Text className="text-base opacity-70">{description}</Text>
+          {descriptionNode}
+        </View>
+      );
     }
 
     if (tooltip) {
