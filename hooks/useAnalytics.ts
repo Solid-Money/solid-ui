@@ -595,33 +595,20 @@ export const useMaxAPY = (vault?: VaultType) => {
   const fifteenDay = apys?.fifteenDay ?? 0;
   const sevenDay = apys?.sevenDay ?? 0;
 
-  // Use the greater of the 15d/30d APY as a stable baseline. Always surface
-  // the 7d APY when it's below 8% (low rates should show the most current
-  // data). Above 8%, only show 7d when it beats the baseline but isn't wildly
-  // inflated (< 2x) to avoid misleading short-term spikes.
-  const baselineAPY = Math.max(thirtyDay, fifteenDay);
-  const baselineDays = baselineAPY === thirtyDay ? ApyToDays.thirtyDay : ApyToDays.fifteenDay;
-
-  const useSevenDay = sevenDay < 8 || (sevenDay > baselineAPY && sevenDay < 2 * baselineAPY);
-  const candidateAPY = useSevenDay ? sevenDay : baselineAPY;
-  const candidateDays = useSevenDay ? ApyToDays.sevenDay : baselineDays;
-
-  // Never surface a negative APY — fall back to the smallest positive value.
-  const smallestPositive = [
+  const candidates = [
     { apy: sevenDay, days: ApyToDays.sevenDay },
     { apy: fifteenDay, days: ApyToDays.fifteenDay },
     { apy: thirtyDay, days: ApyToDays.thirtyDay },
-  ]
-    .filter(e => e.apy > 0)
-    .sort((a, b) => a.apy - b.apy)[0];
+  ].filter(e => e.apy > 0);
 
-  const maxAPY = candidateAPY >= 0 ? candidateAPY : (smallestPositive?.apy ?? 0);
-  const maxAPYDays =
-    candidateAPY >= 0 ? candidateDays : (smallestPositive?.days ?? ApyToDays.thirtyDay);
+  const best = candidates.reduce<(typeof candidates)[0] | undefined>(
+    (a, b) => (!a || b.apy > a.apy ? b : a),
+    undefined,
+  );
 
   return {
-    maxAPY,
-    maxAPYDays,
+    maxAPY: best?.apy ?? 0,
+    maxAPYDays: best?.days ?? ApyToDays.thirtyDay,
     isAPYsLoading,
   };
 };
