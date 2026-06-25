@@ -553,6 +553,25 @@ export const submitRainKyc = async (formData: FormData): Promise<RainKycSubmitRe
 
 // --- Didit identity verification ---
 
+/**
+ * Error thrown by createDiditSession on a non-2xx response. Carries `status`
+ * (so withRefreshToken's 401 detection keeps working) and the backend's stable
+ * `code` (e.g. VERIFICATION_UNAVAILABLE) so the UI can branch on it.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly statusCode: number;
+  readonly code?: string;
+
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.statusCode = status;
+    this.code = code;
+  }
+}
+
 /** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
 export const createDiditSession = async (
   callback?: string,
@@ -568,7 +587,28 @@ export const createDiditSession = async (
     },
     body: JSON.stringify(callback ? { callback } : {}),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) {
+    // Parse the backend error envelope ({ code, message }) so callers can branch
+    // on a stable code instead of the previous opaque throw. Falls back to a
+    // generic message when the body isn't JSON.
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await response.json();
+      if (body && typeof body === 'object') {
+        if (typeof body.code === 'string') code = body.code;
+        if (typeof body.message === 'string') message = body.message;
+        else if (Array.isArray(body.message)) message = body.message.join(', ');
+      }
+    } catch {
+      // non-JSON error body — keep the generic fallback
+    }
+    throw new ApiError(
+      response.status,
+      message ?? 'Failed to create verification session',
+      code,
+    );
+  }
   return response.json();
 };
 

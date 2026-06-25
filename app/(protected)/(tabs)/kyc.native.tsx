@@ -7,6 +7,7 @@ import {
   KycError,
   KycLoading,
   KycNativeWaiting,
+  KycUnavailable,
   useDiditSession,
 } from '@/components/kyc';
 
@@ -83,6 +84,9 @@ export default function KycNative() {
     <View style={styles.container}>
       {session.phase === 'loading' && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
+      {session.phase === 'unavailable' && (
+        <KycUnavailable message={session.message} onRetry={initSession} />
+      )}
       {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
       {session.phase === 'completed' && <KycCompleted />}
     </View>

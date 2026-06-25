@@ -2,7 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { DiditSdk } from '@didit-protocol/sdk-web';
 
-import { KycCompleted, KycError, KycLoading, useDiditSession } from '@/components/kyc';
+import {
+  KycCompleted,
+  KycError,
+  KycLoading,
+  KycUnavailable,
+  useDiditSession,
+} from '@/components/kyc';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -152,6 +158,10 @@ export default function KycWeb() {
         {session.phase === 'loading' && <KycLoading />}
 
         {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
+
+        {session.phase === 'unavailable' && (
+          <KycUnavailable message={session.message} onRetry={initSession} showBackButton={false} />
+        )}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
           <View
