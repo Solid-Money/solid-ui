@@ -32,6 +32,48 @@ export function useDiditSession() {
   const [session, setSession] = useState<SessionState>({ phase: 'loading' });
   const sdkInitializedRef = useRef(false);
 
+  const redirectBasedOnKycStatus = useCallback(
+    async (kycStatus: KycStatus) => {
+      setSession({ phase: 'completed' });
+      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+
+      // VA flow: KYC is just a gate for opening the virtual account. Always
+      // surface the pending submission page after KYC — the user re-enters
+      // the VA flow via Deposit when their KYC + Rain status is approved.
+      if (kycFlow === 'va') {
+        router.replace(path.CARD_PENDING as any);
+        return;
+      }
+
+      if (kycStatus === KycStatus.APPROVED) {
+        // Didit KYC approved: route by Rain status. Approved -> ready.
+        // Manual review (Rain pending/manualReview, which maps to backend
+        // kycStatus = under_review) -> pending so the user sees the review
+        // state. Anything else (needsInformation/needsVerification) ->
+        // activate so they see the step-one button.
+        try {
+          const cardStatusResponse = await withRefreshToken(() => getCardStatus());
+          if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
+            router.replace(path.CARD_READY as any);
+            return;
+          }
+          if (cardStatusResponse?.kycStatus === KycStatus.UNDER_REVIEW) {
+            router.replace(path.CARD_PENDING as any);
+            return;
+          }
+        } catch {
+          // On error fall through to activate page as a safe default
+        }
+        router.replace(path.CARD_ACTIVATE as any);
+      } else if (kycStatus === KycStatus.UNDER_REVIEW) {
+        router.replace(path.CARD_PENDING as any);
+      } else {
+        router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
+      }
+    },
+    [kycFlow, queryClient, router],
+  );
+
   const initSession = useCallback(async () => {
     // Debug deep-link: /kyc?state=<phase> renders a static screen without
     // creating a real Didit session — handy for previewing these states
@@ -82,6 +124,25 @@ export function useDiditSession() {
         sessionToken: res.session_token,
       });
     } catch (e: any) {
+      // KYC_ALREADY_EXISTS (409): the user already has an established KYC
+      // record (a provider consumer), so the backend refuses to create a new
+      // Didit session rather than overwrite it — overwriting previously
+      // detached the user's existing card. This isn't a failure: they're
+      // already verified (or in review). Resolve their current status and route
+      // them to the right card screen instead of the red error/retry loop.
+      const isAlreadyVerified =
+        e?.code === 'KYC_ALREADY_EXISTS' || e?.status === 409 || e?.statusCode === 409;
+      if (isAlreadyVerified) {
+        try {
+          const status = await withRefreshToken(() => getDiditVerificationStatus());
+          await redirectBasedOnKycStatus(status?.kycStatus ?? KycStatus.APPROVED);
+        } catch {
+          // Status lookup failed — still treat as verified and let the card
+          // status page resolve the final destination.
+          await redirectBasedOnKycStatus(KycStatus.APPROVED);
+        }
+        return;
+      }
       // VERIFICATION_UNAVAILABLE (503): the org-wide Didit credit balance is
       // depleted, so no session can be created for anyone. Surface a calm,
       // branded "temporarily unavailable" page rather than the red hard-error
@@ -101,53 +162,11 @@ export function useDiditSession() {
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, [debugState]);
+  }, [debugState, redirectBasedOnKycStatus]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });
   }, []);
-
-  const redirectBasedOnKycStatus = useCallback(
-    async (kycStatus: KycStatus) => {
-      setSession({ phase: 'completed' });
-      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-
-      // VA flow: KYC is just a gate for opening the virtual account. Always
-      // surface the pending submission page after KYC — the user re-enters
-      // the VA flow via Deposit when their KYC + Rain status is approved.
-      if (kycFlow === 'va') {
-        router.replace(path.CARD_PENDING as any);
-        return;
-      }
-
-      if (kycStatus === KycStatus.APPROVED) {
-        // Didit KYC approved: route by Rain status. Approved -> ready.
-        // Manual review (Rain pending/manualReview, which maps to backend
-        // kycStatus = under_review) -> pending so the user sees the review
-        // state. Anything else (needsInformation/needsVerification) ->
-        // activate so they see the step-one button.
-        try {
-          const cardStatusResponse = await withRefreshToken(() => getCardStatus());
-          if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
-            router.replace(path.CARD_READY as any);
-            return;
-          }
-          if (cardStatusResponse?.kycStatus === KycStatus.UNDER_REVIEW) {
-            router.replace(path.CARD_PENDING as any);
-            return;
-          }
-        } catch {
-          // On error fall through to activate page as a safe default
-        }
-        router.replace(path.CARD_ACTIVATE as any);
-      } else if (kycStatus === KycStatus.UNDER_REVIEW) {
-        router.replace(path.CARD_PENDING as any);
-      } else {
-        router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
-      }
-    },
-    [kycFlow, queryClient, router],
-  );
 
   const onVerificationComplete = useCallback(() => {
     Toast.show({
