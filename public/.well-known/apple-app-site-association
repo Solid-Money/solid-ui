@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["67UG7X46Z8.app.solid.xyz"],
+        "components": [
+          {
+            "/": "/rewards",
+            "comment": "Rewards landing (email CTA + push deep link)"
+          },
+          {
+            "/": "/rewards/*",
+            "comment": "Rewards sub-pages (e.g. /rewards/benefits)"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["67UG7X46Z8.app.solid.xyz"]
+  }
+}

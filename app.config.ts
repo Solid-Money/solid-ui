@@ -109,7 +109,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       ],
     },
-    associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
+    associatedDomains: [
+      'webcredentials:solid.xyz',
+      'applinks:solid.xyz',
+      // Rewards (and future) deep links are sent on the app host. Universal
+      // Links require the host to be declared here AND an apple-app-site-association
+      // served at https://app.solid.xyz/.well-known/.
+      'applinks:app.solid.xyz',
+    ],
     appleTeamId: '67UG7X46Z8',
     splash: {
       image: './assets/splash/splash-icon.png',
@@ -137,6 +144,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           {
             scheme: 'https',
             host: 'solid.xyz',
+          },
+          // App Links on the app host (e.g. rewards email CTA). autoVerify
+          // requires assetlinks.json served at https://app.solid.xyz/.well-known/.
+          {
+            scheme: 'https',
+            host: 'app.solid.xyz',
           },
         ],
         category: ['BROWSABLE', 'DEFAULT'],
