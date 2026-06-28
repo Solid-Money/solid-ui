@@ -14,6 +14,12 @@ import { useUserStore } from '@/store/useUserStore';
  * Card payment notifications open the card screen; anything else goes home.
  */
 function getNotificationRoute(type?: string): Href {
+  // Rewards lifecycle pushes (rewards-live, rewards-tier-reached, etc.) all
+  // carry a `rewards-` prefixed type and should open the rewards screen.
+  if (type?.startsWith('rewards')) {
+    return path.REWARDS;
+  }
+
   switch (type) {
     case 'card-transaction':
       return path.CARD;

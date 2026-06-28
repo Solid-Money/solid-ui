@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["67UG7X46Z8.app.solid.xyz"],
+        "components": [
+          {
+            "/": "*",
+            "comment": "Open all app.solid.xyz links in the app (e.g. /rewards, /savings, /card). Every web route also exists as a native screen. Universal Links only fire on taps from other apps, so in-browser navigation and WebAuthn ceremonies are unaffected."
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["67UG7X46Z8.app.solid.xyz"]
+  }
+}
