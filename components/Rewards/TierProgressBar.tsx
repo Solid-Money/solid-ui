@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
 import { RewardsTier } from '@/lib/types';
-import { formatNumber, toTitleCase } from '@/lib/utils';
+import { compactNumberFormat, toTitleCase } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 
 interface TierProgressBarProps {
@@ -51,7 +51,7 @@ const TierProgressBar = ({
         <Text className="text-base text-rewards/70">{toTitleCase(currentTier)}</Text>
         <View className="flex-row items-center gap-5">
           <View className="flex-row items-center gap-1">
-            <Text className="text-base">{formatNumber(pointsNeeded, 0, 0)} more points to</Text>
+            <Text className="text-base">{compactNumberFormat(pointsNeeded)} more points to</Text>
             <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
             <Image
               source={getTierIcon(nextTier)}
