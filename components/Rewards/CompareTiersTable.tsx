@@ -19,8 +19,8 @@ const CompareTiersTable = ({ tierBenefits }: CompareTiersTableProps) => {
       values: sortedTiers.map(tier => tier.cardCashback),
     },
     {
-      label: 'Deposit boosts',
-      subtitle: 'Campaign-based\ndeposit boosts',
+      label: 'Yield boost',
+      subtitle: 'Campaign-based\nyield boosts',
       values: sortedTiers.map(tier => tier.depositBoost),
       isComingSoon: true,
       isSubtitleHidden: true,
