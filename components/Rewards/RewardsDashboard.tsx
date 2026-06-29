@@ -13,7 +13,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier, TierBenefits } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { compactNumberFormat, formatNumber } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
 import RewardComingSoon from './RewardComingSoon';
@@ -150,7 +150,7 @@ const RewardsDashboard = ({
               <View>
                 <Text className="text-rewards/70 md:text-lg">Total points</Text>
                 <Text className="text-4.5xl font-semibold text-rewards">
-                  {formatNumber(totalPoints, 0, 0)}
+                  {compactNumberFormat(totalPoints)}
                 </Text>
               </View>
             </View>
