@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useRewardsConfig } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
 
 interface RewardReferBannerProps {
@@ -15,13 +14,10 @@ interface RewardReferBannerProps {
 }
 
 export default function RewardReferBanner({
-  title = 'Share your referral code',
+  title = 'Invite friends & earn together',
   buttonText = 'Refer a friend',
 }: RewardReferBannerProps) {
   const { isScreenMedium } = useDimension();
-  const { data: config } = useRewardsConfig();
-  const referralPercent =
-    config?.referral?.recurringPercentage != null ? config.referral.recurringPercentage * 100 : 10;
 
   return (
     <View className="h-full w-full flex-1 flex-col justify-between rounded-twice bg-card p-6">
@@ -34,7 +30,7 @@ export default function RewardReferBanner({
         <View className="ml-2 flex-1 flex-col md:ml-5">
           <Text className="text-xl font-semibold md:text-2xl">{title}</Text>
           <Text className="text-base text-white/70 md:text-lg">
-            Earn {referralPercent}% of their daily points.
+            Earn $15 when a friend orders a card &amp; spends.
           </Text>
         </View>
       </View>

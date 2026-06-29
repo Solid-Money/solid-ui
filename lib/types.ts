@@ -1793,3 +1793,44 @@ export interface SavingsSummaryResponse {
   calculatedAt: string;
   dataQuality: SavingsDataQuality;
 }
+
+// ---------------------------------------------------------------------------
+// Referral cashback program
+// ---------------------------------------------------------------------------
+
+export enum ReferralRewardStatus {
+  PENDING = 'pending',
+  QUALIFIED = 'qualified',
+  PAID = 'paid',
+  EXPIRED = 'expired',
+  REVERSED = 'reversed',
+  UNDER_REVIEW = 'under_review',
+}
+
+export interface ReferralRewardListItem {
+  status: ReferralRewardStatus;
+  signupAt: string;
+  qualifiedAt?: string;
+  paidAt?: string;
+  spendUsd: number;
+  merchantCount: number;
+  rewardUsd: number;
+}
+
+export interface ReferralSummary {
+  rewards: {
+    referrerUsd: number;
+    newUserUsd: number;
+  };
+  qualification: {
+    spendTargetUsd: number;
+    merchantTarget: number;
+    windowDays: number;
+  };
+  totalRewardedUsd: number;
+  friendsInvited: number;
+  friendsQualified: number;
+  friendsPending: number;
+  hasActiveCard: boolean;
+  referrals: ReferralRewardListItem[];
+}

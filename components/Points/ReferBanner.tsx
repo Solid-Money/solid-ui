@@ -19,7 +19,7 @@ const ReferBanner = () => {
           <Text className="text-lg font-medium leading-5 text-brand/70">Invite friends</Text>
           <Text className="text-3xl font-semibold">Refer & Earn</Text>
           <Text className="text-base font-semibold opacity-70">
-            Invite your friends and get 1% cashback on their purchases
+            Invite friends and earn $15 when they get a card and spend
           </Text>
           <Button
             variant="secondary"
