@@ -118,10 +118,7 @@ export const ASSETS = {
     module: require('@/assets/images/card-withdraw.png'),
     hash: 'd076a41d',
   },
-  'images/card.png': {
-    module: require('@/assets/images/card.png'),
-    hash: '0fc3742c'
-  },
+  'images/card.png': { module: require('@/assets/images/card.png'), hash: '0fc3742c' },
   'images/card.tsx': { module: require('@/assets/images/card.tsx'), hash: '896e9355' },
   'images/card_actions_details.png': {
     module: require('@/assets/images/card_actions_details.png'),
@@ -267,7 +264,7 @@ export const ASSETS = {
   },
   'images/flash-lavender-background.png': {
     module: require('@/assets/images/flash-lavender-background.png'),
-    hash: '343e70d3'
+    hash: '343e70d3',
   },
   'images/flash-lavender.png': {
     module: require('@/assets/images/flash-lavender.png'),
@@ -311,7 +308,7 @@ export const ASSETS = {
   },
   'images/green-diamond-background.png': {
     module: require('@/assets/images/green-diamond-background.png'),
-    hash: '77e8c90d'
+    hash: '77e8c90d',
   },
   'images/green-diamond.png': {
     module: require('@/assets/images/green-diamond.png'),

@@ -36,6 +36,7 @@ const useTransferToWallet = (
   tokenAddress: Address,
   token: string,
   isNative: boolean,
+  destinationAddress?: string,
 ): TransferResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
@@ -47,7 +48,7 @@ const useTransferToWallet = (
   const srcChainId = useDepositStore(state => state.srcChainId);
   const { createActivity, updateActivity } = useActivityActions();
 
-  const safeAddress = user?.safeAddress as Address | undefined;
+  const safeAddress = (destinationAddress ?? user?.safeAddress) as Address | undefined;
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,

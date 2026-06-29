@@ -2421,6 +2421,7 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 export const createDirectDepositSession = async (
   chainId: number,
   tokenSymbol: string,
+  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
@@ -2434,7 +2435,11 @@ export const createDirectDepositSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ chainId, tokenSymbol }),
+      body: JSON.stringify({
+        chainId,
+        tokenSymbol,
+        ...(destinationType ? { destinationType } : {}),
+      }),
     },
   );
 

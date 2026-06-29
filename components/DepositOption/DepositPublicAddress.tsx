@@ -23,9 +23,16 @@ type DepositPublicAddressProps = {
   description?: ReactNode;
   /** When provided, renders a "Done" CTA that invokes this handler. */
   onDone?: () => void;
+  /** Minimum deposit amount in token units. When set, shown below the QR. */
+  minDeposit?: string;
 };
 
-const DepositPublicAddress = ({ address, description, onDone }: DepositPublicAddressProps = {}) => {
+const DepositPublicAddress = ({
+  address,
+  description,
+  onDone,
+  minDeposit,
+}: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
   const resolvedAddress = address ?? user?.safeAddress ?? '';
 
@@ -127,6 +134,11 @@ const DepositPublicAddress = ({ address, description, onDone }: DepositPublicAdd
               </Pressable>
             </>
           )}
+          {minDeposit && Number(minDeposit) > 0 ? (
+            <Text className="text-center text-xs text-muted-foreground">
+              Minimum deposit: {minDeposit} USDC
+            </Text>
+          ) : null}
         </View>
       </View>
       <Text className="mt-4 text-sm text-muted-foreground">

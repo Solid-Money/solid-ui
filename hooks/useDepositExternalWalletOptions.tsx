@@ -98,12 +98,7 @@ const useDepositExternalWalletOptions = () => {
       },
     ];
     return base;
-  }, [
-    openWallet,
-    isWalletOpen,
-    isScreenMedium,
-    handleDepositDirectly,
-  ]);
+  }, [openWallet, isWalletOpen, isScreenMedium, handleDepositDirectly]);
 
   return { externalWalletOptions };
 };

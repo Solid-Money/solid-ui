@@ -23,7 +23,15 @@ import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
-function AddFundsToWalletForm() {
+function AddFundsToWalletForm({
+  destinationAddress,
+  minDeposit,
+  onSuccess,
+}: {
+  destinationAddress?: string;
+  minDeposit?: string;
+  onSuccess?: () => void;
+} = {}) {
   const { setModal, setTransaction, srcChainId, principalToken } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
@@ -50,6 +58,7 @@ function AddFundsToWalletForm() {
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo.isNative,
+    destinationAddress,
   );
 
   // Derive decimals from the bridge config so 18-decimal stablecoins (e.g.
@@ -63,6 +72,7 @@ function AddFundsToWalletForm() {
   const transferSchema = useMemo(() => {
     const balanceAmount = balance ? Number(formatUnits(balance, decimals)) : 0;
     const tokenLabel = selectedTokenInfo?.name ?? 'token';
+    const minAmount = minDeposit ? Number(minDeposit) : 0;
 
     return z.object({
       amount: z
@@ -71,11 +81,14 @@ function AddFundsToWalletForm() {
           error: 'Please enter a valid amount',
         })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => !minAmount || Number(val) >= minAmount, {
+          error: `Minimum deposit is ${minDeposit} ${tokenLabel}`,
+        })
         .refine(val => Number(val) <= balanceAmount, {
           error: `Available balance is ${formatNumber(balanceAmount)} ${tokenLabel}`,
         }),
     });
-  }, [balance, decimals, selectedTokenInfo?.name]);
+  }, [balance, decimals, selectedTokenInfo?.name, minDeposit]);
 
   type TransferFormData = { amount: string };
 
@@ -119,7 +132,11 @@ function AddFundsToWalletForm() {
 
   const handleSuccess = () => {
     reset();
-    setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+    }
   };
 
   const onSubmit = async (data: TransferFormData) => {
