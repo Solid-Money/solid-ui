@@ -258,7 +258,7 @@ export default function ReferralProgram() {
             </Text>
             <Text className="text-sm text-white/70">
               You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about
-              30 days after they qualify. One reward per friend, no cap.
+              40 days after they qualify. One reward per friend, no cap.
             </Text>
           </View>
         )}
