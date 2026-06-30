@@ -68,14 +68,14 @@ export const MOCK_TIER_BENEFITS: TierBenefits[] = [
       title: '3%',
     },
     subscriptionDiscount: {
-      title: '25% Discount',
+      title: '25% back on 2 categories',
       image: 'images/spotify-openai-netflix.png',
     },
     cardCashbackCap: {
       title: 'Up to 20$\nmonthly',
     },
     subscriptionDiscountCap: {
-      title: '$70 per service\nper month',
+      title: 'Up to $50 per service\nper month',
     },
     cardFees: {
       title: 'No fees',
@@ -100,14 +100,14 @@ export const MOCK_TIER_BENEFITS: TierBenefits[] = [
       title: '5%',
     },
     subscriptionDiscount: {
-      title: '50% Discount',
+      title: '50% back on 4 categories',
       image: 'images/spotify-openai-netflix.png',
     },
     cardCashbackCap: {
       title: 'Unlimited',
     },
     subscriptionDiscountCap: {
-      title: '$70 per service\nper month',
+      title: 'Up to $50 per service\nper month',
     },
     cardFees: {
       title: 'No fees',
