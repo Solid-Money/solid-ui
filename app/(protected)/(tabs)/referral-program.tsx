@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Platform, Pressable, Share, View } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 
@@ -32,15 +33,28 @@ const formatUsd = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-function InfoRow({ icon, children }: { icon: string; children: React.ReactNode }) {
+/** Whole-dollar formatting (no decimals) for the program copy, e.g. "$15". */
+const formatUsdWhole = (value: number) => `$${Math.round(value || 0).toLocaleString('en-US')}`;
+
+function InfoRow({
+  icon,
+  center,
+  children,
+}: {
+  icon: string;
+  center?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <View className="flex-row items-start gap-3">
+    <View className={cn('flex-row gap-3', center ? 'items-center' : 'items-start')}>
       <Image
         source={getAsset(icon as any)}
         style={{ width: 34, height: 34 }}
         contentFit="contain"
       />
-      <Text className="flex-1 text-base leading-5 text-white">{children}</Text>
+      <Text className={cn('flex-1 text-base leading-5 text-white', center && 'text-center')}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -150,13 +164,33 @@ export default function ReferralProgram() {
         </View>
 
         {/* How it works */}
-        <View className="gap-4 rounded-twice bg-card p-5">
-          <InfoRow icon="images/card-yellow-background.png">Have a Solid card issued.</InfoRow>
-          <InfoRow icon="images/share-yellow-background.png">Share your referral link.</InfoRow>
+        <View className="relative gap-4 overflow-hidden rounded-twice bg-card p-5">
+          <LinearGradient
+            colors={['rgba(255, 209, 81, 1)', 'rgba(255, 209, 81, 0.4)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: -1,
+              opacity: 0.15,
+              borderRadius: 20,
+            }}
+          />
+          <InfoRow icon="images/card-yellow-background.png" center>
+            Have a Solid card issued.
+          </InfoRow>
+          <InfoRow icon="images/share-yellow-background.png" center>
+            Share your referral link.
+          </InfoRow>
           <InfoRow icon="images/wallet-yellow-background.png">
-            Earn {formatUsd(referrerUsd)} for you and {formatUsd(newUserUsd)} for them when they
-            order a card and spend {formatUsd(spendTarget)} across {merchantTarget}+ payments at
-            different merchants within {windowDays} days.
+            Earn {formatUsdWhole(referrerUsd)} for you and {formatUsdWhole(newUserUsd)} for them
+            when they order a card and spend {formatUsdWhole(spendTarget)} across {merchantTarget}+
+            payments at different merchants within {windowDays} days.
           </InfoRow>
           <Text className="text-xs leading-4 text-white/50">
             Qualified spend excludes reversed or charged-back transactions.
