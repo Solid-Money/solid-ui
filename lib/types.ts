@@ -1160,7 +1160,16 @@ export interface TierCashbackConfig {
 
 export interface TierSubscriptionDiscountConfig {
   percentage: number;
+  /** @deprecated Superseded by categoryLimit. */
   serviceLimit: number;
+  /** Number of subscription categories this tier can earn a discount on per month. */
+  categoryLimit: number;
+}
+
+export interface SubscriptionDiscountCategory {
+  key: string;
+  label: string;
+  merchants: string[];
 }
 
 export interface CashbackConfig {
@@ -1173,7 +1182,11 @@ export interface CashbackConfig {
 
 export interface SubscriptionDiscountConfig {
   enabled: boolean;
+  /** @deprecated Legacy flat service list; detection uses categories. */
   eligibleServices: string[];
+  categories: SubscriptionDiscountCategory[];
+  /** First N dollars of an eligible charge that earn the discount. */
+  eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
   tier3: TierSubscriptionDiscountConfig;
@@ -1201,6 +1214,8 @@ export interface PointsEarningConfig {
 }
 
 export interface FullRewardsConfig {
+  /** Master switch: when false, all users are treated as Core for benefits. */
+  tierSystemLive?: boolean;
   tiers: TierThresholds;
   points: PointsEarningConfig;
   cashback: CashbackConfig;
@@ -1792,4 +1807,45 @@ export interface SavingsSummaryResponse {
   activityCount: number;
   calculatedAt: string;
   dataQuality: SavingsDataQuality;
+}
+
+// ---------------------------------------------------------------------------
+// Referral cashback program
+// ---------------------------------------------------------------------------
+
+export enum ReferralRewardStatus {
+  PENDING = 'pending',
+  QUALIFIED = 'qualified',
+  PAID = 'paid',
+  EXPIRED = 'expired',
+  REVERSED = 'reversed',
+  UNDER_REVIEW = 'under_review',
+}
+
+export interface ReferralRewardListItem {
+  status: ReferralRewardStatus;
+  signupAt: string;
+  qualifiedAt?: string;
+  paidAt?: string;
+  spendUsd: number;
+  merchantCount: number;
+  rewardUsd: number;
+}
+
+export interface ReferralSummary {
+  rewards: {
+    referrerUsd: number;
+    newUserUsd: number;
+  };
+  qualification: {
+    spendTargetUsd: number;
+    merchantTarget: number;
+    windowDays: number;
+  };
+  totalRewardedUsd: number;
+  friendsInvited: number;
+  friendsQualified: number;
+  friendsPending: number;
+  hasActiveCard: boolean;
+  referrals: ReferralRewardListItem[];
 }
