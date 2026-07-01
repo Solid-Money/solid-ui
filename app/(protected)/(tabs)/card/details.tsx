@@ -10,6 +10,7 @@ import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucid
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
@@ -39,6 +40,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
@@ -95,6 +97,8 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
+  const isTestUser = useIsTestUser();
+  const isFirstCardDeposit = isTestUser && (cardStatusResponse?.cardCollateralDeposited ?? 0) === 0;
 
   const canUnfreeze =
     isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
@@ -166,6 +170,7 @@ export default function CardDetails() {
         onFreezeToggle={handleFreezeToggle}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
+        isFirstDeposit={isFirstCardDeposit}
       />
     </View>
   ) : (
@@ -253,6 +258,7 @@ export default function CardDetails() {
             onFreezeToggle={handleFreezeToggle}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
+            isFirstDeposit={isFirstCardDeposit}
           />
           <BorrowPositionCard className="mb-4" />
           <CashbackDisplay cashback={cardDetails?.cashback} />
@@ -287,6 +293,7 @@ interface DesktopHeaderProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  isFirstDeposit: boolean;
 }
 
 function DesktopHeader({
@@ -299,6 +306,7 @@ function DesktopHeader({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  isFirstDeposit,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -403,18 +411,30 @@ function DesktopHeader({
             }
           />
         )}
-        {isWithdrawFromCardAllowed && (
-          <DepositToCardModal
-            trigger={
-              <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
-                <View className="flex-row items-center gap-2">
-                  <Plus size={22} color="black" />
-                  <Text className="text-base font-bold text-black">Deposit</Text>
-                </View>
-              </Button>
-            }
-          />
-        )}
+        {isWithdrawFromCardAllowed &&
+          (isFirstDeposit ? (
+            <CardDirectDepositModal
+              trigger={
+                <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+                  <View className="flex-row items-center gap-2">
+                    <Plus size={22} color="black" />
+                    <Text className="text-base font-bold text-black">Deposit</Text>
+                  </View>
+                </Button>
+              }
+            />
+          ) : (
+            <DepositToCardModal
+              trigger={
+                <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+                  <View className="flex-row items-center gap-2">
+                    <Plus size={22} color="black" />
+                    <Text className="text-base font-bold text-black">Deposit</Text>
+                  </View>
+                </Button>
+              }
+            />
+          ))}
       </View>
     </View>
   );
@@ -796,6 +816,7 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  isFirstDeposit: boolean;
 }
 
 function CardActions({
@@ -808,23 +829,35 @@ function CardActions({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  isFirstDeposit,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
   const showManageButton = isRain || !isCardFrozen || canUnfreeze;
 
   return (
     <View className="mb-8 flex-row items-center justify-evenly">
-      {isWithdrawFromCardAllowed && (
-        <DepositToCardModal
-          trigger={
-            <CircularActionButton
-              icon={getAsset('images/card_actions_fund.png')}
-              label="Add funds"
-              onPress={() => {}}
-            />
-          }
-        />
-      )}
+      {isWithdrawFromCardAllowed &&
+        (isFirstDeposit ? (
+          <CardDirectDepositModal
+            trigger={
+              <CircularActionButton
+                icon={getAsset('images/card_actions_fund.png')}
+                label="Add funds"
+                onPress={() => {}}
+              />
+            }
+          />
+        ) : (
+          <DepositToCardModal
+            trigger={
+              <CircularActionButton
+                icon={getAsset('images/card_actions_fund.png')}
+                label="Add funds"
+                onPress={() => {}}
+              />
+            }
+          />
+        ))}
       <CircularActionButton
         icon={getAsset('images/card_actions_details.png')}
         label={isCardFlipped ? 'Hide details' : 'Card details'}
