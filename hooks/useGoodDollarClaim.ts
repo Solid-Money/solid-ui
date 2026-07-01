@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from 'react-native-toast-message';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { ClaimSDK, IdentitySDK, SupportedChains } from '@goodsdks/citizen-sdk';
+import {
+  ClaimCustodialSDK,
+  ClaimSDK,
+  IdentityCustodialSDK,
+  IdentitySDK,
+  SupportedChains,
+} from '@goodsdks/citizen-sdk';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { createAccount } from '@turnkey/viem';
@@ -132,13 +138,19 @@ const useGoodDollarClaim = () => {
 
         const readClient = publicClient(GOODDOLLAR_CHAIN_ID) as PublicClient;
 
-        const identitySDK = await IdentitySDK.init({
+        // Use the *custodial* SDK variants: they sign the FV message and claim
+        // transactions locally via the Turnkey account (account.signMessage /
+        // account.signTransaction) instead of dispatching personal_sign /
+        // eth_sendTransaction to the Fuse RPC, which rejects them. Constructed
+        // directly (not via .init(), which hardcodes the non-custodial class).
+        const identitySDK: IdentitySDK = new IdentityCustodialSDK({
+          account: turnkeyAccount.address as Address,
           publicClient: readClient,
           walletClient,
           env: GOODDOLLAR_ENV,
         });
 
-        const claimSDK = await ClaimSDK.init({
+        const claimSDK: ClaimSDK = new ClaimCustodialSDK({
           publicClient: readClient,
           walletClient,
           identitySDK,
