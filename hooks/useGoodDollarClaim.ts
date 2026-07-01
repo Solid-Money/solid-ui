@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -236,11 +237,49 @@ const useGoodDollarClaim = () => {
     }
   }, [getSdks, user?.walletAddress]);
 
+  // After returning from Face Verification the on-chain whitelist can lag by a
+  // few seconds, so poll a handful of times (stopping early) before settling.
+  const pollForWhitelist = useCallback(async () => {
+    if (!user?.walletAddress) return;
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    const maxAttempts = 6;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const { identitySDK, account } = await getSdks();
+        const { isWhitelisted } = await identitySDK.getWhitelistedRoot(account);
+        if (isWhitelisted) break;
+      } catch {
+        // ignore and retry
+      }
+      if (attempt < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+
+    await refresh();
+  }, [getSdks, refresh, user?.walletAddress]);
+
   useEffect(() => {
-    if (user?.walletAddress) {
+    if (!user?.walletAddress) return;
+
+    if (
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined' &&
+      /[?&](isVerified|verified)=/i.test(window.location.search)
+    ) {
+      // Returned from GoodDollar Face Verification (web redirect) — clean the
+      // query string and poll until the on-chain whitelist reflects it.
+      try {
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch {
+        // ignore
+      }
+      void pollForWhitelist();
+    } else {
       void refresh();
     }
-  }, [refresh, user?.walletAddress]);
+  }, [pollForWhitelist, refresh, user?.walletAddress]);
 
   // Opens GoodDollar's hosted Face Verification (FaceTec liveness) flow in an
   // in-app browser and re-checks whitelist status on-chain when it returns.
@@ -252,13 +291,24 @@ const useGoodDollarClaim = () => {
 
       // Signs the FV identifier message with the EOA (triggers a passkey prompt)
       // and builds the hosted verification URL. popupMode=false → redirect mode
-      // with a deep-link callback, which is GoodDollar's recommended mobile flow.
+      // with a callback, which is GoodDollar's recommended flow.
       const link = await identitySDK.generateFVLink(false, redirectUrl, SupportedChains.FUSE);
+
+      if (Platform.OS === 'web') {
+        // Full-page redirect. window.open() would be blocked here because the
+        // async signMessage above breaks out of the click's user-gesture
+        // context. GoodDollar redirects back to redirectUrl when done, and the
+        // hook re-checks whitelist status on mount.
+        if (typeof window !== 'undefined') {
+          window.location.href = link;
+        }
+        return;
+      }
 
       await WebBrowser.openAuthSessionAsync(link, redirectUrl);
 
-      // Trust the chain, not the redirect params: re-read whitelist status.
-      await refresh();
+      // Trust the chain, not the redirect params: poll whitelist status.
+      await pollForWhitelist();
     } catch (error) {
       if (!isUserCancelled(error)) {
         Sentry.captureException(error, { tags: { type: 'gooddollar_verify_error' } });
@@ -274,7 +324,7 @@ const useGoodDollarClaim = () => {
     } finally {
       setIsVerifying(false);
     }
-  }, [getSdks, refresh]);
+  }, [getSdks, pollForWhitelist]);
 
   const claim = useCallback(async () => {
     let clientTxId: string | null = null;
