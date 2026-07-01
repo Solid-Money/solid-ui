@@ -52,7 +52,7 @@ function InfoRow({
         style={{ width: 34, height: 34 }}
         contentFit="contain"
       />
-      <Text className={cn('flex-1 text-base leading-5 text-white', center && 'text-center')}>
+      <Text className={cn('flex-1 text-base leading-5 text-white')}>
         {children}
       </Text>
     </View>
