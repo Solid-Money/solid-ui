@@ -41,6 +41,7 @@
     "@didit-protocol/sdk-web": "^0.1.8",
     "@expo-google-fonts/mona-sans": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
+    "@goodsdks/citizen-sdk": "^1.2.5",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@intercom/intercom-react-native": "^9.8.0",

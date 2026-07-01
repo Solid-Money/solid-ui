@@ -48,6 +48,7 @@ type Path = {
   QR_SCANNER: Route;
   RESCUE_TOKEN: Href;
   AGENT: Href;
+  GOODDOLLAR: Href;
   STOCKS: Href;
 };
 
@@ -102,5 +103,6 @@ export const path: Path = {
   QR_SCANNER: '/qr-scanner' as Route,
   RESCUE_TOKEN: '/rescue-token' as Href,
   AGENT: '/agent' as Href,
+  GOODDOLLAR: '/gooddollar' as Href,
   STOCKS: '/stocks' as Href,
 };

@@ -4,7 +4,14 @@ import * as Application from 'expo-application';
 import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Href, router } from 'expo-router';
-import { Bell, ChevronRight, CircleDollarSign, Heart, Sparkles } from 'lucide-react-native';
+import {
+  Bell,
+  ChevronRight,
+  CircleDollarSign,
+  HandCoins,
+  Heart,
+  Sparkles,
+} from 'lucide-react-native';
 
 import ProfileIcon from '@/assets/images/profile';
 import Navbar from '@/components/Navbar';
@@ -138,6 +145,11 @@ const MobileSettings = () => {
         title: 'Agent wallet',
         icon: <Sparkles size={24} color="#ffffff" strokeWidth={1.8} />,
         href: path.AGENT,
+      },
+      {
+        title: 'GoodDollar',
+        icon: <HandCoins size={24} color="#ffffff" strokeWidth={1.8} />,
+        href: path.GOODDOLLAR,
       },
     ],
     [

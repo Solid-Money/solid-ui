@@ -737,6 +737,8 @@ export enum TransactionType {
   RESCUE_TOKEN = 'rescue_token',
   AGENT_X402_PAYMENT = 'agent_x402_payment',
   AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
+  GOODDOLLAR_CLAIM = 'gooddollar_claim',
+  GOODDOLLAR_SWEEP = 'gooddollar_sweep',
 }
 
 export enum TransactionDirection {
