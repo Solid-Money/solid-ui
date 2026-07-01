@@ -12,11 +12,13 @@ import { cn } from '@/lib/utils';
 
 import {
   AccountCenterAgent,
+  AccountCenterGoodDollar,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
   AccountCenterUsername,
   onAccountCenterAgentPress,
+  onAccountCenterGoodDollarPress,
   onAccountCenterSettingsPress,
 } from '.';
 
@@ -56,6 +58,12 @@ const AccountCenterDropdown = () => {
           onPress={onAccountCenterAgentPress}
         >
           <AccountCenterAgent />
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className={cn(dropdownMenuItemClassName)}
+          onPress={onAccountCenterGoodDollarPress}
+        >
+          <AccountCenterGoodDollar />
         </DropdownMenuItem>
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName)}

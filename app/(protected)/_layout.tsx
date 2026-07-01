@@ -228,6 +228,12 @@ export default function ProtectedLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="gooddollar/index"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
