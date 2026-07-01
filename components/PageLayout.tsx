@@ -24,6 +24,7 @@ const MOBILE_NAVBAR_TITLES: Record<string, string> = {
   '/activity': 'Activity',
   '/agent': 'Agent',
   '/bank-transfer': 'Bank Transfer',
+  '/gooddollar': 'GoodDollar',
   '/card': 'Card',
   '/card-onboard': 'Card',
   '/card/details': 'Card',
