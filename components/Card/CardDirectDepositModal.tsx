@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { Wallet } from 'lucide-react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
+import { useShallow } from 'zustand/react/shallow';
 
 import HomeQR from '@/assets/images/home-qr';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
@@ -20,7 +21,6 @@ import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useShallow } from 'zustand/react/shallow';
 
 type Step = 'options' | 'networks' | 'form' | 'address';
 
@@ -57,7 +57,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   const [networksIntent, setNetworksIntent] = useState<NetworksIntent>('wallet');
   // Deposit address on the chain the user selected — shared by both paths.
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
-  const [minDeposit, setMinDeposit] = useState<string | undefined>(undefined);
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const walletConnectingRef = useRef(false);
@@ -78,7 +77,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
     onSuccess: data => {
       if (data?.walletAddress) setDepositAddress(data.walletAddress);
-      if (data?.minDeposit) setMinDeposit(data.minDeposit);
     },
   });
 
@@ -92,7 +90,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     if (!open) {
       setStepState({ current: 'options', previous: CLOSE_STATE });
       setDepositAddress(undefined);
-      setMinDeposit(undefined);
     }
   }, []);
 
@@ -228,7 +225,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       return depositAddress ? (
         <AddFundsToWalletForm
           destinationAddress={depositAddress}
-          minDeposit={minDeposit}
           onSuccess={() => handleOpenChange(false)}
         />
       ) : (
@@ -240,11 +236,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
     if (step === 'address') {
       return depositAddress ? (
-        <DepositPublicAddress
-          address={depositAddress}
-          minDeposit={minDeposit}
-          onDone={() => handleOpenChange(false)}
-        />
+        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
       ) : (
         <View className="items-center py-12">
           <ActivityIndicator color="white" />
