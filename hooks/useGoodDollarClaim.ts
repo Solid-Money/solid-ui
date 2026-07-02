@@ -9,6 +9,7 @@ import {
   IdentityCustodialSDK,
   IdentitySDK,
   SupportedChains,
+  ubiSchemeV2ABI,
 } from '@goodsdks/citizen-sdk';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
@@ -80,9 +81,6 @@ const isUserCancelled = (error: unknown): boolean => {
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
-
-const extractTxHash = (receipt: any): string | undefined =>
-  receipt?.transactionHash ?? receipt?.receipt?.transactionHash ?? undefined;
 
 const getRedirectUrl = () => Linking.createURL(GOODDOLLAR_REDIRECT_PATH);
 
@@ -332,7 +330,7 @@ const useGoodDollarClaim = () => {
     setClaimMessage('Preparing your claim…');
 
     try {
-      const { claimSDK, account } = await getSdks();
+      const { claimSDK, walletClient, readClient, account } = await getSdks();
 
       const entitlement = await claimSDK.checkEntitlement();
       if (!entitlement?.amount || entitlement.amount === 0n) {
@@ -359,15 +357,54 @@ const useGoodDollarClaim = () => {
         },
       });
 
-      // claim() tops up gas via GoodDollar's Fuse faucet if needed, then calls
-      // claim() on the UBI scheme. Both may prompt the passkey signer.
-      const receipt = await claimSDK.claim((message: string) => setClaimMessage(message));
-      const hash = extractTxHash(receipt);
+      // Ensure the EOA has gas (GoodDollar faucet, with a gasless API fallback),
+      // then wait for the top-up to land before claiming.
+      setClaimMessage('Preparing your wallet…');
+      try {
+        await claimSDK.checkBalanceWithRetry((message: string) => setClaimMessage(message));
+      } catch {
+        // best effort — the claim below surfaces a gas error if the top-up failed
+      }
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const gasBalance = await readClient.getBalance({ address: account });
+        if (gasBalance > 0n) break;
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+      // Submit the claim via viem writeContract so the transaction is fully
+      // prepared (nonce, gas) and signed locally by the Turnkey account. The
+      // SDK's own claim() passes the address string to prepareTransactionRequest,
+      // which skips nonce population and fails with a "Nonce error".
+      setClaimMessage('Confirm in your wallet…');
+      const txHash = await walletClient.writeContract({
+        address: GOODDOLLAR_FUSE.ubiScheme,
+        abi: ubiSchemeV2ABI,
+        functionName: 'claim',
+        account: walletClient.account ?? account,
+        chain: fuse,
+      });
+
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PROCESSING,
+        hash: txHash,
+        url: getGoodDollarExplorerTxUrl(txHash),
+      });
+
+      const receipt = await readClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') {
+        await updateActivity(clientTxId, {
+          status: TransactionStatus.FAILED,
+          hash: txHash,
+          url: getGoodDollarExplorerTxUrl(txHash),
+          metadata: { error: 'Claim reverted on-chain' },
+        });
+        throw new Error('Claim transaction reverted on-chain');
+      }
 
       await updateActivity(clientTxId, {
         status: TransactionStatus.SUCCESS,
-        hash,
-        url: hash ? getGoodDollarExplorerTxUrl(hash) : undefined,
+        hash: txHash,
+        url: getGoodDollarExplorerTxUrl(txHash),
       });
 
       Toast.show({
