@@ -24,9 +24,6 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 type Step = 'options' | 'networks' | 'form' | 'address';
 
-// What to do after the user picks a network.
-type NetworksIntent = 'wallet' | 'address';
-
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
 const MODAL_STATES: Record<Step, ModalState> = {
@@ -53,9 +50,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     current: 'options',
     previous: CLOSE_STATE,
   });
-  // Tracks which path the user is on when entering the networks step.
-  const [networksIntent, setNetworksIntent] = useState<NetworksIntent>('wallet');
-  // Deposit address on the chain the user selected — shared by both paths.
+  // Deposit address fetched after chain selection (wallet path) or on QR button press (Base).
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -71,7 +66,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
   const depositConfig = getVaultDepositConfig();
 
-  // Fetched after the user picks a chain — creates the flash account on that chain.
+  // Fetched after the user picks a chain (wallet path) or immediately (QR path, Base chain).
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
       withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
@@ -96,7 +91,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   const handleConnectWallet = useCallback(async () => {
     try {
       if (isWalletOpen) return;
-      setNetworksIntent('wallet');
       if (activeAccount?.address) {
         goToStep('networks');
         return;
@@ -120,12 +114,15 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     }
   }, [isWalletOpen, connect, activeAccount, goToStep]);
 
+  // "Share your deposit address" — address is chain-independent (same deterministic wallet
+  // across all chains), so fetch via Base and skip network selection entirely.
   const handleShareAddress = useCallback(() => {
-    setNetworksIntent('address');
     setDepositAddress(undefined);
-    goToStep('networks');
-  }, [goToStep]);
+    prepareSession({ chainId: 8453, token: 'USDC' });
+    goToStep('address');
+  }, [goToStep, prepareSession]);
 
+  // "Send from wallet" path only — always navigates to the send form.
   const handleNetworkSelect = useCallback(
     (chainId: number) => {
       const allowedTokens = getAllowedTokensForChain(chainId);
@@ -141,15 +138,12 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       setSrcChainId(chainId);
       setPrincipalToken(selectedToken);
 
-      // Both paths need a deposit address on the selected chain.
-      // For wallet: user's external wallet sends to this address, workflow bridges from there.
-      // For address: user manually sends to this address on the selected chain.
       setDepositAddress(undefined);
       prepareSession({ chainId, token: selectedToken });
 
-      goToStep(networksIntent === 'wallet' ? 'form' : 'address');
+      goToStep('form');
     },
-    [setSrcChainId, setPrincipalToken, networksIntent, goToStep, prepareSession],
+    [setSrcChainId, setPrincipalToken, goToStep, prepareSession],
   );
 
   const handleBack = useCallback(() => {
@@ -157,7 +151,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       const backStep: Step = (() => {
         if (prev.current === 'networks') return 'options';
         if (prev.current === 'form') return 'networks';
-        if (prev.current === 'address') return 'networks';
+        if (prev.current === 'address') return 'options'; // QR path: back goes straight to options
         return 'options';
       })();
       return { current: backStep, previous: MODAL_STATES[prev.current] };
