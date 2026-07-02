@@ -14,8 +14,21 @@ import { useUserStore } from '@/store/useUserStore';
  * Card payment notifications open the card screen; anything else goes home.
  */
 function getNotificationRoute(type?: string): Href {
-  // Rewards lifecycle pushes (rewards-live, rewards-tier-reached, etc.) all
-  // carry a `rewards-` prefixed type and should open the rewards screen.
+  // Referral cashback pushes (referral-signup, referral-inactive,
+  // referral-qualified-*) open the referral screen.
+  if (type?.startsWith('referral')) {
+    return path.REFERRAL;
+  }
+
+  // Subscription discount pushes (rewards-subscription-live/-saved/-upsell)
+  // open the tier benefits screen, where the discount perk lives.
+  if (type?.startsWith('rewards-subscription')) {
+    return path.REWARDS_BENEFITS;
+  }
+
+  // Remaining rewards pushes (rewards-live, rewards-tier-reached, the boosted
+  // APY flow, etc.) all carry a `rewards-` prefixed type and should open the
+  // rewards screen.
   if (type?.startsWith('rewards')) {
     return path.REWARDS;
   }
