@@ -1673,6 +1673,8 @@ export interface WhatsNewStep {
   imageUrl: string;
   title: string;
   text: string;
+  buttonLabel?: string;
+  buttonLink?: string;
 }
 
 export interface WhatsNew {
