@@ -120,7 +120,7 @@ const DepositPublicAddress = ({
               </View>
 
               <Text className="max-w-72 text-center text-sm text-muted-foreground">
-                We support tokens on {networkNames} chain
+                Please deposit USDC on {networkNames} chains
               </Text>
 
               <Pressable
@@ -141,9 +141,7 @@ const DepositPublicAddress = ({
           ) : null}
         </View>
       </View>
-      <Text className="mt-4 text-sm text-muted-foreground">
-        Allow 30-60 seconds for processing.
-      </Text>
+      <Text className="mt-4 text-sm text-muted-foreground">Allow 5-10 minutes for processing.</Text>
       {onDone ? (
         <Button variant="brand" className="mt-4 h-12 w-full rounded-2xl" onPress={onDone}>
           <Text className="text-lg font-semibold text-black">Done</Text>
