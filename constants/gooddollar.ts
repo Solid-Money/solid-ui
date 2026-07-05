@@ -37,6 +37,10 @@ export const GOODDOLLAR_FUSE = {
   gdToken: '0x495d133B938596C9984d462F007B676bDc57eCEC',
 } as const;
 
+// Fallback minimum native FUSE (wei) the signer EOA should hold before a
+// claim/sweep, used only when on-chain gas estimation is unavailable (~0.01 FUSE).
+export const GOODDOLLAR_GAS_FLOOR_WEI = 10_000_000_000_000_000n;
+
 // Deep-link path the GoodDollar Face Verification flow redirects back to.
 export const GOODDOLLAR_REDIRECT_PATH = 'gooddollar';
 

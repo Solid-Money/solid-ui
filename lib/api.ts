@@ -604,11 +604,36 @@ export const createDiditSession = async (
     } catch {
       // non-JSON error body — keep the generic fallback
     }
-    throw new ApiError(
-      response.status,
-      message ?? 'Failed to create verification session',
-      code,
-    );
+    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+  }
+  return response.json();
+};
+
+/**
+ * Ask the backend to proxy GoodDollar's gasless faucet top-up for the caller's
+ * signer EOA. GoodDollar's faucet API sends no CORS headers, so it can't be
+ * called from the browser directly — the backend relays it server-side.
+ */
+export const topUpGoodDollarGas = async (
+  account: string,
+  chainId: number,
+): Promise<{ success: boolean }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/gooddollar/top-wallet`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ account, chainId }),
+    },
+  );
+  if (!response.ok) {
+    throw new ApiError(response.status, 'Failed to request gas top-up');
   }
   return response.json();
 };
