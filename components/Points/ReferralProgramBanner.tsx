@@ -1,48 +1,55 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 
 import SwipeableBanner from '@/components/Dashboard/SwipeableBanner';
+import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 
 /**
- * Internal-only referral banner pointing to the new `/referral-program` page.
- * Rendered in place of {@link RewardReferBanner} for whitelisted team members
- * (see `useIsTestUser`); public users keep the existing `/referral` banner.
+ * Internal-only referral banner. Rendered in place of {@link RewardReferBanner}
+ * for whitelisted team members (see `useIsTestUser`); public users keep the
+ * existing `/referral` banner. Tapping opens the referral-program page as a
+ * popup modal rather than navigating to the `/referral-program` route.
  */
 const ReferralProgramBanner = () => {
   const { isScreenMedium } = useDimension();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
 
   return (
-    <SwipeableBanner onPress={() => router.push(path.REFERRAL_PROGRAM)}>
-      <View className="flex-1 flex-row items-center justify-between bg-card pl-5 md:px-10">
-        <View className="max-w-64 items-start justify-between gap-2 py-5 md:py-7">
-          <Text className="text-lg font-medium leading-5 text-brand/70">Invite friends</Text>
-          <Text className="text-3xl font-semibold">Refer & Earn</Text>
-          <Text className="text-base font-semibold opacity-70">
-            Earn $15 for you and $10 for friends for using the card
-          </Text>
-          <Button
-            variant="secondary"
-            className="h-12 rounded-xl border-0 px-6"
-            onPress={() => router.push(path.REFERRAL_PROGRAM)}
-          >
-            <Text className="text-base font-bold text-primary">Refer friends</Text>
-          </Button>
+    <>
+      <SwipeableBanner onPress={openModal}>
+        <View className="flex-1 flex-row items-center justify-between bg-card pl-5 md:px-10">
+          <View className="max-w-64 items-start justify-between gap-2 py-5 md:py-7">
+            <Text className="text-lg font-medium leading-5 text-brand/70">Invite friends</Text>
+            <Text className="text-3xl font-semibold">Refer & Earn</Text>
+            <Text className="text-base font-semibold opacity-70">
+              Earn $15 for you and $10 for friends for using the card
+            </Text>
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 px-6"
+              onPress={openModal}
+            >
+              <Text className="text-base font-bold text-primary">Refer friends</Text>
+            </Button>
+          </View>
+          <View className="pointer-events-none -ml-6 md:ml-0">
+            <Image
+              source={getAsset('images/referral-3d.png')}
+              contentFit="contain"
+              style={{ width: isScreenMedium ? 160 : 110, height: isScreenMedium ? 160 : 110 }}
+            />
+          </View>
         </View>
-        <View className="pointer-events-none -ml-6 md:ml-0">
-          <Image
-            source={getAsset('images/referral-3d.png')}
-            contentFit="contain"
-            style={{ width: isScreenMedium ? 160 : 110, height: isScreenMedium ? 160 : 110 }}
-          />
-        </View>
-      </View>
-    </SwipeableBanner>
+      </SwipeableBanner>
+      <ReferralProgramModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
   );
 };
 
