@@ -444,9 +444,9 @@ function DesktopHeader({
 interface SpendingBalanceCardProps {
   amount: string;
   cashback?: {
-    monthlyFuseAmount: number;
+    monthlySoUsdAmount: number;
     monthlyUsdValue: number;
-    totalFuseAmount: number;
+    totalSoUsdAmount: number;
     totalUsdValue: number;
     percentage: number;
   };
@@ -951,9 +951,9 @@ function CardActions({
 
 interface CashbackDisplayProps {
   cashback?: {
-    monthlyFuseAmount: number;
+    monthlySoUsdAmount: number;
     monthlyUsdValue: number;
-    totalFuseAmount: number;
+    totalSoUsdAmount: number;
     totalUsdValue: number;
     percentage: number;
   };
