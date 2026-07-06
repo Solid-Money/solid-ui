@@ -25,6 +25,8 @@ type DepositPublicAddressProps = {
   onDone?: () => void;
   /** Minimum deposit amount in token units. When set, shown below the QR. */
   minDeposit?: string;
+  /** Chain IDs to exclude from the supported networks display. */
+  excludeChainIds?: number[];
 };
 
 const DepositPublicAddress = ({
@@ -32,6 +34,7 @@ const DepositPublicAddress = ({
   description,
   onDone,
   minDeposit,
+  excludeChainIds,
 }: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
   const resolvedAddress = address ?? user?.safeAddress ?? '';
@@ -50,8 +53,9 @@ const DepositPublicAddress = ({
         icon: chain.icon,
         name: chain.name,
       }))
+      .filter(n => !excludeChainIds?.includes(n.chainId))
       .sort((a, b) => (displayOrder[a.name] ?? 99) - (displayOrder[b.name] ?? 99));
-  }, []);
+  }, [excludeChainIds]);
 
   const networkNames = useMemo(() => {
     const names = networks.map(n => n.name);
