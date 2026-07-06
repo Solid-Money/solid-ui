@@ -70,17 +70,25 @@ export function useDiditSession() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
       if (kycStatus === KycStatus.APPROVED) {
-        // KYC approved: check Rain application status for correct redirect
+        // Didit KYC approved: route by Rain status. Approved -> ready.
+        // Manual review (Rain pending/manualReview, which maps to backend
+        // kycStatus = under_review) -> pending so the user sees the review
+        // state. Anything else (needsInformation/needsVerification) ->
+        // activate so they see the step-one button.
         try {
           const cardStatusResponse = await withRefreshToken(() => getCardStatus());
           if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
             router.replace(path.CARD_READY as any);
             return;
           }
+          if (cardStatusResponse?.kycStatus === KycStatus.UNDER_REVIEW) {
+            router.replace(path.CARD_PENDING as any);
+            return;
+          }
         } catch {
-          // Fall through to ready page on approved KYC
+          // On error fall through to activate page as a safe default
         }
-        router.replace(path.CARD_READY as any);
+        router.replace(path.CARD_ACTIVATE as any);
       } else if (kycStatus === KycStatus.UNDER_REVIEW) {
         router.replace(path.CARD_PENDING as any);
       } else {
@@ -110,6 +118,29 @@ export function useDiditSession() {
     redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW);
   }, [redirectBasedOnKycStatus]);
 
+  /**
+   * Didit terminal Declined: ID failed validation (e.g. expired doc, missing DOB, blocklist).
+   * Bounce back to /card/activate?kycStatus=rejected so the step-1 description renders the
+   * specific warnings (formatted via DIDIT_WARNING_DESCRIPTIONS / short_description) and the
+   * user clicks "Retry KYC" — which spins up a fresh Didit session via initSession. Without
+   * this redirect the user gets stuck on /kyc with a generic error and a "Try again" button
+   * that loops the same broken document.
+   */
+  const onVerificationDeclined = useCallback(() => {
+    Toast.show({
+      type: 'error',
+      text1: 'Verification declined',
+      text2: 'Review the details and try again with a valid document.',
+      props: { badgeText: '' },
+    });
+    redirectBasedOnKycStatus(KycStatus.REJECTED);
+  }, [redirectBasedOnKycStatus]);
+
+  /**
+   * Hard failure (network error, session creation failed, SDK reported `failed`). Stays on
+   * /kyc and shows the error UI with a Try-again button — distinct from Declined, which is a
+   * KYC outcome we want surfaced on /card/activate alongside the warnings.
+   */
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
       type: 'error',
@@ -129,12 +160,19 @@ export function useDiditSession() {
         const status = await withRefreshToken(() => getDiditVerificationStatus());
         if (!status) return;
 
-        if (status.status === 'Approved' || status.kycStatus === 'approved') {
+        // Backend kycStatus is the canonical source — it reflects the full
+        // pipeline (Didit + Rain) so check it before the Didit-only
+        // status.status. A Didit `Approved` with kycStatus `under_review`
+        // means manual review is in progress and should route to pending.
+        if (status.kycStatus === KycStatus.UNDER_REVIEW || status.status === 'In Review') {
+          clearInterval(interval);
+          onVerificationPending();
+        } else if (status.kycStatus === KycStatus.REJECTED || status.status === 'Declined') {
+          clearInterval(interval);
+          onVerificationDeclined();
+        } else if (status.kycStatus === KycStatus.APPROVED || status.status === 'Approved') {
           clearInterval(interval);
           onVerificationComplete();
-        } else if (status.status === 'Declined' || status.kycStatus === 'rejected') {
-          clearInterval(interval);
-          onVerificationError('Your identity verification was declined. Please try again.');
         }
       } catch {
         // silently retry on network errors
@@ -142,7 +180,13 @@ export function useDiditSession() {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [session.phase, onVerificationComplete, onVerificationError]);
+  }, [
+    session.phase,
+    onVerificationComplete,
+    onVerificationDeclined,
+    onVerificationError,
+    onVerificationPending,
+  ]);
 
   // Auto-init on mount
   useEffect(() => {
@@ -155,6 +199,7 @@ export function useDiditSession() {
     markStarted,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   };
 }

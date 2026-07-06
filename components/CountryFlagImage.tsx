@@ -43,8 +43,8 @@ const CountryFlagImage: React.FC<CountryFlagImageProps> = ({
         source={{ uri: flagUrl }}
         style={[
           {
-            width: size * 1.2,
-            height: size * 0.9, // Maintain aspect ratio for flags (4:3)
+            width: size * (4 / 3),
+            height: size,
             resizeMode: 'cover',
           },
           imageStyle,

@@ -52,7 +52,8 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
   const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useQuery({
     queryKey: ['fusePriceUsd'],
     queryFn: fetchFusePrice,
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
   });
 
   const isLoading =

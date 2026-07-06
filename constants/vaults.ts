@@ -30,10 +30,16 @@ export const VAULTS: Vault[] = [
       },
     ],
     depositConfig: {
-      methods: ['wallet', 'deposit_directly', 'credit_card', 'bank_transfer'],
+      methods: [
+        'wallet',
+        'deposit_directly',
+        'credit_card',
+        //'bank_transfer'
+      ],
       supportedChains: BRIDGE_CHAIN_IDS,
       supportedTokens: ['USDC', 'USDT'],
     },
+    vaultName: 'USDC Savings',
   },
   {
     name: 'FUSE',
@@ -53,6 +59,7 @@ export const VAULTS: Vault[] = [
       supportedChains: [fuse.id],
       supportedTokens: ['WFUSE', 'FUSE'],
     },
+    vaultName: 'FUSE Savings',
   },
   {
     name: 'ETH',
@@ -76,5 +83,6 @@ export const VAULTS: Vault[] = [
       supportedChains: [mainnet.id],
       supportedTokens: ['WETH', 'ETH'],
     },
+    vaultName: 'ETH Savings',
   },
 ];

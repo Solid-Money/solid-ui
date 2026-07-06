@@ -11,9 +11,12 @@ import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
+import { CardDepositSource } from '@/store/useCardDepositStore';
+
 import CardDepositExternal from './CardDepositExternal';
 import CardDepositInternalForm from './CardDepositInternalForm';
 import CardDepositOptions from './CardDepositOptions';
+import CardDepositTokenSelector from './CardDepositTokenSelector';
 
 /**
  * Global card deposit modal provider that renders a single ResponsiveModal instance.
@@ -27,8 +30,8 @@ const CardDepositModalProvider = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction, setSource } = useCardDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? CARD_DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? CARD_DEPOSIT_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
       setSource: state.setSource,
@@ -39,6 +42,7 @@ const CardDepositModalProvider = () => {
   const isOptions = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isInternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM.name;
   const isExternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM.name;
+  const isTokenSelector = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isTransactionStatus = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const shouldAnimate = previousModal.name !== CARD_DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -90,16 +94,18 @@ const CardDepositModalProvider = () => {
 
   const getTitle = useCallback(() => {
     if (isTransactionStatus) return undefined;
+    if (isTokenSelector) return 'Select token';
     return 'Deposit to Card';
-  }, [isTransactionStatus]);
+  }, [isTransactionStatus, isTokenSelector]);
 
   const getContentKey = useCallback(() => {
     if (isTransactionStatus) return 'transaction-status';
     if (isOptions) return 'options';
     if (isInternal) return 'internal';
     if (isExternal) return 'external';
+    if (isTokenSelector) return 'token-selector';
     return 'options';
-  }, [isTransactionStatus, isOptions, isInternal, isExternal]);
+  }, [isTransactionStatus, isOptions, isInternal, isExternal, isTokenSelector]);
 
   const getContent = useCallback(() => {
     if (isTransactionStatus) {
@@ -118,12 +124,14 @@ const CardDepositModalProvider = () => {
     if (isOptions) return <CardDepositOptions />;
     if (isInternal) return <CardDepositInternalForm />;
     if (isExternal) return <CardDepositExternal />;
+    if (isTokenSelector) return <CardDepositTokenSelector />;
     return <CardDepositOptions />;
   }, [
     isTransactionStatus,
     isOptions,
     isInternal,
     isExternal,
+    isTokenSelector,
     transaction.amount,
     handleTransactionStatusPress,
   ]);
@@ -144,8 +152,15 @@ const CardDepositModalProvider = () => {
   );
 
   const handleBackPress = useCallback(() => {
+    if (isTokenSelector) {
+      // Preserve the Wallet source so the internal form re-mounts on the
+      // wallet option (the only path that opens the token selector).
+      setSource(CardDepositSource.WALLET);
+      setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+      return;
+    }
     setModal(CARD_DEPOSIT_MODAL.CLOSE);
-  }, [setModal]);
+  }, [isTokenSelector, setSource, setModal]);
 
   return (
     <ResponsiveModal
@@ -157,7 +172,7 @@ const CardDepositModalProvider = () => {
       title={getTitle()}
       containerClassName="min-h-[42rem] overflow-y-auto flex-1"
       contentKey={getContentKey()}
-      showBackButton={isInternal && !isTransactionStatus}
+      showBackButton={(isInternal || isTokenSelector) && !isTransactionStatus}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}

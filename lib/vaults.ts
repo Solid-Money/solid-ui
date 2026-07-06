@@ -43,7 +43,7 @@ export const getDefaultDepositSelection = (vault?: Vault) => {
     supportedChains.find(id => getAllowedTokensForChain(id, vault).length > 0) ??
     supportedChains[0];
   const allowedTokens = chainId ? getAllowedTokensForChain(chainId, vault) : [];
-  const outputToken = allowedTokens[0] ?? 'USDC';
+  const principalToken = allowedTokens[0] ?? 'USDC';
 
-  return { chainId, outputToken };
+  return { chainId, principalToken };
 };

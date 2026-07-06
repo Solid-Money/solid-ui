@@ -263,6 +263,11 @@ export const CARD_DEPOSIT_MODAL = {
     name: 'open_external_form',
     number: 2,
   },
+  OPEN_TOKEN_SELECTOR: {
+    // Step 2A.1: pick a USDC token from the Solid wallet (only from WALLET source)
+    name: 'open_token_selector',
+    number: 2.5,
+  },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 3,

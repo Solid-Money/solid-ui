@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-quick-crypto/react-native-quick-crypto.podspec b/node_modules/react-native-quick-crypto/react-native-quick-crypto.podspec
+index 7fc31e3..12ef5a3 100644
+--- a/node_modules/react-native-quick-crypto/react-native-quick-crypto.podspec
++++ b/node_modules/react-native-quick-crypto/react-native-quick-crypto.podspec
+@@ -15,7 +15,9 @@ Pod::Spec.new do |s|
+     "cpp/**/*.{h,c,cpp}",
+   ]
+ 
+-  s.dependency "OpenSSL-Universal"
++  # Solid app-specific iOS pod graph: DiditSDK already vendors OpenSSL.xcframework.
++  # Reuse that copy to avoid CocoaPods duplicate vendored framework validation.
++  s.dependency "DiditSDK"
+ 
+   # Use install_modules_dependencies helper to install the dependencies if React Native version >=0.71.0.
+   # See https://github.com/facebook/react-native/blob/febf6b7f33fdb4904669f99d795eba4c0f95d7bf/scripts/cocoapods/new_architecture.rb#L79

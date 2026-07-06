@@ -1,4 +1,5 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+
 import { getAsset } from './assets';
 import { TokenIcon } from './types';
 
@@ -16,6 +17,10 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
   // Fallback to default token icons based on symbol
   switch (tokenSymbol?.toUpperCase()) {
     case 'USDC':
+    // Bridged USDC variants (e.g. USDC.e on Fuse/Arbitrum, used by the
+    // borrow-and-deposit-to-card flow) share the USDC icon. Without this the
+    // detail page fell back to the "U" placeholder.
+    case 'USDC.E':
       return {
         type: 'image',
         source: getAsset('images/usdc-4x.png'),
@@ -33,6 +38,10 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       };
     case 'FUSE':
     case 'WFUSE':
+      return {
+        type: 'image',
+        source: getAsset('images/wfuse.png'),
+      };
     case 'SOFUSE':
       return {
         type: 'image',
@@ -42,6 +51,11 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return {
         type: 'image',
         source: getAsset('images/sousd-4x.png'),
+      };
+    case 'SOETH':
+      return {
+        type: 'image',
+        source: getAsset('images/eth.png'),
       };
     default:
       return {

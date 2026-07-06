@@ -16,8 +16,10 @@ export const useWalletTokens = () => {
     totalUSDExcludingVaultTokens,
     ethereumTokens,
     fuseTokens,
+    polygonTokens,
     baseTokens,
     arbitrumTokens,
+    bscTokens,
     tokens,
     unifiedTokens,
     isLoading,
@@ -31,9 +33,18 @@ export const useWalletTokens = () => {
     () =>
       ethereumTokens.length > 0 ||
       fuseTokens.length > 0 ||
+      polygonTokens.length > 0 ||
       baseTokens.length > 0 ||
-      arbitrumTokens.length > 0,
-    [ethereumTokens.length, fuseTokens.length, baseTokens.length, arbitrumTokens.length],
+      arbitrumTokens.length > 0 ||
+      bscTokens.length > 0,
+    [
+      ethereumTokens.length,
+      fuseTokens.length,
+      polygonTokens.length,
+      baseTokens.length,
+      arbitrumTokens.length,
+      bscTokens.length,
+    ],
   );
 
   const uniqueTokens = useMemo(
@@ -64,8 +75,10 @@ export const useWalletTokens = () => {
     totalUSDExcludingVaultTokens,
     ethereumTokens,
     fuseTokens,
+    polygonTokens,
     baseTokens,
     arbitrumTokens,
+    bscTokens,
     tokens,
     unifiedTokens,
     uniqueTokens,

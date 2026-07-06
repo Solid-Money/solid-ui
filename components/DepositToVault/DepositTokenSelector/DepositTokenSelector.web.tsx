@@ -11,24 +11,24 @@ import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositTokenSelector = () => {
-  const { setModal, setOutputToken, srcChainId, depositFromSolid } = useDepositStore(
+  const { setModal, setPrincipalToken, srcChainId, depositFromSolid } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       srcChainId: state.srcChainId,
       depositFromSolid: state.depositFromSolid,
     })),
   );
-  const { vault } = useVaultDepositConfig();
 
-  const isFuseVault = vault?.name === 'FUSE';
+  const { vault } = useVaultDepositConfig();
   const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
-  const allowedTokens = getAllowedTokensForChain(srcChainId, vault).filter(
-    token => !(isFuseVault && !depositFromSolid && token === 'FUSE'),
-  );
+  // Only filter by vault when depositing to savings; show all tokens for Add Funds flow
+  const allowedTokens = depositFromSolid
+    ? getAllowedTokensForChain(srcChainId, vault)
+    : Object.keys(tokens ?? {});
 
   const handlePress = (token: string) => {
-    setOutputToken(token);
+    setPrincipalToken(token);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };
 

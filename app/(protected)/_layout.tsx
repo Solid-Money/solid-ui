@@ -215,6 +215,19 @@ export default function ProtectedLayout() {
           presentation: 'fullScreenModal',
         }}
       />
+      <Stack.Screen
+        name="agent/index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="rescue-token"
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }

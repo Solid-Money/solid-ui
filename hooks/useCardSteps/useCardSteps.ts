@@ -97,13 +97,8 @@ export function useCardSteps(
   );
 
   // Card activation state and handlers
-  const {
-    cardActivated,
-    activatingCard,
-    handleActivateCard,
-    syncCardActivationState,
-    pushCardDetails,
-  } = useCardActivation(router);
+  const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
+    useCardActivation(router);
 
   // Sync card activation state with server
   useEffect(() => {
@@ -201,11 +196,9 @@ export function useCardSteps(
     const status = cardStatusResponse?.rainApplicationStatus;
     const link = cardStatusResponse?.applicationExternalVerificationLink;
 
-    if (
-      status === RainApplicationStatus.DENIED ||
-      status === RainApplicationStatus.LOCKED ||
-      status === RainApplicationStatus.CANCELED
-    ) {
+    // DENIED is a final decision with no action — it renders no button, so it is not
+    // handled here. LOCKED/CANCELED still offer a "Contact support" button.
+    if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
       openIntercom();
       return;
     }
@@ -251,11 +244,13 @@ export function useCardSteps(
         cardStatusResponse?.activationBlocked,
         cardStatusResponse?.activationBlockedReason,
         handleProceedToKyc,
-        handleActivateCard,
+        pushCardReady,
         pushCardDetails,
         {
           cardIssuer,
           rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          kycStatus: cardStatusResponse?.kycStatus,
+          kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
         },
       ),
@@ -266,8 +261,10 @@ export function useCardSteps(
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
       cardStatusResponse?.rainApplicationStatus,
+      cardStatusResponse?.kycStatus,
+      cardStatusResponse?.kycWarnings,
       handleProceedToKyc,
-      handleActivateCard,
+      pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,

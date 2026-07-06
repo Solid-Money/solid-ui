@@ -26,6 +26,7 @@ interface LazyAreaChartProps {
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel?: boolean;
+  isYAxisLabel?: boolean;
   style?: StyleProp<ViewStyle>;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
@@ -40,10 +41,7 @@ interface ChartErrorBoundaryState {
   hasError: boolean;
 }
 
-class ChartErrorBoundary extends Component<
-  { children: React.ReactNode },
-  ChartErrorBoundaryState
-> {
+class ChartErrorBoundary extends Component<{ children: React.ReactNode }, ChartErrorBoundaryState> {
   state: ChartErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): ChartErrorBoundaryState {

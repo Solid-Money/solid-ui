@@ -16,6 +16,7 @@ export default function KycWeb() {
     markStarted,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   } = useDiditSession();
   const hasStartedRef = useRef(false);
@@ -27,6 +28,13 @@ export default function KycWeb() {
 
     hasStartedRef.current = true;
 
+    // Reset BEFORE wiring handlers. `DiditSdk.reset()` is a static method that
+    // destroys the singleton (`_instance = null`), so the next `DiditSdk.shared`
+    // access creates a fresh instance. If we attach `onComplete` / `onEvent`
+    // before resetting, the handlers land on the about-to-be-destroyed instance
+    // and the new instance silently has no callbacks at all.
+    DiditSdk.reset();
+
     DiditSdk.shared.onComplete = result => {
       switch (result.type) {
         case 'completed':
@@ -34,10 +42,12 @@ export default function KycWeb() {
           if (result.session?.status === 'Approved') {
             onVerificationComplete();
           } else if (result.session?.status === 'Declined') {
-            onVerificationError('Your identity verification was declined.');
+            // Redirect to /card/activate so the user sees specific Didit warnings
+            // (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) instead of a
+            // generic "declined" screen with a retry button that loops.
+            onVerificationDeclined();
           } else {
-            // 'Pending', 'In Review', etc. — redirect back to activate page
-            // so user sees "Under Review" state instead of blank page
+            // 'Pending' shows up here for manual-review sessions.
             onVerificationPending();
           }
           break;
@@ -52,8 +62,53 @@ export default function KycWeb() {
       }
     };
 
-    // Reset any previous SDK state so the embed container can be reused on retry
-    DiditSdk.reset();
+    // With manual review enabled the SDK never fires `didit:completed` (that
+    // only fires for terminal Approved/Declined states), so `onComplete` won't
+    // run for an In Review session and the user just stares at a blank Didit
+    // screen. We listen to `didit:status_updated` to catch the moment Didit
+    // moves the session into a review/terminal state. Per the Didit docs the
+    // values that surface here are: Not Started, In Progress, Approved,
+    // Declined, In Review, Awaiting User, Resubmitted, Expired, Abandoned,
+    // Kyc Expired. ('Pending' shows up in `onComplete` only.)
+    //
+    // Note: `didit:verification_submitted` fires for every step (document,
+    // selfie, questionnaire), so it can't be used to detect that the user
+    // has finished the entire flow.
+    DiditSdk.shared.onEvent = event => {
+      if (!hasStartedRef.current) return;
+      if (event.type !== 'didit:status_updated') return;
+
+      const status = event.data?.status;
+      switch (status) {
+        case 'Approved':
+          hasStartedRef.current = false;
+          onVerificationComplete();
+          break;
+        case 'Declined':
+          hasStartedRef.current = false;
+          onVerificationDeclined();
+          break;
+        case 'Expired':
+        case 'Kyc Expired':
+          hasStartedRef.current = false;
+          onVerificationError('Your verification session expired. Please try again.');
+          break;
+        case 'Abandoned':
+          hasStartedRef.current = false;
+          onVerificationError('Your verification was abandoned. Please try again.');
+          break;
+        case 'In Review':
+        case 'Resubmitted':
+          hasStartedRef.current = false;
+          onVerificationPending();
+          break;
+        // 'Not Started', 'In Progress', 'Awaiting User' — keep the user in
+        // the widget; they still have something to do or are mid-flow.
+        default:
+          break;
+      }
+    };
+
     DiditSdk.shared.startVerification({
       url: verificationUrl,
       configuration: {
@@ -69,6 +124,7 @@ export default function KycWeb() {
     initSession,
     onVerificationComplete,
     onVerificationPending,
+    onVerificationDeclined,
     onVerificationError,
   ]);
 

@@ -5,9 +5,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import { DepositMethod } from '@/lib/types';
+import { getVaultDepositConfig } from '@/lib/vaults';
 
 import DepositOption from './DepositOption';
 
@@ -28,7 +28,7 @@ const DepositOptions = () => {
   const { user } = useUser();
   const { externalWalletOptions } = useDepositExternalWalletOptions();
   const { buyCryptoOptions } = useDepositBuyCryptoOptions();
-  const { depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
 
   // Track when deposit options are viewed
   useEffect(() => {

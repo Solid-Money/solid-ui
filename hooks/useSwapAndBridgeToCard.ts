@@ -11,7 +11,6 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
-import { getStargateQuote } from '@/lib/api';
 import {
   ADDRESSES,
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
@@ -20,6 +19,7 @@ import {
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
 import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
+import { getStargateChainId, getStargateQuote } from '@/lib/utils/stargate';
 
 import { useCardContracts } from './useCardContracts';
 import { useCardDetails } from './useCardDetails';
@@ -100,7 +100,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_INITIATED, {
           amount: amount,
           from_chain: fuse.id,
-          to_chain: 42161, // Arbitrum
+          to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
           source: 'useSwapBridgeToCard',
         });
 
@@ -159,7 +159,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         const nativeFeeAmount = BigInt(transaction.value);
 
         const sendParam = {
-          dstEid: 30110,
+          dstEid: getStargateChainId(EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID) as number,
           to: pad(destinationAddress as `0x${string}`, {
             size: 32,
           }),
@@ -251,7 +251,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
             amount: amount,
             fee: transaction.value,
             from_chain: fuse.id,
-            to_chain: 42161,
+            to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
             source: 'useBridgeToCard',
           });
           Sentry.captureException(error, {
@@ -280,7 +280,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
           transaction_hash: transaction_result.transactionHash,
           fee: transaction.value,
           from_chain: fuse.id,
-          to_chain: 42161,
+          to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
           source: 'useBridgeToCard',
         });
 
@@ -304,7 +304,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_ERROR, {
           amount: amount,
           from_chain: fuse.id,
-          to_chain: 42161,
+          to_chain: EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
           error: error instanceof Error ? error.message : 'Unknown error',
           user_cancelled: String(error).includes('cancelled'),
           step: 'execution',

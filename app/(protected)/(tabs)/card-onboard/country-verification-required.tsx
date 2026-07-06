@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -42,9 +43,7 @@ export default function CountryVerificationRequired() {
       <View className="mx-auto w-full max-w-lg px-4 pt-12">
         {/* Header */}
         <View className="mb-10 flex-row items-center justify-between">
-          <Pressable onPress={goBack} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton onPress={goBack} />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Verification Required
           </Text>

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
 
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
@@ -128,9 +128,7 @@ export default function UserKycInfo() {
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 px-6 pt-8">
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Identity verification
           </Text>

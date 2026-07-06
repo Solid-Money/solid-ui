@@ -15,6 +15,6 @@ export function useCardContracts() {
     queryKey: [CARD_CONTRACTS_KEY],
     queryFn: () => withRefreshToken(() => getCardContracts()),
     enabled: provider === CardProvider.RAIN,
-    retry: false,
+    retry: 2,
   });
 }

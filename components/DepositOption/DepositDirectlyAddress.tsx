@@ -25,6 +25,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { eclipseAddress } from '@/lib/utils';
 
+const solidLogo = require('@/assets/images/solid-white.png');
+
 const FUEL_ICON = <Fuel size={16} color="#A1A1AA" />;
 const COPY_ICON = <Copy size={14} color="white" />;
 const SHARE_ICON = <Share2 size={18} color="white" />;
@@ -222,8 +224,16 @@ const QRDialog = React.memo(function QRDialog({
       contentClassName="max-w-sm px-3 py-4"
     >
       <View className="items-center gap-3">
-        <View className="rounded-3xl bg-white p-3">
-          <QRCode value={walletAddress || ''} size={220} backgroundColor="white" color="black" />
+        <View className="overflow-hidden rounded-3xl">
+          <QRCode
+            value={walletAddress || ''}
+            size={220}
+            color="white"
+            backgroundColor="#181A1A"
+            logo={solidLogo}
+            logoSize={55}
+            logoBackgroundColor="transparent"
+          />
         </View>
         <Text className="text-center text-xs text-muted-foreground">
           Share this QR code with the sender or scan it from another device to populate the wallet

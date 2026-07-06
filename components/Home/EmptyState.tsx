@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import { Image, ImageSource } from 'expo-image';
 
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
-import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
@@ -42,7 +42,7 @@ export default function HomeEmptyState() {
 
         <View className="gap-10 md:gap-20">
           {!isScreenMedium && (
-            <SavingsHeaderButtonsMobile disableWithdraw disableSend disableSwap />
+            <DashboardHeaderButtonsMobile />
           )}
 
           {/* Welcome to Solid */}

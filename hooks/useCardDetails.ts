@@ -10,6 +10,14 @@ import { useCardProvider } from './useCardProvider';
 
 const CARD_BALANCE = 'cardBalance';
 
+// Query options for prefetching card details
+// export const cardDetailsQueryOptions = () => ({
+//   queryKey: [CARD_DETAILS],
+//   queryFn: () => withRefreshToken(() => getCardDetails()),
+//   staleTime: 5_000,
+//   refetchInterval: 5_000,
+// });
+
 export const useCardDetails = () => {
   const detailsQuery = useQuery(cardDetailsQueryOptions());
   const { provider } = useCardProvider();
@@ -41,9 +49,8 @@ export const useCardDetails = () => {
     () => ({
       ...detailsQuery,
       data: mergedData,
-      isLoading:
-        detailsQuery.isLoading || (provider === CardProvider.RAIN && balanceQuery.isLoading),
+      isLoading: detailsQuery.isLoading,
     }),
-    [detailsQuery, mergedData, provider, balanceQuery.isLoading],
+    [detailsQuery, mergedData],
   );
 };

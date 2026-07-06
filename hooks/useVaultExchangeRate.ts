@@ -1,6 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { fetchExchangeRate, fetchExchangeRatesoFuse } from '@/hooks/usePreviewDeposit';
+import {
+  fetchExchangeRate,
+  fetchExchangeRateSoEth,
+  fetchExchangeRatesoFuse,
+} from '@/hooks/usePreviewDeposit';
 
 /** Returns soUSD→USD for USDC, soFUSE→FUSE for FUSE (display units on savings page). */
 export const useVaultExchangeRate = (tokenName: string) => {
@@ -19,8 +23,14 @@ export const useVaultExchangeRate = (tokenName: string) => {
         return Number(rate) / 10 ** 18; // soFUSE → FUSE (18 decimals), for display in FUSE
       }
 
+      if (tokenName === 'ETH') {
+        const rate = await fetchExchangeRateSoEth(queryClient);
+        return Number(rate) / 10 ** 18; // soETH → ETH (18 decimals)
+      }
+
       return 1;
     },
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 };

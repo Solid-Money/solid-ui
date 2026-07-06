@@ -6,6 +6,7 @@ import {
   arbitrum,
   base,
   baseSepolia,
+  bsc,
   fuse,
   mainnet,
   polygon,
@@ -15,7 +16,7 @@ import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
 polyfill();
 
-const chains: [Chain, ...Chain[]] = [fuse, mainnet, polygon, base, baseSepolia, arbitrum];
+const chains: [Chain, ...Chain[]] = [fuse, mainnet, polygon, base, baseSepolia, arbitrum, bsc];
 
 export const getChain = (chainId: number): Chain | undefined => {
   return chains.find((chain: Chain) => chain.id === chainId);
@@ -28,6 +29,7 @@ export const rpcUrls: Record<number, string> = {
   [base.id]: `https://base-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [baseSepolia.id]: `https://base-sepolia.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [arbitrum.id]: `https://arb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
+  [bsc.id]: `https://bnb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 };
 
 const transports: Record<number, ReturnType<typeof http>> = {
@@ -37,6 +39,7 @@ const transports: Record<number, ReturnType<typeof http>> = {
   [base.id]: http(rpcUrls[base.id]),
   [baseSepolia.id]: http(rpcUrls[baseSepolia.id]),
   [arbitrum.id]: http(rpcUrls[arbitrum.id]),
+  [bsc.id]: http(rpcUrls[bsc.id]),
 };
 
 export const publicClient = (chainId: number) =>

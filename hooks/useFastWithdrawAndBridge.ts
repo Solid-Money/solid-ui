@@ -4,7 +4,7 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { FastWithdrawManager_ABI } from '@/lib/abis/FastWithdrawManager';
 import { track } from '@/lib/analytics';
-import { getStargateQuote } from '@/lib/api';
+import { getStargateQuote } from '@/lib/utils/stargate';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';

@@ -11,6 +11,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 
 import ToInput from './ToInput';
@@ -24,11 +25,25 @@ const TokenSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
-  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const {
+    ethereumTokens,
+    fuseTokens,
+    polygonTokens,
+    baseTokens,
+    arbitrumTokens,
+    bscTokens,
+  } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
-    const combined = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+    const combined = [
+      ...ethereumTokens,
+      ...fuseTokens,
+      ...polygonTokens,
+      ...baseTokens,
+      ...arbitrumTokens,
+      ...bscTokens,
+    ];
     return combined.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -38,7 +53,7 @@ const TokenSelector: React.FC = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {
@@ -86,7 +101,8 @@ const TokenSelector: React.FC = () => {
                     <View className="flex-1">
                       <Text className="text-lg font-semibold">{token.contractTickerSymbol}</Text>
                       <Text className="text-sm font-medium opacity-50">
-                        {token.contractTickerSymbol} on {getBridgeChain(token.chainId).name}
+                        {token.contractTickerSymbol} on{' '}
+                        {getBridgeChain(token.chainId)?.name ?? getChain(token.chainId)?.name}
                       </Text>
                     </View>
                   </View>

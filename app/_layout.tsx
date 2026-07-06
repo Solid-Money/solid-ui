@@ -1,7 +1,7 @@
 import '@/global.css';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
+import { Appearance, AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -23,9 +23,15 @@ import {
   useFonts,
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import NetInfo from '@react-native-community/netinfo';
 import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  focusManager,
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { WagmiProvider } from 'wagmi';
 
@@ -40,9 +46,11 @@ import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
+import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
+import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -116,6 +124,10 @@ Sentry.init({
   // tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
 });
 
+// EAS Observe: native-side startup/performance metric collection begins at
+// launch, so configure dispatching before the app renders.
+configureObserve();
+
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
 }
@@ -153,6 +165,27 @@ function WhatsNewWrapper() {
   return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
 }
 
+// On native, React Query's focus and online managers have no default wiring:
+// `refetchOnWindowFocus` listens to `visibilitychange` (web-only) and
+// `refetchOnReconnect` has no transport to detect connectivity. Without this
+// bridge, a query with `refetchOnWindowFocus: true` (e.g. tokenBalances)
+// never fires when the app returns from background, and queries don't recover
+// after a network drop. Wire AppState → focusManager and NetInfo → onlineManager.
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener(handleFocus => {
+    const subscription = AppState.addEventListener('change', status => {
+      handleFocus(status === 'active');
+    });
+    return () => subscription.remove();
+  });
+
+  onlineManager.setEventListener(setOnline => {
+    return NetInfo.addEventListener(state => {
+      setOnline(!!state.isConnected);
+    });
+  });
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -164,9 +197,10 @@ export const queryClient = new QueryClient({
   },
 });
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+  const [analyticsReady, setAnalyticsReady] = useState(false);
 
   const hasSelectedUser = useUserStore(state => state.users.some(u => u.selected));
 
@@ -175,6 +209,9 @@ export default Sentry.wrap(function RootLayout() {
 
   // Push notification lifecycle: token refresh + notification tap handling
   usePushNotifications();
+
+  // Record platform (ios/android/web) on the user once per session
+  useTrackUserPlatform();
 
   // App Tracking Transparency (iOS only)
   const {
@@ -189,7 +226,9 @@ export default Sentry.wrap(function RootLayout() {
     if (!splashScreenHidden) return;
     if (Platform.OS === 'ios' && !attReady) return;
 
-    initAnalytics(isTrackingAllowed).catch(e => console.warn('Analytics init error:', e));
+    initAnalytics(isTrackingAllowed)
+      .catch(e => console.warn('Analytics init error:', e))
+      .finally(() => setAnalyticsReady(true));
   }, [splashScreenHidden, attReady, isTrackingAllowed]);
 
   useEffect(() => {
@@ -274,13 +313,27 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [appIsReady, splashScreenHidden]);
 
+  // EAS Observe: record time-to-interactive once the splash screen is gone
+  // and the first real frame is visible.
+  useEffect(() => {
+    if (splashScreenHidden) {
+      markAppInteractive();
+    }
+  }, [splashScreenHidden]);
+
   // Track screen views on all platforms (web, iOS, Android)
   // trackScreen() handles platform-specific routing internally:
   // - Amplitude: tracks on all platforms
   // - Firebase: tracks on web only
   useEffect(() => {
+    // Wait until analytics is initialized before tracking screen views. On
+    // web the SDK has no proxy/serverUrl configured until init() runs, so an
+    // early Page Viewed would be queued and flushed to the wrong endpoint (or
+    // lost). Gating on analyticsReady also re-fires this effect once init
+    // completes, capturing the landing screen with full attribution context.
+    if (!analyticsReady) return;
     trackScreen(pathname, params);
-  }, [pathname, params]);
+  }, [pathname, params, analyticsReady]);
 
   useEffect(() => {
     if (fontError) {
@@ -293,14 +346,14 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
+    <SafeAreaProvider>
       <TurnkeyProvider>
         <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={getInfoClient()}>
                 <Intercom>
-                  <GestureHandlerRootView>
+                  <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
                     <BottomSheetModalProvider>
                       {Platform.OS === 'web' && (
                         <Head>
@@ -392,4 +445,8 @@ export default Sentry.wrap(function RootLayout() {
       </TurnkeyProvider>
     </SafeAreaProvider>
   );
-});
+}
+
+// withObserve wraps the layout with AppMetricsRoot so EAS Observe records
+// time-to-first-render without a manual markFirstRender() call.
+export default Sentry.wrap(withObserve(RootLayout));

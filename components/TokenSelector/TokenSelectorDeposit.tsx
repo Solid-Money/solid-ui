@@ -6,14 +6,24 @@ import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
 
+const solidLogo = require('@/assets/images/solid-white.png');
+
 const TokenSelectorDeposit = () => {
   const { user } = useUser();
 
   return (
     <View className="rounded-xl bg-primary/10">
       <View className="items-center justify-center border-b border-border/50 px-2 py-6">
-        <View className="rounded-xl bg-white p-4">
-          <QRCode value={user?.safeAddress} size={200} />
+        <View className="overflow-hidden rounded-xl">
+          <QRCode
+            value={user?.safeAddress || ''}
+            size={200}
+            color="white"
+            backgroundColor="#181A1A"
+            logo={solidLogo}
+            logoSize={50}
+            logoBackgroundColor="transparent"
+          />
         </View>
       </View>
       <View className="flex-row items-center justify-center gap-2 p-2">

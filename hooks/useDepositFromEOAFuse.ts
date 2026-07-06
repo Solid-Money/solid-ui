@@ -275,21 +275,28 @@ const useDepositFromEOAFuse = (
             });
 
             // Track deposit success with attribution for ROI measurement
-            track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-              user_id: user?.userId,
-              safe_address: user?.safeAddress,
-              eoa_address: eoaAddress,
-              amount,
-              transaction_hash: txHash,
-              deposit_type: 'connected_wallet',
-              deposit_method: 'fuse_direct',
-              chain_id: srcChainId,
-              chain_name: 'fuse',
-              is_sponsor: isSponsor,
-              is_first_deposit: !user?.isDeposited,
-              ...attributionData,
-              attribution_channel: attributionChannel,
-            });
+            // Amplitude emitted server-side as "Savings Deposit Completed";
+            // suppress client Amplitude to avoid double-counting (Firebase + GTM
+            // still fire).
+            track(
+              TRACKING_EVENTS.DEPOSIT_COMPLETED,
+              {
+                user_id: user?.userId,
+                safe_address: user?.safeAddress,
+                eoa_address: eoaAddress,
+                amount,
+                transaction_hash: txHash,
+                deposit_type: 'connected_wallet',
+                deposit_method: 'fuse_direct',
+                chain_id: srcChainId,
+                chain_name: 'fuse',
+                is_sponsor: isSponsor,
+                is_first_deposit: !user?.isDeposited,
+                ...attributionData,
+                attribution_channel: attributionChannel,
+              },
+              { amplitude: false },
+            );
 
             trackIdentity(user?.userId, {
               last_deposit_amount: parseFloat(amount),
@@ -395,21 +402,27 @@ const useDepositFromEOAFuse = (
           },
         });
 
-        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-          user_id: user?.userId,
-          safe_address: user?.safeAddress,
-          eoa_address: eoaAddress,
-          amount,
-          transaction_hash: txHash,
-          deposit_type: 'connected_wallet',
-          deposit_method: 'fuse_direct',
-          chain_id: srcChainId,
-          chain_name: 'fuse',
-          is_sponsor: isSponsor,
-          is_first_deposit: !user?.isDeposited,
-          ...attributionData,
-          attribution_channel: attributionChannel,
-        });
+        // Amplitude emitted server-side as "Savings Deposit Completed"; suppress
+        // client Amplitude to avoid double-counting (Firebase + GTM still fire).
+        track(
+          TRACKING_EVENTS.DEPOSIT_COMPLETED,
+          {
+            user_id: user?.userId,
+            safe_address: user?.safeAddress,
+            eoa_address: eoaAddress,
+            amount,
+            transaction_hash: txHash,
+            deposit_type: 'connected_wallet',
+            deposit_method: 'fuse_direct',
+            chain_id: srcChainId,
+            chain_name: 'fuse',
+            is_sponsor: isSponsor,
+            is_first_deposit: !user?.isDeposited,
+            ...attributionData,
+            attribution_channel: attributionChannel,
+          },
+          { amplitude: false },
+        );
 
         trackIdentity(user?.userId, {
           last_deposit_amount: parseFloat(amount),

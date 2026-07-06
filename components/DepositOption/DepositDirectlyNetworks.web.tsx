@@ -11,9 +11,8 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
-import { getAllowedTokensForChain } from '@/lib/vaults';
+import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositDirectlyNetworks = () => {
@@ -24,7 +23,7 @@ const DepositDirectlyNetworks = () => {
     })),
   );
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
 
@@ -32,7 +31,7 @@ const DepositDirectlyNetworks = () => {
     try {
       setSelectedChainId(id);
       const network = BRIDGE_TOKENS[id];
-      const allowedTokens = getAllowedTokensForChain(id, vault);
+      const allowedTokens = getAllowedTokensForChain(id);
 
       // Track network selection
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -42,7 +41,6 @@ const DepositDirectlyNetworks = () => {
         network_name: network?.name,
         deposit_type: 'direct_deposit',
         deposit_method: 'external_wallet_direct',
-        vault: vault.name,
       });
 
       // Store chainId in session
@@ -70,7 +68,6 @@ const DepositDirectlyNetworks = () => {
           wallet_address: session.walletAddress,
           chain_id: id,
           token_symbol: availableToken,
-          vault: vault.name,
         });
 
         // Navigate to address display screen
@@ -112,17 +109,15 @@ const DepositDirectlyNetworks = () => {
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
           .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
-          .filter(([id]) => getAllowedTokensForChain(Number(id), vault).length > 0)
+          .filter(([id]) => getAllowedTokensForChain(Number(id)).length > 0)
           .map(([id, network]) => {
             const chainId = Number(id);
             const isSelected = selectedChainId === chainId;
             const isComingSoon = network.isComingSoon;
 
-            // Get estimated time: 5 min for Ethereum; 2 min for soFUSE on Fuse; else 30 min
+            // Get estimated time: 5 min for Ethereum; else 30 min
             let estimatedTime = 'Estimated speed: 30 min';
             if (chainId === 1) estimatedTime = 'Estimated speed: 5 min';
-            else if (chainId === 122 && vault.vaultToken === 'soFUSE')
-              estimatedTime = 'Estimated speed: 2 min';
 
             return (
               <DepositNetwork

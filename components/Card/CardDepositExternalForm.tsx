@@ -158,6 +158,7 @@ export default function CardDepositExternalForm() {
             type: 'error',
             text1: 'External deposits not available',
             text2: 'This card does not support deposits from external wallet',
+            props: { badgeText: '' },
           });
           return;
         }

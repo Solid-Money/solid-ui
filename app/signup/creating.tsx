@@ -156,7 +156,11 @@ export default function SignupCreating() {
     // If a selected user already exists, signup previously succeeded.
     // Redirect to avoid duplicate createAccount() calls on revisit.
     if (hasSelectedUser) {
-      if (Platform.OS === 'web') {
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
         router.replace(path.NOTIFICATIONS);
@@ -250,16 +254,23 @@ export default function SignupCreating() {
         attribution_channel: attributionChannel,
       });
 
-      track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
-        user_id: user._id,
-        username: user.username,
-        email: user.email,
-        referral_code: referralCode,
-        safe_address: safeAddress,
-        has_passkey: selectedUser.hasPasskey,
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      // Amplitude is emitted server-side as "Account Created" (backend signup
+      // flow); suppress the client Amplitude event to avoid double-counting.
+      // Firebase + GTM still fire here to preserve web conversion attribution.
+      track(
+        TRACKING_EVENTS.SIGNUP_COMPLETED,
+        {
+          user_id: user._id,
+          username: user.username,
+          email: user.email,
+          referral_code: referralCode,
+          safe_address: safeAddress,
+          has_passkey: selectedUser.hasPasskey,
+          ...attributionData,
+          attribution_channel: attributionChannel,
+        },
+        { amplitude: false },
+      );
 
       // Navigate to home/notifications or redirectFrom page
       setStep('complete');
