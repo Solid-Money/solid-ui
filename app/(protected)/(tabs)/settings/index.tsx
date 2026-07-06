@@ -2,12 +2,12 @@ import { Linking, Platform, Pressable, Text, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { router } from 'expo-router';
-import { ArrowLeft, Bell, ChevronLeft } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import { BackButton } from '@/components/ui/back-button';
 import { useDimension } from '@/hooks/useDimension';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import useUser from '@/hooks/useUser';
@@ -25,9 +25,9 @@ export default function Settings() {
   const { status: notificationStatus } = useNotificationPermissionStatus();
 
   const notificationStatusColor =
-    notificationStatus === 'authorized'
+    notificationStatus === 'Authorized'
       ? 'text-[#94F27F]'
-      : notificationStatus === 'denied'
+      : notificationStatus === 'Denied'
         ? 'text-[#FFB347]'
         : 'text-[#ACACAC]';
 
@@ -43,9 +43,7 @@ export default function Settings() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable onPress={() => router.back()} className="p-2">
-        <ChevronLeft size={24} color="#ffffff" />
-      </Pressable>
+      <BackButton />
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Settings</Text>
     </View>
   );
@@ -55,9 +53,7 @@ export default function Settings() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton />
           <Text className="text-3xl font-semibold text-white">Settings</Text>
           <View className="w-6" />
         </View>

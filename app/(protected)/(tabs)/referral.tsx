@@ -1,11 +1,11 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { Link } from 'expo-router';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
@@ -19,9 +19,7 @@ export default function Referral() {
       <View className="mx-auto w-full max-w-lg flex-1 justify-center gap-10 px-4 py-8">
         <View className="mx-auto w-full gap-5 md:gap-5">
           <View className="flex-row items-center justify-between">
-            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-              <ArrowLeft color="white" />
-            </Pressable>
+            <BackButton />
             <Text className="text-center text-lg font-semibold text-white md:text-xl">
               Share your referral code
             </Text>

@@ -1,7 +1,7 @@
 import '@/global.css';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
+import { Appearance, AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -23,9 +23,15 @@ import {
   useFonts,
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import NetInfo from '@react-native-community/netinfo';
 import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  focusManager,
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { WagmiProvider } from 'wagmi';
 
@@ -151,6 +157,27 @@ function WhatsNewWrapper() {
   if (!whatsNew) return null;
 
   return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
+}
+
+// On native, React Query's focus and online managers have no default wiring:
+// `refetchOnWindowFocus` listens to `visibilitychange` (web-only) and
+// `refetchOnReconnect` has no transport to detect connectivity. Without this
+// bridge, a query with `refetchOnWindowFocus: true` (e.g. tokenBalances)
+// never fires when the app returns from background, and queries don't recover
+// after a network drop. Wire AppState → focusManager and NetInfo → onlineManager.
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener(handleFocus => {
+    const subscription = AppState.addEventListener('change', status => {
+      handleFocus(status === 'active');
+    });
+    return () => subscription.remove();
+  });
+
+  onlineManager.setEventListener(setOnline => {
+    return NetInfo.addEventListener(state => {
+      setOnline(!!state.isConnected);
+    });
+  });
 }
 
 export const queryClient = new QueryClient({

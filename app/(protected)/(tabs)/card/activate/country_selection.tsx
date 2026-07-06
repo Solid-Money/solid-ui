@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
@@ -15,16 +16,18 @@ import { track } from '@/lib/analytics';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export default function ActivateCountrySelection() {
   const router = useRouter();
+  const { user } = useUserStore(
+    useShallow(state => ({
+      user: state.users.find(user => user.selected),
+    })),
+  );
 
   const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push(path.CARD);
-    }
+    router.replace(path.CARD);
   };
 
   const [loading, setLoading] = useState(true);
@@ -258,9 +261,7 @@ export default function ActivateCountrySelection() {
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg px-4 pt-12">
         <View className="mb-10 flex-row items-center justify-between">
-          <Pressable onPress={goBack} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton onPress={goBack} />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Solid card
           </Text>

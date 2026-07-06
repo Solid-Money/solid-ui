@@ -11,7 +11,7 @@ const DepositButton = () => {
       <Button variant="brand" className="h-[3.375rem] rounded-xl pr-6 md:w-72">
         <View className="flex-row items-center gap-2">
           <Plus color="black" />
-          <Text className="text-base font-bold">Make your first deposit</Text>
+          <Text className="text-base font-bold">Fund your Solid wallet</Text>
         </View>
       </Button>
     );

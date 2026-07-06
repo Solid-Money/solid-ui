@@ -4,6 +4,11 @@ const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getSentryExpoConfig(__dirname);
 
+// Expo injects this legacy watcher flag, but Metro 0.83 no longer accepts it.
+if (config.watcher?.unstable_workerThreads !== undefined) {
+  delete config.watcher.unstable_workerThreads;
+}
+
 // Custom resolver to handle platform-specific modules
 config.resolver = {
   ...config.resolver,

@@ -62,7 +62,7 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <Button
         onPress={() => Toast.hide()}
         variant="ghost"
-        className="!h-full rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
+        className="native:!h-full web:!h-auto rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
       >
         <X color="white" />
       </Button>
@@ -90,6 +90,17 @@ const toastConfig = {
       classNames={{
         badge: 'border-red-400',
         badgeText: 'text-red-400',
+      }}
+    />
+  ),
+  info: ({ text1, text2, props }: IBaseToast) => (
+    <BaseToast
+      text1={text1}
+      text2={text2}
+      props={{ badgeText: '', ...props }}
+      classNames={{
+        badge: 'border-blue-400',
+        badgeText: 'text-blue-400',
       }}
     />
   ),

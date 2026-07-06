@@ -10,13 +10,21 @@ import {
 import { ActivityIndicator, Linking, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import {
+  ChevronDown,
+  ChevronRight,
+  Fuel,
+  Info,
+  Leaf,
+  Wallet as WalletIcon,
+} from 'lucide-react-native';
 import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
+import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
@@ -38,15 +46,32 @@ import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import useCardDeposit from '@/hooks/useCardDeposit';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { useDepositStore } from '@/store/useDepositStore';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, isProduction } from '@/lib/config';
-import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+  isProduction,
+} from '@/lib/config';
+import {
+  CardProvider,
+  DepositCategory,
+  Status,
+  TokenBalance,
+  TokenType,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import {
   cn,
   formatNumber,
@@ -58,6 +83,8 @@ import { getChain } from '@/lib/wagmi';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 import { BorrowSlider } from './BorrowSlider';
+
+const BASE_USDC_TOKEN_URL = `https://basescan.org/token/${ADDRESSES.base.usdc}`;
 
 type FormData = { amount: string; from: CardDepositSource };
 
@@ -91,12 +118,14 @@ function SourceSelectorNative({
   const getDisplayText = useCallback(() => {
     if (value === CardDepositSource.WALLET) return 'Wallet';
     if (value === CardDepositSource.SAVINGS) return 'Savings';
+    if (value === CardDepositSource.EXTERNAL) return 'External Wallet';
     return 'Borrow against Savings';
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
     if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
+    if (from === CardDepositSource.EXTERNAL) return 'USDC';
     return '';
   }, [from, walletTokenSymbol]);
 
@@ -107,7 +136,7 @@ function SourceSelectorNative({
         onPress={() => setIsOpen(!isOpen)}
       >
         <View className="flex-row items-center gap-2">
-          {value === CardDepositSource.WALLET ? (
+          {value === CardDepositSource.WALLET || value === CardDepositSource.EXTERNAL ? (
             <WalletIcon color="#A1A1A1" size={24} />
           ) : value === CardDepositSource.SAVINGS ? (
             <Leaf color="#A1A1A1" size={24} />
@@ -159,6 +188,16 @@ function SourceSelectorNative({
             <WalletIcon color="#A1A1A1" size={20} />
             <Text className="text-lg">Wallet</Text>
           </Pressable>
+          <Pressable
+            className="flex-row items-center gap-2 px-4 py-3"
+            onPress={() => {
+              onChange(CardDepositSource.EXTERNAL);
+              setIsOpen(false);
+            }}
+          >
+            <WalletIcon color="#A1A1A1" size={20} />
+            <Text className="text-lg">External Wallet</Text>
+          </Pressable>
         </View>
       )}
     </View>
@@ -183,12 +222,14 @@ function SourceSelectorWeb({
   const getDisplayText = useCallback(() => {
     if (value === CardDepositSource.WALLET) return 'Wallet';
     if (value === CardDepositSource.SAVINGS) return 'Savings';
+    if (value === CardDepositSource.EXTERNAL) return 'External Wallet';
     return 'Borrow against Savings';
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
     if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
+    if (from === CardDepositSource.EXTERNAL) return 'USDC';
     return '';
   }, [from, walletTokenSymbol]);
 
@@ -197,7 +238,7 @@ function SourceSelectorWeb({
       <DropdownMenuTrigger asChild>
         <Pressable className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
           <View className="flex-row items-center gap-2">
-            {value === CardDepositSource.WALLET ? (
+            {value === CardDepositSource.WALLET || value === CardDepositSource.EXTERNAL ? (
               <WalletIcon color="#A1A1A1" size={24} />
             ) : value === CardDepositSource.SAVINGS ? (
               <Leaf color="#A1A1A1" size={24} />
@@ -237,6 +278,13 @@ function SourceSelectorWeb({
         >
           <WalletIcon color="#A1A1A1" size={20} />
           <Text className="text-lg">Wallet</Text>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onPress={() => onChange(CardDepositSource.EXTERNAL)}
+          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+        >
+          <WalletIcon color="#A1A1A1" size={20} />
+          <Text className="text-lg">External Wallet</Text>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -289,6 +337,8 @@ type AmountInputProps = {
   onAmountEntry?: () => void;
   /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
   walletTokenSymbol: string;
+  /** Optional override for the right-hand token cell (e.g. WalletTokenButton). */
+  rightSlot?: React.ReactNode;
 };
 
 function AmountInput({
@@ -297,6 +347,7 @@ function AmountInput({
   from,
   onAmountEntry,
   walletTokenSymbol,
+  rightSlot,
 }: AmountInputProps) {
   const getTokenImage = () => {
     if (from === CardDepositSource.WALLET) return getAsset('images/usdc-4x.png');
@@ -341,14 +392,18 @@ function AmountInput({
             />
           )}
         />
-        <View className="native:shrink-0 flex-row items-center gap-2">
-          <Image
-            source={getTokenImage()}
-            alt={getTokenSymbol()}
-            style={{ width: 34, height: 34 }}
-          />
-          <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
-        </View>
+        {rightSlot ? (
+          rightSlot
+        ) : (
+          <View className="native:shrink-0 flex-row items-center gap-2">
+            <Image
+              source={getTokenImage()}
+              alt={getTokenSymbol()}
+              style={{ width: 34, height: 34 }}
+            />
+            <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -526,13 +581,27 @@ export default function CardDepositInternalForm() {
   // Get all token balances including soUSD
   const { tokens, isLoading: isBalancesLoading } = useBalances();
 
-  // Get Fuse USDC.e balance (production Wallet)
-  const { data: fuseUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
+  // Production "From Wallet" card deposit: read USDC balance from the Solid
+  // Safe AA on the chain the user picked in the token selector. Falls back to
+  // the Fuse-stargate legacy behaviour when the user hasn't picked anything
+  // yet (cardDepositSrcChainId is 0 / unsupported).
+  const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
+  const selectedWalletUsdcAddress =
+    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as
+      | Address
+      | undefined) ?? undefined;
+  const hasSelectedWalletUsdc =
+    !!cardDepositSrcChainId && !!selectedWalletUsdcAddress;
+  const walletBalanceChainId = hasSelectedWalletUsdc ? cardDepositSrcChainId : fuse.id;
+  const walletBalanceTokenAddress = hasSelectedWalletUsdc
+    ? (selectedWalletUsdcAddress as Address)
+    : USDC_STARGATE;
+  const { data: walletUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
     abi: erc20Abi,
-    address: USDC_STARGATE,
+    address: walletBalanceTokenAddress,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
-    chainId: fuse.id,
+    chainId: walletBalanceChainId,
     query: { enabled: !!user?.safeAddress && isProduction },
   });
 
@@ -599,7 +668,7 @@ export default function CardDepositInternalForm() {
   // Get borrow APY from Aave
   const { borrowAPY, isLoading: isBorrowAPYLoading } = useAaveBorrowPosition();
 
-  const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
+  const usdcBalanceAmount = walletUsdcBalance ? Number(walletUsdcBalance) / 1e6 : 0;
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
@@ -618,7 +687,11 @@ export default function CardDepositInternalForm() {
         ? isUsdcBalanceLoading
         : isTestnetBalanceLoading
       : isBalancesLoading;
-  const walletTokenSymbol = isProduction ? 'USDC.e' : getCardDepositTokenSymbol(provider);
+  const walletTokenSymbol = isProduction
+    ? cardDepositSrcChainId === fuse.id
+      ? 'USDC.e'
+      : 'USDC'
+    : getCardDepositTokenSymbol(provider);
   const tokenSymbol =
     watchedFrom === CardDepositSource.WALLET
       ? walletTokenSymbol
@@ -663,6 +736,9 @@ export default function CardDepositInternalForm() {
     ADDRESSES.fuse.stargateOftUSDC,
   );
 
+  const isWalletSourceGaslessGated =
+    isProduction && watchedFrom === CardDepositSource.WALLET;
+
   const schema = useMemo(() => {
     return z.object({
       amount: z
@@ -698,6 +774,38 @@ export default function CardDepositInternalForm() {
 
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
+
+  const hasSelectedWalletToken =
+    watchedFrom === CardDepositSource.WALLET &&
+    isProduction &&
+    hasSelectedWalletUsdc;
+  const selectedCardWalletToken: TokenBalance | null = useMemo(() => {
+    if (!hasSelectedWalletToken || !selectedWalletUsdcAddress) return null;
+    return {
+      contractTickerSymbol: walletTokenSymbol,
+      contractName: 'USD Coin',
+      contractAddress: selectedWalletUsdcAddress,
+      balance: '0',
+      contractDecimals: 6,
+      type: TokenType.ERC20,
+      chainId: cardDepositSrcChainId,
+    };
+  }, [
+    hasSelectedWalletToken,
+    selectedWalletUsdcAddress,
+    walletTokenSymbol,
+    cardDepositSrcChainId,
+  ]);
+  const {
+    deposit: walletCardDeposit,
+    depositStatus: walletCardDepositStatus,
+    error: walletCardDepositError,
+  } = useDepositFromSolidUsdc(
+    (selectedWalletUsdcAddress ?? '') as Address,
+    'USDC',
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    DepositCategory.CARD,
+  );
 
   // Track form viewed (once on mount)
   useEffect(() => {
@@ -802,6 +910,7 @@ export default function CardDepositInternalForm() {
             type: 'error',
             text1: 'Deposits not available',
             text2: 'This card does not support deposits to the funding chain',
+            props: { badgeText: '' },
           });
           return;
         }
@@ -817,9 +926,9 @@ export default function CardDepositInternalForm() {
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
-          type: TransactionType.CARD_TRANSACTION,
-          title: `Card Deposit`,
-          shortTitle: `Card Deposit`,
+          type: TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
+          title: `Borrow and deposit to Card`,
+          shortTitle: `Borrow and deposit to Card`,
           amount: data.amount,
           symbol: sourceSymbol,
           chainId: fuse.id,
@@ -827,7 +936,7 @@ export default function CardDepositInternalForm() {
           toAddress: borrowFundingAddress,
           status: TransactionStatus.PENDING,
           metadata: {
-            description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+            description: `Borrow and deposit ${data.amount} ${sourceSymbol} to card`,
             processingStatus: 'bridging',
             tokenAddress: sourceTokenAddress,
           },
@@ -900,6 +1009,14 @@ export default function CardDepositInternalForm() {
           return;
         }
 
+        if (watchedFrom === CardDepositSource.WALLET && isProduction) {
+          await walletCardDeposit(data.amount);
+          setTransaction({ amount: Number(data.amount) });
+          setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+          reset();
+          return;
+        }
+
         // Check for funding address
         if (!cardDetails) {
           Toast.show({
@@ -920,6 +1037,7 @@ export default function CardDepositInternalForm() {
             type: 'error',
             text1: 'Deposits not available',
             text2: 'This card does not support deposits to the funding chain',
+            props: { badgeText: '' },
           });
           return;
         }
@@ -935,9 +1053,9 @@ export default function CardDepositInternalForm() {
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
-          type: TransactionType.CARD_TRANSACTION,
-          title: `Card Deposit`,
-          shortTitle: `Card Deposit`,
+          type: TransactionType.BRIDGE_DEPOSIT,
+          title: `Deposit ${sourceSymbol} to Card`,
+          shortTitle: `Deposit ${sourceSymbol}`,
           amount: data.amount,
           symbol: sourceSymbol,
           chainId: fuse.id,
@@ -985,6 +1103,7 @@ export default function CardDepositInternalForm() {
     [
       watchedFrom,
       deposit,
+      walletCardDeposit,
       estimatedUSDC,
       exchangeRate,
       cardDetails,
@@ -1014,13 +1133,19 @@ export default function CardDepositInternalForm() {
   const isFundingAddressLoading = provider === CardProvider.RAIN && contractsLoading;
   const isWalletDepositPending =
     !isProduction && watchedFrom === CardDepositSource.WALLET && depositStatus === Status.PENDING;
+  const isWalletCardDepositPending =
+    isProduction &&
+    watchedFrom === CardDepositSource.WALLET &&
+    walletCardDepositStatus.status === Status.PENDING;
   const disabled =
     bridgeStatus === Status.PENDING ||
     swapAndBridgeStatus === Status.PENDING ||
     isWalletDepositPending ||
+    isWalletCardDepositPending ||
     (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
     (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
     isFundingAddressLoading ||
+    (isWalletSourceGaslessGated && !hasSelectedWalletToken) ||
     !isValid ||
     !watchedAmount;
 
@@ -1030,8 +1155,9 @@ export default function CardDepositInternalForm() {
     try {
       schema.parse({ amount: watchedAmount });
       return null;
-    } catch (error: any) {
-      return error.errors?.[0]?.message || null;
+    } catch (error: unknown) {
+      const err = error as { issues?: { message?: string }[] };
+      return err.issues?.[0]?.message ?? null;
     }
   }, [watchedAmount, schema]);
 
@@ -1104,6 +1230,31 @@ export default function CardDepositInternalForm() {
     }
   }, [showBorrowOption, watchedFrom, setValue]);
 
+  const fundingAddress = useMemo(
+    () => getCardFundingAddress(cardDetails, provider, contracts ?? undefined),
+    [cardDetails, provider, contracts],
+  );
+
+  const externalWalletDescription = useMemo(
+    () => (
+      <View className="items-center gap-2">
+        <Text className="max-w-72 text-center text-sm text-muted-foreground">
+          Transfer USDC on Base chain.
+        </Text>
+        <Pressable
+          onPress={() => Linking.openURL(BASE_USDC_TOKEN_URL)}
+          className="web:hover:opacity-50"
+        >
+          <View className="flex-row flex-wrap items-center">
+            <Text className="text-sm font-medium text-white">See token address</Text>
+            <ChevronRight size={16} color="white" />
+          </View>
+        </Pressable>
+      </View>
+    ),
+    [],
+  );
+
   return (
     <View className="flex-1 gap-3">
       <SourceSelector
@@ -1114,7 +1265,20 @@ export default function CardDepositInternalForm() {
         walletTokenSymbol={walletTokenSymbol}
       />
 
-      {watchedFrom === CardDepositSource.BORROW ? (
+      {watchedFrom === CardDepositSource.EXTERNAL ? (
+        <View className="flex-1 gap-3">
+          {isFundingAddressLoading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator color="white" />
+            </View>
+          ) : (
+            <DepositPublicAddress
+              address={fundingAddress}
+              description={externalWalletDescription}
+            />
+          )}
+        </View>
+      ) : watchedFrom === CardDepositSource.BORROW ? (
         <View className="gap-4 px-2">
           <BorrowSlider
             value={sliderValue}
@@ -1131,6 +1295,14 @@ export default function CardDepositInternalForm() {
             from={watchedFrom}
             onAmountEntry={trackAmountEntry}
             walletTokenSymbol={walletTokenSymbol}
+            rightSlot={
+              isWalletSourceGaslessGated ? (
+                <WalletTokenButton
+                  selectedToken={selectedCardWalletToken}
+                  onPress={() => setModal(CARD_DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                />
+              ) : undefined
+            }
           />
           <BalanceDisplay
             balanceAmount={balanceAmount}
@@ -1200,25 +1372,41 @@ export default function CardDepositInternalForm() {
         </TokenDetails>
       )}
 
-      <View className="flex-1" />
+      {watchedFrom !== CardDepositSource.EXTERNAL && <View className="flex-1" />}
 
-      {watchedFrom !== CardDepositSource.BORROW && (
-        <DestinationDisplay
-          fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
-          destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
+      {watchedFrom !== CardDepositSource.BORROW &&
+        watchedFrom !== CardDepositSource.EXTERNAL && (
+          <DestinationDisplay
+            fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
+            destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
+          />
+        )}
+
+      {isWalletSourceGaslessGated && (
+        <View className="mt-2 flex-row items-start gap-2">
+          <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
+          <Text className="max-w-xs text-sm" style={{ color: '#A1A1A1' }}>
+            Gasless deposit
+          </Text>
+        </View>
+      )}
+
+      {watchedFrom !== CardDepositSource.EXTERNAL && (
+        <ErrorDisplay
+          error={
+            validationError ||
+            bridgeError ||
+            swapAndBridgeError ||
+            (!isProduction ? depositError : null) ||
+            (isProduction && watchedFrom === CardDepositSource.WALLET
+              ? walletCardDepositError
+              : null)
+          }
         />
       )}
 
-      <ErrorDisplay
-        error={
-          validationError ||
-          bridgeError ||
-          swapAndBridgeError ||
-          (!isProduction ? depositError : null)
-        }
-      />
-
-      {watchedFrom === CardDepositSource.BORROW ? (
+      {watchedFrom === CardDepositSource.EXTERNAL ? null : watchedFrom ===
+        CardDepositSource.BORROW ? (
         <BorrowAndDepositButton
           disabled={disabled || borrowAndDepositStatus === Status.PENDING}
           bridgeStatus={borrowAndDepositStatus}
@@ -1229,7 +1417,11 @@ export default function CardDepositInternalForm() {
         <SubmitButton
           disabled={disabled}
           bridgeStatus={
-            !isProduction && watchedFrom === CardDepositSource.WALLET ? depositStatus : bridgeStatus
+            !isProduction && watchedFrom === CardDepositSource.WALLET
+              ? depositStatus
+              : isProduction && watchedFrom === CardDepositSource.WALLET
+                ? walletCardDepositStatus.status
+                : bridgeStatus
           }
           swapAndBridgeStatus={swapAndBridgeStatus}
           onPress={handleSubmit(onSubmit)}

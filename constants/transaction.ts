@@ -82,11 +82,19 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.IN,
     category: TransactionCategory.REWARD,
   },
+  [TransactionType.FUND]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.WALLET_TRANSFER,
+  },
   [TransactionType.FAST_WITHDRAW]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.SAVINGS_ACCOUNT,
   },
   [TransactionType.BORROW_AND_DEPOSIT_TO_CARD]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.CARD_DEPOSIT,
+  },
+  [TransactionType.CARD_DEPOSIT]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,
   },
@@ -97,5 +105,13 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   [TransactionType.WITHDRAW_COLLATERAL]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.SAVINGS_ACCOUNT,
+  },
+  [TransactionType.AGENT_X402_PAYMENT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.WALLET_TRANSFER,
+  },
+  [TransactionType.AGENT_WALLET_DEPOSIT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.WALLET_TRANSFER,
   },
 };

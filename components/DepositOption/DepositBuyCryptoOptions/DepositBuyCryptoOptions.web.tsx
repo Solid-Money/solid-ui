@@ -2,11 +2,11 @@ import { View } from 'react-native';
 
 import DepositOption from '@/components/DepositOption/DepositOption';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
+import { getVaultDepositConfig } from '@/lib/vaults';
 
 const DepositBuyCryptoOptions = () => {
   const { buyCryptoOptions } = useDepositBuyCryptoOptions();
-  const { depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
 
   return (
     <View className="gap-y-2.5">

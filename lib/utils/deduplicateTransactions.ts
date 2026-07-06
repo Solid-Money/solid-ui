@@ -258,5 +258,26 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
     return !hasCardDepositTransaction;
   });
 
+  // Third pass: Remove BRIDGE_DEPOSIT activities that are part of a Fuse→Ethereum
+  // withdraw flow. When a user withdraws soUSD from Fuse, two activities are created:
+  // 1. BRIDGE_DEPOSIT (chain 122) - bridges soUSD from Fuse to Ethereum
+  // 2. WITHDRAW (chain 1) - redeems soUSD for USDC via BoringQueue
+  // We hide the BRIDGE_DEPOSIT when a matching WITHDRAW exists from the same address
+  // within 60 minutes, since the WITHDRAW is the user-facing final result.
+  deduplicatedArray = deduplicatedArray.filter(transaction => {
+    if (transaction.type !== TransactionType.BRIDGE_DEPOSIT) return true;
+
+    const hasMatchingWithdraw = deduplicatedArray.some(
+      tx =>
+        tx !== transaction &&
+        tx.type === TransactionType.WITHDRAW &&
+        tx.fromAddress?.toLowerCase() === transaction.fromAddress?.toLowerCase() &&
+        tx.amount === transaction.amount &&
+        Math.abs(parseInt(tx.timestamp || '0') - parseInt(transaction.timestamp || '0')) < 3600, // Within 60 minutes
+    );
+
+    return !hasMatchingWithdraw;
+  });
+
   return deduplicatedArray;
 }

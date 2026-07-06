@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
@@ -19,17 +20,24 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
-  const { users, _hasHydrated } = useUserStore(
-    useShallow(state => ({
-      users: state.users,
-      _hasHydrated: state._hasHydrated,
-    })),
-  );
+  const { users, _hasHydrated, pendingAuthUserId, selectUserById, unselectUser, setPendingAuthUserId } =
+    useUserStore(
+      useShallow(state => ({
+        users: state.users,
+        _hasHydrated: state._hasHydrated,
+        pendingAuthUserId: state.pendingAuthUserId,
+        selectUserById: state.selectUserById,
+        unselectUser: state.unselectUser,
+        setPendingAuthUserId: state.setPendingAuthUserId,
+      })),
+    );
+  const { httpClient } = useTurnkey();
   const router = useRouter();
   const { isDesktop } = useDimension();
-  const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const { session } = useLocalSearchParams<{ session: string }>();
   const passkeyUsers = users.filter(user => user.hasPasskey !== false);
+  const selectedUserId = users.find(u => u.selected)?.userId;
+  const isAuthInFlight = useRef(false);
 
   // Redirect to onboarding if no users exist (e.g., after session expired with empty user list)
   useEffect(() => {
@@ -51,13 +59,26 @@ export default function Welcome() {
     }
   }, [session]);
 
-  const handleSelectUser = useCallback(
-    async (userId: string) => {
-      setLoadingUserId(userId);
-      try {
-        await handleSelectUserById(userId);
-      } catch (error: any) {
-        // Show error toast if passkey authentication fails
+  // After a user is clicked, the store's selected user changes which causes
+  // TurnkeyProvider to re-mount with that user's credentialId in
+  // `passkeyConfig.allowCredentials`. This effect waits for the new
+  // httpClient to be ready and only then triggers the passkey prompt — so the
+  // authenticator sees the filtered credential list and only the selected
+  // user's passkey is offered.
+  useEffect(() => {
+    if (!pendingAuthUserId) return;
+    if (!httpClient) return;
+    if (selectedUserId !== pendingAuthUserId) return;
+    if (isAuthInFlight.current) return;
+
+    const userId = pendingAuthUserId;
+    isAuthInFlight.current = true;
+
+    handleSelectUserById(userId)
+      .catch((error: any) => {
+        // Revert the pre-selection so the welcome screen reflects the
+        // un-authenticated state and TurnkeyProvider drops the filter.
+        unselectUser();
         Toast.show({
           type: 'error',
           text1: 'Authentication failed',
@@ -66,11 +87,34 @@ export default function Welcome() {
             badgeText: '',
           },
         });
-      } finally {
-        setLoadingUserId(null);
-      }
+      })
+      .finally(() => {
+        // Keep `pendingAuthUserId` set while auth is in flight so every
+        // button stays disabled, then clear it once we settle.
+        setPendingAuthUserId(null);
+        isAuthInFlight.current = false;
+      });
+  }, [
+    pendingAuthUserId,
+    httpClient,
+    selectedUserId,
+    handleSelectUserById,
+    unselectUser,
+    setPendingAuthUserId,
+  ]);
+
+  const handleSelectUser = useCallback(
+    (userId: string) => {
+      if (pendingAuthUserId || isAuthInFlight.current) return;
+
+      // Marking the user as selected flips TurnkeyProvider's credentialId and
+      // triggers a re-mount of TurnkeyProviderKit with
+      // `allowCredentials: [{ id: user.credentialId, ... }]`. The effect above
+      // picks up once the remount finishes and fires the passkey prompt.
+      selectUserById(userId);
+      setPendingAuthUserId(userId);
     },
-    [handleSelectUserById],
+    [pendingAuthUserId, selectUserById, setPendingAuthUserId],
   );
 
   const handleUseAnotherAccount = useCallback(() => {
@@ -101,7 +145,7 @@ export default function Welcome() {
               variant="brand"
               className="h-14 justify-between rounded-xl border-0 px-6"
               onPress={() => handleSelectUser(user.userId)}
-              disabled={loadingUserId !== null}
+              disabled={pendingAuthUserId !== null}
             >
               <View className="flex-row items-center gap-2">
                 <Text className="text-base font-bold">

@@ -1,6 +1,6 @@
 import { USDC_STARGATE } from '@/constants/addresses';
 import { FastWithdrawManager_ABI } from '@/lib/abis/FastWithdrawManager';
-import { getStargateQuote } from '@/lib/api';
+import { getStargateQuote } from '@/lib/utils/stargate';
 import { ADDRESSES } from '@/lib/config';
 import { StargateQuoteParams } from '@/lib/types';
 import { getStargateChainKey, getStargateToken } from '@/lib/utils/stargate';

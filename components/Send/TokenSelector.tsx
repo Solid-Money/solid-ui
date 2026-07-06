@@ -24,11 +24,11 @@ const TokenSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
-  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
-    const combined = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+    const combined = [...ethereumTokens, ...fuseTokens, ...polygonTokens, ...baseTokens, ...arbitrumTokens];
     return combined.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -38,7 +38,7 @@ const TokenSelector: React.FC = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {

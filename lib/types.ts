@@ -13,7 +13,7 @@ import {
   WITHDRAW_MODAL,
 } from '@/constants/modals';
 
-import { AssetPath } from './assets';
+import type { AssetPath } from './assets';
 
 export interface CountryFromIp {
   countryCode: string;
@@ -435,6 +435,22 @@ export interface CardDetailsResponseDto extends CardResponse {
   provider?: CardProvider;
 }
 
+/**
+ * A single warning entry surfaced for a user's KYC. Mirrors Didit's per-block warning shape:
+ * `risk` is the tag (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) — same key space as
+ * DIDIT_WARNING_DESCRIPTIONS overrides; `short_description` / `long_description` are Didit's
+ * pre-formatted user-facing copy. Backend also synthesises one of these (with
+ * `risk: 'CARD_ACTIVATION_FAILED'`) when Rain rejects the forwarded application.
+ */
+export interface KycWarning {
+  risk: string;
+  log_type?: string;
+  short_description?: string;
+  long_description?: string;
+  feature?: string;
+  node_id?: string;
+}
+
 export interface CardStatusResponse {
   status?: CardStatus;
   activationBlocked?: boolean;
@@ -442,6 +458,10 @@ export interface CardStatusResponse {
   activationFailedAt?: string;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /** Internal KYC status (covers Didit rejection before Rain is reached) */
+  kycStatus?: KycStatus;
+  /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
+  kycWarnings?: KycWarning[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
@@ -653,6 +673,7 @@ export enum TransactionType {
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
   BORROW_AND_DEPOSIT_TO_CARD = 'borrow_and_deposit_to_card',
+  CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
@@ -664,9 +685,12 @@ export enum TransactionType {
   MERKL_CLAIM = 'merkl_claim',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
+  FUND = 'fund',
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
+  AGENT_X402_PAYMENT = 'agent_x402_payment',
+  AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
 }
 
 export enum TransactionDirection {
@@ -786,6 +810,7 @@ export type BridgeDeposit = {
     deadline: number;
   };
   trackingId?: string;
+  category?: DepositCategory;
 };
 
 export type BridgeTransactionRequest = {
@@ -809,7 +834,13 @@ export type Deposit = {
   };
   trackingId?: string;
   vault?: VaultType;
+  category?: DepositCategory;
 };
+
+export enum DepositCategory {
+  SAVINGS = 'SAVINGS',
+  CARD = 'CARD',
+}
 
 export enum DepositTransactionStatus {
   PENDING = 'pending',
@@ -918,12 +949,15 @@ export interface Cashback {
   fuseUsdPrice?: string;
   fiatAmount?: string;
   fiatCurrency?: string;
+  payoutAt?: string;
   createdAt: string;
 }
 
 export interface CashbackInfo {
   amount: string;
   isPending: boolean;
+  isEscrowed: boolean;
+  payoutAt?: string;
 }
 
 export interface SourceDepositInstructions {
@@ -1236,7 +1270,10 @@ export interface CardTransaction {
   merchant_category_code?: string;
   merchant_name?: string;
   merchant_location?: string;
+  merchant_city?: string;
+  merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
+  declined_reason?: string;
 }
 
 export interface CardTransactionsResponse {
@@ -1310,7 +1347,8 @@ export interface ActivityEvents {
 
 export interface UpdateActivityEvent {
   status?: TransactionStatus;
-  txHash?: string;
+  hash?: string;
+  url?: string;
   userOpHash?: string;
   metadata?: Record<string, any>;
 }
@@ -1333,6 +1371,8 @@ export interface VaultBreakdown {
   name: string;
   title?: string;
   type: string;
+  image?: string;
+  link?: string;
   expiryDate: string;
   amountUSD: number;
   allocation: number;
@@ -1437,11 +1477,13 @@ export interface APYs {
 export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
+  eth: number;
 }
 
 export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
+  eth: APYs;
 }
 
 export interface HistoricalAPYPoint {
@@ -1507,6 +1549,54 @@ export interface AddressBookResponse {
   walletAddress: string;
   skipped2faAt?: Date;
 }
+
+export type AgentSummary = {
+  agentEoaAddress?: string;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
+
+/**
+ * Envelope returned by the Turnkey SDK's `stampX` methods. `body` is the
+ * exact stringified bytes the SDK signed — we MUST forward it verbatim;
+ * re-serializing on the server changes key order and breaks the stamp.
+ */
+export type SignedTurnkeyRequest = {
+  url: string;
+  body: string;
+  stamp: { stampHeaderName: string; stampHeaderValue: string };
+};
+
+export type ProvisioningActivity = {
+  url: string;
+  body: Record<string, unknown>;
+};
+
+export type ProvisioningInitResponse = {
+  provisioningId: string;
+  subOrganizationId: string;
+  /**
+   * Set when the agent's wallet path was already derived in Turnkey from a
+   * prior failed provisioning attempt. The `activity` in this case is the
+   * createUsers body — the client should skip the wallet-account stamp.
+   */
+  agentEoaAddress?: string;
+  activity: ProvisioningActivity;
+};
+
+export type ProvisioningStepInput = {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+};
 
 export interface WhatsNewStep {
   imageUrl: string;
@@ -1613,6 +1703,7 @@ export interface Vault {
   minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
+  vaultName: string;
 }
 
 export enum VaultType {

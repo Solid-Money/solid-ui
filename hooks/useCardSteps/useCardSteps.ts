@@ -97,13 +97,8 @@ export function useCardSteps(
   );
 
   // Card activation state and handlers
-  const {
-    cardActivated,
-    activatingCard,
-    handleActivateCard,
-    syncCardActivationState,
-    pushCardDetails,
-  } = useCardActivation(router);
+  const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
+    useCardActivation(router);
 
   // Sync card activation state with server
   useEffect(() => {
@@ -251,11 +246,13 @@ export function useCardSteps(
         cardStatusResponse?.activationBlocked,
         cardStatusResponse?.activationBlockedReason,
         handleProceedToKyc,
-        handleActivateCard,
+        pushCardReady,
         pushCardDetails,
         {
           cardIssuer,
           rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          kycStatus: cardStatusResponse?.kycStatus,
+          kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
         },
       ),
@@ -266,8 +263,10 @@ export function useCardSteps(
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
       cardStatusResponse?.rainApplicationStatus,
+      cardStatusResponse?.kycStatus,
+      cardStatusResponse?.kycWarnings,
       handleProceedToKyc,
-      handleActivateCard,
+      pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,

@@ -1172,8 +1172,8 @@ const SpinWinModalProvider = () => {
   const { currentModal, previousModal, resultPoints, setModal, setResultPoints, reset } =
     useSpinWinModalStore(
       useShallow(state => ({
-        currentModal: state.currentModal,
-        previousModal: state.previousModal,
+        currentModal: state.currentModal ?? SPIN_WIN_MODAL.CLOSE,
+        previousModal: state.previousModal ?? SPIN_WIN_MODAL.CLOSE,
         resultPoints: state.resultPoints,
         setModal: state.setModal,
         setResultPoints: state.setResultPoints,

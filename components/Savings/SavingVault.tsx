@@ -16,6 +16,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { useVaultTotalValue } from '@/hooks/useVaultTotalValue';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { compactNumberFormat } from '@/lib/utils';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -43,7 +44,8 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
   const isSelected = selectedVault === vaultIndex;
-  const isComingSoon = !!vault.isComingSoon;
+  const isTestUser = useIsTestUser();
+  const isComingSoon = !!vault.isComingSoon && !isTestUser;
   const gapHeight = isScreenMedium ? 12 : 0;
   const iconSizeSelected = isScreenMedium ? 53 : 28;
 

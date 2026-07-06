@@ -1,4 +1,5 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+
 import { getAsset } from './assets';
 import { TokenIcon } from './types';
 
@@ -33,6 +34,10 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       };
     case 'FUSE':
     case 'WFUSE':
+      return {
+        type: 'image',
+        source: getAsset('images/wfuse.png'),
+      };
     case 'SOFUSE':
       return {
         type: 'image',
@@ -42,6 +47,11 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return {
         type: 'image',
         source: getAsset('images/sousd-4x.png'),
+      };
+    case 'SOETH':
+      return {
+        type: 'image',
+        source: getAsset('images/eth.png'),
       };
     default:
       return {

@@ -156,8 +156,12 @@ export default function CardTransactions() {
 
       const transaction = row as CardTransactionWithTimestamp;
       const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+      const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
+        .filter(Boolean)
+        .join(' ') || undefined;
       const initials = getInitials(merchantName);
       const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
+      const isDeclined = transaction.status === 'declined';
       const color = getColorForTransaction(merchantName);
       const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
@@ -195,18 +199,32 @@ export default function CardTransactions() {
               <Text className="text-lg font-medium text-white" numberOfLines={1}>
                 {merchantName}
               </Text>
+              {merchantLocation && (
+                <Text className="text-sm text-[#8E8E93]" numberOfLines={1}>
+                  {merchantLocation}
+                </Text>
+              )}
               {cashbackInfo && (
                 <View className="mt-0.5 flex-row items-center gap-1">
                   <Diamond />
                   <Text className="text-sm text-[#8E8E93]">
-                    {cashbackInfo.isPending ? 'Cashback (Pending)' : 'Cashback'}
+                    {cashbackInfo.isEscrowed
+                      ? 'Cashback (Escrowed)'
+                      : cashbackInfo.isPending
+                        ? 'Cashback (Pending)'
+                        : 'Cashback'}
                   </Text>
                 </View>
               )}
             </View>
           </View>
           <View className="items-end">
-            <Text className="text-xl font-semibold text-white">
+            <Text
+              className={cn(
+                'text-xl font-semibold',
+                isDeclined ? 'text-red-400' : 'text-white',
+              )}
+            >
               {formatCardAmount(transaction.amount, provider)}
             </Text>
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (

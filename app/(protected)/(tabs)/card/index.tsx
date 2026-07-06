@@ -20,22 +20,5 @@ export default function Card() {
     return <Redirect href="/card/details" />;
   }
 
-  if (hasCardStatus) {
-    const rainStatus = cardStatus?.rainApplicationStatus;
-
-    if (rainStatus === RainApplicationStatus.APPROVED) {
-      return <Redirect href="/card/ready" />;
-    }
-
-    if (
-      rainStatus === RainApplicationStatus.PENDING ||
-      rainStatus === RainApplicationStatus.MANUAL_REVIEW
-    ) {
-      return <Redirect href="/card/pending" />;
-    }
-
-    return <Redirect href="/card/activate" />;
-  }
-
   return <CardWaitlistPage />;
 }

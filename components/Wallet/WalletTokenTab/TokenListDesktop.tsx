@@ -60,7 +60,7 @@ const TokenListDesktop = ({ tokens }: TokenListProps) => {
         <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[2].width }}>
           <Text className="text-sm text-muted-foreground">{DESKTOP_COLUMNS[2].label}</Text>
         </View>
-        <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[3].width }} />
+        {/* <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[3].width }} /> */}
       </View>
 
       {/* Table Body - Virtualized with FlashList */}

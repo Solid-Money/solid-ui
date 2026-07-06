@@ -9,7 +9,7 @@ import { getAsset } from '@/lib/assets';
 
 interface CardStatusPageProps {
   title: string;
-  description: string;
+  description?: string;
   children?: ReactNode;
 }
 
@@ -37,9 +37,11 @@ export function CardStatusPage({ title, description, children }: CardStatusPageP
             </View>
 
             <Text className="mt-2 text-center text-2xl font-bold text-white">{title}</Text>
-            <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
-              {description}
-            </Text>
+            {description ? (
+              <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
+                {description}
+              </Text>
+            ) : null}
 
             {children}
           </View>

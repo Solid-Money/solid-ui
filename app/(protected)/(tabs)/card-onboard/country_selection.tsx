@@ -1,12 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
 import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
@@ -28,11 +37,7 @@ export default function CountrySelection() {
   const { user } = useUser();
 
   const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push(path.CARD);
-    }
+    router.replace(path.CARD);
   };
 
   const [loading, setLoading] = useState(true);
@@ -72,7 +77,6 @@ export default function CountrySelection() {
       // Check card access via backend
       const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
       if (!accessCheck) throw new Error('Failed to check card access');
-
       return {
         countryCode,
         countryName,
@@ -327,9 +331,7 @@ export default function CountrySelection() {
       />
       <View className="mx-auto w-full max-w-lg px-4 pt-12">
         <View className="mb-10 flex-row items-center justify-between">
-          <Pressable onPress={goBack} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
+          <BackButton onPress={goBack} />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Solid card
           </Text>
@@ -531,10 +533,21 @@ function CountryUnavailableView({
         countryName={countryName}
       />
       <Text className="mb-4 text-center text-2xl font-bold text-white">
-        {`Your Solid Card is on the way`}
+        {`The new Solid Card is coming to you`}
       </Text>
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`We're rolling out access in your region. Join the waitlist to be notified first.`}
+        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Click on the button below to get notified.\n`}
+        <Text
+          className="font-bold leading-6 text-white"
+          onPress={() =>
+            Linking.openURL(
+              'https://www.solid.xyz/post/solid-partners-with-rain-to-power-the-next-era-of-global-crypto-cards',
+            )
+          }
+          accessibilityRole="link"
+        >
+          Learn more
+        </Text>
       </Text>
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-base font-bold text-white">Change country</Text>

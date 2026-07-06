@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
+import QRCode from 'react-native-qrcode-svg';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
+import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { setupTotp, verifyTotp } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-white.png');
 
 const totpSchema = z.object({
   otpCode: z.string().regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
@@ -151,7 +154,8 @@ const TotpInput: React.FC<{
 const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
-  const [qrCode, setQrCode] = useState<string>('');
+  const [uri, setUri] = useState<string>('');
+  const [secret, setSecret] = useState<string>('');
   const [apiError, setApiError] = useState<string>('');
 
   const {
@@ -182,8 +186,9 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       setIsLoadingSetup(true);
       setApiError('');
       try {
-        const { qrCode } = await setupTotp();
-        setQrCode(qrCode);
+        const data = await setupTotp();
+        setUri(data.uri);
+        setSecret(data.secret);
       } catch (err: any) {
         console.error('Failed to setup TOTP:', err);
         setApiError('Failed to setup TOTP. Please try again.');
@@ -242,40 +247,40 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       {/* QR Code Section */}
       <View className="items-center gap-3">
         {isLoadingSetup ? (
-          <View className="min-h-[300px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
+          <View className="h-[200px] w-[200px] items-center justify-center overflow-hidden rounded-xl bg-[#181A1A]">
             <ActivityIndicator color="#94F27F" size="large" />
           </View>
         ) : (
-          <View className="min-h-[250px] min-w-[250px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
-            {qrCode && (
-              <Image
-                source={{
-                  uri: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
-                }}
-                alt="QR code"
-                style={{ width: 256, height: 256, minWidth: 256, minHeight: 256 }}
-                contentFit="contain"
-                onError={error => {
-                  console.error('QR code image error:', error);
-                  setApiError('Failed to load QR code image');
-                }}
-              />
-            )}
-            {/* {!showManualEntry && (
-              <Pressable onPress={() => setShowManualEntry(true)} className="mt-4">
-                <Text className="text-[rgba(255,255,255,0.7)] text-sm font-medium text-center">
-                  Can&apos;t scan the QR code?
+          <View className="items-center gap-4">
+            <View className="overflow-hidden rounded-xl">
+              {uri && (
+                <QRCode
+                  value={uri}
+                  size={200}
+                  color="white"
+                  backgroundColor="#181A1A"
+                  logo={solidLogo}
+                  logoSize={50}
+                  logoBackgroundColor="transparent"
+                />
+              )}
+            </View>
+            {secret && (
+              <View className="items-center gap-2">
+                <Text className="text-center text-sm font-medium text-[rgba(255,255,255,0.7)]">
+                  Or copy the code below to enter manually:
                 </Text>
-              </Pressable>
-            )}
-            {showManualEntry && (
-              <View className="mt-4 items-center gap-2">
-                <Text className="text-[rgba(255,255,255,0.7)] text-sm font-medium text-center">
-                  Manual entry code:
-                </Text>
-                <Text className="text-white text-base font-semibold font-mono">{manualCode}</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className="text-center font-mono text-base font-semibold text-white"
+                    selectable
+                  >
+                    {secret}
+                  </Text>
+                  <CopyToClipboard text={secret} size={16} iconClassName="text-[#94F27F]" />
+                </View>
               </View>
-            )} */}
+            )}
           </View>
         )}
       </View>
@@ -335,8 +340,10 @@ export const SecurityTotpModal: React.FC<SecurityTotpModalProps> = ({
       trigger={null}
       title="Two-Factor Authentication"
       contentKey="security-totp-modal"
+      showBackButton
+      onBackPress={() => onOpenChange(false)}
     >
-      <View className="p-6">
+      <View className="p-6 pb-10">
         <SecurityTotpModalContent onSuccess={onSuccess} />
       </View>
     </ResponsiveModal>
