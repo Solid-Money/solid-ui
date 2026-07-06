@@ -61,10 +61,12 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
             <Pressable
               onPress={() => handleButtonPress(item.buttonLink)}
               accessibilityRole="button"
-              className="mt-4 flex-row items-center gap-0.5 self-start py-1 active:opacity-70 web:hover:opacity-80"
+              className="py-1 active:opacity-70 web:hover:opacity-80"
             >
-              <Text className="text-base font-bold text-brand">{item.buttonLabel}</Text>
-              <ChevronRight size={20} color={BRAND_COLOR} strokeWidth={2.5} />
+              <View className="mt-4 flex-row items-center gap-0.5 self-start">
+                <Text className="text-base font-bold text-brand">{item.buttonLabel}</Text>
+                <ChevronRight size={20} color={BRAND_COLOR} strokeWidth={2.5} />
+              </View>
             </Pressable>
           )}
         </View>
