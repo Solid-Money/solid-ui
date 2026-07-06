@@ -1,16 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { Check, ChevronRight } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Check, ChevronRight, Globe } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { RainApplicationStatus } from '@/lib/types';
+import { checkVaAccess, getCountryFromIp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { RainApplicationStatus } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -29,10 +31,12 @@ export const VirtualAccountApplyModal = () => {
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
 
-  const handleApply = useCallback(() => {
+  const [isChecking, setIsChecking] = useState(false);
+  const [countryNotSupported, setCountryNotSupported] = useState(false);
+
+  const proceed = useCallback(() => {
     const rainStatus = cardStatus?.rainApplicationStatus;
 
-    // Rain already approved — go straight to the VA terms of service.
     if (rainStatus === RainApplicationStatus.APPROVED) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
       return;
@@ -41,10 +45,6 @@ export const VirtualAccountApplyModal = () => {
     setKycFlow('va');
     setModal(DEPOSIT_MODAL.CLOSE);
 
-    // Didit is already done and Rain just needs its external verification /
-    // information step — land on the pending page, which surfaces the
-    // "Complete verification" / "Provide information" CTA, instead of
-    // restarting the already-approved Didit document flow.
     if (
       rainStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
       rainStatus === RainApplicationStatus.NEEDS_INFORMATION
@@ -53,9 +53,64 @@ export const VirtualAccountApplyModal = () => {
       return;
     }
 
-    // No Rain application yet — start the Didit KYC gate.
     router.push(path.KYC);
   }, [cardStatus, router, setKycFlow, setModal]);
+
+  const handleApply = useCallback(async () => {
+    setIsChecking(true);
+    try {
+      // Prefer the country from the completed KYC record; fall back to IP detection.
+      const countryCode = cardStatus?.country ?? (await getCountryFromIp())?.countryCode;
+
+      if (!countryCode) {
+        // Can't determine country — let the KYC flow handle it.
+        proceed();
+        return;
+      }
+
+      const { hasAccess } = await withRefreshToken(() => checkVaAccess(countryCode));
+
+      if (!hasAccess) {
+        setCountryNotSupported(true);
+        return;
+      }
+
+      proceed();
+    } catch {
+      // On any error, fall through and let the KYC flow surface the issue.
+      proceed();
+    } finally {
+      setIsChecking(false);
+    }
+  }, [cardStatus, proceed]);
+
+  if (countryNotSupported) {
+    return (
+      <View className="flex-1 items-center justify-center gap-6 px-4">
+        <View className="items-center justify-center rounded-full bg-[#1C1C1C] p-6">
+          <Globe size={48} color="rgba(255,255,255,0.4)" />
+        </View>
+
+        <View className="items-center gap-2">
+          <Text className="text-center text-2xl font-bold text-white">
+            Not Available in Your Region
+          </Text>
+          <Text className="text-center text-base text-[rgba(255,255,255,0.6)]">
+            Virtual bank accounts are not yet available in your country. We&apos;re working on
+            expanding access.
+          </Text>
+        </View>
+
+        <Button
+          className="mt-auto h-14 w-full rounded-2xl sm:mt-8"
+          style={{ backgroundColor: '#1C1C1C' }}
+          onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+        >
+          <Text className="text-base font-bold text-white">Close</Text>
+        </Button>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 gap-6">
@@ -133,8 +188,11 @@ export const VirtualAccountApplyModal = () => {
         className="mt-auto h-14 rounded-2xl sm:mt-8"
         style={{ backgroundColor: '#94F27F' }}
         onPress={handleApply}
+        disabled={isChecking}
       >
-        <Text className="text-base font-bold text-black">Apply for a Virtual Account</Text>
+        <Text className="text-base font-bold text-black">
+          {isChecking ? 'Checking...' : 'Apply for a Virtual Account'}
+        </Text>
       </Button>
 
       {/* More details link */}
