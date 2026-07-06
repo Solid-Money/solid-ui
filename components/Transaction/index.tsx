@@ -54,6 +54,7 @@ const Transaction = ({
   onPress,
   type,
   clientTxId,
+  metadata,
   timestamp,
   showTimestamp = true,
   isFirst = false,
@@ -97,6 +98,7 @@ const Transaction = ({
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
+  const isCardDeposit = metadata?.destinationType === 'RAIN_CARD';
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
 
   // Determine status message for direct deposits with no amount
@@ -106,7 +108,7 @@ const Transaction = ({
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isDetected) return 'Transfer detected';
-    if (isProcessing) return 'Processing deposit...';
+    if (isProcessing || (isPending && isCardDeposit)) return 'Processing deposit...';
     return null;
   };
 
@@ -214,7 +216,7 @@ const Transaction = ({
   });
 
   const getDescription = () => {
-    if (isPending) return 'Pending';
+    if (isPending) return isCardDeposit && isDirectDeposit ? 'Processing' : 'Pending';
     if (isProcessing) return 'Processing';
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
@@ -318,7 +320,7 @@ const Transaction = ({
             {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
-        {directDepositIsPendingOrProcessing && (
+        {directDepositIsPendingOrProcessing && !isCardDeposit && (
           <Pressable
             onPress={handleDeletePress}
             className="h-10 w-10 items-center justify-center rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
@@ -386,7 +388,8 @@ function areTransactionPropsEqual(
     prevProps.showTimestamp === nextProps.showTimestamp &&
     prevProps.isFirst === nextProps.isFirst &&
     prevProps.isLast === nextProps.isLast &&
-    prevProps.classNames?.container === nextProps.classNames?.container
+    prevProps.classNames?.container === nextProps.classNames?.container &&
+    prevProps.metadata?.destinationType === nextProps.metadata?.destinationType
   );
 }
 
