@@ -409,9 +409,9 @@ export interface CardResponse {
 }
 
 export interface CashbackData {
-  monthlyFuseAmount: number;
+  monthlySoUsdAmount: number;
   monthlyUsdValue: number;
-  totalFuseAmount: number;
+  totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
 }
@@ -993,6 +993,10 @@ export interface Cashback {
   _id: string;
   transactionId: string;
   status: CashbackStatus;
+  /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
+  soUsdAmount?: string;
+  soUsdRate?: string;
+  /** @deprecated legacy FUSE fields for cashbacks paid before the soUSD migration */
   fuseAmount?: string;
   fuseUsdPrice?: string;
   fiatAmount?: string;

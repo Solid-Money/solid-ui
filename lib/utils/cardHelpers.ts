@@ -119,8 +119,13 @@ export const getCashbackAmount = (
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
   const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
-  // For pending cashbacks without fuseAmount yet, show pending indicator without amount
-  if (!cashback.fuseAmount) {
+  // For pending cashbacks without a payout amount yet, show pending indicator
+  // without an amount. New cashbacks carry soUsdAmount; pre-migration ones
+  // carry the legacy fuseAmount.
+  const soUsdAmount = cashback.soUsdAmount;
+  const legacyFuseAmount = cashback.fuseAmount;
+
+  if (!soUsdAmount && !legacyFuseAmount) {
     return {
       amount: 'Pending',
       isPending: true,
@@ -129,9 +134,11 @@ export const getCashbackAmount = (
     };
   }
 
-  const fuseAmountAsNum = parseFloat(cashback.fuseAmount);
-  const fuseUsdPriceAsNum = parseFloat(cashback.fuseUsdPrice || '0');
-  const amount = fuseAmountAsNum * fuseUsdPriceAsNum;
+  // USD value = token amount × its USD rate. soUSD uses soUsdRate (USD per
+  // share); legacy FUSE cashbacks use fuseUsdPrice.
+  const tokenAmount = soUsdAmount ?? legacyFuseAmount ?? '0';
+  const usdRate = soUsdAmount ? cashback.soUsdRate : cashback.fuseUsdPrice;
+  const amount = parseFloat(tokenAmount) * parseFloat(usdRate || '0');
 
   if (isNaN(amount) || amount <= 0) {
     return null;
