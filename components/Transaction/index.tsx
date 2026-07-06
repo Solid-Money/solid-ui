@@ -217,7 +217,7 @@ const Transaction = ({
 
   const getDescription = () => {
     if (isPending) return isCardDeposit && isDirectDeposit ? 'Processing' : 'Pending';
-    if (isProcessing) return 'Processing';
+    if (isDetected || isProcessing) return 'Processing';
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
@@ -273,7 +273,9 @@ const Transaction = ({
                 alt="Reward indicator"
               />
             )}
-            {(isPending || isProcessing) && <ActivityIndicator color="gray" size={14} />}
+            {(isPending || isDetected || isProcessing) && (
+              <ActivityIndicator color="gray" size={14} />
+            )}
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>
