@@ -241,6 +241,7 @@ export const ASSETS = {
     module: require('@/assets/images/ethereum-square-4x.png'),
     hash: '5c6331c8',
   },
+  'images/eu.png': { module: require('@/assets/images/eu.png'), hash: '11ca6b5d' },
   'images/eur-fiat-currency.tsx': {
     module: require('@/assets/images/eur-fiat-currency.tsx'),
     hash: 'db4e5f78',
@@ -654,6 +655,7 @@ export const ASSETS = {
   'images/usdc.png': { module: require('@/assets/images/usdc.png'), hash: '46823699' },
   'images/usds.png': { module: require('@/assets/images/usds.png'), hash: 'dbf8e06b' },
   'images/usdt.png': { module: require('@/assets/images/usdt.png'), hash: '1d1a08f2' },
+  'images/us.png': { module: require('@/assets/images/us.png'), hash: '057c31ba' },
   'images/user.tsx': { module: require('@/assets/images/user.tsx'), hash: 'f4988f53' },
   'images/username.tsx': { module: require('@/assets/images/username.tsx'), hash: 'fa07b216' },
   'images/veda.png': { module: require('@/assets/images/veda.png'), hash: 'e41bfe57' },

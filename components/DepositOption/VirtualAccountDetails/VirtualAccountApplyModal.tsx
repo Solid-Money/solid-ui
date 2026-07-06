@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Building2 } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { Check, ChevronRight } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -9,13 +10,17 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { RainApplicationStatus } from '@/lib/types';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+
+const FLAG_SIZE = 88;
+const FLAG_OVERLAP = 28;
 
 const BENEFITS = [
   'A persistent virtual bank account in your name for ACH and Wire deposits.',
   'Incoming USD is auto-converted to USDC and deposited as soUSD.',
-  'No fees from Solid — settlement typically in 1–3 business days.',
+  'No fees from Solid – settlement typically in 1-3 business days.',
 ];
 
 export const VirtualAccountApplyModal = () => {
@@ -53,33 +58,90 @@ export const VirtualAccountApplyModal = () => {
   }, [cardStatus, router, setKycFlow, setModal]);
 
   return (
-    <View className="flex-1 gap-4">
-      <View className="items-center gap-3 px-2">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-[#1C1C1C]">
-          <Building2 size={28} color="#94F27F" />
+    <View className="flex-1 gap-6">
+      {/* Flag icons */}
+      <View className="items-center">
+        <View
+          style={{
+            width: FLAG_SIZE * 2 - FLAG_OVERLAP,
+            height: FLAG_SIZE,
+            flexDirection: 'row',
+          }}
+        >
+          <View
+            style={{
+              width: FLAG_SIZE,
+              height: FLAG_SIZE,
+              borderRadius: FLAG_SIZE / 2,
+              overflow: 'hidden',
+              borderWidth: 2,
+              borderColor: '#101010',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1,
+            }}
+          >
+            <Image
+              source={getAsset('images/us.png')}
+              style={{ width: FLAG_SIZE, height: FLAG_SIZE }}
+              contentFit="cover"
+            />
+          </View>
+          <View
+            style={{
+              width: FLAG_SIZE,
+              height: FLAG_SIZE,
+              borderRadius: FLAG_SIZE / 2,
+              overflow: 'hidden',
+              borderWidth: 2,
+              borderColor: '#101010',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginLeft: -FLAG_OVERLAP,
+              zIndex: 0,
+            }}
+          >
+            <Image
+              source={getAsset('images/eu.png')}
+              style={{ width: FLAG_SIZE, height: FLAG_SIZE }}
+              contentFit="cover"
+            />
+          </View>
         </View>
-        <Text className="text-2xl font-bold text-white">Virtual Bank Account</Text>
-        <Text className="text-center text-base text-gray-400">
+      </View>
+
+      {/* Title + subtitle */}
+      <View className="items-center gap-2 px-4">
+        <Text className="text-center text-3xl font-bold text-white">Virtual Bank Account</Text>
+        <Text className="text-center text-base text-[rgba(255,255,255,0.7)]">
           Get a US bank account in your name so you can deposit USD straight into soUSD.
         </Text>
       </View>
 
-      <View className="gap-3 rounded-2xl bg-[#1C1C1C] p-4">
+      {/* Benefits */}
+      <View className="gap-4 rounded-2xl bg-[#1C1C1C] p-5">
         {BENEFITS.map(item => (
           <View key={item} className="flex-row items-start gap-3">
-            <View className="mt-1 h-1.5 w-1.5 rounded-full bg-[#94F27F]" />
-            <Text className="flex-1 text-sm leading-5 text-white">{item}</Text>
+            <Check size={16} color="rgba(255,255,255,0.5)" style={{ marginTop: 2 }} />
+            <Text className="flex-1 text-base leading-5 text-[rgba(255,255,255,0.7)]">{item}</Text>
           </View>
         ))}
       </View>
 
+      {/* Apply button */}
       <Button
         className="mt-auto h-14 rounded-2xl sm:mt-8"
         style={{ backgroundColor: '#94F27F' }}
         onPress={handleApply}
       >
-        <Text className="text-base font-bold text-black">Apply for Virtual Account</Text>
+        <Text className="text-base font-bold text-black">Apply for a Virtual Account</Text>
       </Button>
+
+      {/* More details link */}
+      <Pressable className="flex-row items-center justify-center gap-1" onPress={() => {}}>
+        <Text className="text-lg font-semibold text-white">More details</Text>
+        <ChevronRight size={16} color="white" />
+      </Pressable>
     </View>
   );
 };

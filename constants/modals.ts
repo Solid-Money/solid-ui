@@ -7,6 +7,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_email_gate',
     number: 1,
   },
+  OPEN_DEPOSIT_TYPE: {
+    name: 'open_deposit_type',
+    number: 1.5,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
