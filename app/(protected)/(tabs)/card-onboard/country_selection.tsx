@@ -197,6 +197,14 @@ export default function CountrySelection() {
         }
       } else {
         setCheckingWaitlist(false);
+        if (countryInfo.isAvailable) {
+          // Country is available (e.g. just became eligible). Make sure a stale
+          // "not available" state can't strand the user on the notify
+          // confirmation screen — show the selector so they can proceed to
+          // activate their card.
+          setNotifyClicked(false);
+          setShowCountrySelector(true);
+        }
       }
     };
 
