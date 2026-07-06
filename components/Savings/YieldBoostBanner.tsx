@@ -78,7 +78,7 @@ const YieldBoostBanner = () => {
     return 'Claim boosted yield';
   };
 
-  // if (!tierConfig) return null;
+  if (!tierConfig) return null;
 
   return (
     <LinearGradient
