@@ -19,6 +19,7 @@ interface AreaChartProps {
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel?: boolean;
+  isYAxisLabel?: boolean;
   style?: StyleProp<ViewStyle>;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
@@ -35,12 +36,14 @@ const ChartContent = ({
   formatToolTip,
   formatYAxis,
   isLabel = true,
+  isYAxisLabel = true,
   chartWidth,
 }: {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel: boolean;
+  isYAxisLabel?: boolean;
   chartWidth?: number;
 }) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
@@ -54,7 +57,6 @@ const ChartContent = ({
   const [tooltipData, setTooltipData] = useState<{
     price: string;
     date: string;
-    priceChange: number | null;
   } | null>(null);
 
   const { currentIndex, isActive } = LineChart.useChart();
@@ -81,16 +83,9 @@ const ChartContent = ({
             return `$${formatNumber(value)}`;
           };
 
-          const prevData = index > 0 ? data[index - 1] : null;
-          const change =
-            prevData && currentData
-              ? calculatePercentageChange(prevData.value, currentData.value)
-              : null;
-
           setTooltipData({
             price: formatToolTip ? formatToolTip(currentData.value) : format(currentData.value),
             date: formatChartTooltipDate(currentData.time),
-            priceChange: change,
           });
           setTooltipVisible(true);
         }
@@ -183,7 +178,7 @@ const ChartContent = ({
           </LineChart>
         </View>
         {/* Y-axis labels */}
-        {isLabel && (
+        {isLabel && isYAxisLabel && (
           <View
             style={{
               width: Y_AXIS_WIDTH,
@@ -264,27 +259,21 @@ const ChartContent = ({
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#18181B' }}>
             {tooltipData.price}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            {tooltipData.priceChange !== null && (
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: tooltipData.priceChange < 0 ? '#EF4444' : '#22C55E',
-                }}
-              >
-                {formatNumber(tooltipData.priceChange, 2)}%
-              </Text>
-            )}
-            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{tooltipData.date}</Text>
-          </View>
+          <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>{tooltipData.date}</Text>
         </View>
       )}
     </>
   );
 };
 
-const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
+const Chart = ({
+  data,
+  formatToolTip,
+  formatYAxis,
+  isLabel = true,
+  isYAxisLabel = true,
+  style,
+}: AreaChartProps) => {
   const [chartWidth, setChartWidth] = useState<number | undefined>(undefined);
 
   const wagmiData = useMemo(() => {
@@ -312,6 +301,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: Area
             formatToolTip={formatToolTip}
             formatYAxis={formatYAxis}
             isLabel={isLabel}
+            isYAxisLabel={isYAxisLabel}
             chartWidth={chartWidth}
           />
         </LineChart.Provider>

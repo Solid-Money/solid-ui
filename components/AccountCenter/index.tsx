@@ -1,6 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronDown } from 'lucide-react-native';
+import { ChevronDown, HandCoins, Sparkles } from 'lucide-react-native';
 
 import ProfileIcon from '@/assets/images/profile';
 import SettingsIcon from '@/assets/images/settings';
@@ -58,6 +58,32 @@ const onAccountCenterSettingsPress = () => {
   router.push(path.SETTINGS);
 };
 
+const AccountCenterAgent = () => {
+  return (
+    <>
+      <Sparkles size={20} color="#fff" />
+      <Text className="text-base font-semibold">Agent</Text>
+    </>
+  );
+};
+
+const onAccountCenterAgentPress = () => {
+  router.push(path.AGENT);
+};
+
+const AccountCenterGoodDollar = () => {
+  return (
+    <>
+      <HandCoins size={20} color="#fff" />
+      <Text className="text-base font-semibold">GoodDollar</Text>
+    </>
+  );
+};
+
+const onAccountCenterGoodDollarPress = () => {
+  router.push(path.GOODDOLLAR);
+};
+
 const AccountCenterSignOut = () => {
   return (
     <>
@@ -68,9 +94,13 @@ const AccountCenterSignOut = () => {
 };
 
 export {
+  AccountCenterAgent,
+  AccountCenterGoodDollar,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
   AccountCenterUsername,
+  onAccountCenterAgentPress,
+  onAccountCenterGoodDollarPress,
   onAccountCenterSettingsPress,
 };

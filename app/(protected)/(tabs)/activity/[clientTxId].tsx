@@ -3,8 +3,8 @@ import { Linking, Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
-import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
+import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
+import { ArrowUpRight, X } from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
 import Diamond from '@/assets/images/diamond';
@@ -13,15 +13,17 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
@@ -91,6 +93,21 @@ const Value = memo(function Value({ children, className }: ValueProps) {
   return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
 });
 
+const EscrowTimeLeft = memo(function EscrowTimeLeft({ payoutAt }: { payoutAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const target = useMemo(() => new Date(payoutAt).getTime(), [payoutAt]);
+
+  if (target - now <= 0) return <Value>Releasing soon</Value>;
+
+  return <Value>{formatDistanceStrict(target, now)}</Value>;
+});
+
 const Back = memo(function Back({ title, className }: BackProps) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; from?: string }>();
@@ -105,12 +122,11 @@ const Back = memo(function Back({ title, className }: BackProps) {
   }, [params.from, params.tab, router]);
 
   return (
-    <View className="flex-row items-center justify-between">
-      <Pressable onPress={handleBackPress} className="web:hover:opacity-70">
-        <ChevronLeft color="white" />
-      </Pressable>
+    <View className="relative flex-row items-center justify-center">
+      <View className="absolute left-0">
+        <BackButton onPress={handleBackPress} />
+      </View>
       <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
-      <View className="w-10" />
     </View>
   );
 });
@@ -161,12 +177,21 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   activity,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+  const merchantName = (
+    transaction.merchant_name?.trim() ||
+    transaction.description?.trim() ||
+    'Unknown'
+  );
+  const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
+    .filter(Boolean)
+    .join(' ') || undefined;
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
   const isApproved = transaction.status === 'approved';
+  const isDeclined = transaction.status === 'declined';
+  const isReversed = transaction.status === 'reversed';
   const postedDate = useMemo(() => {
     const dateStr = isApproved
       ? transaction.authorized_at || transaction.posted_at
@@ -189,18 +214,37 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
+  const statusLabel = isApproved
+    ? 'Pending'
+    : isDeclined
+      ? 'Declined'
+      : isReversed
+        ? 'Reversed'
+        : 'Confirmed';
+  const statusColor = isApproved
+    ? 'text-yellow-500'
+    : isDeclined
+      ? 'text-red-400'
+      : '';
+
   const rows = useMemo(() => {
     const allRows = [
       { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
       {
         key: 'status',
         label: <Label>Status</Label>,
-        value: (
-          <Value className={isApproved ? 'text-yellow-500' : ''}>
-            {isApproved ? 'Pending' : 'Confirmed'}
-          </Value>
-        ),
+        value: <Value className={statusColor}>{statusLabel}</Value>,
       },
+      isDeclined &&
+        transaction.declined_reason && {
+          key: 'reason',
+          label: <Label>Reason</Label>,
+          value: (
+            <Value className="max-w-[60%] text-right text-base">
+              {toTitleCase(transaction.declined_reason)}
+            </Value>
+          ),
+        },
       cashbackInfo && {
         key: 'cashback',
         label: (
@@ -213,12 +257,24 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           <Value
             className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-[#34C759]'}
           >
-            {cashbackInfo.isPending && cashbackInfo.amount !== 'Pending'
-              ? `${cashbackInfo.amount} (Pending)`
-              : cashbackInfo.amount}
+            {cashbackInfo.amount === 'Pending'
+              ? cashbackInfo.isEscrowed
+                ? 'Escrowed'
+                : 'Pending'
+              : cashbackInfo.isEscrowed
+                ? `${cashbackInfo.amount} (Escrowed)`
+                : cashbackInfo.isPending
+                  ? `${cashbackInfo.amount} (Pending)`
+                  : cashbackInfo.amount}
           </Value>
         ),
       },
+      cashbackInfo?.isEscrowed &&
+        cashbackInfo.payoutAt && {
+          key: 'cashback-escrow-time-left',
+          label: <Label>Releases in</Label>,
+          value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
+        },
       txHash && {
         key: 'explorer',
         label: <Label>Explorer</Label>,
@@ -236,7 +292,15 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
 
     return allRows;
-  }, [cashbackInfo, txHash, handleExplorerPress, isApproved]);
+  }, [
+    cashbackInfo,
+    txHash,
+    handleExplorerPress,
+    statusLabel,
+    statusColor,
+    isDeclined,
+    transaction.declined_reason,
+  ]);
 
   const tokenIcon = useMemo(
     () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
@@ -246,7 +310,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <Back title={merchantName} className="text-xl md:text-3xl" />
+        <View>
+          <Back title={merchantName} className="text-xl md:text-3xl" />
+          {merchantLocation && (
+            <Text className="text-center text-sm text-muted-foreground">{merchantLocation}</Text>
+          )}
+        </View>
 
         <View className="items-center gap-4">
           {/* Avatar with initials or token icon */}
@@ -330,6 +399,9 @@ export default function ActivityDetail() {
 
   const finalActivity = activity || backendActivity;
 
+  // Poll blockchain for receipt when activity is stuck at PROCESSING
+  useTransactionReceiptPolling(finalActivity);
+
   // Check if backend query should be loading but hasn't started yet
   const isBackendQueryPending =
     !activity && !isActivitiesLoading && !!clientTxId && !isCardTransaction && !backendActivity;
@@ -355,18 +427,21 @@ export default function ActivityDetail() {
     [finalActivity?.timestamp],
   );
 
+  const isFund = finalActivity?.type === TransactionType.FUND;
+
   const estimatedDurationSeconds = useMemo(() => {
+    if (isFund) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
     if (isSoFuseOnFuse) return minutesToSeconds(2);
     return minutesToSeconds(20);
-  }, [isEthereum, isSoFuseOnFuse]);
+  }, [isFund, isEthereum, isSoFuseOnFuse]);
 
   useEffect(() => {
-    if (!finalActivity || !isDeposit || !createdAt) return;
+    if (!finalActivity || !(isDeposit || isFund) || !createdAt) return;
 
     const elapsedSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
     setCurrentTime(Math.max(0, estimatedDurationSeconds - elapsedSeconds));
-  }, [finalActivity, isDeposit, createdAt, estimatedDurationSeconds]);
+  }, [finalActivity, isDeposit, isFund, createdAt, estimatedDurationSeconds]);
 
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
 
@@ -427,14 +502,9 @@ export default function ActivityDetail() {
     if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
       return 'Complete';
     }
-    return transactionDetails?.category ?? 'Unknown';
-  }, [
-    finalActivity?.type,
-    finalActivity?.status,
-    finalActivity?.metadata?.destination,
-    isDeposit,
-    transactionDetails?.category,
-  ]);
+    if (!finalActivity) return 'Unknown';
+    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+  }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
@@ -516,7 +586,7 @@ export default function ActivityDetail() {
             </Pressable>
           ),
         },
-      (isDeposit || isBridgeDeposit) &&
+      (isDeposit || isFund || isBridgeDeposit) &&
         (isPending || isDetected || isProcessing) && {
           key: 'estimated',
           label: <Label>Estimated time</Label>,
@@ -526,6 +596,7 @@ export default function ActivityDetail() {
   }, [
     finalActivity,
     isDeposit,
+    isFund,
     isBridgeDeposit,
     isPending,
     isDetected,

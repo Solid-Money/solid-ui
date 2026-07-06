@@ -1,86 +1,18 @@
-import { useCallback, useRef } from 'react';
-import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { View } from 'react-native';
+import { router } from 'expo-router';
 
-import { InfoCenterSupport, useInfoCenterSupportPress } from '@/components/InfoCenter';
-import useUser from '@/hooks/useUser';
+import { path } from '@/constants/path';
 
-import {
-  AccountCenterSettings,
-  AccountCenterSignOut,
-  AccountCenterTrigger,
-  AccountCenterUsername,
-  onAccountCenterSettingsPress,
-} from '.';
-
-const rowClassName = 'h-14 flex-row items-center gap-2 px-[30px]';
+import { AccountCenterTrigger } from '.';
 
 const AccountCenterDropdown = () => {
-  const insets = useSafeAreaInsets();
-  const { handleLogout } = useUser();
-  const onSupportPress = useInfoCenterSupportPress();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-
-  const dismissAndRun = useCallback((action: () => void) => {
-    bottomSheetModalRef.current?.dismiss();
-    action();
-  }, []);
-
-  const handlePresentModalPress = useCallback(() => {
-    bottomSheetModalRef.current?.present();
-  }, []);
-
-  const handleSettingsPress = useCallback(
-    () => dismissAndRun(onAccountCenterSettingsPress),
-    [dismissAndRun],
-  );
-
-  const handleSignOutPress = useCallback(
-    () => dismissAndRun(handleLogout),
-    [dismissAndRun, handleLogout],
-  );
-
-  const handleSupportPress = useCallback(
-    () => dismissAndRun(onSupportPress),
-    [dismissAndRun, onSupportPress],
-  );
-
-  const renderBackdrop = useCallback(
-    (props: any) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />,
-    [],
-  );
-
   return (
     <View>
-      <AccountCenterTrigger onPress={handlePresentModalPress} />
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: '#1c1c1c', borderRadius: 20 }}
-        handleIndicatorStyle={{
-          backgroundColor: 'rgba(255,255,255,0.2)',
-          width: 74,
-          height: 8,
-        }}
-      >
-        <BottomSheetView className="gap-2 pb-2" style={{ paddingBottom: insets.bottom }}>
-          <View className={rowClassName}>
-            <AccountCenterUsername />
-          </View>
-          <View className="mx-[30px] h-px bg-border/50" />
-          <Pressable className={rowClassName} onPress={handleSettingsPress}>
-            <AccountCenterSettings />
-          </Pressable>
-          <Pressable className={rowClassName} onPress={handleSupportPress}>
-            <InfoCenterSupport />
-          </Pressable>
-          <View className="mx-[30px] h-px bg-border/50" />
-          <Pressable className={rowClassName} onPress={handleSignOutPress}>
-            <AccountCenterSignOut />
-          </Pressable>
-        </BottomSheetView>
-      </BottomSheetModal>
+      <AccountCenterTrigger
+        accessibilityLabel="Open account center"
+        accessibilityRole="button"
+        onPress={() => router.push(path.SETTINGS)}
+      />
     </View>
   );
 };

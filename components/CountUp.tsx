@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, TextStyle, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, TextStyle, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
 
 import { Text } from '@/components/ui/text';
@@ -34,6 +34,8 @@ interface CountUpProps {
   isTrailingZero?: boolean;
   prefix?: string | React.ReactNode;
   suffix?: string;
+  animated?: boolean;
+  animateOnMount?: boolean;
 }
 
 const DURATION = 500;
@@ -46,22 +48,36 @@ const CountUp = ({
   isTrailingZero = true,
   prefix,
   suffix,
+  animated = true,
+  animateOnMount = true,
 }: CountUpProps) => {
   const [isMounted, setIsMounted] = useState(false);
-  // On Android, delay showing AnimatedRollingNumber so we don't paint it with height=0
-  // (stacked digits → white blob). Show static text for one frame then switch.
-  const [useRolling, setUseRolling] = useState(Platform.OS !== 'android');
+  const [canAnimateAfterMount, setCanAnimateAfterMount] = useState(animateOnMount);
+  const [hasSwitchedToRolling, setHasSwitchedToRolling] = useState(animateOnMount);
+  // On Android, delay arming AnimatedRollingNumber so we don't paint it with height=0
+  // (stacked digits → white blob).
+  const [useRolling, setUseRolling] = useState(
+    animated && animateOnMount && Platform.OS !== 'android',
+  );
   useEffect(() => {
     setIsMounted(true);
   }, []);
   useEffect(() => {
-    if (Platform.OS === 'android' && isMounted) {
+    if (!animated) {
+      setUseRolling(false);
+      return;
+    }
+    if (Platform.OS !== 'android') {
+      setUseRolling(true);
+      return;
+    }
+    if (isMounted) {
       const t = requestAnimationFrame(() => {
         requestAnimationFrame(() => setUseRolling(true));
       });
       return () => cancelAnimationFrame(t);
     }
-  }, [isMounted]);
+  }, [animated, isMounted]);
 
   const safeCount = isFinite(count) && count >= 0 ? count : 0;
   const wholeNumber = Math.floor(safeCount);
@@ -71,6 +87,8 @@ const CountUp = ({
   const formattedText = isNaN(Number(trailingZero)) ? '0' : trailingZero;
 
   const formattedWhole = wholeNumber.toLocaleString('en-US');
+  const displayKey = `${formattedWhole}.${formattedText}`;
+  const initialDisplayKeyRef = useRef(displayKey);
 
   const wholeStyle = useMemo(
     () => (Platform.OS === 'android' ? textStyleForAndroid(styles?.wholeText) : styles?.wholeText),
@@ -82,7 +100,24 @@ const CountUp = ({
     [styles?.decimalText],
   );
 
-  const showRolling = isMounted && useRolling;
+  useEffect(() => {
+    if (!animated || animateOnMount || canAnimateAfterMount) return;
+    const t = requestAnimationFrame(() => setCanAnimateAfterMount(true));
+    return () => cancelAnimationFrame(t);
+  }, [animated, animateOnMount, canAnimateAfterMount]);
+
+  const hasChangedSinceInitial = displayKey !== initialDisplayKeyRef.current;
+  const showRolling =
+    animated &&
+    isMounted &&
+    useRolling &&
+    (animateOnMount || hasSwitchedToRolling || (canAnimateAfterMount && hasChangedSinceInitial));
+
+  useEffect(() => {
+    if (showRolling && !hasSwitchedToRolling) {
+      setHasSwitchedToRolling(true);
+    }
+  }, [showRolling, hasSwitchedToRolling]);
 
   return (
     <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
@@ -93,31 +128,31 @@ const CountUp = ({
           prefix
         )
       ) : null}
-      {showRolling ? (
+      {!showRolling ? <Text style={wholeStyle}>{formattedWhole}</Text> : null}
+      {animated ? (
         <AnimatedRollingNumber
           value={wholeNumber}
+          containerStyle={showRolling ? undefined : countUpStyles.hiddenRollingNumber}
           textStyle={wholeStyle}
           spinningAnimationConfig={{ duration: DURATION }}
           useGrouping
         />
-      ) : (
-        <Text style={wholeStyle}>{formattedWhole}</Text>
-      )}
+      ) : null}
       {decimalPlaces > 0 ? (
         <>
           <Text className={classNames?.decimalSeparator} style={styles?.decimalSeparator}>
             .
           </Text>
-          {showRolling ? (
+          {!showRolling ? <Text style={decimalStyle}>{formattedText}</Text> : null}
+          {animated ? (
             <AnimatedRollingNumber
               value={Number(formattedText)}
               formattedText={formattedText}
+              containerStyle={showRolling ? undefined : countUpStyles.hiddenRollingNumber}
               textStyle={decimalStyle}
               spinningAnimationConfig={{ duration: DURATION }}
             />
-          ) : (
-            <Text style={decimalStyle}>{formattedText}</Text>
-          )}
+          ) : null}
         </>
       ) : null}
       {suffix ? (
@@ -126,5 +161,14 @@ const CountUp = ({
     </View>
   );
 };
+
+const countUpStyles = StyleSheet.create({
+  hiddenRollingNumber: {
+    left: 0,
+    opacity: 0,
+    position: 'absolute',
+    top: 0,
+  },
+});
 
 export default CountUp;

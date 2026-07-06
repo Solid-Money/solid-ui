@@ -13,14 +13,17 @@ import { LottieTabIcon } from '@/components/LottieTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
+  const isTestUser = useIsTestUser();
 
   return (
     <Tabs
       screenOptions={{
-        animation: Platform.OS !== 'web' ? 'shift' : 'none',
+        animation: 'none',
+        freezeOnBlur: Platform.OS !== 'web',
         sceneStyle: { backgroundColor: '#121212' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
@@ -56,7 +59,9 @@ export default function TabLayout() {
           title: 'Home',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={homeAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={homeAnimation} focused={focused} size={size} />
+          ),
           href: path.HOME,
         }}
       />
@@ -68,8 +73,8 @@ export default function TabLayout() {
           title: 'Savings',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => (
-            <LottieTabIcon source={lightningAnimation} focused={focused} />
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={lightningAnimation} focused={focused} size={size} />
           ),
           href: path.SAVINGS,
         }}
@@ -91,7 +96,9 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={cardAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={cardAnimation} focused={focused} size={size} />
+          ),
           href: path.CARD,
         }}
       />
@@ -112,7 +119,9 @@ export default function TabLayout() {
           title: 'Activity',
           headerShown: false,
 
-          tabBarIcon: ({ focused }) => <LottieTabIcon source={bellAnimation} focused={focused} />,
+          tabBarIcon: ({ focused, size }) => (
+            <LottieTabIcon source={bellAnimation} focused={focused} size={size} />
+          ),
           href: path.ACTIVITY,
         }}
       />
@@ -163,10 +172,27 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      {isTestUser && (
+        <Tabs.Screen
+          name="stocks"
+          options={{
+            title: 'Stocks',
+            headerShown: false,
+            href: path.STOCKS,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="referral"
         options={{
           title: 'Referral',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="referral-program"
+        options={{
+          title: 'Referral Program',
           href: null,
         }}
       />

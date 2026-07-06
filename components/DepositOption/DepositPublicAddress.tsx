@@ -1,42 +1,156 @@
-import { View } from 'react-native';
+import { ReactNode, useMemo } from 'react';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
-import { getAsset } from '@/lib/assets';
 import { eclipseAddress } from '@/lib/utils';
 
-const DepositPublicAddress = () => {
+const solidLogo = require('@/assets/images/solid-white.png');
+
+const SUPPORTED_NETWORKS_URL =
+  'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
+
+type DepositPublicAddressProps = {
+  /** Override address shown in copy row and QR. Defaults to user's safe address. */
+  address?: string;
+  /** Custom description rendered under the QR. Replaces default supported-networks section. */
+  description?: ReactNode;
+  /** When provided, renders a "Done" CTA that invokes this handler. */
+  onDone?: () => void;
+  /** Minimum deposit amount in token units. When set, shown below the QR. */
+  minDeposit?: string;
+  /** Chain IDs to exclude from the supported networks display. */
+  excludeChainIds?: number[];
+};
+
+const DepositPublicAddress = ({
+  address,
+  description,
+  onDone,
+  minDeposit,
+  excludeChainIds,
+}: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
+  const resolvedAddress = address ?? user?.safeAddress ?? '';
+
+  const networks = useMemo(() => {
+    const displayOrder: Record<string, number> = {
+      Ethereum: 1,
+      Fuse: 2,
+      Polygon: 3,
+      Base: 4,
+      Arbitrum: 5,
+    };
+    return Object.entries(BRIDGE_TOKENS)
+      .map(([chainId, chain]) => ({
+        chainId: Number(chainId),
+        icon: chain.icon,
+        name: chain.name,
+      }))
+      .filter(n => !excludeChainIds?.includes(n.chainId))
+      .sort((a, b) => (displayOrder[a.name] ?? 99) - (displayOrder[b.name] ?? 99));
+  }, [excludeChainIds]);
+
+  const networkNames = useMemo(() => {
+    const names = networks.map(n => n.name);
+    if (names.length <= 1) return names.join('');
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  }, [networks]);
 
   return (
-    <View className="flex items-center justify-center gap-8">
-      <View className="w-full max-w-md rounded-xl bg-primary/10">
-        <View className="items-center justify-center border-border/50 px-4 pb-4 pt-14">
-          <View className="rounded-xl bg-white p-4">
-            <QRCode value={user?.safeAddress} size={200} />
+    <View className="flex items-center justify-center">
+      <View className="w-full max-w-md rounded-xl bg-card">
+        <View className="flex-row items-center justify-center gap-1 pt-4">
+          <Text className="text-lg font-medium text-white">
+            {resolvedAddress ? eclipseAddress(resolvedAddress, 6, 6) : ''}
+          </Text>
+          {resolvedAddress ? (
+            <CopyToClipboard text={resolvedAddress} className="text-primary" />
+          ) : null}
+        </View>
+
+        <View className="items-center justify-center px-4 py-4">
+          <View
+            className="items-center justify-center overflow-hidden rounded-xl"
+            style={{ width: 200, height: 200, backgroundColor: '#181A1A' }}
+          >
+            {resolvedAddress ? (
+              <QRCode
+                value={resolvedAddress}
+                size={200}
+                color="white"
+                backgroundColor="#181A1A"
+                logo={solidLogo}
+                logoSize={50}
+                logoBackgroundColor="transparent"
+              />
+            ) : (
+              <ActivityIndicator color="white" />
+            )}
           </View>
         </View>
-        <View className="flex-col items-center justify-center gap-2">
-          <View className="mt-4 flex-row items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1.5">
-            <Image
-              source={getAsset('images/fuse-4x.png')}
-              style={{ width: 20, height: 20 }}
-              contentFit="contain"
-            />
-            <Text className="text-lg font-medium">Fuse network</Text>
-          </View>
-          <View className="mt-4 h-[1px] w-full bg-[#303030]" />
-          <View className="mb-2 flex-row items-center gap-2">
-            <Text className="text-base">
-              {user?.safeAddress ? eclipseAddress(user?.safeAddress, 6, 6) : ''}
+
+        <View className="items-center gap-2 px-4 pb-4">
+          {description ? (
+            description
+          ) : (
+            <>
+              <View className="flex-row items-center justify-center">
+                {networks.map((network, index) => (
+                  <View
+                    key={network.chainId}
+                    className={index > 0 ? '-ml-2' : ''}
+                    style={{ zIndex: networks.length - index }}
+                  >
+                    <Image
+                      source={network.icon}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: '#1C1C1C',
+                      }}
+                      contentFit="cover"
+                    />
+                  </View>
+                ))}
+              </View>
+
+              <Text className="max-w-72 text-center text-sm text-muted-foreground">
+                Please deposit USDC on {networkNames} chains
+              </Text>
+
+              <Pressable
+                onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
+                className="web:hover:opacity-50"
+              >
+                <View className="flex-row flex-wrap items-center">
+                  <Text className="text-sm font-medium text-white">See supported networks</Text>
+                  <ChevronRight size={16} color="white" />
+                </View>
+              </Pressable>
+            </>
+          )}
+          {minDeposit && Number(minDeposit) > 0 ? (
+            <Text className="text-center text-xs text-muted-foreground">
+              Minimum deposit: {minDeposit} USDC
             </Text>
-            <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
-          </View>
+          ) : null}
         </View>
       </View>
+      <Text className="mt-4 text-sm text-muted-foreground">Allow 5-10 minutes for processing.</Text>
+      {onDone ? (
+        <Button variant="brand" className="mt-4 h-12 w-full rounded-2xl" onPress={onDone}>
+          <Text className="text-lg font-semibold text-black">Done</Text>
+        </Button>
+      ) : null}
     </View>
   );
 };

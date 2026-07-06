@@ -1,4 +1,5 @@
-import { ImageBackground, Platform, View } from 'react-native';
+import { ReactNode } from 'react';
+import { Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -12,9 +13,10 @@ import { useDimension } from '@/hooks/useDimension';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier, TierBenefits } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { compactNumberFormat, formatNumber } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
+import RewardComingSoon from './RewardComingSoon';
 import TierProgressBar from './TierProgressBar';
 
 // Transform API tier benefits to display items with dynamic icons
@@ -23,6 +25,7 @@ interface DashboardBenefitItem {
   iconText?: string;
   title: string;
   description: string;
+  descriptionNode?: ReactNode;
 }
 
 const transformTierBenefitsForDashboard = (
@@ -44,6 +47,7 @@ const transformTierBenefitsForDashboard = (
       icon: 'images/dollar-yellow.png',
       title: depositTitle,
       description: 'On your savings',
+      descriptionNode: currentTier !== RewardsTier.CORE ? <RewardComingSoon /> : undefined,
     },
     {
       iconText: tierBenefits.cardCashback.title, // e.g., "2%", "3%", "5%"
@@ -92,7 +96,7 @@ const RewardsDashboard = ({
 
   return (
     <View
-      className="relative gap-20 rounded-twice p-6 md:px-10 md:py-8"
+      className="relative gap-10 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
       style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
     >
       <LinearGradient
@@ -112,24 +116,17 @@ const RewardsDashboard = ({
         }}
       />
       {!isScreenMedium && (
-        <ImageBackground
+        <Image
           source={getAsset('images/points_large.png')}
-          resizeMode="contain"
+          contentFit="contain"
+          pointerEvents="none"
           style={{
             position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
+            right: -225,
+            top: -22,
+            width: 600,
+            height: 276,
             zIndex: 0,
-            pointerEvents: 'none',
-          }}
-          imageStyle={{
-            width: 800,
-            height: 600,
-            marginTop: isScreenMedium ? -120 : -180,
-            marginRight: isScreenMedium ? -120 : -300,
-            marginLeft: 'auto',
           }}
         />
       )}
@@ -153,7 +150,7 @@ const RewardsDashboard = ({
               <View>
                 <Text className="text-rewards/70 md:text-lg">Total points</Text>
                 <Text className="text-4.5xl font-semibold text-rewards">
-                  {formatNumber(totalPoints, 0, 0)}
+                  {compactNumberFormat(totalPoints)}
                 </Text>
               </View>
             </View>
@@ -189,6 +186,7 @@ const RewardsDashboard = ({
               iconText={benefit.iconText}
               title={benefit.title}
               description={benefit.description}
+              descriptionNode={benefit.descriptionNode}
             />
           ))}
 

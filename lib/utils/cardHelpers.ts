@@ -49,17 +49,15 @@ export const getColorForTransaction = (
 };
 
 /**
- * Normalize amount for display: Rain returns cents, Bridge returns dollars.
+ * Normalize amount for display.
+ * Both Rain and Bridge amounts are returned as dollars from the backend.
  */
 function normalizeCardAmount(amount: string, provider?: CardProvider | null): number {
-  const num = parseFloat(amount);
-  if (provider === CardProvider.RAIN) return num / 100;
-  return num;
+  return parseFloat(amount);
 }
 
 /**
  * Format card transaction amount with proper sign and currency symbol.
- * Pass provider so Rain amounts (cents) are converted to dollars for display.
  */
 export const formatCardAmount = (
   amount: string,
@@ -72,7 +70,6 @@ export const formatCardAmount = (
 
 /**
  * Format card transaction amount with currency code and +/- sign.
- * Pass provider so Rain amounts (cents) are converted to dollars for display.
  */
 export const formatCardAmountWithCurrency = (
   amount: string,
@@ -120,18 +117,28 @@ export const getCashbackAmount = (
   }
 
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
+  const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
-  // For pending cashbacks without fuseAmount yet, show pending indicator without amount
-  if (!cashback.fuseAmount) {
+  // For pending cashbacks without a payout amount yet, show pending indicator
+  // without an amount. New cashbacks carry soUsdAmount; pre-migration ones
+  // carry the legacy fuseAmount.
+  const soUsdAmount = cashback.soUsdAmount;
+  const legacyFuseAmount = cashback.fuseAmount;
+
+  if (!soUsdAmount && !legacyFuseAmount) {
     return {
       amount: 'Pending',
       isPending: true,
+      isEscrowed,
+      payoutAt: cashback.payoutAt,
     };
   }
 
-  const fuseAmountAsNum = parseFloat(cashback.fuseAmount);
-  const fuseUsdPriceAsNum = parseFloat(cashback.fuseUsdPrice || '0');
-  const amount = fuseAmountAsNum * fuseUsdPriceAsNum;
+  // USD value = token amount × its USD rate. soUSD uses soUsdRate (USD per
+  // share); legacy FUSE cashbacks use fuseUsdPrice.
+  const tokenAmount = soUsdAmount ?? legacyFuseAmount ?? '0';
+  const usdRate = soUsdAmount ? cashback.soUsdRate : cashback.fuseUsdPrice;
+  const amount = parseFloat(tokenAmount) * parseFloat(usdRate || '0');
 
   if (isNaN(amount) || amount <= 0) {
     return null;
@@ -140,5 +147,7 @@ export const getCashbackAmount = (
   return {
     amount: `+$${amount.toFixed(2)}`,
     isPending,
+    isEscrowed,
+    payoutAt: cashback.payoutAt,
   };
 };

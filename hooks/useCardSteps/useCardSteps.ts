@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
@@ -13,6 +14,7 @@ import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -40,14 +42,16 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
-    useShallow(state => ({
-      kycLinkId: state.kycLinkId,
-      processingUntil: state.processingUntil,
-      setProcessingUntil: state.setProcessingUntil,
-      clearProcessingUntil: state.clearProcessingUntil,
-    })),
-  );
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil, setKycFlow } =
+    useKycStore(
+      useShallow(state => ({
+        kycLinkId: state.kycLinkId,
+        processingUntil: state.processingUntil,
+        setProcessingUntil: state.setProcessingUntil,
+        clearProcessingUntil: state.clearProcessingUntil,
+        setKycFlow: state.setKycFlow,
+      })),
+    );
   // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
   const cardIssuer =
     cardStatusResponse?.rainApplicationStatus != null
@@ -97,13 +101,15 @@ export function useCardSteps(
   );
 
   // Card activation state and handlers
-  const {
-    cardActivated,
-    activatingCard,
-    handleActivateCard,
-    syncCardActivationState,
-    pushCardDetails,
-  } = useCardActivation(router);
+  const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
+    useCardActivation(router);
+
+  // Opens the existing "deposit to card" popup (used by the BD minimum-deposit step).
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
+  const openDepositModal = useCallback(
+    () => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM),
+    [setCardDepositModal],
+  );
 
   // Sync card activation state with server
   useEffect(() => {
@@ -123,9 +129,12 @@ export function useCardSteps(
 
     // Default to Rain KYC; only Bridge goes through Bridge flow
     if (cardIssuer !== CardProvider.BRIDGE) {
+      setKycFlow('card');
       router.push(path.KYC as any);
       return;
     }
+
+    setKycFlow('card');
 
     // Check country access (Bridge flow)
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
@@ -194,6 +203,7 @@ export function useCardSteps(
     countryStore,
     cardsEndorsement?.status,
     cardIssuer,
+    setKycFlow,
   ]);
 
   // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)
@@ -201,11 +211,9 @@ export function useCardSteps(
     const status = cardStatusResponse?.rainApplicationStatus;
     const link = cardStatusResponse?.applicationExternalVerificationLink;
 
-    if (
-      status === RainApplicationStatus.DENIED ||
-      status === RainApplicationStatus.LOCKED ||
-      status === RainApplicationStatus.CANCELED
-    ) {
+    // DENIED is a final decision with no action — it renders no button, so it is not
+    // handled here. LOCKED/CANCELED still offer a "Contact support" button.
+    if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
       openIntercom();
       return;
     }
@@ -251,12 +259,17 @@ export function useCardSteps(
         cardStatusResponse?.activationBlocked,
         cardStatusResponse?.activationBlockedReason,
         handleProceedToKyc,
-        handleActivateCard,
+        pushCardReady,
         pushCardDetails,
         {
           cardIssuer,
           rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          kycStatus: cardStatusResponse?.kycStatus,
+          kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
+          country: cardStatusResponse?.country,
+          cardCollateralDeposited: cardStatusResponse?.cardCollateralDeposited,
+          openDepositModal,
         },
       ),
     [
@@ -266,11 +279,16 @@ export function useCardSteps(
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
       cardStatusResponse?.rainApplicationStatus,
+      cardStatusResponse?.kycStatus,
+      cardStatusResponse?.kycWarnings,
+      cardStatusResponse?.country,
+      cardStatusResponse?.cardCollateralDeposited,
       handleProceedToKyc,
-      handleActivateCard,
+      pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,
+      openDepositModal,
     ],
   );
 

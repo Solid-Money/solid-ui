@@ -11,6 +11,7 @@ import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
@@ -18,7 +19,12 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
+import DepositTypeSelection from '@/components/DepositOption/DepositTypeSelection';
+import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
+import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
+import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
+import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -27,11 +33,14 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
-import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
+import {
+  getAllowedTokensForChain,
+  getDefaultDepositSelection,
+  getVaultDepositConfig,
+} from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import useResponsiveModal from './useResponsiveModal';
@@ -45,43 +54,43 @@ export interface DepositOptionProps {
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
   const {
     currentModal,
     previousModal,
     transaction,
     setModal,
     srcChainId,
-    outputToken,
+    principalToken,
     bankTransfer,
     directDepositSession,
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
     setSrcChainId,
-    setOutputToken,
+    setPrincipalToken,
     setDirectDepositSession,
     resetDepositFlow,
     depositFromSolid,
     setDepositFromSolid,
   } = useDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? DEPOSIT_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
       srcChainId: state.srcChainId,
-      outputToken: state.outputToken,
+      principalToken: state.principalToken,
       bankTransfer: state.bankTransfer,
       directDepositSession: state.directDepositSession,
       sessionStartTime: state.sessionStartTime,
       setSessionStartTime: state.setSessionStartTime,
       clearSessionStartTime: state.clearSessionStartTime,
       setSrcChainId: state.setSrcChainId,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       setDirectDepositSession: state.setDirectDepositSession,
       resetDepositFlow: state.resetDepositFlow,
       depositFromSolid: state.depositFromSolid,
@@ -123,6 +132,12 @@ const useDepositOption = ({
   const isDepositDirectlyTokens =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
+  const isVirtualAccountDetails =
+    currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
+  const isVirtualAccountTos = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS.name;
+  const isVirtualAccountApply = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY.name;
+  const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
+  const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -179,14 +194,19 @@ const useDepositOption = ({
 
   const getContent = () => {
     if (isTransactionStatus) {
+      const isDepositToSavings = depositFromSolid;
       return (
         <TransactionStatus
-          title="Deposit initiated"
-          description="Your deposit is being processed. This may take a few minutes."
+          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer sent'}
+          description={
+            isDepositToSavings
+              ? 'Your deposit is being processed. This may take a few minutes.'
+              : 'Your transfer has been sent. Funds will appear in your wallet shortly.'
+          }
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
-          icon={getTokenIcon({ tokenSymbol: outputToken })}
-          token={outputToken}
+          icon={getTokenIcon({ tokenSymbol: principalToken })}
+          token={principalToken}
         />
       );
     }
@@ -196,7 +216,10 @@ const useDepositOption = ({
     }
 
     if (isFormAndAddress) {
-      return <DepositToVaultForm />;
+      if (depositFromSolid) {
+        return <DepositToVaultForm />;
+      }
+      return <AddFundsToWalletForm />;
     }
 
     if (isBuyCrypto) {
@@ -224,7 +247,7 @@ const useDepositOption = ({
     }
 
     if (isPublicAddress) {
-      return <DepositPublicAddress />;
+      return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
 
     if (isDepositDirectly) {
@@ -239,11 +262,30 @@ const useDepositOption = ({
       return <DepositDirectlyTokens />;
     }
 
+    if (isVirtualAccountApply) {
+      return <VirtualAccountApplyModal />;
+    }
+
+    if (isVirtualAccountTos) {
+      return <VirtualAccountTosModal />;
+    }
+
+    if (isVirtualAccountDetails) {
+      return <VirtualAccountDetailsModal />;
+    }
+
     if (isTokenSelector) {
+      if (depositFromSolid) {
+        return <SavingsDepositTokenSelector />;
+      }
       return <DepositTokenSelector />;
     }
 
-    return <DepositOptions />;
+    if (isOptions) {
+      return <DepositOptions />;
+    }
+
+    return <DepositTypeSelection />;
   };
 
   const getContentKey = () => {
@@ -264,7 +306,10 @@ const useDepositOption = ({
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
     if (isDepositDirectlyTokens) return 'deposit-directly-tokens';
     if (isTokenSelector) return 'token-selector';
-    return 'deposit-options';
+    if (isVirtualAccountDetails) return 'virtual-account-details';
+    if (isVirtualAccountTos) return 'virtual-account-tos';
+    if (isOptions) return 'deposit-options';
+    return 'deposit-type-selection';
   };
 
   const getTitle = () => {
@@ -276,11 +321,18 @@ const useDepositOption = ({
     if (isBankTransferPreview) return 'Transfer Details';
     if (isExternalWalletOptions) return 'Deposit from external wallet';
     if (isBuyCryptoOptions) return 'Buy crypto';
-    if (isPublicAddress) return 'Solid address';
+    if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
+    if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
-    return 'Deposit';
+    if (isVirtualAccountApply) return 'Bank transfer';
+    if (isVirtualAccountDetails) return 'Bank Deposit';
+    if (isVirtualAccountTos) return 'Bank Deposit';
+    if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
+    if (isFormAndAddress && !depositFromSolid) return 'Add funds';
+    if (isDepositTypeSelection) return 'Deposit with';
+    return 'Add funds';
   };
 
   const getContentClassName = () => {
@@ -303,6 +355,11 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
+    if (isFormAndAddress && !depositFromSolid) {
+      return 'min-h-[40rem]';
+    }
+
     if (
       !isFormAndAddress &&
       !isBuyCrypto &&
@@ -396,27 +453,27 @@ const useDepositOption = ({
     }
 
     if (value) {
-      const { chainId: defaultChainId, outputToken: defaultToken } =
-        getDefaultDepositSelection(vault);
+      const { chainId: defaultChainId, principalToken: defaultToken } =
+        getDefaultDepositSelection();
       const supportedChains = depositConfig.supportedChains;
       // When srcChainId is 0 (unset), don't auto-sync so user sees options/networks to pick
       const nextChainId =
         srcChainId && supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
-      const allowedTokens = getAllowedTokensForChain(nextChainId, vault);
-      const nextToken = allowedTokens.includes(outputToken) ? outputToken : defaultToken;
+      const allowedTokens = getAllowedTokensForChain(nextChainId);
+      const nextToken = allowedTokens.includes(principalToken) ? principalToken : defaultToken;
 
       if (srcChainId && nextChainId !== srcChainId) {
         setSrcChainId(nextChainId);
       }
-      if (nextToken !== outputToken) {
-        setOutputToken(nextToken);
+      if (nextToken !== principalToken) {
+        setPrincipalToken(nextToken);
       }
 
       const directChainId =
         directDepositSession.chainId && supportedChains.includes(directDepositSession.chainId)
           ? directDepositSession.chainId
           : defaultChainId;
-      const directAllowedTokens = getAllowedTokensForChain(directChainId, vault);
+      const directAllowedTokens = getAllowedTokensForChain(directChainId);
       const directToken =
         directDepositSession.selectedToken &&
         directAllowedTokens.includes(directDepositSession.selectedToken)
@@ -438,6 +495,9 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (depositFromSolid && user?.safeAddress) {
+        // Savings deposit: open form directly — token selector is inline
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else if ((address || (depositFromSolid && user?.safeAddress)) && srcChainId) {
         setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else {
@@ -469,7 +529,12 @@ const useDepositOption = ({
   };
 
   const handleBackPress = () => {
-    if (isFormAndAddress) {
+    if (isFormAndAddress && depositFromSolid) {
+      // Savings deposit form is the entry point — close the modal
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
+    } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
       const { kyc } = useDepositStore.getState();
@@ -485,7 +550,7 @@ const useDepositOption = ({
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
@@ -502,7 +567,7 @@ const useDepositOption = ({
       // Go back to token selection if multiple tokens available, otherwise to network selection
       const { directDepositSession } = useDepositStore.getState();
       const chainId = directDepositSession.chainId;
-      const allowedTokens = chainId ? getAllowedTokensForChain(chainId, vault) : [];
+      const allowedTokens = chainId ? getAllowedTokensForChain(chainId) : [];
       const hasMultipleTokens = allowedTokens.length > 1;
 
       if (hasMultipleTokens) {
@@ -512,6 +577,9 @@ const useDepositOption = ({
       }
     } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector && depositFromSolid) {
+      // Token selector was opened from the deposit form — go back to form
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
@@ -519,8 +587,10 @@ const useDepositOption = ({
     } else if (isNetworks) {
       setDepositFromSolid(false);
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
   };
 
@@ -574,7 +644,7 @@ const useDepositOption = ({
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
   }, [
     status,
@@ -599,9 +669,10 @@ const useDepositOption = ({
   const shouldOpen = !isClose;
 
   const showBackButton =
-    isFormAndAddress ||
+    (isFormAndAddress && !depositFromSolid) ||
     isBuyCrypto ||
     isNetworks ||
+    isOptions ||
     isBankTransferAmount ||
     isBankTransferPayment ||
     (isBankTransferPreview && !bankTransfer.fromActivity) ||
@@ -613,7 +684,8 @@ const useDepositOption = ({
     isDepositDirectly ||
     isDepositDirectlyAddress ||
     isDepositDirectlyTokens ||
-    isTokenSelector;
+    isTokenSelector ||
+    isVirtualAccountApply;
 
   const disableScroll = Platform.OS !== 'web' && isDepositDirectlyAddress;
 

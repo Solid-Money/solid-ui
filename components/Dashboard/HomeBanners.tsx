@@ -26,6 +26,9 @@ import { PanGestureProvider, usePanGesture } from './PanGestureContext';
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 
+const PLATFORM_KEY: 'web' | 'android' | 'ios' =
+  Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+
 type BannerData = React.ReactElement[];
 
 type BannerItemProps = {
@@ -130,12 +133,15 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
-  const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
+  const BANNER_HEIGHT = isScreenMedium ? 220 : propData ? 200 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
 
   const defaultData = useMemo(() => {
-    if (promotionsBanner?.length) {
-      const sorted = [...promotionsBanner].sort((a, b) => a.sort - b.sort);
+    const platformBanners = promotionsBanner?.filter(
+      item => !item.platforms || item.platforms[PLATFORM_KEY] !== false,
+    );
+    if (platformBanners?.length) {
+      const sorted = [...platformBanners].sort((a, b) => a.sort - b.sort);
       return sorted.map((item, i) => (
         <PromoImageBanner
           key={`promo-${item.slug}-${i}`}
@@ -153,7 +159,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;
-  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT]);
+  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT, isScreenMedium]);
 
   const data = propData ?? defaultData;
   const IS_PAGINATION = data.length > VIEW_COUNT;
@@ -313,7 +319,7 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     gap: 4,
-    marginTop: 0,
+    marginTop: 8,
   },
   dotStyle: {
     backgroundColor: '#616161',

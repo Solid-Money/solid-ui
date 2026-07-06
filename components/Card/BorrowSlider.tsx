@@ -9,9 +9,16 @@ type SliderProps = {
   onValueChange: (value: number) => void;
   min: number;
   max: number;
+  label?: string;
 };
 
-export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
+export function BorrowSlider({
+  value,
+  onValueChange,
+  min,
+  max,
+  label = 'Amount to borrow',
+}: SliderProps) {
   const [sliderWidth, setSliderWidth] = useState(0);
   const [inputValue, setInputValue] = useState(value.toString());
   const sliderContainerRef = useRef<View>(null);
@@ -171,7 +178,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   return (
     <View className="gap-4">
       <View className="gap-2">
-        <Text className="mt-5 text-center text-base font-medium opacity-50">Amount to borrow</Text>
+        <Text className="mt-5 text-center text-base font-medium opacity-50">{label}</Text>
         <View className="flex-row items-center justify-center">
           <TextInput
             value={displayValue}

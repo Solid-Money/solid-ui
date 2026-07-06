@@ -36,8 +36,8 @@ const useSendOption = ({
   const { currentModal, previousModal, transaction, selectedToken, setModal, resetAll } =
     useSendStore(
       useShallow(state => ({
-        currentModal: state.currentModal,
-        previousModal: state.previousModal,
+        currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
+        previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
         transaction: state.transaction,
         selectedToken: state.selectedToken,
         setModal: state.setModal,

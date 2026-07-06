@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { RewardsTier, TierBenefits } from '@/lib/types';
 
 import RewardTable, { RewardTableRow } from './RewardTable';
@@ -20,7 +22,7 @@ const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
     },
     {
       label: 'Subscription discounts',
-      subtitle: 'For select monthly services',
+      subtitle: 'One subscription per category, per month',
       values: sortedTiers.map(tier => tier.subscriptionDiscountCap),
     },
     {
@@ -31,10 +33,15 @@ const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
       label: 'Bank deposit',
       values: sortedTiers.map(tier => tier.bankDeposit),
     },
-    {
-      label: 'Swaps',
-      values: sortedTiers.map(tier => tier.swapFees),
-    },
+    // Swap is not available on iOS, so omit the swap fees row there.
+    ...(Platform.OS === 'ios'
+      ? []
+      : [
+          {
+            label: 'Swaps',
+            values: sortedTiers.map(tier => tier.swapFees),
+          },
+        ]),
     {
       label: 'Support',
       values: sortedTiers.map(tier => tier.support),

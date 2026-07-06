@@ -13,7 +13,7 @@ import {
   WITHDRAW_MODAL,
 } from '@/constants/modals';
 
-import { AssetPath } from './assets';
+import type { AssetPath } from './assets';
 
 export interface CountryFromIp {
   countryCode: string;
@@ -409,9 +409,9 @@ export interface CardResponse {
 }
 
 export interface CashbackData {
-  monthlyFuseAmount: number;
+  monthlySoUsdAmount: number;
   monthlyUsdValue: number;
-  totalFuseAmount: number;
+  totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
 }
@@ -435,6 +435,22 @@ export interface CardDetailsResponseDto extends CardResponse {
   provider?: CardProvider;
 }
 
+/**
+ * A single warning entry surfaced for a user's KYC. Mirrors Didit's per-block warning shape:
+ * `risk` is the tag (DOCUMENT_EXPIRED, DATE_OF_BIRTH_NOT_DETECTED, ...) — same key space as
+ * DIDIT_WARNING_DESCRIPTIONS overrides; `short_description` / `long_description` are Didit's
+ * pre-formatted user-facing copy. Backend also synthesises one of these (with
+ * `risk: 'CARD_ACTIVATION_FAILED'`) when Rain rejects the forwarded application.
+ */
+export interface KycWarning {
+  risk: string;
+  log_type?: string;
+  short_description?: string;
+  long_description?: string;
+  feature?: string;
+  node_id?: string;
+}
+
 export interface CardStatusResponse {
   status?: CardStatus;
   activationBlocked?: boolean;
@@ -442,10 +458,25 @@ export interface CardStatusResponse {
   activationFailedAt?: string;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /** Internal KYC status (covers Didit rejection before Rain is reached) */
+  kycStatus?: KycStatus;
+  /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
+  kycWarnings?: KycWarning[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
+  /**
+   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Drives the
+   * country-specific issuance steps (the Bangladesh minimum-deposit step).
+   */
+  country?: string;
+  /**
+   * Total Rain collateral the user has deposited to their card, in cents. Only
+   * populated for countries that require a minimum card deposit (Bangladesh),
+   * so the UI can mark the "deposit at least $5" step complete.
+   */
+  cardCollateralDeposited?: number;
 }
 
 export interface SubmitPersonaKycRequest {
@@ -617,6 +648,40 @@ export interface RainContractResponseDto {
   onramp?: RainContractOnrampDto;
 }
 
+export type OnrampAutomationRail = 'ach' | 'wire';
+
+export interface OnrampAutomationDepositAddressDto {
+  type: 'fiat';
+  beneficiaryName: string;
+  beneficiaryAddress: string;
+  beneficiaryBankName: string;
+  beneficiaryBankAddress: string;
+  accountNumber: string;
+  routingNumber: string;
+}
+
+export interface OnrampAutomationSourceDto {
+  currency: 'usd';
+  rail: OnrampAutomationRail;
+}
+
+export interface OnrampAutomationDestinationDto {
+  currency: string;
+  rail: string;
+  address: { type: 'onchain'; address: string };
+}
+
+export interface OnrampAutomationResponseDto {
+  id: string;
+  rainAutomationId: string;
+  status: 'active' | 'deleted' | 'failed';
+  source: OnrampAutomationSourceDto;
+  destination: OnrampAutomationDestinationDto;
+  depositAddress: OnrampAutomationDepositAddressDto;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export enum LayerZeroTransactionStatus {
   INFLIGHT = 'INFLIGHT',
   CONFIRMING = 'CONFIRMING',
@@ -653,6 +718,7 @@ export enum TransactionType {
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
   BORROW_AND_DEPOSIT_TO_CARD = 'borrow_and_deposit_to_card',
+  CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
@@ -664,9 +730,15 @@ export enum TransactionType {
   MERKL_CLAIM = 'merkl_claim',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
+  FUND = 'fund',
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
   WITHDRAW_COLLATERAL = 'withdraw_collateral',
+  RESCUE_TOKEN = 'rescue_token',
+  AGENT_X402_PAYMENT = 'agent_x402_payment',
+  AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
+  GOODDOLLAR_CLAIM = 'gooddollar_claim',
+  GOODDOLLAR_SWEEP = 'gooddollar_sweep',
 }
 
 export enum TransactionDirection {
@@ -786,6 +858,7 @@ export type BridgeDeposit = {
     deadline: number;
   };
   trackingId?: string;
+  category?: DepositCategory;
 };
 
 export type BridgeTransactionRequest = {
@@ -809,7 +882,13 @@ export type Deposit = {
   };
   trackingId?: string;
   vault?: VaultType;
+  category?: DepositCategory;
 };
+
+export enum DepositCategory {
+  SAVINGS = 'SAVINGS',
+  CARD = 'CARD',
+}
 
 export enum DepositTransactionStatus {
   PENDING = 'pending',
@@ -914,16 +993,23 @@ export interface Cashback {
   _id: string;
   transactionId: string;
   status: CashbackStatus;
+  /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
+  soUsdAmount?: string;
+  soUsdRate?: string;
+  /** @deprecated legacy FUSE fields for cashbacks paid before the soUSD migration */
   fuseAmount?: string;
   fuseUsdPrice?: string;
   fiatAmount?: string;
   fiatCurrency?: string;
+  payoutAt?: string;
   createdAt: string;
 }
 
 export interface CashbackInfo {
   amount: string;
   isPending: boolean;
+  isEscrowed: boolean;
+  payoutAt?: string;
 }
 
 export interface SourceDepositInstructions {
@@ -1031,6 +1117,14 @@ export interface RewardsUserData {
   cashbackRate: number;
   cashbackThisMonth: number;
   maxCashbackMonthly: number;
+  /** Whether the user has joined the new rewards program. */
+  hasOptedIn?: boolean;
+  /** The user's old Solid Points total prior to conversion. */
+  legacyPoints?: number;
+  /** Legacy Carryover Credit granted from old points under the new economy. */
+  legacyCarryoverPoints?: number;
+  /** Tier the user starts in after carryover is applied (Core or Prime). */
+  startingTier?: RewardsTier;
 }
 
 export interface TierBenefit {
@@ -1072,7 +1166,16 @@ export interface TierCashbackConfig {
 
 export interface TierSubscriptionDiscountConfig {
   percentage: number;
+  /** @deprecated Superseded by categoryLimit. */
   serviceLimit: number;
+  /** Number of subscription categories this tier can earn a discount on per month. */
+  categoryLimit: number;
+}
+
+export interface SubscriptionDiscountCategory {
+  key: string;
+  label: string;
+  merchants: string[];
 }
 
 export interface CashbackConfig {
@@ -1085,7 +1188,11 @@ export interface CashbackConfig {
 
 export interface SubscriptionDiscountConfig {
   enabled: boolean;
+  /** @deprecated Legacy flat service list; detection uses categories. */
   eligibleServices: string[];
+  categories: SubscriptionDiscountCategory[];
+  /** First N dollars of an eligible charge that earn the discount. */
+  eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
   tier3: TierSubscriptionDiscountConfig;
@@ -1113,6 +1220,8 @@ export interface PointsEarningConfig {
 }
 
 export interface FullRewardsConfig {
+  /** Master switch: when false, all users are treated as Core for benefits. */
+  tierSystemLive?: boolean;
   tiers: TierThresholds;
   points: PointsEarningConfig;
   cashback: CashbackConfig;
@@ -1236,7 +1345,10 @@ export interface CardTransaction {
   merchant_category_code?: string;
   merchant_name?: string;
   merchant_location?: string;
+  merchant_city?: string;
+  merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
+  declined_reason?: string;
 }
 
 export interface CardTransactionsResponse {
@@ -1310,7 +1422,8 @@ export interface ActivityEvents {
 
 export interface UpdateActivityEvent {
   status?: TransactionStatus;
-  txHash?: string;
+  hash?: string;
+  url?: string;
   userOpHash?: string;
   metadata?: Record<string, any>;
 }
@@ -1333,6 +1446,8 @@ export interface VaultBreakdown {
   name: string;
   title?: string;
   type: string;
+  image?: string;
+  link?: string;
   expiryDate: string;
   amountUSD: number;
   allocation: number;
@@ -1437,11 +1552,13 @@ export interface APYs {
 export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
+  eth: number;
 }
 
 export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
+  eth: APYs;
 }
 
 export interface HistoricalAPYPoint {
@@ -1508,10 +1625,60 @@ export interface AddressBookResponse {
   skipped2faAt?: Date;
 }
 
+export type AgentSummary = {
+  agentEoaAddress?: string;
+};
+
+export type AgentApiKeySummary = {
+  id: string;
+  prefix: string;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
+export type GenerateAgentApiKeyResponse = AgentApiKeySummary & { key: string };
+
+/**
+ * Envelope returned by the Turnkey SDK's `stampX` methods. `body` is the
+ * exact stringified bytes the SDK signed — we MUST forward it verbatim;
+ * re-serializing on the server changes key order and breaks the stamp.
+ */
+export type SignedTurnkeyRequest = {
+  url: string;
+  body: string;
+  stamp: { stampHeaderName: string; stampHeaderValue: string };
+};
+
+export type ProvisioningActivity = {
+  url: string;
+  body: Record<string, unknown>;
+};
+
+export type ProvisioningInitResponse = {
+  provisioningId: string;
+  subOrganizationId: string;
+  /**
+   * Set when the agent's wallet path was already derived in Turnkey from a
+   * prior failed provisioning attempt. The `activity` in this case is the
+   * createUsers body — the client should skip the wallet-account stamp.
+   */
+  agentEoaAddress?: string;
+  activity: ProvisioningActivity;
+};
+
+export type ProvisioningStepInput = {
+  provisioningId: string;
+  signed: SignedTurnkeyRequest;
+};
+
 export interface WhatsNewStep {
   imageUrl: string;
   title: string;
   text: string;
+  buttonLabel?: string;
+  buttonLink?: string;
 }
 
 export interface WhatsNew {
@@ -1522,12 +1689,19 @@ export interface WhatsNew {
   createdAt: string;
 }
 
+export interface PromotionsBannerPlatforms {
+  web: boolean;
+  android: boolean;
+  ios: boolean;
+}
+
 export interface PromotionsBannerItem {
   imageURL: string;
   mobileImageURL?: string;
   slug: string;
   sort: number;
   link?: string;
+  platforms?: PromotionsBannerPlatforms;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];
@@ -1613,6 +1787,7 @@ export interface Vault {
   minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
+  vaultName: string;
 }
 
 export enum VaultType {
@@ -1640,4 +1815,45 @@ export interface SavingsSummaryResponse {
   activityCount: number;
   calculatedAt: string;
   dataQuality: SavingsDataQuality;
+}
+
+// ---------------------------------------------------------------------------
+// Referral cashback program
+// ---------------------------------------------------------------------------
+
+export enum ReferralRewardStatus {
+  PENDING = 'pending',
+  QUALIFIED = 'qualified',
+  PAID = 'paid',
+  EXPIRED = 'expired',
+  REVERSED = 'reversed',
+  UNDER_REVIEW = 'under_review',
+}
+
+export interface ReferralRewardListItem {
+  status: ReferralRewardStatus;
+  signupAt: string;
+  qualifiedAt?: string;
+  paidAt?: string;
+  spendUsd: number;
+  merchantCount: number;
+  rewardUsd: number;
+}
+
+export interface ReferralSummary {
+  rewards: {
+    referrerUsd: number;
+    newUserUsd: number;
+  };
+  qualification: {
+    spendTargetUsd: number;
+    merchantTarget: number;
+    windowDays: number;
+  };
+  totalRewardedUsd: number;
+  friendsInvited: number;
+  friendsQualified: number;
+  friendsPending: number;
+  hasActiveCard: boolean;
+  referrals: ReferralRewardListItem[];
 }

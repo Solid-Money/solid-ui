@@ -274,21 +274,28 @@ const useDepositFromEOAEth = (
               },
             });
 
-            track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-              user_id: user?.userId,
-              safe_address: user?.safeAddress,
-              eoa_address: eoaAddress,
-              amount,
-              transaction_hash: txHash,
-              deposit_type: 'connected_wallet',
-              deposit_method: 'eth_direct',
-              chain_id: srcChainId,
-              chain_name: 'ethereum',
-              is_sponsor: isSponsor,
-              is_first_deposit: !user?.isDeposited,
-              ...attributionData,
-              attribution_channel: attributionChannel,
-            });
+            // Amplitude emitted server-side as "Savings Deposit Completed";
+            // suppress client Amplitude to avoid double-counting (Firebase + GTM
+            // still fire).
+            track(
+              TRACKING_EVENTS.DEPOSIT_COMPLETED,
+              {
+                user_id: user?.userId,
+                safe_address: user?.safeAddress,
+                eoa_address: eoaAddress,
+                amount,
+                transaction_hash: txHash,
+                deposit_type: 'connected_wallet',
+                deposit_method: 'eth_direct',
+                chain_id: srcChainId,
+                chain_name: 'ethereum',
+                is_sponsor: isSponsor,
+                is_first_deposit: !user?.isDeposited,
+                ...attributionData,
+                attribution_channel: attributionChannel,
+              },
+              { amplitude: false },
+            );
 
             trackIdentity(user?.userId, {
               last_deposit_amount: parseFloat(amount),
@@ -416,21 +423,28 @@ const useDepositFromEOAEth = (
               },
             });
 
-            track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-              user_id: user?.userId,
-              safe_address: user?.safeAddress,
-              eoa_address: eoaAddress,
-              amount,
-              transaction_hash: txHash,
-              deposit_type: 'connected_wallet',
-              deposit_method: 'eth_direct',
-              chain_id: srcChainId,
-              chain_name: 'ethereum',
-              is_sponsor: isSponsor,
-              is_first_deposit: !user?.isDeposited,
-              ...attributionData,
-              attribution_channel: attributionChannel,
-            });
+            // Amplitude emitted server-side as "Savings Deposit Completed";
+            // suppress client Amplitude to avoid double-counting (Firebase + GTM
+            // still fire).
+            track(
+              TRACKING_EVENTS.DEPOSIT_COMPLETED,
+              {
+                user_id: user?.userId,
+                safe_address: user?.safeAddress,
+                eoa_address: eoaAddress,
+                amount,
+                transaction_hash: txHash,
+                deposit_type: 'connected_wallet',
+                deposit_method: 'eth_direct',
+                chain_id: srcChainId,
+                chain_name: 'ethereum',
+                is_sponsor: isSponsor,
+                is_first_deposit: !user?.isDeposited,
+                ...attributionData,
+                attribution_channel: attributionChannel,
+              },
+              { amplitude: false },
+            );
 
             trackIdentity(user?.userId, {
               last_deposit_amount: parseFloat(amount),

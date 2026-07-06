@@ -9,7 +9,12 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import {
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasMetCardDeposit,
+  requiresCardDeposit,
+} from '@/lib/utils';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -74,9 +79,15 @@ export function useActivateCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Deposit-required (BD) users who haven't funded their card stay on the
+  // issuance flow so the "deposit at least $5" step is shown and actionable.
+  const isCardDepositRequired = requiresCardDeposit(cardStatusResponse?.country);
+  const cardDepositMet = hasMetCardDeposit(cardStatusResponse?.cardCollateralDeposited);
+
   // Redirect if user already has a Rain card (active/frozen/inactive)
   useEffect(() => {
     if (!userHasCard) return;
+    if (isCardDepositRequired && !cardDepositMet) return;
     if (
       cardStatus === CardStatus.ACTIVE ||
       cardStatus === CardStatus.FROZEN ||
@@ -84,7 +95,7 @@ export function useActivateCard() {
     ) {
       router.replace(path.CARD_DETAILS);
     }
-  }, [userHasCard, cardStatus, router]);
+  }, [userHasCard, cardStatus, router, isCardDepositRequired, cardDepositMet]);
 
   // Navigation handler for back button
   const handleGoBack = () => {

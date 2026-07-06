@@ -32,6 +32,23 @@ function isDuplicate(a: ActivityEvent, b: ActivityEvent): boolean {
     }
   }
 
+  // A connect-wallet card deposit creates TWO card_deposit activities for the
+  // same user action: the frontend's optimistic one (trackingId) and the
+  // backend Temporal workflow's card-funding one (`${trackingId}_card`).
+  // Unlike the savings flow above (two distinct user-visible steps), these are
+  // the same step — collapse them so the deposit shows once. The keep-decision
+  // below prefers the row with an on-chain hash (the frontend doc), which
+  // carries the explorer link.
+  if (a.clientTxId && b.clientTxId && a.clientTxId !== b.clientTxId) {
+    const aIsCard = a.clientTxId.endsWith('_card');
+    const bIsCard = b.clientTxId.endsWith('_card');
+    if (aIsCard !== bIsCard) {
+      const cardId = aIsCard ? a.clientTxId : b.clientTxId;
+      const otherId = aIsCard ? b.clientTxId : a.clientTxId;
+      if (cardId === `${otherId}_card`) return true;
+    }
+  }
+
   // Normalize hash values for comparison (lowercase, trim)
   const normalizeHash = (hash: string | undefined) => hash?.toLowerCase().trim();
   const aHash = normalizeHash(a.hash);
@@ -256,6 +273,27 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
 
     // Remove SEND if there's a corresponding card deposit transaction
     return !hasCardDepositTransaction;
+  });
+
+  // Third pass: Remove BRIDGE_DEPOSIT activities that are part of a Fuse→Ethereum
+  // withdraw flow. When a user withdraws soUSD from Fuse, two activities are created:
+  // 1. BRIDGE_DEPOSIT (chain 122) - bridges soUSD from Fuse to Ethereum
+  // 2. WITHDRAW (chain 1) - redeems soUSD for USDC via BoringQueue
+  // We hide the BRIDGE_DEPOSIT when a matching WITHDRAW exists from the same address
+  // within 60 minutes, since the WITHDRAW is the user-facing final result.
+  deduplicatedArray = deduplicatedArray.filter(transaction => {
+    if (transaction.type !== TransactionType.BRIDGE_DEPOSIT) return true;
+
+    const hasMatchingWithdraw = deduplicatedArray.some(
+      tx =>
+        tx !== transaction &&
+        tx.type === TransactionType.WITHDRAW &&
+        tx.fromAddress?.toLowerCase() === transaction.fromAddress?.toLowerCase() &&
+        tx.amount === transaction.amount &&
+        Math.abs(parseInt(tx.timestamp || '0') - parseInt(transaction.timestamp || '0')) < 3600, // Within 60 minutes
+    );
+
+    return !hasMatchingWithdraw;
   });
 
   return deduplicatedArray;

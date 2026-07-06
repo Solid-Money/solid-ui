@@ -156,9 +156,8 @@ const DesktopSkeletonRow = ({ index, totalCount }: DesktopSkeletonRowProps) => {
       </View>
 
       {/* Action Column */}
-      <View className="p-6" style={{ width: DESKTOP_COLUMNS[3].width }}>
+      {/* <View className="p-6" style={{ width: DESKTOP_COLUMNS[3].width }}>
         <View className="flex-row items-center justify-end">
-          {/* Menu icon */}
           <Skeleton
             style={{
               width: 24,
@@ -168,7 +167,7 @@ const DesktopSkeletonRow = ({ index, totalCount }: DesktopSkeletonRowProps) => {
             }}
           />
         </View>
-      </View>
+      </View> */}
     </View>
   );
 };
@@ -190,7 +189,7 @@ const DesktopHeader = () => (
     <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[2].width }}>
       <Text className="text-sm text-muted-foreground">{DESKTOP_COLUMNS[2].label}</Text>
     </View>
-    <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[3].width }} />
+    {/* <View className="px-6 py-2" style={{ width: DESKTOP_COLUMNS[3].width }} /> */}
   </View>
 );
 

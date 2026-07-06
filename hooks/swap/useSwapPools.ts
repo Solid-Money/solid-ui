@@ -1,10 +1,12 @@
-import { useLazyQuery } from '@apollo/client/react';
-import { getAlgebraInfoClient } from '@/graphql/clients';
-import { MultiplePoolsDocument, TokenFieldsFragment } from '@/graphql/generated/algebra-info';
-import { computePoolAddress, Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { useEffect, useMemo, useState } from 'react';
+import { useLazyQuery } from '@apollo/client/react';
+import { computePoolAddress, Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
+
+import { getAlgebraInfoClient } from '@/graphql/clients';
+import { MultiplePoolsDocument, TokenFieldsFragment } from '@/graphql/generated/algebra-info';
+
 import { useAllCurrencyCombinations } from './useAllCurrencyCombinations';
 
 /**
@@ -48,19 +50,20 @@ export function useSwapPools(
           }) as Address,
       );
 
-      const poolsData = await getMultiplePools({
-        variables: {
-          poolIds: poolsAddresses.map(address => address.toLowerCase()),
-        },
-      });
-
-      // const poolsLiquidities = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-      //     address
-      // }).read.liquidity()))
-
-      // const poolsGlobalStates = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-      //     address
-      // }).read.globalState()))
+      let poolsData;
+      try {
+        poolsData = await getMultiplePools({
+          variables: {
+            poolIds: poolsAddresses.map(address => address.toLowerCase()),
+          },
+        });
+      } catch (err) {
+        // Subgraph 404 / network failure — degrade to "no pools" instead of
+        // surfacing an unhandled rejection that crashes the consumer screen.
+        console.warn('Algebra pool subgraph query failed:', err);
+        setExistingPools([]);
+        return;
+      }
 
       const pools =
         poolsData.data &&
@@ -78,7 +81,7 @@ export function useSwapPools(
     }
 
     Boolean(allCurrencyCombinations.length > 0) && getPools();
-  }, [allCurrencyCombinations]);
+  }, [allCurrencyCombinations, getMultiplePools]);
 
   return useMemo(() => {
     if (!existingPools)

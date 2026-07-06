@@ -4,46 +4,42 @@ import { Image } from 'expo-image';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
+import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { DepositMethod } from '@/lib/types';
+import { DepositMethod, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const { data: cardStatus } = useCardStatus();
+  const isTestUser = useIsTestUser();
+  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
     });
-    setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
-  }, [setModal]);
 
-  const handleCreditCardPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'credit_card',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-  }, [setModal]);
+    if (existingAutomation) {
+      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+      return;
+    }
+
+    // No automation yet — show the Apply intro. The intro CTA decides whether
+    // to send the user through KYC or straight to the ToS modal based on their
+    // current Rain approval status.
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+  }, [existingAutomation, setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [
       {
-        text: 'Debit/Credit Card',
-        subtitle: 'Apple pay, Google Pay, or your\ncredit card',
-        icon: (
-          <Image
-            source={getAsset('images/buy_crypto.png')}
-            style={{ width: 26, height: 22 }}
-            contentFit="contain"
-          />
-        ),
-        onPress: handleCreditCardPress,
-        method: 'credit_card' as DepositMethod,
-      },
-      {
         text: 'Bank Deposit',
-        subtitle: 'Make a transfer from your bank',
+        subtitle: 'Wire or ACH from your bank.',
         chipText: 'Cheapest',
         icon: (
           <Image
@@ -56,13 +52,13 @@ const useDepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress],
+    [handleBankDepositPress],
   );
 
-  const filteredOptions =
-    Platform.OS === 'ios'
-      ? buyCryptoOptions.filter(option => option.method !== 'credit_card')
-      : buyCryptoOptions;
+  const filteredOptions = buyCryptoOptions
+    // Bank Deposit is gated behind the test-features allow list for now.
+    .filter(option => option.method !== 'bank_transfer' || isTestUser)
+    .filter(option => Platform.OS !== 'ios' || option.method !== 'credit_card');
 
   return { buyCryptoOptions: filteredOptions };
 };

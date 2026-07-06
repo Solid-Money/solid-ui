@@ -1,16 +1,66 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
 
 const IS_PROD = ['production', 'qa'].includes(process.env.EXPO_PUBLIC_ENVIRONMENT!);
+const IOS_PROJECT_PATH = path.join(process.cwd(), 'ios', 'Solid.xcodeproj', 'project.pbxproj');
+
+const IOS_WALLET_APP_EXTENSIONS = [
+  {
+    targetName: 'IssuerNonUIExtension',
+    bundleIdentifier: 'app.solid.xyz.IssuerNonUIExtension',
+  },
+  {
+    targetName: 'IssuerUIExtension',
+    bundleIdentifier: 'app.solid.xyz.IssuerUIExtension',
+  },
+];
+
+// Notification Service Extension (rich push images). Created on every prebuild
+// by ./plugins/withIosNotificationServiceExtension, so it is always registered
+// for EAS signing (unlike the wallet extensions, which are conditional).
+const IOS_NOTIFICATION_SERVICE_EXTENSION = {
+  targetName: 'SolidNotificationService',
+  bundleIdentifier: 'app.solid.xyz.SolidNotificationService',
+};
+
+const hasIosWalletExtensionTargets = () => {
+  try {
+    const project = fs.readFileSync(IOS_PROJECT_PATH, 'utf8');
+
+    return IOS_WALLET_APP_EXTENSIONS.every(({ targetName }) => project.includes(`"${targetName}"`));
+  } catch {
+    return false;
+  }
+};
+
+const SHOULD_ENABLE_IOS_WALLET_EXTENSIONS = process.env.ENABLE_IOS_WALLET_EXTENSIONS === 'true';
+const HAS_IOS_WALLET_EXTENSION_TARGETS = hasIosWalletExtensionTargets();
+
+if (SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && !HAS_IOS_WALLET_EXTENSION_TARGETS) {
+  console.warn(
+    'ENABLE_IOS_WALLET_EXTENSIONS=true, but ios/Solid.xcodeproj does not contain Issuer wallet extension targets. Skipping EAS appExtensions config.',
+  );
+}
+
+const ENABLE_IOS_WALLET_EXTENSIONS =
+  SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && HAS_IOS_WALLET_EXTENSION_TARGETS;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Solid',
   slug: 'flash-frontend',
-  version: '1.0.5',
+  version: '1.0.11',
   orientation: 'portrait',
   icon: './assets/images/adaptive-icon.png',
   scheme: 'solid',
   userInterfaceStyle: 'automatic',
+  androidStatusBar: {
+    barStyle: 'light-content',
+    backgroundColor: '#00000000',
+    translucent: true,
+  },
   owner: 'fuseio',
   ios: {
     icon: './assets/images/ios-icon.png',
@@ -59,7 +109,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       ],
     },
-    associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
+    associatedDomains: [
+      'webcredentials:solid.xyz',
+      'applinks:solid.xyz',
+      // Rewards (and future) deep links are sent on the app host. Universal
+      // Links require the host to be declared here AND an apple-app-site-association
+      // served at https://app.solid.xyz/.well-known/.
+      'applinks:app.solid.xyz',
+    ],
     appleTeamId: '67UG7X46Z8',
     splash: {
       image: './assets/splash/splash-icon.png',
@@ -87,6 +144,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           {
             scheme: 'https',
             host: 'solid.xyz',
+          },
+          // App Links on the app host (e.g. rewards email CTA). autoVerify
+          // requires assetlinks.json served at https://app.solid.xyz/.well-known/.
+          {
+            scheme: 'https',
+            host: 'app.solid.xyz',
           },
         ],
         category: ['BROWSABLE', 'DEFAULT'],
@@ -135,6 +198,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ios: {
           deploymentTarget: '15.1',
           useFrameworks: 'static',
+          // Static frameworks with precompiled RN core have been flaky in EAS iOS builds.
+          // Build RN from source to avoid missing React-use-frameworks.modulemap artifacts.
+          buildReactNativeFromSource: true,
           forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics'],
         },
         android: {
@@ -158,11 +224,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-notifications',
       {
-        icon: './assets/images/adaptive-icon.png',
+        // Android small (status-bar) notification icon. Android renders this as
+        // a white alpha-mask silhouette, so a transparent-background logo is
+        // required; `color` tints the icon/accent. The large image shown in the
+        // notification body comes from the FCM payload (backend imageUrl).
+        icon: './assets/images/solid-status-bar.png',
+        color: '#94F27F',
       },
     ],
     '@react-native-firebase/app',
     '@react-native-firebase/messaging',
+    // Adds the iOS Notification Service Extension so rich-push images render.
+    './plugins/withIosNotificationServiceExtension',
     [
       '@sentry/react-native/expo',
       {
@@ -212,16 +285,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       build: {
         experimental: {
           ios: {
-            // Wallet Extensions: so EAS generates provisioning profiles for extension targets
+            // The NSE is always created at prebuild; wallet extensions are only
+            // signed when their native Xcode targets exist.
             appExtensions: [
-              {
-                targetName: 'IssuerNonUIExtension',
-                bundleIdentifier: 'app.solid.xyz.IssuerNonUIExtension',
-              },
-              {
-                targetName: 'IssuerUIExtension',
-                bundleIdentifier: 'app.solid.xyz.IssuerUIExtension',
-              },
+              IOS_NOTIFICATION_SERVICE_EXTENSION,
+              ...(ENABLE_IOS_WALLET_EXTENSIONS ? IOS_WALLET_APP_EXTENSIONS : []),
             ],
           },
         },

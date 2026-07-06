@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, useWindowDimensions, View } from 'react-native';
 import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
@@ -11,6 +11,7 @@ import Toast from 'react-native-toast-message';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
@@ -20,6 +21,7 @@ import {
   OnboardingPage,
   OnboardingPagination,
 } from '@/components/Onboarding';
+import PasskeyFaqModal from '@/components/PasskeyFaqModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -45,12 +47,16 @@ export default function Onboarding() {
   const isLoginPending = loginInfo.status === Status.PENDING;
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showRecoveryLink, setShowRecoveryLink] = useState(false);
+  const [showPasskeyFaq, setShowPasskeyFaq] = useState(false);
   const scrollX = useSharedValue(0);
 
   // Responsive layout for small screens (iPhone SE)
   const isSmallScreen = screenHeight < 700;
-  // Fixed button area height - content area uses flex: 1 to fill remaining space
-  const buttonAreaHeight = isSmallScreen ? 200 : 240;
+  // Fixed button area height - content area uses flex: 1 to fill remaining space.
+  // Grows to fit the help prompt (Passkey FAQs / account recovery) shown after a failed login,
+  // which can wrap onto two lines on smaller screens.
+  const buttonAreaHeight = (isSmallScreen ? 200 : 240) + (showRecoveryLink ? 64 : 0);
 
   // Track screen width as shared value for use in worklets
   const widthSV = useSharedValue(screenWidth);
@@ -84,6 +90,8 @@ export default function Onboarding() {
   const handleLoginPress = useCallback(async () => {
     // Mark onboarding as seen
     setHasSeenOnboarding(true);
+    // Hide any previous recovery prompt while retrying
+    setShowRecoveryLink(false);
 
     try {
       await handleLogin();
@@ -92,12 +100,13 @@ export default function Onboarding() {
         // User not found — redirect to signup
         router.replace(path.SIGNUP_EMAIL);
       } else {
-        // Other errors — show toast and stay on onboarding
+        // Other errors — show toast, stay on onboarding, and offer account recovery
         Toast.show({
           type: 'error',
           text1: 'Login failed',
           text2: error?.message || 'Something went wrong. Please try again.',
         });
+        setShowRecoveryLink(true);
       }
     }
   }, [handleLogin, router, setHasSeenOnboarding]);
@@ -107,12 +116,36 @@ export default function Onboarding() {
     router.replace(path.SIGNUP_EMAIL);
   }, [router, setHasSeenOnboarding]);
 
+  const handleRecoverAccount = useCallback(() => {
+    router.push(path.RECOVERY);
+  }, [router]);
+
   const handleHelpCenter = useCallback(() => {
     // TODO: Add help center link
     // Linking.openURL(HELP_CENTER_URL);
   }, []);
 
   const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
+
+  // Surfaced below the Login button after a failed login attempt so users who
+  // can't authenticate (e.g. lost passkey) can read the Passkey FAQs or start
+  // account recovery.
+  const recoveryLink = showRecoveryLink ? (
+    <View className="flex-row flex-wrap items-center justify-center">
+      <Text className="text-sm text-white/60">Have trouble logging in? See our </Text>
+      <Pressable onPress={() => setShowPasskeyFaq(true)} className="web:hover:opacity-70">
+        <Text className="text-sm font-bold text-white">Passkey FAQs</Text>
+      </Pressable>
+      <Text className="text-sm text-white/60"> or </Text>
+      <Pressable
+        onPress={handleRecoverAccount}
+        className="flex-row items-center web:hover:opacity-70"
+      >
+        <Text className="text-sm font-bold text-white">Recover your account</Text>
+        <ChevronRight color="white" size={16} className="ml-0.5" />
+      </Pressable>
+    </View>
+  ) : null;
 
   // Mobile Layout
   if (!isDesktop) {
@@ -183,6 +216,9 @@ export default function Onboarding() {
                     )}
                   </Button>
 
+                  {/* Account recovery prompt — only after a failed login */}
+                  {recoveryLink}
+
                   {/* Dev-only Dummy Login */}
                   {/* {__DEV__ && (
                     <Button
@@ -202,6 +238,8 @@ export default function Onboarding() {
             </View>
           </SafeAreaView>
         </AnimatedGradientBackground>
+
+        <PasskeyFaqModal isOpen={showPasskeyFaq} onOpenChange={setShowPasskeyFaq} />
       </View>
     );
   }
@@ -285,6 +323,9 @@ export default function Onboarding() {
                 )}
               </Button>
 
+              {/* Account recovery prompt — only after a failed login */}
+              {recoveryLink}
+
               {/* Dev-only Dummy Login */}
               {__DEV__ && (
                 <Button
@@ -299,6 +340,8 @@ export default function Onboarding() {
           </View>
         </View>
       </View>
+
+      <PasskeyFaqModal isOpen={showPasskeyFaq} onOpenChange={setShowPasskeyFaq} />
     </View>
   );
 }

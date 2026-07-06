@@ -1,0 +1,49 @@
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+
+import { HOME_STAT_VALUE_TEXT_STYLE } from '@/components/Home/homeStatValueStyle';
+import Skeleton from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useMaxAPY } from '@/hooks/useAnalytics';
+import { getAsset } from '@/lib/assets';
+import { cn, formatNumber } from '@/lib/utils';
+
+interface HomeSavingsStatCardProps {
+  className?: string;
+}
+
+/**
+ * Compact "Savings" stat card showing the headline savings APY.
+ * Sits next to the cashback card on home and links to the savings screen.
+ */
+const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
+  const router = useRouter();
+  const { maxAPY, isAPYsLoading } = useMaxAPY();
+
+  return (
+    <Pressable onPress={() => router.push(path.SAVINGS)} className={cn('flex-1', className)}>
+      <View className="gap-3 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
+        <Image
+          source={getAsset('images/flash-lavender-background.png')}
+          alt="Savings"
+          style={{ width: 84, height: 84 }}
+          contentFit="contain"
+        />
+        <View className="gap-1">
+          <Text className="text-base font-medium text-muted-foreground">Savings</Text>
+          {isAPYsLoading ? (
+            <Skeleton className="h-8 w-20 rounded-xl" />
+          ) : (
+            <Text className="text-foreground" style={HOME_STAT_VALUE_TEXT_STYLE}>
+              {formatNumber(maxAPY ?? 0, 1)}%
+            </Text>
+          )}
+        </View>
+      </View>
+    </Pressable>
+  );
+};
+
+export default HomeSavingsStatCard;

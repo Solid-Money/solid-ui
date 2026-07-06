@@ -129,7 +129,7 @@ const TierModalProvider = () => {
               <ActivityIndicator />
             </View>
           ) : (
-            <View className="flex-row flex-wrap justify-between gap-6 md:pr-10">
+            <View className="gap-5 md:flex-row md:flex-wrap md:justify-between md:gap-6 md:pr-10">
               {tierBenefitItems.map((benefit, index) => (
                 <RewardBenefit
                   key={index}
@@ -153,7 +153,7 @@ const TierModalProvider = () => {
 
         <Button
           variant="secondary"
-          className="mt-auto h-12 rounded-xl border-0 bg-card web:hover:bg-card-hover md:mt-20"
+          className="h-12 rounded-xl border-0 bg-card web:hover:bg-card-hover md:mt-20"
           onPress={() => {
             setSelectedTierModalId(null);
             router.push(path.REWARDS_BENEFITS);

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 
 import Notification from '@/assets/images/notification';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -13,10 +13,6 @@ import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifica
 export default function Notifications() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleBack = () => {
-    router.back();
-  };
 
   const handleContinue = async () => {
     setIsLoading(true);
@@ -36,12 +32,7 @@ export default function Notifications() {
       <View className="flex-1 px-6">
         {/* Header with back button */}
         <View className="flex-row items-center py-3">
-          <Pressable
-            onPress={handleBack}
-            className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-          >
-            <ArrowLeft size={20} color="#ffffff" />
-          </Pressable>
+          <BackButton />
         </View>
 
         {/* Content - centered */}

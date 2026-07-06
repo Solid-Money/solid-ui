@@ -20,6 +20,7 @@ export interface DepositTriggerProps {
   modal?: DepositModal;
   source?: string; // Track where the deposit trigger was clicked from (e.g., 'home_banner', 'nav_button', 'activity_page')
   preserveSelectedVault?: boolean; // When true, keeps the currently selected vault. When false (default), resets to USDC (vault 0).
+  onBeforeOpen?: () => void; // Called before opening the modal, e.g. to set depositFromSolid
 }
 
 /**
@@ -31,9 +32,10 @@ export interface DepositTriggerProps {
 const DepositTrigger = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
   source = 'unknown',
   preserveSelectedVault = false,
+  onBeforeOpen,
 }: DepositTriggerProps) => {
   const { user } = useUser();
   const { setModal, setSrcChainId } = useDepositStore(
@@ -44,6 +46,7 @@ const DepositTrigger = ({
   );
 
   const handlePress = () => {
+    onBeforeOpen?.();
     if (!preserveSelectedVault) {
       useSavingStore.getState().selectVaultForDeposit(0);
     }

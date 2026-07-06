@@ -7,6 +7,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_email_gate',
     number: 1,
   },
+  OPEN_DEPOSIT_TYPE: {
+    name: 'open_deposit_type',
+    number: 1.5,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
@@ -74,6 +78,18 @@ export const DEPOSIT_MODAL = {
   OPEN_TOKEN_SELECTOR: {
     name: 'open_token_selector',
     number: 17,
+  },
+  OPEN_VIRTUAL_ACCOUNT_DETAILS: {
+    name: 'open_virtual_account_details',
+    number: 18,
+  },
+  OPEN_VIRTUAL_ACCOUNT_TOS: {
+    name: 'open_virtual_account_tos',
+    number: 19,
+  },
+  OPEN_VIRTUAL_ACCOUNT_APPLY: {
+    name: 'open_virtual_account_apply',
+    number: 20,
   },
 };
 
@@ -262,6 +278,11 @@ export const CARD_DEPOSIT_MODAL = {
     // Step 2B: External wallet connect + form
     name: 'open_external_form',
     number: 2,
+  },
+  OPEN_TOKEN_SELECTOR: {
+    // Step 2A.1: pick a USDC token from the Solid wallet (only from WALLET source)
+    name: 'open_token_selector',
+    number: 2.5,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',

@@ -34,6 +34,7 @@ type Path = {
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
+  REFERRAL_PROGRAM: Href;
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
@@ -45,6 +46,10 @@ type Path = {
   ADD_REFERRER: Href;
   QUEST_WALLET: Route;
   QR_SCANNER: Route;
+  RESCUE_TOKEN: Href;
+  AGENT: Href;
+  GOODDOLLAR: Href;
+  STOCKS: Href;
 };
 
 export const path: Path = {
@@ -81,6 +86,8 @@ export const path: Path = {
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',
   POINTS: '/points',
   REFERRAL: '/referral',
+  // Internal-only for now (direct link); replaces /referral at public launch.
+  REFERRAL_PROGRAM: '/referral-program' as Href,
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',
@@ -94,4 +101,8 @@ export const path: Path = {
   QUEST_WALLET: '/quest-wallet',
   // Note: Type assertion needed because Expo Router types are regenerated at dev server start
   QR_SCANNER: '/qr-scanner' as Route,
+  RESCUE_TOKEN: '/rescue-token' as Href,
+  AGENT: '/agent' as Href,
+  GOODDOLLAR: '/gooddollar' as Href,
+  STOCKS: '/stocks' as Href,
 };

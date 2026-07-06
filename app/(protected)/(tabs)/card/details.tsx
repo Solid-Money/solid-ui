@@ -1,22 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Linking,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import ManagePinModal from '@/components/Card/ManagePinModal';
@@ -30,29 +25,51 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
+import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
-import { cn } from '@/lib/utils/utils';
-import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
+import { cn, hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils/utils';
+import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
+  const router = useRouter();
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
+  const { data: cardStatusResponse } = useCardStatus();
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
+
+  // BD users must fund their card with a minimum deposit before they can use
+  // it. Card details is the authoritative gate: bounce unfunded BD users back
+  // to the issuance flow no matter how they got here (card creation redirect,
+  // home card widget, dashboard banner, deep link).
+  const mustDepositFirst =
+    requiresCardDeposit(cardStatusResponse?.country) &&
+    !hasMetCardDeposit(cardStatusResponse?.cardCollateralDeposited);
+
+  useEffect(() => {
+    if (mustDepositFirst) {
+      router.replace(path.CARD_ACTIVATE);
+    }
+  }, [mustDepositFirst, router]);
 
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
@@ -61,9 +78,25 @@ export default function CardDetails() {
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
+  const { state: debugState } = useLocalSearchParams<{ state?: string }>();
+  const isDebugWelcome = !isProduction && debugState === 'welcome';
+
+  const storeShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.shouldShowWelcomePopup,
+  );
+  const setShouldShowWelcomePopup = useCardWelcomePopupStore(
+    state => state.setShouldShowWelcomePopup,
+  );
+  const shouldShowWelcomePopup = isDebugWelcome || storeShouldShowWelcomePopup;
+  const handleCloseWelcomePopup = useCallback(
+    () => setShouldShowWelcomePopup(false),
+    [setShouldShowWelcomePopup],
+  );
+
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
+  const isFirstCardDeposit = cardStatusResponse?.cardCollateralDeposited ?? 0 === 0;
 
   const canUnfreeze =
     isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
@@ -123,7 +156,7 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
-  const stickyHeader = isScreenMedium ? (
+  const pageHeader = isScreenMedium ? (
     <View className="mx-auto w-full max-w-7xl px-4 pt-12">
       <DesktopHeader
         isCardFrozen={isCardFrozen}
@@ -135,6 +168,7 @@ export default function CardDetails() {
         onFreezeToggle={handleFreezeToggle}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
+        isFirstDeposit={isFirstCardDeposit}
       />
     </View>
   ) : (
@@ -146,7 +180,8 @@ export default function CardDetails() {
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly isLoading={isLoading} stickyHeader={stickyHeader}>
+      <PageLayout desktopOnly isLoading={isLoading || mustDepositFirst}>
+        {pageHeader}
         <View className="mx-auto w-full max-w-7xl px-4 pb-12">
           {/* Row 1: Spending Balance Card + Card Image */}
           <View className="mt-12 flex-row gap-6">
@@ -177,14 +212,9 @@ export default function CardDetails() {
             </View>
           </View>
 
-          {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
-          <View className="mt-6 flex-row items-start gap-6">
-            <View className="flex-[3]">
-              <BorrowPositionCard variant="desktop" className="min-h-[180px]" />
-            </View>
-            <View className="h-[180px] flex-[2]">
-              <DepositBonusBanner />
-            </View>
+          {/* Row 3: Borrow Position Card */}
+          <View className="mt-6">
+            <BorrowPositionCard variant="desktop" className="min-h-[180px]" />
           </View>
         </View>
 
@@ -193,13 +223,16 @@ export default function CardDetails() {
           onOpenChange={setIsAddToWalletModalOpen}
           trigger={null}
         />
+
+        <CardWelcomePopup isOpen={shouldShowWelcomePopup} onClose={handleCloseWelcomePopup} />
       </PageLayout>
     );
   }
 
   // Mobile layout
   return (
-    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isLoading || mustDepositFirst}>
+      {pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
@@ -221,12 +254,11 @@ export default function CardDetails() {
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
-            isWithdrawAllowed={isWithdrawAllowed}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
+            isFirstDeposit={isFirstCardDeposit}
           />
           <BorrowPositionCard className="mb-4" />
-          <DepositBonusBanner />
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
@@ -239,6 +271,8 @@ export default function CardDetails() {
         onOpenChange={setIsAddToWalletModalOpen}
         trigger={null}
       />
+
+      <CardWelcomePopup isOpen={shouldShowWelcomePopup} onClose={handleCloseWelcomePopup} />
     </PageLayout>
   );
 }
@@ -257,6 +291,7 @@ interface DesktopHeaderProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  isFirstDeposit: boolean;
 }
 
 function DesktopHeader({
@@ -269,31 +304,22 @@ function DesktopHeader({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  isFirstDeposit,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
-  const manageRef = useRef<View>(null);
+  const insets = useSafeAreaInsets();
+  const contentInsets = {
+    top: insets.top,
+    bottom: insets.bottom,
+    left: 12,
+    right: 12,
+  };
 
   const showManageDropdown = isRain || !isCardFrozen || canUnfreeze;
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!isManageOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (manageRef.current) {
-        // Check if click is outside the dropdown container
-        const node = manageRef.current as unknown as HTMLElement;
-        if (!node.contains(e.target as Node)) {
-          setIsManageOpen(false);
-        }
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isManageOpen]);
-
   return (
     <View className="flex-row justify-between">
-      <Text className="text-5xl font-semibold">Card</Text>
+      <Text className="text-3xl font-semibold">Card</Text>
       <View className="flex-row items-center gap-2">
         <Button
           variant="secondary"
@@ -317,60 +343,55 @@ function DesktopHeader({
           </View>
         </Button>
         {showManageDropdown && (
-          <View ref={manageRef} className="relative">
-            <Button
-              variant="secondary"
-              className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-              onPress={() => setIsManageOpen(prev => !prev)}
-            >
-              <View className="flex-row items-center gap-2">
-                <Text className="text-base font-bold text-white">Manage</Text>
-                <View style={{ transform: [{ rotate: isManageOpen ? '180deg' : '0deg' }] }}>
-                  <ChevronDown size={18} color="white" />
+          <DropdownMenu onOpenChange={setIsManageOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-base font-bold text-white">Manage</Text>
+                  <View style={{ transform: [{ rotate: isManageOpen ? '180deg' : '0deg' }] }}>
+                    <ChevronDown size={18} color="white" />
+                  </View>
                 </View>
-              </View>
-            </Button>
-            {isManageOpen && (
-              <View className="absolute right-0 top-14 z-50 min-w-[180px] rounded-xl bg-[#303030] py-2">
-                {isRain && (
-                  <ManagePinModal
-                    trigger={
-                      <Pressable
-                        className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
-                        onPress={() => setIsManageOpen(false)}
-                      >
-                        <KeyRound size={18} color="white" />
-                        <Text className="text-base font-bold text-white">PIN</Text>
-                      </Pressable>
-                    }
-                  />
-                )}
-                {(!isCardFrozen || canUnfreeze) && (
-                  <Pressable
-                    className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
-                    onPress={() => {
-                      setIsManageOpen(false);
-                      onFreezeToggle();
-                    }}
-                    disabled={isFreezing}
-                  >
-                    {isFreezing ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Image
-                        source={getAsset('images/freeze_button_icon.png')}
-                        style={styles.mediumIcon}
-                        contentFit="contain"
-                      />
-                    )}
-                    <Text className="text-base font-bold text-white">
-                      {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </View>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              insets={contentInsets}
+              className="min-w-[180px] rounded-xl border-0 bg-[#303030] p-0 py-2"
+            >
+              {isRain && (
+                <ManagePinModal
+                  trigger={
+                    <DropdownMenuItem className="flex-row items-center gap-3 rounded-none px-5 py-3 web:cursor-pointer web:hover:bg-[#404040]">
+                      <KeyRound size={18} color="white" />
+                      <Text className="text-base font-bold text-white">PIN</Text>
+                    </DropdownMenuItem>
+                  }
+                />
+              )}
+              {(!isCardFrozen || canUnfreeze) && (
+                <DropdownMenuItem
+                  className="flex-row items-center gap-3 rounded-none px-5 py-3 web:cursor-pointer web:hover:bg-[#404040]"
+                  onPress={onFreezeToggle}
+                  disabled={isFreezing}
+                >
+                  {isFreezing ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Image
+                      source={getAsset('images/freeze_button_icon.png')}
+                      style={styles.mediumIcon}
+                      contentFit="contain"
+                    />
+                  )}
+                  <Text className="text-base font-bold text-white">
+                    {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+                  </Text>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
@@ -388,18 +409,30 @@ function DesktopHeader({
             }
           />
         )}
-        {isWithdrawFromCardAllowed && (
-          <DepositToCardModal
-            trigger={
-              <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
-                <View className="flex-row items-center gap-2">
-                  <Plus size={22} color="black" />
-                  <Text className="text-base font-bold text-black">Deposit</Text>
-                </View>
-              </Button>
-            }
-          />
-        )}
+        {isWithdrawFromCardAllowed &&
+          (isFirstDeposit ? (
+            <CardDirectDepositModal
+              trigger={
+                <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+                  <View className="flex-row items-center gap-2">
+                    <Plus size={22} color="black" />
+                    <Text className="text-base font-bold text-black">Deposit</Text>
+                  </View>
+                </Button>
+              }
+            />
+          ) : (
+            <DepositToCardModal
+              trigger={
+                <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+                  <View className="flex-row items-center gap-2">
+                    <Plus size={22} color="black" />
+                    <Text className="text-base font-bold text-black">Deposit</Text>
+                  </View>
+                </Button>
+              }
+            />
+          ))}
       </View>
     </View>
   );
@@ -408,9 +441,9 @@ function DesktopHeader({
 interface SpendingBalanceCardProps {
   amount: string;
   cashback?: {
-    monthlyFuseAmount: number;
+    monthlySoUsdAmount: number;
     monthlyUsdValue: number;
-    totalFuseAmount: number;
+    totalSoUsdAmount: number;
     totalUsdValue: number;
     percentage: number;
   };
@@ -418,7 +451,7 @@ interface SpendingBalanceCardProps {
 
 function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
-  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(0)) : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? cashback.totalUsdValue.toFixed(2) : '0.00';
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
@@ -781,6 +814,7 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  isFirstDeposit: boolean;
 }
 
 function CardActions({
@@ -793,23 +827,35 @@ function CardActions({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  isFirstDeposit,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
   const showManageButton = isRain || !isCardFrozen || canUnfreeze;
 
   return (
     <View className="mb-8 flex-row items-center justify-evenly">
-      {isWithdrawFromCardAllowed && (
-        <DepositToCardModal
-          trigger={
-            <CircularActionButton
-              icon={getAsset('images/card_actions_fund.png')}
-              label="Add funds"
-              onPress={() => {}}
-            />
-          }
-        />
-      )}
+      {isWithdrawFromCardAllowed &&
+        (isFirstDeposit ? (
+          <CardDirectDepositModal
+            trigger={
+              <CircularActionButton
+                icon={getAsset('images/card_actions_fund.png')}
+                label="Add funds"
+                onPress={() => {}}
+              />
+            }
+          />
+        ) : (
+          <DepositToCardModal
+            trigger={
+              <CircularActionButton
+                icon={getAsset('images/card_actions_fund.png')}
+                label="Add funds"
+                onPress={() => {}}
+              />
+            }
+          />
+        ))}
       <CircularActionButton
         icon={getAsset('images/card_actions_details.png')}
         label={isCardFlipped ? 'Hide details' : 'Card details'}
@@ -900,153 +946,18 @@ function CardActions({
   );
 }
 
-function DepositBonusBanner() {
-  const { isScreenMedium } = useDimension();
-  const { isEnabled: configIsEnabled, percentage, cap, isLoading } = useCardDepositBonusConfig();
-  const isEnabled = EXPO_PUBLIC_ENVIRONMENT === 'qa' ? true : configIsEnabled;
-  const { setModal, setSource } = useCardDepositStore();
-
-  const learnMoreUrl = 'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings';
-
-  const handleLearnMorePress = useCallback((e: any) => {
-    e?.stopPropagation();
-    void Linking.openURL(learnMoreUrl);
-  }, []);
-
-  const handleBannerPress = useCallback(() => {
-    setSource(CardDepositSource.BORROW);
-    setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
-  }, [setModal, setSource]);
-
-  // Don't render while loading or if disabled
-  if (isLoading || !isEnabled) {
-    return null;
-  }
-
-  const bonusPercentage = Math.round(percentage * 100);
-  const capFormatted = cap >= 1000 ? `$${cap / 1000}K` : `$${cap}`;
-
-  if (isScreenMedium) {
-    return (
-      <Pressable
-        onPress={handleBannerPress}
-        className="relative h-full overflow-hidden rounded-2xl web:hover:opacity-90"
-      >
-        <LinearGradient
-          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          pointerEvents="none"
-          style={styles.gradientOverlay}
-        />
-        <View className="flex-1 flex-row">
-          {/* Left content */}
-          <View className="flex-1 justify-between p-6">
-            {/* Badge */}
-            <View className="self-start rounded-full bg-[#FFD151]/20 px-4 py-1">
-              <Text className="text-base font-bold text-[#FFD151]">
-                Get {bonusPercentage}% bonus for deposit
-              </Text>
-            </View>
-
-            {/* Description and Learn more */}
-            <View className="mt-4">
-              <Text className="text-base font-medium text-[#FFD151]">
-                For users that deposit to savings{'\n'}
-                and then borrow-deposit to the card.
-              </Text>
-              <View className="mt-1 flex-row items-center">
-                <Text className="text-base font-medium  text-[#FFD151]">Up to {capFormatted}</Text>
-                <Pressable
-                  onPress={handleLearnMorePress}
-                  className="ml-3 flex-row items-center gap-1"
-                  accessibilityRole="link"
-                >
-                  <Text className="text-base font-bold  text-[#FFD151]">Learn more</Text>
-                  <ChevronRight size={20} color="#FFD151" />
-                </Pressable>
-              </View>
-            </View>
-          </View>
-
-          {/* Right side - Percentage with circles background */}
-          <View className="items-center justify-center pr-6">
-            <View className="relative items-center justify-center">
-              <Image
-                source={getAsset('images/percentage_circles.png')}
-                style={styles.percentageCircles}
-                contentFit="contain"
-              />
-              <Text className="absolute text-5xl font-extralight text-[#FFD151]">
-                +{bonusPercentage}%
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Pressable>
-    );
-  }
-
-  // Mobile layout
-  return (
-    <Pressable
-      onPress={handleBannerPress}
-      className="relative mb-4 overflow-hidden rounded-2xl web:hover:opacity-90"
-    >
-      <LinearGradient
-        colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-        style={styles.gradientOverlay}
-      />
-      <View className="flex-row p-5">
-        {/* Left content */}
-        <View className="flex-1">
-          {/* Badge */}
-          <View className="mb-3 self-start rounded-full bg-[#FFD151]/20 px-3 py-1.5">
-            <Text className="text-sm font-bold text-[#FFD151]">
-              Get {bonusPercentage}% bonus for deposit
-            </Text>
-          </View>
-
-          {/* Description and Learn more */}
-          <View>
-            <Text className="text-base font-medium leading-6 text-[#FFD151]">
-              For users that deposit to savings and then borrow-deposit to the card.
-            </Text>
-            <View className="mt-1 flex-row items-center gap-2">
-              <Text className="text-base font-medium leading-6 text-[#FFD151]">
-                Up to {capFormatted}
-              </Text>
-              <Pressable
-                onPress={handleLearnMorePress}
-                className="flex-row items-center gap-1"
-                accessibilityRole="link"
-              >
-                <Text className="text-base font-bold text-[#FFD151]">Learn more</Text>
-                <ChevronRight size={18} color="#FFD151" />
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 interface CashbackDisplayProps {
   cashback?: {
-    monthlyFuseAmount: number;
+    monthlySoUsdAmount: number;
     monthlyUsdValue: number;
-    totalFuseAmount: number;
+    totalSoUsdAmount: number;
     totalUsdValue: number;
     percentage: number;
   };
 }
 
 function CashbackDisplay({ cashback }: CashbackDisplayProps) {
-  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(2)) : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? cashback.totalUsdValue.toFixed(2) : '0.00';
 
   const cashbackPercentage = cashback?.percentage || 0;
 
@@ -1150,14 +1061,6 @@ const styles = StyleSheet.create({
   transactionAvatar: { width: 43, height: 43 },
 
   // Gradient overlays (used with LinearGradient)
-  gradientOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: -1,
-  },
   gradientOverlayWithOpacity: {
     position: 'absolute',
     left: 0,
@@ -1192,8 +1095,4 @@ const styles = StyleSheet.create({
 
   // Text styles
   lineHeight20: { lineHeight: 20 },
-
-  // Deposit bonus banner
-  percentageCircles: { width: 140, height: 140 },
-  percentageCirclesMobile: { width: 100, height: 100 },
 });

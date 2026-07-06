@@ -24,8 +24,8 @@ const CardRepayModalProvider = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction } = useCardRepayStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? CARD_REPAY_MODAL.CLOSE,
+      previousModal: state.previousModal ?? CARD_REPAY_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
     })),

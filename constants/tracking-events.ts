@@ -223,7 +223,9 @@ export const TRACKING_EVENTS = {
   KYC_LINK_CANCELLED: 'kyc_link_cancelled',
   KYC_LINK_ERROR: 'kyc_link_error',
 
-  CARD_ACTIVATION_STARTED: 'card_activation_started',
+  // NOTE: no 'started' here — the card/KYC funnel is entered via
+  // CARD_GET_CARD_PRESSED / CARD_KYC_FLOW_TRIGGERED above. The backend emits the
+  // mid-funnel 'card_kyc_approved' and the terminal events below.
   CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
   CARD_ACTIVATION_FAILED: 'card_activation_failed',
 

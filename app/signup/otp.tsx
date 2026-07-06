@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopCarousel } from '@/components/Onboarding';
+import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
@@ -240,12 +240,9 @@ export default function SignupOtp() {
     <View className="w-full max-w-[440px] items-center">
       {/* Back button - positioned above form on desktop */}
       {isDesktop && (
-        <Pressable
-          onPress={handleBack}
-          className="mb-20 h-10 w-10 items-center justify-center self-start rounded-full bg-white/10 web:hover:bg-white/20"
-        >
-          <ArrowLeft size={20} color="#ffffff" />
-        </Pressable>
+        <View className="mb-20 self-start">
+          <BackButton onPress={handleBack} />
+        </View>
       )}
 
       {/* Header */}
@@ -321,12 +318,7 @@ export default function SignupOtp() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <Pressable
-              onPress={handleBack}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
-            >
-              <ArrowLeft size={20} color="#ffffff" />
-            </Pressable>
+            <BackButton onPress={handleBack} />
           </View>
 
           {/* Content - positioned at top, centered horizontally */}

@@ -30,7 +30,7 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { fontSize, hasCard } from '@/lib/utils';
+import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -39,16 +39,14 @@ export default function Home() {
 
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const {
-    data: balance,
-    isLoading: isBalanceLoading,
-    refetch: refetchBalance,
-  } = useVaultBalance(user?.safeAddress as Address);
+  const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
+    user?.safeAddress as Address,
+  );
   const updateUser = useUserStore(state => state.updateUser);
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const intercom = useIntercom();
-  const { data: cardStatus } = useCardStatus();
-  const { data: cardDetails } = useCardDetails();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
+  const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { data: spinStatus } = useSpinStatus();
   const { data: giveaway } = useCurrentGiveaway();
   const countdown = useGiveawayCountdown(giveaway?.giveawayDate);
@@ -90,7 +88,7 @@ export default function Home() {
     hasTriggeredInitialRefresh.current = false;
   }, [user?.safeAddress]);
 
-  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
+  const { data: userDepositTransactions, isLoading: isDepositsLoading } = useUserTransactions(
     user?.safeAddress,
   );
 
@@ -100,19 +98,6 @@ export default function Home() {
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
   const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
-
-  // SSE handles real-time updates; polling is fallback for SSE failure
-  useEffect(() => {
-    // 5-minute interval when balance exists; 10-minute fallback when no balance
-    // (ensures new deposits are detected even if SSE is down)
-    const intervalMs = balance && balance > 0 ? 5 * 60 * 1000 : 10 * 60 * 1000;
-
-    const interval = setInterval(() => {
-      refetchBalance();
-      refetchTransactions();
-    }, intervalMs);
-    return () => clearInterval(interval);
-  }, [balance, refetchBalance, refetchTransactions]);
 
   useEffect(() => {
     if (!user) return;
@@ -132,7 +117,18 @@ export default function Home() {
     });
   }, [user, intercom]);
 
-  if (!balance && !isDeposited && !hasTokens) {
+  const isInitialLoading = isBalanceLoading || isLoadingTokens || isDepositsLoading;
+  const isCardBalanceLoading = isCardStatusLoading || (userHasCard && isCardDetailsLoading);
+  const isHeadlineLoading =
+    isLoadingTokens ||
+    isBalanceLoading ||
+    isTotalSavingsLoading ||
+    isCardBalanceLoading ||
+    totalSavingsUSD === undefined;
+  const headlineBalance = totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance;
+  const mobileHeaderBalance = isHeadlineLoading ? null : formatBalanceUSD(headlineBalance);
+
+  if (!isInitialLoading && !balance && !isDeposited && !hasTokens) {
     return <HomeEmptyState />;
   }
 
@@ -140,23 +136,21 @@ export default function Home() {
   // fallbacks from LazyWalletTabs and LazyHomeBanners to be visible immediately.
   // This improves perceived performance - users see content structure right away.
   return (
-    <PageLayout>
+    <PageLayout mobileTitle={mobileHeaderBalance}>
       <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-0 py-0 pb-20 md:gap-12 md:px-4 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center gap-2">
-                {isLoadingTokens ||
-                isBalanceLoading ||
-                isTotalSavingsLoading ||
-                totalSavingsUSD === undefined ? (
+                {isHeadlineLoading ? (
                   <Skeleton className="h-[4.5rem] w-56 rounded-xl" />
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
+                    count={headlineBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
+                    animateOnMount={false}
                     classNames={{
                       wrapper: 'text-foreground',
                       decimalSeparator: 'text-2xl',
@@ -182,10 +176,7 @@ export default function Home() {
             </View>
             <DashboardHeaderButtons hideWithdraw />
           </View>
-        ) : isLoadingTokens ||
-          isBalanceLoading ||
-          isTotalSavingsLoading ||
-          totalSavingsUSD === undefined ? (
+        ) : isHeadlineLoading ? (
           <View className="items-center pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />
             <View className="mt-8 flex-row justify-center gap-6">
@@ -195,16 +186,14 @@ export default function Home() {
             </View>
           </View>
         ) : (
-          <DashboardHeaderMobile
-            balance={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
-            mode={SavingMode.BALANCE_ONLY}
-          />
+          <DashboardHeaderMobile balance={headlineBalance} mode={SavingMode.BALANCE_ONLY} />
         )}
         {isScreenMedium ? (
           <DesktopCards
             totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
+            isLoadingCard={isCardBalanceLoading}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
           />
@@ -213,6 +202,7 @@ export default function Home() {
             totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
+            isLoadingCard={isCardBalanceLoading}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
           />

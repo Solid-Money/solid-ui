@@ -1,13 +1,32 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
 import { path } from '@/constants/path';
 import { registerPushToken } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { useUserStore } from '@/store/useUserStore';
+
+/**
+ * Map a push notification's `type` (set by the backend) to an in-app route.
+ * Card payment notifications open the card screen; anything else goes home.
+ */
+function getNotificationRoute(type?: string): Href {
+  // Rewards lifecycle pushes (rewards-live, rewards-tier-reached, etc.) all
+  // carry a `rewards-` prefixed type and should open the rewards screen.
+  if (type?.startsWith('rewards')) {
+    return path.REWARDS;
+  }
+
+  switch (type) {
+    case 'card-transaction':
+      return path.CARD;
+    default:
+      return path.HOME;
+  }
+}
 
 /**
  * Manages push notification lifecycle: token refresh and notification tap handling.
@@ -39,12 +58,13 @@ export function usePushNotifications() {
       }
     });
 
-    // Handle notification taps (user taps a notification from the system tray)
+    // Handle notification taps (user taps a notification from the system tray).
+    // Deep-link based on the `type` the backend set in the notification data;
+    // fall back to home for anything unrecognised.
     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
-      _response => {
-        // Future: read _response.notification.request.content.data.route for deep linking
-        // e.g., router.replace(_response.notification.request.content.data.route as any);
-        router.replace(path.HOME);
+      response => {
+        const data = response.notification.request.content.data as { type?: string } | undefined;
+        router.replace(getNotificationRoute(data?.type));
       },
     );
 

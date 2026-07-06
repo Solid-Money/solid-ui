@@ -27,7 +27,7 @@ const CashbackCard = ({
   const remainingSpend = cashbackRate > 0 ? (remainingCashback * 100) / cashbackRate : 0;
 
   return (
-    <View className="flex-1 justify-between overflow-hidden rounded-twice bg-card p-6">
+    <View className="flex-1 justify-between overflow-hidden rounded-twice bg-card px-6 pb-10 pt-6 md:p-6">
       <View className="relative flex-row items-center justify-between">
         <View className="flex-1 gap-1">
           <Text className="text-lg font-medium text-brand/70">Cashback</Text>

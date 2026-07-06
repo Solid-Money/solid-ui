@@ -20,7 +20,7 @@ export default function Activity() {
   const isWeb = Platform.OS === 'web';
   const userHasCard = hasCard(cardStatus);
 
-  const stickyHeader = (
+  const pageHeader = (
     <View className="mx-auto w-full max-w-7xl px-4 pb-[10px] pt-6 md:pt-12">
       <View className="flex-row items-center justify-between">
         <Text className="text-3xl font-semibold">Activity</Text>
@@ -38,7 +38,8 @@ export default function Activity() {
   );
 
   return (
-    <PageLayout isLoading={isCardStatusLoading} stickyHeader={stickyHeader}>
+    <PageLayout isLoading={isCardStatusLoading}>
+      {pageHeader}
       <View
         className={cn('mx-auto w-full max-w-7xl px-4 pb-8 md:pb-12', {
           'flex-1': !isWeb,

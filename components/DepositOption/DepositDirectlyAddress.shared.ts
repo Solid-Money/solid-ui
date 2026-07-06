@@ -12,7 +12,6 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -68,7 +67,6 @@ export type PriceRowItemProps = {
 };
 
 export function useDepositDirectlyData() {
-  const { vault } = useVaultDepositConfig();
   const {
     walletAddress,
     chainId: rawChainId,
@@ -170,7 +168,7 @@ export function useDepositDirectlyData() {
 
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
 
-  const minDeposit = vault.minimumAmount || rawMinDeposit || '0.0001';
+  const minDeposit = rawMinDeposit || '0.0001';
   const fee = rawFee || '0';
 
   const networkName = network?.name || 'Ethereum';

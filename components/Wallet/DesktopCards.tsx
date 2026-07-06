@@ -9,6 +9,7 @@ type DesktopCardsProps = {
   totalUSDExcludingVaultTokens: number;
   topThreeTokens: TokenBalance[];
   isLoadingTokens: boolean;
+  isLoadingCard?: boolean;
   userHasCard: boolean;
   cardBalance: number;
 };
@@ -17,6 +18,7 @@ export default function DesktopCards({
   totalUSDExcludingVaultTokens,
   topThreeTokens,
   isLoadingTokens,
+  isLoadingCard,
   userHasCard,
   cardBalance,
 }: DesktopCardsProps) {
@@ -34,7 +36,7 @@ export default function DesktopCards({
           balance={cardBalance}
           className="flex-1"
           tokens={[USDC_TOKEN_BALANCE]}
-          isLoading={isLoadingTokens}
+          isLoading={isLoadingCard}
           decimalPlaces={2}
         />
       )}

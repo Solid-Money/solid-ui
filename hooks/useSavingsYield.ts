@@ -58,7 +58,12 @@ export function useSavingsYield({
   summary,
   vault,
 }: UseSavingsYieldParams): number {
-  const [liveYield, setLiveYield] = useState(0);
+  const [liveYield, setLiveYield] = useState(() => {
+    if (balance <= 0 || !isFinite(balance)) return 0;
+    if (mode === SavingMode.BALANCE_ONLY) return balance;
+    if (mode === SavingMode.TOTAL_USD) return balance * exchangeRate;
+    return 0;
+  });
   const [animation, setAnimation] = useState(0);
   const [anchor, setAnchor] = useState<{ value: number; time: number } | null>(null);
   const { user } = useUser();
@@ -75,6 +80,11 @@ export function useSavingsYield({
   useEffect(() => {
     if (balance <= 0) {
       setLiveYield(0);
+      setAnchor(null);
+      return;
+    }
+    if (mode === SavingMode.BALANCE_ONLY) {
+      setLiveYield(balance);
       setAnchor(null);
       return;
     }
@@ -97,7 +107,7 @@ export function useSavingsYield({
       return;
     }
 
-    // soUSD: subgraph-based calculation
+    // soUSD / soETH: subgraph-based calculation
     let cancelled = false;
     const now = Math.floor(Date.now() / 1000);
     calculateYield(

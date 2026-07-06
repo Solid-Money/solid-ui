@@ -140,6 +140,7 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
                   prefix="$"
                   count={totalSavingsUSD}
                   decimalPlaces={decimalPlaces}
+                  animateOnMount={false}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-3xl font-semibold',

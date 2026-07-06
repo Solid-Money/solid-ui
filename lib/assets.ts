@@ -56,6 +56,10 @@ export const ASSETS = {
     module: require('@/assets/images/adaptive-icon.png'),
     hash: 'd2020cd7',
   },
+  'images/agent-wallet.png': {
+    module: require('@/assets/images/agent-wallet.png'),
+    hash: '297f7f78',
+  },
   'images/apple-google-pay.png': {
     module: require('@/assets/images/apple-google-pay.png'),
     hash: '5a4d6b29',
@@ -85,6 +89,7 @@ export const ASSETS = {
     module: require('@/assets/images/brl-fiat-currency.tsx'),
     hash: '75a2ebe8',
   },
+  'images/bsc.png': { module: require('@/assets/images/bsc.png'), hash: '4135f6a8' },
   'images/buy_crypto.png': { module: require('@/assets/images/buy_crypto.png'), hash: 'a072a946' },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
   'images/card-effortless.png': {
@@ -113,6 +118,11 @@ export const ASSETS = {
     module: require('@/assets/images/card-withdraw.png'),
     hash: 'd076a41d',
   },
+  'images/card-yellow-background.png': {
+    module: require('@/assets/images/card-yellow-background.png'),
+    hash: '72e0b615',
+  },
+  'images/card.png': { module: require('@/assets/images/card.png'), hash: '0fc3742c' },
   'images/card.tsx': { module: require('@/assets/images/card.tsx'), hash: '896e9355' },
   'images/card_actions_details.png': {
     module: require('@/assets/images/card_actions_details.png'),
@@ -152,7 +162,7 @@ export const ASSETS = {
   },
   'images/cards-desktop.png': {
     module: require('@/assets/images/cards-desktop.png'),
-    hash: 'ae26473b',
+    hash: 'b0fc2da8',
   },
   'images/cards-mobile.png': {
     module: require('@/assets/images/cards-mobile.png'),
@@ -194,6 +204,10 @@ export const ASSETS = {
   'images/diamond.png': { module: require('@/assets/images/diamond.png'), hash: '9875c4f5' },
   'images/diamond.tsx': { module: require('@/assets/images/diamond.tsx'), hash: '6654209f' },
   'images/docs.tsx': { module: require('@/assets/images/docs.tsx'), hash: '458b69fc' },
+  'images/dollar-green.png': {
+    module: require('@/assets/images/dollar-green.png'),
+    hash: '97437332',
+  },
   'images/dollar-lavender.png': {
     module: require('@/assets/images/dollar-lavender.png'),
     hash: '23534784',
@@ -227,6 +241,7 @@ export const ASSETS = {
     module: require('@/assets/images/ethereum-square-4x.png'),
     hash: '5c6331c8',
   },
+  'images/eu.png': { module: require('@/assets/images/eu.png'), hash: '11ca6b5d' },
   'images/eur-fiat-currency.tsx': {
     module: require('@/assets/images/eur-fiat-currency.tsx'),
     hash: 'db4e5f78',
@@ -251,6 +266,10 @@ export const ASSETS = {
   'images/fingetprint.tsx': {
     module: require('@/assets/images/fingetprint.tsx'),
     hash: '0b09bf2a',
+  },
+  'images/flash-lavender-background.png': {
+    module: require('@/assets/images/flash-lavender-background.png'),
+    hash: '343e70d3',
   },
   'images/flash-lavender.png': {
     module: require('@/assets/images/flash-lavender.png'),
@@ -283,10 +302,18 @@ export const ASSETS = {
     module: require('@/assets/images/gbp-fiat-currency.tsx'),
     hash: '9315a113',
   },
+  'images/globe-green.png': {
+    module: require('@/assets/images/globe-green.png'),
+    hash: 'ba254b95',
+  },
   'images/google_pay.png': { module: require('@/assets/images/google_pay.png'), hash: '78c91f8f' },
   'images/gray_onboarding_bg.png': {
     module: require('@/assets/images/gray_onboarding_bg.png'),
     hash: 'b4c20e0b',
+  },
+  'images/green-diamond-background.png': {
+    module: require('@/assets/images/green-diamond-background.png'),
+    hash: '77e8c90d',
   },
   'images/green-diamond.png': {
     module: require('@/assets/images/green-diamond.png'),
@@ -301,6 +328,10 @@ export const ASSETS = {
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
   'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: '5ea4a65b' },
+  'images/identity-review.png': {
+    module: require('@/assets/images/identity-review.png'),
+    hash: '6fe74800',
+  },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
   'images/invite-yellow.png': {
     module: require('@/assets/images/invite-yellow.png'),
@@ -411,6 +442,10 @@ export const ASSETS = {
     module: require('@/assets/images/refer_friend.png'),
     hash: 'b23496a3',
   },
+  'images/referral-3d.png': {
+    module: require('@/assets/images/referral-3d.png'),
+    hash: '8477b533',
+  },
   'images/referral_large.png': {
     module: require('@/assets/images/referral_large.png'),
     hash: '79bcfd00',
@@ -419,6 +454,14 @@ export const ASSETS = {
   'images/reveal_card_details_icon.png': {
     module: require('@/assets/images/reveal_card_details_icon.png'),
     hash: 'd1c558ce',
+  },
+  'images/reward-popup-background.png': {
+    module: require('@/assets/images/reward-popup-background.png'),
+    hash: '1c87fc08',
+  },
+  'images/reward-star.png': {
+    module: require('@/assets/images/reward-star.png'),
+    hash: '5a43a288',
   },
   'images/rocket-lavender.png': {
     module: require('@/assets/images/rocket-lavender.png'),
@@ -478,6 +521,10 @@ export const ASSETS = {
     module: require('@/assets/images/settings_wallet_address.png'),
     hash: '64a9622e',
   },
+  'images/share-yellow-background.png': {
+    module: require('@/assets/images/share-yellow-background.png'),
+    hash: 'd25eb3c2',
+  },
   'images/sign-out.tsx': { module: require('@/assets/images/sign-out.tsx'), hash: 'deb2a605' },
   'images/solid-4x.png': { module: require('@/assets/images/solid-4x.png'), hash: 'f6579942' },
   'images/solid-black-large.png': {
@@ -509,9 +556,17 @@ export const ASSETS = {
     module: require('@/assets/images/solid-purple-large.png'),
     hash: 'ff520374',
   },
+  'images/solid-status-bar.png': {
+    module: require('@/assets/images/solid-status-bar.png'),
+    hash: '6467d3dd',
+  },
   'images/solid-tokens.png': {
     module: require('@/assets/images/solid-tokens.png'),
     hash: 'ea2832f8',
+  },
+  'images/solid-white.png': {
+    module: require('@/assets/images/solid-white.png'),
+    hash: '0d9729bf',
   },
   'images/solid-wordmark.png': {
     module: require('@/assets/images/solid-wordmark.png'),
@@ -548,6 +603,7 @@ export const ASSETS = {
     hash: '14067288',
   },
   'images/star-gold.png': { module: require('@/assets/images/star-gold.png'), hash: 'e96ddea2' },
+  'images/star-green.png': { module: require('@/assets/images/star-green.png'), hash: 'c21e4f3c' },
   'images/star-silver.png': {
     module: require('@/assets/images/star-silver.png'),
     hash: '3c3d13e1',
@@ -599,14 +655,26 @@ export const ASSETS = {
   'images/usdc.png': { module: require('@/assets/images/usdc.png'), hash: '46823699' },
   'images/usds.png': { module: require('@/assets/images/usds.png'), hash: 'dbf8e06b' },
   'images/usdt.png': { module: require('@/assets/images/usdt.png'), hash: '1d1a08f2' },
+  'images/us.png': { module: require('@/assets/images/us.png'), hash: '057c31ba' },
   'images/user.tsx': { module: require('@/assets/images/user.tsx'), hash: 'f4988f53' },
   'images/username.tsx': { module: require('@/assets/images/username.tsx'), hash: 'fa07b216' },
   'images/veda.png': { module: require('@/assets/images/veda.png'), hash: 'e41bfe57' },
+  'images/wallet-yellow-background.png': {
+    module: require('@/assets/images/wallet-yellow-background.png'),
+    hash: '86120c72',
+  },
   'images/wallet.tsx': { module: require('@/assets/images/wallet.tsx'), hash: '64b9ce19' },
   'images/wallet_connect.png': {
     module: require('@/assets/images/wallet_connect.png'),
     hash: '7816178c',
   },
+  'images/warning.png': { module: require('@/assets/images/warning.png'), hash: '81dd623d' },
+  'images/welcome-card.png': {
+    module: require('@/assets/images/welcome-card.png'),
+    hash: '01502018',
+  },
+  'images/weth.png': { module: require('@/assets/images/weth.png'), hash: '6d2ae2d7' },
+  'images/wfuse.png': { module: require('@/assets/images/wfuse.png'), hash: 'af627457' },
   'images/withdraw-green.png': {
     module: require('@/assets/images/withdraw-green.png'),
     hash: 'a034a503',

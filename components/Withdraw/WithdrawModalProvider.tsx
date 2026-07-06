@@ -26,8 +26,8 @@ const WithdrawModalProvider = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal, setModal, transaction } = useWithdrawStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? WITHDRAW_MODAL.CLOSE,
+      previousModal: state.previousModal ?? WITHDRAW_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
     })),

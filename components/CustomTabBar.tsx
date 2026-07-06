@@ -1,10 +1,31 @@
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
 
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Text } from '@/components/ui/text';
+
+// Height of the visible content zone (icons + labels + top padding) that sits
+// above the bottom safe-area inset. Combined with the dynamic bottom inset this
+// reproduces the original height of 80 (45 + 35) on devices without a large
+// system bar, while keeping the icon/label band a constant size everywhere.
+const TAB_BAR_CONTENT_HEIGHT = 45;
+// Baseline bottom spacing. Matches the previously hardcoded paddingBottom so
+// devices whose safe-area inset is smaller — notched iOS (~34), gesture-nav
+// Android (~16-24) and web (0) — keep their exact current layout. Only devices
+// with a larger inset (e.g. Android 3-button navigation, ~48) get extra spacing
+// so the tab bar clears the system navigation bar instead of overlapping it.
+const TAB_BAR_MIN_BOTTOM_INSET = 35;
+// Extra clearance added on top of the *real* inset on Android only. Android
+// system navigation bars sit flush with the bottom inset, and the icon+label
+// content slightly overflows the visible band, so on devices with a tall
+// navigation bar (3-button nav) the label can still touch it. Added to the real
+// inset (not the floor) so gesture-nav devices barely change; iOS (thin home
+// indicator) and web have no such overlap and are deliberately excluded.
+const TAB_BAR_ANDROID_EXTRA_INSET = 16;
 
 type TabButtonProps = {
   label: string;
@@ -14,8 +35,26 @@ type TabButtonProps = {
   onLongPress: () => void;
 };
 
+const ACTIVE_TAB_COLOR = 'white';
+const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
+
 function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonProps) {
   const [pressed, setPressed] = useState(false);
+  const focusProgress = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const labelColor = isFocused ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR;
+
+  useEffect(() => {
+    Animated.timing(focusProgress, {
+      toValue: isFocused ? 1 : 0,
+      duration: 140,
+      useNativeDriver: true,
+    }).start();
+  }, [focusProgress, isFocused]);
+
+  const nativeFocusOpacity = focusProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.5, 1],
+  });
 
   const handlePressIn = () => {
     setPressed(true);
@@ -56,22 +95,24 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
       style={styles.tabButton}
     >
       <View style={[styles.tabContent, animationStyle as ViewStyle]}>
-        <View
+        <Animated.View
           style={[
             styles.iconWrapper,
             (Platform.OS === 'web' ? { transition: 'opacity 150ms ease-in-out' } : {}) as ViewStyle,
-            Platform.OS === 'web' ? { opacity: isFocused ? 1 : 0.5 } : {},
+            Platform.OS === 'web'
+              ? { opacity: isFocused ? 1 : 0.5 }
+              : { opacity: nativeFocusOpacity },
           ]}
         >
           {icon}
-        </View>
+        </Animated.View>
         <Text
           // @ts-ignore - web CSS properties
           style={[
             styles.tabLabel,
             // @ts-ignore - web CSS transition property
             activeTransitionStyle,
-            { color: isFocused ? 'white' : 'rgba(255, 255, 255, 0.5)' },
+            { color: labelColor },
           ]}
         >
           {label}
@@ -85,11 +126,33 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
 const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const currentRouteName = state.routes[state.index]?.name;
+
+  // Lift the tab bar above the system navigation bar / home indicator using the
+  // real bottom inset (plus a little extra on Android, see constant), never
+  // shrinking below the legacy baseline. Read-only — this does not alter the
+  // inset context, so other components (ResponsiveModal, SafeAreaView,
+  // ScrollViews) are unaffected.
+  const bottomInset = Math.max(
+    insets.bottom + (Platform.OS === 'android' ? TAB_BAR_ANDROID_EXTRA_INSET : 0),
+    TAB_BAR_MIN_BOTTOM_INSET,
+  );
+
   // Filter to only show the main visible tabs
   const visibleRoutes = state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name));
 
+  if (currentRouteName === 'settings') {
+    return null;
+  }
+
   return (
-    <View style={styles.tabBar}>
+    <View
+      style={[
+        styles.tabBar,
+        { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
+      ]}
+    >
       {TabBarBackground && <TabBarBackground />}
       {visibleRoutes.map(route => {
         const { options } = descriptors[route.key];
@@ -106,7 +169,10 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+            navigation.dispatch({
+              ...CommonActions.navigate(route),
+              target: state.key,
+            });
           }
         };
 
@@ -120,8 +186,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         // Get the icon
         const icon = options.tabBarIcon?.({
           focused: isFocused,
-          color: isFocused ? 'white' : 'rgba(255, 255, 255, 1)',
-          size: 24,
+          color: ACTIVE_TAB_COLOR,
+          size: Platform.OS === 'web' ? 36 : 40,
         });
 
         return (
@@ -142,9 +208,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 80,
+    // height and paddingBottom are applied dynamically from the safe-area inset
     paddingTop: 10,
-    paddingBottom: 35,
     backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',

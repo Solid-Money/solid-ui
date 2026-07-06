@@ -8,7 +8,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
@@ -54,6 +54,7 @@ const Transaction = ({
   onPress,
   type,
   clientTxId,
+  metadata,
   timestamp,
   showTimestamp = true,
   isFirst = false,
@@ -97,6 +98,7 @@ const Transaction = ({
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
+  const isCardDeposit = metadata?.destinationType === 'RAIN_CARD';
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
 
   // Determine status message for direct deposits with no amount
@@ -106,7 +108,7 @@ const Transaction = ({
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isDetected) return 'Transfer detected';
-    if (isProcessing) return 'Processing deposit...';
+    if (isProcessing || (isPending && isCardDeposit)) return 'Processing deposit...';
     return null;
   };
 
@@ -214,14 +216,14 @@ const Transaction = ({
   });
 
   const getDescription = () => {
-    if (isPending) return 'Pending';
-    if (isProcessing) return 'Processing';
+    if (isPending) return isCardDeposit && isDirectDeposit ? 'Processing' : 'Pending';
+    if (isDetected || isProcessing) return 'Processing';
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isCancelled) return 'Cancelled';
     if (isSuccess && isDeposit) return 'Complete';
-    return transactionDetails?.category ?? 'Unknown';
+    return getTransactionCategory(type, title) ?? 'Unknown';
   };
 
   const formatTimestamp = () => {
@@ -271,7 +273,9 @@ const Transaction = ({
                 alt="Reward indicator"
               />
             )}
-            {(isPending || isProcessing) && <ActivityIndicator color="gray" size={14} />}
+            {(isPending || isDetected || isProcessing) && (
+              <ActivityIndicator color="gray" size={14} />
+            )}
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>
@@ -318,7 +322,7 @@ const Transaction = ({
             {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
-        {directDepositIsPendingOrProcessing && (
+        {directDepositIsPendingOrProcessing && !isCardDeposit && (
           <Pressable
             onPress={handleDeletePress}
             className="h-10 w-10 items-center justify-center rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
@@ -386,7 +390,8 @@ function areTransactionPropsEqual(
     prevProps.showTimestamp === nextProps.showTimestamp &&
     prevProps.isFirst === nextProps.isFirst &&
     prevProps.isLast === nextProps.isLast &&
-    prevProps.classNames?.container === nextProps.classNames?.container
+    prevProps.classNames?.container === nextProps.classNames?.container &&
+    prevProps.metadata?.destinationType === nextProps.metadata?.destinationType
   );
 }
 

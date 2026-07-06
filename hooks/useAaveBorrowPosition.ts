@@ -1,14 +1,14 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Address, formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 
 import { USDC_STARGATE } from '@/constants/addresses';
 import { MarketData } from '@/constants/lend';
-import { UiPoolDataProviderV3_ABI } from '@/lib/abis/UiPoolDataProviderV3';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import { fuseConfig } from '@/lib/wagmi';
 import useUser from '@/hooks/useUser';
+import { UiPoolDataProviderV3_ABI } from '@/lib/abis/UiPoolDataProviderV3';
 import { ADDRESSES } from '@/lib/config';
+import { fuseConfig } from '@/lib/wagmi';
 
 interface AaveBorrowPositionData {
   totalBorrowed: number;
@@ -19,6 +19,7 @@ interface AaveBorrowPositionData {
   netAPY: number;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => Promise<void>;
 }
 
 export function useAaveBorrowPosition(): AaveBorrowPositionData {
@@ -31,6 +32,7 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
     data: userReservesResult,
     isLoading: isLoadingUserReserves,
     error: userReservesError,
+    refetch: refetchUserReserves,
   } = useReadContract({
     address: MarketData.addresses.UI_POOL_DATA_PROVIDER,
     abi: UiPoolDataProviderV3_ABI,
@@ -47,6 +49,7 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
     data: reservesResult,
     isLoading: isLoadingReserves,
     error: reservesError,
+    refetch: refetchReserves,
   } = useReadContract({
     address: MarketData.addresses.UI_POOL_DATA_PROVIDER,
     abi: UiPoolDataProviderV3_ABI,
@@ -175,9 +178,14 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
     };
   }, [userReservesResult, reservesResult, isLoading, savingsAPY]);
 
+  const refetch = useCallback(async () => {
+    await Promise.all([refetchUserReserves(), refetchReserves()]);
+  }, [refetchUserReserves, refetchReserves]);
+
   return {
     ...positionData,
     isLoading,
     error: error as Error | null,
+    refetch,
   };
 }

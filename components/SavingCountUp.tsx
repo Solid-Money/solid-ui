@@ -30,6 +30,8 @@ interface SavingCountUpProps {
   styles?: Styles;
   prefix?: string | React.ReactNode;
   suffix?: string;
+  animated?: boolean;
+  animateOnMount?: boolean;
   userDepositTransactions?: GetUserTransactionsQuery;
   exchangeRate?: number;
   tokenAddress?: string;
@@ -53,6 +55,8 @@ const SavingCountUp = memo(
     styles,
     prefix,
     suffix,
+    animated,
+    animateOnMount,
     userDepositTransactions,
     exchangeRate = 1,
     tokenAddress = ADDRESSES.fuse.vault,
@@ -82,6 +86,8 @@ const SavingCountUp = memo(
         styles={styles}
         prefix={prefix}
         suffix={suffix}
+        animated={animated}
+        animateOnMount={animateOnMount}
       />
     );
   },

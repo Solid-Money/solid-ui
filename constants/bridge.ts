@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
@@ -8,9 +8,11 @@ type BridgeToken = {
   name?: string;
   fullName?: string;
   address: string;
+  decimals?: number;
   icon?: ImageSourcePropType;
   version?: string;
   isPermit?: boolean;
+  isNative?: boolean;
 };
 
 type BridgeTokens = {
@@ -30,6 +32,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
       USDC: {
         name: 'USDC',
         address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        icon: require('@/assets/images/usdc-4x.png'),
         version: '2',
         isPermit: false,
       },
@@ -47,12 +50,13 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         icon: require('@/assets/images/eth.png'),
         version: '1',
         isPermit: false,
+        isNative: true,
       },
       WETH: {
         name: 'WETH',
         fullName: 'Wrapped Ether',
         address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-        icon: require('@/assets/images/eth.png'),
+        icon: require('@/assets/images/weth.png'),
         version: '1',
         isPermit: false,
       },
@@ -92,6 +96,14 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         version: '2',
         isPermit: false,
       },
+      USDT: {
+        name: 'USDT',
+        fullName: 'Tether USD',
+        address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+        icon: require('@/assets/images/usdt.png'),
+        version: '1',
+        isPermit: false,
+      },
     },
     name: 'Base',
     icon: require('@/assets/images/base.png'),
@@ -127,6 +139,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         fullName: 'FUSE',
         address: NATIVE_TOKEN_ADDRESS,
         icon: require('@/assets/images/fuse-4x.png'),
+        isNative: true,
       },
       USDC: {
         name: 'USDC',
@@ -146,13 +159,36 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         name: 'WFUSE',
         fullName: 'Wrapped FUSE',
         address: WRAPPED_FUSE,
-        icon: require('@/assets/images/fuse-4x.png'),
+        icon: require('@/assets/images/wfuse.png'),
       },
     },
     name: 'Fuse',
     icon: require('@/assets/images/fuse.png'),
-    sort: 5,
+    sort: 6,
     bridgeSpeed: 0,
+  },
+  [bsc.id]: {
+    tokens: {
+      USDC: {
+        name: 'USDC',
+        fullName: 'Binance-Peg USD Coin',
+        address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
+        decimals: 18,
+        isPermit: false,
+      },
+      USDT: {
+        name: 'USDT',
+        fullName: 'Binance-Peg BSC-USD',
+        address: '0x55d398326f99059fF775485246999027B3197955',
+        icon: require('@/assets/images/usdt.png'),
+        decimals: 18,
+        isPermit: false,
+      },
+    },
+    name: 'BNB Chain',
+    icon: require('@/assets/images/bsc.png'),
+    sort: 5,
+    bridgeSpeed: 2,
   },
 };
 

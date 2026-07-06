@@ -247,6 +247,8 @@ export function useDerivedSwapInfo(): {
     slippage.toFixed(),
   );
 
+  console.log('voltageTrade', voltageTrade);
+
   // Track if component has mounted to avoid state updates during hydration
   const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => {

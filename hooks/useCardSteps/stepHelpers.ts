@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import Toast from 'react-native-toast-message';
 import { Router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { MINIMUM_CARD_DEPOSIT_USD } from '@/constants/card';
 import { path } from '@/constants/path';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
-import { track } from '@/lib/analytics';
-import { createCard } from '@/lib/api';
 import {
   BridgeCustomerEndorsement,
   BridgeRejectionReason,
   CardProvider,
   CardStatus,
+  KycStatus,
+  KycWarning,
   RainApplicationStatus,
 } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils';
 
-import { extractCardActivationErrorMessage } from './cardActivationHelpers';
 import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';
 
@@ -32,19 +28,29 @@ export function buildCardSteps(
   activationBlocked: boolean | undefined,
   activationBlockedReason: string | undefined,
   handleProceedToKyc: () => void,
-  handleActivateCard: () => void,
+  pushCardReady: () => void,
   pushCardDetails: () => void,
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
+    kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
+    /** KYC residence country (ISO alpha-2); enables the BD minimum-deposit step. */
+    country?: string | null;
+    /** Total collateral deposited to the card, in cents (BD users). */
+    cardCollateralDeposited?: number | null;
+    /** Opens the existing "deposit to card" popup. */
+    openDepositModal?: () => void;
   },
 ): Step[] {
   const stepOptions =
-    options?.cardIssuer != null
+    options?.cardIssuer != null || options?.kycStatus != null
       ? {
-          cardIssuer: options.cardIssuer,
-          rainApplicationStatus: options.rainApplicationStatus,
+          cardIssuer: options?.cardIssuer,
+          rainApplicationStatus: options?.rainApplicationStatus,
+          kycStatus: options?.kycStatus,
+          kycWarnings: options?.kycWarnings,
         }
       : undefined;
   const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
@@ -61,16 +67,21 @@ export function buildCardSteps(
 
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
-    : 'All is set! now click on the "Create card" button to issue your new card';
+    : 'All is set! Click on "Activate card" to review the agreements and issue your new card.';
 
   const kycStepOnPress =
     options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress
       ? options.handleRainKYCPress
       : handleProceedToKyc;
 
-  return [
+  // Bangladesh users must fund their card with a minimum collateral deposit
+  // before spending. The step is inserted after "Activate your card" and is
+  // marked complete from the summed positive Rain collateral the backend returns.
+  const showDepositStep = requiresCardDeposit(options?.country);
+  const cardDepositMet = hasMetCardDeposit(options?.cardCollateralDeposited);
+
+  const steps: Omit<Step, 'id'>[] = [
     {
-      id: 1,
       title: 'Complete KYC',
       description,
       completed: isKycComplete || cardActivated,
@@ -80,24 +91,42 @@ export function buildCardSteps(
       onPress: isButtonDisabled ? undefined : kycStepOnPress,
     },
     {
-      id: 2,
       title: 'Activate your card',
       description: orderCardDesc,
       completed: cardActivated,
       status: cardActivated ? 'completed' : 'pending',
-      buttonText: activationBlocked || !isKycComplete ? undefined : 'Order card',
-      onPress: activationBlocked || !isKycComplete ? undefined : handleActivateCard,
-    },
-    {
-      id: 3,
-      title: 'Start spending :)',
-      description: 'Congratulations! your card is ready',
-      buttonText: 'To the card',
-      completed: false,
-      status: cardActivated ? 'completed' : 'pending',
-      onPress: pushCardDetails,
+      buttonText: activationBlocked || !isKycComplete ? undefined : 'Activate card',
+      onPress: activationBlocked || !isKycComplete ? undefined : pushCardReady,
     },
   ];
+
+  if (showDepositStep) {
+    steps.push({
+      title: `Deposit at least $${MINIMUM_CARD_DEPOSIT_USD}`,
+      description: cardDepositMet
+        ? 'Your card is funded — you’re ready to spend.'
+        : `Add at least $${MINIMUM_CARD_DEPOSIT_USD} to your card to start spending.`,
+      completed: cardDepositMet,
+      status: cardDepositMet ? 'completed' : 'pending',
+      // A card must be activated before it can be funded, so only offer the
+      // deposit action once step 2 is done and the minimum isn't met yet.
+      buttonText: cardActivated && !cardDepositMet ? 'Deposit' : undefined,
+      onPress: cardActivated && !cardDepositMet ? options?.openDepositModal : undefined,
+    });
+  }
+
+  steps.push({
+    title: 'Start spending :)',
+    description: 'Congratulations! your card is ready',
+    buttonText: 'To the card',
+    completed: false,
+    status: cardActivated ? 'completed' : 'pending',
+    onPress: pushCardDetails,
+  });
+
+  // Number steps by position so the indicator shows 1..N sequentially and the
+  // activate step stays id 2 (used by the "Card creation pending" override).
+  return steps.map((step, index) => ({ ...step, id: index + 1 }));
 }
 
 /**
@@ -111,46 +140,13 @@ export function findFirstIncompleteStep(steps: Step[]): Step | undefined {
 }
 
 /**
- * Hook to manage card activation state and actions
+ * Hook to manage card activation state and actions.
+ * Card creation itself happens on /card/ready after the user accepts the
+ * consents; this hook only tracks completion state and exposes navigation.
  */
 export function useCardActivation(router: Router) {
-  const queryClient = useQueryClient();
   const [cardActivated, setCardActivated] = useState(false);
-  const [activatingCard, setActivatingCard] = useState(false);
-  const handleActivateCard = useCallback(async () => {
-    track(TRACKING_EVENTS.CARD_ACTIVATION_STARTED);
-    try {
-      setActivatingCard(true);
-
-      // Create the card
-      const card = await withRefreshToken(() => createCard());
-
-      if (!card) throw new Error('Failed to create card');
-
-      if (card.status !== CardStatus.PENDING) {
-        setCardActivated(true);
-        track(TRACKING_EVENTS.CARD_ACTIVATION_SUCCEEDED, { cardId: card.id });
-        router.replace(path.CARD_DETAILS);
-      } else {
-        // If card is pending, we don't mark as activated and don't redirect.
-        // We just invalidate the card status to show the "pending" UI on the same page.
-        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-      }
-    } catch (error) {
-      console.error('Error activating card:', error);
-      const errorMessage = await extractCardActivationErrorMessage(error);
-
-      track(TRACKING_EVENTS.CARD_ACTIVATION_FAILED, { message: errorMessage });
-      Toast.show({
-        type: 'error',
-        text1: 'Error activating card',
-        text2: errorMessage,
-        props: { badgeText: '' },
-      });
-    } finally {
-      setActivatingCard(false);
-    }
-  }, [router, queryClient]);
+  const [activatingCard] = useState(false);
 
   const syncCardActivationState = useCallback((cardStatus: CardStatus | undefined) => {
     // Mark card as activated if user has a card in any state
@@ -167,12 +163,16 @@ export function useCardActivation(router: Router) {
     router.push(path.CARD_DETAILS);
   }, [router]);
 
+  const pushCardReady = useCallback(() => {
+    router.push(path.CARD_READY);
+  }, [router]);
+
   return {
     cardActivated,
     activatingCard,
-    handleActivateCard,
     syncCardActivationState,
     pushCardDetails,
+    pushCardReady,
   };
 }
 
