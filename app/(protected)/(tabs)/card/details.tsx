@@ -40,7 +40,6 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
@@ -97,9 +96,7 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
-  const isTestUser = useIsTestUser();
-  const isFirstCardDeposit = isTestUser;
-  // && (cardStatusResponse?.cardCollateralDeposited ?? 0) === 0;
+  const isFirstCardDeposit = cardStatusResponse?.cardCollateralDeposited ?? 0 === 0;
 
   const canUnfreeze =
     isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
