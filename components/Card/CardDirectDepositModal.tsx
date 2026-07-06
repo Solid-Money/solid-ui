@@ -195,6 +195,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
               .sort((a, b) => a[1].sort - b[1].sort)
               .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
               .filter(([id]) => getAllowedTokensForChain(Number(id)).length > 0)
+              .filter(([id]) => Number(id) !== 56)
               .map(([id, network]) => {
                 const chainId = Number(id);
                 const estimatedDesc =
@@ -230,7 +231,11 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
     if (step === 'address') {
       return depositAddress ? (
-        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
+        <DepositPublicAddress
+          address={depositAddress}
+          onDone={() => handleOpenChange(false)}
+          excludeChainIds={[56]}
+        />
       ) : (
         <View className="items-center py-12">
           <ActivityIndicator color="white" />
