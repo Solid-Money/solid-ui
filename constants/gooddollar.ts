@@ -28,6 +28,11 @@ export const G_DOLLAR_DECIMALS = 2;
 
 export const G_DOLLAR_SYMBOL = 'G$';
 
+// G$ logo (Voltage Finance token list) — used everywhere instead of the dark
+// CoinGecko image. Mirrors the swaptokens `logoURI` for the Fuse G$ token.
+export const G_DOLLAR_LOGO_URI =
+  'https://raw.githubusercontent.com/voltfinance/swap-default-token-list/master/logos/0x495d133B938596C9984d462F007B676bDc57eCEC/logo.png';
+
 // Fuse mainnet (production) contract addresses, mirrored from
 // `@goodsdks/citizen-sdk` chainConfigs[122].contracts.production.
 export const GOODDOLLAR_FUSE = {

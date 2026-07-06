@@ -764,6 +764,7 @@ export enum TransactionCategory {
   MERKL_CLAIM = 'Merkl claim',
   CARD_WELCOME_BONUS = 'Card welcome bonus',
   DEPOSIT_BONUS = 'Deposit bonus',
+  GOODDOLLAR_UBI = 'GoodDollar UBI',
   RECEIVE = 'Receive',
 }
 

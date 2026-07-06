@@ -1,4 +1,5 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+import { G_DOLLAR_LOGO_URI } from '@/constants/gooddollar';
 
 import { getAsset } from './assets';
 import { TokenIcon } from './types';
@@ -56,6 +57,11 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return {
         type: 'image',
         source: getAsset('images/eth.png'),
+      };
+    case 'G$':
+      return {
+        type: 'image',
+        source: { uri: G_DOLLAR_LOGO_URI },
       };
     default:
       return {

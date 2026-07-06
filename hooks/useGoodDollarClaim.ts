@@ -308,7 +308,10 @@ const useGoodDollarClaim = () => {
 
       await WebBrowser.openAuthSessionAsync(link, redirectUrl);
 
-      // Trust the chain, not the redirect params: poll whitelist status.
+      // The browser has closed — drop the "Opening…" state so the whitelist
+      // poll below shows the normal loading UI instead of a stuck button.
+      // On-chain status is the source of truth, not the redirect params.
+      setIsVerifying(false);
       await pollForWhitelist();
     } catch (error) {
       if (!isUserCancelled(error)) {
