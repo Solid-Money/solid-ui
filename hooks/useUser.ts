@@ -206,6 +206,9 @@ const useUser = (): UseUserReturn => {
   const handleLogin = useCallback(async () => {
     // Reset logout flag so future session expiries show the toast
     setIsLoggingOut(false);
+    // Start every new session from a clean query cache so this login can never
+    // read data cached under user-agnostic keys (e.g. Rewards) by a prior one.
+    queryClient.clear();
 
     // Get attribution context for login tracking
     const attributionStore = useAttributionStore.getState();
@@ -389,6 +392,7 @@ const useUser = (): UseUserReturn => {
     markSafeAddressSynced,
     httpClient,
     user?.username,
+    queryClient,
   ]);
 
   const handleDummyLogin = useCallback(async () => {
@@ -450,6 +454,11 @@ const useUser = (): UseUserReturn => {
     }
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
+    // Purge every cached query so the next account can't read this session's
+    // data. Rewards (and a few other endpoints) are cached under user-agnostic
+    // keys, so without this the previous wallet's details would be served to
+    // the next wallet on web until gcTime expires or the page is hard-refreshed.
+    queryClient.clear();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -461,7 +470,17 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [clearBalance, users, unselectUser, updateUser, clearKycLinkId, router, user, intercom]);
+  }, [
+    clearBalance,
+    users,
+    unselectUser,
+    updateUser,
+    clearKycLinkId,
+    router,
+    user,
+    intercom,
+    queryClient,
+  ]);
 
   // Authenticate the user identified by `userId` via passkey.
   //
@@ -475,6 +494,10 @@ const useUser = (): UseUserReturn => {
   const handleSelectUserById = useCallback(
     async (userId: string) => {
       clearKycLinkId();
+      // Switching accounts: drop any queries cached by a previously active
+      // session before authenticating, so the incoming user never sees stale
+      // data cached under user-agnostic keys (e.g. Rewards).
+      queryClient.clear();
 
       // Find the selected user
       const selectedUser = users.find(u => u.userId === userId);
@@ -532,7 +555,7 @@ const useUser = (): UseUserReturn => {
         router.replace(path.HOME);
       }
     },
-    [selectUserById, storeUser, clearKycLinkId, router, users, httpClient],
+    [selectUserById, storeUser, clearKycLinkId, router, users, httpClient, queryClient],
   );
 
   const handleRemoveUsers = useCallback(() => {
@@ -542,10 +565,16 @@ const useUser = (): UseUserReturn => {
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
     removeEvents();
+    queryClient.clear(); // Drop all cached queries belonging to the forgotten users
     router.replace(path.ONBOARDING);
-  }, [users, removeUsers, clearKycLinkId, removeEvents, router]);
+  }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
   const handleSessionExpired = useCallback(() => {
+    // Suppress re-entrant logout handling: clearing the cache below can make
+    // still-mounted screens refetch, and those requests would 401 on the now
+    // dead session and call this handler again. The flag is reset on next login.
+    setIsLoggingOut(true);
+
     clearBalance();
     // Clear tokens for the selected user before unselecting
     if (user) {
@@ -553,6 +582,9 @@ const useUser = (): UseUserReturn => {
     }
     unselectUser();
     clearKycLinkId();
+    // Purge cached queries so a re-login (possibly as a different user) starts
+    // from a clean cache instead of the expired session's data.
+    queryClient.clear();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -563,7 +595,17 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [clearBalance, unselectUser, updateUser, clearKycLinkId, intercom, user, users, router]);
+  }, [
+    clearBalance,
+    unselectUser,
+    updateUser,
+    clearKycLinkId,
+    intercom,
+    user,
+    users,
+    router,
+    queryClient,
+  ]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {
