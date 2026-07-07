@@ -88,6 +88,7 @@ const ResponsiveModal = ({
   const useFixedHeightLayout = isNativeSmallScreen && !disableScroll;
   const useNativeFlexLayout = isNativeSmallScreen;
   const dialogHeight = useSharedValue(0);
+  const [showTopFade, setShowTopFade] = React.useState(false);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
   const containerHeightRef = React.useRef(0);
   const contentHeightRef = React.useRef(0);
@@ -240,8 +241,10 @@ const ResponsiveModal = ({
                     }}
                     onScroll={e => {
                       const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                      const atTop = contentOffset.y <= 8;
                       const atBottom =
                         contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
+                      setShowTopFade(!atTop);
                       setShowBottomFade(!atBottom);
                     }}
                     scrollEventThrottle={16}
@@ -255,6 +258,22 @@ const ResponsiveModal = ({
                     </Animated.View>
                   </ScrollView>
                 </KeyboardAvoidingView>
+                {showTopFade && (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 48 }}
+                  >
+                    <LinearGradient
+                      colors={[
+                        'rgba(16, 16, 16, 1)',
+                        'rgba(16, 16, 16, 0.5)',
+                        'rgba(16, 16, 16, 0)',
+                      ]}
+                      locations={[0, 0.4, 1]}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                )}
                 {showBottomFade && (
                   <View
                     pointerEvents="none"
