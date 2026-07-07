@@ -29,15 +29,18 @@ import { fuse } from 'wagmi/chains';
 import {
   G_DOLLAR_DECIMALS,
   G_DOLLAR_SYMBOL,
+  getGoodDollarExplorerTxUrl,
   GOODDOLLAR_CHAIN_ID,
   GOODDOLLAR_ENV,
   GOODDOLLAR_FUSE,
+  GOODDOLLAR_GAS_FLOOR_WEI,
   GOODDOLLAR_REDIRECT_PATH,
-  getGoodDollarExplorerTxUrl,
 } from '@/constants/gooddollar';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import useUser from '@/hooks/useUser';
+import { topUpGoodDollarGas } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
 
 type GoodDollarSdks = {
@@ -303,9 +306,23 @@ const useGoodDollarClaim = () => {
         return;
       }
 
-      await WebBrowser.openAuthSessionAsync(link, redirectUrl);
+      // Open the hosted Face Verification (FaceTec) flow in an in-app browser.
+      // Use openBrowserAsync (same call the app's KYC flow uses) rather than
+      // openAuthSessionAsync: the latter needs an ASWebAuthenticationSession
+      // callback scheme and was failing to launch the browser on native. If
+      // GoodDollar redirects to the solid:// deep link it dismisses the browser
+      // and foregrounds the app; otherwise the user closes it manually. Either
+      // way the promise resolves when the browser is dismissed.
+      await WebBrowser.openBrowserAsync(link, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        controlsColor: '#94F27F',
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
 
-      // Trust the chain, not the redirect params: poll whitelist status.
+      // Browser dismissed — drop the "Opening…" state so the whitelist poll
+      // shows the normal loading UI. On-chain status is the source of truth.
+      setIsVerifying(false);
       await pollForWhitelist();
     } catch (error) {
       if (!isUserCancelled(error)) {
@@ -323,6 +340,41 @@ const useGoodDollarClaim = () => {
       setIsVerifying(false);
     }
   }, [getSdks, pollForWhitelist]);
+
+  // Make sure the signer EOA holds enough native FUSE for a transaction. Tops up
+  // via GoodDollar's faucet (proxied by our backend — the faucet API is
+  // CORS-blocked in the browser) and waits for the top-up to land. Best effort:
+  // if it can't, the transaction below surfaces an insufficient-funds error.
+  const ensureGas = useCallback(
+    async (
+      readClient: PublicClient,
+      account: Address,
+      needed: bigint,
+      setMessage?: (message: string) => void,
+    ) => {
+      let balance = await readClient.getBalance({ address: account });
+      if (balance >= needed) return;
+
+      setMessage?.('Topping up gas…');
+      try {
+        await withRefreshToken(() => topUpGoodDollarGas(account, GOODDOLLAR_CHAIN_ID));
+      } catch (error) {
+        Sentry.addBreadcrumb({
+          category: 'gooddollar',
+          level: 'warning',
+          message: 'gas top-up request failed',
+          data: { error: getErrorMessage(error, 'unknown') },
+        });
+      }
+
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        balance = await readClient.getBalance({ address: account });
+        if (balance >= needed) return;
+      }
+    },
+    [],
+  );
 
   const claim = useCallback(async () => {
     let clientTxId: string | null = null;
@@ -357,19 +409,22 @@ const useGoodDollarClaim = () => {
         },
       });
 
-      // Ensure the EOA has gas (GoodDollar faucet, with a gasless API fallback),
-      // then wait for the top-up to land before claiming.
+      // Ensure the EOA has enough native FUSE for the claim (top up via backend).
       setClaimMessage('Preparing your wallet…');
+      let neededGas = GOODDOLLAR_GAS_FLOOR_WEI;
       try {
-        await claimSDK.checkBalanceWithRetry((message: string) => setClaimMessage(message));
+        const gasUnits = await readClient.estimateContractGas({
+          address: GOODDOLLAR_FUSE.ubiScheme,
+          abi: ubiSchemeV2ABI,
+          functionName: 'claim',
+          account,
+        });
+        const gasPrice = await readClient.getGasPrice();
+        neededGas = (gasUnits * gasPrice * 13n) / 10n; // +30% headroom
       } catch {
-        // best effort — the claim below surfaces a gas error if the top-up failed
+        // estimation unavailable (e.g. zero balance) — fall back to the floor
       }
-      for (let attempt = 0; attempt < 6; attempt++) {
-        const gasBalance = await readClient.getBalance({ address: account });
-        if (gasBalance > 0n) break;
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
+      await ensureGas(readClient, account, neededGas, setClaimMessage);
 
       // Submit the claim via viem writeContract so the transaction is fully
       // prepared (nonce, gas) and signed locally by the Turnkey account. The
@@ -437,7 +492,7 @@ const useGoodDollarClaim = () => {
       setIsClaiming(false);
       setClaimMessage(null);
     }
-  }, [createActivity, getSdks, refresh, updateActivity]);
+  }, [createActivity, ensureGas, getSdks, refresh, updateActivity]);
 
   // Moves the claimed G$ from the signer EOA to the user's Solid Safe so it can
   // be used across the app (swap, send). Ensures the EOA has gas via GoodDollar's
@@ -457,7 +512,7 @@ const useGoodDollarClaim = () => {
     setIsSweeping(true);
 
     try {
-      const { claimSDK, walletClient, readClient, account } = await getSdks();
+      const { walletClient, readClient, account } = await getSdks();
       const safeAddress = user.safeAddress as Address;
 
       const balanceWei = (await readClient.readContract({
@@ -474,14 +529,23 @@ const useGoodDollarClaim = () => {
 
       const amount = formatUnits(balanceWei, G_DOLLAR_DECIMALS);
 
-      // Ensure the EOA has enough native FUSE to pay for the transfer (tops up
-      // via GoodDollar's faucet if needed). Best effort — a gas error on the
-      // transfer itself is surfaced below.
+      // Ensure the EOA has enough native FUSE to pay for the transfer (top up
+      // via backend). Best effort — a gas error is surfaced by the transfer below.
+      let neededGas = GOODDOLLAR_GAS_FLOOR_WEI;
       try {
-        await claimSDK.checkBalanceWithRetry();
+        const gasUnits = await readClient.estimateContractGas({
+          address: GOODDOLLAR_FUSE.gdToken,
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [safeAddress, balanceWei],
+          account,
+        });
+        const gasPrice = await readClient.getGasPrice();
+        neededGas = (gasUnits * gasPrice * 13n) / 10n; // +30% headroom
       } catch {
-        // ignore — proceed to the transfer
+        // estimation unavailable — fall back to the floor
       }
+      await ensureGas(readClient, account, neededGas);
 
       clientTxId = await createActivity({
         type: TransactionType.GOODDOLLAR_SWEEP,
@@ -562,7 +626,7 @@ const useGoodDollarClaim = () => {
     } finally {
       setIsSweeping(false);
     }
-  }, [createActivity, getSdks, refresh, updateActivity, user?.safeAddress]);
+  }, [createActivity, ensureGas, getSdks, refresh, updateActivity, user?.safeAddress]);
 
   return {
     ...state,
