@@ -196,10 +196,10 @@ export const VirtualAccountApplyModal = () => {
       </Button>
 
       {/* More details link */}
-      <Pressable className="flex-row items-center justify-center gap-1" onPress={() => {}}>
+      {/* <Pressable className="flex-row items-center justify-center gap-1" onPress={() => {}}>
         <Text className="text-lg font-semibold text-white">More details</Text>
         <ChevronRight size={16} color="white" />
-      </Pressable>
+      </Pressable> */}
     </View>
   );
 };
