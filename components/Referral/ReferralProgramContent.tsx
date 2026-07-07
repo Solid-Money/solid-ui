@@ -1,11 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, Share, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 
-import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -114,6 +114,7 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const { data: summary } = useReferralSummary();
   const [showFriends, setShowFriends] = useState(false);
   const [showHow, setShowHow] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const referralCode = user?.referralCode ?? '';
   const referralLink = `${REFERRAL_BASE_URL}${referralCode}`;
@@ -152,6 +153,21 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
       console.error('Failed to share referral link:', error);
     }
   }, [referralLink]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await Clipboard.setStringAsync(referralLink);
+      setLinkCopied(true);
+    } catch (error) {
+      console.error('Failed to copy referral link:', error);
+    }
+  }, [referralLink]);
+
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timeout = setTimeout(() => setLinkCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [linkCopied]);
 
   return (
     <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-6">
@@ -292,40 +308,24 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
         </Button>
         <Button
           variant="secondary"
-          onPress={() => {
-            if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
-              void navigator.clipboard?.writeText(referralLink);
-            }
-          }}
+          onPress={handleCopyLink}
           className="h-14 w-full rounded-2xl border-0"
         >
-          <Text className="text-base font-bold text-white">Copy Link</Text>
+          <Text className="text-base font-bold text-white">
+            {linkCopied ? 'Link Copied!' : 'Copy Link'}
+          </Text>
         </Button>
       </View>
 
-      {/* Code + link (utility) */}
-      <View className="gap-3">
-        <Text className="text-sm text-white/70">Referral code</Text>
-        <View className="flex-row items-center justify-between rounded-2xl bg-primary/10 p-4 ps-6">
-          <Text className="text-base font-medium text-primary">{referralCode}</Text>
-          <CopyToClipboard text={referralCode} />
-        </View>
-        <Text className="mt-2 text-sm text-white/70">Referral link</Text>
-        <View className="flex-row items-center justify-between rounded-2xl bg-primary/10 p-4 ps-6">
-          <Text className="flex-1 text-base font-medium text-primary" numberOfLines={1}>
-            {referralLink}
+      {/* Add referrer */}
+      <Text className="text-center text-sm text-white/70">
+        Know who referred you?&nbsp;
+        <Link href={path.ADD_REFERRER} onPress={() => onClose?.()} className="hover:opacity-70">
+          <Text className="leading-4 text-primary web:underline">
+            Add them so you both get credit
           </Text>
-          <CopyToClipboard text={referralLink} />
-        </View>
-        <Text className="mt-2 text-center text-sm text-white/70">
-          Know who referred you?&nbsp;
-          <Link href={path.ADD_REFERRER} onPress={() => onClose?.()} className="hover:opacity-70">
-            <Text className="leading-4 text-primary web:underline">
-              Add them so you both get credit
-            </Text>
-          </Link>
-        </Text>
-      </View>
+        </Link>
+      </Text>
     </View>
   );
 }
