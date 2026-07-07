@@ -19,6 +19,7 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
+import DepositTypeSelection from '@/components/DepositOption/DepositTypeSelection';
 import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
@@ -53,7 +54,7 @@ export interface DepositOptionProps {
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
   const depositConfig = getVaultDepositConfig();
@@ -135,6 +136,8 @@ const useDepositOption = ({
     currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
   const isVirtualAccountTos = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS.name;
   const isVirtualAccountApply = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY.name;
+  const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
+  const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -278,7 +281,11 @@ const useDepositOption = ({
       return <DepositTokenSelector />;
     }
 
-    return <DepositOptions />;
+    if (isOptions) {
+      return <DepositOptions />;
+    }
+
+    return <DepositTypeSelection />;
   };
 
   const getContentKey = () => {
@@ -301,7 +308,8 @@ const useDepositOption = ({
     if (isTokenSelector) return 'token-selector';
     if (isVirtualAccountDetails) return 'virtual-account-details';
     if (isVirtualAccountTos) return 'virtual-account-tos';
-    return 'deposit-options';
+    if (isOptions) return 'deposit-options';
+    return 'deposit-type-selection';
   };
 
   const getTitle = () => {
@@ -318,10 +326,12 @@ const useDepositOption = ({
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
+    if (isVirtualAccountApply) return 'Bank transfer';
     if (isVirtualAccountDetails) return 'Bank Deposit';
     if (isVirtualAccountTos) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
+    if (isDepositTypeSelection) return 'Deposit with';
     return 'Add funds';
   };
 
@@ -540,7 +550,7 @@ const useDepositOption = ({
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
@@ -577,8 +587,10 @@ const useDepositOption = ({
     } else if (isNetworks) {
       setDepositFromSolid(false);
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
   };
 
@@ -632,7 +644,7 @@ const useDepositOption = ({
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
   }, [
     status,
@@ -660,6 +672,7 @@ const useDepositOption = ({
     (isFormAndAddress && !depositFromSolid) ||
     isBuyCrypto ||
     isNetworks ||
+    isOptions ||
     isBankTransferAmount ||
     isBankTransferPayment ||
     (isBankTransferPreview && !bankTransfer.fromActivity) ||
@@ -671,7 +684,8 @@ const useDepositOption = ({
     isDepositDirectly ||
     isDepositDirectlyAddress ||
     isDepositDirectlyTokens ||
-    isTokenSelector;
+    isTokenSelector ||
+    isVirtualAccountApply;
 
   const disableScroll = Platform.OS !== 'web' && isDepositDirectlyAddress;
 

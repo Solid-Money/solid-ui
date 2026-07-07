@@ -32,7 +32,7 @@ export interface DepositTriggerProps {
 const DepositTrigger = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
   source = 'unknown',
   preserveSelectedVault = false,
   onBeforeOpen,

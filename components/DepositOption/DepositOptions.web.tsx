@@ -46,6 +46,7 @@ const DepositOptions = () => {
       {depositOptions
         .filter(
           option =>
+            option.method !== 'bank_transfer' &&
             (option.isEnabled ?? true) &&
             (!option.method || depositConfig.methods.includes(option.method)),
         )
