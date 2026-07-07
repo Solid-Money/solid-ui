@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Image } from 'expo-image';
@@ -16,6 +16,7 @@ import {
 import ProfileIcon from '@/assets/images/profile';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
+import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import { SettingsCard } from '@/components/Settings';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -113,6 +114,7 @@ const MobileSettings = () => {
   const { data: rewardsData } = useRewardsUserData();
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const displayName = getUserDisplayName(user, 18);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
 
   const rowGroups: MobileSettingsRow[][] = [
     [
@@ -125,7 +127,7 @@ const MobileSettings = () => {
       {
         title: 'Refer & Earn',
         icon: <Heart size={23} color="#ffffff" strokeWidth={2} />,
-        href: path.REFERRAL,
+        onPress: () => setIsReferralModalOpen(true),
       },
     ],
     [
@@ -184,6 +186,10 @@ const MobileSettings = () => {
           ))}
         </View>
       </View>
+      <ReferralProgramModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+      />
     </PageLayout>
   );
 };

@@ -180,8 +180,8 @@ export default function Points() {
               </View>
             </Button>
           </View>
-          {/* Internal whitelist team members get the new `/referral-program`
-              banner; public users keep the existing `/referral` banner. */}
+          {/* Internal whitelist team members get the new referral program banner
+              (opens a popup); public users keep the existing `/referral` banner. */}
           {isTestUser ? <ReferralProgramBanner /> : <RewardReferBanner />}
         </View>
       </View>

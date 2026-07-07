@@ -1,30 +1,37 @@
-import { ScrollView, useWindowDimensions } from 'react-native';
-
 import ReferralProgramContent from '@/components/Referral/ReferralProgramContent';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 
 interface ReferralProgramModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const MODAL_STATE: ModalState = { name: 'referral-program', number: 1 };
+const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
+
 /**
- * Popup presentation of the `/referral-program` page. Shown when a whitelisted
- * user taps {@link ReferralProgramBanner} instead of navigating to the route.
- * The route (`app/(protected)/(tabs)/referral-program.tsx`) still renders the
- * same content for deep links and fallback navigation.
+ * Referral program popup. Opened from {@link ReferralProgramBanner}, the Settings
+ * "Refer & Earn" row, or the `/rewards?referral=open` deep link.
+ *
+ * Rendered through {@link ResponsiveModal} so it reuses the shared modal chrome
+ * (header, close button, scroll fade) like every other popup.
  */
 export default function ReferralProgramModal({ isOpen, onClose }: ReferralProgramModalProps) {
-  const { height } = useWindowDimensions();
-  const maxHeight = Math.min(height * 0.85, 760);
-
   return (
-    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent showCloseButton={false} className="overflow-hidden border-0 p-0">
-        <ScrollView style={{ maxHeight }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-          <ReferralProgramContent onClose={onClose} />
-        </ScrollView>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveModal
+      currentModal={MODAL_STATE}
+      previousModal={CLOSE_STATE}
+      isOpen={isOpen}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+      trigger={null}
+      title="Referral Program"
+      contentKey="referral-program"
+      contentClassName="md:max-w-lg"
+      shouldAnimate={false}
+    >
+      <ReferralProgramContent onClose={onClose} />
+    </ResponsiveModal>
   );
 }
