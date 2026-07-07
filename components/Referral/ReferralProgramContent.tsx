@@ -163,7 +163,7 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
     <View className="gap-6">
       {/* Hero */}
       <View className="items-center">
-        <Image source={getAsset('images/referral-3d.png')} style={{ width: 120, height: 120 }} />
+        <Image source={getAsset('images/referral-3d.png')} style={{ width: 180, height: 180 }} />
         <Text className="mt-3 text-center text-3xl font-bold leading-9 text-white">
           Invite friends &{'\n'}Earn together
         </Text>

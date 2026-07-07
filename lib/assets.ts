@@ -444,7 +444,7 @@ export const ASSETS = {
   },
   'images/referral-3d.png': {
     module: require('@/assets/images/referral-3d.png'),
-    hash: '8477b533',
+    hash: '5d0bdece',
   },
   'images/referral_large.png': {
     module: require('@/assets/images/referral_large.png'),
