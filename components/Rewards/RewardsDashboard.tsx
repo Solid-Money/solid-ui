@@ -27,8 +27,8 @@ const STAR_ASPECT_RATIO = 839 / 386; // native pixel ratio of points_large.png
 const STAR_WIDTH_RATIO = 0.66; // fraction of the card width the star image spans
 const STAR_MIN_WIDTH = 340; // keep the star visible on the narrowest screens
 const STAR_MAX_WIDTH = 760; // cap the star on very wide cards
-const STAR_TOP_BLEED_RATIO = 0.4; // how far the (mostly transparent) image bleeds past the top edge
-const STAR_RIGHT_INSET_RATIO = 0.08; // keep a small gap from the right edge
+const STAR_TOP_BLEED_RATIO = 0.2; // how far the (mostly transparent) image bleeds past the top edge
+const STAR_RIGHT_INSET_RATIO = 0.04; // keep a small gap from the right edge
 
 // Transform API tier benefits to display items with dynamic icons
 interface DashboardBenefitItem {
