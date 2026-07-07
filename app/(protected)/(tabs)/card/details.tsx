@@ -96,7 +96,7 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
-  const isFirstCardDeposit = cardStatusResponse?.cardCollateralDeposited ?? 0 === 0;
+  const isFirstCardDeposit = (cardStatusResponse?.cardCollateralDeposited || 0) === 0;
 
   const canUnfreeze =
     isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
