@@ -306,11 +306,22 @@ const useGoodDollarClaim = () => {
         return;
       }
 
-      await WebBrowser.openAuthSessionAsync(link, redirectUrl);
+      // Open the hosted Face Verification (FaceTec) flow in an in-app browser.
+      // Use openBrowserAsync (same call the app's KYC flow uses) rather than
+      // openAuthSessionAsync: the latter needs an ASWebAuthenticationSession
+      // callback scheme and was failing to launch the browser on native. If
+      // GoodDollar redirects to the solid:// deep link it dismisses the browser
+      // and foregrounds the app; otherwise the user closes it manually. Either
+      // way the promise resolves when the browser is dismissed.
+      await WebBrowser.openBrowserAsync(link, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        controlsColor: '#94F27F',
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
 
-      // The browser has closed — drop the "Opening…" state so the whitelist
-      // poll below shows the normal loading UI instead of a stuck button.
-      // On-chain status is the source of truth, not the redirect params.
+      // Browser dismissed — drop the "Opening…" state so the whitelist poll
+      // shows the normal loading UI. On-chain status is the source of truth.
       setIsVerifying(false);
       await pollForWhitelist();
     } catch (error) {
