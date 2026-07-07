@@ -27,8 +27,8 @@ const STAR_ASPECT_RATIO = 839 / 386; // native pixel ratio of points_large.png
 const STAR_WIDTH_RATIO = 0.66; // fraction of the card width the star image spans
 const STAR_MIN_WIDTH = 340; // keep the star visible on the narrowest screens
 const STAR_MAX_WIDTH = 760; // cap the star on very wide cards
-const STAR_RIGHT_BLEED_RATIO = 0.4; // how far the (mostly transparent) image bleeds past the right edge
-const STAR_VERTICAL_CENTER_MAX = 150; // pin the star to the upper area on tall (stacked) mobile cards
+const STAR_TOP_BLEED_RATIO = 0.4; // how far the (mostly transparent) image bleeds past the top edge
+const STAR_RIGHT_INSET_RATIO = 0.08; // keep a small gap from the right edge
 
 // Transform API tier benefits to display items with dynamic icons
 interface DashboardBenefitItem {
@@ -97,7 +97,6 @@ const RewardsDashboard = ({
     Math.max(STAR_MIN_WIDTH, starArea.width * STAR_WIDTH_RATIO),
   );
   const starHeight = starWidth / STAR_ASPECT_RATIO;
-  const starCenterY = Math.min(starArea.height / 2, STAR_VERTICAL_CENTER_MAX);
 
   const handleStarAreaLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -152,8 +151,8 @@ const RewardsDashboard = ({
               position: 'absolute',
               width: starWidth,
               height: starHeight,
-              right: -starWidth * STAR_RIGHT_BLEED_RATIO,
-              top: starCenterY - starHeight / 2,
+              right: -starWidth * STAR_RIGHT_INSET_RATIO,
+              top: -starHeight * STAR_TOP_BLEED_RATIO,
             }}
           />
         )}
