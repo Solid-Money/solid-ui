@@ -31,7 +31,7 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
   const showSkeleton = isLoading && !cardDetails;
 
   return (
-    <Pressable onPress={() => router.push(path.POINTS)} className={cn('flex-1', className)}>
+    <Pressable onPress={() => router.push(path.REWARDS)} className={cn('flex-1', className)}>
       <View className="gap-3 overflow-hidden rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
         <Image
           source={getAsset('images/green-diamond-background.png')}
