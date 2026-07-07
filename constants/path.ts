@@ -34,7 +34,6 @@ type Path = {
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
-  REFERRAL_PROGRAM: Href;
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
@@ -86,8 +85,6 @@ export const path: Path = {
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',
   POINTS: '/points',
   REFERRAL: '/referral',
-  // Internal-only for now (direct link); replaces /referral at public launch.
-  REFERRAL_PROGRAM: '/referral-program' as Href,
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',

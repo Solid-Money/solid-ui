@@ -4,7 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { ChevronRight, X } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -102,9 +102,8 @@ function ReferralListItem({ item }: { item: ReferralRewardListItem }) {
 
 interface ReferralProgramContentProps {
   /**
-   * When provided, the view is being shown inside a modal: the header close
-   * button and any in-content navigation dismiss the modal first. When omitted
-   * (route usage) the header close falls back to router back/replace.
+   * Dismisses the containing modal. Called before in-content navigation (e.g.
+   * ordering a card or adding a referrer) so the popup closes first.
    */
   onClose?: () => void;
 }
@@ -126,15 +125,6 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const windowDays = summary?.qualification.windowDays ?? 30;
   const hasActiveCard = summary?.hasActiveCard ?? false;
   const referrals = summary?.referrals ?? [];
-
-  const handleClose = useCallback(() => {
-    if (onClose) {
-      onClose();
-      return;
-    }
-    if (router.canGoBack()) router.back();
-    else router.replace(path.REWARDS);
-  }, [onClose]);
 
   const handleInvite = useCallback(async () => {
     const message = `Join me on Solid — order a card, spend, and we both earn. Use my link: ${referralLink}`;
@@ -170,23 +160,7 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   }, [linkCopied]);
 
   return (
-    <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-6">
-      {/* Header */}
-      <View className="flex-row items-center justify-between">
-        <View className="w-10" />
-        <Text className="text-center text-lg font-semibold text-white md:text-xl">
-          Referral Program
-        </Text>
-        <Pressable
-          onPress={handleClose}
-          accessibilityLabel="Close"
-          accessibilityRole="button"
-          className="h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
-        >
-          <X size={22} color="#FFFFFF" />
-        </Pressable>
-      </View>
-
+    <View className="gap-6">
       {/* Hero */}
       <View className="items-center">
         <Image source={getAsset('images/referral-3d.png')} style={{ width: 120, height: 120 }} />
