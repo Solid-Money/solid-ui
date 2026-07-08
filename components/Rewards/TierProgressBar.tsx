@@ -47,7 +47,7 @@ const TierProgressBar = ({
           style={[{ backgroundColor: '#FFD151', height: '100%' }, animatedProgress]}
         ></Animated.View>
       </View>
-      <View className="flex-row items-center justify-between">
+      <View className="flex-1 flex-row items-center justify-between">
         <Text className="text-base text-rewards/70 font-normal">{toTitleCase(currentTier)}</Text>
         <View className="flex-row items-center gap-5">
           <View className="flex-row items-center gap-1">
