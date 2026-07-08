@@ -12,8 +12,7 @@ import { getAsset } from '@/lib/assets';
 /**
  * Internal-only referral banner. Rendered in place of {@link RewardReferBanner}
  * for whitelisted team members (see `useIsTestUser`); public users keep the
- * existing `/referral` banner. Tapping opens the referral-program page as a
- * popup modal rather than navigating to the `/referral-program` route.
+ * existing `/referral` banner. Tapping opens the referral program popup.
  */
 const ReferralProgramBanner = () => {
   const { isScreenMedium } = useDimension();

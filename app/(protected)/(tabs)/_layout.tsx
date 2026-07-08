@@ -190,13 +190,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="referral-program"
-        options={{
-          title: 'Referral Program',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

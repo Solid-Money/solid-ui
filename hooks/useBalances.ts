@@ -226,7 +226,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       contractAddress: address,
       balance: item.value,
       quoteRate,
-      logoUrl: isSoUSD ? undefined : item.token.icon_url,
+      // Prefer the curated swaptokens logo (e.g. Voltage's G$ logo) over
+      // Blockscout's CoinGecko icon, which can be dark/low-quality.
+      logoUrl: isSoUSD ? undefined : (tokenFromList?.logoURI ?? item.token.icon_url),
       contractDecimals: parseInt(item.token.decimals),
       type: item.token.type as TokenType,
       verified: true,
@@ -410,8 +412,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   }
 
   if (bscBalance.status === PromiseStatus.FULFILLED && Number(bscBalance.value)) {
-    const bscPriceValue =
-      bscPrice.status === PromiseStatus.FULFILLED ? Number(bscPrice.value) : 0;
+    const bscPriceValue = bscPrice.status === PromiseStatus.FULFILLED ? Number(bscPrice.value) : 0;
     const bscBnbTokenFromList = tokenListData.find(
       token => token.chainId === BSC_CHAIN_ID && token.symbol === 'BNB',
     );

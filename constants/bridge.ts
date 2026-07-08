@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
@@ -106,6 +106,20 @@ export const BRIDGE_TOKENS: BridgeTokens = {
       },
     },
     name: 'Base',
+    icon: require('@/assets/images/base.png'),
+    sort: 3,
+    bridgeSpeed: 2,
+  },
+  [baseSepolia.id]: {
+    tokens: {
+      USDC: {
+        name: 'USDC',
+        address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+        version: '2',
+        isPermit: false,
+      },
+    },
+    name: 'Base Sepolia',
     icon: require('@/assets/images/base.png'),
     sort: 3,
     bridgeSpeed: 2,

@@ -26,7 +26,7 @@ export function CircularActionButton({
   const iconSize = size;
 
   return (
-    <View className={`flex-1 items-center ${className}`}>
+    <View className={`items-center ${className}`}>
       <Pressable
         onPress={onPress}
         className={`web:hover:opacity-70 ${showBackground ? 'items-center justify-center rounded-full bg-[#303030]' : ''}`}
