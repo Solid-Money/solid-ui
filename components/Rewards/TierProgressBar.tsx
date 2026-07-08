@@ -48,11 +48,11 @@ const TierProgressBar = ({
         ></Animated.View>
       </View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-base text-rewards/70">{toTitleCase(currentTier)}</Text>
+        <Text className="text-base text-rewards/70 font-normal">{toTitleCase(currentTier)}</Text>
         <View className="flex-row items-center gap-5">
           <View className="flex-row items-center gap-1">
-            <Text className="text-base">{compactNumberFormat(pointsNeeded)} more points to</Text>
-            <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
+            <Text className="text-base font-normal">{compactNumberFormat(pointsNeeded)} more points to</Text>
+            <Text className="text-base text-rewards/70 font-normal">{toTitleCase(nextTier)}</Text>
             <Image
               source={getTierIcon(nextTier)}
               contentFit="contain"
