@@ -119,7 +119,7 @@ const RewardsDashboard = ({
 
   return (
     <View
-      className="relative gap-10 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
+      className="relative gap-14 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
       style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
     >
       <LinearGradient
