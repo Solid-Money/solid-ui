@@ -9,9 +9,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
-
-import { CardDepositSource } from '@/store/useCardDepositStore';
+import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 import CardDepositExternal from './CardDepositExternal';
 import CardDepositInternalForm from './CardDepositInternalForm';

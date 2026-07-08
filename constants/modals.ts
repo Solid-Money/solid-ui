@@ -306,6 +306,33 @@ export const CARD_WITHDRAW_MODAL = {
   },
 };
 
+// Credit line (borrow against savings) modal
+export const CREDIT_LINE_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_HOME: {
+    // Entry: intro (no savings / has savings) or active-position overview
+    name: 'open_home',
+    number: 1,
+  },
+  OPEN_FORM: {
+    // Borrow amount slider + details
+    name: 'open_form',
+    number: 2,
+  },
+  OPEN_CONFIRM: {
+    // Review position, "Confirm & get dollars"
+    name: 'open_confirm',
+    number: 3,
+  },
+  OPEN_SUCCESS: {
+    name: 'open_success',
+    number: 4,
+  },
+};
+
 // Card repay modal
 export const CARD_REPAY_MODAL = {
   CLOSE: {
