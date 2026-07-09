@@ -16,24 +16,28 @@ interface PointsState {
   lastFetchTime: number | null;
   setPoints: (points: Points) => void;
   fetchPoints: (options?: { force?: boolean }) => Promise<void>;
+  reset: () => void;
 }
 
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 
+// Empty points, used for the initial state and when resetting on account switch.
+const INITIAL_POINTS: Points = {
+  nextRewardTime: 0,
+  pointsLast24Hours: 0,
+  userRewardsSummary: {
+    totalPoints: 0,
+    rewardsByType: [],
+  },
+  userRefferer: '',
+  leaderboardPosition: 0,
+};
+
 export const usePointsStore = create<PointsState>()(
   persist(
     (set, get) => ({
-      points: {
-        nextRewardTime: 0,
-        pointsLast24Hours: 0,
-        userRewardsSummary: {
-          totalPoints: 0,
-          rewardsByType: [],
-        },
-        userRefferer: '',
-        leaderboardPosition: 0,
-      },
+      points: INITIAL_POINTS,
       isLoading: false,
       error: null,
       lastFetchTime: null,
@@ -45,6 +49,18 @@ export const usePointsStore = create<PointsState>()(
             state.error = null;
           }),
         );
+      },
+
+      // Wipe all points state on logout / account switch so a new account never
+      // sees the previous user's points. Clearing lastFetchTime also disables
+      // the 5-minute fetch-skip so the next fetchPoints() actually runs.
+      reset: () => {
+        set({
+          points: INITIAL_POINTS,
+          isLoading: false,
+          error: null,
+          lastFetchTime: null,
+        });
       },
 
       fetchPoints: async (options?: { force?: boolean }) => {
