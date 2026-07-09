@@ -18,7 +18,7 @@ import {
   Leaf,
   Wallet as WalletIcon,
 } from 'lucide-react-native';
-import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
+import { Address, erc20Abi, formatUnits, TransactionReceipt } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -26,7 +26,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import Max from '@/components/Max';
-import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,25 +35,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { useBalances } from '@/hooks/useBalances';
-import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import useCardDeposit from '@/hooks/useCardDeposit';
-import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
-import { WalletTokenButton } from '@/components/WalletTokenSelector';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { useDepositStore } from '@/store/useDepositStore';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import {
@@ -81,8 +77,7 @@ import {
 } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
-
-import { BorrowSlider } from './BorrowSlider';
+import { useDepositStore } from '@/store/useDepositStore';
 
 const BASE_USDC_TOKEN_URL = `https://basescan.org/token/${ADDRESSES.base.usdc}`;
 
@@ -108,7 +103,7 @@ const SOURCE_LABELS: Record<CardDepositSource, string> = {
 
 /** Renders the icon associated with a funding source. */
 function SourceIcon({ source, size }: { source: CardDepositSource; size: number }) {
-  if (source === CardDepositSource.SAVINGS || source === CardDepositSource.BORROW) {
+  if (source === CardDepositSource.SAVINGS) {
     return <Leaf color="#A1A1A1" size={size} />;
   }
   return <WalletIcon color="#A1A1A1" size={size} />;
@@ -149,9 +144,7 @@ function SourceSelectorNative({
           <Text className="text-lg font-semibold">{getDisplayText()}</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          {value !== CardDepositSource.BORROW && (
-            <Text className="text-sm text-muted-foreground">{getTokenSymbol()}</Text>
-          )}
+          <Text className="text-sm text-muted-foreground">{getTokenSymbol()}</Text>
           <ChevronDown color="#A1A1A1" size={20} />
         </View>
       </Pressable>
@@ -279,7 +272,6 @@ function AmountInput({
   rightSlot,
 }: AmountInputProps) {
   const getTokenImage = () => {
-    if (from === CardDepositSource.WALLET) return getAsset('images/usdc-4x.png');
     if (from === CardDepositSource.SAVINGS) return getAsset('images/sousd-4x.png');
     return getAsset('images/usdc-4x.png');
   };
@@ -292,9 +284,7 @@ function AmountInput({
 
   return (
     <View className="gap-2">
-      <Text className="font-medium opacity-50">
-        {from === CardDepositSource.BORROW ? 'Amount to borrow' : 'Deposit amount'}
-      </Text>
+      <Text className="font-medium opacity-50">Deposit amount</Text>
       <View
         className={cn(
           'w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3',
@@ -365,10 +355,6 @@ function BalanceDisplay({
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return 'USDC';
   }, [from, walletTokenSymbol]);
-
-  if (from === CardDepositSource.BORROW) {
-    return null;
-  }
 
   return (
     <View className="flex-row items-center gap-2">
@@ -467,23 +453,6 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
   );
 }
 
-function BorrowAndDepositButton({
-  disabled,
-  bridgeStatus,
-  swapAndBridgeStatus,
-  onPress,
-}: SubmitButtonProps) {
-  return (
-    <Button variant="brand" className="h-12 rounded-2xl" disabled={disabled} onPress={onPress}>
-      {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
-        <ActivityIndicator color="black" />
-      ) : (
-        <Text className="native:text-lg text-base font-bold text-black">Deposit</Text>
-      )}
-    </Button>
-  );
-}
-
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivityActions();
@@ -504,7 +473,6 @@ export default function CardDepositInternalForm() {
   // Tracking refs
   const hasTrackedFormViewedRef = useRef(false);
   const hasTrackedAmountEntryRef = useRef(false);
-  const sliderDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTrackedValidationErrorRef = useRef<string | null>(null);
 
   // Get all token balances including soUSD
@@ -516,11 +484,9 @@ export default function CardDepositInternalForm() {
   // yet (cardDepositSrcChainId is 0 / unsupported).
   const cardDepositSrcChainId = useDepositStore(state => state.srcChainId);
   const selectedWalletUsdcAddress =
-    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as
-      | Address
-      | undefined) ?? undefined;
-  const hasSelectedWalletUsdc =
-    !!cardDepositSrcChainId && !!selectedWalletUsdcAddress;
+    (BRIDGE_TOKENS[cardDepositSrcChainId]?.tokens?.USDC?.address as Address | undefined) ??
+    undefined;
+  const hasSelectedWalletUsdc = !!cardDepositSrcChainId && !!selectedWalletUsdcAddress;
   const walletBalanceChainId = hasSelectedWalletUsdc ? cardDepositSrcChainId : fuse.id;
   const walletBalanceTokenAddress = hasSelectedWalletUsdc
     ? (selectedWalletUsdcAddress as Address)
@@ -534,7 +500,7 @@ export default function CardDepositInternalForm() {
     query: { enabled: !!user?.safeAddress && isProduction },
   });
 
-  // Get soUSD balance and rate from tokens
+  // Get soUSD balance from tokens
   const soUsdToken = useMemo(() => {
     return tokens.find(
       token =>
@@ -547,8 +513,8 @@ export default function CardDepositInternalForm() {
     mode: 'onChange',
     defaultValues: {
       amount: '',
-      // Never start on Borrow. When no source is explicitly chosen, the funded
-      // source is selected once balances load (see the effect below).
+      // When no source is explicitly chosen, the funded source is selected once
+      // balances load (see the effect below).
       from: source ?? CardDepositSource.WALLET,
     },
   });
@@ -572,7 +538,8 @@ export default function CardDepositInternalForm() {
     },
   });
 
-  // Get borrow rate from accountant contract
+  // soUSD → USD rate from the accountant contract (used for the Savings
+  // exchange-rate analytics on submit).
   const ACCOUNTANT_ABI = [
     {
       inputs: [],
@@ -589,15 +556,12 @@ export default function CardDepositInternalForm() {
     },
   ] as const;
 
-  const { data: rate, isLoading: isRateLoading } = useReadContract({
+  const { data: rate } = useReadContract({
     address: ADDRESSES.ethereum.accountant,
     abi: ACCOUNTANT_ABI,
     functionName: 'getRate',
     chainId: mainnet.id,
   });
-
-  // Get borrow APY from Aave
-  const { borrowAPY, isLoading: isBorrowAPYLoading } = useAaveBorrowPosition();
 
   const usdcBalanceAmount = walletUsdcBalance ? Number(walletUsdcBalance) / 1e6 : 0;
   const soUsdBalanceAmount = soUsdToken
@@ -630,45 +594,14 @@ export default function CardDepositInternalForm() {
         ? 'soUSD'
         : 'USDC';
 
-  // Calculate borrow rate and max borrow amount
   const exchangeRate = rate ? Number(formatUnits(rate, 6)) : 0;
-  const maxBorrowAmount = useMemo(() => {
-    if (soUsdBalanceAmount > 0 && exchangeRate > 0) {
-      return soUsdBalanceAmount * exchangeRate * 0.69; // 79% of savings value
-    }
-    return 0;
-  }, [soUsdBalanceAmount, exchangeRate]);
-
-  // Calculate collateral required using the same formula as useBorrowAndDepositToCard
-  const soUSDLTV = 70n;
-  const collateralRequired = useMemo(() => {
-    if (watchedAmount === '' || watchedAmount === '0') {
-      return 0;
-    }
-    if (
-      watchedFrom === CardDepositSource.BORROW &&
-      watchedAmount &&
-      rate &&
-      Number(watchedAmount) > 0
-    ) {
-      try {
-        const borrowAmountWei = parseUnits(watchedAmount, 6);
-        const supplyAmountWei = (borrowAmountWei * 100n * 1000000n) / (soUSDLTV * rate);
-        return Number(formatUnits(supplyAmountWei, 6));
-      } catch {
-        return 0;
-      }
-    }
-    return 0;
-  }, [watchedFrom, watchedAmount, rate, soUSDLTV]);
 
   const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
-    watchedFrom === CardDepositSource.BORROW ? watchedAmount : watchedAmount,
+    watchedAmount,
     ADDRESSES.fuse.stargateOftUSDC,
   );
 
-  const isWalletSourceGaslessGated =
-    isProduction && watchedFrom === CardDepositSource.WALLET;
+  const isWalletSourceGaslessGated = isProduction && watchedFrom === CardDepositSource.WALLET;
 
   const schema = useMemo(() => {
     return z.object({
@@ -676,22 +609,11 @@ export default function CardDepositInternalForm() {
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(
-          val => {
-            if (watchedFrom === CardDepositSource.BORROW) {
-              return Number(val) <= maxBorrowAmount;
-            }
-            return Number(val) <= balanceAmount;
-          },
-          {
-            error:
-              watchedFrom === CardDepositSource.BORROW
-                ? `Maximum borrow amount is ${formatNumber(maxBorrowAmount)} USDC`
-                : `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
-          },
-        ),
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
+        }),
     });
-  }, [balanceAmount, tokenSymbol, watchedFrom, maxBorrowAmount]);
+  }, [balanceAmount, tokenSymbol]);
 
   const formattedBalance = balanceAmount.toString();
 
@@ -703,13 +625,10 @@ export default function CardDepositInternalForm() {
     error: swapAndBridgeError,
   } = useSwapAndBridgeToCard();
 
-  const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
   const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
   const hasSelectedWalletToken =
-    watchedFrom === CardDepositSource.WALLET &&
-    isProduction &&
-    hasSelectedWalletUsdc;
+    watchedFrom === CardDepositSource.WALLET && isProduction && hasSelectedWalletUsdc;
   const selectedCardWalletToken: TokenBalance | null = useMemo(() => {
     if (!hasSelectedWalletToken || !selectedWalletUsdcAddress) return null;
     return {
@@ -721,12 +640,7 @@ export default function CardDepositInternalForm() {
       type: TokenType.ERC20,
       chainId: cardDepositSrcChainId,
     };
-  }, [
-    hasSelectedWalletToken,
-    selectedWalletUsdcAddress,
-    walletTokenSymbol,
-    cardDepositSrcChainId,
-  ]);
+  }, [hasSelectedWalletToken, selectedWalletUsdcAddress, walletTokenSymbol, cardDepositSrcChainId]);
   const {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
@@ -755,11 +669,10 @@ export default function CardDepositInternalForm() {
         source_type: watchedFrom,
         wallet_balance: usdcBalanceAmount,
         savings_balance: soUsdBalanceAmount,
-        max_borrow_amount: maxBorrowAmount,
       });
     }
     previousSourceRef.current = watchedFrom;
-  }, [watchedFrom, usdcBalanceAmount, soUsdBalanceAmount, maxBorrowAmount]);
+  }, [watchedFrom, usdcBalanceAmount, soUsdBalanceAmount]);
 
   // Track amount entry started
   const trackAmountEntry = useCallback(() => {
@@ -778,144 +691,6 @@ export default function CardDepositInternalForm() {
       max_amount: balanceAmount,
     });
   }, [watchedFrom, balanceAmount]);
-
-  // Track borrow slider changed (debounced)
-  const trackSliderChanged = useCallback(
-    (value: number) => {
-      // Clear existing timer
-      if (sliderDebounceTimerRef.current) {
-        clearTimeout(sliderDebounceTimerRef.current);
-      }
-      // Set new timer with 500ms debounce
-      sliderDebounceTimerRef.current = setTimeout(() => {
-        track(TRACKING_EVENTS.CARD_DEPOSIT_BORROW_SLIDER_CHANGED, {
-          borrow_amount: value,
-          max_borrow_amount: maxBorrowAmount,
-          slider_percentage: maxBorrowAmount > 0 ? (value / maxBorrowAmount) * 100 : 0,
-        });
-      }, 500);
-    },
-    [maxBorrowAmount],
-  );
-
-  // Clean up slider debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (sliderDebounceTimerRef.current) {
-        clearTimeout(sliderDebounceTimerRef.current);
-      }
-    };
-  }, []);
-
-  const onBorrowAndDepositSubmit = useCallback(
-    async (data: any) => {
-      if (!user) return;
-
-      // Track submission
-      track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, {
-        source_type: CardDepositSource.BORROW,
-        amount: data.amount,
-        estimated_usdc_output: data.amount, // For borrow, amount is in USDC
-        collateral_required: collateralRequired,
-        borrow_apy: borrowAPY,
-      });
-
-      try {
-        // Check for funding address
-        if (!cardDetails) {
-          Toast.show({
-            type: 'error',
-            text1: 'Card details not found',
-            text2: 'Please try again later',
-          });
-          return;
-        }
-        const borrowFundingAddress = getCardFundingAddress(
-          cardDetails,
-          provider,
-          contracts ?? undefined,
-        );
-
-        if (!borrowFundingAddress) {
-          Toast.show({
-            type: 'error',
-            text1: 'Deposits not available',
-            text2: 'This card does not support deposits to the funding chain',
-            props: { badgeText: '' },
-          });
-          return;
-        }
-
-        const sourceSymbol =
-          watchedFrom === CardDepositSource.SAVINGS
-            ? 'soUSD'
-            : watchedFrom === CardDepositSource.BORROW
-              ? 'USDC'
-              : 'USDC.e';
-        const sourceTokenAddress =
-          watchedFrom === CardDepositSource.SAVINGS ? ADDRESSES.fuse.vault : USDC_STARGATE;
-
-        // Create activity event (stays PENDING until Bridge processes it)
-        const clientTxId = await createActivity({
-          type: TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
-          title: `Borrow and deposit to Card`,
-          shortTitle: `Borrow and deposit to Card`,
-          amount: data.amount,
-          symbol: sourceSymbol,
-          chainId: fuse.id,
-          fromAddress: user.safeAddress,
-          toAddress: borrowFundingAddress,
-          status: TransactionStatus.PENDING,
-          metadata: {
-            description: `Borrow and deposit ${data.amount} ${sourceSymbol} to card`,
-            processingStatus: 'bridging',
-            tokenAddress: sourceTokenAddress,
-          },
-        });
-
-        let tx: TransactionReceipt | undefined;
-
-        tx = await borrowAndDeposit(data.amount);
-
-        // Update activity with transaction hash, keeping it PENDING
-        await updateActivity(clientTxId, {
-          status: TransactionStatus.PENDING,
-          hash: tx.transactionHash,
-          url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-          metadata: {
-            txHash: tx.transactionHash,
-            processingStatus: 'awaiting_bridge',
-          },
-        });
-
-        setTransaction({ amount: Number(data.amount) });
-        setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-        reset();
-      } catch (error) {
-        console.error('Bridge error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Bridge failed',
-          text2: error instanceof Error ? error.message : 'Unknown error occurred',
-        });
-      }
-    },
-    [
-      watchedFrom,
-      cardDetails,
-      provider,
-      contracts,
-      user,
-      borrowAndDeposit,
-      borrowAPY,
-      collateralRequired,
-      createActivity,
-      reset,
-      setModal,
-      setTransaction,
-      updateActivity,
-    ],
-  );
 
   const onSubmit = useCallback(
     async (data: any) => {
@@ -973,12 +748,7 @@ export default function CardDepositInternalForm() {
           return;
         }
 
-        const sourceSymbol =
-          watchedFrom === CardDepositSource.SAVINGS
-            ? 'soUSD'
-            : watchedFrom === CardDepositSource.BORROW
-              ? 'USDC'
-              : 'USDC.e';
+        const sourceSymbol = watchedFrom === CardDepositSource.SAVINGS ? 'soUSD' : 'USDC.e';
         const sourceTokenAddress =
           watchedFrom === CardDepositSource.SAVINGS ? ADDRESSES.fuse.vault : USDC_STARGATE;
 
@@ -1073,8 +843,7 @@ export default function CardDepositInternalForm() {
     swapAndBridgeStatus === Status.PENDING ||
     isWalletDepositPending ||
     isWalletCardDepositPending ||
-    (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
-    (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
+    isEstimatedUSDCLoading ||
     isFundingAddressLoading ||
     (isWalletSourceGaslessGated && !hasSelectedWalletToken) ||
     !isValid ||
@@ -1098,7 +867,7 @@ export default function CardDepositInternalForm() {
       lastTrackedValidationErrorRef.current = validationError;
       // Determine error type
       let errorType = 'invalid_input';
-      if (validationError.includes('balance') || validationError.includes('borrow amount')) {
+      if (validationError.includes('balance')) {
         errorType = 'insufficient_balance';
       } else if (validationError.includes('greater than 0')) {
         errorType = 'min_amount';
@@ -1117,47 +886,13 @@ export default function CardDepositInternalForm() {
     }
   }, [validationError, watchedAmount, balanceAmount, watchedFrom]);
 
-  // Slider value for borrow option - initialize to 0 or current amount
-  const [sliderValue, setSliderValue] = useState(() => {
-    if (watchedFrom === CardDepositSource.BORROW && watchedAmount) {
-      const numValue = Number(watchedAmount);
-      return !isNaN(numValue) && isFinite(numValue) && numValue >= 0 ? numValue : 0;
-    }
-    return 0;
-  });
-
-  // Update form amount when slider changes
-  const handleSliderChange = (value: number) => {
-    const numValue = Number(value);
-    if (isNaN(numValue) || !isFinite(numValue)) return;
-    const clampedValue = Math.max(0, Math.min(maxBorrowAmount || 0, numValue));
-    if (!isNaN(clampedValue) && isFinite(clampedValue)) {
-      setSliderValue(clampedValue);
-      setValue('amount', clampedValue.toString());
-      trigger('amount');
-      // Track slider change (debounced)
-      trackSliderChanged(clampedValue);
-    }
-  };
-
-  // Update slider when form amount changes (for manual input)
-  useEffect(() => {
-    if (watchedFrom === CardDepositSource.BORROW && watchedAmount) {
-      const numValue = Number(watchedAmount);
-      if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0 && numValue <= maxBorrowAmount) {
-        setSliderValue(numValue);
-      }
-    }
-  }, [watchedAmount, watchedFrom, maxBorrowAmount]);
-
-  const showBorrowOption = isProduction;
-  const showSavingsAndBorrowOptions = isProduction;
+  const showSavingsOption = isProduction;
 
   // Order the funding sources so the one the user actually has funds in is
   // shown first. Savings vs Wallet are sorted by balance (highest first);
-  // Borrow against Savings is never first; External Wallet stays last.
+  // External Wallet stays last.
   const sortedSources = useMemo<CardDepositSource[]>(() => {
-    if (!showSavingsAndBorrowOptions) {
+    if (!showSavingsOption) {
       return [CardDepositSource.WALLET, CardDepositSource.EXTERNAL];
     }
 
@@ -1168,24 +903,18 @@ export default function CardDepositInternalForm() {
       .sort((a, b) => b.balance - a.balance)
       .map(item => item.source);
 
-    return [
-      ...balanceSources,
-      ...(showBorrowOption ? [CardDepositSource.BORROW] : []),
-      CardDepositSource.EXTERNAL,
-    ];
-  }, [showSavingsAndBorrowOptions, showBorrowOption, usdcBalanceAmount, soUsdBalanceAmount]);
+    return [...balanceSources, CardDepositSource.EXTERNAL];
+  }, [showSavingsOption, usdcBalanceAmount, soUsdBalanceAmount]);
 
-  // The funded source the form should open on — the first ordered option, which
-  // is always Wallet or Savings (never Borrow).
+  // The funded source the form should open on — the first ordered option.
   const defaultSource = sortedSources[0];
 
   // When the modal is opened without an explicit source (the default "Add funds"
-  // entry, which previously defaulted to Borrow), select the source the user has
-  // funds in once balances have loaded.
+  // entry), select the source the user has funds in once balances have loaded.
   const hasAppliedDefaultSourceRef = useRef(false);
   useEffect(() => {
     if (hasAppliedDefaultSourceRef.current) return;
-    // Respect an explicitly chosen source (borrow banner, options screen, token selector).
+    // Respect an explicitly chosen source (options screen, token selector).
     if (source) {
       hasAppliedDefaultSourceRef.current = true;
       return;
@@ -1196,22 +925,7 @@ export default function CardDepositInternalForm() {
     if (defaultSource && defaultSource !== watchedFrom) {
       setValue('from', defaultSource);
     }
-  }, [
-    source,
-    isBalancesLoading,
-    isUsdcBalanceLoading,
-    defaultSource,
-    watchedFrom,
-    setValue,
-  ]);
-
-  // Reset to 'savings' if user is on 'borrow' but doesn't have permission
-  useEffect(() => {
-    if (watchedFrom === CardDepositSource.BORROW && !showBorrowOption) {
-      setValue('from', CardDepositSource.SAVINGS);
-      setValue('amount', '');
-    }
-  }, [showBorrowOption, watchedFrom, setValue]);
+  }, [source, isBalancesLoading, isUsdcBalanceLoading, defaultSource, watchedFrom, setValue]);
 
   const fundingAddress = useMemo(
     () => getCardFundingAddress(cardDetails, provider, contracts ?? undefined),
@@ -1239,7 +953,10 @@ export default function CardDepositInternalForm() {
   );
 
   return (
-    <View className="flex-1 gap-3">
+    // Natural height (not flex-1) so the form can scroll inside the modal's
+    // ScrollView when the keyboard shrinks the visible area — otherwise the
+    // rows get crammed into the shrunken box and overlap.
+    <View className="gap-3">
       <SourceSelector
         control={control}
         from={watchedFrom}
@@ -1248,7 +965,7 @@ export default function CardDepositInternalForm() {
       />
 
       {watchedFrom === CardDepositSource.EXTERNAL ? (
-        <View className="flex-1 gap-3">
+        <View className="gap-3">
           {isFundingAddressLoading ? (
             <View className="items-center py-8">
               <ActivityIndicator color="white" />
@@ -1259,15 +976,6 @@ export default function CardDepositInternalForm() {
               description={externalWalletDescription}
             />
           )}
-        </View>
-      ) : watchedFrom === CardDepositSource.BORROW ? (
-        <View className="gap-4 px-2">
-          <BorrowSlider
-            value={sliderValue}
-            onValueChange={handleSliderChange}
-            min={0}
-            max={maxBorrowAmount}
-          />
         </View>
       ) : (
         <View className="gap-2">
@@ -1306,63 +1014,12 @@ export default function CardDepositInternalForm() {
         />
       )}
 
-      {watchedFrom === CardDepositSource.BORROW && (
-        <TokenDetails className="mt-3">
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              {isBorrowAPYLoading ? (
-                <Skeleton className="h-5 w-16 rounded-md" />
-              ) : (
-                <Text className="native:text-lg text-base font-semibold">
-                  {formatNumber(borrowAPY, 2)}%
-                </Text>
-              )}
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <View className="flex-row items-center gap-2">
-              <Text className="native:text-lg text-base text-muted-foreground">
-                Collateral Required
-              </Text>
-            </View>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              {isRateLoading || !watchedAmount ? (
-                <Skeleton className="h-5 w-20 rounded-md" />
-              ) : (
-                <Text className="native:text-lg text-base font-semibold">
-                  {formatNumber(collateralRequired)} soUSD
-                </Text>
-              )}
-            </View>
-          </View>
-          <View className="px-5 py-6 md:p-5">
-            <Text className="native:text-base text-sm text-muted-foreground">
-              Use your soUSD as collateral to borrow USDC and spend while earning yield.{' '}
-              <Text
-                onPress={() => {
-                  Linking.openURL(
-                    'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
-                  );
-                }}
-                className="text-base font-medium leading-5 text-[#94F27F] web:hover:opacity-70"
-              >
-                Learn more.
-              </Text>
-            </Text>
-          </View>
-        </TokenDetails>
-      )}
-
-      {watchedFrom !== CardDepositSource.EXTERNAL && <View className="flex-1" />}
-
-      {watchedFrom !== CardDepositSource.BORROW &&
-        watchedFrom !== CardDepositSource.EXTERNAL && (
-          <DestinationDisplay
-            fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
-            destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
-          />
-        )}
+      {/* {watchedFrom !== CardDepositSource.EXTERNAL && (
+        <DestinationDisplay
+          fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
+          destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
+        />
+      )} */}
 
       {isWalletSourceGaslessGated && (
         <View className="mt-2 flex-row items-start gap-2">
@@ -1387,15 +1044,7 @@ export default function CardDepositInternalForm() {
         />
       )}
 
-      {watchedFrom === CardDepositSource.EXTERNAL ? null : watchedFrom ===
-        CardDepositSource.BORROW ? (
-        <BorrowAndDepositButton
-          disabled={disabled || borrowAndDepositStatus === Status.PENDING}
-          bridgeStatus={borrowAndDepositStatus}
-          swapAndBridgeStatus={borrowAndDepositStatus}
-          onPress={handleSubmit(onBorrowAndDepositSubmit)}
-        />
-      ) : (
+      {watchedFrom === CardDepositSource.EXTERNAL ? null : (
         <SubmitButton
           disabled={disabled}
           bridgeStatus={

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
+import ReferralProgramBanner from '@/components/Points/ReferralProgramBanner';
 import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -12,6 +13,7 @@ import { path } from '@/constants/path';
 import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { usePoints } from '@/hooks/usePoints';
 import { getAsset } from '@/lib/assets';
 import { RewardsType } from '@/lib/types';
@@ -21,6 +23,7 @@ export default function Points() {
   const { points, isLoading: isPointsLoading } = usePoints();
   const { multiplier } = useHoldingFundsPointsMultiplier();
   const { isScreenMedium } = useDimension();
+  const isTestUser = useIsTestUser();
   const countdownTime = useCountdownTimer(points.nextRewardTime);
 
   const referrer = points.userRefferer;
@@ -177,7 +180,9 @@ export default function Points() {
               </View>
             </Button>
           </View>
-          <RewardReferBanner />
+          {/* Internal whitelist team members get the new referral program banner
+              (opens a popup); public users keep the existing `/referral` banner. */}
+          {isTestUser ? <ReferralProgramBanner /> : <RewardReferBanner />}
         </View>
       </View>
     </PageLayout>

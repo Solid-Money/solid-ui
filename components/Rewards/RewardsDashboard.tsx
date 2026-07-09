@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { Platform, View } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { LayoutChangeEvent, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -9,7 +9,6 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import { useDimension } from '@/hooks/useDimension';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier, TierBenefits } from '@/lib/types';
@@ -18,6 +17,18 @@ import { compactNumberFormat, formatNumber } from '@/lib/utils';
 import RewardBenefit from './RewardBenefit';
 import RewardComingSoon from './RewardComingSoon';
 import TierProgressBar from './TierProgressBar';
+
+// The rewards hero star is a single decorative image that scales fluidly with
+// the card. Sizing and positioning it from the measured card area — instead of
+// swapping between two fixed desktop/mobile layouts at the `md` breakpoint —
+// keeps it anchored to the right so it never snaps between versions or slides
+// over the tier/points content at intermediate tablet widths.
+const STAR_ASPECT_RATIO = 839 / 386; // native pixel ratio of points_large.png
+const STAR_WIDTH_RATIO = 0.66; // fraction of the card width the star image spans
+const STAR_MIN_WIDTH = 340; // keep the star visible on the narrowest screens
+const STAR_MAX_WIDTH = 760; // cap the star on very wide cards
+const STAR_TOP_BLEED_RATIO = 0.2; // how far the (mostly transparent) image bleeds past the top edge
+const STAR_RIGHT_INSET_RATIO = 0.25; // keep a small gap from the right edge
 
 // Transform API tier benefits to display items with dynamic icons
 interface DashboardBenefitItem {
@@ -76,9 +87,21 @@ const RewardsDashboard = ({
   nextTier,
   nextTierPoints,
 }: RewardsDashboardProps) => {
-  const { isScreenMedium } = useDimension();
+  const [starArea, setStarArea] = useState({ width: 0, height: 0 });
   const { data: allTierBenefits } = useTierBenefits();
   const { maxAPY } = useMaxAPY();
+
+  // Star dimensions derived from the measured card area (see constants above).
+  const starWidth = Math.min(
+    STAR_MAX_WIDTH,
+    Math.max(STAR_MIN_WIDTH, starArea.width * STAR_WIDTH_RATIO),
+  );
+  const starHeight = starWidth / STAR_ASPECT_RATIO;
+
+  const handleStarAreaLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setStarArea(prev => (prev.width === width && prev.height === height ? prev : { width, height }));
+  };
 
   // Get benefits for the current tier from API data
   const currentTierBenefits = allTierBenefits?.find(tb => tb.tier === currentTier);
@@ -96,7 +119,7 @@ const RewardsDashboard = ({
 
   return (
     <View
-      className="relative gap-10 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
+      className="relative gap-14 rounded-twice p-6 md:gap-20 md:px-10 md:py-8"
       style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
     >
       <LinearGradient
@@ -115,21 +138,25 @@ const RewardsDashboard = ({
           borderRadius: 20,
         }}
       />
-      {!isScreenMedium && (
-        <Image
-          source={getAsset('images/points_large.png')}
-          contentFit="contain"
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            right: -225,
-            top: -22,
-            width: 600,
-            height: 276,
-            zIndex: 0,
-          }}
-        />
-      )}
+      <View
+        pointerEvents="none"
+        onLayout={handleStarAreaLayout}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: -1 }}
+      >
+        {starArea.width > 0 && (
+          <Image
+            source={getAsset('images/points_large.png')}
+            contentFit="contain"
+            style={{
+              position: 'absolute',
+              width: starWidth,
+              height: starHeight,
+              right: -starWidth * STAR_RIGHT_INSET_RATIO,
+              top: -starHeight * STAR_TOP_BLEED_RATIO,
+            }}
+          />
+        )}
+      </View>
       <View className="relative flex-row justify-between">
         <View className="flex-1 justify-between gap-12 md:flex-[0.7]">
           <View className="justify-between gap-4 md:flex-row">
@@ -163,16 +190,6 @@ const RewardsDashboard = ({
             nextTierPoints={nextTierPoints}
           />
         </View>
-
-        {isScreenMedium && (
-          <View className="pointer-events-none absolute -right-[55%] top-[45%] flex-[0.3] -translate-x-1/2 -translate-y-1/2">
-            <Image
-              source={getAsset('images/points_large.png')}
-              contentFit="contain"
-              style={{ width: 800, height: 600 }}
-            />
-          </View>
-        )}
       </View>
       <View className="gap-6 md:gap-10">
         <View className="flex-row items-center justify-between">

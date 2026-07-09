@@ -23,7 +23,7 @@ interface DepositOptionModalProps {
 const DepositOptionModal = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
   preserveSelectedVault,
   onBeforeOpen,
 }: DepositOptionModalProps) => {

@@ -41,18 +41,20 @@ const TierProgressBar = ({
   const pointsNeeded = Math.max(0, nextTierPoints - currentPoints);
 
   return (
-    <View className="flex-1 gap-2">
+    <View className="flex-1 flex-col gap-2">
       <View className="h-2.5 w-full overflow-hidden rounded-full bg-rewards/20">
         <Animated.View
           style={[{ backgroundColor: '#FFD151', height: '100%' }, animatedProgress]}
         ></Animated.View>
       </View>
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base text-rewards/70">{toTitleCase(currentTier)}</Text>
-        <View className="flex-row items-center gap-5">
+      <View className="flex-1 flex-row items-center justify-between min-h-[20px]">
+        <View>
+          <Text className="text-base text-rewards/70 font-normal">{toTitleCase(currentTier)}</Text>
+        </View>
+        <View className="flex-row items-center gap-4">
           <View className="flex-row items-center gap-1">
-            <Text className="text-base">{compactNumberFormat(pointsNeeded)} more points to</Text>
-            <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
+            <Text className="text-base font-normal">{compactNumberFormat(pointsNeeded)} more points to</Text>
+            <Text className="text-base text-rewards/70 font-normal">{toTitleCase(nextTier)}</Text>
             <Image
               source={getTierIcon(nextTier)}
               contentFit="contain"

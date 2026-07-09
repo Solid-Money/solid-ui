@@ -118,6 +118,14 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.WALLET_TRANSFER,
   },
+  [TransactionType.GOODDOLLAR_CLAIM]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.GOODDOLLAR_UBI,
+  },
+  [TransactionType.GOODDOLLAR_SWEEP]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.GOODDOLLAR_UBI,
+  },
 };
 
 /**

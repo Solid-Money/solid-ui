@@ -120,7 +120,24 @@ export const useCountryStore = create<CountryState>()(
     }),
     {
       name: COUNTRY_STORAGE_KEY,
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage(COUNTRY_STORAGE_KEY)),
+      // v1: drop any cached country availability so clients re-detect against
+      // the current allowed-countries config. Unsticks users who were cached as
+      // "country not available" before their country became eligible for the
+      // Rain card (e.g. Argentina) and were stranded on the notify screen.
+      migrate: (persistedState, version) => {
+        if (version < 1) {
+          return {
+            ...(persistedState as Partial<CountryState>),
+            countryInfo: null,
+            ipCountryCache: {},
+            cachedIp: null,
+            countryDetectionFailed: false,
+          } as CountryState;
+        }
+        return persistedState as CountryState;
+      },
     },
   ),
 );

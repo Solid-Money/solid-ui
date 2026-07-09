@@ -335,7 +335,9 @@ export default function ActivityTransactions({
       const isProcessing = transaction.status === TransactionStatus.PROCESSING;
       const isPendingOrProcessing = isPending || isDetected || isProcessing;
 
-      if (isDirectDeposit && isPendingOrProcessing) {
+      const isCardDeposit = transaction.metadata?.destinationType === 'RAIN_CARD';
+
+      if (isDirectDeposit && isPendingOrProcessing && !isCardDeposit) {
         // Extract token symbol from clientTxId format: direct_deposit_{userId}_{chainId}_{tokenSymbol}_{timestamp}
         // The token symbol is the 4th part (index 3) when split by underscore after removing prefix
         const clientTxIdParts = clientTxId.replace('direct_deposit_', '').split('_');

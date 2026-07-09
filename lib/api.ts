@@ -576,6 +576,7 @@ export class ApiError extends Error {
 /** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
 export const createDiditSession = async (
   callback?: string,
+  flow: 'card' | 'va' = 'card',
 ): Promise<import('./types').DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
@@ -586,7 +587,7 @@ export const createDiditSession = async (
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify(callback ? { callback } : {}),
+    body: JSON.stringify({ ...(callback ? { callback } : {}), flow }),
   });
   if (!response.ok) {
     // Parse the backend error envelope ({ code, message }) so callers can branch
@@ -604,11 +605,36 @@ export const createDiditSession = async (
     } catch {
       // non-JSON error body — keep the generic fallback
     }
-    throw new ApiError(
-      response.status,
-      message ?? 'Failed to create verification session',
-      code,
-    );
+    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+  }
+  return response.json();
+};
+
+/**
+ * Ask the backend to proxy GoodDollar's gasless faucet top-up for the caller's
+ * signer EOA. GoodDollar's faucet API sends no CORS headers, so it can't be
+ * called from the browser directly — the backend relays it server-side.
+ */
+export const topUpGoodDollarGas = async (
+  account: string,
+  chainId: number,
+): Promise<{ success: boolean }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/gooddollar/top-wallet`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ account, chainId }),
+    },
+  );
+  if (!response.ok) {
+    throw new ApiError(response.status, 'Failed to request gas top-up');
   }
   return response.json();
 };
@@ -1129,6 +1155,24 @@ export const addToCardWaitlistToNotify = async (
 export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/cards/check-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  url.searchParams.append('countryCode', countryCode.toUpperCase());
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const checkVaAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+  const jwt = getJWTToken();
+  const url = new URL('/accounts/v1/didit/check-va-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
   url.searchParams.append('countryCode', countryCode.toUpperCase());
 
   const response = await fetch(url.toString(), {

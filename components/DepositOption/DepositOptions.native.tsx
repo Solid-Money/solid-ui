@@ -32,7 +32,9 @@ const DepositOptions = () => {
   const availableOptions = useMemo(
     () =>
       depositOptions.filter(
-        option => !option.method || depositConfig.methods.includes(option.method),
+        option =>
+          option.method !== 'bank_transfer' &&
+          (!option.method || depositConfig.methods.includes(option.method)),
       ),
     [depositOptions, depositConfig.methods],
   );

@@ -3,7 +3,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { arbitrum } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -18,10 +17,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
 import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
 import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
-import {
-  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
-} from '@/lib/config';
+import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
@@ -29,9 +25,8 @@ import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
 type FormData = { amount: string; to: CardDepositSource };
 
-function getExplorerTxUrl(chainId: number | undefined, txHash: string): string {
-  const base = chainId === arbitrum.id ? 'https://arbiscan.io' : 'https://etherscan.io';
-  return `${base}/tx/${txHash}`;
+function getExplorerTxUrl(_chainId: number | undefined, txHash: string): string {
+  return `https://blockscan.com/tx/${txHash}`;
 }
 
 export default function CardWithdrawForm() {
@@ -46,7 +41,17 @@ export default function CardWithdrawForm() {
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
   const { withdrawCollateral } = useWithdrawRainCollateral();
-  const fundingContract = contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
+  // Prefer a contract that currently holds collateral (non-zero token balance).
+  // Fall back to the configured funding chain, then the first contract.
+  const fundingContract =
+    contracts?.find(c => c.tokens?.some(t => Number(t.balance ?? '0') > 0)) ||
+    contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID) ||
+    contracts?.[0];
+
+  const fundingTokenAddress =
+    fundingContract?.tokens?.find(t => Number(t.balance ?? '0') > 0)?.address ||
+    fundingContract?.tokens?.[0]?.address;
+
   const depositTokenSymbol = getCardDepositTokenSymbol(CardProvider.RAIN);
 
   // Use card spending balance for withdraw (same as card details). Collateral API may differ.
@@ -164,9 +169,7 @@ export default function CardWithdrawForm() {
             amount: data.amount,
             recipientAddress: user!.safeAddress!,
             ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
-            ...(EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS && {
-              tokenAddress: EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
-            }),
+            ...(fundingTokenAddress && { tokenAddress: fundingTokenAddress }),
           });
           const txHash = res.transactionHash;
           setTransaction({

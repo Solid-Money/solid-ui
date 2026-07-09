@@ -25,6 +25,8 @@ type DepositPublicAddressProps = {
   onDone?: () => void;
   /** Minimum deposit amount in token units. When set, shown below the QR. */
   minDeposit?: string;
+  /** Chain IDs to exclude from the supported networks display. */
+  excludeChainIds?: number[];
 };
 
 const DepositPublicAddress = ({
@@ -32,6 +34,7 @@ const DepositPublicAddress = ({
   description,
   onDone,
   minDeposit,
+  excludeChainIds,
 }: DepositPublicAddressProps = {}) => {
   const { user } = useUser();
   const resolvedAddress = address ?? user?.safeAddress ?? '';
@@ -50,8 +53,9 @@ const DepositPublicAddress = ({
         icon: chain.icon,
         name: chain.name,
       }))
+      .filter(n => !excludeChainIds?.includes(n.chainId))
       .sort((a, b) => (displayOrder[a.name] ?? 99) - (displayOrder[b.name] ?? 99));
-  }, []);
+  }, [excludeChainIds]);
 
   const networkNames = useMemo(() => {
     const names = networks.map(n => n.name);
@@ -120,7 +124,7 @@ const DepositPublicAddress = ({
               </View>
 
               <Text className="max-w-72 text-center text-sm text-muted-foreground">
-                We support tokens on {networkNames} chain
+                Please deposit USDC on {networkNames} chains
               </Text>
 
               <Pressable
@@ -141,9 +145,7 @@ const DepositPublicAddress = ({
           ) : null}
         </View>
       </View>
-      <Text className="mt-4 text-sm text-muted-foreground">
-        Allow 30-60 seconds for processing.
-      </Text>
+      <Text className="mt-4 text-sm text-muted-foreground">Allow 5-10 minutes for processing.</Text>
       {onDone ? (
         <Button variant="brand" className="mt-4 h-12 w-full rounded-2xl" onPress={onDone}>
           <Text className="text-lg font-semibold text-black">Done</Text>

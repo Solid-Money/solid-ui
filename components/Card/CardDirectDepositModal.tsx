@@ -6,6 +6,7 @@ import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { useShallow } from 'zustand/react/shallow';
 
 import HomeQR from '@/assets/images/home-qr';
+import HomeSwap from '@/assets/images/home-swap';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositOption from '@/components/DepositOption/DepositOption';
@@ -14,18 +15,17 @@ import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 type Step = 'options' | 'networks' | 'form' | 'address';
-
-// What to do after the user picks a network.
-type NetworksIntent = 'wallet' | 'address';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
@@ -53,15 +53,15 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     current: 'options',
     previous: CLOSE_STATE,
   });
-  // Tracks which path the user is on when entering the networks step.
-  const [networksIntent, setNetworksIntent] = useState<NetworksIntent>('wallet');
-  // Deposit address on the chain the user selected — shared by both paths.
+  // Deposit address fetched after chain selection (wallet path) or on QR button press (Base).
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const walletConnectingRef = useRef(false);
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
+  const setDepositModal = useCardDepositStore(state => state.setModal);
+
   const { setSrcChainId, setPrincipalToken } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
@@ -71,7 +71,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
   const depositConfig = getVaultDepositConfig();
 
-  // Fetched after the user picks a chain — creates the flash account on that chain.
+  // Fetched after the user picks a chain (wallet path) or immediately (QR path, Base chain).
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
       withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
@@ -96,7 +96,6 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   const handleConnectWallet = useCallback(async () => {
     try {
       if (isWalletOpen) return;
-      setNetworksIntent('wallet');
       if (activeAccount?.address) {
         goToStep('networks');
         return;
@@ -120,12 +119,20 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     }
   }, [isWalletOpen, connect, activeAccount, goToStep]);
 
-  const handleShareAddress = useCallback(() => {
-    setNetworksIntent('address');
-    setDepositAddress(undefined);
-    goToStep('networks');
-  }, [goToStep]);
+  const handleTransferFromWallet = useCallback(() => {
+    handleOpenChange(false);
+    setDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  }, [handleOpenChange, setDepositModal]);
 
+  // "Share your deposit address" — address is chain-independent (same deterministic wallet
+  // across all chains), so fetch via Base and skip network selection entirely.
+  const handleShareAddress = useCallback(() => {
+    setDepositAddress(undefined);
+    prepareSession({ chainId: 8453, token: 'USDC' });
+    goToStep('address');
+  }, [goToStep, prepareSession]);
+
+  // "Send from wallet" path only — always navigates to the send form.
   const handleNetworkSelect = useCallback(
     (chainId: number) => {
       const allowedTokens = getAllowedTokensForChain(chainId);
@@ -141,15 +148,12 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       setSrcChainId(chainId);
       setPrincipalToken(selectedToken);
 
-      // Both paths need a deposit address on the selected chain.
-      // For wallet: user's external wallet sends to this address, workflow bridges from there.
-      // For address: user manually sends to this address on the selected chain.
       setDepositAddress(undefined);
       prepareSession({ chainId, token: selectedToken });
 
-      goToStep(networksIntent === 'wallet' ? 'form' : 'address');
+      goToStep('form');
     },
-    [setSrcChainId, setPrincipalToken, networksIntent, goToStep, prepareSession],
+    [setSrcChainId, setPrincipalToken, goToStep, prepareSession],
   );
 
   const handleBack = useCallback(() => {
@@ -157,7 +161,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       const backStep: Step = (() => {
         if (prev.current === 'networks') return 'options';
         if (prev.current === 'form') return 'networks';
-        if (prev.current === 'address') return 'networks';
+        if (prev.current === 'address') return 'options'; // QR path: back goes straight to options
         return 'options';
       })();
       return { current: backStep, previous: MODAL_STATES[prev.current] };
@@ -185,6 +189,12 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
             icon={<HomeQR />}
             onPress={handleShareAddress}
           />
+          <DepositOption
+            text="Transfer from wallet/savings"
+            subtitle="Transfer the funds from the assets you have in savings or wallet"
+            icon={<HomeSwap />}
+            onPress={handleTransferFromWallet}
+          />
           <View className="mt-4 items-center">
             <NeedHelp />
           </View>
@@ -201,6 +211,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
               .sort((a, b) => a[1].sort - b[1].sort)
               .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
               .filter(([id]) => getAllowedTokensForChain(Number(id)).length > 0)
+              .filter(([id]) => Number(id) !== 56)
               .map(([id, network]) => {
                 const chainId = Number(id);
                 const estimatedDesc =
@@ -236,7 +247,11 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
     if (step === 'address') {
       return depositAddress ? (
-        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
+        <DepositPublicAddress
+          address={depositAddress}
+          onDone={() => handleOpenChange(false)}
+          excludeChainIds={[56]}
+        />
       ) : (
         <View className="items-center py-12">
           <ActivityIndicator color="white" />

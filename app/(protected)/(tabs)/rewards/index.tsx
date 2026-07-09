@@ -1,11 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { RotateCw } from 'lucide-react-native';
 
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
+import ReferralProgramBanner from '@/components/Points/ReferralProgramBanner';
 import RewardReferBanner from '@/components/Points/RewardReferBanner';
+import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
@@ -16,6 +18,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
@@ -24,11 +27,15 @@ import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
+  const isTestUser = useIsTestUser();
   const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
+
+  const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
 
   // The new rewards program requires an explicit opt-in. `hasOptedIn` defaults to
   // true when the backend doesn't yet send it, so we never prompt prematurely.
@@ -43,6 +50,15 @@ export default function Rewards() {
     }
   }, [rewardsLocked, welcomeDismissed]);
 
+  // Open the referral popup from a `/rewards?referral=open` deep link, then clear
+  // the param so closing the popup doesn't leave a stale deep-link in the URL.
+  useEffect(() => {
+    if (referralParam === 'open') {
+      setIsReferralModalOpen(true);
+      router.setParams({ referral: undefined });
+    }
+  }, [referralParam]);
+
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
     const { cashbackThisMonth, cashbackRate, maxCashbackMonthly } = rewardsData;
@@ -53,9 +69,15 @@ export default function Rewards() {
         cashbackRate={cashbackRate}
         maxCashbackMonthly={maxCashbackMonthly}
       />,
-      <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />,
+      // Internal whitelist team members get the new referral program banner
+      // (opens a popup); public users keep the existing `/referral` banner.
+      isTestUser ? (
+        <ReferralProgramBanner key="refer" />
+      ) : (
+        <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />
+      ),
     ];
-  }, [rewardsData]);
+  }, [rewardsData, isTestUser]);
 
   if (isError && !isLoading) {
     return (
@@ -129,6 +151,10 @@ export default function Rewards() {
         <HomeBanners data={bannerData} />
         <CardBanner />
       </View>
+      <ReferralProgramModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+      />
     </PageLayout>
   );
 }

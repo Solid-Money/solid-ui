@@ -39,7 +39,7 @@ export default function AddReferrer() {
     setError('');
     try {
       await addReferrer(code);
-      router.push(path.POINTS);
+      router.push(path.REWARDS);
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'Error, check if the code is valid and you have not added it already';

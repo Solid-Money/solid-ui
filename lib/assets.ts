@@ -241,6 +241,7 @@ export const ASSETS = {
     module: require('@/assets/images/ethereum-square-4x.png'),
     hash: '5c6331c8',
   },
+  'images/eu.png': { module: require('@/assets/images/eu.png'), hash: '6b0a119f' },
   'images/eur-fiat-currency.tsx': {
     module: require('@/assets/images/eur-fiat-currency.tsx'),
     hash: 'db4e5f78',
@@ -443,7 +444,7 @@ export const ASSETS = {
   },
   'images/referral-3d.png': {
     module: require('@/assets/images/referral-3d.png'),
-    hash: '8477b533',
+    hash: '5d0bdece',
   },
   'images/referral_large.png': {
     module: require('@/assets/images/referral_large.png'),
@@ -642,6 +643,7 @@ export const ASSETS = {
     module: require('@/assets/images/two-percent-yellow.png'),
     hash: '71c88645',
   },
+  'images/us.png': { module: require('@/assets/images/us.png'), hash: '5e8aa0bc' },
   'images/usd-fiat-currency.tsx': {
     module: require('@/assets/images/usd-fiat-currency.tsx'),
     hash: '1f4c9b1b',

@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Linking, useWindowDimensions, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { WhatsNew, WhatsNewStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+// Mirrors the `--brand` design token (see global.css). lucide icons need a
+// concrete color value, so it can't be applied via the `text-brand` class.
+const BRAND_COLOR = 'hsl(109.04, 81.56%, 72.35%)';
 
 interface WhatsNewModalProps {
   whatsNew: WhatsNew;
@@ -21,21 +28,51 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
   const { width: screenWidth } = useWindowDimensions();
   const modalWidth = Math.min(screenWidth * 0.9, 560);
 
-  const renderItem = ({ item }: { item: WhatsNewStep }) => (
-    <View className="flex-1">
-      <View className="h-64 w-full bg-muted">
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="cover"
-        />
+  const handleButtonPress = (link?: string) => {
+    const target = link?.trim();
+    if (!target) return;
+
+    // Close the modal first so the user lands on the destination screen.
+    onClose();
+
+    if (target.startsWith('http://') || target.startsWith('https://')) {
+      void Linking.openURL(target);
+    } else {
+      router.push(target as any);
+    }
+  };
+
+  const renderItem = ({ item }: { item: WhatsNewStep }) => {
+    const hasCta = Boolean(item.buttonLabel?.trim() && item.buttonLink?.trim());
+
+    return (
+      <View className="flex-1">
+        <View className="h-64 w-full bg-muted">
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+          />
+        </View>
+        <View className="px-6 pt-6">
+          <Text className="mb-4 text-2xl font-semibold text-white">{item.title}</Text>
+          <Text className="text-base font-medium text-white/70">{item.text}</Text>
+          {hasCta && (
+            <Pressable
+              onPress={() => handleButtonPress(item.buttonLink)}
+              accessibilityRole="button"
+              className="py-1 active:opacity-70 web:hover:opacity-80"
+            >
+              <View className="mt-4 flex-row items-center gap-0.5 self-start">
+                <Text className="text-base font-bold text-brand">{item.buttonLabel}</Text>
+                <ChevronRight size={20} color={BRAND_COLOR} strokeWidth={2.5} />
+              </View>
+            </Pressable>
+          )}
+        </View>
       </View>
-      <View className="px-6 pt-6">
-        <Text className="mb-4 text-2xl font-semibold text-white">{item.title}</Text>
-        <Text className="text-base font-medium text-white/70">{item.text}</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const isLastStep = activeIndex === whatsNew.steps.length - 1;
 

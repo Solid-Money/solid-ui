@@ -28,6 +28,11 @@ export const G_DOLLAR_DECIMALS = 2;
 
 export const G_DOLLAR_SYMBOL = 'G$';
 
+// G$ logo (Voltage Finance token list) — used everywhere instead of the dark
+// CoinGecko image. Mirrors the swaptokens `logoURI` for the Fuse G$ token.
+export const G_DOLLAR_LOGO_URI =
+  'https://raw.githubusercontent.com/voltfinance/swap-default-token-list/master/logos/0x495d133B938596C9984d462F007B676bDc57eCEC/logo.png';
+
 // Fuse mainnet (production) contract addresses, mirrored from
 // `@goodsdks/citizen-sdk` chainConfigs[122].contracts.production.
 export const GOODDOLLAR_FUSE = {
@@ -36,6 +41,10 @@ export const GOODDOLLAR_FUSE = {
   faucet: '0x01ab5966C1d742Ae0CFF7f14cC0F4D85156e83d9',
   gdToken: '0x495d133B938596C9984d462F007B676bDc57eCEC',
 } as const;
+
+// Fallback minimum native FUSE (wei) the signer EOA should hold before a
+// claim/sweep, used only when on-chain gas estimation is unavailable (~0.01 FUSE).
+export const GOODDOLLAR_GAS_FLOOR_WEI = 10_000_000_000_000_000n;
 
 // Deep-link path the GoodDollar Face Verification flow redirects back to.
 export const GOODDOLLAR_REDIRECT_PATH = 'gooddollar';

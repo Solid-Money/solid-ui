@@ -409,9 +409,9 @@ export interface CardResponse {
 }
 
 export interface CashbackData {
-  monthlyFuseAmount: number;
+  monthlySoUsdAmount: number;
   monthlyUsdValue: number;
-  totalFuseAmount: number;
+  totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
 }
@@ -764,6 +764,7 @@ export enum TransactionCategory {
   MERKL_CLAIM = 'Merkl claim',
   CARD_WELCOME_BONUS = 'Card welcome bonus',
   DEPOSIT_BONUS = 'Deposit bonus',
+  GOODDOLLAR_UBI = 'GoodDollar UBI',
   RECEIVE = 'Receive',
 }
 
@@ -993,6 +994,10 @@ export interface Cashback {
   _id: string;
   transactionId: string;
   status: CashbackStatus;
+  /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
+  soUsdAmount?: string;
+  soUsdRate?: string;
+  /** @deprecated legacy FUSE fields for cashbacks paid before the soUSD migration */
   fuseAmount?: string;
   fuseUsdPrice?: string;
   fiatAmount?: string;
@@ -1673,6 +1678,8 @@ export interface WhatsNewStep {
   imageUrl: string;
   title: string;
   text: string;
+  buttonLabel?: string;
+  buttonLink?: string;
 }
 
 export interface WhatsNew {

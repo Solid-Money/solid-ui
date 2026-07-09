@@ -102,7 +102,7 @@ export function useDiditSession() {
 
     try {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
-      const res = await withRefreshToken(() => createDiditSession());
+      const res = await withRefreshToken(() => createDiditSession(undefined, kycFlow ?? 'card'));
       if (!res) {
         setSession({
           phase: 'error',
@@ -162,7 +162,7 @@ export function useDiditSession() {
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, [debugState, redirectBasedOnKycStatus]);
+  }, [debugState, kycFlow, redirectBasedOnKycStatus]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });

@@ -7,6 +7,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_email_gate',
     number: 1,
   },
+  OPEN_DEPOSIT_TYPE: {
+    name: 'open_deposit_type',
+    number: 1.5,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
@@ -299,6 +303,33 @@ export const CARD_WITHDRAW_MODAL = {
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 2,
+  },
+};
+
+// Credit line (borrow against savings) modal
+export const CREDIT_LINE_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_HOME: {
+    // Entry: intro (no savings / has savings) or active-position overview
+    name: 'open_home',
+    number: 1,
+  },
+  OPEN_FORM: {
+    // Borrow amount slider + details
+    name: 'open_form',
+    number: 2,
+  },
+  OPEN_CONFIRM: {
+    // Review position, "Confirm & get dollars"
+    name: 'open_confirm',
+    number: 3,
+  },
+  OPEN_SUCCESS: {
+    name: 'open_success',
+    number: 4,
   },
 };
 
