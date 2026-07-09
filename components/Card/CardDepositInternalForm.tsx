@@ -1013,12 +1013,12 @@ export default function CardDepositInternalForm() {
 
       {watchedFrom !== CardDepositSource.EXTERNAL && <View className="flex-1" />}
 
-      {watchedFrom !== CardDepositSource.EXTERNAL && (
+      {/* {watchedFrom !== CardDepositSource.EXTERNAL && (
         <DestinationDisplay
           fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
           destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
         />
-      )}
+      )} */}
 
       {isWalletSourceGaslessGated && (
         <View className="mt-2 flex-row items-start gap-2">

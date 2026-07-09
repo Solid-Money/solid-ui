@@ -9,7 +9,7 @@ import { path } from '@/constants/path';
 import { formatNumber } from '@/lib/utils';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
-import { RateBreakdownCard } from './CreditLineShared';
+import { CreditLineLayout, RateBreakdownCard } from './CreditLineShared';
 import { useCreditLine } from './useCreditLine';
 
 const STEPS = [
@@ -53,7 +53,20 @@ export default function CreditLineIntro() {
   const handleStartBorrowing = () => setCreditModal(CREDIT_LINE_MODAL.OPEN_FORM);
 
   return (
-    <View className="flex-1 gap-6">
+    <CreditLineLayout
+      bodyClassName="gap-6"
+      footer={
+        <Button
+          variant="brand"
+          className="h-12 rounded-2xl"
+          onPress={hasSavings ? handleStartBorrowing : handleAddToSavings}
+        >
+          <Text className="native:text-lg text-base font-bold text-black">
+            {hasSavings ? 'Start Borrowing' : 'Add to savings'}
+          </Text>
+        </Button>
+      }
+    >
       <View className="gap-2">
         {hasSavings ? (
           <Text className="text-center text-[26px] font-semibold leading-8 text-white">
@@ -88,18 +101,6 @@ export default function CreditLineIntro() {
           </View>
         ))}
       </View>
-
-      <View className="flex-1" />
-
-      <Button
-        variant="brand"
-        className="h-12 rounded-2xl"
-        onPress={hasSavings ? handleStartBorrowing : handleAddToSavings}
-      >
-        <Text className="native:text-lg text-base font-bold text-black">
-          {hasSavings ? 'Start Borrowing' : 'Add to savings'}
-        </Text>
-      </Button>
-    </View>
+    </CreditLineLayout>
   );
 }

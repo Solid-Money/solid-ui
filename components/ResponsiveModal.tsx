@@ -217,7 +217,7 @@ const ResponsiveModal = ({
                 entering={contentEntering}
                 exiting={contentExiting}
                 key={contentKey}
-                style={hideHeader || useNativeFlexLayout ? { flex: 1 } : undefined}
+                style={hideHeader || useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
               >
                 {children}
               </Animated.View>

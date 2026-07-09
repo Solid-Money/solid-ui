@@ -1,5 +1,13 @@
 import React from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessagesSquare } from 'lucide-react-native';
 
@@ -15,6 +23,42 @@ export const CREDIT_LINE_SUPPORT_URL =
   'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings';
 
 export const openCreditLineSupport = () => Linking.openURL(CREDIT_LINE_SUPPORT_URL);
+
+/**
+ * Screen scaffold for the credit line modal: the body scrolls (no visible
+ * scrollbar) while the `footer` stays pinned to the bottom of the modal.
+ * Requires the modal to render with `disableScroll` so this owns the scroll.
+ */
+export function CreditLineLayout({
+  children,
+  footer,
+  bodyClassName,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  bodyClassName?: string;
+}) {
+  return (
+    <View className="flex-1" style={{ minHeight: 0 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={Platform.OS !== 'web'}
+        style={{ flex: 1, minHeight: 0 }}
+      >
+        <ScrollView
+          className="flex-1"
+          style={{ minHeight: 0 }}
+          contentContainerClassName={cn('pb-2', bodyClassName)}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+      {footer ? <View className="gap-3 pb-6 pt-4">{footer}</View> : null}
+    </View>
+  );
+}
 
 /** Net rate formatted with a leading sign, e.g. "+2.66%". */
 export const formatNetRate = (netAPY: number) =>
@@ -151,9 +195,9 @@ export function HealthyBadge({ healthy = true }: { healthy?: boolean }) {
       <Text className="text-sm text-white/60">
         Your savings back this loan and keep earning more than it costs. Nothing to do.
       </Text>
-      <Pressable onPress={openCreditLineSupport} className="web:hover:opacity-70">
+      {/* <Pressable onPress={openCreditLineSupport} className="web:hover:opacity-70">
         <Text className="text-sm font-bold text-white">What could change this ›</Text>
-      </Pressable>
+      </Pressable> */}
     </View>
   );
 }

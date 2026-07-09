@@ -47,7 +47,8 @@ const CreditLineModalProvider = () => {
       trigger={null}
       title={title}
       fillViewportHeight
-      contentClassName="min-h-[48rem] md:pt-5"
+      disableScroll
+      contentClassName="h-[48rem] md:pt-5"
       containerClassName="gap-4"
       contentKey={currentModal.name}
       shouldAnimate={shouldAnimate}

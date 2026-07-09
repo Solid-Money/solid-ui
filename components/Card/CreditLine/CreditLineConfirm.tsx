@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { fuse } from 'viem/chains';
 
@@ -20,7 +20,7 @@ import { getCardFundingAddress } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
-import { BorrowDetailsCard, HealthyBadge } from './CreditLineShared';
+import { BorrowDetailsCard, CreditLineLayout, HealthyBadge } from './CreditLineShared';
 import { useCreditLine } from './useCreditLine';
 
 /** Review the borrow, then "Confirm & get dollars" (borrow + bridge to card). */
@@ -113,27 +113,28 @@ export default function CreditLineConfirm() {
   };
 
   return (
-    <View className="flex-1 gap-6">
+    <CreditLineLayout
+      bodyClassName="gap-6"
+      footer={
+        <Button
+          variant="brand"
+          className="h-12 rounded-2xl"
+          disabled={isPending || !amount}
+          onPress={handleConfirm}
+        >
+          {isPending ? (
+            <ActivityIndicator color="black" />
+          ) : (
+            <Text className="native:text-lg text-base font-bold text-black">
+              Confirm &amp; get dollars
+            </Text>
+          )}
+        </Button>
+      }
+    >
       <BorrowDetailsCard amount={amount} />
 
       <HealthyBadge healthy={netAPY >= 0} />
-
-      <View className="flex-1" />
-
-      <Button
-        variant="brand"
-        className="h-12 rounded-2xl"
-        disabled={isPending || !amount}
-        onPress={handleConfirm}
-      >
-        {isPending ? (
-          <ActivityIndicator color="black" />
-        ) : (
-          <Text className="native:text-lg text-base font-bold text-black">
-            Confirm &amp; get dollars
-          </Text>
-        )}
-      </Button>
-    </View>
+    </CreditLineLayout>
   );
 }

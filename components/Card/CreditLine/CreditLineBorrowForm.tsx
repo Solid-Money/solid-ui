@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { View } from 'react-native';
 
 import { BorrowSlider } from '@/components/Card/BorrowSlider';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { CREDIT_LINE_MODAL } from '@/constants/modals';
 import { formatNumber } from '@/lib/utils';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
-import { BorrowDetailsCard, NeedHelp } from './CreditLineShared';
+import { BorrowDetailsCard, CreditLineLayout, NeedHelp } from './CreditLineShared';
 import { useCreditLine } from './useCreditLine';
 
 /** Borrow amount slider + live cost breakdown. "Continue" → confirm screen. */
@@ -29,7 +28,22 @@ export default function CreditLineBorrowForm() {
   };
 
   return (
-    <View className="flex-1 gap-6">
+    <CreditLineLayout
+      bodyClassName="gap-6"
+      footer={
+        <>
+          <Button
+            variant="brand"
+            className="h-12 rounded-2xl"
+            disabled={!canContinue}
+            onPress={handleContinue}
+          >
+            <Text className="native:text-lg text-base font-bold text-black">Continue</Text>
+          </Button>
+          <NeedHelp />
+        </>
+      }
+    >
       <BorrowSlider value={amount} onValueChange={setAmount} min={0} max={maxBorrow} />
 
       <BorrowDetailsCard amount={amount} />
@@ -37,19 +51,6 @@ export default function CreditLineBorrowForm() {
       <Text className="text-sm text-white/50">
         Your ${formatNumber(savingsUsd, 0)} in savings stays invested.
       </Text>
-
-      <View className="flex-1" />
-
-      <Button
-        variant="brand"
-        className="h-12 rounded-2xl"
-        disabled={!canContinue}
-        onPress={handleContinue}
-      >
-        <Text className="native:text-lg text-base font-bold text-black">Continue</Text>
-      </Button>
-
-      <NeedHelp />
-    </View>
+    </CreditLineLayout>
   );
 }

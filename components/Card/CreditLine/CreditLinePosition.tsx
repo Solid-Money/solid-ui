@@ -7,7 +7,7 @@ import { formatNumber } from '@/lib/utils';
 import { useCardRepayStore } from '@/store/useCardRepayStore';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
-import { DetailCard, formatNetRate, HealthyBadge } from './CreditLineShared';
+import { CreditLineLayout, DetailCard, formatNetRate, HealthyBadge } from './CreditLineShared';
 import { useCreditLine } from './useCreditLine';
 
 /** Active borrow position overview (Repay / Borrow More). */
@@ -26,7 +26,23 @@ export default function CreditLinePosition() {
   const handleBorrowMore = () => setCreditModal(CREDIT_LINE_MODAL.OPEN_FORM);
 
   return (
-    <View className="flex-1 gap-6">
+    <CreditLineLayout
+      bodyClassName="gap-6"
+      footer={
+        <View className="flex-row gap-3">
+          <Button
+            variant="secondary"
+            className="h-12 flex-1 rounded-2xl border-0 bg-[#262626]"
+            onPress={handleRepay}
+          >
+            <Text className="native:text-lg text-base font-bold text-white">Repay</Text>
+          </Button>
+          <Button variant="brand" className="h-12 flex-1 rounded-2xl" onPress={handleBorrowMore}>
+            <Text className="native:text-lg text-base font-bold text-black">Borrow More</Text>
+          </Button>
+        </View>
+      }
+    >
       <View className="items-center gap-1">
         <Text className="text-[50px] font-semibold text-white">
           ${formatNumber(totalBorrowed, 0)}
@@ -58,21 +74,6 @@ export default function CreditLinePosition() {
       />
 
       <HealthyBadge healthy={netAPY >= 0} />
-
-      <View className="flex-1" />
-
-      <View className="flex-row gap-3">
-        <Button
-          variant="secondary"
-          className="h-12 flex-1 rounded-2xl border-0 bg-[#262626]"
-          onPress={handleRepay}
-        >
-          <Text className="native:text-lg text-base font-bold text-white">Repay</Text>
-        </Button>
-        <Button variant="brand" className="h-12 flex-1 rounded-2xl" onPress={handleBorrowMore}>
-          <Text className="native:text-lg text-base font-bold text-black">Borrow More</Text>
-        </Button>
-      </View>
-    </View>
+    </CreditLineLayout>
   );
 }

@@ -8,7 +8,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { formatNumber } from '@/lib/utils';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
-import { NeedHelp } from './CreditLineShared';
+import { CreditLineLayout, NeedHelp } from './CreditLineShared';
 
 /** Success screen shown after a borrow is submitted. */
 export default function CreditLineSuccess() {
@@ -20,7 +20,21 @@ export default function CreditLineSuccess() {
   const newBalance = availableAmount + amount;
 
   return (
-    <View className="flex-1 items-center gap-6 pt-4">
+    <CreditLineLayout
+      bodyClassName="grow items-center justify-center gap-6"
+      footer={
+        <>
+          <Button
+            variant="brand"
+            className="h-12 w-full rounded-2xl"
+            onPress={() => setModal(CREDIT_LINE_MODAL.CLOSE)}
+          >
+            <Text className="native:text-lg text-base font-bold text-black">Back to card</Text>
+          </Button>
+          <NeedHelp />
+        </>
+      }
+    >
       <View className="h-24 w-24 items-center justify-center rounded-full border-2 border-white/30">
         <Check size={44} color="rgba(255,255,255,0.85)" />
       </View>
@@ -39,18 +53,6 @@ export default function CreditLineSuccess() {
         <Text className="text-base text-white/70">New spendable balance</Text>
         <Text className="text-base font-medium text-white">${formatNumber(newBalance, 2)}</Text>
       </View>
-
-      <View className="flex-1" />
-
-      <Button
-        variant="brand"
-        className="h-12 w-full rounded-2xl"
-        onPress={() => setModal(CREDIT_LINE_MODAL.CLOSE)}
-      >
-        <Text className="native:text-lg text-base font-bold text-black">Back to card</Text>
-      </Button>
-
-      <NeedHelp />
-    </View>
+    </CreditLineLayout>
   );
 }
