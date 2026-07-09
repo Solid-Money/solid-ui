@@ -61,6 +61,12 @@ export interface ResponsiveModalProps {
   /** Disable ScrollView wrapper when children manage their own scrolling (e.g. FlatList, camera views) */
   disableScroll?: boolean;
   hideHeader?: boolean;
+  /**
+   * Web only: cap the modal to the viewport height and flex the body, so the
+   * header stays fixed and only the content scrolls (instead of the whole card
+   * overflowing and the overlay scrolling the header away).
+   */
+  fillViewportHeight?: boolean;
 }
 
 const ResponsiveModal = ({
@@ -82,11 +88,15 @@ const ResponsiveModal = ({
   contentKey,
   disableScroll = false,
   hideHeader = false,
+  fillViewportHeight = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
-  const useFixedHeightLayout = isNativeSmallScreen && !disableScroll;
-  const useNativeFlexLayout = isNativeSmallScreen;
+  // On web, opt into the flex layout (header fixed, body scrolls) that native
+  // small screens already use, capping the card to the viewport (see below).
+  const webFill = fillViewportHeight && Platform.OS === 'web';
+  const useNativeFlexLayout = isNativeSmallScreen || webFill;
+  const useFixedHeightLayout = useNativeFlexLayout && !disableScroll;
   const dialogHeight = useSharedValue(0);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
   const containerHeightRef = React.useRef(0);
@@ -148,6 +158,7 @@ const ResponsiveModal = ({
         className={cn(
           'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
           !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
@@ -206,7 +217,7 @@ const ResponsiveModal = ({
                 entering={contentEntering}
                 exiting={contentExiting}
                 key={contentKey}
-                style={hideHeader || useNativeFlexLayout ? { flex: 1 } : undefined}
+                style={hideHeader || useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
               >
                 {children}
               </Animated.View>

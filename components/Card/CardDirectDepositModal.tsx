@@ -6,6 +6,7 @@ import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { useShallow } from 'zustand/react/shallow';
 
 import HomeQR from '@/assets/images/home-qr';
+import HomeSwap from '@/assets/images/home-swap';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositOption from '@/components/DepositOption/DepositOption';
@@ -14,12 +15,14 @@ import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 type Step = 'options' | 'networks' | 'form' | 'address';
@@ -57,6 +60,8 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   const walletConnectingRef = useRef(false);
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
+  const setDepositModal = useCardDepositStore(state => state.setModal);
+
   const { setSrcChainId, setPrincipalToken } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
@@ -113,6 +118,11 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       cleanupThirdwebStyles();
     }
   }, [isWalletOpen, connect, activeAccount, goToStep]);
+
+  const handleTransferFromWallet = useCallback(() => {
+    handleOpenChange(false);
+    setDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  }, [handleOpenChange, setDepositModal]);
 
   // "Share your deposit address" — address is chain-independent (same deterministic wallet
   // across all chains), so fetch via Base and skip network selection entirely.
@@ -178,6 +188,12 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
             subtitle="Send supported tokens to your card deposit address from a supported network"
             icon={<HomeQR />}
             onPress={handleShareAddress}
+          />
+          <DepositOption
+            text="Transfer from wallet/savings"
+            subtitle="Transfer the funds from the assets you have in savings or wallet"
+            icon={<HomeSwap />}
+            onPress={handleTransferFromWallet}
           />
           <View className="mt-4 items-center">
             <NeedHelp />

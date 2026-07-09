@@ -3,12 +3,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 
 import HomeQR from '@/assets/images/home-qr';
+import HomeSwap from '@/assets/images/home-swap';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import DepositOption from '@/components/DepositOption/DepositOption';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { createDirectDepositSession } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 type Step = 'options' | 'address';
 
@@ -38,6 +41,8 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   });
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
 
+  const setDepositModal = useCardDepositStore(state => state.setModal);
+
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
       withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
@@ -57,6 +62,11 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
       setDepositAddress(undefined);
     }
   }, []);
+
+  const handleTransferFromWallet = useCallback(() => {
+    handleOpenChange(false);
+    setDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  }, [handleOpenChange, setDepositModal]);
 
   const handleShareAddress = useCallback(() => {
     setDepositAddress(undefined);
@@ -84,6 +94,12 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
             subtitle="Send supported tokens to your card deposit address from a supported network"
             icon={<HomeQR />}
             onPress={handleShareAddress}
+          />
+          <DepositOption
+            text="Transfer from wallet/savings"
+            subtitle="Transfer the funds from the assets you have in savings or wallet"
+            icon={<HomeSwap />}
+            onPress={handleTransferFromWallet}
           />
           <View className="mt-4 items-center">
             <NeedHelp />
