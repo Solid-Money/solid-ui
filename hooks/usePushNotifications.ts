@@ -15,9 +15,10 @@ import { useUserStore } from '@/store/useUserStore';
  */
 function getNotificationRoute(type?: string): Href {
   // Referral cashback pushes (referral-signup, referral-inactive,
-  // referral-qualified-*) open the referral screen.
+  // referral-qualified-*) open the referral program popup on the rewards screen
+  // via the ?referral=open deep link.
   if (type?.startsWith('referral')) {
-    return path.REFERRAL;
+    return path.REFERRAL_PROGRAM;
   }
 
   // Subscription discount pushes (rewards-subscription-live/-saved/-upsell)

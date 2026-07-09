@@ -6,7 +6,6 @@ import { RotateCw } from 'lucide-react-native';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramBanner from '@/components/Points/ReferralProgramBanner';
-import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
@@ -18,7 +17,6 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
@@ -27,7 +25,6 @@ import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
-  const isTestUser = useIsTestUser();
   const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
@@ -69,15 +66,11 @@ export default function Rewards() {
         cashbackRate={cashbackRate}
         maxCashbackMonthly={maxCashbackMonthly}
       />,
-      // Internal whitelist team members get the new referral program banner
-      // (opens a popup); public users keep the existing `/referral` banner.
-      isTestUser ? (
-        <ReferralProgramBanner key="refer" />
-      ) : (
-        <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />
-      ),
+      // The referral program banner (opens the referral popup) is now shown to
+      // all users as part of the referral program launch.
+      <ReferralProgramBanner key="refer" />,
     ];
-  }, [rewardsData, isTestUser]);
+  }, [rewardsData]);
 
   if (isError && !isLoading) {
     return (
