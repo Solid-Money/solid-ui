@@ -953,7 +953,10 @@ export default function CardDepositInternalForm() {
   );
 
   return (
-    <View className="flex-1 gap-3">
+    // Natural height (not flex-1) so the form can scroll inside the modal's
+    // ScrollView when the keyboard shrinks the visible area — otherwise the
+    // rows get crammed into the shrunken box and overlap.
+    <View className="gap-3">
       <SourceSelector
         control={control}
         from={watchedFrom}
@@ -962,7 +965,7 @@ export default function CardDepositInternalForm() {
       />
 
       {watchedFrom === CardDepositSource.EXTERNAL ? (
-        <View className="flex-1 gap-3">
+        <View className="gap-3">
           {isFundingAddressLoading ? (
             <View className="items-center py-8">
               <ActivityIndicator color="white" />
@@ -1010,8 +1013,6 @@ export default function CardDepositInternalForm() {
           isLoading={isEstimatedUSDCLoading}
         />
       )}
-
-      {watchedFrom !== CardDepositSource.EXTERNAL && <View className="flex-1" />}
 
       {/* {watchedFrom !== CardDepositSource.EXTERNAL && (
         <DestinationDisplay
