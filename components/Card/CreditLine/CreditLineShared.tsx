@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessagesSquare } from 'lucide-react-native';
 
@@ -38,6 +39,8 @@ export function CreditLineLayout({
   footer?: React.ReactNode;
   bodyClassName?: string;
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View className="flex-1" style={{ minHeight: 0 }}>
       <KeyboardAvoidingView
@@ -55,7 +58,12 @@ export function CreditLineLayout({
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
-      {footer ? <View className="gap-3 pb-6 pt-4">{footer}</View> : null}
+      {footer ? (
+        // Keep the footer clear of the home indicator / screen bottom on mobile.
+        <View className="gap-3 pt-4" style={{ paddingBottom: Math.max(insets.bottom + 12, 24) }}>
+          {footer}
+        </View>
+      ) : null}
     </View>
   );
 }
