@@ -14,8 +14,14 @@ import { useUserStore } from '@/store/useUserStore';
  * Card payment notifications open the card screen; anything else goes home.
  */
 function getNotificationRoute(type?: string): Href {
-  // Rewards lifecycle pushes (rewards-live, rewards-tier-reached, etc.) all
-  // carry a `rewards-` prefixed type and should open the rewards screen.
+  // Referral pushes (rewards-can-refer, rewards-has-referrals) open the referral
+  // program popup via the `/rewards?referral=open` deep link.
+  if (type === 'rewards-can-refer' || type === 'rewards-has-referrals') {
+    return { pathname: '/rewards', params: { referral: 'open' } };
+  }
+
+  // Other rewards lifecycle pushes (rewards-live, rewards-tier-reached, etc.)
+  // all carry a `rewards-` prefixed type and open the rewards screen.
   if (type?.startsWith('rewards')) {
     return path.REWARDS;
   }

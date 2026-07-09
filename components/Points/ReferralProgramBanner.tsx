@@ -10,9 +10,8 @@ import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 
 /**
- * Internal-only referral banner. Rendered in place of {@link RewardReferBanner}
- * for whitelisted team members (see `useIsTestUser`); public users keep the
- * existing `/referral` banner. Tapping opens the referral program popup.
+ * Refer & Earn banner shown to all users on the rewards and points screens.
+ * Tapping opens the referral program popup ({@link ReferralProgramModal}).
  */
 const ReferralProgramBanner = () => {
   const { isScreenMedium } = useDimension();
