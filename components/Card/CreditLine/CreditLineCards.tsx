@@ -10,10 +10,10 @@ import { useCreditLineStore } from '@/store/useCreditLineStore';
 import { formatNetRate } from './CreditLineShared';
 
 /**
- * Credit line entry cards for the card details screen. The promo card is shown
- * to everyone; the position card is added only when the user has an active
- * borrow. Both open the credit line modal, which routes to the right screen
- * based on the user's savings / borrow state.
+ * Credit line entry card for the card details screen. Users with an active
+ * borrow see the position card; everyone else sees the promo card. Both open
+ * the credit line modal, which routes to the right screen based on the user's
+ * savings / borrow state.
  */
 export function CreditLineCards({ className }: { className?: string }) {
   const setModal = useCreditLineStore(state => state.setModal);
@@ -24,9 +24,10 @@ export function CreditLineCards({ className }: { className?: string }) {
 
   return (
     <View className={cn('gap-4 md:flex-row', className)}>
-      <PromoCard onPress={openCreditLine} />
-      {hasPosition && (
+      {hasPosition ? (
         <PositionCard totalBorrowed={totalBorrowed} netAPY={netAPY} onPress={openCreditLine} />
+      ) : (
+        <PromoCard onPress={openCreditLine} />
       )}
     </View>
   );
