@@ -149,6 +149,13 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="sumsub-kyc"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="earn"
         options={{
           title: 'Earn',
