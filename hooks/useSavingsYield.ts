@@ -78,6 +78,23 @@ export function useSavingsYield({
 
   // Full calc only when inputs change (no animation). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
+    // soFUSE CURRENT mode: interest comes from the backend summary (no subgraph
+    // for FUSE) and stays valid even if the on-chain balance read is momentarily
+    // 0 (slow/failed RPC poll or a vault switch). Handle it BEFORE the balance<=0
+    // guard so a transient 0 balance can't wipe the anchor and snap interest to 0.
+    if (mode === SavingMode.CURRENT && vault === 'FUSE') {
+      if (summary) {
+        const backendInterest = parseFloat(summary.interestEarnedUSD);
+        const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
+        if (backendInterest >= 0 && calculatedAtUnix > 0) {
+          setLiveYield(backendInterest);
+          setAnchor({ value: backendInterest, time: calculatedAtUnix });
+        }
+      }
+      // No summary yet — keep current value until backend responds
+      return;
+    }
+
     if (balance <= 0) {
       setLiveYield(0);
       setAnchor(null);
@@ -90,20 +107,6 @@ export function useSavingsYield({
     }
     if (mode === SavingMode.TOTAL_USD) {
       setLiveYield(balance * exchangeRate);
-      return;
-    }
-
-    // soFUSE CURRENT mode: use backend summary (no subgraph available for FUSE)
-    if (mode === SavingMode.CURRENT && vault === 'FUSE') {
-      if (summary) {
-        const backendInterest = parseFloat(summary.interestEarnedUSD);
-        const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
-        if (backendInterest >= 0 && calculatedAtUnix > 0) {
-          setLiveYield(backendInterest);
-          setAnchor({ value: backendInterest, time: calculatedAtUnix });
-        }
-      }
-      // No summary yet — keep current value until backend responds
       return;
     }
 
