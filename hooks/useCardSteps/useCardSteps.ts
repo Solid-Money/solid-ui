@@ -11,7 +11,6 @@ import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge, getProviderRouting } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
-import { resolveKycProviderForCountry } from '@/lib/kycProvider';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import {
   CardProvider,
@@ -141,20 +140,21 @@ export function useCardSteps(
       cardIssuer,
     });
 
-    // Default to the Rain/Wirex KYC flows; only Bridge goes through Bridge flow.
-    // Route by jurisdiction: EU/EEA → Sumsub (Wirex), everywhere else → Didit
-    // (Rain). The backend is authoritative for the geography (env-driven); fall
-    // back to the local list if that call fails.
+    // Non-Bridge users go through Didit (Rain) by default. The backend is
+    // authoritative for whether this user+jurisdiction should instead use Sumsub
+    // (Wirex): it checks the geography AND the sandbox internal-tester allowlist.
+    // Defaulting to Didit (and staying there if the call fails) guarantees a
+    // non-tester never lands on the Sumsub widget.
     if (cardIssuer !== CardProvider.BRIDGE) {
       setKycFlow('card');
       const countryCode = countryStore.countryInfo?.countryCode;
-      let kycProvider = resolveKycProviderForCountry(countryCode);
+      let kycProvider = KycProvider.DIDIT;
       if (countryCode) {
         try {
           const routing = await withRefreshToken(() => getProviderRouting(countryCode));
           if (routing?.kycProvider) kycProvider = routing.kycProvider;
         } catch {
-          // keep the local fallback resolution
+          // backend unavailable → stay on Didit (available to everyone)
         }
       }
       setKycProvider(kycProvider);
