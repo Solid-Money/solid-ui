@@ -494,6 +494,7 @@ const RegularWithdrawForm = () => {
                   <View className="flex-row items-center gap-2">
                     <Image
                       source={require('@/assets/images/key.png')}
+                      tintColor="#18181b"
                       className="h-6 w-6"
                       contentFit="contain"
                     />
@@ -541,11 +542,8 @@ const RegularWithdrawForm = () => {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
-                        source={
-                          activeStep !== 1
-                            ? require('@/assets/images/key-muted.png')
-                            : require('@/assets/images/key.png')
-                        }
+                        source={require('@/assets/images/key.png')}
+                        tintColor={activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b'}
                         className="h-6 w-6"
                         contentFit="contain"
                       />
@@ -609,11 +607,8 @@ const RegularWithdrawForm = () => {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
-                        source={
-                          activeStep !== 2
-                            ? require('@/assets/images/key-muted.png')
-                            : require('@/assets/images/key.png')
-                        }
+                        source={require('@/assets/images/key.png')}
+                        tintColor={activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b'}
                         className="h-6 w-6"
                         contentFit="contain"
                       />
@@ -669,11 +664,8 @@ const RegularWithdrawForm = () => {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
-                        source={
-                          activeStep !== 1
-                            ? require('@/assets/images/key-muted.png')
-                            : require('@/assets/images/key.png')
-                        }
+                        source={require('@/assets/images/key.png')}
+                        tintColor={activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b'}
                         className="h-6 w-6"
                         contentFit="contain"
                       />
@@ -737,11 +729,8 @@ const RegularWithdrawForm = () => {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
-                        source={
-                          activeStep !== 2
-                            ? require('@/assets/images/key-muted.png')
-                            : require('@/assets/images/key.png')
-                        }
+                        source={require('@/assets/images/key.png')}
+                        tintColor={activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b'}
                         className="h-6 w-6"
                         contentFit="contain"
                       />
