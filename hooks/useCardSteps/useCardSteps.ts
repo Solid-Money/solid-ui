@@ -8,11 +8,17 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
-import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
+import { getCustomerFromBridge, getKycLinkFromBridge, getProviderRouting } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
+import {
+  CardProvider,
+  CardStatusResponse,
+  KycProvider,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -42,16 +48,23 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil, setKycFlow } =
-    useKycStore(
-      useShallow(state => ({
-        kycLinkId: state.kycLinkId,
-        processingUntil: state.processingUntil,
-        setProcessingUntil: state.setProcessingUntil,
-        clearProcessingUntil: state.clearProcessingUntil,
-        setKycFlow: state.setKycFlow,
-      })),
-    );
+  const {
+    kycLinkId,
+    processingUntil,
+    setProcessingUntil,
+    clearProcessingUntil,
+    setKycFlow,
+    setKycProvider,
+  } = useKycStore(
+    useShallow(state => ({
+      kycLinkId: state.kycLinkId,
+      processingUntil: state.processingUntil,
+      setProcessingUntil: state.setProcessingUntil,
+      clearProcessingUntil: state.clearProcessingUntil,
+      setKycFlow: state.setKycFlow,
+      setKycProvider: state.setKycProvider,
+    })),
+  );
   // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
   const cardIssuer =
     cardStatusResponse?.rainApplicationStatus != null
@@ -127,10 +140,30 @@ export function useCardSteps(
       cardIssuer,
     });
 
-    // Default to Rain KYC; only Bridge goes through Bridge flow
+    // Non-Bridge users go through Didit (Rain) by default. The backend is
+    // authoritative for whether this user+jurisdiction should instead use Sumsub
+    // (Wirex): it checks the geography AND the sandbox internal-tester allowlist.
+    // Defaulting to Didit (and staying there if the call fails) guarantees a
+    // non-tester never lands on the Sumsub widget.
     if (cardIssuer !== CardProvider.BRIDGE) {
       setKycFlow('card');
-      router.push(path.KYC as any);
+      const countryCode = countryStore.countryInfo?.countryCode;
+      let kycProvider = KycProvider.DIDIT;
+      if (countryCode) {
+        try {
+          const routing = await withRefreshToken(() => getProviderRouting(countryCode));
+          if (routing?.kycProvider) kycProvider = routing.kycProvider;
+        } catch {
+          // backend unavailable → stay on Didit (available to everyone)
+        }
+      }
+      setKycProvider(kycProvider);
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'route',
+        kycProvider,
+        countryCode,
+      });
+      router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
       return;
     }
 
@@ -204,6 +237,7 @@ export function useCardSteps(
     cardsEndorsement?.status,
     cardIssuer,
     setKycFlow,
+    setKycProvider,
   ]);
 
   // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)

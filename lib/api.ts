@@ -655,6 +655,83 @@ export const getDiditVerificationStatus = async (): Promise<
   return response.json();
 };
 
+// --- Sumsub identity verification (Wirex / EU flow) ---
+
+/**
+ * Create a Sumsub WebSDK session. The backend mints an access token bound to
+ * the user and returns it for the WebSDK. Mirrors createDiditSession's error
+ * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
+ */
+export const createSumsubSession = async (): Promise<import('./types').SumsubSessionResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await response.json();
+      if (body && typeof body === 'object') {
+        if (typeof body.code === 'string') code = body.code;
+        if (typeof body.message === 'string') message = body.message;
+        else if (Array.isArray(body.message)) message = body.message.join(', ');
+      }
+    } catch {
+      // non-JSON error body — keep the generic fallback
+    }
+    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+  }
+  return response.json();
+};
+
+/** Get the current user's Sumsub verification status. */
+export const getSumsubVerificationStatus = async (): Promise<
+  import('./types').SumsubVerificationStatusResponse
+> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/status`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Ask the backend which KYC + card providers a country routes to. Server-driven
+ * so the Wirex/Sumsub geography can change without an app release.
+ */
+export const getProviderRouting = async (
+  countryCode: string,
+): Promise<import('./types').ProviderRoutingResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/provider-routing?countryCode=${encodeURIComponent(
+      countryCode,
+    )}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 // The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();
