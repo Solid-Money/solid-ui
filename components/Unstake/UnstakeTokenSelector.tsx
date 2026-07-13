@@ -2,28 +2,35 @@ import React, { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
-import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { Text } from '@/components/ui/text';
+import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
-import { isSolidTokenSymbol } from '@/constants/withdraw';
+import { getVaultKey, isSolidTokenSymbol } from '@/constants/withdraw';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const UnstakeTokenSelector: React.FC = () => {
-  const { selectedToken, setSelectedToken, setModal } = useUnstakeStore(
+  const { selectedToken, selectedVault, setSelectedToken, setModal } = useUnstakeStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
+      selectedVault: state.selectedVault,
       setSelectedToken: state.setSelectedToken,
       setModal: state.setModal,
     })),
   );
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
+  // Scope the list to the vault the user is withdrawing so the picker only
+  // switches network (e.g. soUSD on Fuse vs soUSD on Ethereum).
   const vaultTokens = useMemo(() => {
     const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
-    return allTokens.filter(token => isSolidTokenSymbol(token.contractTickerSymbol));
-  }, [ethereumTokens, fuseTokens, baseTokens]);
+    return allTokens.filter(token => {
+      if (!isSolidTokenSymbol(token.contractTickerSymbol)) return false;
+      if (selectedVault) return getVaultKey(token.contractTickerSymbol) === selectedVault;
+      return true;
+    });
+  }, [ethereumTokens, fuseTokens, baseTokens, selectedVault]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {

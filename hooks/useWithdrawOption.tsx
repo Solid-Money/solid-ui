@@ -9,9 +9,11 @@ import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import RegularWithdrawForm from '@/components/Unstake/RegularWithdrawForm';
 import UnstakeTokenSelector from '@/components/Unstake/UnstakeTokenSelector';
+import UnstakeVaultSelector from '@/components/Unstake/UnstakeVaultSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { UnstakeModal } from '@/lib/types';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
@@ -27,21 +29,25 @@ export interface WithdrawOptionProps {
 const useWithdrawOption = ({
   buttonText = 'Withdraw',
   trigger,
-  modal = UNSTAKE_MODAL.OPEN_FORM,
+  modal = UNSTAKE_MODAL.OPEN_VAULT_SELECTOR,
 }: WithdrawOptionProps = {}) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, setModal } = useUnstakeStore(
+  const { currentModal, previousModal, transaction, setModal, setSelectedVault } = useUnstakeStore(
     useShallow(state => ({
       currentModal: state.currentModal ?? UNSTAKE_MODAL.CLOSE,
       previousModal: state.previousModal ?? UNSTAKE_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
+      setSelectedVault: state.setSelectedVault,
     })),
   );
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { triggerElement } = useResponsiveModal();
+  const { vaults } = useSavingsVaults();
+  const hasMultipleVaults = vaults.length > 1;
 
+  const isVaultSelector = currentModal.name === UNSTAKE_MODAL.OPEN_VAULT_SELECTOR.name;
   const isRegularForm = currentModal.name === UNSTAKE_MODAL.OPEN_FORM.name;
   const isTokenSelector = currentModal.name === UNSTAKE_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isTransactionStatus = currentModal.name === UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS.name;
@@ -130,18 +136,24 @@ const useWithdrawOption = ({
       return <UnstakeTokenSelector />;
     }
 
+    if (isVaultSelector) {
+      return <UnstakeVaultSelector />;
+    }
+
     return <RegularWithdrawForm />;
   };
 
   const getContentKey = () => {
     if (isTransactionStatus) return 'transaction-status';
     if (isTokenSelector) return 'token-selector';
+    if (isVaultSelector) return 'vault-selector';
     return 'regular-withdraw-form';
   };
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
     if (isTokenSelector) return 'Select token';
+    if (isVaultSelector) return 'Select vault';
     return 'Withdraw';
   };
 
@@ -155,13 +167,25 @@ const useWithdrawOption = ({
   };
 
   const handleBackPress = () => {
+    // From the token (network) selector, step back to the form.
+    if (isTokenSelector) {
+      setModal(UNSTAKE_MODAL.OPEN_FORM);
+      return;
+    }
+    // From the form, step back to the vault selector when the user actually
+    // has a choice of vaults; otherwise there is nothing to go back to.
+    if (isRegularForm && hasMultipleVaults) {
+      setSelectedVault(null);
+      setModal(UNSTAKE_MODAL.OPEN_VAULT_SELECTOR);
+      return;
+    }
     setModal(UNSTAKE_MODAL.CLOSE);
   };
 
   // Open the modal for all states except when explicitly closed
   const shouldOpen = !isClose;
 
-  const showBackButton = isRegularForm || isTokenSelector;
+  const showBackButton = isVaultSelector || isTokenSelector || (isRegularForm && hasMultipleVaults);
 
   return {
     shouldOpen,
