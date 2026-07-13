@@ -69,11 +69,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: 'app.solid.xyz',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
+      NSCameraUsageDescription:
+        'Solid needs camera access to scan QR codes and to capture your ID and selfie during identity verification',
       NSUserTrackingUsageDescription:
         'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
       NSMicrophoneUsageDescription:
-        'Access your microphone to transcribe voice messages in conversations',
+        'Access your microphone to transcribe voice messages and to record video during identity verification',
+      NSPhotoLibraryUsageDescription:
+        'Solid needs photo library access to upload identity documents during verification',
     },
     privacyManifests: {
       NSPrivacyTracking: true,
@@ -208,6 +211,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           compileSdkVersion: 36,
           enableProguardInReleaseBuilds: true,
           enableShrinkResourcesInReleaseBuilds: true,
+          // Sumsub Android SDK (@sumsub/react-native-mobilesdk-module) is hosted
+          // on Sumsub's Maven, not Maven Central — register the repo so the
+          // native module resolves during the Android build.
+          extraMavenRepos: ['https://maven.sumsub.com/repository/maven-public/'],
           extraProguardRules: `
               # JNA (Java Native Access) - WalletConnect dependency
               # JNA includes desktop-specific code paths that reference java.awt classes

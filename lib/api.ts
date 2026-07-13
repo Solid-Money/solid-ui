@@ -53,6 +53,8 @@ import {
   CustomerFromBridgeResponse,
   Deposit,
   DepositTransaction,
+  DiditSessionResponse,
+  DiditVerificationStatusResponse,
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
@@ -78,6 +80,7 @@ import {
   OnrampAutomationResponseDto,
   Points,
   PromotionsBannerResponse,
+  ProviderRoutingResponse,
   ProvisioningActivity,
   ProvisioningInitResponse,
   ProvisioningSessionRequest,
@@ -92,6 +95,8 @@ import {
   SearchCoin,
   SourceDepositInstructions,
   SubmitPersonaKycResponse,
+  SumsubSessionResponse,
+  SumsubVerificationStatusResponse,
   SwapTokenRequest,
   SwapTokenResponse,
   SyncActivitiesOptions,
@@ -577,7 +582,7 @@ export class ApiError extends Error {
 export const createDiditSession = async (
   callback?: string,
   flow: 'card' | 'va' = 'card',
-): Promise<import('./types').DiditSessionResponse> => {
+): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
     method: 'POST',
@@ -640,9 +645,7 @@ export const topUpGoodDollarGas = async (
 };
 
 /** Get the current user's Didit verification status. */
-export const getDiditVerificationStatus = async (): Promise<
-  import('./types').DiditVerificationStatusResponse
-> => {
+export const getDiditVerificationStatus = async (): Promise<DiditVerificationStatusResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`, {
     credentials: 'include',
@@ -662,7 +665,7 @@ export const getDiditVerificationStatus = async (): Promise<
  * the user and returns it for the WebSDK. Mirrors createDiditSession's error
  * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
  */
-export const createSumsubSession = async (): Promise<import('./types').SumsubSessionResponse> => {
+export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
     method: 'POST',
@@ -693,9 +696,7 @@ export const createSumsubSession = async (): Promise<import('./types').SumsubSes
 };
 
 /** Get the current user's Sumsub verification status. */
-export const getSumsubVerificationStatus = async (): Promise<
-  import('./types').SumsubVerificationStatusResponse
-> => {
+export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationStatusResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/status`, {
     credentials: 'include',
@@ -712,9 +713,7 @@ export const getSumsubVerificationStatus = async (): Promise<
  * Ask the backend which KYC + card providers a country routes to. Server-driven
  * so the Wirex/Sumsub geography can change without an app release.
  */
-export const getProviderRouting = async (
-  countryCode: string,
-): Promise<import('./types').ProviderRoutingResponse> => {
+export const getProviderRouting = async (countryCode: string): Promise<ProviderRoutingResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/provider-routing?countryCode=${encodeURIComponent(

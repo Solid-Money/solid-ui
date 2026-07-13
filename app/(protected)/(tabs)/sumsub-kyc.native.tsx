@@ -1,75 +1,103 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import SNSMobileSDK from '@sumsub/react-native-mobilesdk-module';
 
 import {
   KycCompleted,
   KycError,
   KycLoading,
+  KycNativeWaiting,
   KycUnavailable,
   useSumsubSession,
 } from '@/components/kyc';
 
 /**
- * Native Sumsub KYC screen (Wirex / EU flow). React-Native has no first-party
- * Sumsub module wired into this app, so the WebSDK is embedded in a WebView via
- * Sumsub's hosted builder script. Routing is driven by useSumsubSession's
- * backend polling (the canonical kycStatus); WebView messages are best-effort
- * accelerators.
+ * Native Sumsub KYC screen (Wirex / EU flow). Uses the native Sumsub mobile SDK
+ * (@sumsub/react-native-mobilesdk-module) — a full-screen native flow, launched
+ * with the backend access token. Requires a custom dev client (this app already
+ * ships native modules via EAS, e.g. the Didit SDK); the Android Maven repo and
+ * iOS permissions are wired in app.config.ts.
  *
- * NOTE: token refresh on native returns the same token (short-lived); raise
- * SUMSUB_LEVEL ttl if a session outlives it. Camera access is granted to the
- * WebView (mediaCapturePermissionGrantType="grant").
+ * The backend kycStatus (polled by useSumsubSession) is the source of truth —
+ * it reflects the Sumsub review AND the downstream Wirex hand-off — so the SDK
+ * status events here are best-effort accelerators.
  */
 export default function SumsubKycNative() {
   const {
     session,
     initSession,
     markStarted,
+    fetchAccessToken,
     onVerificationComplete,
     onVerificationDeclined,
     onVerificationError,
   } = useSumsubSession();
-  const startedRef = useRef(false);
+  const launchedRef = useRef(false);
 
   const accessToken = session.phase === 'ready' ? session.accessToken : null;
 
-  const html = useMemo(() => (accessToken ? buildSumsubHtml(accessToken) : ''), [accessToken]);
+  useEffect(() => {
+    if (!accessToken || launchedRef.current) return;
+    launchedRef.current = true;
 
-  const handleMessage = (event: WebViewMessageEvent) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data) as {
-        type: string;
-        payload?: any;
-      };
-      switch (msg.type) {
-        case 'launched':
-          if (!startedRef.current) {
-            startedRef.current = true;
-            markStarted();
-          }
-          break;
-        case 'statusChanged':
-          if (msg.payload?.reviewStatus === 'completed') {
-            if (msg.payload?.reviewResult?.reviewAnswer === 'RED') {
-              onVerificationDeclined();
-            } else {
-              onVerificationComplete();
-            }
-          }
-          break;
-        case 'error':
-          onVerificationError(
-            typeof msg.payload === 'string'
-              ? msg.payload
-              : (msg.payload?.error ?? 'Verification failed'),
-          );
-          break;
-      }
-    } catch {
-      // ignore malformed messages
-    }
-  };
+    let cancelled = false;
+
+    // init(accessToken, expirationHandler): the handler returns a Promise that
+    // resolves to a fresh token when the current one expires.
+    const instance = SNSMobileSDK.init(accessToken, () => fetchAccessToken())
+      .withHandlers({
+        onStatusChanged: (event: { prevStatus?: string; newStatus?: string }) => {
+          if (cancelled) return;
+          if (event?.newStatus === 'Approved') onVerificationComplete();
+          else if (event?.newStatus === 'FinallyRejected') onVerificationDeclined();
+        },
+      })
+      .withLocale('en')
+      .build();
+
+    markStarted();
+
+    instance
+      .launch()
+      .then((result: { success?: boolean; status?: string }) => {
+        if (cancelled) return;
+        const status = result?.status;
+        if (status === 'Approved') {
+          onVerificationComplete();
+        } else if (status === 'FinallyRejected') {
+          onVerificationDeclined();
+        } else if (
+          status === 'Pending' ||
+          status === 'Incomplete' ||
+          status === 'TemporarilyDeclined' ||
+          status === 'ActionCompleted'
+        ) {
+          // Submitted → Wirex adjudicates; land on the pending/review screen.
+          onVerificationComplete();
+        } else {
+          // Closed before submitting (Initial/Ready) → let them retry.
+          launchedRef.current = false;
+          initSession();
+        }
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        launchedRef.current = false;
+        onVerificationError(e instanceof Error ? e.message : 'Verification failed');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    accessToken,
+    fetchAccessToken,
+    markStarted,
+    initSession,
+    onVerificationComplete,
+    onVerificationDeclined,
+    onVerificationError,
+  ]);
 
   return (
     <View style={styles.container}>
@@ -78,62 +106,14 @@ export default function SumsubKycNative() {
       {session.phase === 'unavailable' && (
         <KycUnavailable message={session.message} onRetry={initSession} />
       )}
-      {(session.phase === 'ready' || session.phase === 'started') && html ? (
-        <WebView
-          originWhitelist={['*']}
-          source={{ html }}
-          onMessage={handleMessage}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          mediaCapturePermissionGrantType="grant"
-          style={styles.webview}
-        />
-      ) : null}
+      {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
       {session.phase === 'completed' && <KycCompleted />}
     </View>
   );
 }
 
-/** Inline HTML that boots the Sumsub WebSDK with the given access token. */
-function buildSumsubHtml(accessToken: string): string {
-  // The token is a Sumsub `_act-…` string; JSON.stringify guards the injection.
-  const token = JSON.stringify(accessToken);
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-    <style>html,body,#sumsub-websdk-container{height:100%;margin:0;padding:0;}</style>
-  </head>
-  <body>
-    <div id="sumsub-websdk-container"></div>
-    <script src="https://static.sumsub.com/idensic/static/sns-websdk-builder.js"></script>
-    <script>
-      function post(m){ if (window.ReactNativeWebView) { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } }
-      try {
-        var instance = snsWebSdk
-          .init(${token}, function(){ return Promise.resolve(${token}); })
-          .withConf({ lang: 'en' })
-          .withOptions({ addViewportTag: true, adaptIframeHeight: true })
-          .on('idCheck.onApplicantStatusChanged', function(p){ post({ type: 'statusChanged', payload: p }); })
-          .on('idCheck.onError', function(e){ post({ type: 'error', payload: e }); })
-          .build();
-        instance.launch('#sumsub-websdk-container');
-        post({ type: 'launched' });
-      } catch (e) {
-        post({ type: 'error', payload: String(e) });
-      }
-    </script>
-  </body>
-</html>`;
-}
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  webview: {
     flex: 1,
     backgroundColor: '#fff',
   },

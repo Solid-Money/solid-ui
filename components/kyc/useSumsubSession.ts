@@ -10,7 +10,6 @@ import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useKycStore } from '@/store/useKycStore';
 
 /**
  * Session state machine for the Sumsub WebSDK. Unlike Didit (which hands back a
@@ -36,7 +35,6 @@ const POLL_INTERVAL_MS = 5000;
 export function useSumsubSession() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const kycFlow = useKycStore(state => state.kycFlow);
   const debugState = useLocalSearchParams<{ state?: string }>().state;
   const [session, setSession] = useState<SumsubSessionState>({ phase: 'loading' });
 
@@ -45,12 +43,8 @@ export function useSumsubSession() {
       setSession({ phase: 'completed' });
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
-      if (kycFlow === 'va') {
-        router.replace(path.CARD_PENDING as any);
-        return;
-      }
-
-      // Sumsub GREEN hands off to Wirex, which then adjudicates. So:
+      // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
+      // hands off to Wirex, which then adjudicates. So:
       //  - APPROVED (Wirex approved) → activate, where the user issues the card.
       //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
       //  - anything else → activate with the status so step 1 renders correctly.
@@ -62,7 +56,7 @@ export function useSumsubSession() {
         router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
       }
     },
-    [kycFlow, queryClient, router],
+    [queryClient, router],
   );
 
   /** Fetch a fresh access token — also used as the WebSDK expiration handler. */
