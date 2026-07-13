@@ -3,6 +3,7 @@ import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
 import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
+import { isProduction } from '@/lib/config';
 
 type BridgeToken = {
   name?: string;
@@ -25,6 +26,27 @@ type BridgeTokens = {
     bridgeSpeed?: number;
   };
 };
+
+// Base Sepolia is a testnet, included only outside production (QA/dev) so it
+// never appears in network pickers (deposit to savings, withdraw, etc.) in prod.
+const TESTNET_BRIDGE_TOKENS: BridgeTokens = isProduction
+  ? {}
+  : {
+      [baseSepolia.id]: {
+        tokens: {
+          USDC: {
+            name: 'USDC',
+            address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+            version: '2',
+            isPermit: false,
+          },
+        },
+        name: 'Base Sepolia',
+        icon: require('@/assets/images/base.png'),
+        sort: 3,
+        bridgeSpeed: 2,
+      },
+    };
 
 export const BRIDGE_TOKENS: BridgeTokens = {
   [mainnet.id]: {
@@ -110,20 +132,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     sort: 3,
     bridgeSpeed: 2,
   },
-  [baseSepolia.id]: {
-    tokens: {
-      USDC: {
-        name: 'USDC',
-        address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-        version: '2',
-        isPermit: false,
-      },
-    },
-    name: 'Base Sepolia',
-    icon: require('@/assets/images/base.png'),
-    sort: 3,
-    bridgeSpeed: 2,
-  },
+  ...TESTNET_BRIDGE_TOKENS,
   [arbitrum.id]: {
     tokens: {
       USDC: {
