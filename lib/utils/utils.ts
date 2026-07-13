@@ -7,7 +7,11 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
-import { CARD_DEPOSIT_REQUIRED_COUNTRY, MINIMUM_CARD_DEPOSIT_CENTS } from '@/constants/card';
+import {
+  CARD_DEPOSIT_REQUIRED_COUNTRY,
+  MINIMUM_CARD_DEPOSIT_CENTS,
+  MINIMUM_CARD_DEPOSIT_USD,
+} from '@/constants/card';
 import { path } from '@/constants/path';
 import { refreshToken } from '@/lib/api';
 import {
@@ -400,10 +404,11 @@ export const hasCardStatusWithRainApplication = (
 ): boolean => Boolean(cardStatus?.rainApplicationStatus);
 
 /**
- * Whether the user's residence country requires a minimum card deposit before
- * spending (Bangladesh). Uses the KYC residence country from the backend
- * (`cardStatus.country`), not the IP/manual country, so the rule matches the
- * user's actual `country`.
+ * Whether the user's residence country requires a minimum deposit before they
+ * can proceed with card issuance (Bangladesh). Callers pass the KYC residence
+ * country from the backend (`cardStatus.country`) when available, falling back to
+ * the client-detected/selected country so the gate applies before a card
+ * customer exists (getCardStatus 404s then).
  */
 export const requiresCardDeposit = (country: string | null | undefined): boolean =>
   country?.toUpperCase() === CARD_DEPOSIT_REQUIRED_COUNTRY;
@@ -413,13 +418,20 @@ export const hasMetCardDeposit = (depositedCents: number | null | undefined): bo
   (depositedCents ?? 0) >= MINIMUM_CARD_DEPOSIT_CENTS;
 
 /**
- * Where an active-card user should land. Users from a deposit-required country
- * who haven't met the minimum are kept in the issuance flow (activate page) so
- * they complete the "deposit at least $5" step instead of being sent to an
- * empty, cost-incurring card. Everyone else goes to card details.
+ * Whether the user holds at least the minimum required amount in the savings
+ * (soUSD) vault. This is the gate for the Bangladesh "deposit first" step, which
+ * now happens before any card exists. A small tolerance absorbs quote/rounding
+ * noise so a genuine $5 deposit (soUSD is valued at ≥ $1) reliably qualifies.
  */
-export const getActiveCardRoute = (cardStatus: CardStatusResponse | null | undefined): Href =>
-  requiresCardDeposit(cardStatus?.country) &&
-  !hasMetCardDeposit(cardStatus?.cardCollateralDeposited)
-    ? path.CARD_ACTIVATE
-    : path.CARD_DETAILS;
+export const hasMetSavingsDeposit = (savingsUsd: number | null | undefined): boolean =>
+  (savingsUsd ?? 0) >= MINIMUM_CARD_DEPOSIT_USD - 0.1;
+
+/**
+ * Where an active-card user should land: always card details. Bangladesh's
+ * minimum-deposit gate now runs BEFORE card issuance (into savings), so anyone
+ * who already holds a card has cleared it — there's no reason to bounce them
+ * back to the issuance flow. Moving savings onto the card stays available on the
+ * details page via "Deposit to card".
+ */
+export const getActiveCardRoute = (_cardStatus?: CardStatusResponse | null): Href =>
+  path.CARD_DETAILS;

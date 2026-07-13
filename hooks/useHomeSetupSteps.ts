@@ -38,8 +38,11 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
   const { steps: cardSteps } = useCardSteps(cardStatus?.kycStatus, cardStatus);
 
   return useMemo(() => {
-    const kycStep = cardSteps[0];
-    const cardStep = cardSteps[1];
+    // Look these up by key, not index: for deposit-required (BD) users the card
+    // flow now leads with a "deposit first" step, so KYC/activate aren't at
+    // fixed positions anymore.
+    const kycStep = cardSteps.find(step => step.key === 'kyc');
+    const cardStep = cardSteps.find(step => step.key === 'activate');
 
     const openDeposit = () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
 

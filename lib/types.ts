@@ -468,13 +468,14 @@ export interface CardStatusResponse {
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Drives the
-   * country-specific issuance steps (the Bangladesh minimum-deposit step).
+   * country-specific issuance steps (the Bangladesh deposit-first step).
    */
   country?: string;
   /**
-   * Total Rain collateral the user has deposited to their card, in cents. Only
-   * populated for countries that require a minimum card deposit (Bangladesh),
-   * so the UI can mark the "deposit at least $5" step complete.
+   * Total Rain collateral the user has deposited to their card, in cents. The
+   * Bangladesh deposit-first step now completes from the savings (soUSD) balance
+   * instead; this remains as a backward-compatible fallback so users who funded
+   * a card under the old flow still count as having met the deposit.
    */
   cardCollateralDeposited?: number;
 }

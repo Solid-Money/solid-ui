@@ -28,7 +28,9 @@ export function CardActivationStepsList({
         <CardActivationStep
           key={step.id}
           step={
-            isCardPending && step.id === 2 ? { ...step, buttonText: 'Card creation pending' } : step
+            isCardPending && step.key === 'activate'
+              ? { ...step, buttonText: 'Card creation pending' }
+              : step
           }
           index={index}
           totalSteps={steps.length}

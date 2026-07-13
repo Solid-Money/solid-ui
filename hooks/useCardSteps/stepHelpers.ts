@@ -36,12 +36,14 @@ export function buildCardSteps(
     kycStatus?: KycStatus | null;
     kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
-    /** KYC residence country (ISO alpha-2); enables the BD minimum-deposit step. */
+    /** Residence country (ISO alpha-2); enables the BD minimum-deposit step. */
     country?: string | null;
-    /** Total collateral deposited to the card, in cents (BD users). */
+    /** Total collateral deposited to the card, in cents (legacy BD card-fund flow). */
     cardCollateralDeposited?: number | null;
-    /** Opens the existing "deposit to card" popup. */
-    openDepositModal?: () => void;
+    /** Whether the user holds at least the $5 minimum in the savings (soUSD) vault. */
+    savingsDepositMet?: boolean;
+    /** Opens the deposit-to-savings (soUSD) flow used by the BD first step. */
+    openSavingsDepositModal?: () => void;
   },
 ): Step[] {
   const stepOptions =
@@ -74,48 +76,66 @@ export function buildCardSteps(
       ? options.handleRainKYCPress
       : handleProceedToKyc;
 
-  // Bangladesh users must fund their card with a minimum collateral deposit
-  // before spending. The step is inserted after "Activate your card" and is
-  // marked complete from the summed positive Rain collateral the backend returns.
+  // Bangladesh users must deposit before they can start KYC or activate a card,
+  // so this step is placed FIRST — ahead of KYC and activation. That way we
+  // never pay for a Didit/Rain KYC or issue a card for someone who hasn't funded
+  // anything. No card exists at this point, so the money goes into the savings
+  // (soUSD) vault; the user moves it onto the card later via "Deposit to card".
+  // The step completes once the savings minimum is met and stays complete
+  // afterwards (card activated, or legacy card collateral funded) so later
+  // moving funds out to the card doesn't reopen it.
   const showDepositStep = requiresCardDeposit(options?.country);
-  const cardDepositMet = hasMetCardDeposit(options?.cardCollateralDeposited);
+  const depositMet =
+    Boolean(options?.savingsDepositMet) ||
+    cardActivated ||
+    hasMetCardDeposit(options?.cardCollateralDeposited);
 
-  const steps: Omit<Step, 'id'>[] = [
-    {
-      title: 'Complete KYC',
-      description,
-      completed: isKycComplete || cardActivated,
-      status: isKycComplete || cardActivated ? 'completed' : 'pending',
-      endorsementStatus: cardsEndorsement?.status,
-      buttonText,
-      onPress: isButtonDisabled ? undefined : kycStepOnPress,
-    },
-    {
-      title: 'Activate your card',
-      description: orderCardDesc,
-      completed: cardActivated,
-      status: cardActivated ? 'completed' : 'pending',
-      buttonText: activationBlocked || !isKycComplete ? undefined : 'Activate card',
-      onPress: activationBlocked || !isKycComplete ? undefined : pushCardReady,
-    },
-  ];
+  const kycStep: Omit<Step, 'id'> = {
+    key: 'kyc',
+    title: 'Complete KYC',
+    description,
+    completed: isKycComplete || cardActivated,
+    status: isKycComplete || cardActivated ? 'completed' : 'pending',
+    endorsementStatus: cardsEndorsement?.status,
+    buttonText,
+    onPress: isButtonDisabled ? undefined : kycStepOnPress,
+  };
+
+  const activateStep: Omit<Step, 'id'> = {
+    key: 'activate',
+    title: 'Activate your card',
+    description: orderCardDesc,
+    completed: cardActivated,
+    status: cardActivated ? 'completed' : 'pending',
+    buttonText: activationBlocked || !isKycComplete ? undefined : 'Activate card',
+    onPress: activationBlocked || !isKycComplete ? undefined : pushCardReady,
+  };
+
+  const steps: Omit<Step, 'id'>[] = [];
 
   if (showDepositStep) {
     steps.push({
+      key: 'deposit',
       title: `Deposit at least $${MINIMUM_CARD_DEPOSIT_USD}`,
-      description: cardDepositMet
-        ? 'Your card is funded — you’re ready to spend.'
-        : `Add at least $${MINIMUM_CARD_DEPOSIT_USD} to your card to start spending.`,
-      completed: cardDepositMet,
-      status: cardDepositMet ? 'completed' : 'pending',
-      // A card must be activated before it can be funded, so only offer the
-      // deposit action once step 2 is done and the minimum isn't met yet.
-      buttonText: cardActivated && !cardDepositMet ? 'Deposit' : undefined,
-      onPress: cardActivated && !cardDepositMet ? options?.openDepositModal : undefined,
+      description: depositMet
+        ? `Your $${MINIMUM_CARD_DEPOSIT_USD}+ is safe in savings (soUSD). When your card is ready you can move it over with “Deposit to card”.`
+        : `Add at least $${MINIMUM_CARD_DEPOSIT_USD} to continue. Your card isn’t created yet, so these funds go into your savings vault (soUSD) — not onto the card. Once the card is ready you can move them over anytime with “Deposit to card”.`,
+      completed: depositMet,
+      status: depositMet ? 'completed' : 'pending',
+      // Deposits go to savings, which needs no card, so the action is available
+      // immediately (unlike the old step, which could only fund an issued card).
+      buttonText: depositMet ? undefined : 'Deposit',
+      onPress: depositMet ? undefined : options?.openSavingsDepositModal,
     });
   }
 
+  // KYC and activation follow the deposit gate. Sequential step navigation
+  // (useStepNavigation) only enables a step's button once every preceding step
+  // is complete, so placing deposit first blocks KYC/activation until it's met.
+  steps.push(kycStep, activateStep);
+
   steps.push({
+    key: 'spend',
     title: 'Start spending :)',
     description: 'Congratulations! your card is ready',
     buttonText: 'To the card',
@@ -124,8 +144,8 @@ export function buildCardSteps(
     onPress: pushCardDetails,
   });
 
-  // Number steps by position so the indicator shows 1..N sequentially and the
-  // activate step stays id 2 (used by the "Card creation pending" override).
+  // Number steps by position so the indicator shows 1..N sequentially. Consumers
+  // that need a specific step key off `key`, not `id`.
   return steps.map((step, index) => ({ ...step, id: index + 1 }));
 }
 
