@@ -76,6 +76,7 @@
     "@rn-primitives/types": "^1.2.0",
     "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
+    "@sumsub/react-native-mobilesdk-module": "^1.44.1",
     "@sumsub/websdk": "^2.3.7",
     "@tanstack/react-query": "^5.90.21",
     "@thirdweb-dev/react-native-adapter": "^1.5.5",
