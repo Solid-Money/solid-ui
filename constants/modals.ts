@@ -202,6 +202,10 @@ export const UNSTAKE_MODAL = {
     name: 'open_token_selector',
     number: 6,
   },
+  OPEN_VAULT_SELECTOR: {
+    name: 'open_vault_selector',
+    number: 0.5,
+  },
 };
 
 export const SWAP_MODAL = {

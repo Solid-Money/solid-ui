@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
-import { isSolidTokenSymbol } from '@/constants/withdraw';
+import { getVaultKey, isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
 import useUser from '@/hooks/useUser';
@@ -37,21 +37,29 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 const RegularWithdrawForm = () => {
   const { user } = useUser();
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { selectedToken, setModal, setTransaction, setSelectedToken } = useUnstakeStore(
-    useShallow(state => ({
-      selectedToken: state.selectedToken,
-      setModal: state.setModal,
-      setTransaction: state.setTransaction,
-      setSelectedToken: state.setSelectedToken,
-    })),
-  );
+  const { selectedToken, selectedVault, setModal, setTransaction, setSelectedToken } =
+    useUnstakeStore(
+      useShallow(state => ({
+        selectedToken: state.selectedToken,
+        selectedVault: state.selectedVault,
+        setModal: state.setModal,
+        setTransaction: state.setTransaction,
+        setSelectedToken: state.setSelectedToken,
+      })),
+    );
 
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
-  // Filter for withdraw vault tokens (soUSD, soFUSE, fusdc) and sort by USD value
+  // Tokens belonging to the vault being withdrawn (scoped to the vault the user
+  // picked on the selection screen), sorted by USD value. These back the
+  // network dropdown so it only switches network within the same vault.
   const sortedTokens = useMemo(() => {
     const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
-    const vaultTokens = allTokens.filter(token => isSolidTokenSymbol(token.contractTickerSymbol));
+    const vaultTokens = allTokens.filter(token => {
+      if (!isSolidTokenSymbol(token.contractTickerSymbol)) return false;
+      if (selectedVault) return getVaultKey(token.contractTickerSymbol) === selectedVault;
+      return true;
+    });
     return vaultTokens.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -61,11 +69,26 @@ const RegularWithdrawForm = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, baseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens, selectedVault]);
 
-  // Auto-select the first token if no token is selected
+  // The vault only shows a network dropdown when the user holds it on more than
+  // one network (e.g. soUSD on both Fuse and Ethereum).
+  const hasMultipleNetworks = useMemo(
+    () => new Set(sortedTokens.map(token => token.chainId)).size > 1,
+    [sortedTokens],
+  );
+
+  // Keep a valid token selected for the vault: pick the highest-value one
+  // whenever the current selection is missing or belongs to another vault.
   useEffect(() => {
-    if (!selectedToken && sortedTokens.length > 0) {
+    const isInVault =
+      selectedToken &&
+      sortedTokens.some(
+        token =>
+          token.contractAddress === selectedToken.contractAddress &&
+          token.chainId === selectedToken.chainId,
+      );
+    if (!isInVault && sortedTokens.length > 0) {
       setSelectedToken(sortedTokens[0]);
     }
   }, [selectedToken, sortedTokens, setSelectedToken]);
@@ -180,11 +203,16 @@ const RegularWithdrawForm = () => {
   const isWithdrawSoFuseLoading = withdrawSoFuseStatus === Status.PENDING;
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
-  // Determine token type and chain
-  const isSoUSDOnFuse = !isSoFuse && !isSoEth && selectedToken?.chainId === 122;
-  const isSoUSDOnEthereum = !isSoFuse && !isSoEth && selectedToken?.chainId === 1;
-  const isSoETHOnFuse = isSoEth && selectedToken?.chainId === 122;
-  const isSoETHOnEthereum = isSoEth && selectedToken?.chainId === 1;
+  // Bridging vaults (soUSD, soETH) always render both steps. A token held on
+  // Fuse starts on step 1 (bridge); a token already on Ethereum jumps to step 2
+  // (withdraw). soFUSE has no bridge and keeps its single-step layout.
+  const isUsdVault = !isSoFuse && !isSoEth;
+  const isEthVault = isSoEth;
+  const isOnEthereum = selectedToken?.chainId === 1;
+
+  useEffect(() => {
+    setActiveStep(isOnEthereum ? 2 : 1);
+  }, [isOnEthereum]);
 
   const balanceUSD = useMemo(() => {
     if (!selectedToken) return 0;
@@ -384,7 +412,11 @@ const RegularWithdrawForm = () => {
               <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
             </View>
 
-            <WalletTokenButton selectedToken={selectedToken} onPress={handleTokenSelectorPress} />
+            <WalletTokenButton
+              selectedToken={selectedToken}
+              onPress={handleTokenSelectorPress}
+              disabled={!hasMultipleNetworks}
+            />
           </View>
           {errors.amount && (
             <Text className="text-sm text-red-400">{errors.amount.message as string}</Text>
@@ -470,7 +502,7 @@ const RegularWithdrawForm = () => {
                 )}
               </Button>
             </View>
-          ) : isSoUSDOnFuse ? (
+          ) : isUsdVault ? (
             <>
               {/* Step 1: Bridge to Ethereum */}
               <View className="px-5 py-6 md:p-5">
@@ -560,8 +592,17 @@ const RegularWithdrawForm = () => {
                       ? 'web:disabled:hover:bg-white/10'
                       : 'web:disabled:hover:bg-brand',
                   )}
-                  onPress={() => onSwapSubmit({ amount: watchedAmount })}
-                  disabled={activeStep !== 2 || !watchedAmount || isWithdrawLoading}
+                  onPress={
+                    isOnEthereum
+                      ? handleSubmit(onSwapSubmit)
+                      : () => onSwapSubmit({ amount: watchedAmount })
+                  }
+                  disabled={
+                    activeStep !== 2 ||
+                    !watchedAmount ||
+                    isWithdrawLoading ||
+                    (isOnEthereum && !isBridgeValid)
+                  }
                 >
                   {isWithdrawLoading ? (
                     <ActivityIndicator color="black" />
@@ -589,45 +630,7 @@ const RegularWithdrawForm = () => {
                 </Button>
               </View>
             </>
-          ) : isSoUSDOnEthereum ? (
-            /* Swap to USDC (Ethereum) */
-            <View className="px-5 py-6 md:p-5">
-              <View className="mb-4 flex-row items-center gap-3">
-                <View className="flex-1 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <RenderTokenIcon
-                      tokenIcon={getTokenIcon({
-                        tokenSymbol: 'USDC',
-                        size: 22,
-                      })}
-                      size={22}
-                    />
-                    <Text className="text-base font-bold text-white">Withdraw to USDC</Text>
-                  </View>
-                  <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
-                </View>
-              </View>
-              <Button
-                variant="brand"
-                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
-                onPress={handleSubmit(onSwapSubmit)}
-                disabled={isWithdrawFormDisabled() || isWithdrawLoading}
-              >
-                {isWithdrawLoading ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <View className="flex-row items-center gap-2">
-                    <Image
-                      source={require('@/assets/images/key.png')}
-                      className="h-6 w-6"
-                      contentFit="contain"
-                    />
-                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
-                  </View>
-                )}
-              </Button>
-            </View>
-          ) : isSoETHOnFuse ? (
+          ) : isEthVault ? (
             <>
               {/* Step 1: Bridge soETH to Ethereum */}
               <View className="px-5 py-6 md:p-5">
@@ -717,8 +720,17 @@ const RegularWithdrawForm = () => {
                       ? 'web:disabled:hover:bg-white/10'
                       : 'web:disabled:hover:bg-brand',
                   )}
-                  onPress={() => onWithdrawSoEthSubmit({ amount: watchedAmount })}
-                  disabled={activeStep !== 2 || !watchedAmount || isWithdrawSoEthLoading}
+                  onPress={
+                    isOnEthereum
+                      ? handleSubmit(onWithdrawSoEthSubmit)
+                      : () => onWithdrawSoEthSubmit({ amount: watchedAmount })
+                  }
+                  disabled={
+                    activeStep !== 2 ||
+                    !watchedAmount ||
+                    isWithdrawSoEthLoading ||
+                    (isOnEthereum && !isBridgeValid)
+                  }
                 >
                   {isWithdrawSoEthLoading ? (
                     <ActivityIndicator color="black" />
@@ -746,44 +758,6 @@ const RegularWithdrawForm = () => {
                 </Button>
               </View>
             </>
-          ) : isSoETHOnEthereum ? (
-            /* Withdraw soETH to WETH (Ethereum) */
-            <View className="px-5 py-6 md:p-5">
-              <View className="mb-4 flex-row items-center gap-3">
-                <View className="flex-1 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <RenderTokenIcon
-                      tokenIcon={getTokenIcon({
-                        tokenSymbol: 'WETH',
-                        size: 22,
-                      })}
-                      size={22}
-                    />
-                    <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
-                  </View>
-                  <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
-                </View>
-              </View>
-              <Button
-                variant="brand"
-                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
-                onPress={handleSubmit(onWithdrawSoEthSubmit)}
-                disabled={isWithdrawFormDisabled() || isWithdrawSoEthLoading}
-              >
-                {isWithdrawSoEthLoading ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <View className="flex-row items-center gap-2">
-                    <Image
-                      source={require('@/assets/images/key.png')}
-                      className="h-6 w-6"
-                      contentFit="contain"
-                    />
-                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
-                  </View>
-                )}
-              </Button>
-            </View>
           ) : null}
         </TokenDetails>
         <View className="mt-2 flex-row items-center justify-center gap-2 pb-16">

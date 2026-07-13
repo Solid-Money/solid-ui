@@ -44,7 +44,7 @@ const DefaultUnstakeTrigger = ({ buttonText = 'Withdraw' }: { buttonText?: strin
 const UnstakeModal = ({
   trigger,
   buttonText = 'Withdraw',
-  modal = UNSTAKE_MODAL.OPEN_OPTIONS,
+  modal = UNSTAKE_MODAL.OPEN_VAULT_SELECTOR,
 }: UnstakeModalProps) => {
   const setModal = useUnstakeStore(state => state.setModal);
 
