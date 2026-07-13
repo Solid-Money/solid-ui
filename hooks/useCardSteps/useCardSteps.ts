@@ -3,9 +3,10 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBalances } from '@/hooks/useBalances';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
@@ -13,9 +14,9 @@ import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
+import { hasMetSavingsDeposit, withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 // Import helpers
@@ -104,12 +105,18 @@ export function useCardSteps(
   const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
     useCardActivation(router);
 
-  // Opens the existing "deposit to card" popup (used by the BD minimum-deposit step).
-  const setCardDepositModal = useCardDepositStore(state => state.setModal);
-  const openDepositModal = useCallback(
-    () => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM),
-    [setCardDepositModal],
+  // Opens the deposit-to-savings (soUSD) flow used by the BD "deposit first"
+  // step. The global DepositModalProvider is mounted app-wide, so this works
+  // from the card activation screen without mounting a modal locally.
+  const openSavingsDepositModal = useCallback(
+    () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS),
+    [],
   );
+
+  // The BD minimum-deposit step now completes from the savings (soUSD) balance,
+  // not card collateral — the card doesn't exist yet when the deposit happens.
+  const { totalSoUSD } = useBalances();
+  const savingsDepositMet = hasMetSavingsDeposit(totalSoUSD);
 
   // Sync card activation state with server
   useEffect(() => {
@@ -267,9 +274,13 @@ export function useCardSteps(
           kycStatus: cardStatusResponse?.kycStatus,
           kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
-          country: cardStatusResponse?.country,
+          // Prefer the KYC residence country from the backend, but fall back to
+          // the client-detected/selected country so the deposit step shows for a
+          // BD user before they have a card customer (getCardStatus 404s then).
+          country: cardStatusResponse?.country ?? countryStore.countryInfo?.countryCode,
           cardCollateralDeposited: cardStatusResponse?.cardCollateralDeposited,
-          openDepositModal,
+          savingsDepositMet,
+          openSavingsDepositModal,
         },
       ),
     [
@@ -283,12 +294,14 @@ export function useCardSteps(
       cardStatusResponse?.kycWarnings,
       cardStatusResponse?.country,
       cardStatusResponse?.cardCollateralDeposited,
+      countryStore.countryInfo?.countryCode,
+      savingsDepositMet,
       handleProceedToKyc,
       pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,
-      openDepositModal,
+      openSavingsDepositModal,
     ],
   );
 
