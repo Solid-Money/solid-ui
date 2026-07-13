@@ -424,7 +424,7 @@ export const hasMetCardDeposit = (depositedCents: number | null | undefined): bo
  * noise so a genuine $5 deposit (soUSD is valued at ≥ $1) reliably qualifies.
  */
 export const hasMetSavingsDeposit = (savingsUsd: number | null | undefined): boolean =>
-  (savingsUsd ?? 0) >= MINIMUM_CARD_DEPOSIT_USD - 0.1;
+  (savingsUsd ?? 0) >= MINIMUM_CARD_DEPOSIT_USD - 0.8;
 
 /**
  * Where an active-card user should land: always card details. Bangladesh's
