@@ -29,6 +29,8 @@ const CompareTiersTable = ({ tierBenefits }: CompareTiersTableProps) => {
       label: 'Subscription discounts',
       subtitle: 'On eligible subscription categories',
       values: sortedTiers.map(tier => tier.subscriptionDiscount),
+      isComingSoon: true,
+      isSubtitleHidden: true,
     },
   ];
 
