@@ -110,20 +110,20 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     sort: 3,
     bridgeSpeed: 2,
   },
-  [baseSepolia.id]: {
-    tokens: {
-      USDC: {
-        name: 'USDC',
-        address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-        version: '2',
-        isPermit: false,
-      },
-    },
-    name: 'Base Sepolia',
-    icon: require('@/assets/images/base.png'),
-    sort: 3,
-    bridgeSpeed: 2,
-  },
+  // [baseSepolia.id]: {
+  //   tokens: {
+  //     USDC: {
+  //       name: 'USDC',
+  //       address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+  //       version: '2',
+  //       isPermit: false,
+  //     },
+  //   },
+  //   name: 'Base Sepolia',
+  //   icon: require('@/assets/images/base.png'),
+  //   sort: 3,
+  //   bridgeSpeed: 2,
+  // },
   [arbitrum.id]: {
     tokens: {
       USDC: {
