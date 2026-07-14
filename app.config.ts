@@ -67,6 +67,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
     supportsTablet: false,
     bundleIdentifier: 'app.solid.xyz',
+    // Used by expo-store-review (StoreReview.storeUrl / hasAction) as the App Store listing.
+    appStoreUrl: 'https://apps.apple.com/app/id6758618401',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
@@ -131,6 +133,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#94F27F',
     },
     package: 'xyz.solid.android',
+    // Used by expo-store-review (StoreReview.storeUrl / hasAction) as the Play Store listing.
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=xyz.solid.android',
     splash: {
       image: './assets/splash/splash-icon.png',
       resizeMode: 'contain',
