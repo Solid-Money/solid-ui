@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { KycProvider } from '@/lib/types';
 
-export type KycFlow = 'card' | 'va';
+export type KycFlow = 'card' | 'va' | 'transfi';
 
 interface KycState {
   kycLinkId: string | null;

@@ -106,6 +106,11 @@ import {
   ToCurrency,
   TokenPriceUsd,
   TotalAPYResponse,
+  TransfiCreateOrderResponse,
+  TransfiOrderStatusResponse,
+  TransfiPaymentConfig,
+  TransfiQuote,
+  TransfiStatusResponse,
   UpdateActivityEvent,
   User,
   VaultBreakdown,
@@ -1087,6 +1092,89 @@ export const createOnrampAutomation = async (
 
   if (!response.ok) throw response;
 
+  return response.json();
+};
+
+// -----------------------------------------------------------------------------
+// TransFi buy-crypto onramp
+// -----------------------------------------------------------------------------
+
+const transfiHeaders = () => {
+  const jwt = getJWTToken();
+  return {
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/** Buy-crypto gating status: ready | can_share | needs_kyc | pending | rejected. */
+export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/status`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Forward the user's approved Didit KYC to TransFi (after consent). */
+export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/share`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Local currency, USDC token, and available payment methods for the amount screen. */
+export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Onramp quote for a USDC amount (fiat cost + fees + limits). */
+export const getTransfiQuote = async (
+  amount: string,
+  paymentCode?: string,
+): Promise<TransfiQuote> => {
+  const params = new URLSearchParams({ amount });
+  if (paymentCode) params.set('paymentCode', paymentCode);
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Create an onramp order; returns the hosted payUrl. Throws Response 412 if KYC incomplete. */
+export const createTransfiOrder = async (
+  usdcAmount: string,
+  paymentCode: string,
+): Promise<TransfiCreateOrderResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify({ usdcAmount, paymentCode }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Poll a TransFi order's status. */
+export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStatusResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
   return response.json();
 };
 

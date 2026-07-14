@@ -1836,7 +1836,77 @@ export interface EnsureWebhookResponse {
   message: string;
 }
 
-export type DepositMethod = 'wallet' | 'deposit_directly' | 'credit_card' | 'bank_transfer';
+export type DepositMethod =
+  | 'wallet'
+  | 'deposit_directly'
+  | 'credit_card'
+  | 'bank_transfer'
+  | 'buy_crypto';
+
+// -----------------------------------------------------------------------------
+// TransFi buy-crypto onramp
+// -----------------------------------------------------------------------------
+
+/** Buy-crypto gating status returned by GET /accounts/v1/transfi/status. */
+export type TransfiBuyCryptoStatus = 'ready' | 'can_share' | 'needs_kyc' | 'pending' | 'rejected';
+
+export interface TransfiStatusResponse {
+  status: TransfiBuyCryptoStatus;
+  transfiKycStatus?: string;
+  reasons?: string[];
+}
+
+export interface TransfiPaymentMethodOption {
+  paymentCode: string;
+  paymentName?: string;
+  paymentType?: string;
+  logo?: string;
+}
+
+export interface TransfiPaymentConfig {
+  fiatCurrency: string;
+  tokenSymbol: string;
+  tokenLogo?: string;
+  paymentMethods: TransfiPaymentMethodOption[];
+}
+
+export interface TransfiQuote {
+  fiatCurrency: string;
+  cryptoCurrency: string;
+  usdcAmount: string;
+  paymentCode: string;
+  exchangeRate?: number;
+  totalFee?: number;
+  fiatAmount?: number;
+  minLimit?: number;
+  maxLimit?: number;
+}
+
+export interface TransfiFeeData {
+  depositAmount?: number;
+  withdrawAmount?: number;
+  exchangeRate?: number;
+  totalFee?: number;
+  [key: string]: unknown;
+}
+
+export interface TransfiCreateOrderResponse {
+  orderId: string;
+  payUrl?: string;
+  status: string;
+  feeData?: TransfiFeeData;
+}
+
+export type TransfiOrderPhase = 'pending_payment' | 'processing' | 'completed' | 'failed';
+
+export interface TransfiOrderStatusResponse {
+  orderId: string;
+  status: string;
+  phase: TransfiOrderPhase;
+  usdcAmount: string;
+  fiatCurrency: string;
+  feeData?: TransfiFeeData;
+}
 
 export interface VaultDepositConfig {
   methods: DepositMethod[];
