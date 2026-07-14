@@ -9,10 +9,12 @@ import { BankTransferModalContent } from '@/components/BankTransfer/BankTransfer
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
+import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
 import { TransfiKycConsent } from '@/components/BuyCrypto/Transfi/TransfiKycConsent';
 import { TransfiKycPending } from '@/components/BuyCrypto/Transfi/TransfiKycPending';
 import { TransfiOrderStatus } from '@/components/BuyCrypto/Transfi/TransfiOrderStatus';
 import { TransfiPayment } from '@/components/BuyCrypto/Transfi/TransfiPayment';
+import { TransfiPaymentMethodSelector } from '@/components/BuyCrypto/Transfi/TransfiPaymentMethodSelector';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
@@ -138,6 +140,9 @@ const useDepositOption = ({
   const isBuyCryptoKycPending =
     currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING.name;
   const isBuyCryptoAmount = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT.name;
+  const isBuyCryptoCurrency = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY.name;
+  const isBuyCryptoPaymentMethod =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD.name;
   const isBuyCryptoPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT.name;
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
@@ -273,6 +278,14 @@ const useDepositOption = ({
       return <TransfiAmount />;
     }
 
+    if (isBuyCryptoCurrency) {
+      return <TransfiCurrencySelector />;
+    }
+
+    if (isBuyCryptoPaymentMethod) {
+      return <TransfiPaymentMethodSelector />;
+    }
+
     if (isBuyCryptoPayment) {
       return <TransfiPayment />;
     }
@@ -339,6 +352,8 @@ const useDepositOption = ({
     if (isBuyCryptoKycConsent) return 'buy-crypto-kyc-consent';
     if (isBuyCryptoKycPending) return 'buy-crypto-kyc-pending';
     if (isBuyCryptoAmount) return 'buy-crypto-amount';
+    if (isBuyCryptoCurrency) return 'buy-crypto-currency';
+    if (isBuyCryptoPaymentMethod) return 'buy-crypto-payment-method';
     if (isBuyCryptoPayment) return 'buy-crypto-payment';
     if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isPublicAddress) return 'public-address';
@@ -368,6 +383,8 @@ const useDepositOption = ({
     if (isBuyCryptoKycConsent) return 'Verify to continue';
     if (isBuyCryptoKycPending) return 'Verifying';
     if (isBuyCryptoAmount) return 'Buy crypto';
+    if (isBuyCryptoCurrency) return 'Select currency';
+    if (isBuyCryptoPaymentMethod) return 'Payment method';
     if (isBuyCryptoPayment) return 'Complete payment';
     if (isBuyCryptoStatus) return 'Order status';
     if (isPublicAddress) return 'Your Solid address';
@@ -391,7 +408,14 @@ const useDepositOption = ({
     if (isBuyCrypto || isBuyCryptoPayment) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
-    if (isBuyCryptoAmount || isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoStatus) {
+    if (
+      isBuyCryptoAmount ||
+      isBuyCryptoCurrency ||
+      isBuyCryptoPaymentMethod ||
+      isBuyCryptoKycConsent ||
+      isBuyCryptoKycPending ||
+      isBuyCryptoStatus
+    ) {
       return 'w-[470px] max-h-[90vh]';
     }
     if (isBankTransferKycFrame) {
@@ -625,6 +649,8 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoStatus) {

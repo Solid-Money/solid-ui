@@ -7,6 +7,7 @@ const DEFAULT_METHODS: DepositMethod[] = [
   'deposit_directly',
   'credit_card',
   'bank_transfer',
+  'buy_crypto',
 ];
 
 const ALL_SUPPORTED_CHAINS = Object.keys(BRIDGE_TOKENS).map(Number);

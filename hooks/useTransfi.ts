@@ -4,6 +4,7 @@ import {
   createTransfiOrder,
   getTransfiOrder,
   getTransfiPaymentConfig,
+  getTransfiPaymentMethods,
   getTransfiQuote,
   getTransfiStatus,
   shareTransfiKyc,
@@ -12,6 +13,7 @@ import { withRefreshToken } from '@/lib/utils';
 
 export const TRANSFI_STATUS_KEY = 'transfiStatus';
 export const TRANSFI_PAYMENT_CONFIG_KEY = 'transfiPaymentConfig';
+export const TRANSFI_PAYMENT_METHODS_KEY = 'transfiPaymentMethods';
 export const TRANSFI_QUOTE_KEY = 'transfiQuote';
 export const TRANSFI_ORDER_KEY = 'transfiOrder';
 
@@ -52,13 +54,28 @@ export function useTransfiPaymentConfig(enabled = true) {
   });
 }
 
-/** Live quote for the entered USDC amount + selected payment method. */
-export function useTransfiQuote(amount: string, paymentCode?: string, enabled = true) {
+/** Payment methods for the selected fiat currency; refetches when it changes. */
+export function useTransfiPaymentMethods(currency?: string) {
+  return useQuery({
+    queryKey: [TRANSFI_PAYMENT_METHODS_KEY, currency],
+    queryFn: () => withRefreshToken(() => getTransfiPaymentMethods(currency as string)),
+    enabled: Boolean(currency),
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Live quote for the entered USDC amount + selected currency/payment method. */
+export function useTransfiQuote(
+  amount: string,
+  currency?: string,
+  paymentCode?: string,
+  enabled = true,
+) {
   const numeric = Number(amount);
   return useQuery({
-    queryKey: [TRANSFI_QUOTE_KEY, amount, paymentCode],
-    queryFn: () => withRefreshToken(() => getTransfiQuote(amount, paymentCode)),
-    enabled: enabled && Number.isFinite(numeric) && numeric > 0,
+    queryKey: [TRANSFI_QUOTE_KEY, amount, currency, paymentCode],
+    queryFn: () => withRefreshToken(() => getTransfiQuote(amount, currency, paymentCode)),
+    enabled: enabled && Boolean(currency) && Number.isFinite(numeric) && numeric > 0,
     retry: 1,
   });
 }
@@ -68,11 +85,15 @@ export function useCreateTransfiOrder() {
     mutationFn: async ({
       usdcAmount,
       paymentCode,
+      currency,
     }: {
       usdcAmount: string;
       paymentCode: string;
+      currency?: string;
     }) => {
-      const data = await withRefreshToken(() => createTransfiOrder(usdcAmount, paymentCode));
+      const data = await withRefreshToken(() =>
+        createTransfiOrder(usdcAmount, paymentCode, currency),
+      );
       if (!data) throw new Error('Failed to create TransFi order');
       return data;
     },

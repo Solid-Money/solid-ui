@@ -104,6 +104,14 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_amount',
     number: 23,
   },
+  OPEN_BUY_CRYPTO_CURRENCY: {
+    name: 'open_buy_crypto_currency',
+    number: 23.3,
+  },
+  OPEN_BUY_CRYPTO_PAYMENT_METHOD: {
+    name: 'open_buy_crypto_payment_method',
+    number: 23.6,
+  },
   OPEN_BUY_CRYPTO_PAYMENT: {
     name: 'open_buy_crypto_payment',
     number: 24,

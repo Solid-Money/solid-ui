@@ -6,6 +6,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getTransfiStatus } from '@/lib/api';
+import { EXPO_PUBLIC_TRANSFI_SKIP_KYC } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -34,6 +35,13 @@ export const useBuyCryptoEntry = () => {
   const handleBuyCryptoPress = useCallback(async () => {
     if (isChecking) return;
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'buy_crypto' });
+
+    // Sandbox override: skip the status check and the KYC flow entirely.
+    if (EXPO_PUBLIC_TRANSFI_SKIP_KYC) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+      return;
+    }
+
     setIsChecking(true);
     try {
       const status = await withRefreshToken(() => getTransfiStatus());
@@ -53,8 +61,10 @@ export const useBuyCryptoEntry = () => {
           startKyc();
           break;
       }
-    } catch {
-      // On any error fall back to the identity flow so the user isn't stuck.
+    } catch (err) {
+      // Surface the failure (missing route / auth / network) instead of
+      // silently sending the user to KYC, then fall back to the identity flow.
+      console.error('TransFi status check failed:', err);
       startKyc();
     } finally {
       setIsChecking(false);

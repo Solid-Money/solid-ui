@@ -109,6 +109,7 @@ import {
   TransfiCreateOrderResponse,
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
+  TransfiPaymentMethodOption,
   TransfiQuote,
   TransfiStatusResponse,
   UpdateActivityEvent,
@@ -1128,7 +1129,7 @@ export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
   return response.json();
 };
 
-/** Local currency, USDC token, and available payment methods for the amount screen. */
+/** Supported currencies, default, and USDC token for the amount screen. */
 export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
@@ -1138,12 +1139,27 @@ export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> =
   return response.json();
 };
 
+/** Payment methods available for a selected fiat currency. */
+export const getTransfiPaymentMethods = async (
+  currency: string,
+): Promise<TransfiPaymentMethodOption[]> => {
+  const params = new URLSearchParams({ currency });
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-methods?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 /** Onramp quote for a USDC amount (fiat cost + fees + limits). */
 export const getTransfiQuote = async (
   amount: string,
+  currency?: string,
   paymentCode?: string,
 ): Promise<TransfiQuote> => {
   const params = new URLSearchParams({ amount });
+  if (currency) params.set('currency', currency);
   if (paymentCode) params.set('paymentCode', paymentCode);
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
@@ -1157,12 +1173,13 @@ export const getTransfiQuote = async (
 export const createTransfiOrder = async (
   usdcAmount: string,
   paymentCode: string,
+  currency?: string,
 ): Promise<TransfiCreateOrderResponse> => {
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
-    body: JSON.stringify({ usdcAmount, paymentCode }),
+    body: JSON.stringify({ usdcAmount, paymentCode, currency }),
   });
   if (!response.ok) throw response;
   return response.json();

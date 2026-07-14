@@ -1861,13 +1861,20 @@ export interface TransfiPaymentMethodOption {
   paymentName?: string;
   paymentType?: string;
   logo?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface TransfiCurrencyOption {
+  currency: string;
+  logoUrl?: string;
 }
 
 export interface TransfiPaymentConfig {
-  fiatCurrency: string;
+  currencies: TransfiCurrencyOption[];
+  defaultCurrency: string;
   tokenSymbol: string;
   tokenLogo?: string;
-  paymentMethods: TransfiPaymentMethodOption[];
 }
 
 export interface TransfiQuote {
