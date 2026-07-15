@@ -27,10 +27,13 @@ function AddFundsToWalletForm({
   destinationAddress,
   minDeposit,
   onSuccess,
+  lockToken = false,
 }: {
   destinationAddress?: string;
   minDeposit?: string;
   onSuccess?: () => void;
+  /** When true, the token is fixed (no selector dropdown) — used by the card deposit flow. */
+  lockToken?: boolean;
 } = {}) {
   const { setModal, setTransaction, srcChainId, principalToken } = useDepositStore(
     useShallow(state => ({
@@ -193,7 +196,8 @@ function AddFundsToWalletForm({
             />
             <View className="shrink-0 flex-row items-center gap-2">
               <Pressable
-                onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                onPress={lockToken ? undefined : () => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                disabled={lockToken}
                 className="flex-row items-center gap-2"
               >
                 <Image
@@ -202,7 +206,7 @@ function AddFundsToWalletForm({
                   style={{ width: 32, height: 32 }}
                 />
                 <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                <ChevronDown size={16} color="#A1A1A1" />
+                {!lockToken && <ChevronDown size={16} color="#A1A1A1" />}
               </Pressable>
             </View>
           </View>

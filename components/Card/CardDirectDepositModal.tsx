@@ -135,8 +135,8 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
   // "Send from wallet" path only — always navigates to the send form.
   const handleNetworkSelect = useCallback(
     (chainId: number) => {
-      const allowedTokens = getAllowedTokensForChain(chainId);
-      const selectedToken = allowedTokens[0] || 'USDC';
+      // Card deposits are USDC-only, so the send form is locked to USDC.
+      const selectedToken = 'USDC';
       const network = BRIDGE_TOKENS[chainId];
 
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
@@ -237,6 +237,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
         <AddFundsToWalletForm
           destinationAddress={depositAddress}
           onSuccess={() => handleOpenChange(false)}
+          lockToken
         />
       ) : (
         <View className="items-center py-12">
