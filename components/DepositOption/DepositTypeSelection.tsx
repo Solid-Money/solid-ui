@@ -16,10 +16,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 const ICON_SIZE = 36;
 const ICON_OVERLAP = 10;
 
-const CASH_FLAG_ICONS = [
-  { key: 'us', source: getAsset('images/us.png') },
-  { key: 'eu', source: getAsset('images/eu.png') },
-];
+const CASH_FLAG_ICONS = [{ key: 'us', source: getAsset('images/us.png') }];
 
 const CRYPTO_CHAIN_ICONS = [
   { key: 'eth', source: getAsset('images/eth.png') },

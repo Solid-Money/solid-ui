@@ -17,7 +17,6 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 const FLAG_SIZE = 88;
-const FLAG_OVERLAP = 28;
 
 const BENEFITS = [
   'A persistent virtual bank account in your name for ACH and Wire deposits.',
@@ -114,54 +113,25 @@ export const VirtualAccountApplyModal = () => {
 
   return (
     <View className="flex-1 gap-6">
-      {/* Flag icons */}
+      {/* Flag icon */}
       <View className="items-center">
         <View
           style={{
-            width: FLAG_SIZE * 2 - FLAG_OVERLAP,
+            width: FLAG_SIZE,
             height: FLAG_SIZE,
-            flexDirection: 'row',
+            borderRadius: FLAG_SIZE / 2,
+            overflow: 'hidden',
+            borderWidth: 2,
+            borderColor: '#101010',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <View
-            style={{
-              width: FLAG_SIZE,
-              height: FLAG_SIZE,
-              borderRadius: FLAG_SIZE / 2,
-              overflow: 'hidden',
-              borderWidth: 2,
-              borderColor: '#101010',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1,
-            }}
-          >
-            <Image
-              source={getAsset('images/us.png')}
-              style={{ width: FLAG_SIZE, height: FLAG_SIZE }}
-              contentFit="cover"
-            />
-          </View>
-          <View
-            style={{
-              width: FLAG_SIZE,
-              height: FLAG_SIZE,
-              borderRadius: FLAG_SIZE / 2,
-              overflow: 'hidden',
-              borderWidth: 2,
-              borderColor: '#101010',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginLeft: -FLAG_OVERLAP,
-              zIndex: 0,
-            }}
-          >
-            <Image
-              source={getAsset('images/eu.png')}
-              style={{ width: FLAG_SIZE, height: FLAG_SIZE }}
-              contentFit="cover"
-            />
-          </View>
+          <Image
+            source={getAsset('images/us.png')}
+            style={{ width: FLAG_SIZE, height: FLAG_SIZE }}
+            contentFit="cover"
+          />
         </View>
       </View>
 
