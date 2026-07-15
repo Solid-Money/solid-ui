@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -33,6 +33,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
+import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
 const RegularWithdrawForm = () => {
   const { user } = useUser();
@@ -47,6 +48,23 @@ const RegularWithdrawForm = () => {
         setSelectedToken: state.setSelectedToken,
       })),
     );
+
+  const { sessions, setSession, clearSession } = useWithdrawSessionStore(
+    useShallow(state => ({
+      sessions: state.sessions,
+      setSession: state.setSession,
+      clearSession: state.clearSession,
+    })),
+  );
+
+  // Unfinished withdraw for the selected vault (bridged in a previous session,
+  // still waiting on the Ethereum-side withdraw). When present, the flow
+  // resumes on step 2 with step 1 disabled and the amount prefilled.
+  const session = useMemo(
+    () => selectWithdrawSession(sessions, selectedVault, user?.safeAddress),
+    [sessions, selectedVault, user?.safeAddress],
+  );
+  const hasPendingSession = !!session;
 
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
@@ -204,15 +222,30 @@ const RegularWithdrawForm = () => {
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Bridging vaults (soUSD, soETH) always render both steps. A token held on
-  // Fuse starts on step 1 (bridge); a token already on Ethereum jumps to step 2
-  // (withdraw). soFUSE has no bridge and keeps its single-step layout.
+  // Fuse starts on step 1 (bridge); a token already on Ethereum — or an
+  // unfinished withdraw resumed from storage — jumps to step 2 (withdraw).
+  // soFUSE has no bridge and keeps its single-step layout.
   const isUsdVault = !isSoFuse && !isSoEth;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
 
   useEffect(() => {
-    setActiveStep(isOnEthereum ? 2 : 1);
-  }, [isOnEthereum]);
+    setActiveStep(hasPendingSession || isOnEthereum ? 2 : 1);
+  }, [hasPendingSession, isOnEthereum]);
+
+  // Prefill the amount from a resumed session once per vault so the user does
+  // not have to re-enter what they already bridged.
+  const prefilledVaultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (session && prefilledVaultRef.current !== session.vault) {
+      prefilledVaultRef.current = session.vault;
+      setValue('amount', session.amount);
+      trigger('amount');
+    }
+    if (!session && selectedVault && prefilledVaultRef.current === selectedVault) {
+      prefilledVaultRef.current = null;
+    }
+  }, [session, selectedVault, setValue, trigger]);
 
   const balanceUSD = useMemo(() => {
     if (!selectedToken) return 0;
@@ -238,6 +271,15 @@ const RegularWithdrawForm = () => {
         amount: Number(data.amount),
         symbol: 'soUSD',
       });
+      if (user?.safeAddress) {
+        setSession({
+          address: user.safeAddress as string,
+          vault: 'USD',
+          amount: data.amount.toString(),
+          destinationSymbol: 'USDC',
+          createdAt: Date.now(),
+        });
+      }
       setActiveStep(2);
     } catch (_error) {
       Toast.show({
@@ -254,6 +296,7 @@ const RegularWithdrawForm = () => {
         amount: Number(watchedAmount),
         symbol: 'soUSD',
       });
+      clearSession('USD');
       reset(); // Reset form after successful transaction
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
@@ -310,6 +353,15 @@ const RegularWithdrawForm = () => {
         amount: Number(data.amount),
         symbol: 'soETH',
       });
+      if (user?.safeAddress) {
+        setSession({
+          address: user.safeAddress as string,
+          vault: 'ETH',
+          amount: data.amount.toString(),
+          destinationSymbol: 'WETH',
+          createdAt: Date.now(),
+        });
+      }
       setActiveStep(2);
     } catch (_error) {
       Toast.show({
@@ -326,6 +378,7 @@ const RegularWithdrawForm = () => {
         amount: Number(watchedAmount),
         symbol: 'soETH',
       });
+      clearSession('ETH');
       reset();
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
@@ -381,7 +434,7 @@ const RegularWithdrawForm = () => {
                     ? '...'
                     : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
-                {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
+                {balanceAmount > 0 && !hasPendingSession && <Max onPress={handleMaxPress} />}
               </View>
             )}
           </View>
@@ -394,6 +447,8 @@ const RegularWithdrawForm = () => {
                   <TextInput
                     className={cn(
                       'flex-1 text-3xl font-semibold text-white web:focus:outline-none',
+                      // Resumed withdraws are locked to the amount already bridged.
+                      hasPendingSession && 'opacity-60',
                     )}
                     placeholder="0.0"
                     placeholderTextColor="#ffffff80"
@@ -402,6 +457,7 @@ const RegularWithdrawForm = () => {
                       onChange(text);
                     }}
                     onBlur={onBlur}
+                    editable={!hasPendingSession}
                     keyboardType="decimal-pad"
                     style={{ minWidth: 80 }}
                     returnKeyType="done"
@@ -591,7 +647,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={
-                    isOnEthereum
+                    isOnEthereum && !hasPendingSession
                       ? handleSubmit(onSwapSubmit)
                       : () => onSwapSubmit({ amount: watchedAmount })
                   }
@@ -599,7 +655,7 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawLoading ||
-                    (isOnEthereum && !isBridgeValid)
+                    (isOnEthereum && !hasPendingSession && !isBridgeValid)
                   }
                 >
                   {isWithdrawLoading ? (
@@ -713,7 +769,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={
-                    isOnEthereum
+                    isOnEthereum && !hasPendingSession
                       ? handleSubmit(onWithdrawSoEthSubmit)
                       : () => onWithdrawSoEthSubmit({ amount: watchedAmount })
                   }
@@ -721,7 +777,7 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawSoEthLoading ||
-                    (isOnEthereum && !isBridgeValid)
+                    (isOnEthereum && !hasPendingSession && !isBridgeValid)
                   }
                 >
                   {isWithdrawSoEthLoading ? (

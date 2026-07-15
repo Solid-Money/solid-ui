@@ -7,10 +7,12 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { SavingsVault, useSavingsVaults } from '@/hooks/useSavingsVaults';
+import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
+import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
 /** Picks the highest-balance token within a vault to pre-select. */
 const bestToken = (vault: SavingsVault): TokenBalance | undefined =>
@@ -29,6 +31,7 @@ const bestToken = (vault: SavingsVault): TokenBalance | undefined =>
  * form so it never flashes.
  */
 const UnstakeVaultSelector: React.FC = () => {
+  const { user } = useUser();
   const { vaults, isLoading } = useSavingsVaults();
   const { setSelectedVault, setSelectedToken, setModal } = useUnstakeStore(
     useShallow(state => ({
@@ -37,6 +40,7 @@ const UnstakeVaultSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
+  const sessions = useWithdrawSessionStore(state => state.sessions);
 
   const handleVaultSelect = useCallback(
     (vault: SavingsVault) => {
@@ -75,22 +79,34 @@ const UnstakeVaultSelector: React.FC = () => {
       <Text className="text-base font-medium opacity-70">Select a vault</Text>
       <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
         <View className="gap-2">
-          {vaults.map(vault => (
-            <Pressable
-              key={vault.key}
-              className="flex-row items-center justify-between rounded-2xl bg-card px-4 py-4 web:hover:bg-accent/50"
-              onPress={() => handleVaultSelect(vault)}
-            >
-              <View className="flex-1 flex-row items-center gap-3">
-                <RenderTokenIcon
-                  tokenIcon={getTokenIcon({ tokenSymbol: vault.meta.iconSymbol, size: 40 })}
-                  size={40}
-                />
-                <Text className="text-lg font-semibold">{vault.meta.displayName}</Text>
-              </View>
-              <Text className="text-lg font-semibold">${formatNumber(vault.balanceUSD, 2)}</Text>
-            </Pressable>
-          ))}
+          {vaults.map(vault => {
+            const hasPendingWithdraw = !!selectWithdrawSession(
+              sessions,
+              vault.key,
+              user?.safeAddress,
+            );
+            return (
+              <Pressable
+                key={vault.key}
+                className="flex-row items-center justify-between rounded-2xl bg-card px-4 py-4 web:hover:bg-accent/50"
+                onPress={() => handleVaultSelect(vault)}
+              >
+                <View className="flex-1 flex-row items-center gap-3">
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({ tokenSymbol: vault.meta.iconSymbol, size: 40 })}
+                    size={40}
+                  />
+                  <View className="flex-1">
+                    <Text className="text-lg font-semibold">{vault.meta.displayName}</Text>
+                    {hasPendingWithdraw && (
+                      <Text className="text-sm font-medium text-brand">Continue withdrawal</Text>
+                    )}
+                  </View>
+                </View>
+                <Text className="text-lg font-semibold">${formatNumber(vault.balanceUSD, 2)}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
