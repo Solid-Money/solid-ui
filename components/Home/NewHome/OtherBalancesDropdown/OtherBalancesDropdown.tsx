@@ -31,7 +31,11 @@ const OtherBalancesDropdown = ({
     <View className="items-center">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <OtherBalancesPill total={total} hasBalance={total > 0} />
+          <OtherBalancesPill
+            total={total}
+            cardValue={userHasCard ? cardBalance : 0}
+            savingsValue={savingsBalance}
+          />
         </DialogTrigger>
         <DialogContent className="gap-1 p-4">
           <DialogTitle className="px-2 pb-1 text-lg text-muted-foreground">Balances</DialogTitle>

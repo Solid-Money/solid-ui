@@ -1,6 +1,5 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 
@@ -11,6 +10,8 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { formatBalanceUSD } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+
+import OtherBalancesPie from './OtherBalancesPie';
 
 /** Data required by both the native and web "other balances" sheets. */
 export type OtherBalances = {
@@ -32,12 +33,18 @@ export const getOtherBalancesTotal = ({
 
 type PillProps = {
   total: number;
-  hasBalance: boolean;
+  /** Card contribution to the total (0 when the user has no card). */
+  cardValue: number;
+  /** Savings contribution to the total. */
+  savingsValue: number;
 } & React.ComponentProps<typeof Pressable>;
 
-/** The dropdown pill trigger: colored ring + combined total + chevron. */
+/**
+ * The dropdown pill trigger: a real proportional Card/Savings donut + combined
+ * total + chevron. The donut segments reflect how much each balance contributes.
+ */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ total, hasBalance, ...props }, ref) => {
+  ({ total, cardValue, savingsValue, ...props }, ref) => {
     return (
       <Pressable
         ref={ref}
@@ -46,18 +53,12 @@ export const OtherBalancesPill = React.forwardRef<View, PillProps>(
         className="flex-row items-center gap-2 self-center rounded-full bg-[#1C1C1C] py-2 pl-2 pr-3 transition-all active:scale-95 active:opacity-80"
         {...props}
       >
-        {hasBalance ? (
-          <LinearGradient
-            colors={[CARD_COLOR, SAVINGS_COLOR]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 20, height: 20, borderRadius: 10, padding: 2 }}
-          >
-            <View style={{ flex: 1, borderRadius: 8, backgroundColor: '#1C1C1C' }} />
-          </LinearGradient>
-        ) : (
-          <View className="h-5 w-5 rounded-full border-2 border-[#3A3A3A]" />
-        )}
+        <OtherBalancesPie
+          cardValue={cardValue}
+          savingsValue={savingsValue}
+          cardColor={CARD_COLOR}
+          savingsColor={SAVINGS_COLOR}
+        />
         <Text className="text-base font-semibold text-white">{formatBalanceUSD(total)}</Text>
         <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
       </Pressable>

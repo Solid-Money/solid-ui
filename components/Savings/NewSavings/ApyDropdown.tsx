@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
@@ -65,6 +65,7 @@ const VaultApyRow = ({
   return (
     <Pressable
       onPress={onPress}
+      style={{ opacity: selected ? 1 : 0.5 }}
       className="flex-row items-center justify-between px-5 py-3 web:hover:bg-card-hover"
     >
       <View className="flex-row items-center gap-3">
@@ -74,9 +75,8 @@ const VaultApyRow = ({
           contentFit="contain"
         />
         <Text className="text-base font-semibold text-white">{vault.name}</Text>
-        {selected && <Check size={16} color="#94F27F" />}
       </View>
-      <Text className="text-base font-semibold text-brand">
+      <Text className="text-base font-semibold text-white">
         {formatApyLabel(maxAPY, isAPYsLoading)} APY
       </Text>
     </Pressable>
