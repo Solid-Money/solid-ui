@@ -135,9 +135,14 @@ export default function HomeScreenNew() {
           </View>
         )}
 
-        <View className="gap-3 px-4">
+        {/* The card is rendered full-bleed (no px-4): the PNG's baked-in drop
+            shadow (~4% each side) acts as the gutter, so the card BODY lines up
+            with the px-4 sections below instead of looking inset/narrower. */}
+        <View className="gap-3">
           <HomeWalletCard hasCard={userHasCard} />
-          {!userHasCard && <HomeVerificationCard depositCompleted={depositCompleted} />}
+          {!userHasCard && (
+            <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
+          )}
         </View>
 
         {showAssets && (
