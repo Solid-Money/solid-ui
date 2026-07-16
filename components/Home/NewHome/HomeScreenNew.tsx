@@ -3,7 +3,7 @@ import { TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
-import HomeCardSetup from '@/components/Home/HomeCardSetup';
+import HomeVerificationCard from '@/components/Home/NewHome/HomeVerificationCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
@@ -135,8 +135,9 @@ export default function HomeScreenNew() {
           </View>
         )}
 
-        <View className="px-4">
-          {userHasCard ? <HomeWalletCard /> : <HomeCardSetup depositCompleted={depositCompleted} />}
+        <View className="gap-3 px-4">
+          <HomeWalletCard hasCard={userHasCard} />
+          {!userHasCard && <HomeVerificationCard depositCompleted={depositCompleted} />}
         </View>
 
         {showAssets && (

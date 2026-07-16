@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
-import { useActiveAccount, useActiveWallet, useActiveWalletConnectionStatus } from 'thirdweb/react';
+import {
+  useActiveAccount,
+  useActiveWallet,
+  useActiveWalletConnectionStatus,
+  useDisconnect,
+} from 'thirdweb/react';
 
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -17,11 +22,12 @@ export default function ThirdwebConnectionBridge() {
   const account = useActiveAccount();
   const wallet = useActiveWallet();
   const status = useActiveWalletConnectionStatus();
+  const { disconnect } = useDisconnect();
   const setExternalWallet = useDepositStore(state => state.setExternalWallet);
 
   useEffect(() => {
-    setExternalWallet({ address: account?.address, status, account, wallet });
-  }, [account, wallet, status, setExternalWallet]);
+    setExternalWallet({ address: account?.address, status, account, wallet, disconnect });
+  }, [account, wallet, status, disconnect, setExternalWallet]);
 
   return null;
 }

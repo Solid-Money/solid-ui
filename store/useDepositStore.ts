@@ -77,6 +77,8 @@ export interface ExternalWalletState {
   /** thirdweb account/wallet objects — present only on desktop (via ThirdwebConnectionBridge). */
   account?: Account;
   wallet?: Wallet;
+  /** thirdweb disconnect fn — present only on desktop (via ThirdwebConnectionBridge). */
+  disconnect?: (wallet: Wallet) => void;
 }
 
 interface DepositState {
@@ -127,6 +129,7 @@ export const useDepositStore = create<DepositState>()(
         status: 'disconnected',
         account: undefined,
         wallet: undefined,
+        disconnect: undefined,
       },
       setExternalWallet: data => set({ externalWallet: data }),
       setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),

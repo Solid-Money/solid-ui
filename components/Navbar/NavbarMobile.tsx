@@ -16,6 +16,7 @@ import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 
 import HeaderBellButton from './HeaderBellButton';
+import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
 
@@ -115,7 +116,7 @@ const NavbarMobile = ({
       )}
       <View className="flex-row items-center justify-between p-4">
         {showNewHeader ? (
-          <AccountCenterDropdown />
+          <HeaderProfileButton />
         ) : (
           <Image
             source={getAsset('images/solid-logo-4x.png')}

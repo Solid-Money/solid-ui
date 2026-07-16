@@ -36,6 +36,9 @@ const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
 // measured tab slot so it reads as a pill rather than a full-width block.
 const PILL_INSET_X = 8;
 const PILL_INSET_Y = 2;
+// Extra vertical height (centered) so the icon + label sit inside the oval
+// rather than overflowing above/below it.
+const PILL_EXTRA_HEIGHT = 10;
 
 // Matches NavbarMobile's GLASS_TRANSITION so the app's glass motion feels of a piece.
 const SLIDE_TIMING = { duration: 320, easing: Easing.out(Easing.cubic) };
@@ -157,9 +160,9 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     if (!layout) return;
 
     const targetX = layout.x + PILL_INSET_X;
-    const targetY = layout.y + PILL_INSET_Y;
+    const targetY = layout.y + PILL_INSET_Y - PILL_EXTRA_HEIGHT / 2;
     const targetWidth = Math.max(layout.width - PILL_INSET_X * 2, 0);
-    const targetHeight = Math.max(layout.height - PILL_INSET_Y * 2, 0);
+    const targetHeight = Math.max(layout.height - PILL_INSET_Y * 2 + PILL_EXTRA_HEIGHT, 0);
 
     // Vertical size/position is constant across tabs — set without animation.
     translateY.value = targetY;

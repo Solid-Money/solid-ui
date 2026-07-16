@@ -176,7 +176,10 @@ export default function TabLayout() {
           title: 'Rewards',
           headerShown: false,
           // Placeholder icon: no rewards/star Lottie exists in assets/tabs-icons.
-          tabBarIcon: ({ color, size }) => <Star size={size ?? 28} color={color} />,
+          // Reduced 30% so the lucide glyph visually matches the Lottie tab icons.
+          tabBarIcon: ({ color, size }) => (
+            <Star size={Math.round((size ?? 28) * 0.7)} color={color} />
+          ),
           // Only surface the Rewards tab (and its route) for whitelisted users;
           // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
           href: isTestUser ? path.REWARDS : null,
