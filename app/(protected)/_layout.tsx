@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, InteractionManager, Platform, View } from 'react-native';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
@@ -38,6 +38,14 @@ export default function ProtectedLayout() {
   const searchParams = useLocalSearchParams();
   const queryClient = useQueryClient();
 
+  // Defer non-critical startup work (webhook auto-subscribe, MeaWallet init)
+  // until after the first interactions so it doesn't compete with first paint.
+  const [startupDeferred, setStartupDeferred] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setStartupDeferred(true));
+    return () => task.cancel();
+  }, []);
+
   useEffect(() => {
     if (!user?.safeAddress) return;
 
@@ -71,18 +79,24 @@ export default function ProtectedLayout() {
   usePostSignupInit(user);
 
   // Ensure webhook subscription for real-time activity updates
-  // This auto-subscribes when user has a safe address but isn't registered yet
-  useWebhookStatus({ autoSubscribe: true });
+  // This auto-subscribes when user has a safe address but isn't registered yet.
+  // Deferred until after first paint so the subscribe POST doesn't compete with
+  // startup data loading (the status fetch itself still runs immediately).
+  useWebhookStatus({ autoSubscribe: startupDeferred });
 
   // Enable real-time activity updates globally for logged-in users
   useActivitySSE({ enabled: !!user, subscribe: false });
 
-  // MeaWallet MPP: initialize once on native (required before any MPP API use)
+  // MeaWallet MPP: initialize once on native (required before any MPP API use).
+  // Deferred off the first-paint critical path — MPP isn't needed at startup.
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    import('@meawallet/react-native-mpp')
-      .then(m => m.default.initialize().catch(() => {}))
-      .catch(() => {});
+    const task = InteractionManager.runAfterInteractions(() => {
+      import('@meawallet/react-native-mpp')
+        .then(m => m.default.initialize().catch(() => {}))
+        .catch(() => {});
+    });
+    return () => task.cancel();
   }, []);
 
   useEffect(() => {

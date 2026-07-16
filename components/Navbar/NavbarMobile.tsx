@@ -11,9 +11,11 @@ import { Image } from 'expo-image';
 
 import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
 import { Text } from '@/components/ui/text';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 
+import HeaderBellButton from './HeaderBellButton';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
 
@@ -45,6 +47,11 @@ const NavbarMobile = ({
   topInset = 0,
 }: NavbarMobileProps) => {
   const { user } = useUser();
+  const isTestUser = useIsTestUser();
+  // Whitelisted "glass" header: profile moves to the left, the bell (Activity)
+  // joins What's-new on the right, and the Solid logo is dropped. Public users
+  // keep the existing header untouched.
+  const showNewHeader = isTestUser && !!user;
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;
@@ -107,12 +114,16 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4">
-        <Image
-          source={getAsset('images/solid-logo-4x.png')}
-          alt="Solid logo"
-          style={{ width: 30, height: 30 }}
-          contentFit="contain"
-        />
+        {showNewHeader ? (
+          <AccountCenterDropdown />
+        ) : (
+          <Image
+            source={getAsset('images/solid-logo-4x.png')}
+            alt="Solid logo"
+            style={{ width: 30, height: 30 }}
+            contentFit="contain"
+          />
+        )}
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}
@@ -128,14 +139,11 @@ const NavbarMobile = ({
         {user ? (
           <View className="flex-row items-center gap-2">
             <WhatsNewButton />
-            <AccountCenterDropdown />
+            {showNewHeader ? <HeaderBellButton /> : <AccountCenterDropdown />}
           </View>
         ) : (
           <RegisterButtons />
         )}
-        {/* <Link href={path.POINTS} className="-mt-1.5">
-          <PointsNavButton />
-        </Link> */}
       </View>
       <Animated.View pointerEvents="none" style={[styles.divider, dividerAnimatedStyle]} />
     </View>
