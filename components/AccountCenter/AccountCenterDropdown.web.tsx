@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import useGoodDollarAccess from '@/hooks/useGoodDollarAccess';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ const cursorDefaultClassName =
 const AccountCenterDropdown = () => {
   const insets = useSafeAreaInsets();
   const { handleLogout } = useUser();
+  const canSeeGoodDollar = useGoodDollarAccess();
 
   const contentInsets = {
     top: insets.top,
@@ -59,12 +61,14 @@ const AccountCenterDropdown = () => {
         >
           <AccountCenterAgent />
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className={cn(dropdownMenuItemClassName)}
-          onPress={onAccountCenterGoodDollarPress}
-        >
-          <AccountCenterGoodDollar />
-        </DropdownMenuItem>
+        {canSeeGoodDollar && (
+          <DropdownMenuItem
+            className={cn(dropdownMenuItemClassName)}
+            onPress={onAccountCenterGoodDollarPress}
+          >
+            <AccountCenterGoodDollar />
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName)}
           onPress={onAccountCenterSettingsPress}
