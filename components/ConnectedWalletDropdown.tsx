@@ -7,7 +7,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { ChevronDown, Unlink, WalletMinimal } from 'lucide-react-native';
-import { useActiveAccount, useActiveWallet, useDisconnect } from 'thirdweb/react';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -22,9 +21,14 @@ type ConnectedWalletDropdownProps = {
 };
 
 const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {}) => {
-  const wallet = useActiveWallet();
-  const activeAccount = useActiveAccount();
-  const { disconnect } = useDisconnect();
+  // Connected external wallet is mirrored into the store by the desktop-only
+  // ThirdwebConnectionBridge (thirdweb is desktop-only). Reading from the store
+  // instead of calling thirdweb hooks keeps this component safe on mobile, where
+  // it can still render transiently (e.g. while the savings deposit modal closes
+  // and depositFromSolid flips back to false).
+  const wallet = useDepositStore(state => state.externalWallet.wallet);
+  const activeAccount = useDepositStore(state => state.externalWallet.account);
+  const disconnect = useDepositStore(state => state.externalWallet.disconnect);
   const [isOpen, setIsOpen] = useState(false);
   const srcChainId = useDepositStore(state => state.srcChainId);
   const address = activeAccount?.address;
@@ -95,7 +99,7 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
                 network: networkName,
                 wallet_type: wallet.id,
               });
-              disconnect(wallet);
+              disconnect?.(wallet);
             }
           }}
           onLayout={event => {
