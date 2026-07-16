@@ -23,7 +23,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
-import useGoodDollarAccess from '@/hooks/useGoodDollarAccess';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
@@ -116,7 +116,8 @@ const MobileSettings = () => {
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const displayName = getUserDisplayName(user, 18);
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
-  const canSeeGoodDollar = useGoodDollarAccess();
+  // GoodDollar is internal-only: shown only to whitelisted test users.
+  const canSeeGoodDollar = useIsTestUser();
 
   const rowGroups: MobileSettingsRow[][] = [
     [
@@ -150,7 +151,6 @@ const MobileSettings = () => {
         icon: <Sparkles size={24} color="#ffffff" strokeWidth={1.8} />,
         href: path.AGENT,
       },
-      // GoodDollar is internal-only: shown only to whitelisted team members.
       ...(canSeeGoodDollar
         ? [
             {
