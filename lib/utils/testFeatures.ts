@@ -9,6 +9,7 @@ export const TEST_FEATURES_ALLOW_LIST = [
   'mul53',
   'vigor-homey.2z',
   'maxxb.34980',
+  'cimal67977',
 ];
 
 export const isUserAllowedToUseTestFeature = (username: string) => {

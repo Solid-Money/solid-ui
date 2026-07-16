@@ -659,6 +659,10 @@ export const ASSETS = {
   'images/user.tsx': { module: require('@/assets/images/user.tsx'), hash: 'f4988f53' },
   'images/username.tsx': { module: require('@/assets/images/username.tsx'), hash: 'fa07b216' },
   'images/veda.png': { module: require('@/assets/images/veda.png'), hash: 'e41bfe57' },
+  'images/visa-platinum-card.png': {
+    module: require('@/assets/images/visa-platinum-card.png'),
+    hash: 'a92d022c',
+  },
   'images/wallet-yellow-background.png': {
     module: require('@/assets/images/wallet-yellow-background.png'),
     hash: '86120c72',
