@@ -1,31 +1,23 @@
 import { View } from 'react-native';
-import { Image } from 'expo-image';
-
-import { getTierIcon } from '@/constants/rewards';
-import { useRewardsUserData } from '@/hooks/useRewards';
-import { RewardsTier } from '@/lib/types';
+import { Star } from 'lucide-react-native';
 
 interface RewardsTabIconProps {
   /** The tab-bar icon slot size (matches the other tabs' Lottie icons). */
   size: number;
+  /** Tint from the tab bar (white), keeping it consistent with the other tabs. */
+  color: string;
 }
 
 /**
- * Rewards tab icon = the user's CURRENT tier icon (defaults to the first tier).
- * The image is centered in a full `size` box so its baseline matches the other
- * (Lottie) tab icons — giving the same icon↔label gap.
+ * Rewards tab icon. Uses the white lucide Star (the tier icons are only available
+ * in yellow, which would clash with the white Wallet/Savings tab icons). The star
+ * is centered in a full `size` box so its baseline — and its icon↔label gap —
+ * matches the other (Lottie) tab icons.
  */
-const RewardsTabIcon = ({ size }: RewardsTabIconProps) => {
-  const { data } = useRewardsUserData();
-  const tier = data?.currentTier ?? RewardsTier.CORE;
-
+const RewardsTabIcon = ({ size, color }: RewardsTabIconProps) => {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Image
-        source={getTierIcon(tier)}
-        style={{ width: size * 0.7, height: size * 0.7 }}
-        contentFit="contain"
-      />
+      <Star size={Math.round(size * 0.7)} color={color} />
     </View>
   );
 };
