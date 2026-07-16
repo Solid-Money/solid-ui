@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -33,6 +33,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
+import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
 const RegularWithdrawForm = () => {
   const { user } = useUser();
@@ -47,6 +48,22 @@ const RegularWithdrawForm = () => {
         setSelectedToken: state.setSelectedToken,
       })),
     );
+
+  const { sessions, clearSession } = useWithdrawSessionStore(
+    useShallow(state => ({
+      sessions: state.sessions,
+      clearSession: state.clearSession,
+    })),
+  );
+
+  // Unfinished withdraw for the selected vault (bridged in a previous session,
+  // still waiting on the Ethereum-side withdraw). When present, the flow
+  // resumes on step 2 with step 1 disabled and the amount prefilled.
+  const session = useMemo(
+    () => selectWithdrawSession(sessions, selectedVault, user?.safeAddress),
+    [sessions, selectedVault, user?.safeAddress],
+  );
+  const hasPendingSession = !!session;
 
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
@@ -204,15 +221,35 @@ const RegularWithdrawForm = () => {
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Bridging vaults (soUSD, soETH) always render both steps. A token held on
-  // Fuse starts on step 1 (bridge); a token already on Ethereum jumps to step 2
-  // (withdraw). soFUSE has no bridge and keeps its single-step layout.
+  // Fuse starts on step 1 (bridge); a token already on Ethereum — or an
+  // unfinished withdraw resumed from storage — jumps to step 2 (withdraw).
+  // soFUSE has no bridge and keeps its single-step layout.
   const isUsdVault = !isSoFuse && !isSoEth;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
 
   useEffect(() => {
-    setActiveStep(isOnEthereum ? 2 : 1);
-  }, [isOnEthereum]);
+    // While a bridge is in-flight in THIS view, stay on step 1 — onBridgeSubmit
+    // advances to step 2 once it completes. The resume session is persisted at
+    // broadcast time, so without this guard a freshly-created session would
+    // unlock step 2 before the bridged funds have arrived on Ethereum.
+    if (isBridgeLoading || isBridgeSoEthLoading) return;
+    setActiveStep(hasPendingSession || isOnEthereum ? 2 : 1);
+  }, [hasPendingSession, isOnEthereum, isBridgeLoading, isBridgeSoEthLoading]);
+
+  // Prefill the amount from a resumed session once per vault so the user does
+  // not have to re-enter what they already bridged.
+  const prefilledVaultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (session && prefilledVaultRef.current !== session.vault) {
+      prefilledVaultRef.current = session.vault;
+      setValue('amount', session.amount);
+      trigger('amount');
+    }
+    if (!session && selectedVault && prefilledVaultRef.current === selectedVault) {
+      prefilledVaultRef.current = null;
+    }
+  }, [session, selectedVault, setValue, trigger]);
 
   const balanceUSD = useMemo(() => {
     if (!selectedToken) return 0;
@@ -254,6 +291,7 @@ const RegularWithdrawForm = () => {
         amount: Number(watchedAmount),
         symbol: 'soUSD',
       });
+      clearSession('USD');
       reset(); // Reset form after successful transaction
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
@@ -326,6 +364,7 @@ const RegularWithdrawForm = () => {
         amount: Number(watchedAmount),
         symbol: 'soETH',
       });
+      clearSession('ETH');
       reset();
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
@@ -381,7 +420,7 @@ const RegularWithdrawForm = () => {
                     ? '...'
                     : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
-                {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
+                {balanceAmount > 0 && !hasPendingSession && <Max onPress={handleMaxPress} />}
               </View>
             )}
           </View>
@@ -394,6 +433,8 @@ const RegularWithdrawForm = () => {
                   <TextInput
                     className={cn(
                       'flex-1 text-3xl font-semibold text-white web:focus:outline-none',
+                      // Resumed withdraws are locked to the amount already bridged.
+                      hasPendingSession && 'opacity-60',
                     )}
                     placeholder="0.0"
                     placeholderTextColor="#ffffff80"
@@ -402,6 +443,7 @@ const RegularWithdrawForm = () => {
                       onChange(text);
                     }}
                     onBlur={onBlur}
+                    editable={!hasPendingSession}
                     keyboardType="decimal-pad"
                     style={{ minWidth: 80 }}
                     returnKeyType="done"
@@ -498,7 +540,9 @@ const RegularWithdrawForm = () => {
                       className="h-6 w-6"
                       contentFit="contain"
                     />
-                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
+                    <Text className="text-base font-bold" style={{ color: '#18181b' }}>
+                      Withdraw
+                    </Text>
                   </View>
                 )}
               </Button>
@@ -548,10 +592,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Bridge
                       </Text>
@@ -591,7 +633,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={
-                    isOnEthereum
+                    isOnEthereum && !hasPendingSession
                       ? handleSubmit(onSwapSubmit)
                       : () => onSwapSubmit({ amount: watchedAmount })
                   }
@@ -599,7 +641,7 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawLoading ||
-                    (isOnEthereum && !isBridgeValid)
+                    (isOnEthereum && !hasPendingSession && !isBridgeValid)
                   }
                 >
                   {isWithdrawLoading ? (
@@ -613,10 +655,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Withdraw
                       </Text>
@@ -670,10 +710,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Bridge
                       </Text>
@@ -713,7 +751,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={
-                    isOnEthereum
+                    isOnEthereum && !hasPendingSession
                       ? handleSubmit(onWithdrawSoEthSubmit)
                       : () => onWithdrawSoEthSubmit({ amount: watchedAmount })
                   }
@@ -721,7 +759,7 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawSoEthLoading ||
-                    (isOnEthereum && !isBridgeValid)
+                    (isOnEthereum && !hasPendingSession && !isBridgeValid)
                   }
                 >
                   {isWithdrawSoEthLoading ? (
@@ -735,10 +773,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Withdraw
                       </Text>

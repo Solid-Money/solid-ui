@@ -1,15 +1,6 @@
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivityActions } from '@/hooks/useActivityActions';
-import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
-import { track } from '@/lib/analytics';
-import { ADDRESSES } from '@/lib/config';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
+import { useCallback, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import { useCallback, useState } from 'react';
 import { erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import {
@@ -19,6 +10,18 @@ import {
   parseUnits,
 } from 'viem/utils';
 import { useReadContract } from 'wagmi';
+
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivityActions } from '@/hooks/useActivityActions';
+import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
+import { track } from '@/lib/analytics';
+import { ADDRESSES } from '@/lib/config';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { Status, TransactionStatus, TransactionType } from '@/lib/types';
+import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
+import { useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
+
 import useUser from './useUser';
 
 type BridgeResult = {
@@ -153,7 +156,21 @@ const useBridgeToMainnet = (): BridgeResult => {
               transactions,
               'Withdraw failed',
               fuse,
-              onUserOpHash,
+              hash => {
+                // Persist a resume session the moment the bridge tx is broadcast
+                // (after simulation passes). This way, if the user closes the flow
+                // before the Ethereum-side withdraw, it can be resumed on step 2.
+                if (user?.safeAddress) {
+                  useWithdrawSessionStore.getState().setSession({
+                    address: user.safeAddress,
+                    vault: 'USD',
+                    amount,
+                    destinationSymbol: 'USDC',
+                    createdAt: Date.now(),
+                  });
+                }
+                onUserOpHash(hash);
+              },
             );
           },
         );
