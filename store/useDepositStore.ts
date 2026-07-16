@@ -65,10 +65,13 @@ interface DirectDepositSession {
  *
  * thirdweb is desktop-only (see components/ThirdwebConnectionBridge.tsx). On
  * mobile the bridge never mounts, so this stays { address: undefined,
- * status: 'disconnected' } — which is exactly how mobile behaved when the
- * thirdweb provider wrapped the whole app but no external wallet was connected.
- * Consumers (e.g. useDepositOption) read this instead of calling thirdweb hooks
- * directly, so they never crash when the provider is absent.
+ * status: 'unknown' } — which mirrors thirdweb's own idle status when the
+ * provider is mounted but no autoConnect runs and no wallet connects (it never
+ * resolves to 'disconnected'). This distinction matters: useDepositOption resets
+ * the deposit flow back to the type-selection screen when status ==='disconnected',
+ * so defaulting to 'unknown' keeps that recovery effect desktop-only and stops it
+ * from yanking mobile users back a step mid-flow. Consumers read this instead of
+ * calling thirdweb hooks directly, so they never crash when the provider is absent.
  */
 export type ExternalWalletStatus = 'unknown' | 'connecting' | 'connected' | 'disconnected';
 export interface ExternalWalletState {
@@ -126,7 +129,7 @@ export const useDepositStore = create<DepositState>()(
       depositFromSolid: false,
       externalWallet: {
         address: undefined,
-        status: 'disconnected',
+        status: 'unknown',
         account: undefined,
         wallet: undefined,
         disconnect: undefined,

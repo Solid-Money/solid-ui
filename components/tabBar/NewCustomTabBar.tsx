@@ -38,7 +38,7 @@ const PILL_INSET_X = 8;
 const PILL_INSET_Y = 2;
 // Extra vertical height (centered) so the icon + label sit inside the oval
 // rather than overflowing above/below it.
-const PILL_EXTRA_HEIGHT = 10;
+const PILL_EXTRA_HEIGHT = 15;
 
 // Matches NavbarMobile's GLASS_TRANSITION so the app's glass motion feels of a piece.
 const SLIDE_TIMING = { duration: 320, easing: Easing.out(Easing.cubic) };
