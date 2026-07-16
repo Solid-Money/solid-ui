@@ -49,10 +49,9 @@ const RegularWithdrawForm = () => {
       })),
     );
 
-  const { sessions, setSession, clearSession } = useWithdrawSessionStore(
+  const { sessions, clearSession } = useWithdrawSessionStore(
     useShallow(state => ({
       sessions: state.sessions,
-      setSession: state.setSession,
       clearSession: state.clearSession,
     })),
   );
@@ -230,8 +229,13 @@ const RegularWithdrawForm = () => {
   const isOnEthereum = selectedToken?.chainId === 1;
 
   useEffect(() => {
+    // While a bridge is in-flight in THIS view, stay on step 1 — onBridgeSubmit
+    // advances to step 2 once it completes. The resume session is persisted at
+    // broadcast time, so without this guard a freshly-created session would
+    // unlock step 2 before the bridged funds have arrived on Ethereum.
+    if (isBridgeLoading || isBridgeSoEthLoading) return;
     setActiveStep(hasPendingSession || isOnEthereum ? 2 : 1);
-  }, [hasPendingSession, isOnEthereum]);
+  }, [hasPendingSession, isOnEthereum, isBridgeLoading, isBridgeSoEthLoading]);
 
   // Prefill the amount from a resumed session once per vault so the user does
   // not have to re-enter what they already bridged.
@@ -271,15 +275,6 @@ const RegularWithdrawForm = () => {
         amount: Number(data.amount),
         symbol: 'soUSD',
       });
-      if (user?.safeAddress) {
-        setSession({
-          address: user.safeAddress as string,
-          vault: 'USD',
-          amount: data.amount.toString(),
-          destinationSymbol: 'USDC',
-          createdAt: Date.now(),
-        });
-      }
       setActiveStep(2);
     } catch (_error) {
       Toast.show({
@@ -353,15 +348,6 @@ const RegularWithdrawForm = () => {
         amount: Number(data.amount),
         symbol: 'soETH',
       });
-      if (user?.safeAddress) {
-        setSession({
-          address: user.safeAddress as string,
-          vault: 'ETH',
-          amount: data.amount.toString(),
-          destinationSymbol: 'WETH',
-          createdAt: Date.now(),
-        });
-      }
       setActiveStep(2);
     } catch (_error) {
       Toast.show({
@@ -554,7 +540,9 @@ const RegularWithdrawForm = () => {
                       className="h-6 w-6"
                       contentFit="contain"
                     />
-                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
+                    <Text className="text-base font-bold" style={{ color: '#18181b' }}>
+                      Withdraw
+                    </Text>
                   </View>
                 )}
               </Button>
@@ -604,10 +592,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Bridge
                       </Text>
@@ -669,10 +655,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Withdraw
                       </Text>
@@ -726,10 +710,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 1 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Bridge
                       </Text>
@@ -791,10 +773,8 @@ const RegularWithdrawForm = () => {
                         contentFit="contain"
                       />
                       <Text
-                        className={cn(
-                          'text-base font-bold',
-                          activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
-                        )}
+                        className="text-base font-bold"
+                        style={{ color: activeStep !== 2 ? 'rgba(255, 255, 255, 0.5)' : '#18181b' }}
                       >
                         Withdraw
                       </Text>
