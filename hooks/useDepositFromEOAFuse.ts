@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
-import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
@@ -41,8 +40,10 @@ const useDepositFromEOAFuse = (
   minimumAmount: string = '100',
 ): DepositResult => {
   const { user } = useUser();
-  const wallet = useActiveWallet();
-  const account = useActiveAccount();
+  // Connected external wallet mirrored by the desktop-only ThirdwebConnectionBridge;
+  // undefined on mobile (thirdweb is desktop-only). See useDepositFromEOA for details.
+  const account = useDepositStore(state => state.externalWallet.account);
+  const wallet = useDepositStore(state => state.externalWallet.wallet);
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);
@@ -318,9 +319,7 @@ const useDepositFromEOAFuse = (
             throw err;
           }
         } else {
-          throw new Error(
-            `Minimum deposit amount is ${minimumAmount} for Fuse deposits`,
-          );
+          throw new Error(`Minimum deposit amount is ${minimumAmount} for Fuse deposits`);
         }
 
         return trackingId;

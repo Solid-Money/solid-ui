@@ -1,69 +1,18 @@
-import { useEffect } from 'react';
-import { View } from 'react-native';
+import { useDimension } from '@/hooks/useDimension';
 
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
-import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
-import useUser from '@/hooks/useUser';
-import { track } from '@/lib/analytics';
-import { DepositMethod } from '@/lib/types';
-import { getVaultDepositConfig } from '@/lib/vaults';
+import DepositOptionsDesktop from './DepositOptionsDesktop';
+import DepositOptionsMobile from './DepositOptionsMobile';
 
-import DepositOption from './DepositOption';
-
-type DepositOptionProps = {
-  text: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  onPress: () => void;
-  isLoading?: boolean;
-  isComingSoon?: boolean;
-  isEnabled?: boolean;
-  bannerText?: string;
-  chipText?: string;
-  method?: DepositMethod;
-};
-
+/**
+ * Web entry for the deposit options list. The "Send from your crypto wallet"
+ * (thirdweb) path is desktop-only, so web-mobile (<768) uses the QR /
+ * deposit-address-only variant — which keeps thirdweb hooks
+ * (useDepositExternalWalletOptions) off the web-mobile render path now that the
+ * ThirdwebProvider is desktop-only.
+ */
 const DepositOptions = () => {
-  const { user } = useUser();
-  const { externalWalletOptions } = useDepositExternalWalletOptions();
-  const { buyCryptoOptions } = useDepositBuyCryptoOptions();
-  const depositConfig = getVaultDepositConfig();
-
-  // Track when deposit options are viewed
-  useEffect(() => {
-    track(TRACKING_EVENTS.DEPOSIT_OPTIONS_VIEWED, {
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      is_first_deposit: !user?.isDeposited,
-    });
-  }, [user?.userId, user?.safeAddress, user?.isDeposited]);
-
-  const depositOptions: DepositOptionProps[] = [...externalWalletOptions, ...buyCryptoOptions];
-
-  return (
-    <View className="gap-y-2.5">
-      {depositOptions
-        .filter(
-          option =>
-            option.method !== 'bank_transfer' &&
-            (option.isEnabled ?? true) &&
-            (!option.method || depositConfig.methods.includes(option.method)),
-        )
-        .map(option => (
-          <DepositOption
-            key={option.text}
-            text={option.text}
-            subtitle={option.subtitle}
-            icon={option.icon}
-            onPress={option.onPress}
-            isLoading={option.isLoading}
-            bannerText={option.bannerText}
-            chipText={option.chipText}
-          />
-        ))}
-    </View>
-  );
+  const { isDesktop } = useDimension();
+  return isDesktop ? <DepositOptionsDesktop /> : <DepositOptionsMobile />;
 };
 
 export default DepositOptions;

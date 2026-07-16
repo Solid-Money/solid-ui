@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { ChevronRight, Wallet } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDepositOptions() {
+  const { isDesktop } = useDimension();
   const { setModal, setSource } = useCardDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
@@ -57,9 +59,9 @@ export default function CardDepositOptions() {
   return (
     <View className="gap-y-2.5">
       <Item text="From Wallet/Savings" onPress={handleInternalOptionPress} />
-      {Platform.OS === 'web' && (
-        <Item text="From External Wallet" onPress={handleExternalOptionPress} />
-      )}
+      {/* External wallet connect (thirdweb) is desktop-only; web-mobile uses
+          the QR / from-wallet paths. */}
+      {isDesktop && <Item text="From External Wallet" onPress={handleExternalOptionPress} />}
     </View>
   );
 }

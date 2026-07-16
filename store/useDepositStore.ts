@@ -11,6 +11,9 @@ import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { DepositModal, SourceDepositInstructions, TransactionStatusModal } from '@/lib/types';
 
+// Type-only imports (erased at build → no thirdweb runtime cost on mobile).
+import type { Account, Wallet } from 'thirdweb/wallets';
+
 interface BankTransferData {
   fiatAmount?: string;
   cryptoAmount?: string;
@@ -57,6 +60,25 @@ interface DirectDepositSession {
   fromActivity?: boolean;
 }
 
+/**
+ * External (connected) wallet connection state, mirrored from thirdweb.
+ *
+ * thirdweb is desktop-only (see components/ThirdwebConnectionBridge.tsx). On
+ * mobile the bridge never mounts, so this stays { address: undefined,
+ * status: 'disconnected' } — which is exactly how mobile behaved when the
+ * thirdweb provider wrapped the whole app but no external wallet was connected.
+ * Consumers (e.g. useDepositOption) read this instead of calling thirdweb hooks
+ * directly, so they never crash when the provider is absent.
+ */
+export type ExternalWalletStatus = 'unknown' | 'connecting' | 'connected' | 'disconnected';
+export interface ExternalWalletState {
+  address?: string;
+  status: ExternalWalletStatus;
+  /** thirdweb account/wallet objects — present only on desktop (via ThirdwebConnectionBridge). */
+  account?: Account;
+  wallet?: Wallet;
+}
+
 interface DepositState {
   currentModal: DepositModal;
   previousModal: DepositModal;
@@ -68,6 +90,9 @@ interface DepositState {
   directDepositSession: DirectDepositSession;
   sessionStartTime?: number;
   depositFromSolid: boolean;
+  /** Transient (not persisted) — populated only on desktop by ThirdwebConnectionBridge. */
+  externalWallet: ExternalWalletState;
+  setExternalWallet: (data: ExternalWalletState) => void;
   setDepositFromSolid: (v: boolean) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
@@ -97,6 +122,13 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
       sessionStartTime: undefined,
       depositFromSolid: false,
+      externalWallet: {
+        address: undefined,
+        status: 'disconnected',
+        account: undefined,
+        wallet: undefined,
+      },
+      setExternalWallet: data => set({ externalWallet: data }),
       setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
 
       setModal: modal => {

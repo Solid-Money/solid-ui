@@ -41,10 +41,12 @@ import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
+import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { useDimension } from '@/hooks/useDimension';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
@@ -203,6 +205,10 @@ function RootLayout() {
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const [analyticsReady, setAnalyticsReady] = useState(false);
 
+  // thirdweb (external-wallet connect) is desktop-only; keep it off native and
+  // web-mobile so it doesn't block first paint or run its hooks there.
+  const { isDesktop } = useDimension();
+
   const hasSelectedUser = useUserStore(state => state.users.some(u => u.selected));
 
   // Initialize attribution tracking automatically (handles web and mobile)
@@ -352,7 +358,8 @@ function RootLayout() {
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       )}
       <TurnkeyProvider>
-        <LazyThirdwebProvider>
+        <LazyThirdwebProvider enabled={isDesktop}>
+          {isDesktop && <ThirdwebConnectionBridge />}
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={getInfoClient()}>

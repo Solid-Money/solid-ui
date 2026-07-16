@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
-import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
@@ -46,8 +45,10 @@ const useDepositFromEOAEth = (
   minimumAmount: string = '0.05',
 ): DepositResult => {
   const { user } = useUser();
-  const wallet = useActiveWallet();
-  const account = useActiveAccount();
+  // Connected external wallet mirrored by the desktop-only ThirdwebConnectionBridge;
+  // undefined on mobile (thirdweb is desktop-only). See useDepositFromEOA for details.
+  const account = useDepositStore(state => state.externalWallet.account);
+  const wallet = useDepositStore(state => state.externalWallet.wallet);
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);

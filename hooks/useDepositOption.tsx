@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, PressableProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 import { useShallow } from 'zustand/react/shallow';
 
 import Trash from '@/assets/images/trash';
@@ -76,6 +75,7 @@ const useDepositOption = ({
     resetDepositFlow,
     depositFromSolid,
     setDepositFromSolid,
+    externalWallet,
   } = useDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal ?? DEPOSIT_MODAL.CLOSE,
@@ -95,11 +95,14 @@ const useDepositOption = ({
       resetDepositFlow: state.resetDepositFlow,
       depositFromSolid: state.depositFromSolid,
       setDepositFromSolid: state.setDepositFromSolid,
+      externalWallet: state.externalWallet,
     })),
   );
-  const activeAccount = useActiveAccount();
-  const status = useActiveWalletConnectionStatus();
-  const address = activeAccount?.address;
+  // External-wallet connection is mirrored into the store by the desktop-only
+  // ThirdwebConnectionBridge; on mobile it stays disconnected (thirdweb is
+  // desktop-only). Reading from the store avoids calling thirdweb hooks here,
+  // so this always-mounted hook never crashes when the provider is absent.
+  const { address, status } = externalWallet;
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
