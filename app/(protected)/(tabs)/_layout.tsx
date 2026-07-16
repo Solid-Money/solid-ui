@@ -11,6 +11,7 @@ import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
+import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
@@ -175,11 +176,9 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          // Placeholder icon: no rewards/star Lottie exists in assets/tabs-icons.
-          // Reduced 30% so the lucide glyph visually matches the Lottie tab icons.
-          tabBarIcon: ({ color, size }) => (
-            <Star size={Math.round((size ?? 28) * 0.7)} color={color} />
-          ),
+          // Icon = the user's current tier icon (defaults to the first tier),
+          // centered in a full-size box so its icon↔label gap matches the other tabs.
+          tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
           // Only surface the Rewards tab (and its route) for whitelisted users;
           // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
           href: isTestUser ? path.REWARDS : null,

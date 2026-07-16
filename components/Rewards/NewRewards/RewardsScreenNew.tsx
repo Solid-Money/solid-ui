@@ -123,7 +123,7 @@ export default function RewardsScreenNew() {
           </View>
         </View>
 
-        <RewardsSummaryCard cashback={cashback} referrals={referrals} />
+        <RewardsSummaryCard cashback={cashback} referrals={referrals} tier={currentTier} />
 
         <DailyBenefits tier={currentTier} />
       </View>

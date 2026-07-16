@@ -53,6 +53,9 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
         <AmountDropdown amount={principal} onSelect={setPrincipal} />
       </View>
 
+      {/* Light divider separating the title/dropdown from the future-balance section. */}
+      <View className="h-px bg-white/10" />
+
       <View className="gap-0.5">
         <Text className="text-sm font-medium text-muted-foreground">Future Balance</Text>
         <CountUp

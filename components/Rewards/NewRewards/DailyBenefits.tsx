@@ -8,13 +8,12 @@ import { RewardsTier, TierBenefitItem } from '@/lib/types';
 
 const BenefitCard = ({ benefit }: { benefit: TierBenefitItem }) => (
   <View className="flex-1 items-center gap-2 rounded-twice bg-card p-4">
-    <View className="h-12 w-12 items-center justify-center rounded-full bg-rewards/20">
-      <Image
-        source={getAsset(benefit.icon as AssetPath)}
-        style={{ width: 30, height: 30 }}
-        contentFit="contain"
-      />
-    </View>
+    {/* The benefit images already include their own (yellow) background + padding. */}
+    <Image
+      source={getAsset(benefit.icon as AssetPath)}
+      style={{ width: 48, height: 48 }}
+      contentFit="contain"
+    />
     <Text className="text-center text-sm font-bold text-white" numberOfLines={2}>
       {benefit.title}
     </Text>

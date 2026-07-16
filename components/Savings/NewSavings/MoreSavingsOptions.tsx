@@ -44,7 +44,7 @@ const MoreSavingsOptions = ({ selectedType, apyByType, onSelect }: MoreSavingsOp
                   />
                   <Text className="text-base font-semibold text-white">{vault.name}</Text>
                 </View>
-                <Text className="text-base font-semibold text-brand">
+                <Text className="text-base font-semibold text-white">
                   {formatApyLabel(maxAPY, isAPYsLoading)} APY
                 </Text>
               </Pressable>

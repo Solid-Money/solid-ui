@@ -37,7 +37,12 @@ const OtherBalancesDropdown = ({
 
   return (
     <View className="items-center">
-      <OtherBalancesPill total={total} hasBalance={total > 0} onPress={present} />
+      <OtherBalancesPill
+        total={total}
+        cardValue={userHasCard ? cardBalance : 0}
+        savingsValue={savingsBalance}
+        onPress={present}
+      />
       <BottomSheetModal
         ref={bottomSheetModalRef}
         backdropComponent={renderBackdrop}
