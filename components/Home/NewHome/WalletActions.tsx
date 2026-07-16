@@ -8,11 +8,15 @@ import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-// Triggers are Pressables (not Views) so the modals' SlotTrigger clones them and
-// preserves layout classes like flex-1 / w-full rather than wrapping in a plain
-// auto-width Pressable.
-const AddFundsTrigger = ({ fullWidth }: { fullWidth: boolean }) => (
+// IMPORTANT: these trigger components MUST forward props (…props) to their root
+// Pressable. The Deposit/Swap/Send modals inject their open handler via
+// SlotTrigger.cloneElement({ onPress }); if the injected onPress isn't forwarded
+// to the Pressable, tapping does nothing (the bug this file previously had).
+type TriggerProps = React.ComponentProps<typeof Pressable>;
+
+const AddFundsTrigger = ({ fullWidth, ...props }: TriggerProps & { fullWidth: boolean }) => (
   <Pressable
+    {...props}
     className={cn(
       'h-14 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80',
       fullWidth ? 'w-full' : 'flex-1',
@@ -22,8 +26,11 @@ const AddFundsTrigger = ({ fullWidth }: { fullWidth: boolean }) => (
   </Pressable>
 );
 
-const ActionPill = ({ children }: { children: React.ReactNode }) => (
-  <Pressable className="h-14 flex-row items-center justify-center gap-2 rounded-full bg-[#1C1C1C] px-6 transition-all active:scale-95 active:opacity-80">
+const ActionPill = ({ children, ...props }: TriggerProps) => (
+  <Pressable
+    {...props}
+    className="h-14 flex-row items-center justify-center gap-2 rounded-full bg-[#1C1C1C] px-6 transition-all active:scale-95 active:opacity-80"
+  >
     {children}
   </Pressable>
 );
