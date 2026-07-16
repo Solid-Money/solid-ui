@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
 import CountUp from '@/components/CountUp';
@@ -7,6 +8,7 @@ import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import LazyHomeBanners from '@/components/Dashboard/LazyHomeBanners';
 import HomeEmptyState from '@/components/Home/EmptyState';
+import HomeScreenNew from '@/components/Home/NewHome/HomeScreenNew';
 import PageLayout from '@/components/PageLayout';
 import SpinWinCard from '@/components/SpinAndWin/SpinWinCard';
 import Skeleton from '@/components/ui/skeleton';
@@ -22,6 +24,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useCurrentGiveaway, useGiveawayCountdown } from '@/hooks/useGiveaway';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
@@ -34,10 +37,11 @@ import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
-export default function Home() {
+function LegacyHome() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
 
   const { user } = useUser();
+  const queryClient = useQueryClient();
   const { isScreenMedium } = useDimension();
   const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
     user?.safeAddress as Address,
@@ -79,9 +83,16 @@ export default function Home() {
   useEffect(() => {
     if (balance && !isBalanceLoading && !hasTriggeredInitialRefresh.current) {
       hasTriggeredInitialRefresh.current = true;
-      refreshTokens();
+      // Avoid running the heavy multi-chain balance fetch twice at launch: the
+      // protected layout already prefetched token balances, so only force a
+      // refresh when that cached data is missing or stale.
+      const state = queryClient.getQueryState(['tokenBalances', user?.safeAddress]);
+      const isFresh = !!state?.data && Date.now() - state.dataUpdatedAt < 15_000;
+      if (!isFresh) {
+        refreshTokens();
+      }
     }
-  }, [balance, isBalanceLoading, refreshTokens]);
+  }, [balance, isBalanceLoading, refreshTokens, queryClient, user?.safeAddress]);
 
   // Reset when user changes (e.g., account switch) to allow fresh token sync
   useEffect(() => {
@@ -247,4 +258,12 @@ export default function Home() {
       </View>
     </PageLayout>
   );
+}
+
+export default function Home() {
+  const { isDesktop } = useDimension();
+  // Whitelisted internal team members on mobile-web see the redesigned wallet
+  // screen; desktop web and all other users keep the existing design.
+  const showNewHome = useIsTestUser() && !isDesktop;
+  return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
 }

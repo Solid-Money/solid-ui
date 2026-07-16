@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
-import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
   type Address,
   encodeAbiParameters,
@@ -60,8 +59,13 @@ const useDepositFromEOA = (
   minimumAmount: string = '100',
 ): DepositResult => {
   const { user } = useUser();
-  const wallet = useActiveWallet();
-  const account = useActiveAccount();
+  // Connected external wallet is mirrored into the store by the desktop-only
+  // ThirdwebConnectionBridge (thirdweb is desktop-only). On mobile these are
+  // undefined and the connected-wallet deposit path is never invoked (mobile
+  // uses the "from Solid" deposit path). Reading from the store avoids calling
+  // thirdweb hooks here, so this hook never crashes when the provider is absent.
+  const account = useDepositStore(state => state.externalWallet.account);
+  const wallet = useDepositStore(state => state.externalWallet.wallet);
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);

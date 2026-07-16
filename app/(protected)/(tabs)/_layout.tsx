@@ -10,6 +10,7 @@ import lightningAnimation from '@/assets/tabs-icons/lightning.json';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
+import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
@@ -49,7 +50,11 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={!isDesktop ? props => <CustomTabBar {...props} /> : undefined}
+      tabBar={
+        !isDesktop
+          ? props => (isTestUser ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />)
+          : undefined
+      }
       backBehavior="history"
     >
       <Tabs.Screen
@@ -167,9 +172,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="rewards"
         options={{
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
-          tabBarIcon: ({ color }) => <Star size={28} color={color} />,
-          href: null,
+          headerShown: false,
+          // Placeholder icon: no rewards/star Lottie exists in assets/tabs-icons.
+          tabBarIcon: ({ color, size }) => <Star size={size ?? 28} color={color} />,
+          // Only surface the Rewards tab (and its route) for whitelisted users;
+          // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
+          href: isTestUser ? path.REWARDS : null,
         }}
       />
       {isTestUser && (

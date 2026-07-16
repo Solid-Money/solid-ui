@@ -246,9 +246,25 @@ export const isSoUSDToken = (contractAddress: string): boolean => {
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
 };
 
-/** Vault tokens excluded from home WalletCard total (soUSD + soFUSE) to avoid double count with savings. */
+export const isSoETHEthereum = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.ethereum.soEthVault.toLowerCase();
+};
+
+export const isSoETHFuse = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.fuse.soEthVault.toLowerCase();
+};
+
+export const isSoETHToken = (contractAddress: string): boolean => {
+  return isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress);
+};
+
+/** Vault tokens excluded from home WalletCard total (soUSD + soFUSE + soETH) to avoid double count with savings. */
 export const isWalletCardExcludedToken = (contractAddress: string): boolean => {
-  return isSoUSDToken(contractAddress) || isSoFUSEToken(contractAddress);
+  return (
+    isSoUSDToken(contractAddress) || isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress)
+  );
 };
 
 export const isUSDCEthereum = (contractAddress: string): boolean => {

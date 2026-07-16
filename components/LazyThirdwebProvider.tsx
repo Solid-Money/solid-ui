@@ -11,6 +11,12 @@ const ThirdwebProvider = lazy(() =>
 
 interface LazyThirdwebProviderProps {
   children: ReactNode;
+  /**
+   * When false, renders children without loading/mounting thirdweb at all
+   * (no Suspense, no provider). Used to keep thirdweb desktop-only — external
+   * wallet connect is a desktop feature; mobile uses direct deposit / QR.
+   */
+  enabled?: boolean;
 }
 
 // Minimal loading fallback
@@ -31,7 +37,11 @@ const LoadingFallback = () => (
  * - Wrap only the routes/components that need thirdweb functionality
  * - Don't wrap the entire app at root level
  */
-export const LazyThirdwebProvider = ({ children }: LazyThirdwebProviderProps) => {
+export const LazyThirdwebProvider = ({ children, enabled = true }: LazyThirdwebProviderProps) => {
+  if (!enabled) {
+    return <>{children}</>;
+  }
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <ThirdwebProvider>{children}</ThirdwebProvider>
