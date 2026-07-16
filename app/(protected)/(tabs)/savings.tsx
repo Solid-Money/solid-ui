@@ -12,6 +12,7 @@ import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import SavingsScreenNew from '@/components/Savings/NewSavings/SavingsScreenNew';
 import SavingsAnalytics from '@/components/Savings/SavingsAnalytics';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import SavingVault from '@/components/Savings/SavingVault';
@@ -29,6 +30,7 @@ import {
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import useUser from '@/hooks/useUser';
@@ -42,6 +44,14 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
+  // Whitelisted internal team members see the redesigned savings screen; all
+  // other users — and every desktop-web user — keep the existing design.
+  const { isDesktop } = useDimension();
+  const showNew = useIsTestUser() && !isDesktop;
+  return showNew ? <SavingsScreenNew /> : <LegacySavings />;
+}
+
+function LegacySavings() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
 
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();

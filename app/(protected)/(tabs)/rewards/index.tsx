@@ -9,6 +9,7 @@ import ReferralProgramBanner from '@/components/Points/ReferralProgramBanner';
 import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
+import RewardsScreenNew from '@/components/Rewards/NewRewards/RewardsScreenNew';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
@@ -17,6 +18,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
@@ -24,6 +26,14 @@ import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 
 export default function Rewards() {
+  // Whitelisted internal team members see the redesigned rewards screen; all
+  // other users — and every desktop-web user — keep the existing design.
+  const { isDesktop } = useDimension();
+  const showNew = useIsTestUser() && !isDesktop;
+  return showNew ? <RewardsScreenNew /> : <LegacyRewards />;
+}
+
+function LegacyRewards() {
   const { isScreenMedium } = useDimension();
   const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
