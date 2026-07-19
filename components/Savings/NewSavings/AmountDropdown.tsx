@@ -12,6 +12,9 @@ export const SIMULATE_AMOUNTS = [100, 1000, 10000] as const;
 
 const formatAmount = (amount: number) => `$${formatNumber(amount, 0, 0)}`;
 
+// Figma: Mona Sans / Bold 700 / 18px / line-height 100%.
+const AMOUNT_STYLE = { fontFamily: 'MonaSans_700Bold', fontSize: 18, lineHeight: 18 } as const;
+
 type AmountPillProps = {
   amount: number;
 } & React.ComponentProps<typeof Pressable>;
@@ -23,11 +26,13 @@ export const AmountPill = React.forwardRef<View, AmountPillProps>(({ amount, ...
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel="Change simulation amount"
-      className="flex-row items-center gap-1 rounded-full bg-[#262626] py-1.5 pl-3 pr-2 transition-all active:scale-95 active:opacity-80"
+      className="flex-row items-center gap-1 transition-all active:scale-95 active:opacity-80"
       {...props}
     >
-      <Text className="text-sm font-semibold text-white">{formatAmount(amount)}</Text>
-      <ChevronDown size={14} color="rgba(255,255,255,0.6)" />
+      <Text className="text-white" style={AMOUNT_STYLE}>
+        {formatAmount(amount)}
+      </Text>
+      <ChevronDown size={18} color="rgba(255,255,255,0.6)" />
     </Pressable>
   );
 });

@@ -9,6 +9,7 @@ import {
   type OtherBalances,
   OtherBalancesPill,
   SavingsBalanceRow,
+  shouldShowCard,
 } from '.';
 
 /**
@@ -31,15 +32,11 @@ const OtherBalancesDropdown = ({
     <View className="items-center">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <OtherBalancesPill
-            total={total}
-            cardValue={userHasCard ? cardBalance : 0}
-            savingsValue={savingsBalance}
-          />
+          <OtherBalancesPill total={total} cardValue={cardBalance} savingsValue={savingsBalance} />
         </DialogTrigger>
         <DialogContent className="gap-1 p-4">
           <DialogTitle className="px-2 pb-1 text-lg text-muted-foreground">Balances</DialogTitle>
-          {userHasCard && (
+          {shouldShowCard(cardBalance, userHasCard) && (
             <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onDismiss={dismiss} />
           )}
           <SavingsBalanceRow

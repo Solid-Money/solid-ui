@@ -176,10 +176,9 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          // White star (tier icons only exist in yellow, which would clash with the
-          // other white tab icons), centered in a full-size box so its icon↔label
-          // gap matches the other tabs.
-          tabBarIcon: ({ color, size }) => <RewardsTabIcon size={size ?? 28} color={color} />,
+          // Pushed white tier-star image, centered in a full-size box so its
+          // icon↔label gap matches the other tabs.
+          tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
           // Only surface the Rewards tab (and its route) for whitelisted users;
           // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
           href: isTestUser ? path.REWARDS : null,

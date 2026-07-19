@@ -11,6 +11,7 @@ import {
   type OtherBalances,
   OtherBalancesPill,
   SavingsBalanceRow,
+  shouldShowCard,
 } from '.';
 
 /**
@@ -39,7 +40,7 @@ const OtherBalancesDropdown = ({
     <View className="items-center">
       <OtherBalancesPill
         total={total}
-        cardValue={userHasCard ? cardBalance : 0}
+        cardValue={cardBalance}
         savingsValue={savingsBalance}
         onPress={present}
       />
@@ -55,7 +56,7 @@ const OtherBalancesDropdown = ({
       >
         <BottomSheetView className="gap-1 pb-2 pt-1" style={{ paddingBottom: insets.bottom + 8 }}>
           <Text className="px-5 pb-1 text-lg font-semibold text-muted-foreground">Balances</Text>
-          {userHasCard && (
+          {shouldShowCard(cardBalance, userHasCard) && (
             <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onDismiss={dismiss} />
           )}
           <SavingsBalanceRow
