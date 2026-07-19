@@ -12,32 +12,44 @@ import { useSavingStore } from '@/store/useSavingStore';
 // DepositTrigger injects its open handler via SlotTrigger.cloneElement({ onPress }),
 // so this trigger MUST forward props to its root Pressable (same rule as the
 // home WalletActions triggers).
-const StartEarningTrigger = (props: React.ComponentProps<typeof Pressable>) => (
+const DepositTriggerButton = ({
+  label,
+  ...props
+}: { label: string } & React.ComponentProps<typeof Pressable>) => (
   <Pressable
     {...props}
     className="h-14 w-full flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
   >
-    <Text className="text-base font-bold text-black">Start earning</Text>
+    <Text className="text-base font-bold text-black">{label}</Text>
   </Pressable>
 );
 
 interface StartEarningButtonProps {
   /** Vault to pre-select for the deposit (mirrors the chosen APY vault). */
   vaultType: VaultType;
+  /** Button label — "Start earning" (empty state) or "Add funds" (funded). */
+  label?: string;
+  source?: string;
   className?: string;
 }
 
 /**
- * Full-width white "Start earning" CTA. Opens the shared savings deposit flow
- * (deposit-from-Solid) pre-selecting the currently chosen vault.
+ * Full-width white savings deposit CTA. Opens the shared deposit-from-Solid flow
+ * pre-selecting the currently chosen vault. Used as "Start earning" on the empty
+ * state and "Add funds" once savings is funded.
  */
-const StartEarningButton = ({ vaultType, className }: StartEarningButtonProps) => {
+const StartEarningButton = ({
+  vaultType,
+  label = 'Start earning',
+  source = 'savings_start_earning',
+  className,
+}: StartEarningButtonProps) => {
   return (
     <View className={cn('px-4', className)}>
       <DepositTrigger
         modal={DEPOSIT_MODAL.OPEN_FORM}
         preserveSelectedVault
-        source="savings_start_earning"
+        source={source}
         onBeforeOpen={() => {
           const index = VAULTS.findIndex(vault => vault.type === vaultType);
           if (index >= 0) {
@@ -45,7 +57,7 @@ const StartEarningButton = ({ vaultType, className }: StartEarningButtonProps) =
           }
           useDepositStore.getState().setDepositFromSolid(true);
         }}
-        trigger={<StartEarningTrigger />}
+        trigger={<DepositTriggerButton label={label} />}
       />
     </View>
   );
