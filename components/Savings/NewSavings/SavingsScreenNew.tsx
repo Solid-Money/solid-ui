@@ -11,9 +11,12 @@ import { formatBalanceUSD } from '@/lib/utils';
 
 import ApyDropdown from './ApyDropdown';
 import MoreSavingsOptions from './MoreSavingsOptions';
+import RecentSavingsActivity from './RecentSavingsActivity';
 import SavingsBalanceHeadline from './SavingsBalanceHeadline';
+import SavingsFundedActions from './SavingsFundedActions';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
+import VaultSavingsSection from './VaultSavingsSection';
 
 import type { ApyByType } from './savingsVaultData';
 
@@ -22,9 +25,14 @@ import type { ApyByType } from './savingsVaultData';
  * internal users via the dispatcher in savings.tsx. Public users and all
  * desktop-web users keep the legacy savings screen.
  *
- * Big "Savings Balance" number = total redeemable savings USD. An APY pill opens
- * a per-vault APY breakdown (default USDC). "Simulate your savings" projects the
- * balance forward with a draggable chart handle.
+ * Two states share the "Savings Balance" headline + APY pill:
+ * - FUNDED (total savings > 0): the selected vault's savings detail + recent
+ *   savings activity.
+ * - EMPTY (total savings == 0): the "Simulate your savings" projection + other
+ *   vault options.
+ *
+ * "Savings Balance" = total redeemable USD across all vaults (soUSD + soFUSE +
+ * soETH). The APY dropdown switches the selected vault everywhere on the screen.
  */
 export default function SavingsScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
@@ -47,6 +55,7 @@ export default function SavingsScreenNew() {
   const isBalanceLoading = isSavingsLoading || totalSavingsUSD === undefined;
   const mobileTitle = isBalanceLoading ? null : formatBalanceUSD(savingsBalance);
   const selectedApy = apyByType[selectedVaultType].maxAPY;
+  const isFunded = savingsBalance > 0;
 
   return (
     <PageLayout mobileTitle={mobileTitle}>
@@ -58,24 +67,38 @@ export default function SavingsScreenNew() {
             <Skeleton className="h-14 w-11/12 rounded-full" />
           </View>
         ) : (
-          <View className="gap-5">
-            <SavingsBalanceHeadline balance={savingsBalance} />
-            <ApyDropdown
-              vaultType={selectedVaultType}
-              apyByType={apyByType}
-              onSelect={setSelectedVaultType}
-            />
-            <StartEarningButton vaultType={selectedVaultType} />
-          </View>
+          <>
+            <View className="gap-5">
+              <SavingsBalanceHeadline balance={savingsBalance} />
+              <ApyDropdown
+                vaultType={selectedVaultType}
+                apyByType={apyByType}
+                onSelect={setSelectedVaultType}
+              />
+              {isFunded ? (
+                <SavingsFundedActions vaultType={selectedVaultType} />
+              ) : (
+                <StartEarningButton vaultType={selectedVaultType} />
+              )}
+            </View>
+
+            {isFunded ? (
+              <>
+                <VaultSavingsSection vaultType={selectedVaultType} />
+                <RecentSavingsActivity />
+              </>
+            ) : (
+              <>
+                <SimulateSavingsCard apy={selectedApy} />
+                <MoreSavingsOptions
+                  selectedType={selectedVaultType}
+                  apyByType={apyByType}
+                  onSelect={setSelectedVaultType}
+                />
+              </>
+            )}
+          </>
         )}
-
-        <SimulateSavingsCard apy={selectedApy} />
-
-        <MoreSavingsOptions
-          selectedType={selectedVaultType}
-          apyByType={apyByType}
-          onSelect={setSelectedVaultType}
-        />
       </View>
     </PageLayout>
   );
