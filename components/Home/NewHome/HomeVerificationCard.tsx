@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 
-import CircularProgress from '@/components/Home/CircularProgress';
 import FinishSetupModal from '@/components/Home/FinishSetupModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
+import { getAsset } from '@/lib/assets';
+
+// Figma: Mona Sans / Bold 700 / 18px / line-height 100%.
+const TITLE_STYLE = { fontFamily: 'MonaSans_700Bold', fontSize: 18, lineHeight: 18 } as const;
 
 interface HomeVerificationCardProps {
   /** Whether the user has already funded their account (deposit step). */
@@ -21,7 +25,7 @@ interface HomeVerificationCardProps {
  */
 const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { steps, completedCount, total, firstIncomplete } = useHomeSetupSteps(depositCompleted);
+  const { steps, firstIncomplete } = useHomeSetupSteps(depositCompleted);
 
   return (
     <>
@@ -29,7 +33,9 @@ const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationC
         <View className="rounded-twice bg-card p-5">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 gap-1 pr-4">
-              <Text className="text-2xl font-semibold text-foreground">Finish verification</Text>
+              <Text className="text-foreground" style={TITLE_STYLE}>
+                Finish verification
+              </Text>
               <Text className="text-sm leading-tight text-muted-foreground">
                 You&apos;re a few steps from setting up your card.
               </Text>
@@ -41,7 +47,11 @@ const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationC
                 <Text className="text-sm font-bold text-primary-foreground">Get verified</Text>
               </Button>
             </View>
-            <CircularProgress completed={completedCount} total={total} />
+            <Image
+              source={getAsset('images/face-verification.png')}
+              style={{ width: 80, height: 80 }}
+              contentFit="contain"
+            />
           </View>
         </View>
       </View>

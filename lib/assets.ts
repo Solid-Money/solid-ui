@@ -258,6 +258,10 @@ export const ASSETS = {
     module: require('@/assets/images/exclamation_mark.png'),
     hash: '962c5177',
   },
+  'images/face-verification.png': {
+    module: require('@/assets/images/face-verification.png'),
+    hash: 'd630cb67',
+  },
   'images/favicon.png': { module: require('@/assets/images/favicon.png'), hash: '7b8f50eb' },
   'images/fingetprint copy.tsx': {
     module: require('@/assets/images/fingetprint copy.tsx'),
@@ -348,6 +352,10 @@ export const ASSETS = {
   'images/kyc_under_review.png': {
     module: require('@/assets/images/kyc_under_review.png'),
     hash: '9f6bccd4',
+  },
+  'images/left-chevron.png': {
+    module: require('@/assets/images/left-chevron.png'),
+    hash: 'd14a9270',
   },
   'images/legal.tsx': { module: require('@/assets/images/legal.tsx'), hash: 'c5189cad' },
   'images/lifebuoy.tsx': { module: require('@/assets/images/lifebuoy.tsx'), hash: 'bd7fd8cc' },
@@ -462,6 +470,14 @@ export const ASSETS = {
   'images/reward-star.png': {
     module: require('@/assets/images/reward-star.png'),
     hash: '5a43a288',
+  },
+  'images/reward-tier-star.png': {
+    module: require('@/assets/images/reward-tier-star.png'),
+    hash: 'e3b44279',
+  },
+  'images/right-chevron.png': {
+    module: require('@/assets/images/right-chevron.png'),
+    hash: 'e996469a',
   },
   'images/rocket-lavender.png': {
     module: require('@/assets/images/rocket-lavender.png'),

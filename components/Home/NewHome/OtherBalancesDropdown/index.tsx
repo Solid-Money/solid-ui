@@ -24,12 +24,22 @@ export type OtherBalances = {
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 
+/**
+ * Whether the Card belongs in "other balances". Shown when the user has an
+ * active card OR when there's a (e.g. internal test-override) card balance to
+ * surface — so the balance and its pie segment aren't dropped for testers whose
+ * card status isn't ACTIVE yet.
+ */
+export const shouldShowCard = (cardBalance: number, userHasCard: boolean) =>
+  userHasCard || (cardBalance || 0) > 0;
+
 /** Combined "other balances" figure shown on the pill. */
 export const getOtherBalancesTotal = ({
   cardBalance,
   savingsBalance,
   userHasCard,
-}: OtherBalances) => (userHasCard ? cardBalance || 0 : 0) + (savingsBalance || 0);
+}: OtherBalances) =>
+  (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0) + (savingsBalance || 0);
 
 type PillProps = {
   total: number;

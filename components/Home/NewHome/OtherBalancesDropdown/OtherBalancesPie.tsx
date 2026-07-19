@@ -1,7 +1,7 @@
 import Svg, { Circle, G } from 'react-native-svg';
 
 const SIZE = 20;
-const STROKE = 5;
+const STROKE = 3;
 const RADIUS = (SIZE - STROKE) / 2;
 const CENTER = SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
