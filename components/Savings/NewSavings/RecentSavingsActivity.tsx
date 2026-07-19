@@ -37,7 +37,7 @@ const RecentSavingsActivity = () => {
           onPress={() => router.push(path.ACTIVITY)}
           className="transition-all active:opacity-70"
         >
-          <Text className="text-sm font-medium text-brand">See all activity</Text>
+          <Text className="text-sm font-medium text-white">See all</Text>
         </Pressable>
       </View>
 
