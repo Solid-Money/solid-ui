@@ -14,17 +14,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { CommonActions } from '@react-navigation/native';
 
-import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Text } from '@/components/ui/text';
 import { WHITELIST_TAB_LABELS, WHITELIST_TAB_NAMES } from '@/constants/tabs';
 
-// These mirror CustomTabBar so the whitelisted bar keeps the same footprint /
-// safe-area behavior as the public one. See CustomTabBar.tsx for the rationale.
-const TAB_BAR_CONTENT_HEIGHT = 45;
+// Taller than CustomTabBar so the bigger figma oval (≈122×67, radius 46) fits.
+const TAB_BAR_CONTENT_HEIGHT = 60;
 const TAB_BAR_MIN_BOTTOM_INSET = 35;
 const TAB_BAR_ANDROID_EXTRA_INSET = 16;
 const TAB_BAR_PADDING_TOP = 10;
@@ -34,11 +34,11 @@ const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
 
 // The sliding "oval glass" background sits behind the active tab, inset from the
 // measured tab slot so it reads as a pill rather than a full-width block.
-const PILL_INSET_X = 8;
+const PILL_INSET_X = 4;
 const PILL_INSET_Y = 2;
-// Extra vertical height (centered) so the icon + label sit inside the oval
-// rather than overflowing above/below it.
-const PILL_EXTRA_HEIGHT = 15;
+// Extra vertical height (centered) so the icon + label sit inside the oval with
+// the figma padding rather than overflowing above/below it.
+const PILL_EXTRA_HEIGHT = 16;
 
 // Matches NavbarMobile's GLASS_TRANSITION so the app's glass motion feels of a piece.
 const SLIDE_TIMING = { duration: 320, easing: Easing.out(Easing.cubic) };
@@ -199,9 +199,19 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
         { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
       ]}
     >
-      {TabBarBackground && <TabBarBackground />}
+      {/* Transparent → #111 gradient container so scrolled content shows through
+          the top of the bar (no solid/blur fill behind the tabs). */}
+      <LinearGradient
+        colors={['rgba(17, 17, 17, 0)', '#111111']}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.row}>
-        <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]} />
+        <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]}>
+          {/* Figma oval: #1B1B1BCC + backdrop blur(19). */}
+          <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
+          <View pointerEvents="none" style={styles.pillTint} />
+        </Animated.View>
         {visibleRoutes.map((route, visibleIndex) => {
           const { options } = descriptors[route.key];
           const originalIndex = state.routes.findIndex(r => r.key === route.key);
@@ -257,15 +267,12 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
 const styles = StyleSheet.create({
   tabBar: {
     paddingTop: TAB_BAR_PADDING_TOP,
-    backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+    backgroundColor: 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    overflow: 'hidden',
-    // @ts-ignore - web CSS
-    backdropFilter: Platform.OS === 'web' ? 'blur(10px)' : undefined,
   },
   row: {
     flex: 1,
@@ -275,10 +282,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 46,
+    overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  pillTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(27, 27, 27, 0.8)',
   },
   tabButton: {
     flex: 1,
