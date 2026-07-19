@@ -13,6 +13,7 @@ import ApyDropdown from './ApyDropdown';
 import MoreSavingsOptions from './MoreSavingsOptions';
 import RecentSavingsActivity from './RecentSavingsActivity';
 import SavingsBalanceHeadline from './SavingsBalanceHeadline';
+import SavingsFundedActions from './SavingsFundedActions';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
 import VaultSavingsSection from './VaultSavingsSection';
@@ -74,11 +75,11 @@ export default function SavingsScreenNew() {
                 apyByType={apyByType}
                 onSelect={setSelectedVaultType}
               />
-              <StartEarningButton
-                vaultType={selectedVaultType}
-                label={isFunded ? 'Add funds' : 'Start earning'}
-                source={isFunded ? 'savings_add_funds' : 'savings_start_earning'}
-              />
+              {isFunded ? (
+                <SavingsFundedActions vaultType={selectedVaultType} />
+              ) : (
+                <StartEarningButton vaultType={selectedVaultType} />
+              )}
             </View>
 
             {isFunded ? (

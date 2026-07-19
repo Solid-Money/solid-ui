@@ -3,37 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
-import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { VAULTS } from '@/constants/vaults';
+import { makeNativePriceFetcher } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
-import { fetchCoinSimplePrice, fetchTokenPriceUsd } from '@/lib/api';
 
 const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
 const usdcVault = ACTIVE_VAULTS[0];
 const fuseVault = ACTIVE_VAULTS[1];
 const ethVault = ACTIVE_VAULTS[2];
-
-/**
- * Fetch a chain's native-token USD price (Alchemy first, CoinGecko fallback).
- * Used for the FUSE and ETH savings terms (their vault exchange rates are in
- * native units, unlike USDC whose soUSD→USD rate is already dollars).
- */
-const makeNativePriceFetcher = (chainId: number) => async (): Promise<string | undefined> => {
-  try {
-    const price = await fetchTokenPriceUsd(NATIVE_TOKENS[chainId]);
-    if (price != null && Number(price) > 0) return price;
-  } catch {
-    // fall through to CoinGecko
-  }
-
-  const coinId = NATIVE_COINGECKO_TOKENS[chainId];
-  if (!coinId) return undefined;
-  const priceMap = await fetchCoinSimplePrice([coinId]);
-  const usd = priceMap[coinId]?.usd;
-  return usd != null && usd > 0 ? String(usd) : undefined;
-};
 
 const fetchFusePrice = makeNativePriceFetcher(fuse.id);
 const fetchEthPrice = makeNativePriceFetcher(mainnet.id);

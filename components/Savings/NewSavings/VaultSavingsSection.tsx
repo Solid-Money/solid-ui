@@ -1,8 +1,8 @@
-import { TextStyle, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { Address } from 'viem';
+import { fuse, mainnet } from 'viem/chains';
 
-import SavingCountUp from '@/components/SavingCountUp';
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import {
@@ -12,28 +12,30 @@ import {
   useUserTransactions,
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useSavingsSummary } from '@/hooks/useSavingsSummary';
+import { useSavingsYield } from '@/hooks/useSavingsYield';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode, VaultType } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 import { getVaultDisplay } from './savingsVaultData';
 
-const VALUE_STYLE: TextStyle = {
-  fontSize: 30,
-  fontWeight: '600',
-  fontFamily: 'MonaSans_500Medium',
-  color: '#ffffff',
-};
-const INTEREST_STYLE: TextStyle = {
-  fontSize: 15,
-  fontWeight: '600',
-  color: '#94F27F',
-};
+const DAYS_PER_YEAR = 365;
+const fmtUsd = (value: number) => `$${formatNumber(Math.max(value, 0), 2, 2)}`;
+
+const Stat = ({ label, value, positive }: { label: string; value: string; positive?: boolean }) => (
+  <View className="flex-1 gap-1">
+    <Text className="text-sm text-muted-foreground">{label}</Text>
+    <Text className={cn('text-xl font-semibold', positive ? 'text-brand' : 'text-white')}>
+      {value}
+    </Text>
+  </View>
+);
 
 interface VaultSavingsSectionProps {
   vaultType: VaultType;
@@ -41,9 +43,9 @@ interface VaultSavingsSectionProps {
 
 /**
  * The selected vault's savings detail ("USDC savings" → "{selected} savings"
- * when the APY dropdown switches). Shows the live redeemable value and interest
- * earned, reusing the same per-vault plumbing + SavingCountUp as the legacy
- * savings screen.
+ * when the APY dropdown switches). All figures are shown in USD: FUSE/ETH
+ * redeemable + interest are converted with the native token price. Reuses the
+ * same per-vault plumbing (balance / rate / APY / yield) as the legacy screen.
  */
 const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
   const { user } = useUser();
@@ -75,26 +77,40 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
   );
   const { data: savingsSummary } = useSavingsSummary(vault.name, vault.name === 'FUSE');
 
-  const isUsdc = vault.name === 'USDC';
-  const prefix = isUsdc ? '$' : undefined;
-  const suffix = isUsdc ? '' : vault.name;
-  const decimalPlaces = vault.name === 'ETH' ? 8 : 2;
+  // USD price of the vault's native token (1 for USDC; FUSE/ETH priced live).
+  const fusePriceUsd = useNativePriceUsd(fuse.id, 'fusePriceUsd', vault.name === 'FUSE');
+  const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.name === 'ETH');
+  const priceUsd = vault.name === 'USDC' ? 1 : vault.name === 'FUSE' ? fusePriceUsd : ethPriceUsd;
 
-  const commonProps = {
+  // Live interest (USD for USDC/FUSE; ETH-native × price for ETH).
+  const interestRaw = useSavingsYield({
     balance: balance ?? 0,
-    decimals: vault.decimals,
     apy: vaultAPY,
     lastTimestamp: firstDepositTimestamp ?? 0,
+    mode: SavingMode.CURRENT,
+    decimals: vault.decimals,
     userDepositTransactions,
     exchangeRate,
     tokenAddress: vault.vaults[0].address,
-    vault: vault.name,
+    inputsReady: !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0),
     summary: savingsSummary,
-    animateOnMount: false,
-  };
+    vault: vault.name,
+  });
+
+  const redeemableNative = (balance ?? 0) * (exchangeRate ?? 1);
+  const availableUsd = vault.name === 'USDC' ? redeemableNative : redeemableNative * priceUsd;
+  const interestUsd = vault.name === 'ETH' ? interestRaw * priceUsd : interestRaw;
+  const depositedUsd = Math.max(availableUsd - interestUsd, 0);
+
+  // No exact historical "this month" breakdown exists, so approximate from APY:
+  // month-to-date and forward 30-day earnings on the current balance.
+  const dayOfMonth = new Date().getDate();
+  const apyFraction = (maxAPY ?? 0) / 100;
+  const thisMonthUsd = availableUsd * apyFraction * (dayOfMonth / DAYS_PER_YEAR);
+  const nextThirtyUsd = availableUsd * apyFraction * (30 / DAYS_PER_YEAR);
 
   return (
-    <View className="mx-4 gap-3 rounded-twice bg-card p-5">
+    <View className="mx-4 gap-4 rounded-twice bg-card p-5">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <Image
@@ -104,30 +120,29 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
           />
           <Text className="text-lg font-semibold text-white">{display.name} savings</Text>
         </View>
-        <Text className="text-base font-semibold text-white">
+        <Text className="text-base font-semibold text-brand">
           {formatNumber(maxAPY ?? 0, 1)}% APY
         </Text>
       </View>
 
-      <SavingCountUp
-        {...commonProps}
-        prefix={prefix}
-        suffix={suffix}
-        decimalPlaces={decimalPlaces}
-        styles={{ wholeText: VALUE_STYLE, decimalText: VALUE_STYLE, decimalSeparator: VALUE_STYLE }}
-      />
+      <View className="h-px bg-white/10" />
 
-      <View className="flex-row items-baseline gap-1">
-        <SavingCountUp
-          {...commonProps}
-          mode={SavingMode.CURRENT}
-          inputsReady={!isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)}
-          prefix={prefix}
-          suffix={suffix}
-          decimalPlaces={decimalPlaces}
-          styles={{ wholeText: INTEREST_STYLE, decimalText: INTEREST_STYLE }}
-        />
-        <Text className="text-sm text-muted-foreground">Interest earned</Text>
+      <View className="gap-4">
+        <View className="flex-row">
+          <Stat label="Deposited" value={fmtUsd(depositedUsd)} />
+          <Stat label="Interest earned" value={fmtUsd(interestUsd)} />
+        </View>
+        <View className="flex-row">
+          <Stat label="This month" value={`+${fmtUsd(thisMonthUsd)}`} positive />
+          <Stat label="Next 30 days (est.)" value={`+${fmtUsd(nextThirtyUsd)}`} positive />
+        </View>
+      </View>
+
+      <View className="h-px bg-white/10" />
+
+      <View className="flex-row items-center justify-between">
+        <Text className="text-sm text-muted-foreground">Available to withdraw</Text>
+        <Text className="text-base font-semibold text-white">{fmtUsd(availableUsd)}</Text>
       </View>
     </View>
   );
