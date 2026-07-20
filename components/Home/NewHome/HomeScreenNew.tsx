@@ -139,7 +139,7 @@ export default function HomeScreenNew() {
             shadow (~4% each side) acts as the gutter, so the card BODY lines up
             with the px-4 sections below instead of looking inset/narrower. */}
         <View className="gap-3">
-          <HomeWalletCard hasCard={userHasCard} />
+          <HomeWalletCard hasCard={userHasCard} last4={cardDetails?.card_details?.last_4} />
           {!userHasCard && (
             <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
           )}
