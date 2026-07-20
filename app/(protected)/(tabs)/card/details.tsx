@@ -254,7 +254,16 @@ export default function CardDetails() {
           ) : (
             <BalanceDisplay amount={availableAmount} />
           )}
-          {isTestUser ? <CardHeroTarget>{cardImageSection}</CardHeroTarget> : cardImageSection}
+          {isTestUser ? (
+            // Full-bleed: cancel the container's px-4 so the card matches the
+            // home screen card width (the baked-in shadow then lines the card
+            // body up with the px-4 sections below).
+            <View style={styles.fullBleedCard}>
+              <CardHeroTarget>{cardImageSection}</CardHeroTarget>
+            </View>
+          ) : (
+            cardImageSection
+          )}
           {isTestUser && (
             <ShowDetailsButton
               isFlipped={isCardFlipped}
@@ -1069,6 +1078,10 @@ const styles = StyleSheet.create({
     zIndex: -1,
     opacity: 0.25,
   },
+
+  // Whitelisted card: extend past the container's px-4 (16px) padding so the
+  // card is as wide as the home screen card.
+  fullBleedCard: { marginHorizontal: -16 },
 
   // Card flip animation
   cardContainer: { position: 'relative', width: '100%' },
