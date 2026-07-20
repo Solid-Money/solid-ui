@@ -38,7 +38,17 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            In addition to the standard review, pay special attention to changes that look like they were committed by mistake or left over from local development. Flag any of the following in the diff:
+            - Debugging leftovers: console.log / console.debug / print statements, `debugger` statements, or verbose logging added for troubleshooting.
+            - Commented-out code: blocks of real code that have been commented out rather than removed.
+            - Test/scaffolding artifacts: hardcoded test values, mock/stub data, temporary flags, `TODO`/`FIXME`/`XXX` markers, or feature toggles left enabled.
+            - Test-only shortcuts: bypassed auth/validation, `.only`/`.skip` on tests, disabled or skipped tests, shortened timeouts/intervals, or code guarded to always take a test branch.
+            - Secrets & local config: hardcoded API keys, tokens, passwords, private URLs/endpoints, local IPs/ports, or personal file paths.
+            - Accidental edits: unrelated files, dependency/lockfile changes not tied to the PR, formatting-only churn, or reverted-then-recommitted noise.
+            For each finding, cite the file and line and explain why it looks unintentional.
           claude_args: '--model claude-opus-4-5-20251101'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
