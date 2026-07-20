@@ -114,7 +114,6 @@ export default function CardDirectDepositModalMobile({ trigger }: CardDirectDepo
         <DepositPublicAddress
           address={depositAddress}
           onDone={() => handleOpenChange(false)}
-          excludeChainIds={[56]}
         />
       ) : (
         <View className="items-center py-12">

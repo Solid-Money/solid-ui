@@ -889,21 +889,18 @@ export default function CardDepositInternalForm() {
   const showSavingsOption = isProduction;
 
   // Order the funding sources so the one the user actually has funds in is
-  // shown first. Savings vs Wallet are sorted by balance (highest first);
-  // External Wallet stays last.
+  // shown first. Savings vs Wallet are sorted by balance (highest first).
   const sortedSources = useMemo<CardDepositSource[]>(() => {
     if (!showSavingsOption) {
-      return [CardDepositSource.WALLET, CardDepositSource.EXTERNAL];
+      return [CardDepositSource.WALLET];
     }
 
-    const balanceSources = [
+    return [
       { source: CardDepositSource.WALLET, balance: usdcBalanceAmount },
       { source: CardDepositSource.SAVINGS, balance: soUsdBalanceAmount },
     ]
       .sort((a, b) => b.balance - a.balance)
       .map(item => item.source);
-
-    return [...balanceSources, CardDepositSource.EXTERNAL];
   }, [showSavingsOption, usdcBalanceAmount, soUsdBalanceAmount]);
 
   // The funded source the form should open on — the first ordered option.
