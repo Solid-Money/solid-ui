@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, InteractionManager, Platform, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Platform, StyleSheet, View } from 'react-native';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
@@ -11,6 +11,7 @@ import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
+import CardHeroOverlay from '@/components/Card/NewCardDetails/CardHeroOverlay';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -180,74 +181,84 @@ export default function ProtectedLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        contentStyle: {
-          backgroundColor: '#000',
-        },
-        headerStyle: {
-          backgroundColor: '#000',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontSize: 20,
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="(tabs)"
-        options={{
-          headerShown: false,
+    <View style={styles.root}>
+      <Stack
+        screenOptions={{
+          contentStyle: {
+            backgroundColor: '#000',
+          },
+          headerStyle: {
+            backgroundColor: '#000',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+          },
         }}
-      />
-      <Stack.Screen
-        name="quest-wallet"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="coins/[id]"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="deposit"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="qr-scanner"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_bottom',
-          presentation: 'fullScreenModal',
-        }}
-      />
-      <Stack.Screen
-        name="rescue-token"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="agent/index"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="gooddollar/index"
-        options={{
-          headerShown: false,
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="quest-wallet"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="coins/[id]"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="deposit"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="qr-scanner"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_bottom',
+            presentation: 'fullScreenModal',
+          }}
+        />
+        <Stack.Screen
+          name="rescue-token"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="agent/index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="gooddollar/index"
+          options={{
+            headerShown: false,
+          }}
+        />
+      </Stack>
+      {/* Root-level hero overlay for the card view-transition (whitelisted new
+          screens only — stays dormant/null otherwise). Mounted above the whole
+          navigator so the card can fly across the home → card/details change. */}
+      <CardHeroOverlay />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

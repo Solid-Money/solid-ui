@@ -23,7 +23,8 @@ import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import { CreditLineCards } from '@/components/Card/CreditLine/CreditLineCards';
 import ManagePinModal from '@/components/Card/ManagePinModal';
 import CardBalanceHeadline from '@/components/Card/NewCardDetails/CardBalanceHeadline';
-import CardHeroImage from '@/components/Card/NewCardDetails/CardHeroImage';
+import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
+import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import ShowDetailsButton from '@/components/Card/NewCardDetails/ShowDetailsButton';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
@@ -92,6 +93,7 @@ export default function CardDetails() {
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
+  const cardLast4 = cardDetails?.card_details?.last_4;
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const canUnfreeze =
@@ -235,20 +237,24 @@ export default function CardDetails() {
       shouldRevealDetails={shouldRevealDetails}
       onCardDetailsLoaded={handleCardDetailsLoaded}
       provider={provider}
+      useNewCard={isTestUser}
+      last4={cardLast4}
     />
   );
 
   return (
     <PageLayout isLoading={isLoading}>
-      {pageHeader}
+      {/* Whitelisted screen drops the "Card" heading (Card Balance headline
+          takes its place); public/desktop keep the heading. */}
+      {!isTestUser && pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
-        <View className="flex-1">
+        <View className={cn('flex-1', isTestUser && 'pt-4')}>
           {isTestUser ? (
             <CardBalanceHeadline amount={availableAmount} />
           ) : (
             <BalanceDisplay amount={availableAmount} />
           )}
-          {isTestUser ? <CardHeroImage>{cardImageSection}</CardHeroImage> : cardImageSection}
+          {isTestUser ? <CardHeroTarget>{cardImageSection}</CardHeroTarget> : cardImageSection}
           {isTestUser && (
             <ShowDetailsButton
               isFlipped={isCardFlipped}
@@ -517,6 +523,11 @@ interface CardImageSectionProps {
   shouldRevealDetails: boolean;
   onCardDetailsLoaded: () => void;
   provider?: CardProvider | null;
+  /** Whitelisted screen: render the new VISA Platinum artwork (with code-drawn
+   *  glyph badge + white "reveal" overlay) instead of the legacy card image. */
+  useNewCard?: boolean;
+  /** Last 4 digits for the glyph badge (new card only). */
+  last4?: string;
 }
 
 function CardImageSection({
@@ -528,6 +539,8 @@ function CardImageSection({
   shouldRevealDetails,
   onCardDetailsLoaded,
   provider,
+  useNewCard = false,
+  last4,
 }: CardImageSectionProps) {
   const desktopImagePath = isCardFrozen
     ? getAsset('images/card_frozen.png')
@@ -555,6 +568,16 @@ function CardImageSection({
     outputRange: [0, 0, 1],
   });
 
+  const revealOverlay = shouldRevealDetails ? (
+    <CardDetailsOverlay
+      cardholderName={cardholderName}
+      onDetailsLoaded={onCardDetailsLoaded}
+      visible={isCardFlipped}
+      provider={provider}
+      variant={useNewCard ? 'dark' : 'default'}
+    />
+  ) : null;
+
   return (
     <View
       className={cn('items-center', !isScreenMedium && 'mb-6 mt-[28px]')}
@@ -570,12 +593,16 @@ function CardImageSection({
             { transform: [{ rotateY: frontRotation }], opacity: frontOpacity },
           ]}
         >
-          <Image
-            source={desktopImagePath}
-            alt="Solid Card"
-            style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
-            contentFit="contain"
-          />
+          {useNewCard ? (
+            <NewCardArt last4={last4} />
+          ) : (
+            <Image
+              source={desktopImagePath}
+              alt="Solid Card"
+              style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
+              contentFit="contain"
+            />
+          )}
         </Animated.View>
 
         {/* Back of card with details overlay */}
@@ -585,19 +612,20 @@ function CardImageSection({
             { transform: [{ rotateY: backRotation }], opacity: backOpacity },
           ]}
         >
-          <Image
-            source={desktopImagePath}
-            alt="Solid Card"
-            style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
-            contentFit="contain"
-          />
-          {shouldRevealDetails && (
-            <CardDetailsOverlay
-              cardholderName={cardholderName}
-              onDetailsLoaded={onCardDetailsLoaded}
-              visible={isCardFlipped}
-              provider={provider}
-            />
+          {useNewCard ? (
+            // Provide an overlay (the reveal, or an empty view) so the back face
+            // never shows the front glyph badge.
+            <NewCardArt overlay={revealOverlay ?? <View />} />
+          ) : (
+            <>
+              <Image
+                source={desktopImagePath}
+                alt="Solid Card"
+                style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
+                contentFit="contain"
+              />
+              {revealOverlay}
+            </>
           )}
         </Animated.View>
       </View>
@@ -610,6 +638,9 @@ interface CardDetailsOverlayProps {
   onDetailsLoaded: () => void;
   visible?: boolean;
   provider?: CardProvider | null;
+  /** 'dark' = white text for the green VISA Platinum card; 'default' = the
+   *  legacy dark-green text on the light activate-card artwork. */
+  variant?: 'default' | 'dark';
 }
 
 function CardDetailsOverlay({
@@ -617,6 +648,7 @@ function CardDetailsOverlay({
   onDetailsLoaded,
   visible = false,
   provider,
+  variant = 'default',
 }: CardDetailsOverlayProps) {
   const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal(provider);
   const hasRevealedRef = useRef(false);
@@ -710,61 +742,26 @@ function CardDetailsOverlay({
     ? `${cardholderName.first_name} ${cardholderName.last_name}`
     : 'Cardholder';
 
-  // Keep rendered but hide with opacity when not visible
-  if (!visible) {
-    return (
-      <View
-        style={styles.cardDetailsHidden}
-        className="absolute inset-0 mt-24 justify-center rounded-2xl p-6"
-      >
-        <View className="mb-5">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-3xl font-medium text-[#22591A]">
-              {formatCardNumber(safeCardDetails.card_number)}
-            </Text>
-            <Pressable
-              onPress={handleCopyCardNumber}
-              className="p-2 web:hover:opacity-70"
-              accessibilityLabel="Copy card number to clipboard"
-              accessibilityRole="button"
-            >
-              <Copy size={20} color="#2E6A25" />
-            </Pressable>
-          </View>
-        </View>
+  // 'dark' variant renders white text for the green VISA Platinum card; the
+  // legacy variant keeps the dark-green text used on the light activate card.
+  const isDark = variant === 'dark';
+  const textColor = isDark ? '#ffffff' : '#22591A';
+  const iconColor = isDark ? '#ffffff' : '#2E6A25';
 
-        <View className="flex-row">
-          <View className="mr-6 flex-1">
-            <View className="mt-4 flex-row items-end">
-              <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">{'GOOD\nTHRU'}</Text>
-              <Text className="ml-2 text-lg font-semibold text-[#22591A]">
-                {formatExpiryDate(cardDetails.expiry_date)}
-              </Text>
-            </View>
-            <Text
-              className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg"
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-          </View>
-          <View className="mt-4 flex-1">
-            <Text className="text-xs font-semibold text-[#22591A]">CVV</Text>
-            <Text className="text-lg font-semibold text-[#22591A]">
-              {cardDetails.card_security_code}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
+  // Kept mounted while flipping (so the reveal fetch persists); hidden with
+  // opacity 0 until the flip completes.
   return (
-    <View className="absolute inset-0 mt-12 justify-center rounded-2xl p-6 md:mt-24">
+    <View
+      style={!visible ? styles.cardDetailsHidden : undefined}
+      className={cn(
+        'absolute inset-0 justify-center rounded-2xl p-6',
+        visible ? 'mt-12 md:mt-24' : 'mt-24',
+      )}
+    >
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg font-medium text-[#22591A] md:text-3xl">
-            {formatCardNumber(cardDetails.card_number)}
+          <Text style={{ color: textColor }} className="text-lg font-medium md:text-3xl">
+            {formatCardNumber(safeCardDetails.card_number)}
           </Text>
           <Pressable
             onPress={handleCopyCardNumber}
@@ -772,7 +769,7 @@ function CardDetailsOverlay({
             accessibilityLabel="Copy card number to clipboard"
             accessibilityRole="button"
           >
-            <Copy size={20} color="#2E6A25" />
+            <Copy size={20} color={iconColor} />
           </Pressable>
         </View>
       </View>
@@ -780,19 +777,27 @@ function CardDetailsOverlay({
       <View className="flex-row">
         <View className="mr-6 flex-1">
           <View className="flex-row items-end md:mt-4">
-            <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">{'GOOD\nTHRU'}</Text>
-            <Text className="ml-2 text-lg font-semibold text-[#22591A]">
-              {formatExpiryDate(cardDetails.expiry_date)}
+            <Text style={{ color: textColor }} className="mb-1 text-[9px] font-extrabold">
+              {'GOOD\nTHRU'}
+            </Text>
+            <Text style={{ color: textColor }} className="ml-2 text-lg font-semibold">
+              {formatExpiryDate(safeCardDetails.expiry_date)}
             </Text>
           </View>
-          <Text className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg" numberOfLines={1}>
+          <Text
+            style={{ color: textColor }}
+            className="mt-6 text-sm font-semibold md:text-lg"
+            numberOfLines={1}
+          >
             {displayName}
           </Text>
         </View>
         <View className="flex-1 md:mt-4">
-          <Text className="text-xs font-semibold text-[#22591A]">CVV</Text>
-          <Text className="font-semibold text-[#22591A] md:text-lg">
-            {cardDetails.card_security_code}
+          <Text style={{ color: textColor }} className="text-xs font-semibold">
+            CVV
+          </Text>
+          <Text style={{ color: textColor }} className="font-semibold md:text-lg">
+            {safeCardDetails.card_security_code}
           </Text>
         </View>
       </View>

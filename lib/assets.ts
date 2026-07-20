@@ -677,7 +677,7 @@ export const ASSETS = {
   'images/veda.png': { module: require('@/assets/images/veda.png'), hash: 'e41bfe57' },
   'images/visa-platinum-card.png': {
     module: require('@/assets/images/visa-platinum-card.png'),
-    hash: 'a92d022c',
+    hash: 'ef91cb7a',
   },
   'images/wallet-yellow-background.png': {
     module: require('@/assets/images/wallet-yellow-background.png'),
