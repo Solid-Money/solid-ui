@@ -38,12 +38,16 @@ const CardHeroOverlay = () => {
   useEffect(() => {
     if (!active || !fromRect) return;
 
-    // Before the destination is measured, hold the clone at the source rect.
+    // Before the destination is measured, hold the clone at the source rect and
+    // arm a fallback so a screen that never lays out can't leave it stuck. Once
+    // toRect arrives this effect re-runs, clearing the timer (so it never cuts a
+    // real animation) and starting the flight, which ends itself on completion.
     if (!toRect) {
       tx.value = 0;
       ty.value = 0;
       scale.value = 1;
-      return;
+      const timer = setTimeout(() => end(), FALLBACK_MS);
+      return () => clearTimeout(timer);
     }
 
     const fromCx = fromRect.x + fromRect.width / 2;
@@ -57,12 +61,6 @@ const CardHeroOverlay = () => {
       if (finished) runOnJS(end)();
     });
   }, [active, fromRect, toRect, tx, ty, scale, end]);
-
-  useEffect(() => {
-    if (!active) return;
-    const timer = setTimeout(() => end(), FALLBACK_MS);
-    return () => clearTimeout(timer);
-  }, [active, end]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],

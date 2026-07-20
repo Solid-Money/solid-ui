@@ -7,9 +7,10 @@ export default function CardLayout() {
       <Stack.Screen name="ready" />
       <Stack.Screen name="pending" />
       <Stack.Screen name="activate" />
-      {/* Fade (not slide) so the card view-transition from the wallet reads as a
-          continuous move rather than fighting a horizontal push. */}
-      <Stack.Screen name="details" options={{ animation: 'fade' }} />
+      {/* No screen animation: the card hero overlay is the only motion, so the
+          details screen swaps in instantly (opaque) while the card flies to it,
+          instead of a fade competing with the transition. */}
+      <Stack.Screen name="details" options={{ animation: 'none' }} />
     </Stack>
   );
 }

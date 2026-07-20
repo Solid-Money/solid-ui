@@ -243,7 +243,11 @@ export default function CardDetails() {
   );
 
   return (
-    <PageLayout isLoading={isLoading}>
+    // Whitelisted screen renders immediately (never the full-screen loader): the
+    // card must be laid out right away so the hero transition can measure its
+    // destination and land smoothly. Data fills in as it arrives (balance/last-4
+    // are usually already warm from the home screen's query).
+    <PageLayout isLoading={isTestUser ? false : isLoading}>
       {/* Whitelisted screen drops the "Card" heading (Card Balance headline
           takes its place); public/desktop keep the heading. */}
       {!isTestUser && pageHeader}
@@ -761,7 +765,12 @@ function CardDetailsOverlay({
   // opacity 0 until the flip completes.
   return (
     <View
-      style={!visible ? styles.cardDetailsHidden : undefined}
+      style={[
+        !visible ? styles.cardDetailsHidden : null,
+        // The green card's artwork has ~6% transparent shadow on the left, so the
+        // default p-6 lands the details flush against the card body. Inset more.
+        isDark ? styles.revealDarkContent : null,
+      ]}
       className={cn(
         'absolute inset-0 justify-center rounded-2xl p-6',
         visible ? 'mt-12 md:mt-24' : 'mt-24',
@@ -1097,6 +1106,9 @@ const styles = StyleSheet.create({
 
   // Card details overlay
   cardDetailsHidden: { opacity: 0, pointerEvents: 'none' },
+  // Extra left inset for the reveal on the green card (clears the artwork shadow
+  // + gives the card number breathing room from the card body's edge).
+  revealDarkContent: { paddingLeft: '13%' },
   // Cashback display
   cashbackDivider: {
     height: 1,
