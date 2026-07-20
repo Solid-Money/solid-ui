@@ -11,6 +11,7 @@ export const TEST_FEATURES_ALLOW_LIST = [
   'maxxb.34980',
   'cimal67977',
   'vesas62360',
+  'smargonaq1',
 ];
 
 export const isUserAllowedToUseTestFeature = (username: string) => {
