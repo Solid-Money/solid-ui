@@ -1,9 +1,11 @@
-import { Pressable } from 'react-native';
+import { useRef } from 'react';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
 import { path } from '@/constants/path';
 import { getAsset } from '@/lib/assets';
+import { useCardHeroStore } from '@/store/useCardHeroStore';
 
 // Intrinsic size of assets/images/visa-platinum-card.png (includes the card's
 // drop shadow), used to render the artwork full-width without distortion.
@@ -17,11 +19,13 @@ interface HomeWalletCardProps {
 /**
  * The merged green VISA Platinum "glass" card shown on the wallet page. Always
  * displayed; only navigates to the card management page (/card/details) once the
- * user actually has a card. The card artwork — including the "•••" menu glyph and
- * the "VISA Platinum" wordmark — is baked into the image.
+ * user actually has a card. On tap it records its window rect (useCardHeroStore)
+ * so the card-details screen can animate the card up from here.
  */
 const HomeWalletCard = ({ hasCard }: HomeWalletCardProps) => {
   const router = useRouter();
+  const setFromRect = useCardHeroStore(state => state.setFromRect);
+  const ref = useRef<View>(null);
 
   const card = (
     <Image
@@ -36,7 +40,26 @@ const HomeWalletCard = ({ hasCard }: HomeWalletCardProps) => {
     return card;
   }
 
-  return <Pressable onPress={() => router.push(path.CARD_DETAILS)}>{card}</Pressable>;
+  const handlePress = () => {
+    const node = ref.current;
+    if (!node) {
+      router.push(path.CARD_DETAILS);
+      return;
+    }
+    // Capture the card's position, then navigate (measureInWindow is async).
+    node.measureInWindow((x, y, width, height) => {
+      if (width && height) {
+        setFromRect({ x, y, width, height });
+      }
+      router.push(path.CARD_DETAILS);
+    });
+  };
+
+  return (
+    <Pressable ref={ref} collapsable={false} onPress={handlePress}>
+      {card}
+    </Pressable>
+  );
 };
 
 export default HomeWalletCard;
