@@ -22,6 +22,9 @@ import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import { CreditLineCards } from '@/components/Card/CreditLine/CreditLineCards';
 import ManagePinModal from '@/components/Card/ManagePinModal';
+import CardBalanceHeadline from '@/components/Card/NewCardDetails/CardBalanceHeadline';
+import CardHeroImage from '@/components/Card/NewCardDetails/CardHeroImage';
+import ShowDetailsButton from '@/components/Card/NewCardDetails/ShowDetailsButton';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -45,6 +48,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
+import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
@@ -57,6 +61,10 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
+  // Whitelisted internal users get the redesigned mobile card screen (Card
+  // Balance headline, full-row Show details, card view-transition). Public users
+  // and desktop keep the existing layout untouched.
+  const isTestUser = useIsTestUser();
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
@@ -217,22 +225,37 @@ export default function CardDetails() {
   }
 
   // Mobile layout
+  const cardImageSection = (
+    <CardImageSection
+      isScreenMedium={isScreenMedium}
+      isCardFrozen={isCardFrozen}
+      flipAnimation={flipAnimation}
+      isCardFlipped={isCardFlipped}
+      cardholderName={cardDetails?.cardholder_name}
+      shouldRevealDetails={shouldRevealDetails}
+      onCardDetailsLoaded={handleCardDetailsLoaded}
+      provider={provider}
+    />
+  );
+
   return (
     <PageLayout isLoading={isLoading}>
       {pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
-          <BalanceDisplay amount={availableAmount} />
-          <CardImageSection
-            isScreenMedium={isScreenMedium}
-            isCardFrozen={isCardFrozen}
-            flipAnimation={flipAnimation}
-            isCardFlipped={isCardFlipped}
-            cardholderName={cardDetails?.cardholder_name}
-            shouldRevealDetails={shouldRevealDetails}
-            onCardDetailsLoaded={handleCardDetailsLoaded}
-            provider={provider}
-          />
+          {isTestUser ? (
+            <CardBalanceHeadline amount={availableAmount} />
+          ) : (
+            <BalanceDisplay amount={availableAmount} />
+          )}
+          {isTestUser ? <CardHeroImage>{cardImageSection}</CardHeroImage> : cardImageSection}
+          {isTestUser && (
+            <ShowDetailsButton
+              isFlipped={isCardFlipped}
+              isLoading={isLoadingCardDetails}
+              onPress={handleCardFlip}
+            />
+          )}
           <CardActions
             isCardFrozen={isCardFrozen}
             canUnfreeze={!!canUnfreeze}
@@ -243,6 +266,7 @@ export default function CardDetails() {
             onFreezeToggle={handleFreezeToggle}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
+            hideCardDetailsButton={isTestUser}
           />
           <CreditLineCards className="mb-4" />
           <CashbackDisplay cashback={cardDetails?.cashback} />
@@ -786,6 +810,8 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  /** Hide the circular "Card details" action (whitelisted screen uses a full-row button instead). */
+  hideCardDetailsButton?: boolean;
 }
 
 function CardActions({
@@ -798,6 +824,7 @@ function CardActions({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  hideCardDetailsButton = false,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
   const showManageButton = isRain || !isCardFrozen || canUnfreeze;
@@ -815,23 +842,25 @@ function CardActions({
           }
         />
       )}
-      <View className="items-center">
-        <Pressable
-          onPress={onCardDetails}
-          className="items-center justify-center rounded-full bg-[#303030] web:hover:opacity-70"
-          style={{ width: 50, height: 50 }}
-          disabled={isLoadingCardDetails}
-        >
-          {isLoadingCardDetails ? (
-            <ActivityIndicator size="small" color="#BFBFBF" />
-          ) : (
-            <Asterisk size={24} color="#BFBFBF" />
-          )}
-        </Pressable>
-        <Text className="mt-2 text-[#BFBFBF]">
-          {isCardFlipped ? 'Hide details' : 'Card details'}
-        </Text>
-      </View>
+      {!hideCardDetailsButton && (
+        <View className="items-center">
+          <Pressable
+            onPress={onCardDetails}
+            className="items-center justify-center rounded-full bg-[#303030] web:hover:opacity-70"
+            style={{ width: 50, height: 50 }}
+            disabled={isLoadingCardDetails}
+          >
+            {isLoadingCardDetails ? (
+              <ActivityIndicator size="small" color="#BFBFBF" />
+            ) : (
+              <Asterisk size={24} color="#BFBFBF" />
+            )}
+          </Pressable>
+          <Text className="mt-2 text-[#BFBFBF]">
+            {isCardFlipped ? 'Hide details' : 'Card details'}
+          </Text>
+        </View>
+      )}
       {showManageButton && (
         <Dialog open={isManageSheetOpen} onOpenChange={setIsManageSheetOpen}>
           <DialogTrigger asChild>
