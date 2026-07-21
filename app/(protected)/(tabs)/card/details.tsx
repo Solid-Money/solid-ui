@@ -54,6 +54,7 @@ import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
+import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
@@ -65,6 +66,9 @@ export default function CardDetails() {
   // Balance headline, full-row Show details, card view-transition). Public users
   // and desktop keep the existing layout untouched.
   const isTestUser = useIsTestUser();
+  // While the card hero transition is flying, the real card is hidden; hide the
+  // peek button too so it doesn't sit detached under the empty card slot.
+  const heroActive = useCardHeroStore(state => state.active);
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
@@ -263,6 +267,7 @@ export default function CardDetails() {
               </View>
               <ShowDetailsButton
                 peek
+                hidden={heroActive}
                 isFlipped={isCardFlipped}
                 isLoading={isLoadingCardDetails}
                 onPress={handleCardFlip}
