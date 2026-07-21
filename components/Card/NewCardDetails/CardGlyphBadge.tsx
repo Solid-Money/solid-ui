@@ -35,10 +35,12 @@ const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   return (
     <View style={styles.anchor} pointerEvents="none">
       <View style={[styles.pill, { paddingHorizontal: s(14), paddingVertical: s(11), gap }]}>
-        {/* Frost. experimentalBlurMethod gives real blur on Android; intensity
-            tuned to hide the card lines without turning opaque white. */}
+        {/* Light frost. experimentalBlurMethod gives real (subtle) blur on
+            Android; kept low so it stays glassy rather than opaque white.
+            (Hiding the card lines fully needs a proper liquid-glass approach —
+            TBD.) */}
         <BlurView
-          intensity={40}
+          intensity={12}
           tint="light"
           experimentalBlurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}

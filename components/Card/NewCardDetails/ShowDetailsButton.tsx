@@ -39,10 +39,10 @@ const ShowDetailsButton = ({
         'flex-row items-center justify-center gap-2 bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80',
         peek
           ? // Full width of the card (mx ≈ the card's shadow inset), tucked up
-            // behind it so it reads as a drawer: flat top, rounded bottom. The
-            // card's shadow space is reclaimed by cardLift, so a small overlap
-            // sits it snug against the card body.
-            'mx-[5.5%] -mt-6 rounded-b-[28px] rounded-t-none px-6 pb-4 pt-5'
+            // behind it so it reads as a drawer: flat top, rounded bottom. Pulled
+            // up past the card's rounded bottom corners (so no gap shows at the
+            // sides), with generous top padding to keep the icon/text in view.
+            'mx-[5.5%] -mt-[34px] rounded-b-[28px] rounded-t-none px-6 pb-4 pt-[30px]'
           : 'mb-6 h-14 rounded-full',
         hidden && 'opacity-0',
       )}
