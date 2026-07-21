@@ -42,7 +42,7 @@ const ShowDetailsButton = ({
             // behind it so it reads as a drawer: flat top, rounded bottom. The
             // card's shadow space is reclaimed by cardLift, so a small overlap
             // sits it snug against the card body.
-            'mx-[5.5%] -mt-4 rounded-b-[28px] rounded-t-none px-6 pb-4 pt-5'
+            'mx-[5.5%] -mt-6 rounded-b-[28px] rounded-t-none px-6 pb-4 pt-5'
           : 'mb-6 h-14 rounded-full',
         hidden && 'opacity-0',
       )}
