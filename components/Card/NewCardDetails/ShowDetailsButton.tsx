@@ -11,10 +11,12 @@ interface ShowDetailsButtonProps {
   onPress: () => void;
   /**
    * When true, render as a "drawer" that peeks out from behind the card image
-   * (top edge tucked under the card, only bottom corners rounded, content padded
-   * down below the overlap) — mirrors the coins screen's "Earning yield" banner.
+   * (top edge tucked under the card, only bottom corners rounded) — mirrors the
+   * coins screen's "Earning yield" banner.
    */
   peek?: boolean;
+  /** Hidden (opacity 0) while the card hero transition is running. */
+  hidden?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ const ShowDetailsButton = ({
   isLoading,
   onPress,
   peek = false,
+  hidden = false,
 }: ShowDetailsButtonProps) => {
   return (
     <Pressable
@@ -35,10 +38,12 @@ const ShowDetailsButton = ({
       className={cn(
         'flex-row items-center justify-center gap-2 bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80',
         peek
-          ? // Tucked behind the card: pulled up under it, inset so it reads as a
-            // drawer, flat top, rounded bottom, content pushed below the overlap.
-            'mx-[8%] -mt-6 rounded-b-[28px] rounded-t-none px-6 pb-4 pt-9'
+          ? // Full width of the card (mx ≈ the card's shadow inset), tucked up
+            // behind it so it reads as a drawer: flat top, rounded bottom, pulled
+            // up far enough to sit snug under the visible card body.
+            'mx-[5.5%] -mt-8 rounded-b-[28px] rounded-t-none px-6 pb-4 pt-4'
           : 'mb-6 h-14 rounded-full',
+        hidden && 'opacity-0',
       )}
     >
       {isLoading ? (
