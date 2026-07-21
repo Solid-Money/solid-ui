@@ -262,7 +262,7 @@ export default function CardDetails() {
             // match the home card width. The Show details button peeks out from
             // behind it (card sits above via z-10).
             <View style={styles.fullBleedCard} className="relative mb-6">
-              <View className="z-10">
+              <View className="z-10" style={styles.cardLift}>
                 <CardHeroTarget>{cardImageSection}</CardHeroTarget>
               </View>
               <ShowDetailsButton
@@ -1092,6 +1092,11 @@ const styles = StyleSheet.create({
   // Whitelisted card: extend past the container's px-4 (16px) padding so the
   // card is as wide as the home screen card.
   fullBleedCard: { marginHorizontal: -16 },
+  // The artwork's bottom ~6.5% is transparent drop-shadow. RN resolves % margins
+  // against the parent width, and that shadow height is also ~6.5% of the card
+  // width — so this negative margin reclaims exactly the shadow's layout space at
+  // any screen size, letting the Show details button sit against the card body.
+  cardLift: { marginBottom: '-6.5%' },
 
   // Card flip animation
   cardContainer: { position: 'relative', width: '100%' },
