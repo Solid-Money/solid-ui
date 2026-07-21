@@ -32,7 +32,15 @@ const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   return (
     <View style={styles.anchor} pointerEvents="none">
       <View style={[styles.pill, { borderRadius: 999 }]}>
-        <BlurView intensity={18} tint="light" style={StyleSheet.absoluteFill} />
+        {/* experimentalBlurMethod enables real Gaussian blur on Android (default
+            is a flat tint there, which lets the card's line texture show
+            through); higher intensity fully frosts over the lines. */}
+        <BlurView
+          intensity={60}
+          tint="light"
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
         <View style={[styles.content, { paddingHorizontal: s(10), paddingVertical: s(6), gap }]}>
           <View style={{ flexDirection: 'row', gap }}>
             {[0, 1, 2, 3].map(i => (
@@ -68,7 +76,8 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    // Figma fill: #FFFFFF @ 20%.
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',

@@ -199,10 +199,13 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
         { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
       ]}
     >
-      {/* Transparent → #111 gradient container so scrolled content shows through
-          the top of the bar (no solid/blur fill behind the tabs). */}
+      {/* Figma: linear-gradient(180deg, rgba(17,17,17,0) 0%, #111111 100%).
+          `locations` reaches opaque by ~60% of the bar height so the tabs sit on
+          solid #111 (content fades out as it scrolls under the top edge) instead
+          of the opaque end being wasted in the bottom safe-area inset. */}
       <LinearGradient
-        colors={['rgba(17, 17, 17, 0)', '#111111']}
+        colors={['rgba(17, 17, 17, 0)', '#111111', '#111111']}
+        locations={[0, 0.6, 1]}
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />
