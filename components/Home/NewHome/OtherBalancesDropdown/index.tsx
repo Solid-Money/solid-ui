@@ -1,13 +1,12 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { formatBalanceUSD } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -116,28 +115,22 @@ const BalanceRow = ({
   </View>
 );
 
-/** Card balance row. "Add" navigates to the existing card deposit flow. */
+/** Card balance row. "Add" opens the "Fund your card" popup (share deposit
+ *  address / transfer from wallet) — the same modal used on the card screen,
+ *  replacing the keypad deposit screen. */
 export const CardBalanceRow = ({
   cardBalance,
   isLoading,
-  onDismiss,
 }: {
   cardBalance: number;
   isLoading?: boolean;
+  // Accepted for parity with SavingsBalanceRow; the popup opens over the sheet.
   onDismiss?: () => void;
-}) => {
-  const router = useRouter();
-  return (
-    <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
-      <AddButton
-        onPress={() => {
-          onDismiss?.();
-          router.push(path.CARD_DEPOSIT);
-        }}
-      />
-    </BalanceRow>
-  );
-};
+}) => (
+  <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
+    <CardDirectDepositModal trigger={<AddButton />} />
+  </BalanceRow>
+);
 
 /** Savings balance row. "Add" opens the existing savings deposit modal (global). */
 export const SavingsBalanceRow = ({

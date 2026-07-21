@@ -262,7 +262,11 @@ export default function CardDetails() {
             // match the home card width. The Show details button peeks out from
             // behind it (card sits above via z-10).
             <View style={styles.fullBleedCard} className="relative mb-6">
-              <View className="z-10" style={styles.cardLift}>
+              {/* pointerEvents none: the card sits above the button (z-10) and
+                  its bounds include the transparent bottom-shadow region that
+                  overlaps the button — without this it would swallow the button's
+                  taps. The card itself isn't interactive on this screen. */}
+              <View className="z-10" style={styles.cardLift} pointerEvents="none">
                 <CardHeroTarget>{cardImageSection}</CardHeroTarget>
               </View>
               <ShowDetailsButton
@@ -782,14 +786,17 @@ function CardDetailsOverlay({
           <Text style={{ color: textColor }} className="text-lg font-medium md:text-3xl">
             {formatCardNumber(safeCardDetails.card_number)}
           </Text>
-          <Pressable
-            onPress={handleCopyCardNumber}
-            className="p-2 web:hover:opacity-70"
-            accessibilityLabel="Copy card number to clipboard"
-            accessibilityRole="button"
-          >
-            <Copy size={20} color={iconColor} />
-          </Pressable>
+          {/* No copy button on the new (dark) card. */}
+          {!isDark && (
+            <Pressable
+              onPress={handleCopyCardNumber}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel="Copy card number to clipboard"
+              accessibilityRole="button"
+            >
+              <Copy size={20} color={iconColor} />
+            </Pressable>
+          )}
         </View>
       </View>
 

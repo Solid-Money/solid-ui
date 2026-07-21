@@ -42,7 +42,7 @@ const ShowDetailsButton = ({
             // behind it so it reads as a drawer: flat top, rounded bottom. Pulled
             // up past the card's rounded bottom corners (so no gap shows at the
             // sides), with generous top padding to keep the icon/text in view.
-            'mx-[5.5%] -mt-[34px] rounded-b-[28px] rounded-t-none px-6 pb-4 pt-[30px]'
+            'mx-[5.5%] -mt-[38px] rounded-b-[28px] rounded-t-none px-6 pb-4 pt-[30px]'
           : 'mb-6 h-14 rounded-full',
         hidden && 'opacity-0',
       )}
