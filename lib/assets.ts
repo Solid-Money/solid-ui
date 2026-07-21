@@ -109,6 +109,11 @@ export const ASSETS = {
     module: require('@/assets/images/card-onboarding.png'),
     hash: '57d7012d',
   },
+  'images/card-oval-space.png': {
+    module: require('@/assets/images/card-oval-space.png'),
+    hash: '1d9d5c25',
+  },
+  'images/card-oval.png': { module: require('@/assets/images/card-oval.png'), hash: '07e162f1' },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
   'images/card-withdraw-mobile.png': {
     module: require('@/assets/images/card-withdraw-mobile.png'),
