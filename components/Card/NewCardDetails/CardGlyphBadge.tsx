@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text } from '@/components/ui/text';
 
@@ -18,10 +19,11 @@ interface CardGlyphBadgeProps {
 /**
  * The glass glyph oval ("••••" + optional last-4 digits) on the bottom-left of
  * the VISA Platinum card, drawn in code (the baked-in oval was removed from the
- * artwork). Approximates the Figma "Glass" effect: a light backdrop blur (low
- * intensity, like Figma's Frost 3 — expo-blur is the closest RN primitive, as
- * refraction/dispersion have no RN equivalent) under a translucent #FFFFFF @ 20%
- * fill, so the card colour reads through as glass rather than an opaque white.
+ * artwork). Approximates the Figma "Glass" effect: a backdrop blur (frost, hides
+ * the card's line texture) under a translucent #FFFFFF @ 20% fill, plus a subtle
+ * diagonal sheen that brightens the top-left and bottom-right rims (Figma light
+ * at −45°). expo-blur is the closest RN primitive — refraction/dispersion have
+ * no RN equivalent.
  */
 const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   const scale = cardWidth && cardWidth > 0 ? cardWidth / REF_CARD_WIDTH : 1;
@@ -33,16 +35,31 @@ const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   return (
     <View style={styles.anchor} pointerEvents="none">
       <View style={[styles.pill, { paddingHorizontal: s(14), paddingVertical: s(11), gap }]}>
-        {/* Light frost. experimentalBlurMethod gives real (subtle) blur on
-            Android; low intensity keeps it glassy rather than opaque white. */}
+        {/* Frost. experimentalBlurMethod gives real blur on Android; intensity
+            tuned to hide the card lines without turning opaque white. */}
         <BlurView
-          intensity={12}
+          intensity={40}
           tint="light"
           experimentalBlurMethod="dimezisBlurView"
           style={StyleSheet.absoluteFill}
         />
         {/* Figma fill: #FFFFFF @ 20% — the translucent glass tint. */}
         <View style={styles.tint} pointerEvents="none" />
+        {/* Glass rim sheen: brighter at the top-left and bottom-right rounded
+            corners (light from −45°), transparent through the middle. */}
+        <LinearGradient
+          colors={[
+            'rgba(255,255,255,0.35)',
+            'rgba(255,255,255,0)',
+            'rgba(255,255,255,0)',
+            'rgba(255,255,255,0.22)',
+          ]}
+          locations={[0, 0.4, 0.6, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <View style={{ flexDirection: 'row', gap }}>
           {[0, 1, 2, 3].map(i => (
             <View
