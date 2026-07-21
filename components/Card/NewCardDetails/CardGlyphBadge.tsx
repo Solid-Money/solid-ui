@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 import { Text } from '@/components/ui/text';
 
@@ -17,9 +18,10 @@ interface CardGlyphBadgeProps {
 /**
  * The glass glyph oval ("••••" + optional last-4 digits) on the bottom-left of
  * the VISA Platinum card, drawn in code (the baked-in oval was removed from the
- * artwork). Matches the Figma element: a translucent white pill (#FFFFFF @ 20%)
- * over the card — no backdrop blur, so the card colour reads through as glass
- * rather than an opaque white fill. Chunky 60×40-style padding around small dots.
+ * artwork). Approximates the Figma "Glass" effect: a light backdrop blur (low
+ * intensity, like Figma's Frost 3 — expo-blur is the closest RN primitive, as
+ * refraction/dispersion have no RN equivalent) under a translucent #FFFFFF @ 20%
+ * fill, so the card colour reads through as glass rather than an opaque white.
  */
 const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   const scale = cardWidth && cardWidth > 0 ? cardWidth / REF_CARD_WIDTH : 1;
@@ -31,6 +33,16 @@ const CardGlyphBadge = ({ last4, cardWidth }: CardGlyphBadgeProps) => {
   return (
     <View style={styles.anchor} pointerEvents="none">
       <View style={[styles.pill, { paddingHorizontal: s(14), paddingVertical: s(11), gap }]}>
+        {/* Light frost. experimentalBlurMethod gives real (subtle) blur on
+            Android; low intensity keeps it glassy rather than opaque white. */}
+        <BlurView
+          intensity={12}
+          tint="light"
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Figma fill: #FFFFFF @ 20% — the translucent glass tint. */}
+        <View style={styles.tint} pointerEvents="none" />
         <View style={{ flexDirection: 'row', gap }}>
           {[0, 1, 2, 3].map(i => (
             <View
@@ -57,11 +69,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
-    // Figma fill: #FFFFFF @ 20% (translucent — the card shows through as glass).
-    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
+  },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
 });
 
