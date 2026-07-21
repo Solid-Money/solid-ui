@@ -59,7 +59,14 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
   return (
     <View className="mx-4 gap-4 rounded-twice bg-card p-5">
       <View className="flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-white">Simulate your savings</Text>
+        {/* Mona Sans (matching the amount pill's font) + matching line height so
+            the title and the "$… ⌄" pill sit on the same vertical centre. */}
+        <Text
+          className="text-lg text-white"
+          style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 18 }}
+        >
+          Simulate your savings
+        </Text>
         <AmountDropdown amount={principal} onSelect={setPrincipal} />
       </View>
 

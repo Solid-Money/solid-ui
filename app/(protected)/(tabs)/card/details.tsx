@@ -786,14 +786,17 @@ function CardDetailsOverlay({
           <Text style={{ color: textColor }} className="text-lg font-medium md:text-3xl">
             {formatCardNumber(safeCardDetails.card_number)}
           </Text>
-          <Pressable
-            onPress={handleCopyCardNumber}
-            className="p-2 web:hover:opacity-70"
-            accessibilityLabel="Copy card number to clipboard"
-            accessibilityRole="button"
-          >
-            <Copy size={20} color={iconColor} />
-          </Pressable>
+          {/* No copy button on the new (dark) card. */}
+          {!isDark && (
+            <Pressable
+              onPress={handleCopyCardNumber}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel="Copy card number to clipboard"
+              accessibilityRole="button"
+            >
+              <Copy size={20} color={iconColor} />
+            </Pressable>
+          )}
         </View>
       </View>
 
