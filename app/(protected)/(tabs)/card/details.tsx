@@ -22,7 +22,6 @@ import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import { CreditLineCards } from '@/components/Card/CreditLine/CreditLineCards';
 import ManagePinModal from '@/components/Card/ManagePinModal';
-import CardBalanceHeadline from '@/components/Card/NewCardDetails/CardBalanceHeadline';
 import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import ShowDetailsButton from '@/components/Card/NewCardDetails/ShowDetailsButton';
@@ -248,32 +247,29 @@ export default function CardDetails() {
     // destination and land smoothly. Data fills in as it arrives (balance/last-4
     // are usually already warm from the home screen's query).
     <PageLayout isLoading={isTestUser ? false : isLoading}>
-      {/* Whitelisted screen drops the "Card" heading (Card Balance headline
-          takes its place); public/desktop keep the heading. */}
+      {/* Whitelisted screen drops the "Card" heading — the card image is the top
+          section; public/desktop keep the heading. */}
       {!isTestUser && pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
         <View className={cn('flex-1', isTestUser && 'pt-4')}>
+          {!isTestUser && <BalanceDisplay amount={availableAmount} />}
           {isTestUser ? (
-            <CardBalanceHeadline amount={availableAmount} />
-          ) : (
-            <BalanceDisplay amount={availableAmount} />
-          )}
-          {isTestUser ? (
-            // Full-bleed: cancel the container's px-4 so the card matches the
-            // home screen card width (the baked-in shadow then lines the card
-            // body up with the px-4 sections below).
-            <View style={styles.fullBleedCard}>
-              <CardHeroTarget>{cardImageSection}</CardHeroTarget>
+            // Card is the top section, full-bleed (cancel the container's px-4) to
+            // match the home card width. The Show details button peeks out from
+            // behind it (card sits above via z-10).
+            <View style={styles.fullBleedCard} className="relative mb-6">
+              <View className="z-10">
+                <CardHeroTarget>{cardImageSection}</CardHeroTarget>
+              </View>
+              <ShowDetailsButton
+                peek
+                isFlipped={isCardFlipped}
+                isLoading={isLoadingCardDetails}
+                onPress={handleCardFlip}
+              />
             </View>
           ) : (
             cardImageSection
-          )}
-          {isTestUser && (
-            <ShowDetailsButton
-              isFlipped={isCardFlipped}
-              isLoading={isLoadingCardDetails}
-              onPress={handleCardFlip}
-            />
           )}
           <CardActions
             isCardFrozen={isCardFrozen}

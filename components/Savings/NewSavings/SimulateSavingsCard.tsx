@@ -3,9 +3,10 @@ import { TextStyle, View } from 'react-native';
 
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
+import useDebounce from '@/hooks/useDebounce';
 
 import AmountDropdown from './AmountDropdown';
-import { buildProjectionSeries, formatHorizonLabel, SIMULATE_YEARS } from './savingsProjection';
+import { buildProjectionSeries, formatHorizonLabel } from './savingsProjection';
 import SimulateChart from './SimulateChart';
 
 const FUTURE_STYLE: TextStyle = {
@@ -21,8 +22,11 @@ const EARNED_STYLE: TextStyle = {
 };
 
 const DEFAULT_PRINCIPAL = 10000;
-// Default handle position: the end of the horizon (SIMULATE_YEARS out).
-const LAST_INDEX = SIMULATE_YEARS * 12;
+// Default handle position: 9 years out (series is sampled monthly, so index = months).
+const DEFAULT_INDEX = 9 * 12;
+// How long the handle must settle before the readouts roll — stops the CountUps
+// from re-triggering (twitching) on every drag frame.
+const READOUT_DEBOUNCE_MS = 120;
 
 interface SimulateSavingsCardProps {
   /** Selected vault's headline APY (percent). */
@@ -36,15 +40,21 @@ interface SimulateSavingsCardProps {
  */
 const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
   const [principal, setPrincipal] = useState<number>(DEFAULT_PRINCIPAL);
-  const [activeIndex, setActiveIndex] = useState<number>(LAST_INDEX);
+  const [activeIndex, setActiveIndex] = useState<number>(DEFAULT_INDEX);
 
   const safeApy = Number.isFinite(apy) && apy > 0 ? apy : 5;
   const series = useMemo(() => buildProjectionSeries(principal, safeApy), [principal, safeApy]);
 
   const clampedIndex = Math.min(Math.max(activeIndex, 0), series.length - 1);
-  const futureBalance = series[clampedIndex]?.value ?? principal;
+
+  // The chart handle tracks the finger live (clampedIndex); the numeric readouts
+  // follow a debounced index so their roll animation fires once the drag settles
+  // instead of restarting on every frame.
+  const debouncedIndex = useDebounce(clampedIndex, READOUT_DEBOUNCE_MS);
+  const readoutIndex = Math.min(Math.max(debouncedIndex, 0), series.length - 1);
+  const futureBalance = series[readoutIndex]?.value ?? principal;
   const earned = Math.max(futureBalance - principal, 0);
-  const horizonLabel = formatHorizonLabel(clampedIndex);
+  const horizonLabel = formatHorizonLabel(readoutIndex);
 
   return (
     <View className="mx-4 gap-4 rounded-twice bg-card p-5">
