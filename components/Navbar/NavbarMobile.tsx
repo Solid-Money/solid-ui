@@ -13,7 +13,6 @@ import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropd
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 
 import HeaderBellButton from './HeaderBellButton';
 import HeaderProfileButton from './HeaderProfileButton';
@@ -51,7 +50,7 @@ const NavbarMobile = ({
   // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
   // bell (Activity) joins What's-new on the right, and the Solid logo is dropped.
   // Production keeps the existing header untouched.
-  const showNewHeader = isDevFeatureEnabled && !!user;
+  const showNewHeader = !!user;
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;

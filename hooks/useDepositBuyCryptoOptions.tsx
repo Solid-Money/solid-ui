@@ -8,7 +8,6 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { DepositMethod, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -56,7 +55,7 @@ const useDepositBuyCryptoOptions = () => {
 
   const filteredOptions = buyCryptoOptions
     // Bank Deposit is in development: shown on qa/preview builds, hidden in production.
-    .filter(option => option.method !== 'bank_transfer' || isDevFeatureEnabled)
+    .filter(option => option.method !== 'bank_transfer')
     .filter(option => Platform.OS !== 'ios' || option.method !== 'credit_card');
 
   return { buyCryptoOptions: filteredOptions };

@@ -30,7 +30,6 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
@@ -264,6 +263,6 @@ export default function Home() {
   const { isDesktop } = useDimension();
   // qa/preview builds on mobile-web see the redesigned wallet screen; desktop
   // web and production keep the existing design.
-  const showNewHome = isDevFeatureEnabled && !isDesktop;
+  const showNewHome = !isDesktop;
   return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
 }

@@ -50,7 +50,7 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled, isProduction } from '@/lib/config';
+import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
@@ -64,7 +64,6 @@ export default function CardDetails() {
   // qa/preview builds get the redesigned mobile card screen (Card Balance
   // headline, full-row Show details, card view-transition). Production keeps the
   // existing layout untouched.
-  const devFeaturesEnabled = isDevFeatureEnabled;
   // While the card hero transition is flying, the real card is hidden; hide the
   // peek button too so it doesn't sit detached under the empty card slot.
   const heroActive = useCardHeroStore(state => state.active);
@@ -239,7 +238,6 @@ export default function CardDetails() {
       shouldRevealDetails={shouldRevealDetails}
       onCardDetailsLoaded={handleCardDetailsLoaded}
       provider={provider}
-      useNewCard={devFeaturesEnabled}
       last4={cardLast4}
     />
   );

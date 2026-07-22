@@ -1,7 +1,6 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { isDevFeatureEnabled } from '@/lib/config';
 
 type MenuItem = {
   label: string;
@@ -39,14 +38,7 @@ const useNav = () => {
     href: path.REWARDS,
   };
   // Agent lives in the account-center menu, not the navbar.
-  const menuItems: MenuItem[] = [
-    home,
-    savings,
-    card,
-    ...(isDevFeatureEnabled ? [stocks] : []),
-    rewards,
-    activity,
-  ];
+  const menuItems: MenuItem[] = [home, savings, card, rewards, activity];
   return { menuItems };
 };
 

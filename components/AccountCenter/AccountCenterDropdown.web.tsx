@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import useUser from '@/hooks/useUser';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { cn } from '@/lib/utils';
 
 import {
@@ -31,7 +30,7 @@ const AccountCenterDropdown = () => {
   const insets = useSafeAreaInsets();
   const { handleLogout } = useUser();
   // GoodDollar is in development: shown only on qa/preview builds, hidden in production.
-  const canSeeGoodDollar = isDevFeatureEnabled;
+  const canSeeGoodDollar = false;
 
   const contentInsets = {
     top: insets.top,

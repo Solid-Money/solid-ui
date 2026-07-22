@@ -27,7 +27,6 @@ import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionSt
 import { useRewardsUserData } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { cn, getUserDisplayName } from '@/lib/utils';
 
@@ -117,7 +116,7 @@ const MobileSettings = () => {
   const displayName = getUserDisplayName(user, 18);
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   // GoodDollar is in development: shown only on qa/preview builds, hidden in production.
-  const canSeeGoodDollar = isDevFeatureEnabled;
+  const canSeeGoodDollar = false;
 
   const rowGroups: MobileSettingsRow[][] = [
     [
