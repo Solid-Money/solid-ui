@@ -21,7 +21,7 @@ interface ShowDetailsButtonProps {
 
 /**
  * "Show details" / "Hide details" button (lucide eye open/close), replacing the
- * small circular "Card details" action for whitelisted users. In `peek` mode it
+ * small circular "Card details" action on the redesigned screen. In `peek` mode it
  * slides out from underneath the card image.
  */
 const ShowDetailsButton = ({

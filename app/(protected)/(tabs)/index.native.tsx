@@ -21,13 +21,13 @@ import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCurrentGiveaway, useGiveawayCountdown } from '@/hooks/useGiveaway';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
@@ -40,8 +40,8 @@ import { useUserStore } from '@/store/useUserStore';
  * Web keeps its own layout in `index.tsx`; this `.native.tsx` variant is used on
  * iOS/Android only (resolved by Metro).
  *
- * Whitelisted internal users see the redesigned `HomeScreenNew`; everyone else
- * keeps this `LegacyHome`. The gate lives in the default export below.
+ * qa/preview builds see the redesigned `HomeScreenNew`; production keeps this
+ * `LegacyHome`. The gate lives in the default export below.
  */
 function LegacyHome() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
@@ -197,8 +197,8 @@ function LegacyHome() {
 }
 
 export default function Home() {
-  // Whitelisted internal team members see the redesigned wallet screen; all
-  // other users keep the existing design. Native is never desktop.
-  const showNewHome = useIsTestUser();
+  // qa/preview builds see the redesigned wallet screen; production keeps the
+  // existing design. Native is never desktop.
+  const showNewHome = isDevFeatureEnabled;
   return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
 }

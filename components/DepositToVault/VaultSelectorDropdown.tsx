@@ -7,9 +7,9 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { getAsset } from '@/lib/assets';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { Vault } from '@/lib/types';
 import { getDefaultDepositSelection } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -31,7 +31,6 @@ const VaultSelectorDropdown = () => {
       setPrincipalToken: state.setPrincipalToken,
     })),
   );
-  const isTestUser = useIsTestUser();
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -62,7 +61,7 @@ const VaultSelectorDropdown = () => {
 
   const handleSelect = (index: number) => {
     const vault = VAULTS[index];
-    const isComingSoon = !!vault?.isComingSoon && !isTestUser;
+    const isComingSoon = !!vault?.isComingSoon && !isDevFeatureEnabled;
     if (isComingSoon || !vault) return;
 
     selectVaultForDeposit(index);
@@ -137,7 +136,7 @@ const VaultSelectorDropdown = () => {
             <View className="overflow-hidden rounded-2xl bg-card">
               {VAULTS.map((vault, index) => {
                 const isSelected = vault.name === selectedVault.name;
-                const isComingSoon = !!vault.isComingSoon && !isTestUser;
+                const isComingSoon = !!vault.isComingSoon && !isDevFeatureEnabled;
                 return (
                   <Pressable
                     key={vault.name}

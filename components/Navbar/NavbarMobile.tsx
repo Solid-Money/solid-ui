@@ -11,9 +11,9 @@ import { Image } from 'expo-image';
 
 import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
 import { Text } from '@/components/ui/text';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 import HeaderBellButton from './HeaderBellButton';
 import HeaderProfileButton from './HeaderProfileButton';
@@ -48,11 +48,10 @@ const NavbarMobile = ({
   topInset = 0,
 }: NavbarMobileProps) => {
   const { user } = useUser();
-  const isTestUser = useIsTestUser();
-  // Whitelisted "glass" header: profile moves to the left, the bell (Activity)
-  // joins What's-new on the right, and the Solid logo is dropped. Public users
-  // keep the existing header untouched.
-  const showNewHeader = isTestUser && !!user;
+  // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
+  // bell (Activity) joins What's-new on the right, and the Solid logo is dropped.
+  // Production keeps the existing header untouched.
+  const showNewHeader = isDevFeatureEnabled && !!user;
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;

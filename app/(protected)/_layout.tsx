@@ -251,7 +251,7 @@ export default function ProtectedLayout() {
           }}
         />
       </Stack>
-      {/* Root-level hero overlay for the card view-transition (whitelisted new
+      {/* Root-level hero overlay for the card view-transition (redesigned
           screens only — stays dormant/null otherwise). Mounted above the whole
           navigator so the card can fly across the home → card/details change. */}
       <CardHeroOverlay />
