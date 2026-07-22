@@ -48,7 +48,6 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
@@ -62,10 +61,9 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
-  // Whitelisted internal users get the redesigned mobile card screen (Card
-  // Balance headline, full-row Show details, card view-transition). Public users
-  // and desktop keep the existing layout untouched.
-  const isTestUser = useIsTestUser();
+  // qa/preview builds get the redesigned mobile card screen (Card Balance
+  // headline, full-row Show details, card view-transition). Production keeps the
+  // existing layout untouched.
   // While the card hero transition is flying, the real card is hidden; hide the
   // peek button too so it doesn't sit detached under the empty card slot.
   const heroActive = useCardHeroStore(state => state.active);
@@ -240,46 +238,22 @@ export default function CardDetails() {
       shouldRevealDetails={shouldRevealDetails}
       onCardDetailsLoaded={handleCardDetailsLoaded}
       provider={provider}
-      useNewCard={isTestUser}
       last4={cardLast4}
     />
   );
 
   return (
-    // Whitelisted screen renders immediately (never the full-screen loader): the
+    // The redesigned screen renders immediately (never the full-screen loader): the
     // card must be laid out right away so the hero transition can measure its
     // destination and land smoothly. Data fills in as it arrives (balance/last-4
     // are usually already warm from the home screen's query).
-    <PageLayout isLoading={isTestUser ? false : isLoading}>
-      {/* Whitelisted screen drops the "Card" heading — the card image is the top
-          section; public/desktop keep the heading. */}
-      {!isTestUser && pageHeader}
+    <PageLayout isLoading={isLoading}>
+      {/* The redesigned screen drops the "Card" heading — the card image is the top
+          section; production/desktop keep the heading. */}
+      {pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
-        <View className={cn('flex-1', isTestUser && 'pt-4')}>
-          {!isTestUser && <BalanceDisplay amount={availableAmount} />}
-          {isTestUser ? (
-            // Card is the top section, full-bleed (cancel the container's px-4) to
-            // match the home card width. The Show details button peeks out from
-            // behind it (card sits above via z-10).
-            <View style={styles.fullBleedCard} className="relative mb-6">
-              {/* pointerEvents none: the card sits above the button (z-10) and
-                  its bounds include the transparent bottom-shadow region that
-                  overlaps the button — without this it would swallow the button's
-                  taps. The card itself isn't interactive on this screen. */}
-              <View className="z-10" style={styles.cardLift} pointerEvents="none">
-                <CardHeroTarget>{cardImageSection}</CardHeroTarget>
-              </View>
-              <ShowDetailsButton
-                peek
-                hidden={heroActive}
-                isFlipped={isCardFlipped}
-                isLoading={isLoadingCardDetails}
-                onPress={handleCardFlip}
-              />
-            </View>
-          ) : (
-            cardImageSection
-          )}
+        <View className={cn('flex-1')}>
+          <BalanceDisplay amount={availableAmount} />
           <CardActions
             isCardFrozen={isCardFrozen}
             canUnfreeze={!!canUnfreeze}
@@ -290,7 +264,6 @@ export default function CardDetails() {
             onFreezeToggle={handleFreezeToggle}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
-            hideCardDetailsButton={isTestUser}
           />
           <CreditLineCards className="mb-4" />
           <CashbackDisplay cashback={cardDetails?.cashback} />
@@ -541,7 +514,7 @@ interface CardImageSectionProps {
   shouldRevealDetails: boolean;
   onCardDetailsLoaded: () => void;
   provider?: CardProvider | null;
-  /** Whitelisted screen: render the new VISA Platinum artwork (with code-drawn
+  /** Redesigned screen: render the new VISA Platinum artwork (with code-drawn
    *  glyph badge + white "reveal" overlay) instead of the legacy card image. */
   useNewCard?: boolean;
   /** Last 4 digits for the glyph badge (new card only). */
@@ -841,7 +814,7 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
-  /** Hide the circular "Card details" action (whitelisted screen uses a full-row button instead). */
+  /** Hide the circular "Card details" action (redesigned screen uses a full-row button instead). */
   hideCardDetailsButton?: boolean;
 }
 
@@ -1096,7 +1069,7 @@ const styles = StyleSheet.create({
     opacity: 0.25,
   },
 
-  // Whitelisted card: extend past the container's px-4 (16px) padding so the
+  // Redesigned card: extend past the container's px-4 (16px) padding so the
   // card is as wide as the home screen card.
   fullBleedCard: { marginHorizontal: -16 },
   // The artwork's bottom ~6.5% is transparent drop-shadow. RN resolves % margins

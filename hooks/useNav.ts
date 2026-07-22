@@ -1,7 +1,6 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 
 type MenuItem = {
   label: string;
@@ -34,20 +33,12 @@ const stocks: MenuItem = {
 };
 
 const useNav = () => {
-  const isTestUser = useIsTestUser();
   const rewards: MenuItem = {
     label: 'Rewards',
     href: path.REWARDS,
   };
   // Agent lives in the account-center menu, not the navbar.
-  const menuItems: MenuItem[] = [
-    home,
-    savings,
-    card,
-    ...(isTestUser ? [stocks] : []),
-    rewards,
-    activity,
-  ];
+  const menuItems: MenuItem[] = [home, savings, card, rewards, activity];
   return { menuItems };
 };
 

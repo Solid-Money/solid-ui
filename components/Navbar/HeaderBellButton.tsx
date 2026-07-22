@@ -5,7 +5,7 @@ import { Bell } from 'lucide-react-native';
 import { path } from '@/constants/path';
 
 /**
- * Circular bell button shown in the top-right of the whitelisted mobile header.
+ * Circular bell button shown in the top-right of the redesigned mobile header.
  * Replaces the Activity bottom tab as the entry point to the Activity feed.
  * Styling matches WhatsNewButton / AccountCenterTrigger.
  */
