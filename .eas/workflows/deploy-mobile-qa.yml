@@ -1,20 +1,63 @@
 name: Deploy mobile QA
 
-# Disabled - workflow will not trigger
-# on:
-#   push:
-#     branches: ['qa']
+# Internal (QR-installable) builds for team testing. On every push to `qa`:
+#   1. fingerprint the native layer
+#   2. reuse an existing internal build when the fingerprint is unchanged,
+#      and publish an EAS Update (fast JS-only iteration) instead of rebuilding
+#   3. otherwise build a fresh internal-distribution build (preview profile),
+#      which EAS surfaces with a QR code / install link testers can scan
+# No store submission — these are internal builds, not store releases.
+on:
+  push:
+    branches: ['qa']
 
 jobs:
-  android_build:
-    name: Build Android
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+  get_android_build:
+    name: Check for existing android build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      profile: preview
+  get_ios_build:
+    name: Check for existing ios build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: preview
+  build_android:
+    name: Build Android (internal)
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
     type: build
     params:
       platform: android
       profile: preview
-  ios_build:
-    name: Build iOS
+  build_ios:
+    name: Build iOS (internal)
+    needs: [get_ios_build]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
     type: build
     params:
       platform: ios
       profile: preview
+  publish_android_update:
+    name: Publish Android QA update
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    type: update
+    params:
+      branch: preview
+      platform: android
+  publish_ios_update:
+    name: Publish iOS QA update
+    needs: [get_ios_build]
+    if: ${{ needs.get_ios_build.outputs.build_id }}
+    type: update
+    params:
+      branch: preview
+      platform: ios
