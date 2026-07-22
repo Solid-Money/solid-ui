@@ -20,7 +20,6 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -29,7 +28,7 @@ export default function Rewards() {
   // qa/preview builds see the redesigned rewards screen; production — and every
   // desktop-web user — keep the existing design.
   const { isDesktop } = useDimension();
-  const showNew = isDevFeatureEnabled && !isDesktop;
+  const showNew = !isDesktop;
   return showNew ? <RewardsScreenNew /> : <LegacyRewards />;
 }
 

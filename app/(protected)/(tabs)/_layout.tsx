@@ -7,7 +7,6 @@ import bellAnimation from '@/assets/tabs-icons/bell.json';
 import cardAnimation from '@/assets/tabs-icons/card.json';
 import homeAnimation from '@/assets/tabs-icons/home.json';
 import lightningAnimation from '@/assets/tabs-icons/lightning.json';
-import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
@@ -15,7 +14,6 @@ import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { isDevFeatureEnabled } from '@/lib/config';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
@@ -50,12 +48,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={
-        !isDesktop
-          ? props =>
-              isDevFeatureEnabled ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />
-          : undefined
-      }
+      tabBar={!isDesktop ? props => <NewCustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen
@@ -181,19 +174,17 @@ export default function TabLayout() {
           tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
           // Only surface the Rewards tab (and its route) on qa/preview builds;
           // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
-          href: isDevFeatureEnabled ? path.REWARDS : null,
+          href: path.REWARDS,
         }}
       />
-      {isDevFeatureEnabled && (
-        <Tabs.Screen
-          name="stocks"
-          options={{
-            title: 'Stocks',
-            headerShown: false,
-            href: path.STOCKS,
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="stocks"
+        options={{
+          title: 'Stocks',
+          headerShown: false,
+          href: path.STOCKS,
+        }}
+      />
       <Tabs.Screen
         name="referral"
         options={{

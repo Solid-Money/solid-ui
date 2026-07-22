@@ -36,7 +36,7 @@ import useUser from '@/hooks/useUser';
 import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES, isDevFeatureEnabled } from '@/lib/config';
+import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -46,7 +46,7 @@ export default function Savings() {
   // qa/preview builds see the redesigned savings screen; production — and every
   // desktop-web user — keep the existing design.
   const { isDesktop } = useDimension();
-  const showNew = isDevFeatureEnabled && !isDesktop;
+  const showNew = !isDesktop;
   return showNew ? <SavingsScreenNew /> : <LegacySavings />;
 }
 

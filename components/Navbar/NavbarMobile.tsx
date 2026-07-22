@@ -7,13 +7,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
 
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
-import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 
 import HeaderBellButton from './HeaderBellButton';
 import HeaderProfileButton from './HeaderProfileButton';
@@ -51,7 +47,6 @@ const NavbarMobile = ({
   // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
   // bell (Activity) joins What's-new on the right, and the Solid logo is dropped.
   // Production keeps the existing header untouched.
-  const showNewHeader = isDevFeatureEnabled && !!user;
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;
@@ -114,16 +109,7 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4">
-        {showNewHeader ? (
-          <HeaderProfileButton />
-        ) : (
-          <Image
-            source={getAsset('images/solid-logo-4x.png')}
-            alt="Solid logo"
-            style={{ width: 30, height: 30 }}
-            contentFit="contain"
-          />
-        )}
+        <HeaderProfileButton />
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}
@@ -139,7 +125,7 @@ const NavbarMobile = ({
         {user ? (
           <View className="flex-row items-center gap-2">
             <WhatsNewButton />
-            {showNewHeader ? <HeaderBellButton /> : <AccountCenterDropdown />}
+            <HeaderBellButton />
           </View>
         ) : (
           <RegisterButtons />

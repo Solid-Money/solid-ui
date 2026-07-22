@@ -19,7 +19,6 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useVaultTotalValueOld } from '@/hooks/useVaultTotalValueOld';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { Vault } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
 import { useSavingStore } from '@/store/useSavingStore';
@@ -48,7 +47,7 @@ const SavingVaultOld = ({ vault }: SavingVaultOldProps) => {
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
   const isSelected = selectedVault === vaultIndex;
-  const isComingSoon = !!vault.isComingSoon && !isDevFeatureEnabled;
+  const isComingSoon = !!vault.isComingSoon;
   const gapHeight = isScreenMedium ? 12 : 0;
   const iconSizeSelected = isScreenMedium ? 53 : 28;
 
