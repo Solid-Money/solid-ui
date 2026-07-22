@@ -250,10 +250,10 @@ export default function CardDetails() {
     <PageLayout isLoading={isLoading}>
       {/* The redesigned screen drops the "Card" heading — the card image is the top
           section; production/desktop keep the heading. */}
+      {pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
         <View className={cn('flex-1')}>
           <BalanceDisplay amount={availableAmount} />
-          {cardImageSection}
           <CardActions
             isCardFrozen={isCardFrozen}
             canUnfreeze={!!canUnfreeze}
