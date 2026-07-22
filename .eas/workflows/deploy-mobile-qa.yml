@@ -1,9 +1,10 @@
 name: Deploy mobile QA
 
-# Disabled - workflow will not trigger
-# on:
-#   push:
-#     branches: ['qa']
+# Builds internal-distribution (preview) apps on every push to `qa`, so QA
+# testers can install the latest QA build by scanning the EAS build QR code.
+on:
+  push:
+    branches: ['qa']
 
 jobs:
   android_build:
