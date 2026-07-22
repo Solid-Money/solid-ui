@@ -34,6 +34,7 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
+import { useStoreReviewStore } from '@/store/useStoreReviewStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
@@ -209,6 +210,7 @@ const useUser = (): UseUserReturn => {
     // Start every new session from a clean query cache so this login can never
     // read data cached under user-agnostic keys (e.g. Rewards) by a prior one.
     queryClient.clear();
+    useStoreReviewStore.getState().reset();
 
     // Get attribution context for login tracking
     const attributionStore = useAttributionStore.getState();
@@ -459,6 +461,7 @@ const useUser = (): UseUserReturn => {
     // keys, so without this the previous wallet's details would be served to
     // the next wallet on web until gcTime expires or the page is hard-refreshed.
     queryClient.clear();
+    useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -498,6 +501,7 @@ const useUser = (): UseUserReturn => {
       // session before authenticating, so the incoming user never sees stale
       // data cached under user-agnostic keys (e.g. Rewards).
       queryClient.clear();
+      useStoreReviewStore.getState().reset();
 
       // Find the selected user
       const selectedUser = users.find(u => u.userId === userId);
@@ -566,6 +570,7 @@ const useUser = (): UseUserReturn => {
     clearKycLinkId(); // Clear KYC data when removing all users
     removeEvents();
     queryClient.clear(); // Drop all cached queries belonging to the forgotten users
+    useStoreReviewStore.getState().reset();
     router.replace(path.ONBOARDING);
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
@@ -585,6 +590,7 @@ const useUser = (): UseUserReturn => {
     // Purge cached queries so a re-login (possibly as a different user) starts
     // from a clean cache instead of the expired session's data.
     queryClient.clear();
+    useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -619,6 +625,7 @@ const useUser = (): UseUserReturn => {
       removeUsers();
       clearKycLinkId();
       queryClient.clear();
+      useStoreReviewStore.getState().reset();
 
       // Navigate to onboarding (no users left after deletion)
       router.replace(path.ONBOARDING);
