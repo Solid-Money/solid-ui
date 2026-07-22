@@ -34,7 +34,6 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
-import { useStoreReviewStore } from '@/store/useStoreReviewStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
@@ -211,7 +210,6 @@ const useUser = (): UseUserReturn => {
     // read data cached under user-agnostic keys (e.g. Rewards) by a prior one.
     queryClient.clear();
     usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
 
     // Get attribution context for login tracking
     const attributionStore = useAttributionStore.getState();
@@ -464,7 +462,6 @@ const useUser = (): UseUserReturn => {
     queryClient.clear();
     // Points live in a persisted zustand store, outside the query cache.
     usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -507,7 +504,6 @@ const useUser = (): UseUserReturn => {
       // user's totals (and skip refetching for 5 minutes).
       queryClient.clear();
       usePointsStore.getState().reset();
-      useStoreReviewStore.getState().reset();
 
       // Find the selected user
       const selectedUser = users.find(u => u.userId === userId);
@@ -577,7 +573,6 @@ const useUser = (): UseUserReturn => {
     removeEvents();
     queryClient.clear(); // Drop all cached queries belonging to the forgotten users
     usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
     router.replace(path.ONBOARDING);
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
@@ -598,7 +593,6 @@ const useUser = (): UseUserReturn => {
     // from a clean cache instead of the expired session's data.
     queryClient.clear();
     usePointsStore.getState().reset();
-    useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
 
@@ -634,7 +628,6 @@ const useUser = (): UseUserReturn => {
       clearKycLinkId();
       queryClient.clear();
       usePointsStore.getState().reset();
-      useStoreReviewStore.getState().reset();
 
       // Navigate to onboarding (no users left after deletion)
       router.replace(path.ONBOARDING);

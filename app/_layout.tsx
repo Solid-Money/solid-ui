@@ -40,7 +40,6 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
-import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
@@ -445,7 +444,6 @@ function RootLayout() {
                       <PortalHost />
                       <DeferredModalProviders />
                       {hasSelectedUser && <WhatsNewWrapper />}
-                      {hasSelectedUser && Platform.OS !== 'web' && <CashbackStoreReviewTrigger />}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>

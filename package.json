@@ -110,7 +110,6 @@
     "expo-observe": "~0.2.2",
     "expo-router": "~55.0.11",
     "expo-splash-screen": "~55.0.16",
-    "expo-store-review": "~55.0.15",
     "expo-symbols": "~55.0.7",
     "expo-system-ui": "~55.0.14",
     "expo-tracking-transparency": "~55.0.12",

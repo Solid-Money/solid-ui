@@ -281,12 +281,6 @@ export const TRACKING_EVENTS = {
   QR_SCANNER_PERMISSION_REQUESTED: 'qr_scanner_permission_requested',
   QR_SCANNER_PERMISSION_GRANTED: 'qr_scanner_permission_granted',
   QR_SCANNER_PERMISSION_DENIED: 'qr_scanner_permission_denied',
-
-  // In-App Store Review Events
-  STORE_REVIEW_REQUESTED: 'store_review_requested',
-  STORE_REVIEW_SKIPPED: 'store_review_skipped',
-  STORE_REVIEW_UNAVAILABLE: 'store_review_unavailable',
-  STORE_REVIEW_ERROR: 'store_review_error',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
