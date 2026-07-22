@@ -27,7 +27,6 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
@@ -197,8 +196,5 @@ function LegacyHome() {
 }
 
 export default function Home() {
-  // qa/preview builds see the redesigned wallet screen; production keeps the
-  // existing design. Native is never desktop.
-  const showNewHome = isDevFeatureEnabled;
-  return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
+  return <HomeScreenNew />;
 }
