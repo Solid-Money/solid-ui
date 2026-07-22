@@ -14,8 +14,6 @@ import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 
-import HeaderBellButton from './HeaderBellButton';
-import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
 
@@ -113,16 +111,12 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4">
-        {showNewHeader ? (
-          <HeaderProfileButton />
-        ) : (
-          <Image
-            source={getAsset('images/solid-logo-4x.png')}
-            alt="Solid logo"
-            style={{ width: 30, height: 30 }}
-            contentFit="contain"
-          />
-        )}
+        <Image
+          source={getAsset('images/solid-logo-4x.png')}
+          alt="Solid logo"
+          style={{ width: 30, height: 30 }}
+          contentFit="contain"
+        />
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}
@@ -138,7 +132,7 @@ const NavbarMobile = ({
         {user ? (
           <View className="flex-row items-center gap-2">
             <WhatsNewButton />
-            {showNewHeader ? <HeaderBellButton /> : <AccountCenterDropdown />}
+            <AccountCenterDropdown />
           </View>
         ) : (
           <RegisterButtons />

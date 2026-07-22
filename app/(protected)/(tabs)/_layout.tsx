@@ -10,7 +10,6 @@ import lightningAnimation from '@/assets/tabs-icons/lightning.json';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
-import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
 import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
@@ -49,7 +48,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={!isDesktop ? props => <NewCustomTabBar {...props} /> : undefined}
+      tabBar={!isDesktop ? props => <CustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen

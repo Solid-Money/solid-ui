@@ -25,11 +25,7 @@ import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 
 export default function Rewards() {
-  // qa/preview builds see the redesigned rewards screen; production — and every
-  // desktop-web user — keep the existing design.
-  const { isDesktop } = useDimension();
-  const showNew = !isDesktop;
-  return showNew ? <RewardsScreenNew /> : <LegacyRewards />;
+  return <LegacyRewards />;
 }
 
 function LegacyRewards() {

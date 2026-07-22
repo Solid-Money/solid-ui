@@ -8,7 +8,6 @@ import LazyHomeBanners from '@/components/Dashboard/LazyHomeBanners';
 import HomeCashbackCard from '@/components/Home/HomeCashbackCard';
 import HomeSavingsStatCard from '@/components/Home/HomeSavingsStatCard';
 import HomeVirtualCard from '@/components/Home/HomeVirtualCard';
-import HomeScreenNew from '@/components/Home/NewHome/HomeScreenNew';
 import PageLayout from '@/components/PageLayout';
 import SpinWinCard from '@/components/SpinAndWin/SpinWinCard';
 import Skeleton from '@/components/ui/skeleton';
@@ -198,5 +197,5 @@ function LegacyHome() {
 export default function Home() {
   // qa/preview builds see the redesigned wallet screen; production keeps the
   // existing design. Native is never desktop.
-  return <HomeScreenNew /> ;
+  return <LegacyHome />;
 }
