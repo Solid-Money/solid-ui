@@ -247,36 +247,13 @@ export default function CardDetails() {
     // card must be laid out right away so the hero transition can measure its
     // destination and land smoothly. Data fills in as it arrives (balance/last-4
     // are usually already warm from the home screen's query).
-    <PageLayout isLoading={devFeaturesEnabled ? false : isLoading}>
+    <PageLayout isLoading={isLoading}>
       {/* The redesigned screen drops the "Card" heading — the card image is the top
           section; production/desktop keep the heading. */}
-      {!devFeaturesEnabled && pageHeader}
       <View className="mx-auto w-full max-w-lg px-4">
-        <View className={cn('flex-1', devFeaturesEnabled && 'pt-4')}>
-          {!devFeaturesEnabled && <BalanceDisplay amount={availableAmount} />}
-          {devFeaturesEnabled ? (
-            // Card is the top section, full-bleed (cancel the container's px-4) to
-            // match the home card width. The Show details button peeks out from
-            // behind it (card sits above via z-10).
-            <View style={styles.fullBleedCard} className="relative mb-6">
-              {/* pointerEvents none: the card sits above the button (z-10) and
-                  its bounds include the transparent bottom-shadow region that
-                  overlaps the button — without this it would swallow the button's
-                  taps. The card itself isn't interactive on this screen. */}
-              <View className="z-10" style={styles.cardLift} pointerEvents="none">
-                <CardHeroTarget>{cardImageSection}</CardHeroTarget>
-              </View>
-              <ShowDetailsButton
-                peek
-                hidden={heroActive}
-                isFlipped={isCardFlipped}
-                isLoading={isLoadingCardDetails}
-                onPress={handleCardFlip}
-              />
-            </View>
-          ) : (
-            cardImageSection
-          )}
+        <View className={cn('flex-1')}>
+          <BalanceDisplay amount={availableAmount} />
+          {cardImageSection}
           <CardActions
             isCardFrozen={isCardFrozen}
             canUnfreeze={!!canUnfreeze}
@@ -287,7 +264,6 @@ export default function CardDetails() {
             onFreezeToggle={handleFreezeToggle}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
-            hideCardDetailsButton={devFeaturesEnabled}
           />
           <CreditLineCards className="mb-4" />
           <CashbackDisplay cashback={cardDetails?.cashback} />
