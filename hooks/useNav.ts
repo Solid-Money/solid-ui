@@ -1,7 +1,7 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 type MenuItem = {
   label: string;
@@ -34,7 +34,6 @@ const stocks: MenuItem = {
 };
 
 const useNav = () => {
-  const isTestUser = useIsTestUser();
   const rewards: MenuItem = {
     label: 'Rewards',
     href: path.REWARDS,
@@ -44,7 +43,7 @@ const useNav = () => {
     home,
     savings,
     card,
-    ...(isTestUser ? [stocks] : []),
+    ...(isDevFeatureEnabled ? [stocks] : []),
     rewards,
     activity,
   ];

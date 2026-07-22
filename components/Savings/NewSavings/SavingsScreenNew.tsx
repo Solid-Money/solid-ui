@@ -21,8 +21,8 @@ import VaultSavingsSection from './VaultSavingsSection';
 import type { ApyByType } from './savingsVaultData';
 
 /**
- * Redesigned savings screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in savings.tsx. Public users and all
+ * Redesigned savings screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in savings.tsx. Production and all
  * desktop-web users keep the legacy savings screen.
  *
  * Two states share the "Savings Balance" headline + APY pill:

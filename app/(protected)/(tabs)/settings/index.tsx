@@ -23,11 +23,11 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { cn, getUserDisplayName } from '@/lib/utils';
 
@@ -116,8 +116,8 @@ const MobileSettings = () => {
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const displayName = getUserDisplayName(user, 18);
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
-  // GoodDollar is internal-only: shown only to whitelisted test users.
-  const canSeeGoodDollar = useIsTestUser();
+  // GoodDollar is in development: shown only on qa/preview builds, hidden in production.
+  const canSeeGoodDollar = isDevFeatureEnabled;
 
   const rowGroups: MobileSettingsRow[][] = [
     [

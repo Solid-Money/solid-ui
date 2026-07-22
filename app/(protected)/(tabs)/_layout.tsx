@@ -15,11 +15,10 @@ import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
-  const isTestUser = useIsTestUser();
 
   return (
     <Tabs
@@ -53,7 +52,8 @@ export default function TabLayout() {
       }}
       tabBar={
         !isDesktop
-          ? props => (isTestUser ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />)
+          ? props =>
+              isDevFeatureEnabled ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />
           : undefined
       }
       backBehavior="history"
@@ -179,12 +179,12 @@ export default function TabLayout() {
           // Pushed white tier-star image, centered in a full-size box so its
           // icon↔label gap matches the other tabs.
           tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
-          // Only surface the Rewards tab (and its route) for whitelisted users;
-          // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
-          href: isTestUser ? path.REWARDS : null,
+          // Only surface the Rewards tab (and its route) on qa/preview builds;
+          // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
+          href: isDevFeatureEnabled ? path.REWARDS : null,
         }}
       />
-      {isTestUser && (
+      {isDevFeatureEnabled && (
         <Tabs.Screen
           name="stocks"
           options={{
