@@ -393,6 +393,10 @@ export const ASSETS = {
     module: require('@/assets/images/notification.tsx'),
     hash: '4ee89298',
   },
+  'images/onboarding_hero_bg.png': {
+    module: require('@/assets/images/onboarding_hero_bg.png'),
+    hash: 'f652000f',
+  },
   'images/onboarding_solid.png': {
     module: require('@/assets/images/onboarding_solid.png'),
     hash: '31c6f95b',
