@@ -260,5 +260,9 @@ function LegacyHome() {
 }
 
 export default function Home() {
-  return <HomeScreenNew />;
+  const { isDesktop } = useDimension();
+  // qa/preview builds on mobile-web see the redesigned wallet screen; desktop
+  // web and production keep the existing design.
+  const showNewHome = !isDesktop;
+  return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
 }
