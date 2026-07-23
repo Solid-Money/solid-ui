@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 
 import HeaderBellButton from './HeaderBellButton';
+import HeaderHelpButton from './HeaderHelpButton';
 import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
@@ -33,6 +34,9 @@ type NavbarMobileProps = {
   showTitle?: boolean;
   title?: string;
   topInset?: number;
+  /** Right-side action shown for signed-in users. 'help' replaces What's-new + bell with a single "?" button. */
+  rightAction?: 'default' | 'help';
+  onHelpPress?: () => void;
 };
 
 const NavbarMobile = ({
@@ -42,6 +46,8 @@ const NavbarMobile = ({
   showTitle,
   title,
   topInset = 0,
+  rightAction = 'default',
+  onHelpPress,
 }: NavbarMobileProps) => {
   const { user } = useUser();
   // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
@@ -124,8 +130,14 @@ const NavbarMobile = ({
         )}
         {user ? (
           <View className="flex-row items-center gap-2">
-            <WhatsNewButton />
-            <HeaderBellButton />
+            {rightAction === 'help' ? (
+              <HeaderHelpButton onPress={() => onHelpPress?.()} />
+            ) : (
+              <>
+                <WhatsNewButton />
+                <HeaderBellButton />
+              </>
+            )}
           </View>
         ) : (
           <RegisterButtons />
@@ -141,7 +153,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   glassOverlay: {
-    backgroundColor: 'rgba(18, 18, 18, 0.66)',
+    backgroundColor: 'rgba(0, 0, 0, 0.66)',
   },
   title: {
     alignItems: 'center',

@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     // height and paddingBottom are applied dynamically from the safe-area inset
     paddingTop: 10,
-    backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+    backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
     bottom: 0,

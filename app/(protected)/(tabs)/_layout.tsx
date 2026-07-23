@@ -23,7 +23,7 @@ export default function TabLayout() {
       screenOptions={{
         animation: 'none',
         freezeOnBlur: Platform.OS !== 'web',
-        sceneStyle: { backgroundColor: '#121212' },
+        sceneStyle: { backgroundColor: '#000000' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
@@ -40,7 +40,7 @@ export default function TabLayout() {
           paddingBottom: 20,
           borderTopWidth: 0,
           // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
-          backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,

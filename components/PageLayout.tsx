@@ -62,6 +62,10 @@ interface PageLayoutProps {
   customMobileHeader?: ReactNode; // Custom header for mobile (replaces NavbarMobile)
   customDesktopHeader?: ReactNode; // Custom header for desktop (replaces Navbar)
 
+  // Mobile navbar right-side action override (e.g. Savings screen's "?" help button)
+  mobileHeaderRightAction?: 'default' | 'help';
+  onMobileHeaderHelpPress?: () => void;
+
   // Layout options
   scrollable?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
@@ -146,6 +150,8 @@ export default function PageLayout({
   mobileTitle,
   customMobileHeader,
   customDesktopHeader,
+  mobileHeaderRightAction = 'default',
+  onMobileHeaderHelpPress,
   scrollable = true,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
@@ -204,6 +210,8 @@ export default function PageLayout({
           showTitle={isOverlay && isMobileTitleVisible}
           title={resolvedMobileTitle}
           topInset={isOverlay ? insets.top : 0}
+          rightAction={mobileHeaderRightAction}
+          onHelpPress={onMobileHeaderHelpPress}
         />
       ))
     );

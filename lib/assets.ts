@@ -76,6 +76,18 @@ export const ASSETS = {
   },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
+  'images/badge-cashback.png': {
+    module: require('@/assets/images/badge-cashback.png'),
+    hash: 'a3554390',
+  },
+  'images/badge-globe.png': {
+    module: require('@/assets/images/badge-globe.png'),
+    hash: '9250a521',
+  },
+  'images/badge-gpay.png': { module: require('@/assets/images/badge-gpay.png'), hash: 'f95b2614' },
+  'images/badge-star.png': { module: require('@/assets/images/badge-star.png'), hash: 'e36fe881' },
+  'images/badge-usd.png': { module: require('@/assets/images/badge-usd.png'), hash: '04bf1275' },
+  'images/badge-visa.png': { module: require('@/assets/images/badge-visa.png'), hash: '38df1f6f' },
   'images/bank_deposit.png': {
     module: require('@/assets/images/bank_deposit.png'),
     hash: '96c19d92',
@@ -115,6 +127,10 @@ export const ASSETS = {
   },
   'images/card-oval.png': { module: require('@/assets/images/card-oval.png'), hash: '07e162f1' },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
+  'images/card-waiting-hero.png': {
+    module: require('@/assets/images/card-waiting-hero.png'),
+    hash: '1d538de4',
+  },
   'images/card-withdraw-mobile.png': {
     module: require('@/assets/images/card-withdraw-mobile.png'),
     hash: '3e7c4ee6',
@@ -499,6 +515,18 @@ export const ASSETS = {
   'images/save-yellow.png': {
     module: require('@/assets/images/save-yellow.png'),
     hash: '6b97a369',
+  },
+  'images/savings-help-deposit.png': {
+    module: require('@/assets/images/savings-help-deposit.png'),
+    hash: '10ebfde0',
+  },
+  'images/savings-help-grow.png': {
+    module: require('@/assets/images/savings-help-grow.png'),
+    hash: '0d48061a',
+  },
+  'images/savings-help-withdraw.png': {
+    module: require('@/assets/images/savings-help-withdraw.png'),
+    hash: '5f317528',
   },
   'images/savings-nav-bar-icon.tsx': {
     module: require('@/assets/images/savings-nav-bar-icon.tsx'),
