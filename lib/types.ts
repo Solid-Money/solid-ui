@@ -59,6 +59,25 @@ export interface CardDepositBonusConfig {
   cap: number;
 }
 
+export interface LandingPageApyWindows {
+  allTime: number;
+  sevenDay: number;
+  fifteenDay: number;
+  thirtyDay: number;
+}
+
+/** Response of GET /accounts/v1/app-config/landing-page-apy — admin-managed APY. */
+export interface LandingPageApyConfig {
+  overrideEnabled: boolean;
+  mode: 'simple' | 'advanced';
+  apy: number;
+  apys: {
+    usdc: LandingPageApyWindows;
+    fuse: LandingPageApyWindows;
+    eth: LandingPageApyWindows;
+  };
+}
+
 export interface CardWithdrawalDestination {
   chain: string;
   address: string;
