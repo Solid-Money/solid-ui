@@ -74,9 +74,13 @@ export default function OnboardingNew() {
   }, [router]);
 
   const handleCloseWelcome = useCallback(() => {
+    // Keep the sheet in place while authentication is in flight. Otherwise the
+    // tap that dismisses the passkey prompt can propagate to the scrim/handle
+    // and close the sheet mid-login, hiding the "Authenticating..." state.
+    if (isLoginPending) return;
     setShowWelcome(false);
     setShowRecoveryLink(false);
-  }, []);
+  }, [isLoginPending]);
 
   // Surfaced below the Log in button after a failed login attempt so users who
   // can't authenticate (e.g. lost passkey) can read the Passkey FAQs or start
