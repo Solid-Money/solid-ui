@@ -16,6 +16,7 @@ import SavingsScreenNew from '@/components/Savings/NewSavings/SavingsScreenNew';
 import SavingsAnalytics from '@/components/Savings/SavingsAnalytics';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import SavingVault from '@/components/Savings/SavingVault';
+import YieldBoostBanner from '@/components/Savings/YieldBoostBanner';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -595,6 +596,7 @@ function LegacySavings() {
             </View>
           </>
         )}
+        <YieldBoostBanner />
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend hideSwap />}
 
         <SavingsAnalytics />
