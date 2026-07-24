@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 
@@ -30,8 +29,8 @@ const cursorDefaultClassName =
 const AccountCenterDropdown = () => {
   const insets = useSafeAreaInsets();
   const { handleLogout } = useUser();
-  // GoodDollar is internal-only: shown only to whitelisted test users.
-  const canSeeGoodDollar = useIsTestUser();
+  // GoodDollar is in development: shown only on qa/preview builds, hidden in production.
+  const canSeeGoodDollar = true;
 
   const contentInsets = {
     top: insets.top,

@@ -7,15 +7,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
 
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
 import { Text } from '@/components/ui/text';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useUser from '@/hooks/useUser';
-import { getAsset } from '@/lib/assets';
 
 import HeaderBellButton from './HeaderBellButton';
+import HeaderHelpButton from './HeaderHelpButton';
 import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
@@ -37,6 +34,9 @@ type NavbarMobileProps = {
   showTitle?: boolean;
   title?: string;
   topInset?: number;
+  /** Right-side action shown for signed-in users. 'help' replaces What's-new + bell with a single "?" button. */
+  rightAction?: 'default' | 'help';
+  onHelpPress?: () => void;
 };
 
 const NavbarMobile = ({
@@ -46,13 +46,13 @@ const NavbarMobile = ({
   showTitle,
   title,
   topInset = 0,
+  rightAction = 'default',
+  onHelpPress,
 }: NavbarMobileProps) => {
   const { user } = useUser();
-  const isTestUser = useIsTestUser();
-  // Whitelisted "glass" header: profile moves to the left, the bell (Activity)
-  // joins What's-new on the right, and the Solid logo is dropped. Public users
-  // keep the existing header untouched.
-  const showNewHeader = isTestUser && !!user;
+  // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
+  // bell (Activity) joins What's-new on the right, and the Solid logo is dropped.
+  // Production keeps the existing header untouched.
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;
@@ -115,16 +115,7 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4">
-        {showNewHeader ? (
-          <HeaderProfileButton />
-        ) : (
-          <Image
-            source={getAsset('images/solid-logo-4x.png')}
-            alt="Solid logo"
-            style={{ width: 30, height: 30 }}
-            contentFit="contain"
-          />
-        )}
+        <HeaderProfileButton />
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}
@@ -139,8 +130,14 @@ const NavbarMobile = ({
         )}
         {user ? (
           <View className="flex-row items-center gap-2">
-            <WhatsNewButton />
-            {showNewHeader ? <HeaderBellButton /> : <AccountCenterDropdown />}
+            {rightAction === 'help' ? (
+              <HeaderHelpButton onPress={() => onHelpPress?.()} />
+            ) : (
+              <>
+                <WhatsNewButton />
+                <HeaderBellButton />
+              </>
+            )}
           </View>
         ) : (
           <RegisterButtons />
@@ -156,7 +153,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   glassOverlay: {
-    backgroundColor: 'rgba(18, 18, 18, 0.66)',
+    backgroundColor: 'rgba(0, 0, 0, 0.66)',
   },
   title: {
     alignItems: 'center',

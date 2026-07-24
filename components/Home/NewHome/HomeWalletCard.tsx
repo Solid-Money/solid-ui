@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
+import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { path } from '@/constants/path';
+import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 
 interface HomeWalletCardProps {
@@ -11,6 +13,8 @@ interface HomeWalletCardProps {
   hasCard: boolean;
   /** Last 4 digits shown on the card's glyph badge (omitted when unknown). */
   last4?: string;
+  /** Whether the user has already funded their account (deposit step). */
+  depositCompleted: boolean;
 }
 
 /**
@@ -18,16 +22,29 @@ interface HomeWalletCardProps {
  * displayed; only navigates to the card management page (/card/details) once the
  * user actually has a card. On tap it records its window rect and starts a hero
  * transition (useCardHeroStore) so the card flies up to the card-details screen.
+ * Without a card, tapping instead opens the same "Your card is waiting"
+ * verification prompt as HomeVerificationCard.
  */
-const HomeWalletCard = ({ hasCard, last4 }: HomeWalletCardProps) => {
+const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProps) => {
   const router = useRouter();
   const start = useCardHeroStore(state => state.start);
   const ref = useRef<View>(null);
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+  const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
 
   const card = <NewCardArt last4={last4} />;
 
   if (!hasCard) {
-    return card;
+    return (
+      <>
+        <Pressable onPress={() => setIsVerificationOpen(true)}>{card}</Pressable>
+        <CardWaitingModal
+          isOpen={isVerificationOpen}
+          onClose={() => setIsVerificationOpen(false)}
+          firstIncomplete={firstIncomplete}
+        />
+      </>
+    );
   }
 
   const handlePress = () => {

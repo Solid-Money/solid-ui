@@ -40,7 +40,7 @@ const TransactionDrawer = ({
       <BottomSheetModal
         ref={bottomSheetModalRef}
         backgroundStyle={{
-          backgroundColor: 'black',
+          backgroundColor: '#0F0F10',
         }}
         handleIndicatorStyle={{
           backgroundColor: 'white',

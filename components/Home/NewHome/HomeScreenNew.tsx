@@ -27,8 +27,8 @@ import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
- * Redesigned home/wallet screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in index(.native).tsx. Public users and all
+ * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in index(.native).tsx. Production and all
  * desktop-web users keep LegacyHome.
  *
  * Big "Wallet Balance" number = wallet token balance (excludes soUSD/soFUSE).
@@ -139,7 +139,11 @@ export default function HomeScreenNew() {
             shadow (~4% each side) acts as the gutter, so the card BODY lines up
             with the px-4 sections below instead of looking inset/narrower. */}
         <View className="gap-3">
-          <HomeWalletCard hasCard={userHasCard} last4={cardDetails?.card_details?.last_4} />
+          <HomeWalletCard
+            hasCard={userHasCard}
+            last4={cardDetails?.card_details?.last_4}
+            depositCompleted={depositCompleted}
+          />
           {!userHasCard && (
             <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
           )}

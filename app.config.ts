@@ -277,6 +277,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
     ['./meawallet/configIos.js', { meaConfig: 'meawallet/mea_config' }],
     './plugins/withJitpackContentFilter.js',
+    // Force FMT_USE_CONSTEVAL=0 so fmt 11.0.2 (pinned by RN 0.83) compiles under
+    // Xcode 26+ clang. See plugins/withFmtConstevalFix.js.
+    './plugins/withFmtConstevalFix.js',
   ],
   experiments: {
     typedRoutes: true,

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
-import FinishSetupModal from '@/components/Home/FinishSetupModal';
+import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
@@ -19,13 +19,13 @@ interface HomeVerificationCardProps {
 
 /**
  * "Finish verification" card for the redesigned home screen. Reuses the shared
- * setup-steps flow (useHomeSetupSteps + FinishSetupModal + CircularProgress) with
- * the redesigned copy and a brand "Get verified" CTA. Separate from the legacy
- * HomeCardSetup so the public/legacy home is unaffected.
+ * setup-steps flow (useHomeSetupSteps) and opens the redesigned CardWaitingModal
+ * ("Your card is waiting") on the brand "Get verified" CTA. Separate from the
+ * legacy HomeCardSetup so the public/legacy home is unaffected.
  */
 const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { steps, firstIncomplete } = useHomeSetupSteps(depositCompleted);
+  const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
 
   return (
     <>
@@ -56,10 +56,9 @@ const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationC
         </View>
       </View>
 
-      <FinishSetupModal
+      <CardWaitingModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        steps={steps}
         firstIncomplete={firstIncomplete}
       />
     </>

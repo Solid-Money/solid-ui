@@ -76,6 +76,18 @@ export const ASSETS = {
   },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
+  'images/badge-cashback.png': {
+    module: require('@/assets/images/badge-cashback.png'),
+    hash: 'a3554390',
+  },
+  'images/badge-globe.png': {
+    module: require('@/assets/images/badge-globe.png'),
+    hash: '9250a521',
+  },
+  'images/badge-gpay.png': { module: require('@/assets/images/badge-gpay.png'), hash: 'f95b2614' },
+  'images/badge-star.png': { module: require('@/assets/images/badge-star.png'), hash: 'e36fe881' },
+  'images/badge-usd.png': { module: require('@/assets/images/badge-usd.png'), hash: '04bf1275' },
+  'images/badge-visa.png': { module: require('@/assets/images/badge-visa.png'), hash: '38df1f6f' },
   'images/bank_deposit.png': {
     module: require('@/assets/images/bank_deposit.png'),
     hash: '96c19d92',
@@ -115,6 +127,10 @@ export const ASSETS = {
   },
   'images/card-oval.png': { module: require('@/assets/images/card-oval.png'), hash: '07e162f1' },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
+  'images/card-waiting-hero.png': {
+    module: require('@/assets/images/card-waiting-hero.png'),
+    hash: '1f459086',
+  },
   'images/card-withdraw-mobile.png': {
     module: require('@/assets/images/card-withdraw-mobile.png'),
     hash: '3e7c4ee6',
@@ -393,6 +409,10 @@ export const ASSETS = {
     module: require('@/assets/images/notification.tsx'),
     hash: '4ee89298',
   },
+  'images/onboarding_hero_bg.png': {
+    module: require('@/assets/images/onboarding_hero_bg.png'),
+    hash: 'f652000f',
+  },
   'images/onboarding_solid.png': {
     module: require('@/assets/images/onboarding_solid.png'),
     hash: '31c6f95b',
@@ -459,6 +479,38 @@ export const ASSETS = {
     module: require('@/assets/images/referral-3d.png'),
     hash: '5d0bdece',
   },
+  'images/referral-new-copy-link.png': {
+    module: require('@/assets/images/referral-new-copy-link.png'),
+    hash: '3a5a9627',
+  },
+  'images/referral-new-glow.png': {
+    module: require('@/assets/images/referral-new-glow.png'),
+    hash: 'a35ca07e',
+  },
+  'images/referral-new-icon-account.png': {
+    module: require('@/assets/images/referral-new-icon-account.png'),
+    hash: '5e2f8742',
+  },
+  'images/referral-new-icon-deposit.png': {
+    module: require('@/assets/images/referral-new-icon-deposit.png'),
+    hash: 'b05e9c87',
+  },
+  'images/referral-new-icon-wallet.png': {
+    module: require('@/assets/images/referral-new-icon-wallet.png'),
+    hash: '3d569d78',
+  },
+  'images/referral-new-more.png': {
+    module: require('@/assets/images/referral-new-more.png'),
+    hash: 'e7a1d7bd',
+  },
+  'images/referral-new-telegram.png': {
+    module: require('@/assets/images/referral-new-telegram.png'),
+    hash: 'daf0ca72',
+  },
+  'images/referral-new-whatsapp.png': {
+    module: require('@/assets/images/referral-new-whatsapp.png'),
+    hash: '6a535fd2',
+  },
   'images/referral_large.png': {
     module: require('@/assets/images/referral_large.png'),
     hash: '79bcfd00',
@@ -480,6 +532,66 @@ export const ASSETS = {
     module: require('@/assets/images/reward-tier-star.png'),
     hash: 'e3b44279',
   },
+  'images/rewards-tiers/glow.svg': {
+    module: require('@/assets/images/rewards-tiers/glow.svg'),
+    hash: 'a0404d08',
+  },
+  'images/rewards-tiers/hero-core.png': {
+    module: require('@/assets/images/rewards-tiers/hero-core.png'),
+    hash: 'b662592d',
+  },
+  'images/rewards-tiers/hero-prime.png': {
+    module: require('@/assets/images/rewards-tiers/hero-prime.png'),
+    hash: 'b0c1ebda',
+  },
+  'images/rewards-tiers/hero-ultra.png': {
+    module: require('@/assets/images/rewards-tiers/hero-ultra.png'),
+    hash: 'd0c16a8d',
+  },
+  'images/rewards-tiers/logo-claude.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-claude.svg'),
+    hash: '2908b46e',
+  },
+  'images/rewards-tiers/logo-disney-1.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-disney-1.svg'),
+    hash: 'ffaf62df',
+  },
+  'images/rewards-tiers/logo-disney-2.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-disney-2.svg'),
+    hash: 'b58efd43',
+  },
+  'images/rewards-tiers/logo-gemini.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-gemini.svg'),
+    hash: '682cce28',
+  },
+  'images/rewards-tiers/logo-generic-1.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-1.svg'),
+    hash: '79d2b5ef',
+  },
+  'images/rewards-tiers/logo-generic-2.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-2.svg'),
+    hash: '3d74f2dc',
+  },
+  'images/rewards-tiers/logo-generic-3.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-3.svg'),
+    hash: '6d8db104',
+  },
+  'images/rewards-tiers/logo-generic-4.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-4.svg'),
+    hash: '879d8886',
+  },
+  'images/rewards-tiers/logo-generic-5.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-5.svg'),
+    hash: 'c5a25a6a',
+  },
+  'images/rewards-tiers/logo-netflix.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-netflix.svg'),
+    hash: 'b0abcc46',
+  },
+  'images/rewards-tiers/logo-openai.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-openai.svg'),
+    hash: '7d9ea5cf',
+  },
   'images/right-chevron.png': {
     module: require('@/assets/images/right-chevron.png'),
     hash: 'e996469a',
@@ -495,6 +607,22 @@ export const ASSETS = {
   'images/save-yellow.png': {
     module: require('@/assets/images/save-yellow.png'),
     hash: '6b97a369',
+  },
+  'images/savings-grow.png': {
+    module: require('@/assets/images/savings-grow.png'),
+    hash: 'e9cde107',
+  },
+  'images/savings-help-earn-chart.svg': {
+    module: require('@/assets/images/savings-help-earn-chart.svg'),
+    hash: '2f895e69',
+  },
+  'images/savings-help-earn-phone.png': {
+    module: require('@/assets/images/savings-help-earn-phone.png'),
+    hash: 'e04466b8',
+  },
+  'images/savings-help-withdraw-check.svg': {
+    module: require('@/assets/images/savings-help-withdraw-check.svg'),
+    hash: '0353c731',
   },
   'images/savings-nav-bar-icon.tsx': {
     module: require('@/assets/images/savings-nav-bar-icon.tsx'),

@@ -94,7 +94,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
 }
 
 /**
- * Whitelisted "glass" bottom tab bar. Identical navigation semantics to
+ * Redesigned "glass" bottom tab bar. Identical navigation semantics to
  * CustomTabBar (route filtering, originalIndex/isFocused mapping, tabPress →
  * CommonActions.navigate) plus a sliding oval glass indicator that animates
  * from the previously active tab to the tapped one.

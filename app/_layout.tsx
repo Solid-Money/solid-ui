@@ -374,7 +374,7 @@ function RootLayout() {
                       <Stack
                         screenOptions={{
                           contentStyle: {
-                            backgroundColor: '#000',
+                            backgroundColor: '#0F0F10',
                           },
                         }}
                       >

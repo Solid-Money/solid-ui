@@ -7,7 +7,6 @@ import bellAnimation from '@/assets/tabs-icons/bell.json';
 import cardAnimation from '@/assets/tabs-icons/card.json';
 import homeAnimation from '@/assets/tabs-icons/home.json';
 import lightningAnimation from '@/assets/tabs-icons/lightning.json';
-import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
@@ -15,18 +14,16 @@ import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
-  const isTestUser = useIsTestUser();
 
   return (
     <Tabs
       screenOptions={{
         animation: 'none',
         freezeOnBlur: Platform.OS !== 'web',
-        sceneStyle: { backgroundColor: '#121212' },
+        sceneStyle: { backgroundColor: '#0F0F10' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
@@ -43,7 +40,7 @@ export default function TabLayout() {
           paddingBottom: 20,
           borderTopWidth: 0,
           // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
-          backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,
@@ -51,11 +48,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={
-        !isDesktop
-          ? props => (isTestUser ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />)
-          : undefined
-      }
+      tabBar={!isDesktop ? props => <NewCustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen
@@ -179,21 +172,19 @@ export default function TabLayout() {
           // Pushed white tier-star image, centered in a full-size box so its
           // icon↔label gap matches the other tabs.
           tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
-          // Only surface the Rewards tab (and its route) for whitelisted users;
-          // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
-          href: isTestUser ? path.REWARDS : null,
+          // Only surface the Rewards tab (and its route) on qa/preview builds;
+          // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
+          href: path.REWARDS,
         }}
       />
-      {isTestUser && (
-        <Tabs.Screen
-          name="stocks"
-          options={{
-            title: 'Stocks',
-            headerShown: false,
-            href: path.STOCKS,
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="stocks"
+        options={{
+          title: 'Stocks',
+          headerShown: false,
+          href: path.STOCKS,
+        }}
+      />
       <Tabs.Screen
         name="referral"
         options={{

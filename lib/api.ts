@@ -68,6 +68,7 @@ import {
   KycLinkAgreements,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
+  LandingPageApyConfig,
   LayerZeroTransaction,
   LeaderboardResponse,
   LifiOrder,
@@ -2824,6 +2825,22 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
 export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfig> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/card-deposit-bonus`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/landing-page-apy`,
     {
       credentials: 'include',
       headers: {

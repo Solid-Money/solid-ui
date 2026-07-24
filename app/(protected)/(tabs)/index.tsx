@@ -24,7 +24,6 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useCurrentGiveaway, useGiveawayCountdown } from '@/hooks/useGiveaway';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
@@ -262,8 +261,8 @@ function LegacyHome() {
 
 export default function Home() {
   const { isDesktop } = useDimension();
-  // Whitelisted internal team members on mobile-web see the redesigned wallet
-  // screen; desktop web and all other users keep the existing design.
-  const showNewHome = useIsTestUser() && !isDesktop;
+  // qa/preview builds on mobile-web see the redesigned wallet screen; desktop
+  // web and production keep the existing design.
+  const showNewHome = !isDesktop;
   return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
 }
