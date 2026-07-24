@@ -68,6 +68,9 @@ interface PageLayoutProps {
 
   // Layout options
   scrollable?: boolean;
+  // Lets a child temporarily suspend scrolling (e.g. while it's running its own
+  // horizontal swipe gesture, so the two don't fight over the same touch).
+  scrollEnabled?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
 
   // Sticky header (sticks to top when scrolling)
@@ -153,6 +156,7 @@ export default function PageLayout({
   mobileHeaderRightAction = 'default',
   onMobileHeaderHelpPress,
   scrollable = true,
+  scrollEnabled = true,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
@@ -235,6 +239,7 @@ export default function PageLayout({
         contentContainerStyle={
           mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined
         }
+        scrollEnabled={scrollEnabled}
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}

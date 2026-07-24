@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
-import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
+import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -114,7 +114,7 @@ export default function RewardsScreenNew() {
         <DailyBenefits tier={currentTier} />
       </View>
 
-      <ReferralProgramModal
+      <ReferralProgramModalNew
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
       />
