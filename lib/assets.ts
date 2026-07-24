@@ -500,6 +500,66 @@ export const ASSETS = {
     module: require('@/assets/images/reward-tier-star.png'),
     hash: 'e3b44279',
   },
+  'images/rewards-tiers/glow.svg': {
+    module: require('@/assets/images/rewards-tiers/glow.svg'),
+    hash: 'a0404d08',
+  },
+  'images/rewards-tiers/hero-core.png': {
+    module: require('@/assets/images/rewards-tiers/hero-core.png'),
+    hash: 'b662592d',
+  },
+  'images/rewards-tiers/hero-prime.png': {
+    module: require('@/assets/images/rewards-tiers/hero-prime.png'),
+    hash: 'b0c1ebda',
+  },
+  'images/rewards-tiers/hero-ultra.png': {
+    module: require('@/assets/images/rewards-tiers/hero-ultra.png'),
+    hash: 'd0c16a8d',
+  },
+  'images/rewards-tiers/logo-claude.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-claude.svg'),
+    hash: '2908b46e',
+  },
+  'images/rewards-tiers/logo-disney-1.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-disney-1.svg'),
+    hash: 'ffaf62df',
+  },
+  'images/rewards-tiers/logo-disney-2.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-disney-2.svg'),
+    hash: 'b58efd43',
+  },
+  'images/rewards-tiers/logo-gemini.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-gemini.svg'),
+    hash: '682cce28',
+  },
+  'images/rewards-tiers/logo-generic-1.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-1.svg'),
+    hash: '79d2b5ef',
+  },
+  'images/rewards-tiers/logo-generic-2.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-2.svg'),
+    hash: '3d74f2dc',
+  },
+  'images/rewards-tiers/logo-generic-3.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-3.svg'),
+    hash: '6d8db104',
+  },
+  'images/rewards-tiers/logo-generic-4.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-4.svg'),
+    hash: '879d8886',
+  },
+  'images/rewards-tiers/logo-generic-5.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-generic-5.svg'),
+    hash: 'c5a25a6a',
+  },
+  'images/rewards-tiers/logo-netflix.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-netflix.svg'),
+    hash: 'b0abcc46',
+  },
+  'images/rewards-tiers/logo-openai.svg': {
+    module: require('@/assets/images/rewards-tiers/logo-openai.svg'),
+    hash: '7d9ea5cf',
+  },
   'images/right-chevron.png': {
     module: require('@/assets/images/right-chevron.png'),
     hash: 'e996469a',

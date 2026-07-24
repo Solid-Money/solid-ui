@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import PageLayout from '@/components/PageLayout';
 import CompareTiersTable from '@/components/Rewards/CompareTiersTable';
 import EarnPointsSection from '@/components/Rewards/EarnPointsSection';
+import RewardsBenefitsScreenNew from '@/components/Rewards/NewRewards/RewardsBenefitsScreenNew';
 import TierFeesTable from '@/components/Rewards/TierFeesTable';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -13,6 +14,13 @@ import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 
 export default function RewardsBenefits() {
+  // qa/preview builds see the redesigned tier-explore screen on mobile; desktop
+  // keeps the existing CompareTiersTable-based layout.
+  const { isDesktop } = useDimension();
+  return isDesktop ? <LegacyRewardsBenefits /> : <RewardsBenefitsScreenNew />;
+}
+
+function LegacyRewardsBenefits() {
   const { isScreenMedium } = useDimension();
   const { data: tierBenefits, isLoading } = useTierBenefits();
   const {

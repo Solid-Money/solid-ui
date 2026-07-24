@@ -185,10 +185,10 @@ export default function ProtectedLayout() {
       <Stack
         screenOptions={{
           contentStyle: {
-            backgroundColor: '#000',
+            backgroundColor: '#0F0F10',
           },
           headerStyle: {
-            backgroundColor: '#000',
+            backgroundColor: '#0F0F10',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

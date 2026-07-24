@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { RotateCw } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
@@ -9,6 +8,7 @@ import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { RewardsTier } from '@/lib/types';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 
 import DailyBenefits from './DailyBenefits';
@@ -26,7 +26,7 @@ import RewardsSummaryCard from './RewardsSummaryCard';
  * (full tier comparison).
  */
 export default function RewardsScreenNew() {
-  const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
+  const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
@@ -56,28 +56,14 @@ export default function RewardsScreenNew() {
     }
   }, [referralParam]);
 
-  if (isError && !isLoading) {
-    return (
-      <PageLayout>
-        <View className="flex-1 items-center justify-center px-4 py-12">
-          <Text className="mb-4 text-gray-400">Failed to load rewards</Text>
-          <Pressable
-            onPress={() => refetch()}
-            className="flex-row items-center rounded-lg bg-[#2E2E2E] px-4 py-2"
-          >
-            <RotateCw size={16} color="white" className="mr-2" />
-            <Text className="text-white">Try Again</Text>
-          </Pressable>
-        </View>
-      </PageLayout>
-    );
-  }
-
-  if (isLoading || !rewardsData) {
+  if (isLoading) {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
   }
 
-  const { currentTier, totalPoints } = rewardsData;
+  // Rewards data failed to load (or the user has none yet) — render the full
+  // page with Core-tier defaults and zeroed stats rather than an error state.
+  const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
+  const totalPoints = rewardsData?.totalPoints ?? 0;
 
   if (rewardsLocked) {
     return (
@@ -86,8 +72,8 @@ export default function RewardsScreenNew() {
           isOpen={showWelcomePopup}
           variant={legacyPoints > 0 ? 'existing' : 'new'}
           oldPoints={legacyPoints}
-          legacyCarryoverPoints={rewardsData.legacyCarryoverPoints ?? 0}
-          startingTier={rewardsData.startingTier ?? currentTier}
+          legacyCarryoverPoints={rewardsData?.legacyCarryoverPoints ?? 0}
+          startingTier={rewardsData?.startingTier ?? currentTier}
           isJoining={isJoining}
           onAgree={() => joinRewards()}
           onClose={() => {
@@ -99,7 +85,7 @@ export default function RewardsScreenNew() {
     );
   }
 
-  const cashback = rewardsData.cashbackThisMonth ?? 0;
+  const cashback = rewardsData?.cashbackThisMonth ?? 0;
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
 
   return (

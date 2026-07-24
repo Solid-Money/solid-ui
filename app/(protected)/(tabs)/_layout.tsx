@@ -23,7 +23,7 @@ export default function TabLayout() {
       screenOptions={{
         animation: 'none',
         freezeOnBlur: Platform.OS !== 'web',
-        sceneStyle: { backgroundColor: '#000000' },
+        sceneStyle: { backgroundColor: '#0F0F10' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
