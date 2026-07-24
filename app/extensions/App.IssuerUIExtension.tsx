@@ -49,7 +49,7 @@ export default function IssuerUIExtension() {
   }, [email]);
 
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: '#000' }}>
+    <SafeAreaView style={{ flex: 1, justifyContent: 'center', backgroundColor: '#0F0F10' }}>
       <View style={{ margin: 16 }}>
         <Text style={{ color: '#fff', marginBottom: 8 }}>Sign in to add your card</Text>
         <TextInput

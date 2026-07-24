@@ -7,7 +7,7 @@ export default function ActivityLayout() {
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#000000',
+          backgroundColor: '#0F0F10',
         },
         headerTitleAlign: 'center',
         headerTintColor: '#ffffff',
@@ -22,7 +22,7 @@ export default function ActivityLayout() {
               <Ionicons name="chevron-back" size={24} color={tintColor} />
             </TouchableOpacity>
           ) : null,
-        contentStyle: { flex: 1, backgroundColor: '#000000' },
+        contentStyle: { flex: 1, backgroundColor: '#0F0F10' },
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

@@ -7,7 +7,7 @@ export default function SignupLayout() {
         headerShown: false,
         animation: 'none',
         contentStyle: {
-          backgroundColor: '#000',
+          backgroundColor: '#0F0F10',
         },
       }}
     >

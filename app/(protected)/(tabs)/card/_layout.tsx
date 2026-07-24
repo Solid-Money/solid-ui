@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 export default function CardLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#000000' } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0F0F10' } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="ready" />
       <Stack.Screen name="pending" />
