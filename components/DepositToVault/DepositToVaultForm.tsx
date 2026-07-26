@@ -164,6 +164,7 @@ function DepositToVaultForm() {
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
+      decimals: tokenData?.decimals,
     };
   }, [normalizedSelection.chainId, normalizedSelection.principalToken]);
 
@@ -250,7 +251,7 @@ function DepositToVaultForm() {
       contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
       contractAddress: selectedTokenInfo.address,
       balance: '0',
-      contractDecimals: isFuseVault || isEthVault ? 18 : 6,
+      contractDecimals: selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6),
       type: TokenType.ERC20,
       chainId: normalizedSelection.chainId,
       logoUrl: undefined,
@@ -275,7 +276,7 @@ function DepositToVaultForm() {
       : useSolidForUsdc
         ? balanceSolidUsdc
         : balance;
-  const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
+  const balanceDecimals = selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6);
   const depositFn = isEthVault
     ? useSolidForEth
       ? depositSolidEth
