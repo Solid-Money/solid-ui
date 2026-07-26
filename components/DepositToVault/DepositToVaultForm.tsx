@@ -83,7 +83,7 @@ function DepositToVaultForm() {
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens } =
     useWalletTokens();
 
   // Sum across all (chain, token) pairs the selected vault accepts. If nothing
@@ -95,6 +95,7 @@ function DepositToVaultForm() {
       ...polygonTokens,
       ...baseTokens,
       ...arbitrumTokens,
+      ...bscTokens,
     ];
 
     const supportedSet = new Set<string>();
@@ -112,7 +113,7 @@ function DepositToVaultForm() {
       if (!supportedSet.has(`${token.chainId}:${symbol}`)) return false;
       return BigInt(token.balance || '0') > 0n;
     });
-  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, vault]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens, vault]);
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
   const vaultTokenIcon =
