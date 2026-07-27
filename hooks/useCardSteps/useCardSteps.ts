@@ -148,10 +148,9 @@ export function useCardSteps(
     });
 
     // Non-Bridge users go through Didit (Rain) by default. The backend is
-    // authoritative for whether this user+jurisdiction should instead use Sumsub
-    // (Wirex): it checks the geography AND the sandbox internal-tester allowlist.
-    // Defaulting to Didit (and staying there if the call fails) guarantees a
-    // non-tester never lands on the Sumsub widget.
+    // authoritative for whether this jurisdiction should instead use Sumsub
+    // (Wirex). Defaulting to Didit — and staying there if the call fails — keeps
+    // the widely-available flow as the safe fallback.
     if (cardIssuer !== CardProvider.BRIDGE) {
       setKycFlow('card');
       const countryCode = countryStore.countryInfo?.countryCode;
