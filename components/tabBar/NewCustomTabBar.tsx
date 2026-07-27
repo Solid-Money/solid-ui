@@ -18,7 +18,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 import { Text } from '@/components/ui/text';
 import { WHITELIST_TAB_LABELS, WHITELIST_TAB_NAMES } from '@/constants/tabs';
@@ -101,7 +101,14 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
  */
 export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const currentRouteName = state.routes[state.index]?.name;
+  const activeRoute = state.routes[state.index];
+  const currentRouteName = activeRoute?.name;
+  // Deepest focused route inside the active tab's nested navigator — the
+  // redesigned rewards benefits screen renders its own bottom fade + CTA and
+  // hides this bar entirely.
+  const focusedNestedRoute = activeRoute
+    ? getFocusedRouteNameFromRoute(activeRoute)
+    : undefined;
 
   const bottomInset = Math.max(
     insets.bottom + (Platform.OS === 'android' ? TAB_BAR_ANDROID_EXTRA_INSET : 0),
@@ -188,7 +195,7 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (currentRouteName === 'settings') {
+  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
     return null;
   }
 

@@ -195,7 +195,7 @@ export default function ReferralProgramContentNew({ onClose }: ReferralProgramCo
         className="flex-1"
         contentContainerStyle={{
           paddingTop: 72,
-          paddingBottom: insets.bottom + 24,
+          paddingBottom: insets.bottom + 48,
           paddingHorizontal: 16,
           gap: 24,
         }}

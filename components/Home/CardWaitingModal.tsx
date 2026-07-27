@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ImageSourcePropType, Pressable, ScrollView, View } from 'react-native';
+import { ImageSourcePropType, Platform, Pressable, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -91,6 +91,11 @@ const BenefitCell = ({
  */
 const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModalProps) => {
   const insets = useSafeAreaInsets();
+  // On Android (edge-to-edge) the safe-area bottom inset can come back smaller
+  // than the actual system nav bar inside the dialog portal, leaving the pinned
+  // CTA sitting too close to the bottom edge. Floor it so the button always
+  // clears the nav bar; iOS keeps its (correct) home-indicator inset.
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 0);
 
   // Hero entrance — card spins/settles in from Figma node 20964:2589: fades in,
   // rises 18px, scales up from 0.55 and un-tilts 8deg, with a spring settle.
@@ -150,9 +155,10 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
     >
       <View className="flex-1">
         <ScrollView
-          className="flex-1 pt-20"
+          className="flex-1"
           contentContainerStyle={{
-            paddingBottom: CTA_PADDING_TOP + CTA_HEIGHT + insets.bottom + CTA_PADDING_BOTTOM + 24,
+            paddingTop: 80,
+            paddingBottom: CTA_PADDING_TOP + CTA_HEIGHT + bottomInset + CTA_PADDING_BOTTOM + 24,
           }}
           showsVerticalScrollIndicator={false}
         >
@@ -228,7 +234,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
             bottom: 0,
             left: 0,
             right: 0,
-            height: CTA_PADDING_TOP + CTA_HEIGHT + insets.bottom + CTA_PADDING_BOTTOM + FADE_EXTENT,
+            height: CTA_PADDING_TOP + CTA_HEIGHT + bottomInset + CTA_PADDING_BOTTOM + FADE_EXTENT,
             justifyContent: 'flex-end',
           }}
         >
@@ -236,7 +242,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
             style={{
               paddingHorizontal: 18,
               paddingTop: CTA_PADDING_TOP,
-              paddingBottom: insets.bottom + CTA_PADDING_BOTTOM,
+              paddingBottom: bottomInset + CTA_PADDING_BOTTOM,
             }}
           >
             <Button
