@@ -5,7 +5,7 @@ import ProfileIcon from '@/assets/images/profile';
 import { path } from '@/constants/path';
 
 /**
- * Circular profile button for the top-left of the whitelisted mobile header.
+ * Circular profile button for the top-left of the redesigned mobile header.
  * Icon-only (no chevron) to mirror the bell button on the right. Opens Settings.
  */
 const HeaderProfileButton = () => {

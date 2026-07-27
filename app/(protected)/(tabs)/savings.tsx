@@ -30,7 +30,6 @@ import {
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import useUser from '@/hooks/useUser';
@@ -44,11 +43,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
-  // Whitelisted internal team members see the redesigned savings screen; all
-  // other users — and every desktop-web user — keep the existing design.
-  const { isDesktop } = useDimension();
-  const showNew = useIsTestUser() && !isDesktop;
-  return showNew ? <SavingsScreenNew /> : <LegacySavings />;
+  return <LegacySavings />;
 }
 
 function LegacySavings() {

@@ -18,7 +18,6 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
@@ -26,11 +25,7 @@ import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 
 export default function Rewards() {
-  // Whitelisted internal team members see the redesigned rewards screen; all
-  // other users — and every desktop-web user — keep the existing design.
-  const { isDesktop } = useDimension();
-  const showNew = useIsTestUser() && !isDesktop;
-  return showNew ? <RewardsScreenNew /> : <LegacyRewards />;
+  return <LegacyRewards />;
 }
 
 function LegacyRewards() {

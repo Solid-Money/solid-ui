@@ -73,6 +73,8 @@ export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
+// In-development features: visible on qa/preview builds, hidden in production.
+export const isDevFeatureEnabled = !isProduction;
 
 type Addresses = {
   ethereum: {

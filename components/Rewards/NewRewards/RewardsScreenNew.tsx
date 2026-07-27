@@ -16,8 +16,8 @@ import PointsHeadline from './PointsHeadline';
 import RewardsSummaryCard from './RewardsSummaryCard';
 
 /**
- * Redesigned rewards screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in rewards/index.tsx. Public users and all
+ * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in rewards/index.tsx. Production and all
  * desktop-web users keep the legacy rewards screen.
  *
  * Shows the user's CURRENT tier + points, a rewards summary (cashback +

@@ -10,16 +10,13 @@ import lightningAnimation from '@/assets/tabs-icons/lightning.json';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
-import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
 import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 
 export default function TabLayout() {
   const { isDesktop } = useDimension();
-  const isTestUser = useIsTestUser();
 
   return (
     <Tabs
@@ -51,11 +48,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={
-        !isDesktop
-          ? props => (isTestUser ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />)
-          : undefined
-      }
+      tabBar={!isDesktop ? props => <CustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen
@@ -179,21 +172,11 @@ export default function TabLayout() {
           // Pushed white tier-star image, centered in a full-size box so its
           // icon↔label gap matches the other tabs.
           tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
-          // Only surface the Rewards tab (and its route) for whitelisted users;
-          // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
-          href: isTestUser ? path.REWARDS : null,
+          // Only surface the Rewards tab (and its route) on qa/preview builds;
+          // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
+          href: null,
         }}
       />
-      {isTestUser && (
-        <Tabs.Screen
-          name="stocks"
-          options={{
-            title: 'Stocks',
-            headerShown: false,
-            href: path.STOCKS,
-          }}
-        />
-      )}
       <Tabs.Screen
         name="referral"
         options={{

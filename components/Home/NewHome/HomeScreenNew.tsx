@@ -27,8 +27,8 @@ import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
- * Redesigned home/wallet screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in index(.native).tsx. Public users and all
+ * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in index(.native).tsx. Production and all
  * desktop-web users keep LegacyHome.
  *
  * Big "Wallet Balance" number = wallet token balance (excludes soUSD/soFUSE).
