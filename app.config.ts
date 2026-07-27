@@ -287,6 +287,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Force FMT_USE_CONSTEVAL=0 so fmt 11.0.2 (pinned by RN 0.83) compiles under
     // Xcode 26+ clang. See plugins/withFmtConstevalFix.js.
     './plugins/withFmtConstevalFix.js',
+    // IdensicMobileSDK (Sumsub's native iOS SDK) lives in Sumsub's own
+    // CocoaPods spec repo, not trunk. See plugins/withSumsubPodSource.js.
+    './plugins/withSumsubPodSource.js',
+    // Sumsub ("face") and expo-camera ("barcode_ui") both declare the ML Kit
+    // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
+    // does not fail. See plugins/withMlkitVisionDependencies.js.
+    './plugins/withMlkitVisionDependencies.js',
   ],
   experiments: {
     typedRoutes: true,
