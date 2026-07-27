@@ -320,9 +320,9 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
         <View className="px-5" style={{ paddingBottom: insets.bottom + 16 }}>
           <Pressable
             onPress={handleNext}
-            className="h-[58px] w-full items-center justify-center rounded-full bg-white active:scale-95 active:opacity-90"
+            className="h-[58px] w-full items-center justify-center rounded-full bg-brand active:scale-95 active:opacity-90"
           >
-            <Text className="text-[18px] font-medium text-[#111]">{slide.cta}</Text>
+            <Text className="text-[18px] font-medium text-black">{slide.cta}</Text>
           </Pressable>
         </View>
       </View>

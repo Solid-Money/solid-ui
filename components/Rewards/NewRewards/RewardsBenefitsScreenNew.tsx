@@ -12,6 +12,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import LottieView, { type AnimationObject } from 'lottie-react-native';
 import {
   CreditCard,
   DollarSign,
@@ -39,10 +40,10 @@ const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.ULTRA]: 'Ultra',
 };
 
-const TIER_HERO_ASSET: Record<RewardsTier, AssetPath> = {
-  [RewardsTier.CORE]: 'images/rewards-tiers/hero-core.png',
-  [RewardsTier.PRIME]: 'images/rewards-tiers/hero-prime.png',
-  [RewardsTier.ULTRA]: 'images/rewards-tiers/hero-ultra.png',
+const TIER_HERO_ANIMATION: Record<RewardsTier, AnimationObject> = {
+  [RewardsTier.CORE]: require('@/assets/animations/star-1.json'),
+  [RewardsTier.PRIME]: require('@/assets/animations/star-2.json'),
+  [RewardsTier.ULTRA]: require('@/assets/animations/star-3.json'),
 };
 
 const SPARKLE_ASSET: AssetPath = 'images/rewards-tiers/hero-core.png';
@@ -298,6 +299,12 @@ const SWIPE_VELOCITY_THRESHOLD = 400;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 // Dampens the drag past the first/last tier so it feels like it's resisting.
 const RUBBER_BAND_FACTOR = 0.3;
+// bg-background (--background), used as the solid end of the top/bottom fades.
+const BACKGROUND = '#0F0F10';
+// Extra height the fades extend beyond their bar's own content, so scrolled
+// content dims out smoothly under the header / off the bottom edge instead of
+// getting a hard clip (mirrors CardWaitingModal's FADE_EXTENT).
+const FADE_EXTENT = 120;
 
 interface TierPageProps {
   tier: RewardsTier;
@@ -317,8 +324,12 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
 
   return (
     <View
-      className="gap-6 pb-24"
-      style={{ width: SCREEN_WIDTH, paddingTop: insets.top + HEADER_ROW_HEIGHT }}
+      className="gap-6"
+      style={{
+        width: SCREEN_WIDTH,
+        paddingTop: insets.top + HEADER_ROW_HEIGHT,
+        paddingBottom: insets.bottom,
+      }}
     >
       <View className="items-center gap-1 pt-4">
         <View className="h-[320px] w-[320px] items-center justify-center">
@@ -327,10 +338,12 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
             style={{ position: 'absolute', width: 340, height: 340 }}
             contentFit="contain"
           />
-          <Image
-            source={getAsset(TIER_HERO_ASSET[tier])}
+          <LottieView
+            source={TIER_HERO_ANIMATION[tier]}
+            autoPlay
+            loop
             style={{ width: 220, height: 220 }}
-            contentFit="contain"
+            resizeMode="contain"
           />
         </View>
 
@@ -468,16 +481,46 @@ export default function RewardsBenefitsScreenNew() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const header = (
-    <View
-      className="absolute left-0 right-0 top-0 z-10 flex-row items-center justify-center px-4"
-      style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top }}
-    >
-      <View className="absolute left-4">
-        <BackButton onPress={() => router.push(path.REWARDS)} />
-      </View>
-      <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
-    </View>
+  // Top fade sits over the scrolled content so the header + tier switcher stay
+  // legible as content passes under them; the matching bottom fade dims content
+  // off the bottom edge now that the tab bar no longer occupies it.
+  const overlays = (
+    <>
+      <LinearGradient
+        colors={[BACKGROUND, `${BACKGROUND}00`]}
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top + HEADER_ROW_HEIGHT + FADE_EXTENT,
+          zIndex: 10,
+        }}
+      >
+        <View
+          className="flex-row items-center justify-center px-4"
+          style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top }}
+        >
+          <View className="absolute left-4">
+            <BackButton onPress={() => router.push(path.REWARDS)} />
+          </View>
+          <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
+        </View>
+      </LinearGradient>
+
+      <LinearGradient
+        colors={[`${BACKGROUND}00`, BACKGROUND]}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: insets.bottom + FADE_EXTENT,
+        }}
+      />
+    </>
   );
 
   // Only horizontal drags trigger a tier swap; vertical drags fall through to
@@ -532,8 +575,8 @@ export default function RewardsBenefitsScreenNew() {
   return (
     <PageLayout
       showNavbar={false}
-      edges={['left', 'right', 'bottom']}
-      additionalContent={header}
+      edges={['left', 'right']}
+      additionalContent={overlays}
       scrollEnabled={!isSwiping}
     >
       <GestureDetector gesture={swipeGesture}>
