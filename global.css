@@ -161,3 +161,59 @@
 .bounce-in-down {
   animation: bounceInDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
+
+.rotating-wheel-image {
+  --landing-angle: 0deg;
+  --spin-turns: 6turn;
+  --spin-duration: 6s;
+  --wheel-start-angle: 0deg;
+  --wheel-cruise-angle: 0deg;
+  --wheel-end-angle: 0deg;
+
+  display: block;
+  transform: rotate(var(--wheel-start-angle, 0deg));
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.rotating-wheel-image.is-spinning {
+  animation-name: rotating-wheel-spin;
+  animation-duration: var(--spin-duration, 6s);
+  animation-fill-mode: forwards;
+}
+
+@keyframes rotating-wheel-spin {
+  0% {
+    transform: rotate(var(--wheel-start-angle));
+    animation-timing-function: cubic-bezier(0.45, 0, 0.8, 0.45);
+  }
+
+  12% {
+    transform: rotate(calc(var(--wheel-start-angle) + 0.8turn));
+    animation-timing-function: linear;
+  }
+
+  55% {
+    transform: rotate(var(--wheel-cruise-angle));
+    animation-timing-function: cubic-bezier(0.12, 0.65, 0.18, 1);
+  }
+
+  84% {
+    transform: rotate(calc(var(--wheel-end-angle) - 18deg));
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  92% {
+    transform: rotate(calc(var(--wheel-end-angle) + 6deg));
+    animation-timing-function: ease-out;
+  }
+
+  97% {
+    transform: rotate(calc(var(--wheel-end-angle) - 2deg));
+    animation-timing-function: ease-in-out;
+  }
+
+  100% {
+    transform: rotate(var(--wheel-end-angle));
+  }
+}
