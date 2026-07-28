@@ -77,6 +77,13 @@ export default function SumsubKycWeb() {
 
     instance.launch(`#${SUMSUB_EMBED_CONTAINER_ID}`);
     markStarted();
+
+    // Allow a relaunch if this screen is torn down and entered again. Without
+    // this the guard stays latched and re-entering renders whatever the last
+    // phase was (e.g. the "Verification complete" interstitial) with no widget.
+    return () => {
+      launchedRef.current = false;
+    };
   }, [
     accessToken,
     fetchAccessToken,

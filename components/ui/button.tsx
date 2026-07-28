@@ -50,7 +50,11 @@ const buttonTextVariants = cva(
         secondary: 'text-secondary-foreground group-active:text-secondary-foreground',
         ghost: 'group-active:text-accent-foreground',
         link: 'text-primary group-active:underline',
-        brand: 'text-primary-foreground',
+        // Explicit black rather than a theme token: the brand background is a
+        // light green in every theme, and `text-primary-foreground` was being
+        // beaten by the base `text-foreground` in some renders, so the label
+        // intermittently came out white and unreadable.
+        brand: 'text-black',
         accent: 'text-primary-foreground',
         purple: 'text-primary-foreground',
         rewards: 'text-primary-foreground',

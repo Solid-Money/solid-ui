@@ -231,6 +231,13 @@ export function getStepDescription(
     return getKYCDescription(options.rainApplicationStatus, warnings);
   }
 
+  // Approved by the issuer (Wirex/Sumsub has no Bridge endorsement to fall back
+  // on, so without this it dropped to DEFAULT_KYC_DESCRIPTION and still told an
+  // approved user that "verification is required for us to issue your card").
+  if (options?.kycStatus === KycStatus.APPROVED) {
+    return 'Identity verification complete. You can now order your card.';
+  }
+
   // Didit KYC rejected or expired before reaching Rain — show rejection reasons
   if (options?.kycStatus === KycStatus.REJECTED) {
     const formatted = formatKycWarnings(warnings);
@@ -344,6 +351,14 @@ export function getStepButtonText(
 
   if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
     return getKYCButtonText(options.rainApplicationStatus);
+  }
+
+  // Approved — the step is done, so there is no action left. Without this it fell
+  // through to the no-endorsement default and rendered "Continue verification"
+  // on an already-approved step, which just bounced the user off the Sumsub
+  // screen (createSession 409s once KYC is approved) and back again.
+  if (options?.kycStatus === KycStatus.APPROVED) {
+    return undefined;
   }
 
   // Didit KYC rejected — final decision; cannot be overridden or resubmitted, so no action button.
