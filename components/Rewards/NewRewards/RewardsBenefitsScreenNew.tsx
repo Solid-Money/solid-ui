@@ -63,10 +63,37 @@ interface TierPerk {
   description: string;
 }
 
+const BADGE_SIZE = 22;
+// The design steps adjacent badges ~19px apart; the card-colored ring baked
+// into every badge keeps the overlapping stack readable.
+const BADGE_OVERLAP = -3;
+// Rows a tier hasn't unlocked yet keep their logos but sit at 40% — same
+// treatment the design gives the row's label and "Prime and up" text.
+const LOCKED_OPACITY = 0.4;
+
+/**
+ * One brand logo in a cashback row. Assets are named after the file they were
+ * exported as, which doesn't always match the brand they draw, so each entry
+ * below is commented with the brand it actually is.
+ *
+ * Entries without a `background` were exported with their own circle and
+ * card-colored ring already baked in, so they drop straight into the 22px slot.
+ * The rest are bare glyphs that BrandBadge wraps in the circle itself, at the
+ * glyph size the design specifies.
+ */
+interface BrandLogo {
+  asset: AssetPath;
+  width: number;
+  height: number;
+  background?: string;
+  /** Second glyph stacked on top — the design draws Disney+ as two assets. */
+  overlay?: { asset: AssetPath; width: number; height: number };
+}
+
 interface CashbackCategory {
   label: string;
   value: string | null;
-  logos: AssetPath[];
+  logos: BrandLogo[];
 }
 
 interface TierContent {
@@ -78,20 +105,49 @@ interface TierContent {
   fees: { cardFees: string; bankDeposit: string; swaps: string; cashbackCap: string };
 }
 
-const AI_LOGOS: AssetPath[] = [
-  'images/rewards-tiers/logo-openai.svg',
-  'images/rewards-tiers/logo-claude.svg',
-  'images/rewards-tiers/logo-gemini.svg',
+const AI_LOGOS: BrandLogo[] = [
+  // ChatGPT
+  { asset: 'images/rewards-tiers/logo-generic-3.svg', width: BADGE_SIZE, height: BADGE_SIZE },
+  // Claude
+  { asset: 'images/rewards-tiers/logo-claude.svg', width: 15, height: 15, background: '#d97757' },
+  // Gemini
+  { asset: 'images/rewards-tiers/logo-gemini.svg', width: 18, height: 18, background: '#ffffff' },
 ];
-const STREAMING_LOGOS: AssetPath[] = [
-  'images/rewards-tiers/logo-netflix.svg',
-  'images/rewards-tiers/logo-disney-1.svg',
-  'images/rewards-tiers/logo-generic-1.svg',
+const STREAMING_LOGOS: BrandLogo[] = [
+  // Netflix
+  { asset: 'images/rewards-tiers/logo-netflix.svg', width: 8, height: 15, background: '#000000' },
+  // Disney+
+  {
+    asset: 'images/rewards-tiers/logo-disney-1.svg',
+    width: 16,
+    height: 16,
+    background: '#ffffff',
+    overlay: { asset: 'images/rewards-tiers/logo-disney-2.svg', width: 17, height: 17 },
+  },
+  // Max
+  { asset: 'images/rewards-tiers/logo-generic-4.svg', width: BADGE_SIZE, height: BADGE_SIZE },
+  // Prime Video
+  {
+    asset: 'images/rewards-tiers/logo-generic-1.svg',
+    width: 14,
+    height: 14,
+    background: '#ffffff',
+  },
+  // Apple TV+
+  { asset: 'images/rewards-tiers/logo-generic-5.svg', width: BADGE_SIZE, height: BADGE_SIZE },
 ];
-const MUSIC_LOGOS: AssetPath[] = [
-  'images/rewards-tiers/logo-generic-2.svg',
-  'images/rewards-tiers/logo-generic-4.svg',
-  'images/rewards-tiers/logo-generic-5.svg',
+const MUSIC_LOGOS: BrandLogo[] = [
+  // Spotify (exported as logo-openai.svg, but it draws the Spotify mark)
+  { asset: 'images/rewards-tiers/logo-openai.svg', width: BADGE_SIZE, height: BADGE_SIZE },
+  // Apple Music
+  { asset: 'images/rewards-tiers/logo-generic-5.svg', width: BADGE_SIZE, height: BADGE_SIZE },
+  // YouTube Music
+  {
+    asset: 'images/rewards-tiers/logo-generic-2.svg',
+    width: 16,
+    height: 11.2,
+    background: '#ffffff',
+  },
 ];
 
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
@@ -110,9 +166,9 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     cashback: {
       everyPurchase: '3%',
       categories: [
-        { label: 'AI', value: null, logos: [] },
-        { label: 'Streaming', value: null, logos: [] },
-        { label: 'Music', value: null, logos: [] },
+        { label: 'AI', value: null, logos: AI_LOGOS },
+        { label: 'Streaming', value: null, logos: STREAMING_LOGOS },
+        { label: 'Music', value: null, logos: MUSIC_LOGOS },
       ],
     },
     fees: {
@@ -245,23 +301,54 @@ const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
   );
 };
 
-interface LogoBadgeProps {
-  asset: AssetPath;
+interface BrandBadgeProps {
+  logo: BrandLogo;
   overlap?: boolean;
 }
 
-const LogoBadge = ({ asset, overlap }: LogoBadgeProps) => (
-  <View
-    className="h-[22px] w-[22px] items-center justify-center overflow-hidden rounded-full border-2 border-card bg-white"
-    style={overlap ? { marginLeft: -6 } : undefined}
-  >
-    <Image source={getAsset(asset)} style={{ width: 14, height: 14 }} contentFit="contain" />
-  </View>
-);
+const BrandBadge = ({ logo, overlap }: BrandBadgeProps) => {
+  const offset = overlap ? { marginLeft: BADGE_OVERLAP } : undefined;
 
+  // Already a complete badge — wrapping it would double up on its baked-in ring.
+  if (!logo.background) {
+    return (
+      <Image
+        source={getAsset(logo.asset)}
+        style={[{ width: BADGE_SIZE, height: BADGE_SIZE }, offset]}
+        contentFit="contain"
+      />
+    );
+  }
+
+  return (
+    <View
+      className="items-center justify-center overflow-hidden rounded-full border-2 border-card"
+      style={[{ width: BADGE_SIZE, height: BADGE_SIZE, backgroundColor: logo.background }, offset]}
+    >
+      <Image
+        source={getAsset(logo.asset)}
+        style={{ width: logo.width, height: logo.height }}
+        contentFit="contain"
+      />
+      {logo.overlay ? (
+        <Image
+          source={getAsset(logo.overlay.asset)}
+          style={{
+            position: 'absolute',
+            width: logo.overlay.width,
+            height: logo.overlay.height,
+          }}
+          contentFit="contain"
+        />
+      ) : null}
+    </View>
+  );
+};
+
+// Full-bleed: the design runs dividers edge to edge across the card rather
+// than inset to match the rows' horizontal padding.
 const DIVIDER_STYLE = {
   height: 1,
-  marginHorizontal: 16,
   backgroundColor: 'rgba(255,255,255,0.15)',
 };
 const Divider = () => <View style={DIVIDER_STYLE} />;
@@ -411,34 +498,33 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
         <Text className="px-4 pb-2 pt-4 text-base text-muted-foreground">Cashback</Text>
         <Divider />
         <FeeRow label="Every purchase" value={content.cashback.everyPurchase} />
-        {content.cashback.categories.map(category => (
-          <View key={category.label}>
-            <View className="flex-row items-center justify-between px-4 py-2">
-              <Text
-                className={cn(
-                  'text-base font-medium text-white',
-                  !category.value && 'text-white/40',
-                )}
-              >
+        {content.cashback.categories.map(category => {
+          // Locked rows still show the logos, just dimmed — the reward is the
+          // percentage, not the list of brands it applies to.
+          const isLocked = !category.value;
+          return (
+            <View key={category.label} className="flex-row items-center gap-3 px-4 py-2">
+              <Text className={cn('text-base font-medium text-white', isLocked && 'text-white/40')}>
                 {category.label}
               </Text>
+              <View
+                className="flex-1 flex-row items-center"
+                style={isLocked ? { opacity: LOCKED_OPACITY } : undefined}
+              >
+                {category.logos.map((logo, index) => (
+                  <BrandBadge key={logo.asset} logo={logo} overlap={index > 0} />
+                ))}
+              </View>
               {category.value ? (
-                <View className="flex-row items-center gap-2">
-                  <View className="flex-row">
-                    {category.logos.map((logo, index) => (
-                      <LogoBadge key={logo} asset={logo} overlap={index > 0} />
-                    ))}
-                  </View>
-                  <View className="rounded-full bg-white/10 px-3 py-2">
-                    <Text className="text-base font-medium text-white">{category.value}</Text>
-                  </View>
+                <View className="rounded-full bg-white/10 px-3 py-2">
+                  <Text className="text-base font-medium text-white">{category.value}</Text>
                 </View>
               ) : (
                 <Text className="text-base font-medium text-white/40">Prime and up</Text>
               )}
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       <View className="mx-4 rounded-twice bg-card pb-3">
