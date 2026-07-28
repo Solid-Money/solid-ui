@@ -52,7 +52,7 @@ const MODAL_BACKGROUND = '#111111';
 const FADE_EXTENT = 120;
 const CTA_HEIGHT = 50;
 const CTA_PADDING_TOP = 16;
-const CTA_PADDING_BOTTOM = 35;
+const CTA_PADDING_BOTTOM = 65;
 
 const BenefitCell = ({
   benefit,
