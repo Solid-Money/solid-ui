@@ -70,9 +70,14 @@ export function buildCardSteps(
   const isKycComplete =
     options?.cardIssuer === CardProvider.RAIN
       ? isRainKycApproved
-      : options?.cardIssuer === CardProvider.WIREX
-        ? options?.kycStatus === KycStatus.APPROVED
-        : cardsEndorsement?.status === EndorsementStatus.APPROVED;
+      : // Deliberately NOT gated on cardIssuer === WIREX: /cards/status does not
+        // return cardProvider, so cardIssuer is null for Wirex users and a
+        // provider-specific branch never matched — leaving the step incomplete
+        // and the activate button unrendered even with kycStatus "approved".
+        // kycStatus is the canonical backend decision for every non-Rain issuer,
+        // with the Bridge endorsement kept as the legacy fallback.
+        options?.kycStatus === KycStatus.APPROVED ||
+        cardsEndorsement?.status === EndorsementStatus.APPROVED;
 
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
