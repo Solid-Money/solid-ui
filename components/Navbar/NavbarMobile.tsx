@@ -15,7 +15,6 @@ import HeaderBellButton from './HeaderBellButton';
 import HeaderHelpButton from './HeaderHelpButton';
 import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
-import WhatsNewButton from './WhatsNewButton';
 
 const GLASS_TRANSITION = {
   duration: 320,
@@ -34,7 +33,7 @@ type NavbarMobileProps = {
   showTitle?: boolean;
   title?: string;
   topInset?: number;
-  /** Right-side action shown for signed-in users. 'help' replaces What's-new + bell with a single "?" button. */
+  /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
   rightAction?: 'default' | 'help';
   onHelpPress?: () => void;
 };
@@ -50,9 +49,8 @@ const NavbarMobile = ({
   onHelpPress,
 }: NavbarMobileProps) => {
   const { user } = useUser();
-  // Redesigned "glass" header (qa/preview builds): profile moves to the left, the
-  // bell (Activity) joins What's-new on the right, and the Solid logo is dropped.
-  // Production keeps the existing header untouched.
+  // Redesigned "glass" header: profile stays on the left, Activity stays on the
+  // right, and transient content such as What's-new scrolls beneath this layer.
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider;
   const isTitleVisible = !!title && !!showTitle;
@@ -100,6 +98,7 @@ const NavbarMobile = ({
     <View
       className={hasBlurTarget ? 'overflow-hidden' : 'overflow-hidden bg-background'}
       onLayout={handleLayout}
+      pointerEvents="box-none"
       style={topInset ? { paddingTop: topInset } : undefined}
     >
       {hasBlurTarget && (
@@ -114,7 +113,7 @@ const NavbarMobile = ({
           <View pointerEvents="none" style={[styles.overlay, styles.glassOverlay]} />
         </Animated.View>
       )}
-      <View className="flex-row items-center justify-between p-4">
+      <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">
         <HeaderProfileButton />
         {!!title && (
           <Animated.View
@@ -133,10 +132,7 @@ const NavbarMobile = ({
             {rightAction === 'help' ? (
               <HeaderHelpButton onPress={() => onHelpPress?.()} />
             ) : (
-              <>
-                <WhatsNewButton />
-                <HeaderBellButton />
-              </>
+              <HeaderBellButton />
             )}
           </View>
         ) : (

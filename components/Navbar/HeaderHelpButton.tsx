@@ -17,7 +17,7 @@ const HeaderHelpButton = ({ onPress }: HeaderHelpButtonProps) => {
       accessibilityLabel="How savings works"
       accessibilityRole="button"
       onPress={onPress}
-      className="h-9 w-9 items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
     >
       <Text className="text-lg font-medium text-white">?</Text>
     </Pressable>

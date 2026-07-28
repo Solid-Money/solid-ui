@@ -15,6 +15,8 @@ import { useDimension } from '@/hooks/useDimension';
 import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
+import WhatsNewButton from './Navbar/WhatsNewButton';
+import { useRegisterTabBarBlurTarget } from './tabBar/TabBarBlurContext';
 
 const MOBILE_NAVBAR_DIVIDER_OFFSET = 1;
 const MOBILE_NAVBAR_TITLE_REVEAL_OFFSET = 28;
@@ -181,8 +183,12 @@ export default function PageLayout({
   const shouldShowDesktopNavbar = showNavbar && (!desktopOnly || isLargeScreen);
   const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen;
   const shouldOverlayMobileNavbar = shouldShowMobileNavbar && !customMobileHeader;
+  const shouldShowScrollableWhatsNew =
+    shouldOverlayMobileNavbar && mobileHeaderRightAction === 'default';
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
   const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
+
+  useRegisterTabBarBlurTarget(mobileBlurTargetRef, shouldOverlayMobileNavbar && !isLoading);
 
   const handleMobileScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -243,8 +249,26 @@ export default function PageLayout({
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}
-        stickyHeaderIndices={stickyHeader && !isScreenMedium ? [0] : undefined}
+        stickyHeaderIndices={
+          stickyHeader && !isScreenMedium ? [shouldShowScrollableWhatsNew ? 1 : 0] : undefined
+        }
       >
+        {shouldShowScrollableWhatsNew && (
+          <View
+            pointerEvents={mobileNavbarOffset ? 'box-none' : 'none'}
+            style={[
+              styles.mobileWhatsNew,
+              {
+                height: mobileNavbarOffset,
+                marginTop: -mobileNavbarOffset,
+                opacity: mobileNavbarOffset ? 1 : 0,
+                paddingTop: insets.top,
+              },
+            ]}
+          >
+            <WhatsNewButton />
+          </View>
+        )}
         {stickyHeader && <View className="z-10 bg-background">{stickyHeader}</View>}
         {children}
       </ScrollView>
@@ -285,6 +309,22 @@ export default function PageLayout({
               className={`flex-1 ${contentClassName}`}
               style={mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined}
             >
+              {shouldShowScrollableWhatsNew && (
+                <View
+                  pointerEvents={mobileNavbarOffset ? 'box-none' : 'none'}
+                  style={[
+                    styles.mobileWhatsNew,
+                    {
+                      height: mobileNavbarOffset,
+                      marginTop: -mobileNavbarOffset,
+                      opacity: mobileNavbarOffset ? 1 : 0,
+                      paddingTop: insets.top,
+                    },
+                  ]}
+                >
+                  <WhatsNewButton />
+                </View>
+              )}
               {stickyHeader}
               {children}
             </View>
@@ -315,5 +355,9 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 50,
+  },
+  mobileWhatsNew: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

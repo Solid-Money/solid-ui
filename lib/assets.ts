@@ -26,7 +26,23 @@ export const ASSETS = {
     module: require('@/assets/animations/spin_with_animation.json'),
     hash: '318699b9',
   },
+  'animations/star-1.webp': {
+    module: require('@/assets/animations/star-1.webp'),
+    hash: '5a4e4be0',
+  },
+  'animations/star-2.webp': {
+    module: require('@/assets/animations/star-2.webp'),
+    hash: '2e775a96',
+  },
+  'animations/star-3.webp': {
+    module: require('@/assets/animations/star-3.webp'),
+    hash: 'e4ab5e37',
+  },
   'animations/vault.json': { module: require('@/assets/animations/vault.json'), hash: '85dffdd4' },
+  'animations/win_screen_2.json': {
+    module: require('@/assets/animations/win_screen_2.json'),
+    hash: '4d9cc420',
+  },
   'fonts/SpaceMono-Regular.ttf': {
     module: require('@/assets/fonts/SpaceMono-Regular.ttf'),
     hash: '4c322514',
@@ -731,6 +747,14 @@ export const ASSETS = {
     module: require('@/assets/images/spend-yellow.png'),
     hash: '98629c6c',
   },
+  'images/spin-win/button-on.tsx': {
+    module: require('@/assets/images/spin-win/button-on.tsx'),
+    hash: 'a8367e6e',
+  },
+  'images/spin-win/outline.tsx': {
+    module: require('@/assets/images/spin-win/outline.tsx'),
+    hash: 'b9c9ac57',
+  },
   'images/spin-win/piggy-bank-3d.png': {
     module: require('@/assets/images/spin-win/piggy-bank-3d.png'),
     hash: '71fe52cb',
@@ -738,6 +762,14 @@ export const ASSETS = {
   'images/spin-win/result-glow-circle.svg': {
     module: require('@/assets/images/spin-win/result-glow-circle.svg'),
     hash: 'c6bde890',
+  },
+  'images/spin-win/stop-wheel.png': {
+    module: require('@/assets/images/spin-win/stop-wheel.png'),
+    hash: '6fcfd02b',
+  },
+  'images/spin-win/top-triangle.tsx': {
+    module: require('@/assets/images/spin-win/top-triangle.tsx'),
+    hash: '6eca9aa4',
   },
   'images/splash-icon.png': {
     module: require('@/assets/images/splash-icon.png'),

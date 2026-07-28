@@ -14,7 +14,7 @@ const HeaderProfileButton = () => {
       accessibilityLabel="Open account settings"
       accessibilityRole="button"
       onPress={() => router.push(path.SETTINGS)}
-      className="h-9 w-9 items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
     >
       <ProfileIcon width={16} height={20} />
     </Pressable>
