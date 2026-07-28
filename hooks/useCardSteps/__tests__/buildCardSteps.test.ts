@@ -1,5 +1,5 @@
 import { buildCardSteps } from '@/hooks/useCardSteps/stepHelpers';
-import { CardProvider, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, KycStatus, RainApplicationStatus } from '@/lib/types';
 
 // Keep the import light: stepHelpers only pulls these two helpers from the
 // (heavy) utils barrel, so we stub them with the real logic. jest.mock is
@@ -115,5 +115,54 @@ describe('buildCardSteps - Bangladesh deposit-first step', () => {
     });
 
     expect(steps[0].completed).toBe(true);
+  });
+});
+
+describe('buildCardSteps - Wirex (Sumsub) KYC completion', () => {
+  const buildWirex = (kycStatus: KycStatus) =>
+    build({ options: { cardIssuer: CardProvider.WIREX, rainApplicationStatus: null, kycStatus } });
+
+  it('completes the KYC step and enables activation once Wirex has approved', () => {
+    // Wirex users have no Bridge endorsement and no Rain application, so before
+    // this the check fell through to the endorsement branch, stayed false, and
+    // left "Activate your card" permanently disabled after approval.
+    const [kyc, activate] = buildWirex(KycStatus.APPROVED);
+
+    expect(kyc.completed).toBe(true);
+    expect(kyc.status).toBe('completed');
+    expect(kyc.description).toMatch(/verification complete/i);
+    // Nothing left to do on the KYC step, so no button to bounce the user with.
+    expect(kyc.buttonText).toBeUndefined();
+
+    expect(activate.buttonText).toBe('Activate card');
+    expect(activate.onPress).toBeDefined();
+  });
+
+  it('keeps activation locked while Wirex is still deciding', () => {
+    const [kyc, activate] = buildWirex(KycStatus.UNDER_REVIEW);
+
+    expect(kyc.completed).toBe(false);
+    expect(kyc.buttonText).toBe('Under Review');
+    expect(activate.buttonText).toBeUndefined();
+    expect(activate.onPress).toBeUndefined();
+  });
+
+  it('lets the user resume KYC when a resubmission was requested', () => {
+    const [kyc, activate] = buildWirex(KycStatus.INCOMPLETE);
+
+    expect(kyc.completed).toBe(false);
+    expect(kyc.buttonText).toBe('Continue verification');
+    expect(kyc.onPress).toBeDefined();
+    expect(activate.buttonText).toBeUndefined();
+  });
+
+  it('does not regress Rain: approval still comes from the Rain application status', () => {
+    const [kyc] = build({
+      options: {
+        cardIssuer: CardProvider.RAIN,
+        rainApplicationStatus: RainApplicationStatus.APPROVED,
+      },
+    });
+    expect(kyc.completed).toBe(true);
   });
 });
