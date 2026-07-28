@@ -122,6 +122,24 @@ describe('buildCardSteps - Wirex (Sumsub) KYC completion', () => {
   const buildWirex = (kycStatus: KycStatus) =>
     build({ options: { cardIssuer: CardProvider.WIREX, rainApplicationStatus: null, kycStatus } });
 
+  // /cards/status does not return cardProvider, so in production cardIssuer is
+  // null for a Wirex user. Completion must not depend on knowing the issuer.
+  const buildUnknownIssuer = (kycStatus: KycStatus) =>
+    build({ options: { cardIssuer: null, rainApplicationStatus: null, kycStatus } });
+
+  it('completes KYC on approval even when cardIssuer is unknown', () => {
+    const [kyc, activate] = buildUnknownIssuer(KycStatus.APPROVED);
+    expect(kyc.completed).toBe(true);
+    expect(activate.buttonText).toBe('Activate card');
+    expect(activate.onPress).toBeDefined();
+  });
+
+  it('leaves KYC incomplete when an unknown issuer is still under review', () => {
+    const [kyc, activate] = buildUnknownIssuer(KycStatus.UNDER_REVIEW);
+    expect(kyc.completed).toBe(false);
+    expect(activate.buttonText).toBeUndefined();
+  });
+
   it('completes the KYC step and enables activation once Wirex has approved', () => {
     // Wirex users have no Bridge endorsement and no Rain application, so before
     // this the check fell through to the endorsement branch, stayed false, and
