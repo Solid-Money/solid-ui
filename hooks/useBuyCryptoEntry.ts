@@ -1,36 +1,31 @@
 import { useCallback, useState } from 'react';
-import { useRouter } from 'expo-router';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { track } from '@/lib/analytics';
 import { getTransfiStatus } from '@/lib/api';
 import { EXPO_PUBLIC_TRANSFI_SKIP_KYC } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useKycStore } from '@/store/useKycStore';
 
 /**
  * Entry handler for the "Buy crypto" (TransFi) deposit option. Resolves the
  * user's gating status and routes to the right first step:
  *  - ready     → amount/quote screen
- *  - can_share → KYC consent (forward existing Didit KYC to TransFi)
+ *  - can_share → KYC consent (forward the existing verification to TransFi)
  *  - pending   → KYC pending
  *  - rejected  → KYC pending (renders the rejection state)
- *  - needs_kyc → Didit identity flow (kycFlow = 'transfi'), then returns here
+ *  - needs_kyc → identity flow (kycFlow = 'transfi'), then returns here
+ *
+ * Users who already verified with either provider never reach needs_kyc — the
+ * backend reports can_share for a Sumsub applicant and for an approved Didit
+ * session alike. Only genuinely unverified users are routed to a provider.
  */
 export const useBuyCryptoEntry = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const setKycFlow = useKycStore(state => state.setKycFlow);
-  const router = useRouter();
+  const routeToKyc = useBuyCryptoKycRoute();
   const [isChecking, setIsChecking] = useState(false);
-
-  const startKyc = useCallback(() => {
-    setKycFlow('transfi');
-    setModal(DEPOSIT_MODAL.CLOSE);
-    router.push(path.KYC);
-  }, [router, setKycFlow, setModal]);
 
   const handleBuyCryptoPress = useCallback(async () => {
     if (isChecking) return;
@@ -58,18 +53,18 @@ export const useBuyCryptoEntry = () => {
           break;
         case 'needs_kyc':
         default:
-          startKyc();
+          await routeToKyc(status?.kycProvider);
           break;
       }
     } catch (err) {
       // Surface the failure (missing route / auth / network) instead of
       // silently sending the user to KYC, then fall back to the identity flow.
       console.error('TransFi status check failed:', err);
-      startKyc();
+      await routeToKyc();
     } finally {
       setIsChecking(false);
     }
-  }, [isChecking, setModal, startKyc]);
+  }, [isChecking, routeToKyc, setModal]);
 
   return { handleBuyCryptoPress, isChecking };
 };

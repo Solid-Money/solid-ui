@@ -5,22 +5,31 @@ import { Check, ShieldCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useShareTransfiKyc } from '@/hooks/useTransfi';
 import { useDepositStore } from '@/store/useDepositStore';
 
+/**
+ * Deliberately source-agnostic. What actually crosses the wire differs by
+ * provider — a Sumsub verification is handed over as a share token, a Didit one
+ * as document images — so these items describe the identity being shared rather
+ * than the artefacts, and stay accurate either way.
+ */
 const SHARED_ITEMS = [
   'Your legal name and date of birth',
-  'Your verified ID document',
-  'Your verification selfie',
+  'Your country of residence',
+  'The result of your completed identity check',
 ];
 
 /**
- * Consent screen shown when the user already has an approved Didit verification.
- * On agreement we forward that identity to TransFi (our payment partner) via
- * kyc/share/third-vendor, then move to the pending step to await approval.
+ * Consent screen shown when the user already has a completed identity
+ * verification. On agreement the backend forwards it to TransFi (our payment
+ * partner) — by Sumsub share token where possible, otherwise as the Didit
+ * document set — then we move to the pending step to await approval.
  */
 export const TransfiKycConsent = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const routeToKyc = useBuyCryptoKycRoute();
   const { mutate: share, isPending } = useShareTransfiKyc();
 
   const handleAgree = useCallback(() => {
@@ -28,6 +37,11 @@ export const TransfiKycConsent = () => {
       onSuccess: result => {
         if (result.status === 'ready') {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+        } else if (result.status === 'needs_kyc') {
+          // TransFi found the shared verification incomplete — send the user
+          // back through identity verification rather than to a pending screen
+          // that will never resolve.
+          void routeToKyc(result.kycProvider);
         } else {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
         }
@@ -36,7 +50,7 @@ export const TransfiKycConsent = () => {
         setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
       },
     });
-  }, [share, setModal]);
+  }, [routeToKyc, share, setModal]);
 
   return (
     <View className="flex-1 gap-6">

@@ -586,6 +586,13 @@ export interface DiditVerificationStatusResponse {
   sessionId?: string;
 }
 
+/**
+ * Which product a Sumsub session belongs to. 'card' is the Wirex card flow;
+ * 'onramp' is buy-crypto (TransFi). The backend uses this to decide what it
+ * records on the card customer — the SDK experience is identical.
+ */
+export type SumsubSessionFlow = 'card' | 'onramp';
+
 /** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
 export interface SumsubSessionResponse {
   /** WebSDK access token passed to snsWebSdk.init(). */
@@ -594,6 +601,8 @@ export interface SumsubSessionResponse {
   userId: string;
   /** Verification level the token was minted for. */
   levelName: string;
+  /** Which product the session was created for. */
+  flow?: SumsubSessionFlow;
 }
 
 /** Response from GET /accounts/v1/sumsub/status. */
@@ -1854,6 +1863,12 @@ export interface TransfiStatusResponse {
   status: TransfiBuyCryptoStatus;
   transfiKycStatus?: string;
   reasons?: string[];
+  /**
+   * On `needs_kyc`, the identity provider this user's jurisdiction routes to.
+   * Resolved from the backend's country rules; the client's own country signal
+   * (from the geo store) takes precedence when it has one.
+   */
+  kycProvider?: KycProvider;
 }
 
 export interface TransfiPaymentMethodOption {

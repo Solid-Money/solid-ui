@@ -96,6 +96,7 @@ import {
   SearchCoin,
   SourceDepositInstructions,
   SubmitPersonaKycResponse,
+  SumsubSessionFlow,
   SumsubSessionResponse,
   SumsubVerificationStatusResponse,
   SwapTokenRequest,
@@ -674,14 +675,19 @@ export const getDiditVerificationStatus = async (): Promise<DiditVerificationSta
   return response.json();
 };
 
-// --- Sumsub identity verification (Wirex / EU flow) ---
+// --- Sumsub identity verification (Wirex card flow + TransFi onramp) ---
 
 /**
  * Create a Sumsub WebSDK session. The backend mints an access token bound to
  * the user and returns it for the WebSDK. Mirrors createDiditSession's error
  * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
+ *
+ * `flow` tells the backend which product is asking — it decides what gets
+ * recorded against the user's card customer, not what the SDK shows.
  */
-export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
+export const createSumsubSession = async (
+  flow: SumsubSessionFlow = 'card',
+): Promise<SumsubSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
     method: 'POST',
@@ -691,7 +697,7 @@ export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ flow }),
   });
   if (!response.ok) {
     let code: string | undefined;

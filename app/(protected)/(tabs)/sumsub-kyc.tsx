@@ -16,11 +16,14 @@ import { Text } from '@/components/ui/text';
 const SUMSUB_EMBED_CONTAINER_ID = 'sumsub-websdk-container';
 
 /**
- * Web Sumsub KYC screen (Wirex / EU flow). Embeds the Sumsub WebSDK using the
- * access token from the backend. The backend kycStatus (polled by
- * useSumsubSession) is the source of truth — it reflects the Sumsub review AND
- * the downstream Wirex hand-off — so the SDK events here are best-effort
- * accelerators only.
+ * Web Sumsub KYC screen. Embeds the Sumsub WebSDK using the access token from
+ * the backend. Serves both products that use Sumsub — the Wirex (EU/EEA) card
+ * flow and the TransFi buy-crypto onramp — with useSumsubSession handling the
+ * difference; this screen only renders the SDK.
+ *
+ * The backend status (polled by useSumsubSession) is the source of truth — it
+ * reflects the Sumsub review AND the downstream partner hand-off — so the SDK
+ * events here are best-effort accelerators only.
  */
 export default function SumsubKycWeb() {
   const {
