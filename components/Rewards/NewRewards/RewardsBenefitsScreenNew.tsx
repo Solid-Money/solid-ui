@@ -39,16 +39,24 @@ const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.ULTRA]: 'Ultra',
 };
 
-// Tier hero animations. Shipped as animated WebP (not Lottie): these are
-// rasterized frame sequences, so an image-sequence Lottie JSON embeds every
-// frame as a base64 PNG — ~30MB each, which blocks the JS thread on parse and
-// OOM-crashes on decode. expo-image plays animated WebP frame-by-frame with
-// flat memory (~2MB each, alpha preserved).
-const TIER_HERO_ANIMATION: Record<RewardsTier, number> = {
+// Each Figma tier has its own transparent seven-second shader loop. Keeping
+// the radial glow as a separate layer lets it fade naturally into the page
+// instead of exposing the edge of an opaque WebP canvas.
+const TIER_HERO_ANIMATIONS: Record<RewardsTier, number> = {
   [RewardsTier.CORE]: require('@/assets/animations/star-1.webp'),
   [RewardsTier.PRIME]: require('@/assets/animations/star-2.webp'),
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
 };
+
+// The source WebPs have slightly different transparent padding. These sizes
+// reproduce each star's visible bounds in its 304 × 304 Figma composition.
+const TIER_HERO_SIZES: Record<RewardsTier, number> = {
+  [RewardsTier.CORE]: 234,
+  [RewardsTier.PRIME]: 235,
+  [RewardsTier.ULTRA]: 236,
+};
+
+const TIER_HERO_GLOW_ASSET: AssetPath = 'images/rewards-tiers/glow.svg';
 
 const SPARKLE_ASSET: AssetPath = 'images/rewards-tiers/hero-core.png';
 
@@ -337,17 +345,23 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
     >
       <View className="items-center gap-1 pt-4">
         <View className="h-[320px] w-[320px] items-center justify-center">
-          <Image
-            source={getAsset('images/rewards-tiers/glow.svg')}
-            style={{ position: 'absolute', width: 340, height: 340 }}
-            contentFit="contain"
-          />
-          <Image
-            source={TIER_HERO_ANIMATION[tier]}
-            style={{ width: 220, height: 220 }}
-            contentFit="contain"
-            autoplay
-          />
+          <View className="h-[304px] w-[304px] items-center justify-center">
+            <Image
+              source={getAsset(TIER_HERO_GLOW_ASSET)}
+              style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
+              contentFit="contain"
+            />
+            <Image
+              source={TIER_HERO_ANIMATIONS[tier]}
+              style={{
+                width: TIER_HERO_SIZES[tier],
+                height: TIER_HERO_SIZES[tier],
+                transform: tier === RewardsTier.PRIME ? [{ translateY: -5 }] : undefined,
+              }}
+              contentFit="contain"
+              autoplay
+            />
+          </View>
         </View>
 
         <Text className="text-base font-medium text-muted-foreground">{TIER_LABELS[tier]}</Text>

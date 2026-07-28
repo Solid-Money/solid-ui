@@ -13,9 +13,37 @@ export const ASSETS = {
     module: require('@/assets/animations/lightning.json'),
     hash: '234b6520',
   },
+  'animations/rewards-help-perks.webp': {
+    module: require('@/assets/animations/rewards-help-perks.webp'),
+    hash: '876133bd',
+  },
+  'animations/rewards-help-rewards.webp': {
+    module: require('@/assets/animations/rewards-help-rewards.webp'),
+    hash: 'c4765f7d',
+  },
+  'animations/rewards-help-tiers-shader-loop.webp': {
+    module: require('@/assets/animations/rewards-help-tiers-shader-loop.webp'),
+    hash: 'f9d350d4',
+  },
+  'animations/rewards-help-tiers.webp': {
+    module: require('@/assets/animations/rewards-help-tiers.webp'),
+    hash: '31f8aba2',
+  },
   'animations/rocket.json': {
     module: require('@/assets/animations/rocket.json'),
     hash: '48d71bbc',
+  },
+  'animations/savings-help-deposit.webp': {
+    module: require('@/assets/animations/savings-help-deposit.webp'),
+    hash: 'ecfbcb23',
+  },
+  'animations/savings-help-grow.webp': {
+    module: require('@/assets/animations/savings-help-grow.webp'),
+    hash: 'dbc93515',
+  },
+  'animations/savings-help-withdraw.webp': {
+    module: require('@/assets/animations/savings-help-withdraw.webp'),
+    hash: '4ee4c6e9',
   },
   'animations/spin-wheel.json': {
     module: require('@/assets/animations/spin-wheel.json'),

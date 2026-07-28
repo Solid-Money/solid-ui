@@ -37,7 +37,7 @@ const DailyBenefits = ({ tier }: DailyBenefitsProps) => {
 
   return (
     <View className="gap-3 px-4">
-      <Text className="text-lg font-semibold text-muted-foreground">Your daily benefits</Text>
+      <Text className="text-base font-normal text-white/50">Your daily benefits</Text>
       <View className="flex-row gap-3">
         {benefits.map((benefit, index) => (
           <BenefitCard key={`${benefit.title}-${index}`} benefit={benefit} />

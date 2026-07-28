@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 
-import { SAVINGS_HELP_SLIDES, SavingsHelpSlide } from './savingsHelpData';
+import { REWARDS_HELP_SLIDES, type RewardsHelpSlide } from './rewardsHelpData';
 
 const MODAL_BACKGROUND = '#0f0f10';
 const DOT_TRANSITION_MS = 250;
@@ -25,14 +25,21 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const TITLE_SLOT_HEIGHT = 40;
 const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
+const TIERS_INTRO_DURATION_MS = 7033;
+const TIERS_SHADER_LOOP: AssetPath = 'animations/rewards-help-tiers-shader-loop.webp';
 
 const SLIDE_ANIMATIONS: Record<string, AssetPath> = {
-  deposit: 'animations/savings-help-deposit.webp',
-  grow: 'animations/savings-help-grow.webp',
-  withdraw: 'animations/savings-help-withdraw.webp',
+  rewards: 'animations/rewards-help-rewards.webp',
+  tiers: 'animations/rewards-help-tiers.webp',
+  perks: 'animations/rewards-help-perks.webp',
 };
 
-interface SavingsHelpModalProps {
+const startAnimation = (image: Image | null) => {
+  if (!image) return;
+  void image.startAnimating().catch(() => undefined);
+};
+
+interface RewardsHelpModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
@@ -57,20 +64,91 @@ const HelpPage = ({
   isActive,
   playbackSession,
 }: {
-  slide: SavingsHelpSlide;
+  slide: RewardsHelpSlide;
   isActive: boolean;
   playbackSession: number;
 }) => {
+  const introRef = useRef<Image>(null);
+  const tiersLoopRef = useRef<Image>(null);
+  const wasActiveRef = useRef(isActive);
+  const [mountSession, setMountSession] = useState(0);
+  const [isIntroLoaded, setIsIntroLoaded] = useState(false);
+  const [isLoopReady, setIsLoopReady] = useState(false);
+  const [shouldPlayLoop, setShouldPlayLoop] = useState(false);
+  const isTiersSlide = slide.key === 'tiers';
+  const showLoop = isTiersSlide && shouldPlayLoop && isLoopReady;
+
+  useEffect(() => {
+    setIsIntroLoaded(false);
+    setIsLoopReady(false);
+    setShouldPlayLoop(false);
+  }, [playbackSession, slide.key]);
+
+  useEffect(() => {
+    const wasActive = wasActiveRef.current;
+    wasActiveRef.current = isActive;
+
+    if (wasActive && !isActive) {
+      setIsIntroLoaded(false);
+      setIsLoopReady(false);
+      setShouldPlayLoop(false);
+      setMountSession(session => session + 1);
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isTiersSlide || !isActive || !isIntroLoaded) return;
+
+    const timeout = setTimeout(() => {
+      setShouldPlayLoop(true);
+    }, TIERS_INTRO_DURATION_MS);
+
+    return () => clearTimeout(timeout);
+  }, [isActive, isIntroLoaded, isTiersSlide]);
+
+  useEffect(() => {
+    if (isActive && isIntroLoaded && !showLoop) {
+      startAnimation(introRef.current);
+    }
+  }, [isActive, isIntroLoaded, showLoop]);
+
+  useEffect(() => {
+    if (showLoop) {
+      startAnimation(tiersLoopRef.current);
+    }
+  }, [showLoop]);
+
   return (
     <View style={{ width: SCREEN_WIDTH, height: '100%' }}>
       <View className="flex-1 items-center justify-center">
-        <Image
-          key={`${slide.key}-${isActive ? `active-${playbackSession}` : 'inactive'}`}
-          source={getAsset(SLIDE_ANIMATIONS[slide.key])}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="contain"
-          autoplay={isActive}
-        />
+        {isTiersSlide && isIntroLoaded && (
+          <Image
+            ref={tiersLoopRef}
+            key={`${slide.key}-loop-${playbackSession}-${mountSession}`}
+            source={getAsset(TIERS_SHADER_LOOP)}
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              opacity: showLoop ? 1 : 0,
+            }}
+            contentFit="contain"
+            autoplay={false}
+            onLoad={() => setIsLoopReady(true)}
+          />
+        )}
+
+        {!showLoop && (
+          <Image
+            ref={introRef}
+            key={`${slide.key}-intro-${playbackSession}-${mountSession}`}
+            source={getAsset(SLIDE_ANIMATIONS[slide.key])}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="contain"
+            autoplay={false}
+            onLoad={() => setIsIntroLoaded(true)}
+          />
+        )}
       </View>
 
       <View className="items-center px-6" style={{ paddingBottom: COPY_BOTTOM_PADDING }}>
@@ -100,35 +178,31 @@ const HelpPage = ({
 };
 
 /**
- * "How savings works" help carousel (Figma 20609-4854 / 20609-4946 / 20609-4989).
- * Opened from the "?" button in the Savings screen's mobile header.
+ * Rewards explainer carousel (Figma 20609-5524 / 20609-5615 / 21351-689).
+ * Uses the same native pager, composition, and controls as Savings help.
  *
- * All three slides are mounted side by side in a real pager row — swiping (or
- * tapping the CTA) drags/slides between actual pages rather than faking it
- * with a fade/slide of a single swapped-out content block.
- *
- * Each illustration is an exact, single-play animated WebP export of its Figma
- * timeline. Only the visible page plays; selecting it restarts its animation.
- *
- * Uses React Native's native `Modal` (its own OS-level window) rather than the
- * shared Dialog/ResponsiveModal, so it reliably covers the tab bar and the
- * Savings screen's glass navbar instead of sitting behind them.
+ * Each illustration starts with a single-play animated WebP. Its original
+ * black frame stays visible until the modal or pager transition is complete,
+ * then playback begins. Returning to a page remounts it from frame zero.
+ * Tiers hands off to a preloaded shader-only loop after its shape morph ends.
  */
-const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
+const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
+  const [isPresented, setIsPresented] = useState(false);
   const [playbackSession, setPlaybackSession] = useState(0);
-  const slide = SAVINGS_HELP_SLIDES[index];
-  const isLastSlide = index === SAVINGS_HELP_SLIDES.length - 1;
+  const slide = REWARDS_HELP_SLIDES[index];
+  const isLastSlide = index === REWARDS_HELP_SLIDES.length - 1;
 
-  // Reset the pager and remount the first WebP each time the modal opens so
-  // its single-play animation starts from the beginning.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsPresented(false);
+      setPlaybackSession(session => session + 1);
+      return;
+    }
 
     setIndex(0);
-    setPlaybackSession(session => session + 1);
     const frame = requestAnimationFrame(() => {
       pagerRef.current?.scrollTo({ x: 0, animated: false });
     });
@@ -137,7 +211,6 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
   }, [isOpen]);
 
   const goToSlide = useCallback((targetIndex: number) => {
-    setIndex(targetIndex);
     pagerRef.current?.scrollTo({
       x: targetIndex * SCREEN_WIDTH,
       animated: true,
@@ -154,7 +227,7 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
 
   const handleSwipeEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const targetIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    const boundedIndex = Math.max(0, Math.min(targetIndex, SAVINGS_HELP_SLIDES.length - 1));
+    const boundedIndex = Math.max(0, Math.min(targetIndex, REWARDS_HELP_SLIDES.length - 1));
     setIndex(boundedIndex);
   }, []);
 
@@ -164,6 +237,7 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
       animationType="fade"
       transparent={false}
       statusBarTranslucent
+      onShow={() => setIsPresented(true)}
       onRequestClose={onClose}
     >
       <View
@@ -196,18 +270,18 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
           className="flex-1"
           contentContainerStyle={{ alignItems: 'flex-start' }}
         >
-          {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
+          {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
             <HelpPage
               key={item.key}
               slide={item}
-              isActive={itemIndex === index}
+              isActive={isOpen && isPresented && itemIndex === index}
               playbackSession={playbackSession}
             />
           ))}
         </ScrollView>
 
         <View className="flex-row items-center justify-center gap-[6px] pb-6">
-          {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
+          {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
             <SlideDot key={item.key} active={itemIndex === index} />
           ))}
         </View>
@@ -227,4 +301,4 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
   );
 };
 
-export default SavingsHelpModal;
+export default RewardsHelpModal;

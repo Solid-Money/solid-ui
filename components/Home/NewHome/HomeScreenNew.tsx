@@ -151,7 +151,7 @@ export default function HomeScreenNew() {
 
         {showAssets && (
           <View className="gap-3 px-4">
-            <Text className="text-lg font-semibold text-muted-foreground">Balances</Text>
+            <Text className="text-base font-normal text-white/50">Balances</Text>
             {tokenError ? (
               <View className="flex-1 items-center justify-center p-4">
                 <WalletInfo text="Failed to load tokens" />

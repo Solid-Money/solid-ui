@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
@@ -13,6 +14,7 @@ import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore
 
 import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
+import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
 
 /**
@@ -34,6 +36,7 @@ export default function RewardsScreenNew() {
 
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
   // true when the backend doesn't send it, so we never prompt prematurely.
@@ -57,7 +60,11 @@ export default function RewardsScreenNew() {
   }, [referralParam]);
 
   if (isLoading) {
-    return <PageLayout isLoading={true}>{null}</PageLayout>;
+    return (
+      <PageLayout scrollable={false} mobileTitle={null} mobileHeaderRightAction="help">
+        <Loading />
+      </PageLayout>
+    );
   }
 
   // Rewards data failed to load (or the user has none yet) — render the full
@@ -89,7 +96,14 @@ export default function RewardsScreenNew() {
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
 
   return (
-    <PageLayout mobileTitle={null}>
+    <PageLayout
+      mobileTitle={null}
+      mobileHeaderRightAction="help"
+      onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      additionalContent={
+        <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      }
+    >
       <View className="mb-5 w-full gap-8 pb-24">
         <View className="gap-5">
           <PointsHeadline tier={currentTier} points={totalPoints} />
