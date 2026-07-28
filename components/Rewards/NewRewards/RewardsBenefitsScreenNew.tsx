@@ -12,7 +12,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import LottieView, { type AnimationObject } from 'lottie-react-native';
 import {
   CreditCard,
   DollarSign,
@@ -40,10 +39,15 @@ const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.ULTRA]: 'Ultra',
 };
 
-const TIER_HERO_ANIMATION: Record<RewardsTier, AnimationObject> = {
-  [RewardsTier.CORE]: require('@/assets/animations/star-1.json'),
-  [RewardsTier.PRIME]: require('@/assets/animations/star-2.json'),
-  [RewardsTier.ULTRA]: require('@/assets/animations/star-3.json'),
+// Tier hero animations. Shipped as animated WebP (not Lottie): these are
+// rasterized frame sequences, so an image-sequence Lottie JSON embeds every
+// frame as a base64 PNG — ~30MB each, which blocks the JS thread on parse and
+// OOM-crashes on decode. expo-image plays animated WebP frame-by-frame with
+// flat memory (~2MB each, alpha preserved).
+const TIER_HERO_ANIMATION: Record<RewardsTier, number> = {
+  [RewardsTier.CORE]: require('@/assets/animations/star-1.webp'),
+  [RewardsTier.PRIME]: require('@/assets/animations/star-2.webp'),
+  [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
 };
 
 const SPARKLE_ASSET: AssetPath = 'images/rewards-tiers/hero-core.png';
@@ -338,12 +342,11 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
             style={{ position: 'absolute', width: 340, height: 340 }}
             contentFit="contain"
           />
-          <LottieView
+          <Image
             source={TIER_HERO_ANIMATION[tier]}
-            autoPlay
-            loop
             style={{ width: 220, height: 220 }}
-            resizeMode="contain"
+            contentFit="contain"
+            autoplay
           />
         </View>
 
