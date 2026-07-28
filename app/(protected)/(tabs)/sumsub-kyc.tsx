@@ -30,6 +30,7 @@ export default function SumsubKycWeb() {
     fetchAccessToken,
     onVerificationComplete,
     onVerificationDeclined,
+    onVerificationRetry,
     onVerificationError,
   } = useSumsubSession();
   const launchedRef = useRef(false);
@@ -47,13 +48,23 @@ export default function SumsubKycWeb() {
       .withConf({ lang: 'en' })
       .withOptions({ addViewportTag: false, adaptIframeHeight: true })
       .on('idCheck.onApplicantStatusChanged', (payload: any) => {
-        // Fires when the applicant's review status changes. On a terminal
-        // 'completed' status, branch on the review answer.
+        // Fires when the applicant's review status changes. A 'completed' status
+        // is only terminal for GREEN or a FINAL rejection.
         if (payload?.reviewStatus === 'completed') {
-          launchedRef.current = false;
-          if (payload?.reviewResult?.reviewAnswer === 'RED') {
-            onVerificationDeclined();
+          const reviewResult = payload?.reviewResult;
+          if (reviewResult?.reviewAnswer === 'RED') {
+            // RETRY means Sumsub wants a resubmission and renders the re-upload
+            // step itself, so keep the widget mounted. Only FINAL is terminal.
+            // Treating every RED as declined ejected the user to /card/activate
+            // with "Verification declined" and left no way to re-upload.
+            if (reviewResult?.reviewRejectType === 'FINAL') {
+              launchedRef.current = false;
+              onVerificationDeclined();
+            } else {
+              onVerificationRetry(reviewResult?.moderationComment);
+            }
           } else {
+            launchedRef.current = false;
             onVerificationComplete();
           }
         }
@@ -72,6 +83,7 @@ export default function SumsubKycWeb() {
     markStarted,
     onVerificationComplete,
     onVerificationDeclined,
+    onVerificationRetry,
     onVerificationError,
   ]);
 

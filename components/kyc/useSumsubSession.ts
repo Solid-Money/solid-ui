@@ -162,6 +162,22 @@ export function useSumsubSession() {
     redirectBasedOnKycStatus(KycStatus.REJECTED);
   }, [redirectBasedOnKycStatus]);
 
+  /**
+   * Sumsub asked for a resubmission (RED + reviewRejectType RETRY, i.e. the
+   * mobile SDK's `TemporarilyDeclined`). The user must stay INSIDE the widget —
+   * that is where Sumsub renders the "re-upload your document" step. Redirecting
+   * away here is what previously made a re-upload request impossible to action.
+   */
+  const onVerificationRetry = useCallback((reason?: string) => {
+    Toast.show({
+      type: 'info',
+      text1: 'More information needed',
+      text2: reason || 'Please re-upload the requested document to continue.',
+      props: { badgeText: '' },
+    });
+    setSession({ phase: 'started' });
+  }, []);
+
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
       type: 'error',
@@ -181,7 +197,12 @@ export function useSumsubSession() {
         const status = await withRefreshToken(() => getSumsubVerificationStatus());
         if (!status) return;
 
-        if (status.kycStatus === KycStatus.REJECTED || status.reviewAnswer === 'RED') {
+        // Only the canonical kycStatus may eject the user. A raw
+        // `reviewAnswer === 'RED'` check would also fire for a RETRY (a
+        // resubmission request), throwing the user out of the widget exactly when
+        // they need to stay in it. The backend already encodes RETRY as
+        // INCOMPLETE and FINAL as REJECTED.
+        if (status.kycStatus === KycStatus.REJECTED) {
           clearInterval(interval);
           onVerificationDeclined();
         } else if (status.kycStatus === KycStatus.APPROVED) {
@@ -212,6 +233,7 @@ export function useSumsubSession() {
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
+    onVerificationRetry,
     onVerificationError,
   };
 }
