@@ -33,7 +33,7 @@ export default function ReferralProgramModalNew({ isOpen, onClose }: ReferralPro
       fillViewportHeight
       containerClassName="gap-0"
     >
-      <ReferralProgramContentNew onClose={onClose} />
+      <ReferralProgramContentNew isActive={isOpen} onClose={onClose} />
     </ResponsiveModal>
   );
 }

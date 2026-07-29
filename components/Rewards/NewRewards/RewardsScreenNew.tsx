@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
@@ -8,6 +9,7 @@ import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalN
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -30,6 +32,7 @@ import RewardsSummaryCard from './RewardsSummaryCard';
 export default function RewardsScreenNew() {
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
@@ -94,6 +97,7 @@ export default function RewardsScreenNew() {
 
   const cashback = rewardsData?.cashbackThisMonth ?? 0;
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
+  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
 
   return (
     <PageLayout
@@ -123,9 +127,17 @@ export default function RewardsScreenNew() {
           </View>
         </View>
 
-        <RewardsSummaryCard cashback={cashback} referrals={referrals} tier={currentTier} />
+        <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
-        <DailyBenefits tier={currentTier} />
+        <DailyBenefits
+          cashbackRate={rewardsData?.cashbackRate ?? 0}
+          cashbackThisMonth={cashback}
+          maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+          allTimeCashback={allTimeCashback}
+          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+          onReferralsPress={() => setIsReferralModalOpen(true)}
+          onSupportPress={() => router.push('/settings/help')}
+        />
       </View>
 
       <ReferralProgramModalNew

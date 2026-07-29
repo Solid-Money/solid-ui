@@ -523,6 +523,18 @@ export const ASSETS = {
     module: require('@/assets/images/referral-3d.png'),
     hash: '5d0bdece',
   },
+  'images/referral-hero-avatar-back.svg': {
+    module: require('@/assets/images/referral-hero-avatar-back.svg'),
+    hash: '6d13f992',
+  },
+  'images/referral-hero-avatar-front.svg': {
+    module: require('@/assets/images/referral-hero-avatar-front.svg'),
+    hash: '3b3ee855',
+  },
+  'images/referral-hero-avatar-middle.svg': {
+    module: require('@/assets/images/referral-hero-avatar-middle.svg'),
+    hash: '4236d5e8',
+  },
   'images/referral-new-copy-link.png': {
     module: require('@/assets/images/referral-new-copy-link.png'),
     hash: '3a5a9627',

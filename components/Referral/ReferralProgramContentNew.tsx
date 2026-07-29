@@ -12,6 +12,8 @@ import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
 
+import ReferralHeroAnimation from './ReferralHeroAnimation';
+
 const REFERRAL_BASE_URL = 'https://www.solid.xyz/refer?ref=';
 
 // Matches the app's `--background` token (see global.css) — used for the top/bottom
@@ -106,10 +108,14 @@ function ReferralListItem({ item }: { item: ReferralRewardListItem }) {
 }
 
 interface ReferralProgramContentNewProps {
+  isActive: boolean;
   onClose: () => void;
 }
 
-export default function ReferralProgramContentNew({ onClose }: ReferralProgramContentNewProps) {
+export default function ReferralProgramContentNew({
+  isActive,
+  onClose,
+}: ReferralProgramContentNewProps) {
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const { data: summary } = useReferralSummary();
@@ -203,11 +209,7 @@ export default function ReferralProgramContentNew({ onClose }: ReferralProgramCo
       >
         {/* Hero */}
         <View className="items-center">
-          <Image
-            source={getAsset('images/referral-new-glow.png')}
-            style={{ width: 150, height: 109 }}
-            contentFit="contain"
-          />
+          <ReferralHeroAnimation isActive={isActive} />
           <Text className="mt-3 text-center text-3xl font-semibold leading-9 text-white">
             Invite friends &{'\n'}Earn together
           </Text>
