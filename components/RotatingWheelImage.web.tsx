@@ -1,4 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+// Image here is only used for resolveAssetSource() (asset module -> URL). This
+// component renders a raw <img> so it can be driven by the Web Animations API,
+// so no React Native / expo-image component is ever mounted.
+// eslint-disable-next-line no-restricted-imports
 import { Image, StyleSheet } from 'react-native';
 
 import type { RotatingWheelImageHandle, RotatingWheelImageProps } from './RotatingWheelImage';
