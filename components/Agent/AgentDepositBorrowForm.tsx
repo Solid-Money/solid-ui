@@ -52,7 +52,7 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
         text1: 'Deposit submitted',
         text2:
           'Borrowed against soUSD on Fuse and sent via Stargate. Funds arrive on Base in ~1–5 min.',
-        props: { badgeText: 'Success' },
+        props: { badgeText: 'Onchain' },
       });
       onSuccess();
     } catch (err) {
@@ -60,7 +60,7 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
         type: 'error',
         text1: 'Deposit failed',
         text2: err instanceof Error ? err.message : 'Unknown error',
-        props: { badgeText: 'Error' },
+        props: { badgeText: 'Onchain' },
       });
     }
   };

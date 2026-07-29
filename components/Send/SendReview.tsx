@@ -130,6 +130,7 @@ const SendReview: React.FC = () => {
         text1: 'Send transaction completed',
         text2: `${amount} ${selectedToken?.contractTickerSymbol}`,
         props: {
+          badgeText: 'Onchain',
           link: `${getChain(selectedToken?.chainId)?.blockExplorers?.default.url}/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({
@@ -150,6 +151,7 @@ const SendReview: React.FC = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while sending',
+        props: { badgeText: 'Onchain' },
       });
     }
   };

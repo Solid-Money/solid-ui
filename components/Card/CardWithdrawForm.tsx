@@ -187,6 +187,7 @@ export default function CardWithdrawForm() {
             text1: 'Withdrawal started',
             text2: `$${data.amount} collateral withdrawal.`,
             onPress: () => Linking.openURL(explorerUrl),
+            props: { badgeText: 'Onchain' },
           });
         } else {
           const response = await withdrawFromCard({

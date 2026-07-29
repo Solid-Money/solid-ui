@@ -24,7 +24,10 @@ interface IBaseToast extends BaseToastProps {
 }
 
 const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
-  const { link, linkText, image, badgeText = 'Onchain' } = props || {};
+  // No badge unless a toast opts in. "Onchain" must be passed explicitly and
+  // only for actual blockchain transactions — it used to be the default, which
+  // mislabelled every non-chain toast (login, KYC, QR, validation errors…).
+  const { link, linkText, image, badgeText = '' } = props || {};
   return (
     <View
       className="ml-auto h-full w-full max-w-md flex-row justify-between rounded-2xl bg-card"
@@ -62,7 +65,7 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <Button
         onPress={() => Toast.hide()}
         variant="ghost"
-        className="native:!h-full web:!h-auto rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
+        className="native:!h-full rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:!h-auto web:hover:border-accent"
       >
         <X color="white" />
       </Button>

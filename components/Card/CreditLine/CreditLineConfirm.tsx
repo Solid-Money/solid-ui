@@ -106,6 +106,7 @@ export default function CreditLineConfirm() {
         type: 'error',
         text1: 'Borrow failed',
         text2: error instanceof Error ? error.message : 'Unknown error occurred',
+        props: { badgeText: 'Onchain' },
       });
     } finally {
       setIsSubmitting(false);
