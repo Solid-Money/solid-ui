@@ -132,9 +132,13 @@ export default function RewardsScreenNew() {
             </Pressable>
           </View>
 
-          {/* The spin & win flow is a native-only modal (see SpinWinModalProvider,
-              which force-closes itself on web), so match the home screen's gating. */}
-          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
+          {/* The spin & win flow is a native-only modal — SpinWinModalProvider
+              force-closes itself on web — so the button stays native-only. It is
+              deliberately NOT gated on `spinStatus.isAllowed`: the provider
+              already closes itself when the backend says the user isn't
+              eligible, and gating here made the button vanish silently whenever
+              the status request hadn't resolved or failed. */}
+          {Platform.OS !== 'web' && (
             <View className="px-4">
               <Pressable
                 onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
