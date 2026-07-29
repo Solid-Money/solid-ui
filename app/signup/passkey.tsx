@@ -148,7 +148,7 @@ export default function SignupPasskey() {
         {/* Header */}
         <View className="mb-8 mt-8 items-center">
           <Text className="mb-4 text-center text-[34px] font-semibold leading-none -tracking-[1px] text-white">
-            Secure sign-in{'\n'}with Passkey
+            Protect your account{'\n'}with a passkey
           </Text>
           <View className="px-4">
             <View className="flex-row flex-wrap items-baseline justify-center">
