@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Address, encodeFunctionData, erc20Abi, formatEther, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBalance, useReadContract } from 'wagmi';
@@ -58,13 +58,7 @@ export default function RescueToken() {
   });
 
   const { data: gasCostWei, isLoading: isGasLoading } = useQuery({
-    queryKey: [
-      'rescue-token-gas',
-      mainnet.id,
-      eoaAddress,
-      safeAddress,
-      usdcBalance?.toString(),
-    ],
+    queryKey: ['rescue-token-gas', mainnet.id, eoaAddress, safeAddress, usdcBalance?.toString()],
     queryFn: async () => {
       if (!eoaAddress || !safeAddress) return 0n;
       const client = publicClient(mainnet.id);
@@ -109,16 +103,10 @@ export default function RescueToken() {
   );
 
   const hasUsdc = (usdcBalance ?? 0n) > 0n;
-  const hasEnoughEth =
-    !!gasCostWei && !!ethBalance && ethBalance.value >= gasCostWei;
+  const hasEnoughEth = !!gasCostWei && !!ethBalance && ethBalance.value >= gasCostWei;
   const isRescuing = status === Status.PENDING;
   const isDisabled =
-    isRescuing ||
-    isUsdcLoading ||
-    isEthLoading ||
-    isGasLoading ||
-    !hasUsdc ||
-    !hasEnoughEth;
+    isRescuing || isUsdcLoading || isEthLoading || isGasLoading || !hasUsdc || !hasEnoughEth;
 
   const getButtonText = () => {
     if (isRescuing) return 'Rescuing...';
@@ -136,6 +124,7 @@ export default function RescueToken() {
         text1: 'Tokens rescued',
         text2: `${formatNumber(usdcAmount)} USDC sent to your Solid wallet`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transactionHash}`,
           linkText: eclipseAddress(transactionHash),
           image: { type: 'image', source: getAsset('images/usdc-4x.png') },
@@ -165,12 +154,10 @@ export default function RescueToken() {
 
         <View className="mb-10 mt-8">
           <View className="rounded-2xl border border-white/5 bg-[#1C1C1C] px-6 pb-8 pt-10">
-            <Text className="text-center text-2xl font-bold text-white">
-              Recover stuck USDC
-            </Text>
+            <Text className="text-center text-2xl font-bold text-white">Recover stuck USDC</Text>
             <Text className="mb-6 mt-3 text-center text-base leading-tight text-[#ACACAC]">
-              USDC was sent to your signer wallet on Ethereum by mistake. Sign with your
-              passkey to move it into your Solid wallet.
+              USDC was sent to your signer wallet on Ethereum by mistake. Sign with your passkey to
+              move it into your Solid wallet.
             </Text>
 
             <View className="gap-4">
@@ -219,12 +206,7 @@ export default function RescueToken() {
                         {formatNumber(gasEthAmount, 6, 6)} ETH
                       </Text>
                     </View>
-                    <Text
-                      className={cn(
-                        'text-sm',
-                        hasEnoughEth ? 'opacity-50' : 'text-red-400',
-                      )}
-                    >
+                    <Text className={cn('text-sm', hasEnoughEth ? 'opacity-50' : 'text-red-400')}>
                       {isEthLoading ? '—' : `Balance: ${formatNumber(ethAmount, 6, 6)} ETH`}
                     </Text>
                   </View>
@@ -239,9 +221,7 @@ export default function RescueToken() {
               className="mt-8 h-14 w-full rounded-2xl"
             >
               {isRescuing && <ActivityIndicator color="black" />}
-              <Text className="text-base font-bold text-primary-foreground">
-                {getButtonText()}
-              </Text>
+              <Text className="text-base font-bold text-primary-foreground">{getButtonText()}</Text>
             </Button>
           </View>
         </View>

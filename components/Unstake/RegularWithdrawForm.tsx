@@ -280,6 +280,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };
@@ -299,6 +300,7 @@ const RegularWithdrawForm = () => {
         text1: 'Withdrawal transaction submitted',
         text2: `${data.amount} ${selectedToken?.contractTickerSymbol || 'soUSD'}`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({
@@ -310,6 +312,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };
@@ -328,6 +331,7 @@ const RegularWithdrawForm = () => {
         text1: 'Withdraw submitted',
         text2: `${data.amount} soFUSE → WFUSE on Fuse`,
         props: {
+          badgeText: 'Onchain',
           link: `https://explorer.fuse.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'FUSE' }),
@@ -337,6 +341,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };
@@ -353,6 +358,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while bridging soETH',
+        props: { badgeText: 'Onchain' },
       });
     }
   };
@@ -372,6 +378,7 @@ const RegularWithdrawForm = () => {
         text1: 'Withdraw submitted',
         text2: `${data.amount} soETH → WETH on Ethereum`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'WETH' }),
@@ -381,6 +388,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing soETH',
+        props: { badgeText: 'Onchain' },
       });
     }
   };

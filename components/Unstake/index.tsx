@@ -96,6 +96,7 @@ const Unstake = () => {
         text1: 'Withdraw transaction submitted',
         text2: `${data.amount} soUSD`,
         props: {
+          badgeText: 'Onchain',
           link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
@@ -105,6 +106,7 @@ const Unstake = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };

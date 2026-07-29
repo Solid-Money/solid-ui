@@ -166,6 +166,7 @@ const DepositToCard = () => {
         text1: 'Card deposit initiated',
         text2: `${amount} ${selectedToken.contractTickerSymbol} sent to card`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: 'View on Etherscan',
           image: getAsset('images/usdc-4x.png'),
@@ -193,6 +194,7 @@ const DepositToCard = () => {
         type: 'error',
         text1: 'Deposit failed',
         text2: 'Please try again',
+        props: { badgeText: 'Onchain' },
       });
     }
   };
