@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
@@ -8,11 +8,15 @@ import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
+import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { useSpinStatus } from '@/hooks/useSpinWin';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 
 import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
@@ -33,6 +37,8 @@ export default function RewardsScreenNew() {
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: spinStatus } = useSpinStatus();
+  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
@@ -125,6 +131,22 @@ export default function RewardsScreenNew() {
               <Text className="text-base font-semibold text-white">Explore tiers</Text>
             </Pressable>
           </View>
+
+          {/* The spin & win flow is a native-only modal (see SpinWinModalProvider,
+              which force-closes itself on web), so match the home screen's gating. */}
+          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
+            <View className="px-4">
+              <Pressable
+                onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
+                style={{ backgroundColor: SPIN_WIN.colors.goldSubtle }}
+                className="h-14 items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"
+              >
+                <Text className="text-base font-bold" style={{ color: SPIN_WIN.colors.gold }}>
+                  {spinStatus?.spinAvailableToday === false ? 'Spin & Win' : 'Spin the wheel'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />
