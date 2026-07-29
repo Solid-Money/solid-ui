@@ -176,7 +176,7 @@ function SpinWinButton() {
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
 
-  if (Platform.OS === 'web' || !spinStatus?.isAllowed) return null;
+  if (Platform.OS === 'web') return null;
 
   return (
     <Pressable
