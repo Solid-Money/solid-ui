@@ -15,11 +15,11 @@ export const ASSETS = {
   },
   'animations/rewards-help-perks.webp': {
     module: require('@/assets/animations/rewards-help-perks.webp'),
-    hash: '876133bd',
+    hash: 'b3a692d5',
   },
   'animations/rewards-help-rewards.webp': {
     module: require('@/assets/animations/rewards-help-rewards.webp'),
-    hash: 'c4765f7d',
+    hash: '6b2a696c',
   },
   'animations/rewards-help-tiers-shader-loop.webp': {
     module: require('@/assets/animations/rewards-help-tiers-shader-loop.webp'),
@@ -27,7 +27,7 @@ export const ASSETS = {
   },
   'animations/rewards-help-tiers.webp': {
     module: require('@/assets/animations/rewards-help-tiers.webp'),
-    hash: '31f8aba2',
+    hash: '29b52b5b',
   },
   'animations/rocket.json': {
     module: require('@/assets/animations/rocket.json'),
