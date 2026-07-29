@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { RotateCw } from 'lucide-react-native';
 
@@ -14,15 +14,19 @@ import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
 import { Text } from '@/components/ui/text';
+import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
+import { useSpinStatus } from '@/hooks/useSpinWin';
 import { track } from '@/lib/analytics';
 import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 
 export default function Rewards() {
   // qa/preview builds see the redesigned rewards screen; production — and every
@@ -150,6 +154,7 @@ function LegacyRewards() {
           onNextTierPress={() => setSelectedTierModalId(nextTier)}
         />
 
+        <SpinWinButton />
         <HomeBanners data={bannerData} />
         <CardBanner />
       </View>
@@ -158,6 +163,31 @@ function LegacyRewards() {
         onClose={() => setIsReferralModalOpen(false)}
       />
     </PageLayout>
+  );
+}
+
+/**
+ * Opens the Spin & Win wheel. The flow is a native-only modal (see
+ * SpinWinModalProvider, which force-closes itself on web), so the button hides
+ * on web and when the backend says the user isn't eligible — same gating as the
+ * home screen's spin card.
+ */
+function SpinWinButton() {
+  const { data: spinStatus } = useSpinStatus();
+  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
+
+  if (Platform.OS === 'web' || !spinStatus?.isAllowed) return null;
+
+  return (
+    <Pressable
+      onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
+      style={{ backgroundColor: SPIN_WIN.colors.goldSubtle }}
+      className="h-14 items-center justify-center rounded-full active:opacity-80"
+    >
+      <Text className="text-base font-bold" style={{ color: SPIN_WIN.colors.gold }}>
+        {spinStatus?.spinAvailableToday === false ? 'Spin & Win' : 'Spin the wheel'}
+      </Text>
+    </Pressable>
   );
 }
 
