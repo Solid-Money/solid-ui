@@ -5,17 +5,12 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 
 import { Text } from '@/components/ui/text';
 
-import {
-  type OtherBalances,
-  OtherBalancesPill,
-  SavingsBalanceRow,
-  SpendableBalancesGroup,
-} from '.';
+import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
 
 /**
- * Native balances control: a pill (savings) that presents a Gorhom bottom sheet
- * with the full breakdown — Wallet + Card (grouped, since they make up the
- * headline) and Savings. Mirrors InfoCenterDropdown.native.tsx.
+ * Native balances control: a pill (total + Wallet/Card/Savings donut) that
+ * presents a Gorhom bottom sheet with all three balances broken out. Mirrors
+ * InfoCenterDropdown.native.tsx.
  */
 const OtherBalancesDropdown = ({
   walletBalance,
@@ -37,7 +32,12 @@ const OtherBalancesDropdown = ({
 
   return (
     <View className="items-center">
-      <OtherBalancesPill savingsValue={savingsBalance} onPress={present} />
+      <OtherBalancesPill
+        walletValue={walletBalance}
+        cardValue={cardBalance}
+        savingsValue={savingsBalance}
+        onPress={present}
+      />
       <BottomSheetModal
         ref={bottomSheetModalRef}
         backdropComponent={renderBackdrop}
@@ -50,14 +50,11 @@ const OtherBalancesDropdown = ({
       >
         <BottomSheetView className="gap-1 pb-2 pt-1" style={{ paddingBottom: insets.bottom + 8 }}>
           <Text className="px-5 pb-1 text-lg font-semibold text-muted-foreground">Balances</Text>
-          <SpendableBalancesGroup
+          <BalanceBreakdownRows
             walletBalance={walletBalance}
             cardBalance={cardBalance}
-            userHasCard={userHasCard}
-            isLoading={isLoading}
-          />
-          <SavingsBalanceRow
             savingsBalance={savingsBalance}
+            userHasCard={userHasCard}
             isLoading={isLoading}
             onDismiss={dismiss}
           />

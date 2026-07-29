@@ -14,8 +14,8 @@ const point = (angle: number): [number, number] => [
 /**
  * SVG arc for a segment starting at `startFraction` of the circle and spanning
  * `sweepFraction`, measured clockwise from 12 o'clock. Explicit arcs (rather than
- * strokeDasharray tricks) so both segments render deterministically on every
- * platform.
+ * strokeDasharray tricks) so every segment renders deterministically on all
+ * platforms.
  */
 const arcPath = (startFraction: number, sweepFraction: number) => {
   const a0 = -Math.PI / 2 + startFraction * 2 * Math.PI;
@@ -27,8 +27,10 @@ const arcPath = (startFraction: number, sweepFraction: number) => {
 };
 
 interface OtherBalancesPieProps {
+  walletValue: number;
   cardValue: number;
   savingsValue: number;
+  walletColor: string;
   cardColor: string;
   savingsColor: string;
 }
@@ -38,47 +40,49 @@ const fullRing = (color: string) => (
 );
 
 /**
- * Small donut showing how much Card vs Savings each contributes to the "other
- * balances" total (real proportions). Falls back to an empty grey ring when
- * there's no balance; draws a single full ring when only one side has a balance.
+ * Small donut showing how much Wallet (white), Card (green) and Savings (purple)
+ * each contribute to the total, in real proportions. Falls back to an empty grey
+ * ring when there's no balance; draws a single full ring when only one balance is
+ * non-zero.
  */
 const OtherBalancesPie = ({
+  walletValue,
   cardValue,
   savingsValue,
+  walletColor,
   cardColor,
   savingsColor,
 }: OtherBalancesPieProps) => {
-  const card = Math.max(cardValue, 0);
-  const savings = Math.max(savingsValue, 0);
-  const total = card + savings;
+  const segments = [
+    { value: Math.max(walletValue, 0), color: walletColor },
+    { value: Math.max(cardValue, 0), color: cardColor },
+    { value: Math.max(savingsValue, 0), color: savingsColor },
+  ].filter(segment => segment.value > 0);
+
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
 
   let content: React.ReactNode;
   if (total <= 0) {
     content = fullRing(TRACK_COLOR);
-  } else if (card <= 0) {
-    content = fullRing(savingsColor);
-  } else if (savings <= 0) {
-    content = fullRing(cardColor);
+  } else if (segments.length === 1) {
+    content = fullRing(segments[0].color);
   } else {
-    const cardFraction = card / total;
-    content = (
-      <>
+    let start = 0;
+    content = segments.map(segment => {
+      const sweep = segment.value / total;
+      const path = (
         <Path
-          d={arcPath(0, cardFraction)}
-          stroke={cardColor}
+          key={segment.color}
+          d={arcPath(start, sweep)}
+          stroke={segment.color}
           strokeWidth={STROKE}
           fill="none"
           strokeLinecap="butt"
         />
-        <Path
-          d={arcPath(cardFraction, 1 - cardFraction)}
-          stroke={savingsColor}
-          strokeWidth={STROKE}
-          fill="none"
-          strokeLinecap="butt"
-        />
-      </>
-    );
+      );
+      start += sweep;
+      return path;
+    });
   }
 
   return (

@@ -3,12 +3,7 @@ import { View } from 'react-native';
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-import {
-  type OtherBalances,
-  OtherBalancesPill,
-  SavingsBalanceRow,
-  SpendableBalancesGroup,
-} from '.';
+import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
 
 /**
  * Default / web-mobile balances control. Gorhom bottom sheets are native-only in
@@ -29,18 +24,19 @@ const OtherBalancesDropdown = ({
     <View className="items-center">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <OtherBalancesPill savingsValue={savingsBalance} />
+          <OtherBalancesPill
+            walletValue={walletBalance}
+            cardValue={cardBalance}
+            savingsValue={savingsBalance}
+          />
         </DialogTrigger>
         <DialogContent className="gap-1 p-4">
           <DialogTitle className="px-2 pb-1 text-lg text-muted-foreground">Balances</DialogTitle>
-          <SpendableBalancesGroup
+          <BalanceBreakdownRows
             walletBalance={walletBalance}
             cardBalance={cardBalance}
-            userHasCard={userHasCard}
-            isLoading={isLoading}
-          />
-          <SavingsBalanceRow
             savingsBalance={savingsBalance}
+            userHasCard={userHasCard}
             isLoading={isLoading}
             onDismiss={dismiss}
           />
