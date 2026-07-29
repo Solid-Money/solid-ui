@@ -5,6 +5,7 @@ import { Address } from 'viem';
 
 import HomeVerificationCard from '@/components/Home/NewHome/HomeVerificationCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
+import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
@@ -31,9 +32,11 @@ import { useUserStore } from '@/store/useUserStore';
  * builds via the dispatcher in index(.native).tsx. Production and all
  * desktop-web users keep LegacyHome.
  *
- * Big "Wallet Balance" number = wallet token balance (excludes soUSD/soFUSE).
- * Card + Savings live behind the OtherBalancesDropdown pill. The green card is
- * merged in here; Activity moved to the header bell.
+ * Big "Wallet Balance" number = Wallet + Card (combined for display only — the
+ * breakdown sheet lists Wallet, Card and Savings separately and notes that funds
+ * must be moved onto the card to spend). Savings sits behind the pill, so
+ * headline + pill covers everything. The green card is merged in here; Activity
+ * moved to the header bell.
  */
 export default function HomeScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
@@ -111,7 +114,12 @@ export default function HomeScreenNew() {
     isLoadingTokens || isBalanceLoading || isTotalSavingsLoading || totalSavingsUSD === undefined;
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
-  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(walletBalance);
+  // Headline = Wallet + Card. They're only combined for display; the breakdown
+  // sheet lists them separately and explains that funds must be moved onto the
+  // card to be spent. Savings stays out of it (it's the pill), so
+  // headline + pill = everything the user holds.
+  const spendableBalance = getSpendableTotal({ walletBalance, cardBalance, userHasCard });
+  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(spendableBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
 
   return (
@@ -125,8 +133,9 @@ export default function HomeScreenNew() {
           </View>
         ) : (
           <View className="gap-5">
-            <WalletBalanceHeadline balance={walletBalance} />
+            <WalletBalanceHeadline balance={spendableBalance} />
             <OtherBalancesDropdown
+              walletBalance={walletBalance}
               cardBalance={cardBalance}
               savingsBalance={savingsBalance}
               userHasCard={userHasCard}

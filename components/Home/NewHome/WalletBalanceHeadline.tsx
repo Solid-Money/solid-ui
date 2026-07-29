@@ -20,8 +20,9 @@ interface WalletBalanceHeadlineProps {
 
 /**
  * "Wallet Balance" label + big number for the redesigned home screen.
- * `balance` is the wallet token balance (excludes soUSD/soFUSE); Card and
- * Savings live behind the OtherBalancesDropdown pill.
+ * `balance` is Wallet + Card combined (see getSpendableTotal) — the two are
+ * added up for display only and broken out in the balances sheet. Savings is
+ * excluded; it lives behind the OtherBalancesDropdown pill.
  */
 const WalletBalanceHeadline = ({ balance }: WalletBalanceHeadlineProps) => {
   return (

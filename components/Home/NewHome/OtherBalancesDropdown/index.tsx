@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ChevronDown } from 'lucide-react-native';
+import { ChevronDown, Info } from 'lucide-react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -12,63 +13,66 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import OtherBalancesPie from './OtherBalancesPie';
 
-/** Data required by both the native and web "other balances" sheets. */
+/** Data required by both the native and web balances sheets. */
 export type OtherBalances = {
+  walletBalance: number;
   cardBalance: number;
   savingsBalance: number;
   userHasCard: boolean;
   isLoading?: boolean;
 };
 
+const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 
 /**
- * Whether the Card belongs in "other balances". Shown when the user has an
- * active card OR when there's a (e.g. internal test-override) card balance to
- * surface — so the balance and its pie segment aren't dropped for testers whose
- * card status isn't ACTIVE yet.
+ * Whether the Card belongs in the breakdown. Shown when the user has an active
+ * card OR when there's a card balance to surface — so the balance isn't dropped
+ * for testers whose card status isn't ACTIVE yet.
  */
 export const shouldShowCard = (cardBalance: number, userHasCard: boolean) =>
   userHasCard || (cardBalance || 0) > 0;
 
-/** Combined "other balances" figure shown on the pill. */
-export const getOtherBalancesTotal = ({
+/**
+ * The headline figure: Wallet + Card. They're combined in the UI only — the two
+ * balances stay separate under the hood (funds must be moved from the wallet to
+ * the card before they can be spent), which the breakdown sheet spells out.
+ */
+export const getSpendableTotal = ({
+  walletBalance,
   cardBalance,
-  savingsBalance,
   userHasCard,
-}: OtherBalances) =>
-  (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0) + (savingsBalance || 0);
+}: Pick<OtherBalances, 'walletBalance' | 'cardBalance' | 'userHasCard'>) =>
+  (walletBalance || 0) + (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0);
 
 type PillProps = {
-  total: number;
-  /** Card contribution to the total (0 when the user has no card). */
-  cardValue: number;
-  /** Savings contribution to the total. */
+  /** Savings total — the balance that is NOT part of the headline. */
   savingsValue: number;
 } & React.ComponentProps<typeof Pressable>;
 
 /**
- * The dropdown pill trigger: a real proportional Card/Savings donut + combined
- * total + chevron. The donut segments reflect how much each balance contributes.
+ * The dropdown pill trigger: savings ring + savings total + chevron. Wallet and
+ * Card are already in the headline above, so the pill carries the remaining
+ * balance — headline + pill = everything the user holds (no double counting).
  */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ total, cardValue, savingsValue, ...props }, ref) => {
+  ({ savingsValue, ...props }, ref) => {
     return (
       <Pressable
         ref={ref}
         accessibilityRole="button"
-        accessibilityLabel="Show other balances"
+        accessibilityLabel="Show balance breakdown"
         className="flex-row items-center gap-2 self-center rounded-full bg-[#1C1C1C] py-2 pl-2 pr-3 transition-all active:scale-95 active:opacity-80"
         {...props}
       >
         <OtherBalancesPie
-          cardValue={cardValue}
+          cardValue={0}
           savingsValue={savingsValue}
           cardColor={CARD_COLOR}
           savingsColor={SAVINGS_COLOR}
         />
-        <Text className="text-base font-semibold text-white">{formatBalanceUSD(total)}</Text>
+        <Text className="text-base font-semibold text-white">{formatBalanceUSD(savingsValue)}</Text>
         <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
       </Pressable>
     );
@@ -115,9 +119,21 @@ const BalanceRow = ({
   </View>
 );
 
+/** Wallet balance row. "Add" opens the standard Add Funds (deposit) flow. */
+export const WalletBalanceRow = ({
+  walletBalance,
+  isLoading,
+}: {
+  walletBalance: number;
+  isLoading?: boolean;
+}) => (
+  <BalanceRow color={WALLET_COLOR} label="Wallet" value={walletBalance} isLoading={isLoading}>
+    <DepositOptionModal trigger={<AddButton />} />
+  </BalanceRow>
+);
+
 /** Card balance row. "Add" opens the "Fund your card" popup (share deposit
- *  address / transfer from wallet) — the same modal used on the card screen,
- *  replacing the keypad deposit screen. */
+ *  address / transfer from wallet) — the same modal used on the card screen. */
 export const CardBalanceRow = ({
   cardBalance,
   isLoading,
@@ -131,6 +147,36 @@ export const CardBalanceRow = ({
     <CardDirectDepositModal trigger={<AddButton />} />
   </BalanceRow>
 );
+
+/**
+ * Wallet + Card grouped together, matching the combined headline, with a note
+ * making the separation explicit: the two are only added up for display, and
+ * money has to be moved onto the card before it can be spent.
+ */
+export const SpendableBalancesGroup = ({
+  walletBalance,
+  cardBalance,
+  userHasCard,
+  isLoading,
+}: Omit<OtherBalances, 'savingsBalance'>) => {
+  const showCard = shouldShowCard(cardBalance, userHasCard);
+
+  return (
+    <View className="bg-white/[0.03] py-1">
+      <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} />
+      {showCard && <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} />}
+      {showCard && (
+        <View className="flex-row items-start gap-2 px-5 pb-3 pt-1">
+          <Info size={14} color="rgba(255,255,255,0.4)" />
+          <Text className="flex-1 text-xs leading-4 text-white/40">
+            Wallet and Card are added up in the balance above, but they&apos;re separate — move
+            funds to your card to spend them.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
 
 /** Savings balance row. "Add" opens the existing savings deposit modal (global). */
 export const SavingsBalanceRow = ({
