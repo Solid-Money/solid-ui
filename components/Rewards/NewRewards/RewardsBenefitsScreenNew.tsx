@@ -12,16 +12,13 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import {
-  CreditCard,
-  DollarSign,
-  Globe,
-  LucideIcon,
-  Percent,
-  Rocket,
-  Zap,
-} from 'lucide-react-native';
 
+import {
+  CoreCardPerkIcon,
+  CoreGlobePerkIcon,
+  CoreRocketPerkIcon,
+  CoreTierSparkle,
+} from '@/assets/images/rewards-tiers/core-tier-icons';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -29,7 +26,6 @@ import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { type AssetPath, getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
@@ -58,7 +54,14 @@ const TIER_HERO_SIZES: Record<RewardsTier, number> = {
 
 const TIER_HERO_GLOW_ASSET: AssetPath = 'images/rewards-tiers/glow.svg';
 
-const SPARKLE_ASSET: AssetPath = 'images/rewards-tiers/hero-core.png';
+const CORE_SUMMARY = require('@/assets/images/rewards-tiers/core-summary.png');
+const PRIME_SUMMARY = require('@/assets/images/rewards-tiers/prime-summary.png');
+const ULTRA_SUMMARY = require('@/assets/images/rewards-tiers/ultra-summary.png');
+const PRIME_TIER_SPARKLE = require('@/assets/images/rewards-tiers/prime-tier-sparkle.png');
+const ULTRA_TIER_SPARKLE = require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png');
+const TIER_INFO = require('@/assets/images/rewards-tiers/tier-info.png');
+const YIELD_BOOST_ICON = require('@/assets/images/rewards-tiers/yield-boost.png');
+const CASHBACK_CAP_ICON = require('@/assets/images/rewards-tiers/cashback-cap.png');
 
 interface TierStat {
   label: string;
@@ -66,7 +69,6 @@ interface TierStat {
 }
 
 interface TierPerk {
-  Icon: LucideIcon;
   title: string;
   description: string;
 }
@@ -160,16 +162,16 @@ const MUSIC_LOGOS: BrandLogo[] = [
 
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
   [RewardsTier.CORE]: {
-    headline: 'Start spending with Solid',
+    headline: 'The Solid Foundation',
     unlockCopy: 'Your current tier',
     stats: [
       { label: 'Cashback', value: '3%' },
-      { label: 'APY', value: '5.5%' },
+      { label: '24/7 Fast support', value: '' },
     ],
     perks: [
-      { Icon: CreditCard, title: 'Free virtual card', description: 'Issued instantly' },
-      { Icon: Rocket, title: 'Set up in minutes', description: 'Under 5 minutes' },
-      { Icon: Globe, title: 'Spend globally', description: 'Card accepted in 180+ countries' },
+      { title: 'Free virtual card', description: 'Issued instantly' },
+      { title: 'Set up in minutes', description: 'Under 5 minutes' },
+      { title: 'Spend globally', description: 'Card accepted in 180+ countries' },
     ],
     cashback: {
       everyPurchase: '3%',
@@ -187,21 +189,20 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     },
   },
   [RewardsTier.PRIME]: {
-    headline: 'Built for everyday spending',
+    headline: 'Enhanced Daily Rewards',
     unlockCopy: 'Unlocks at 5M points',
     stats: [
       { label: 'Cashback', value: '4%' },
-      { label: 'APY', value: '5.5%' },
-      { label: 'Yield boost', value: '2%' },
+      { label: 'Yield boost', value: '+2%' },
+      { label: 'Back on AI', value: '25%' },
     ],
     perks: [
-      { Icon: Zap, title: 'Yield boost', description: 'Earn 2% yield on top of your APY' },
+      { title: 'Yield boost', description: '+2% APY on your savings' },
       {
-        Icon: Percent,
         title: 'Subscription discounts',
         description: '25% back on AI, streaming, music',
       },
-      { Icon: DollarSign, title: 'Higher cashback caps', description: 'Up to $50 monthly cap' },
+      { title: 'Higher cashback caps', description: 'Up to $100 monthly cap' },
     ],
     cashback: {
       everyPurchase: '4%',
@@ -215,25 +216,24 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       cardFees: 'Free',
       bankDeposit: 'Free',
       swaps: 'Free',
-      cashbackCap: 'Up to 50$ monthly',
+      cashbackCap: 'Up to 100$ monthly',
     },
   },
   [RewardsTier.ULTRA]: {
-    headline: 'For those who never settle',
+    headline: 'Unmatched Spending Power',
     unlockCopy: 'Unlocks at 35M Points',
     stats: [
-      { label: 'Cashback', value: '5%' },
-      { label: 'APY', value: '5.5%' },
-      { label: 'Yield boost', value: '3%' },
+      { label: 'Cashback', value: '4%' },
+      { label: 'Yield boost', value: '+3%' },
+      { label: 'Back on AI', value: '50%' },
     ],
     perks: [
-      { Icon: Zap, title: 'Yield boost', description: '+3% APY boost on your savings' },
+      { title: 'Yield boost', description: '+3% APY boost on your savings' },
       {
-        Icon: Percent,
         title: 'Subscription discounts',
         description: '50% back on AI, streaming, music',
       },
-      { Icon: DollarSign, title: 'Higher cashback caps', description: 'Up to $50 monthly cap' },
+      { title: 'Higher cashback caps', description: 'Up to $200 monthly cap' },
     ],
     cashback: {
       everyPurchase: '5%',
@@ -247,7 +247,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       cardFees: 'Free',
       bankDeposit: 'Free',
       swaps: 'Free',
-      cashbackCap: 'Up to 50$ monthly',
+      cashbackCap: 'Up to 200$ monthly',
     },
   },
 };
@@ -266,10 +266,11 @@ const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
 
   const handleLayout = (tier: RewardsTier) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
-    layouts.current[tier] = { x, width };
+    const indicatorLayout = { x: x + 1, width: width - 8 };
+    layouts.current[tier] = indicatorLayout;
     if (tier === selected) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
+      indicatorX.value = indicatorLayout.x;
+      indicatorWidth.value = indicatorLayout.width;
     }
   };
 
@@ -286,7 +287,10 @@ const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
   }));
 
   return (
-    <View className="h-[33px] flex-row items-center self-center rounded-full border border-white/10 bg-black p-1">
+    <View
+      className="h-[33px] w-[248px] flex-row items-center self-center rounded-full bg-black p-1"
+      style={{ transform: [{ translateY: 9 }] }}
+    >
       <Animated.View
         className="absolute bottom-1 top-1 rounded-full bg-white/15"
         style={indicatorStyle}
@@ -296,10 +300,15 @@ const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
           key={tier}
           onPress={() => onSelect(tier)}
           onLayout={handleLayout(tier)}
-          className="items-center justify-center px-5"
+          className="flex-1 items-center justify-center"
         >
           <Text
-            className={cn('text-sm font-medium text-white', tier !== selected && 'text-white/70')}
+            className="text-white"
+            style={{
+              fontFamily: 'MonaSans_500Medium',
+              fontSize: 14,
+              lineHeight: 17,
+            }}
           >
             {TIER_LABELS[tier]}
           </Text>
@@ -353,35 +362,326 @@ const BrandBadge = ({ logo, overlap }: BrandBadgeProps) => {
   );
 };
 
-// Full-bleed: the design runs dividers edge to edge across the card rather
-// than inset to match the rows' horizontal padding.
-const DIVIDER_STYLE = {
-  height: 1,
-  backgroundColor: 'rgba(255,255,255,0.15)',
-};
-const Divider = () => <View style={DIVIDER_STYLE} />;
+const CoreDivider = () => <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />;
 
-interface FeeRowProps {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-  pill?: boolean;
-}
+const CORE_MEDIUM_16 = {
+  fontFamily: 'MonaSans_500Medium',
+  fontSize: 16,
+  lineHeight: 18,
+} as const;
 
-const FeeRow = ({ label, value, emphasize, pill = true }: FeeRowProps) => (
-  <View className="flex-row items-center justify-between px-4 py-2">
-    <Text className={cn('text-base text-white', emphasize ? 'font-semibold' : 'font-medium')}>
-      {label}
-    </Text>
-    {pill ? (
-      <View className="rounded-full bg-white/10 px-4 py-2">
-        <Text className="text-base font-medium text-white">{value}</Text>
-      </View>
+const CORE_REGULAR_14 = {
+  fontFamily: 'MonaSans_400Regular',
+  fontSize: 14,
+  lineHeight: 16,
+} as const;
+
+const CorePerkIcon = ({ index }: { index: number }) => (
+  <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
+    {index === 0 ? (
+      <CoreCardPerkIcon />
+    ) : index === 1 ? (
+      <CoreRocketPerkIcon />
     ) : (
-      <Text className="text-base font-medium text-white">{value}</Text>
+      <CoreGlobePerkIcon />
     )}
   </View>
 );
+
+const CoreSummaryAndPerks = () => {
+  const content = TIER_CONTENT[RewardsTier.CORE];
+
+  return (
+    <View className="mx-4 mt-[45px]">
+      <View className="h-[137px] overflow-hidden rounded-twice">
+        <Image
+          source={CORE_SUMMARY}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="fill"
+          accessibilityLabel="3% cashback. 24/7 fast support."
+        />
+      </View>
+
+      <View className="-mt-[41px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+        {content.perks.map((perk, index) => (
+          <View key={perk.title}>
+            {index > 0 && <CoreDivider />}
+            <View className="h-[90px] flex-row items-center justify-between px-[19px]">
+              <View className="flex-1 pr-3">
+                <Text className="text-white" style={CORE_MEDIUM_16}>
+                  {perk.title}
+                </Text>
+                <Text className="mt-[2px] text-white/70" style={CORE_REGULAR_14}>
+                  {perk.description}
+                </Text>
+              </View>
+              <CorePerkIcon index={index} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const CoreCashbackCard = () => {
+  const { cashback } = TIER_CONTENT[RewardsTier.CORE];
+
+  return (
+    <View className="relative mx-4 mt-[14px] h-[298px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
+        Cashback
+      </Text>
+      <View className="absolute left-0 right-0 top-[57px]">
+        <CoreDivider />
+      </View>
+      <Text className="absolute left-[19px] top-[85px] text-white" style={CORE_MEDIUM_16}>
+        Every purchase
+      </Text>
+      <View className="absolute right-4 top-[76px] h-9 min-w-[51px] items-center justify-center rounded-full bg-white/10 px-3">
+        <Text className="text-white" style={CORE_MEDIUM_16}>
+          {cashback.everyPurchase}
+        </Text>
+      </View>
+      {cashback.categories.map((category, index) => (
+        <View
+          key={category.label}
+          className="absolute left-[19px] right-4 h-[22px] flex-row items-center"
+          style={{ top: [138, 195, 248][index] }}
+        >
+          <Text className="text-white/40" style={CORE_MEDIUM_16}>
+            {category.label}
+          </Text>
+          <View className="ml-3 flex-1 flex-row items-center" style={{ opacity: LOCKED_OPACITY }}>
+            {category.logos.map((logo, logoIndex) => (
+              <BrandBadge key={logo.asset} logo={logo} overlap={logoIndex > 0} />
+            ))}
+          </View>
+          <Text className="text-white/40" style={CORE_MEDIUM_16}>
+            Prime and up
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const CoreFeesCard = () => {
+  const { fees } = TIER_CONTENT[RewardsTier.CORE];
+  const rows = [
+    { label: 'Card fees', value: fees.cardFees, top: 73, emphasize: false },
+    { label: 'Bank deposit', value: fees.bankDeposit, top: 125, emphasize: true },
+    { label: 'Swaps', value: fees.swaps, top: 177, emphasize: true },
+  ];
+
+  return (
+    <View className="relative mx-4 mt-[15px] h-[292px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
+        Fees & Caps
+      </Text>
+      <View className="absolute left-0 right-0 top-[57px]">
+        <CoreDivider />
+      </View>
+      {rows.map(row => (
+        <View
+          key={row.label}
+          className="absolute left-[19px] right-4 h-9 flex-row items-center justify-between"
+          style={{ top: row.top }}
+        >
+          <Text
+            className="text-white"
+            style={{
+              ...CORE_MEDIUM_16,
+              fontFamily: row.emphasize ? 'MonaSans_600SemiBold' : 'MonaSans_500Medium',
+            }}
+          >
+            {row.label}
+          </Text>
+          <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
+            <Text className="text-white" style={CORE_MEDIUM_16}>
+              {row.value}
+            </Text>
+          </View>
+        </View>
+      ))}
+      <View className="absolute left-[19px] right-4 top-[238px] flex-row justify-between">
+        <Text
+          className="text-white"
+          style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
+        >
+          Cashback cap
+        </Text>
+        <Text className="text-right text-white" style={CORE_MEDIUM_16}>
+          {fees.cashbackCap}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const PremiumPerkIcon = ({ index }: { index: number }) => {
+  if (index === 1) {
+    return (
+      <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
+        <Text className="text-white" style={CORE_MEDIUM_16}>
+          25%
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={index === 0 ? YIELD_BOOST_ICON : CASHBACK_CAP_ICON}
+      style={{ width: 50, height: 50 }}
+      contentFit="contain"
+    />
+  );
+};
+
+const PremiumSummaryAndPerks = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
+  const content = TIER_CONTENT[tier];
+  const summary = tier === RewardsTier.PRIME ? PRIME_SUMMARY : ULTRA_SUMMARY;
+  const discount = tier === RewardsTier.PRIME ? '25%' : '50%';
+
+  return (
+    <View className="mx-4 mt-[59px]">
+      <View className="h-[137px] overflow-hidden rounded-twice">
+        <Image
+          source={summary}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="fill"
+          accessibilityLabel={content.stats.map(stat => `${stat.value} ${stat.label}`).join('. ')}
+        />
+      </View>
+
+      <View className="-mt-[42px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+        {content.perks.map((perk, index) => (
+          <View key={perk.title}>
+            {index > 0 && <CoreDivider />}
+            <View className="h-[90px] flex-row items-center justify-between px-[19px]">
+              <View className="flex-1 pr-3">
+                <Text className="text-white" style={CORE_MEDIUM_16}>
+                  {perk.title}
+                </Text>
+                <Text className="mt-[2px] text-white/70" style={CORE_REGULAR_14}>
+                  {perk.description}
+                </Text>
+              </View>
+              {index === 1 ? (
+                <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
+                  <Text className="text-white" style={CORE_MEDIUM_16}>
+                    {discount}
+                  </Text>
+                </View>
+              ) : (
+                <PremiumPerkIcon index={index} />
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const PremiumCashbackCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
+  const { cashback } = TIER_CONTENT[tier];
+
+  return (
+    <View className="relative mx-4 mt-[15px] h-[298px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
+        Cashback
+      </Text>
+      <View className="absolute left-0 right-0 top-[57px]">
+        <CoreDivider />
+      </View>
+      <Text className="absolute left-[19px] top-[85px] text-white" style={CORE_MEDIUM_16}>
+        Every purchase
+      </Text>
+      <View className="absolute right-4 top-[76px] h-9 min-w-[51px] items-center justify-center rounded-full bg-white/10 px-3">
+        <Text className="text-white" style={CORE_MEDIUM_16}>
+          {cashback.everyPurchase}
+        </Text>
+      </View>
+
+      {cashback.categories.map((category, index) => (
+        <View
+          key={category.label}
+          className="absolute left-[19px] right-4 h-9 flex-row items-center"
+          style={{ top: [131, 188, 241][index] }}
+        >
+          <Text className="text-white" style={CORE_MEDIUM_16}>
+            {category.label}
+          </Text>
+          <View className="ml-3 flex-1 flex-row items-center">
+            {category.logos.map((logo, logoIndex) => (
+              <BrandBadge key={logo.asset} logo={logo} overlap={logoIndex > 0} />
+            ))}
+          </View>
+          <View className="h-9 min-w-[59px] items-center justify-center rounded-full bg-white/10 px-3">
+            <Text className="text-white" style={CORE_MEDIUM_16}>
+              {category.value}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const PremiumFeesCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
+  const { fees } = TIER_CONTENT[tier];
+  const rows = [
+    { label: 'Card fees', value: fees.cardFees, top: 73, emphasize: false },
+    { label: 'Bank deposit', value: fees.bankDeposit, top: 125, emphasize: true },
+    { label: 'Swaps', value: fees.swaps, top: 177, emphasize: true },
+  ];
+
+  return (
+    <View className="relative mx-4 mt-[15px] h-[292px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
+        Fees & Caps
+      </Text>
+      <View className="absolute left-0 right-0 top-[57px]">
+        <CoreDivider />
+      </View>
+      {rows.map(row => (
+        <View
+          key={row.label}
+          className="absolute left-[19px] right-4 h-9 flex-row items-center justify-between"
+          style={{ top: row.top }}
+        >
+          <Text
+            className="text-white"
+            style={{
+              ...CORE_MEDIUM_16,
+              fontFamily: row.emphasize ? 'MonaSans_600SemiBold' : 'MonaSans_500Medium',
+            }}
+          >
+            {row.label}
+          </Text>
+          <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
+            <Text className="text-white" style={CORE_MEDIUM_16}>
+              {row.value}
+            </Text>
+          </View>
+        </View>
+      ))}
+      <View className="absolute left-[19px] right-4 top-[238px] flex-row justify-between">
+        <Text
+          className="text-white"
+          style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
+        >
+          Cashback cap
+        </Text>
+        <Text className="text-right text-white" style={CORE_MEDIUM_16}>
+          {fees.cashbackCap}
+        </Text>
+      </View>
+    </View>
+  );
+};
 
 /**
  * Redesigned "Explore tiers" screen (Apple "glass" style companion to
@@ -421,16 +721,89 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
   const content = TIER_CONTENT[tier];
   const subtitle = isCurrentTier ? 'Your current tier' : content.unlockCopy;
 
+  if (tier === RewardsTier.CORE) {
+    return (
+      <View
+        style={{
+          width: SCREEN_WIDTH,
+          paddingTop: insets.top + HEADER_ROW_HEIGHT,
+          paddingBottom: insets.bottom,
+        }}
+      >
+        <View className="items-center pt-4">
+          <View className="h-[320px] w-[320px] items-center justify-center">
+            <View className="h-[304px] w-[304px] items-center justify-center">
+              <Image
+                source={getAsset(TIER_HERO_GLOW_ASSET)}
+                style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
+                contentFit="contain"
+              />
+              <Image
+                source={TIER_HERO_ANIMATIONS[tier]}
+                style={{
+                  width: TIER_HERO_SIZES[tier],
+                  height: TIER_HERO_SIZES[tier],
+                }}
+                contentFit="contain"
+                autoplay
+              />
+            </View>
+          </View>
+
+          <View className="-mt-1 flex-row items-center gap-1">
+            <CoreTierSparkle />
+            <Text
+              className="text-white/70"
+              style={{
+                fontFamily: 'MonaSans_500Medium',
+                fontSize: 20,
+                lineHeight: 24,
+              }}
+            >
+              Core
+            </Text>
+          </View>
+
+          <Text
+            className="mt-3 w-[209px] text-center text-white"
+            style={{
+              fontFamily: 'MonaSans_500Medium',
+              fontSize: 30,
+              lineHeight: 30,
+              letterSpacing: -1,
+            }}
+          >
+            {content.headline}
+          </Text>
+
+          <Text
+            className="mt-[14px] text-white/70"
+            style={{
+              fontFamily: 'MonaSans_400Regular',
+              fontSize: 16,
+              lineHeight: 18,
+            }}
+          >
+            {subtitle}
+          </Text>
+        </View>
+
+        <CoreSummaryAndPerks />
+        <CoreCashbackCard />
+        <CoreFeesCard />
+      </View>
+    );
+  }
+
   return (
     <View
-      className="gap-6"
       style={{
         width: SCREEN_WIDTH,
         paddingTop: insets.top + HEADER_ROW_HEIGHT,
         paddingBottom: insets.bottom,
       }}
     >
-      <View className="items-center gap-1 pt-4">
+      <View className="items-center pt-4">
         <View className="h-[320px] w-[320px] items-center justify-center">
           <View className="h-[304px] w-[304px] items-center justify-center">
             <Image
@@ -451,104 +824,55 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
           </View>
         </View>
 
-        <Text className="text-base font-medium text-muted-foreground">{TIER_LABELS[tier]}</Text>
+        <View className="-mt-1 flex-row items-center gap-1">
+          <Image
+            source={tier === RewardsTier.PRIME ? PRIME_TIER_SPARKLE : ULTRA_TIER_SPARKLE}
+            style={{ width: 20, height: 20 }}
+            contentFit="contain"
+          />
+          <Text
+            className="text-white/70"
+            style={{
+              fontFamily: 'MonaSans_500Medium',
+              fontSize: 20,
+              lineHeight: 24,
+            }}
+          >
+            {TIER_LABELS[tier]}
+          </Text>
+        </View>
 
         <Text
-          className="max-w-[260px] text-center text-[28px] font-medium leading-[1.15] text-white"
-          style={{ letterSpacing: -0.5 }}
+          className="mt-3 text-center text-white"
+          style={{
+            width: tier === RewardsTier.PRIME ? 247 : 273,
+            fontFamily: 'MonaSans_500Medium',
+            fontSize: 30,
+            lineHeight: 30,
+            letterSpacing: -1,
+          }}
         >
           {content.headline}
         </Text>
 
-        <View className="flex-row items-center gap-1.5">
-          <Image
-            source={getAsset(SPARKLE_ASSET)}
-            style={{ width: 12, height: 12 }}
-            contentFit="contain"
-          />
-          <Text className="text-base text-muted-foreground">{subtitle}</Text>
+        <View className="mt-[14px] flex-row items-center gap-1">
+          <Text
+            className="text-white/70"
+            style={{
+              fontFamily: 'MonaSans_400Regular',
+              fontSize: 16,
+              lineHeight: 20,
+            }}
+          >
+            {subtitle}
+          </Text>
+          <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
         </View>
       </View>
 
-      <View className="mx-4 overflow-hidden rounded-twice">
-        <LinearGradient
-          colors={['rgba(148,242,127,0.1)', 'rgba(148,242,127,0)']}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View className="flex-row">
-          {content.stats.map((stat, index) => (
-            <View
-              key={stat.label}
-              className={cn(
-                'flex-1 items-center gap-1 py-5',
-                index > 0 && 'border-l border-white/10',
-              )}
-            >
-              <Text className="text-2xl font-medium text-[#94f27f]">{stat.value}</Text>
-              <Text className="text-base text-muted-foreground">{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View className="mx-4 rounded-twice bg-card">
-        {content.perks.map((perk, index) => (
-          <View key={perk.title}>
-            {index > 0 && <Divider />}
-            <View className="flex-row items-center justify-between p-4">
-              <View className="flex-1 gap-1 pr-3">
-                <Text className="text-base font-medium text-white">{perk.title}</Text>
-                <Text className="text-sm text-muted-foreground">{perk.description}</Text>
-              </View>
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-white/10">
-                <perk.Icon size={20} color="#ffffff" />
-              </View>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View className="mx-4 rounded-twice bg-card pb-3">
-        <Text className="px-4 pb-2 pt-4 text-base text-muted-foreground">Cashback</Text>
-        <Divider />
-        <FeeRow label="Every purchase" value={content.cashback.everyPurchase} />
-        {content.cashback.categories.map(category => {
-          // Locked rows still show the logos, just dimmed — the reward is the
-          // percentage, not the list of brands it applies to.
-          const isLocked = !category.value;
-          return (
-            <View key={category.label} className="flex-row items-center gap-3 px-4 py-2">
-              <Text className={cn('text-base font-medium text-white', isLocked && 'text-white/40')}>
-                {category.label}
-              </Text>
-              <View
-                className="flex-1 flex-row items-center"
-                style={isLocked ? { opacity: LOCKED_OPACITY } : undefined}
-              >
-                {category.logos.map((logo, index) => (
-                  <BrandBadge key={logo.asset} logo={logo} overlap={index > 0} />
-                ))}
-              </View>
-              {category.value ? (
-                <View className="rounded-full bg-white/10 px-3 py-2">
-                  <Text className="text-base font-medium text-white">{category.value}</Text>
-                </View>
-              ) : (
-                <Text className="text-base font-medium text-white/40">Prime and up</Text>
-              )}
-            </View>
-          );
-        })}
-      </View>
-
-      <View className="mx-4 rounded-twice bg-card pb-3">
-        <Text className="px-4 pb-2 pt-4 text-base text-muted-foreground">Fees & Caps</Text>
-        <Divider />
-        <FeeRow label="Card fees" value={content.fees.cardFees} />
-        <FeeRow label="Bank deposit" value={content.fees.bankDeposit} emphasize />
-        <FeeRow label="Swaps" value={content.fees.swaps} emphasize />
-        <FeeRow label="Cashback cap" value={content.fees.cashbackCap} emphasize pill={false} />
-      </View>
+      <PremiumSummaryAndPerks tier={tier} />
+      <PremiumCashbackCard tier={tier} />
+      <PremiumFeesCard tier={tier} />
     </View>
   );
 };
@@ -602,11 +926,11 @@ export default function RewardsBenefitsScreenNew() {
         }}
       >
         <View
-          className="flex-row items-center justify-center px-4"
+          className="relative flex-row items-center justify-center px-4"
           style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top }}
         >
-          <View className="absolute left-4">
-            <BackButton onPress={() => router.push(path.REWARDS)} />
+          <View className="absolute left-4 top-4">
+            <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
           <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
         </View>

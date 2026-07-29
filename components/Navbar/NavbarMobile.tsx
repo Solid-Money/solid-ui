@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 
@@ -33,6 +34,8 @@ type NavbarMobileProps = {
   showTitle?: boolean;
   title?: string;
   topInset?: number;
+  /** Left-side action shown for signed-in users. */
+  leftAction?: 'profile' | 'back';
   /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
   rightAction?: 'default' | 'help';
   onHelpPress?: () => void;
@@ -45,6 +48,7 @@ const NavbarMobile = ({
   showTitle,
   title,
   topInset = 0,
+  leftAction = 'profile',
   rightAction = 'default',
   onHelpPress,
 }: NavbarMobileProps) => {
@@ -114,7 +118,7 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">
-        <HeaderProfileButton />
+        {leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />}
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}

@@ -200,7 +200,11 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
+  if (
+    currentRouteName === 'activity' ||
+    currentRouteName === 'settings' ||
+    focusedNestedRoute === 'benefits'
+  ) {
     return null;
   }
 

@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
 
-import { Text } from '@/components/ui/text';
+import HeaderHelpIcon from '@/assets/images/header-help';
 
 interface HeaderHelpButtonProps {
   onPress: () => void;
@@ -8,8 +8,7 @@ interface HeaderHelpButtonProps {
 
 /**
  * Circular "?" button shown in the top-right of the redesigned mobile header,
- * on the Savings screen only. Opens the "How savings works" help carousel.
- * Styling matches HeaderBellButton / WhatsNewButton.
+ * opening the contextual help carousel for the current screen.
  */
 const HeaderHelpButton = ({ onPress }: HeaderHelpButtonProps) => {
   return (
@@ -17,9 +16,9 @@ const HeaderHelpButton = ({ onPress }: HeaderHelpButtonProps) => {
       accessibilityLabel="How savings works"
       accessibilityRole="button"
       onPress={onPress}
-      className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"
     >
-      <Text className="text-lg font-medium text-white">?</Text>
+      <HeaderHelpIcon />
     </Pressable>
   );
 };

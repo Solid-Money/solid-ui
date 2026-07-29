@@ -44,8 +44,8 @@ type MobileSettingsRow = {
 };
 
 const mobileHeader = (
-  <View className="px-4 pb-0 pt-1">
-    <BackButton />
+  <View className="p-4">
+    <BackButton variant="header" />
   </View>
 );
 

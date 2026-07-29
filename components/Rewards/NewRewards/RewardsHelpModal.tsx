@@ -244,12 +244,12 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
         className="flex-1"
         style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
       >
-        <View className="px-[18px] pb-2 pt-2">
+        <View className="flex-row items-center justify-between p-4">
           <Pressable
             accessibilityLabel="Close"
             accessibilityRole="button"
             onPress={onClose}
-            className="h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+            className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
           >
             <ArrowLeft color="#ffffff" size={22} />
           </Pressable>
@@ -286,12 +286,12 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
           ))}
         </View>
 
-        <View className="px-5" style={{ paddingBottom: insets.bottom + 16 }}>
+        <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
           <Button
             variant="brand"
             size="lg"
             onPress={handleNext}
-            className="h-[50px] w-full rounded-full bg-brand"
+            className="h-14 w-full rounded-full bg-brand"
           >
             <Text className="text-base font-semibold text-black">{slide.cta}</Text>
           </Button>
