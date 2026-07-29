@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 import { startVerification, VerificationStatus } from '@didit-protocol/sdk-react-native';
 
 import {
@@ -19,23 +19,37 @@ export default function KycNative() {
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationError,
   } = useDiditSession();
 
   const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
+  // Which token the SDK has already been launched with, so a re-render can't
+  // reopen verification on top of a flow that is already running.
+  const launchedTokenRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!sessionToken) return;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-    let cancelled = false;
+  useEffect(() => {
+    if (!sessionToken || launchedTokenRef.current === sessionToken) return;
+    launchedTokenRef.current = sessionToken;
 
-    async function verify() {
-      if (!sessionToken) return;
-
+    async function verify(token: string) {
+      // Flips the phase to 'started', which clears sessionToken and re-runs this
+      // effect. Guarding on the mounted ref rather than an effect-scoped
+      // `cancelled` flag is what keeps the awaited result below from being
+      // discarded by that re-run — dropping it left the user stranded on the
+      // "Complete it and return here" spinner after closing the SDK.
       markStarted();
-      const result = await startVerification(sessionToken);
+      const result = await startVerification(token);
 
-      if (cancelled) return;
+      if (!isMountedRef.current) return;
 
       switch (result.type) {
         case 'completed':
@@ -53,7 +67,7 @@ export default function KycNative() {
           }
           break;
         case 'cancelled':
-          initSession();
+          onVerificationCancelled();
           break;
         case 'failed':
           onVerificationError(result.error?.message ?? 'Verification failed');
@@ -61,27 +75,24 @@ export default function KycNative() {
       }
     }
 
-    verify().catch(() => {
-      if (!cancelled) {
+    verify(sessionToken).catch(() => {
+      if (isMountedRef.current) {
+        launchedTokenRef.current = null;
         onVerificationError('Failed to start verification');
       }
     });
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     sessionToken,
     markStarted,
-    initSession,
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationError,
   ]);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-background">
       {session.phase === 'loading' && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
       {session.phase === 'unavailable' && (
@@ -92,10 +103,3 @@ export default function KycNative() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-});

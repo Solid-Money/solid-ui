@@ -11,6 +11,7 @@ import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -20,17 +21,25 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
-  const { users, _hasHydrated, pendingAuthUserId, selectUserById, unselectUser, setPendingAuthUserId } =
-    useUserStore(
-      useShallow(state => ({
-        users: state.users,
-        _hasHydrated: state._hasHydrated,
-        pendingAuthUserId: state.pendingAuthUserId,
-        selectUserById: state.selectUserById,
-        unselectUser: state.unselectUser,
-        setPendingAuthUserId: state.setPendingAuthUserId,
-      })),
-    );
+  const {
+    users,
+    _hasHydrated,
+    pendingAuthUserId,
+    selectUserById,
+    unselectUser,
+    clearUserCredentialId,
+    setPendingAuthUserId,
+  } = useUserStore(
+    useShallow(state => ({
+      users: state.users,
+      _hasHydrated: state._hasHydrated,
+      pendingAuthUserId: state.pendingAuthUserId,
+      selectUserById: state.selectUserById,
+      unselectUser: state.unselectUser,
+      clearUserCredentialId: state.clearUserCredentialId,
+      setPendingAuthUserId: state.setPendingAuthUserId,
+    })),
+  );
   const { httpClient } = useTurnkey();
   const router = useRouter();
   const { isDesktop } = useDimension();
@@ -79,6 +88,15 @@ export default function Welcome() {
         // Revert the pre-selection so the welcome screen reflects the
         // un-authenticated state and TurnkeyProvider drops the filter.
         unselectUser();
+
+        // Turnkey does not recognise the passkey we pinned this row to, so
+        // retrying with the same allowCredentials filter can only fail the same
+        // way. Forget the credentialId and let the authenticator offer every
+        // passkey it holds for the relying party on the next attempt.
+        if (error?.code === PASSKEY_NOT_REGISTERED_CODE) {
+          clearUserCredentialId(userId);
+        }
+
         Toast.show({
           type: 'error',
           text1: 'Authentication failed',
@@ -100,6 +118,7 @@ export default function Welcome() {
     selectedUserId,
     handleSelectUserById,
     unselectUser,
+    clearUserCredentialId,
     setPendingAuthUserId,
   ]);
 

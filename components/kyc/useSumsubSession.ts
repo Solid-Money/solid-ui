@@ -178,6 +178,20 @@ export function useSumsubSession() {
     setSession({ phase: 'started' });
   }, []);
 
+  /**
+   * User closed the Sumsub SDK before submitting anything. There is no outcome to
+   * poll for, so staying here leaves them watching the "Complete it and return
+   * here" spinner forever. Re-initialising instead would immediately relaunch the
+   * SDK and trap them in a loop, so send them back to where KYC started.
+   */
+  const onVerificationCancelled = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(path.CARD_ACTIVATE as any);
+  }, [router]);
+
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
       type: 'error',
@@ -233,6 +247,7 @@ export function useSumsubSession() {
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationRetry,
     onVerificationError,
   };
