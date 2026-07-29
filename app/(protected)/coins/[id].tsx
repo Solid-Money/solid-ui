@@ -2,15 +2,17 @@ import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
-import { Address, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import BalanceBreakdown from '@/components/Coin/BalanceBreakdown';
+import CoinActionPills from '@/components/Coin/CoinActionPills';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
-import CoinButtons from '@/components/Coin/CoinButtons';
+import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import CoinName from '@/components/Coin/CoinName';
+import CoinSummary from '@/components/Coin/CoinSummary';
 import EarningYield from '@/components/Coin/EarningYield';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
@@ -21,10 +23,12 @@ import { times } from '@/constants/coins';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import { useCoinHistoricalChart } from '@/hooks/useAnalytics';
+import { useCoinBreakdown } from '@/hooks/useCoinBreakdown';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance, TokenType } from '@/lib/types';
-import { eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { getTokenVault } from '@/lib/vaults';
 import { useCoinStore } from '@/store/useCoinStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -89,8 +93,16 @@ export default function Coin() {
   const chartQuery =
     token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '';
 
+  // The price chart is desktop-only, so skip the request entirely on mobile.
   const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
-    useCoinHistoricalChart(chartCoinId, chartQuery, time?.value);
+    useCoinHistoricalChart(
+      isScreenMedium ? chartCoinId : undefined,
+      isScreenMedium ? chartQuery : '',
+      time?.value,
+    );
+
+  const tokenVault = useMemo(() => getTokenVault(token), [token]);
+  const breakdown = useCoinBreakdown(token);
 
   const setSelectedPrice = useCoinStore(state => state.setSelectedPrice);
   const setSelectedPriceChange = useCoinStore(state => state.setSelectedPriceChange);
@@ -137,48 +149,34 @@ export default function Coin() {
     setSelectedPriceChange,
   ]);
 
-  const coinHeaderContent = useMemo(
+  const desktopHeaderContent = useMemo(
     () => (
       <View className="gap-12 py-8 md:py-12">
-        {isScreenMedium && (
-          <View className="flex-row items-center justify-between gap-2">
-            <View className="flex-row items-center gap-5">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-              <CoinName
-                contractName={token?.contractName || ''}
-                contractTickerSymbol={token?.contractTickerSymbol || ''}
-              />
-            </View>
-            <View className="flex-row gap-2">
-              <DashboardHeaderButtons deposit={{ title: 'Add funds' }} hideWithdraw hideDeposit />
-              <DepositTrigger
-                buttonText="Deposit To Savings"
-                modal={DEPOSIT_MODAL.OPEN_FORM}
-                source="coin_header"
-                onBeforeOpen={() => {
-                  useDepositStore.getState().setDepositFromSolid(true);
-                }}
-              />
-            </View>
+        <View className="flex-row items-center justify-between gap-2">
+          <View className="flex-row items-center gap-5">
+            <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
+            <CoinName
+              contractName={token?.contractName || ''}
+              contractTickerSymbol={token?.contractTickerSymbol || ''}
+            />
           </View>
-        )}
+          <View className="flex-row gap-2">
+            <DashboardHeaderButtons deposit={{ title: 'Add funds' }} hideWithdraw hideDeposit />
+            <DepositTrigger
+              buttonText="Deposit To Savings"
+              modal={DEPOSIT_MODAL.OPEN_FORM}
+              source="coin_header"
+              onBeforeOpen={() => {
+                useDepositStore.getState().setDepositFromSolid(true);
+              }}
+            />
+          </View>
+        </View>
 
         <View className="justify-between gap-6 md:flex-row md:gap-10">
-          {!isScreenMedium && (
-            <View className="items-start">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-            </View>
-          )}
-          <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
+          <View style={{ flex: 0.7 }}>
             <View className="flex-row items-center justify-between">
               <View className="flex-1 gap-2">
-                {!isScreenMedium && (
-                  <CoinName
-                    contractName={token?.contractName || ''}
-                    contractTickerSymbol={token?.contractTickerSymbol || ''}
-                  />
-                )}
-
                 <Text className="text-4xl font-semibold md:text-5xl">
                   {selectedPrice
                     ? `$${formatNumber(selectedPrice)}`
@@ -203,7 +201,7 @@ export default function Coin() {
                   )}
                 </View>
               </View>
-              {isScreenMedium && <CoinChartTime />}
+              <CoinChartTime />
             </View>
 
             <View className="-mt-2 px-4 md:mt-0">
@@ -228,19 +226,8 @@ export default function Coin() {
               ) : null}
             </View>
           </View>
-          {isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
+          <ResponsiveBalanceBreakdown token={token} />
         </View>
-
-        {!isScreenMedium && <CoinChartTime />}
-
-        {!isScreenMedium && (
-          <CoinButtons
-            contractAddress={contractAddress as Address}
-            isWithdraw={isSoUSDEthereum(contractAddress)}
-          />
-        )}
-
-        {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
 
         {token?.contractTickerSymbol && (
           <View className="pt-12">
@@ -250,15 +237,30 @@ export default function Coin() {
       </View>
     ),
     [
-      isScreenMedium,
       token,
-      contractAddress,
       selectedPrice,
       selectedPriceChange,
       isPriceIncrease,
       formattedChartData,
       isLoadingCoinHistoricalChart,
     ],
+  );
+
+  const mobileHeaderContent = useMemo(
+    () => (
+      <View className="gap-8 py-6">
+        <CoinSummary token={token} breakdown={breakdown} tokenVault={tokenVault} />
+
+        <CoinActionPills tokenVault={tokenVault} />
+
+        <CoinBalanceBreakdown breakdown={breakdown} />
+
+        {token?.contractTickerSymbol && (
+          <Text className="text-base font-semibold text-muted-foreground">Recent activity</Text>
+        )}
+      </View>
+    ),
+    [token, breakdown, tokenVault],
   );
 
   return (
@@ -272,7 +274,7 @@ export default function Coin() {
           <ActivityTransactions
             symbol={token?.contractTickerSymbol}
             showTimestamp={false}
-            listHeaderComponent={coinHeaderContent}
+            listHeaderComponent={isScreenMedium ? desktopHeaderContent : mobileHeaderContent}
           />
         </View>
       )}
