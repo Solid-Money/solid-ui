@@ -17,7 +17,7 @@ import { useShallow } from 'zustand/react/shallow';
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import {
   AnimatedGradientBackground,
-  DesktopCarousel,
+  DesktopHero,
   OnboardingPage,
   OnboardingPagination,
 } from '@/components/Onboarding';
@@ -119,11 +119,6 @@ export default function LegacyOnboarding() {
   const handleRecoverAccount = useCallback(() => {
     router.push(path.RECOVERY);
   }, [router]);
-
-  const handleHelpCenter = useCallback(() => {
-    // TODO: Add help center link
-    // Linking.openURL(HELP_CENTER_URL);
-  }, []);
 
   const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
 
@@ -247,10 +242,8 @@ export default function LegacyOnboarding() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      {/* TODO: lazy-loaded for FCP improvement */}
-      {/* <LazyDesktopCarousel onHelpCenterPress={handleHelpCenter} /> */}
-      <DesktopCarousel onHelpCenterPress={handleHelpCenter} />
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Auth Options (70%) */}
       <View className="relative flex-1">
@@ -290,7 +283,7 @@ export default function LegacyOnboarding() {
               {/* Create Account Button */}
               <Button
                 variant="brand"
-                className="h-14 w-full rounded-xl"
+                className="h-14 w-full rounded-full"
                 onPress={handleCreateAccount}
               >
                 <Text className="text-base font-bold">Create account</Text>
@@ -306,7 +299,7 @@ export default function LegacyOnboarding() {
               {/* Login Button */}
               <Button
                 variant="secondary"
-                className="h-14 w-full rounded-xl border-0"
+                className="h-14 w-full rounded-full border-0"
                 onPress={handleLoginPress}
                 disabled={isLoginPending}
               >
