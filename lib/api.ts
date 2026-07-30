@@ -579,6 +579,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Turn a non-2xx response into an ApiError, reading the backend's
+ * `{ code, message }` envelope so callers can branch on a stable code instead of
+ * an opaque throw. Falls back to `fallbackMessage` when the body isn't JSON.
+ */
+export const toApiError = async (
+  response: Response,
+  fallbackMessage: string,
+): Promise<ApiError> => {
+  let code: string | undefined;
+  let message: string | undefined;
+  try {
+    const body = await response.json();
+    if (body && typeof body === 'object') {
+      if (typeof body.code === 'string') code = body.code;
+      if (typeof body.message === 'string') message = body.message;
+      else if (Array.isArray(body.message)) message = body.message.join(', ');
+    }
+  } catch {
+    // non-JSON error body — keep the generic fallback
+  }
+  return new ApiError(response.status, message ?? fallbackMessage, code);
+};
+
 /** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
 export const createDiditSession = async (
   callback?: string,
@@ -596,22 +620,7 @@ export const createDiditSession = async (
     body: JSON.stringify({ ...(callback ? { callback } : {}), flow }),
   });
   if (!response.ok) {
-    // Parse the backend error envelope ({ code, message }) so callers can branch
-    // on a stable code instead of the previous opaque throw. Falls back to a
-    // generic message when the body isn't JSON.
-    let code: string | undefined;
-    let message: string | undefined;
-    try {
-      const body = await response.json();
-      if (body && typeof body === 'object') {
-        if (typeof body.code === 'string') code = body.code;
-        if (typeof body.message === 'string') message = body.message;
-        else if (Array.isArray(body.message)) message = body.message.join(', ');
-      }
-    } catch {
-      // non-JSON error body — keep the generic fallback
-    }
-    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+    throw await toApiError(response, 'Failed to create verification session');
   }
   return response.json();
 };
@@ -1496,7 +1505,11 @@ export const login = async (signedRequest: any) => {
       ...signedRequest,
     }),
   });
-  if (!response.ok) throw response;
+  // Parsed rather than thrown raw: the backend distinguishes an unregistered
+  // passkey (404 PASSKEY_NOT_REGISTERED) from other failures, and the raw
+  // Response carried neither `code` nor `message`, so every login failure
+  // surfaced as the same contentless toast.
+  if (!response.ok) throw await toApiError(response, 'Failed to log in');
   return response.json();
 };
 

@@ -49,8 +49,12 @@ const CardGlyphBadge = ({ last4 }: CardGlyphBadgeProps) => {
 };
 
 const styles = StyleSheet.create({
-  // Bottom-left of the card face (the artwork has ~5.6% left / ~10% bottom shadow).
-  anchor: { position: 'absolute', left: '9%', bottom: '14%' },
+  // Figma puts the pill 5.2% of the card body's width from its left edge and 8.7%
+  // of its height up from the bottom. visa-platinum-card.png wraps that body in a
+  // baked-in shadow (5.575% of the image's width on the left, 9.91% of its height
+  // at the bottom), and these percentages resolve against the IMAGE box — so the
+  // design's offsets become 5.575 + 5.2×0.8885 = 10.2% and 9.91 + 8.7×0.827 = 17.1%.
+  anchor: { position: 'absolute', left: '10.2%', bottom: '17.1%' },
   dotsOval: { width: OVAL_WIDTH, height: OVAL_HEIGHT },
   spaceOval: { width: OVAL_SPACE_WIDTH, height: OVAL_HEIGHT },
   // The empty area in card-oval-space.png (right of the dots ≈ 44%–92% of width).
@@ -63,7 +67,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  digits: { color: '#ffffff', fontSize: 14, fontWeight: '600', lineHeight: 16 },
+  // Figma 20095:5483 — 16px Mona Sans Medium.
+  digits: { color: '#ffffff', fontSize: 16, fontWeight: '500', lineHeight: 18 },
 });
 
 export default CardGlyphBadge;

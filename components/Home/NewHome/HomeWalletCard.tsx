@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
-import { path } from '@/constants/path';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 interface HomeWalletCardProps {
   /** When true the card links to card details; otherwise it's shown but inert. */
@@ -19,16 +20,21 @@ interface HomeWalletCardProps {
 
 /**
  * The merged green VISA Platinum "glass" card shown on the wallet page. Always
- * displayed; only navigates to the card management page (/card/details) once the
- * user actually has a card. On tap it records its window rect and starts a hero
- * transition (useCardHeroStore) so the card flies up to the card-details screen.
- * Without a card, tapping instead opens the same "Your card is waiting"
- * verification prompt as HomeVerificationCard.
+ * displayed; only opens the card-details pane once the user actually has a card.
+ *
+ * Tapping is a state change on this same screen — no navigation — so the card can
+ * start flying on the tap's own frame with nothing mounting underneath it. Without a
+ * card, tapping instead opens the same "Your card is waiting" verification prompt as
+ * HomeVerificationCard.
  */
 const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProps) => {
-  const router = useRouter();
   const start = useCardHeroStore(state => state.start);
+  const heroActive = useCardHeroStore(state => state.active);
+  const openPane = useCardPaneStore(state => state.open);
+  const isPaneOpen = useCardPaneStore(state => state.isOpen);
   const ref = useRef<View>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
 
@@ -50,24 +56,40 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
   const handlePress = () => {
     const node = ref.current;
     if (!node) {
-      router.push(path.CARD_DETAILS);
+      openPane();
       return;
     }
-    // Capture the card's position, start the hero, then navigate
-    // (measureInWindow is async, so navigate from its callback).
+    // measureInWindow is async, so the open happens from its callback. The card's
+    // live position is needed both to fly from and, later, to fly back to.
     node.measureInWindow((x, y, width, height) => {
-      if (width && height) {
-        start({ x, y, width, height }, last4 ?? '');
+      if (!width || !height) {
+        openPane();
+        return;
       }
-      router.push(path.CARD_DETAILS);
+      const from = { x, y, width, height };
+      // The destination is computed rather than reported by the pane, so the flight
+      // starts on this frame instead of waiting on a layout pass.
+      start(from, getCardHeroDestination({ windowWidth, topInset: insets.top }), last4 ?? '');
+      openPane(from);
     });
   };
 
   return (
-    <Pressable ref={ref} collapsable={false} onPress={handlePress}>
+    // Hidden for as long as the pane owns the card — while it flies, and while the
+    // pane is open — so no copy is left behind under the (background-less) pane.
+    <Pressable
+      ref={ref}
+      collapsable={false}
+      onPress={handlePress}
+      style={heroActive || isPaneOpen ? styles.hidden : undefined}
+    >
       {card}
     </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  hidden: { opacity: 0 },
+});
 
 export default HomeWalletCard;

@@ -12,14 +12,15 @@ interface BalanceState {
 
 export const useBalanceStore = create<BalanceState>()(
   persist(
-    (set) => ({
+    set => ({
       earnedUSD: 0,
 
       setEarnedUSD: earnedUSD => set({ earnedUSD }),
 
-      clearBalance: () => set({
-        earnedUSD: 0,
-      }),
+      clearBalance: () =>
+        set({
+          earnedUSD: 0,
+        }),
     }),
     {
       name: USER.balanceStorageKey,

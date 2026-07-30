@@ -207,6 +207,20 @@ export function useDiditSession() {
   }, [redirectBasedOnKycStatus]);
 
   /**
+   * User closed the provider SDK before submitting anything. There is no outcome to
+   * poll for, so staying on /kyc leaves them watching the "Complete it and return
+   * here" spinner forever. Re-initialising instead would immediately relaunch the
+   * SDK and trap them in a loop, so send them back to the screen that started KYC.
+   */
+  const onVerificationCancelled = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace((kycFlow === 'va' ? path.HOME : path.CARD_ACTIVATE) as any);
+  }, [kycFlow, router]);
+
+  /**
    * Hard failure (network error, session creation failed, SDK reported `failed`). Stays on
    * /kyc and shows the error UI with a Try-again button — distinct from Declined, which is a
    * KYC outcome we want surfaced on /card/activate alongside the warnings.
@@ -270,6 +284,7 @@ export function useDiditSession() {
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationError,
   };
 }

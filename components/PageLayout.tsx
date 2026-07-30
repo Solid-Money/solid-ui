@@ -69,6 +69,10 @@ interface PageLayoutProps {
   mobileHeaderRightAction?: 'default' | 'help';
   onMobileHeaderHelpPress?: () => void;
 
+  // Animate the mobile navbar buttons out while a card hero transition runs
+  // (home screen only — it's the screen the card flies away from).
+  animateCardHeroExit?: boolean;
+
   // Layout options
   scrollable?: boolean;
   // Lets a child temporarily suspend scrolling (e.g. while it's running its own
@@ -159,6 +163,7 @@ export default function PageLayout({
   mobileHeaderLeftAction = 'profile',
   mobileHeaderRightAction = 'default',
   onMobileHeaderHelpPress,
+  animateCardHeroExit = false,
   scrollable = true,
   scrollEnabled = true,
   edges = ['right', 'left', 'bottom', 'top'],
@@ -225,6 +230,7 @@ export default function PageLayout({
           leftAction={mobileHeaderLeftAction}
           rightAction={mobileHeaderRightAction}
           onHelpPress={onMobileHeaderHelpPress}
+          animateCardHeroExit={animateCardHeroExit}
         />
       ))
     );

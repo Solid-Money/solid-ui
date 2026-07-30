@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import SNSMobileSDK from '@sumsub/react-native-mobilesdk-module';
 
 import {
@@ -30,24 +30,31 @@ export default function SumsubKycNative() {
     fetchAccessToken,
     onVerificationComplete,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationError,
   } = useSumsubSession();
   const launchedRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const accessToken = session.phase === 'ready' ? session.accessToken : null;
 
   useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!accessToken || launchedRef.current) return;
     launchedRef.current = true;
-
-    let cancelled = false;
 
     // init(accessToken, expirationHandler): the handler returns a Promise that
     // resolves to a fresh token when the current one expires.
     const instance = SNSMobileSDK.init(accessToken, () => fetchAccessToken())
       .withHandlers({
         onStatusChanged: (event: { prevStatus?: string; newStatus?: string }) => {
-          if (cancelled) return;
+          if (!isMountedRef.current) return;
           if (event?.newStatus === 'Approved') onVerificationComplete();
           else if (event?.newStatus === 'FinallyRejected') onVerificationDeclined();
         },
@@ -55,12 +62,17 @@ export default function SumsubKycNative() {
       .withLocale('en')
       .build();
 
+    // Flips the phase to 'started', which clears accessToken and re-runs this
+    // effect. Guarding the callbacks below on the mounted ref rather than an
+    // effect-scoped `cancelled` flag is what keeps the launch result from being
+    // discarded by that re-run — dropping it left the user stranded on the
+    // "Complete it and return here" spinner after closing the SDK.
     markStarted();
 
     instance
       .launch()
       .then((result: { success?: boolean; status?: string }) => {
-        if (cancelled) return;
+        if (!isMountedRef.current) return;
         const status = result?.status;
         if (status === 'Approved') {
           onVerificationComplete();
@@ -75,32 +87,27 @@ export default function SumsubKycNative() {
           // Submitted → Wirex adjudicates; land on the pending/review screen.
           onVerificationComplete();
         } else {
-          // Closed before submitting (Initial/Ready) → let them retry.
-          launchedRef.current = false;
-          initSession();
+          // Closed before submitting (Initial/Ready) → nothing to poll for.
+          onVerificationCancelled();
         }
       })
       .catch((e: unknown) => {
-        if (cancelled) return;
+        if (!isMountedRef.current) return;
         launchedRef.current = false;
         onVerificationError(e instanceof Error ? e.message : 'Verification failed');
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [
     accessToken,
     fetchAccessToken,
     markStarted,
-    initSession,
     onVerificationComplete,
     onVerificationDeclined,
+    onVerificationCancelled,
     onVerificationError,
   ]);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-background">
       {session.phase === 'loading' && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
       {session.phase === 'unavailable' && (
@@ -111,10 +118,3 @@ export default function SumsubKycNative() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-});

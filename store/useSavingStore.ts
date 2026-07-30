@@ -14,7 +14,7 @@ interface SavingState {
 
 export const useSavingStore = create<SavingState>()(
   persist(
-    (set) => ({
+    set => ({
       selectedVault: 0,
 
       setSelectedVault: vault => {

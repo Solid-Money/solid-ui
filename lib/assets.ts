@@ -170,6 +170,18 @@ export const ASSETS = {
     hash: '1d9d5c25',
   },
   'images/card-oval.png': { module: require('@/assets/images/card-oval.png'), hash: '07e162f1' },
+  'images/card-pill-cvv.png': {
+    module: require('@/assets/images/card-pill-cvv.png'),
+    hash: 'b168c30e',
+  },
+  'images/card-pill-expiry.png': {
+    module: require('@/assets/images/card-pill-expiry.png'),
+    hash: '8116b0c8',
+  },
+  'images/card-pill-number.png': {
+    module: require('@/assets/images/card-pill-number.png'),
+    hash: 'e2dc5afb',
+  },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
   'images/card-waiting-hero.png': {
     module: require('@/assets/images/card-waiting-hero.png'),

@@ -3,6 +3,8 @@ import { TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
+import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import HomeVerificationCard from '@/components/Home/NewHome/HomeVerificationCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
@@ -123,7 +125,15 @@ export default function HomeScreenNew() {
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
 
   return (
-    <PageLayout mobileTitle={walletTitle}>
+    // The card details are a layer on this screen rather than a route of their own,
+    // so opening them is a state change on an already-mounted tree — that's what
+    // lets the card animate without a screen mounting underneath it. This screen's
+    // own content clears out of the way as the card flies (Figma 20048:3312).
+    <PageLayout
+      mobileTitle={walletTitle}
+      animateCardHeroExit
+      additionalContent={<CardDetailsPane />}
+    >
       <View className="mb-5 w-full gap-8 pb-24">
         {isBalanceSectionLoading ? (
           <View className="items-center gap-6 pt-6">
@@ -133,14 +143,20 @@ export default function HomeScreenNew() {
           </View>
         ) : (
           <View className="gap-5">
-            <WalletBalanceHeadline balance={spendableBalance} />
-            <OtherBalancesDropdown
-              walletBalance={walletBalance}
-              cardBalance={cardBalance}
-              savingsBalance={savingsBalance}
-              userHasCard={userHasCard}
-            />
-            <WalletActions hasFunds={depositCompleted} />
+            <HeroExit spec={HERO_EXIT.balance}>
+              <WalletBalanceHeadline balance={walletBalance} />
+            </HeroExit>
+            <HeroExit spec={HERO_EXIT.balance}>
+              <OtherBalancesDropdown
+                cardBalance={cardBalance}
+                savingsBalance={savingsBalance}
+                userHasCard={userHasCard}
+                walletBalance={walletBalance}
+              />
+            </HeroExit>
+            <HeroExit spec={HERO_EXIT.actions}>
+              <WalletActions hasFunds={depositCompleted} />
+            </HeroExit>
           </View>
         )}
 
@@ -154,12 +170,14 @@ export default function HomeScreenNew() {
             depositCompleted={depositCompleted}
           />
           {!userHasCard && (
-            <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
+            <HeroExit spec={HERO_EXIT.belowCard}>
+              <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
+            </HeroExit>
           )}
         </View>
 
         {showAssets && (
-          <View className="gap-3 px-4">
+          <HeroExit spec={HERO_EXIT.belowCard} className="gap-3 px-4">
             <Text className="text-base font-normal text-white/50">Balances</Text>
             {tokenError ? (
               <View className="flex-1 items-center justify-center p-4">
@@ -177,7 +195,7 @@ export default function HomeScreenNew() {
             ) : (
               <LazyWalletTabs />
             )}
-          </View>
+          </HeroExit>
         )}
       </View>
     </PageLayout>
