@@ -1,5 +1,5 @@
-import { type RefObject, useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -9,7 +9,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -30,6 +29,7 @@ import { type AssetPath, getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
 
 import TierPointsSheet from './TierPointsSheet';
+import TierStatsBand from './TierStatsBand';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
@@ -58,9 +58,6 @@ const TIER_HERO_SIZES: Record<RewardsTier, number> = {
 
 const TIER_HERO_GLOW_ASSET: AssetPath = 'images/rewards-tiers/glow.svg';
 
-const CORE_SUMMARY = require('@/assets/images/rewards-tiers/core-summary.png');
-const PRIME_SUMMARY = require('@/assets/images/rewards-tiers/prime-summary.png');
-const ULTRA_SUMMARY = require('@/assets/images/rewards-tiers/ultra-summary.png');
 const PRIME_TIER_SPARKLE = require('@/assets/images/rewards-tiers/prime-tier-sparkle.png');
 const ULTRA_TIER_SPARKLE = require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png');
 const TIER_INFO = require('@/assets/images/rewards-tiers/tier-info.png');
@@ -259,23 +256,30 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
 interface TierSwitcherProps {
   selected: RewardsTier;
   onSelect: (tier: RewardsTier) => void;
-  blurTarget: RefObject<View | null>;
 }
 
 type SegmentLayout = { x: number; width: number };
 
-const TierSwitcher = ({ selected, onSelect, blurTarget }: TierSwitcherProps) => {
+const TIER_TAB_STYLE = { fontFamily: 'MonaSans_500Medium', fontSize: 15, lineHeight: 18 } as const;
+
+/**
+ * Segmented tier control. The selected tab is a filled pill that slides from the
+ * previous tab to the tapped one; the track itself is transparent, so the tabs read
+ * as buttons over the page rather than as a black bar.
+ */
+const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
   const layouts = useRef<Partial<Record<RewardsTier, SegmentLayout>>>({});
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
+  // The pill covers its tab exactly — it used to be inset by 8px, which read as a
+  // stray highlight rather than a selected button.
   const handleLayout = (tier: RewardsTier) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
-    const indicatorLayout = { x: x + 1, width: width - 8 };
-    layouts.current[tier] = indicatorLayout;
+    layouts.current[tier] = { x, width };
     if (tier === selected) {
-      indicatorX.value = indicatorLayout.x;
-      indicatorWidth.value = indicatorLayout.width;
+      indicatorX.value = x;
+      indicatorWidth.value = width;
     }
   };
 
@@ -290,37 +294,21 @@ const TierSwitcher = ({ selected, onSelect, blurTarget }: TierSwitcherProps) => 
     transform: [{ translateX: indicatorX.value }],
     width: indicatorWidth.value,
   }));
-  const blurViewProps =
-    Platform.OS === 'android'
-      ? {
-          blurMethod: 'dimezisBlurView' as const,
-          blurReductionFactor: 3.2,
-          blurTarget,
-        }
-      : {};
 
   return (
     <View
-      className="h-[33px] w-[248px] flex-row items-center self-center overflow-hidden rounded-full p-1"
+      className="h-11 flex-row items-center self-center rounded-full p-1"
       style={{
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'rgba(255,255,255,0.12)',
         borderWidth: StyleSheet.hairlineWidth,
-        transform: [{ translateY: 9 }],
       }}
     >
-      <BlurView
-        {...blurViewProps}
-        intensity={80}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-        tint="systemChromeMaterialDark"
-      />
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.56)' }]}
-      />
+      {/* left-0 anchors the pill to the track's own origin, so translateX can be the
+          tab's measured x. Without it the pill starts at its static position — one
+          padding-width in — and lands offset from the tab it is meant to cover. */}
       <Animated.View
-        className="absolute bottom-1 top-1 rounded-full bg-white/15"
+        className="absolute bottom-1 left-0 top-1 rounded-full bg-white/15"
+        pointerEvents="none"
         style={indicatorStyle}
       />
       {TIERS.map(tier => (
@@ -328,16 +316,9 @@ const TierSwitcher = ({ selected, onSelect, blurTarget }: TierSwitcherProps) => 
           key={tier}
           onPress={() => onSelect(tier)}
           onLayout={handleLayout(tier)}
-          className="flex-1 items-center justify-center"
+          className="h-9 items-center justify-center rounded-full px-6 transition-all active:opacity-70"
         >
-          <Text
-            className="text-white"
-            style={{
-              fontFamily: 'MonaSans_500Medium',
-              fontSize: 14,
-              lineHeight: 17,
-            }}
-          >
+          <Text className="text-white" style={TIER_TAB_STYLE}>
             {TIER_LABELS[tier]}
           </Text>
         </Pressable>
@@ -421,14 +402,7 @@ const CoreSummaryAndPerks = () => {
 
   return (
     <View className="mx-4 mt-[45px]">
-      <View className="h-[137px] overflow-hidden rounded-twice">
-        <Image
-          source={CORE_SUMMARY}
-          style={StyleSheet.absoluteFillObject}
-          contentFit="fill"
-          accessibilityLabel="3% cashback. 24/7 fast support."
-        />
-      </View>
+      <TierStatsBand stats={content.stats} />
 
       <View className="-mt-[41px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
         {content.perks.map((perk, index) => (
@@ -569,19 +543,11 @@ const PremiumPerkIcon = ({ index }: { index: number }) => {
 
 const PremiumSummaryAndPerks = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
   const content = TIER_CONTENT[tier];
-  const summary = tier === RewardsTier.PRIME ? PRIME_SUMMARY : ULTRA_SUMMARY;
   const discount = tier === RewardsTier.PRIME ? '25%' : '50%';
 
   return (
     <View className="mx-4 mt-[59px]">
-      <View className="h-[137px] overflow-hidden rounded-twice">
-        <Image
-          source={summary}
-          style={StyleSheet.absoluteFillObject}
-          contentFit="fill"
-          accessibilityLabel={content.stats.map(stat => `${stat.value} ${stat.label}`).join('. ')}
-        />
-      </View>
+      <TierStatsBand stats={content.stats} />
 
       <View className="-mt-[42px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
         {content.perks.map((perk, index) => (
@@ -921,7 +887,6 @@ export default function RewardsBenefitsScreenNew() {
     () => rewardsData?.currentTier ?? RewardsTier.CORE,
   );
   const insets = useSafeAreaInsets();
-  const tierBlurTargetRef = useRef<View>(null);
   // The pager's pages are as wide as the column the page gets, which on desktop is
   // the body column beside the sidebar rather than the whole window.
   const pageWidth = usePageWidth();
@@ -975,11 +940,7 @@ export default function RewardsBenefitsScreenNew() {
           <View className="absolute left-4 top-4">
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
-          <TierSwitcher
-            selected={selectedTier}
-            onSelect={setSelectedTier}
-            blurTarget={tierBlurTargetRef}
-          />
+          <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
         </View>
       </LinearGradient>
 
@@ -1051,7 +1012,6 @@ export default function RewardsBenefitsScreenNew() {
       showNavbar={false}
       edges={['left', 'right']}
       additionalContent={overlays}
-      blurTargetRef={tierBlurTargetRef}
       scrollEnabled={!isSwiping}
     >
       <GestureDetector gesture={swipeGesture}>

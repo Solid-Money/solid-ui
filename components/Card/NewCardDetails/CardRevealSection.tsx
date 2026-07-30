@@ -149,10 +149,21 @@ const CardRevealSection = ({
 
   return (
     <View style={styles.slot}>
-      {/* box-none: the artwork's transparent shadow overlaps the panel below, so the
-          wrapper must never be a touch target itself — but the copy buttons on the
-          revealed face still need to receive taps. */}
-      <View className="z-10" style={styles.cardBody} pointerEvents="box-none">
+      {/* box-none while the pane is open: the artwork's transparent shadow overlaps the
+          panel below, so the wrapper must never be a touch target itself — but the copy
+          buttons on the revealed face still need to receive taps.
+
+          It has to go back to 'none' when the pane closes. The pane stays mounted and
+          laid out (transparent, pointerEvents="none") so it can open instantly, and on
+          web `box-none` compiles to `pointer-events: none` on this view plus
+          `> * { pointer-events: auto }` — which handed hit-testing back to the invisible
+          card and left it swallowing taps aimed at the wallet's balance pill and action
+          buttons underneath. */}
+      <View
+        className="z-10"
+        style={styles.cardBody}
+        pointerEvents={isPaneOpen ? 'box-none' : 'none'}
+      >
         <CardHeroTarget>
           <View style={styles.cardStack}>
             <Animated.View style={frontStyle} pointerEvents="none">
