@@ -87,17 +87,22 @@ export default function SignupOtp() {
     control,
     watch,
     handleSubmit,
-    formState: { errors, isValid },
+    clearErrors,
+    formState: { errors },
     reset: resetForm,
   } = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
-    mode: 'onChange',
+    // Validate on submit only so the error appears when the code is submitted,
+    // never while the user is still entering digits
+    mode: 'onSubmit',
+    reValidateMode: 'onSubmit',
     defaultValues: {
       otp: '',
     },
   });
 
   const otpValue = watch('otp');
+  const isOtpComplete = otpValue.length === OTP_LENGTH && /^\d+$/.test(otpValue);
 
   // Calculate and update resend cooldown
   useEffect(() => {
@@ -178,11 +183,11 @@ export default function SignupOtp() {
   useEffect(() => {
     // Wait for store hydration before auto-submit
     if (!_hasHydrated) return;
-    if (otpValue.length === OTP_LENGTH && isValid && otpValue !== lastSubmittedOtpRef.current) {
+    if (isOtpComplete && otpValue !== lastSubmittedOtpRef.current) {
       lastSubmittedOtpRef.current = otpValue;
       handleVerifyOtp();
     }
-  }, [_hasHydrated, otpValue, isValid, handleVerifyOtp]);
+  }, [_hasHydrated, otpValue, isOtpComplete, handleVerifyOtp]);
 
   // Wait for store hydration before rendering
   if (!_hasHydrated) {
@@ -232,6 +237,13 @@ export default function SignupOtp() {
     router.replace(path.SIGNUP_EMAIL);
   };
 
+  // Editing the code hides any error raised by the previous submit
+  const handleOtpChange = (onChange: (value: string) => void) => (otp: string) => {
+    onChange(otp);
+    if (errors.otp) clearErrors('otp');
+    if (error) setError(null);
+  };
+
   const canResend = resendCooldown === 0 && !isLoading;
   const displayError = errors.otp?.message || error || rateLimitError;
 
@@ -264,7 +276,7 @@ export default function SignupOtp() {
           render={({ field: { onChange, value } }) => (
             <OtpInput
               value={value}
-              onChange={onChange}
+              onChange={handleOtpChange(onChange)}
               length={OTP_LENGTH}
               autoFocus
               error={!!displayError}
@@ -342,7 +354,7 @@ export default function SignupOtp() {
                 render={({ field: { onChange, value } }) => (
                   <OtpInput
                     value={value}
-                    onChange={onChange}
+                    onChange={handleOtpChange(onChange)}
                     length={OTP_LENGTH}
                     autoFocus
                     error={!!displayError}
