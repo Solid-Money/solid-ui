@@ -19,7 +19,9 @@ const AddFundsTrigger = ({ fullWidth, ...props }: TriggerProps & { fullWidth: bo
     {...props}
     className={cn(
       'h-14 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80',
-      fullWidth ? 'w-full' : 'flex-1',
+      // On its own it stops at 24rem and centres, rather than stretching the full
+      // width of a desktop column.
+      fullWidth ? 'mx-auto w-full max-w-[24rem]' : 'flex-1',
     )}
   >
     <Text className="text-base font-bold text-black">Add Funds</Text>

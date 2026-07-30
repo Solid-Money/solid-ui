@@ -34,6 +34,20 @@ export const CARD_TOP_GAP = 48;
 export const CARD_TOP_SHADOW_RATIO = 0.04762;
 /** And 9.910% of the height, i.e. 6.388% of the width, below it. */
 export const CARD_BOTTOM_SHADOW_RATIO = 0.06388;
+/**
+ * The artwork bakes shadow into each side too — 48px of its 861px width. Left
+ * uncancelled it made the visible card noticeably narrower than the sections around
+ * it, and the wider the column the worse it got (39px short at 640px).
+ */
+export const CARD_SIDE_SHADOW_RATIO = 48 / 861;
+/** The visible card body's share of the artwork's width. */
+export const CARD_BODY_WIDTH_RATIO = 1 - CARD_SIDE_SHADOW_RATIO * 2;
+/**
+ * Negative horizontal margin that grows the artwork box until the visible card body
+ * spans the content column exactly — as a share of that column, so it goes in a
+ * style as `${-CARD_BODY_BLEED_PERCENT}%`.
+ */
+export const CARD_BODY_BLEED_PERCENT = (CARD_SIDE_SHADOW_RATIO / CARD_BODY_WIDTH_RATIO) * 100;
 
 interface DestinationArgs {
   /** Window width in dp. */
@@ -50,9 +64,9 @@ interface DestinationArgs {
 
 /**
  * Where the card's artwork box comes to rest on the card-details screen, in window
- * coordinates. The card is full-bleed — it spans the content container's full width,
- * padding included — so its width is the container's, capped by `max-w-lg` and
- * centred.
+ * coordinates. The visible card spans the content column — the container capped by
+ * `max-w-lg`, less its `px-4` — so the artwork box around it is wider still by the
+ * shadow it bakes into each side, and centred on the same column.
  */
 export const getCardHeroDestination = ({
   windowWidth,
@@ -60,7 +74,8 @@ export const getCardHeroDestination = ({
   pageLeft = 0,
 }: DestinationArgs): CardHeroRect => {
   const pageWidth = windowWidth - pageLeft;
-  const width = Math.min(pageWidth, CONTENT_MAX_WIDTH);
+  const containerWidth = Math.min(pageWidth, CONTENT_MAX_WIDTH);
+  const width = (containerWidth - CONTENT_PADDING * 2) / CARD_BODY_WIDTH_RATIO;
   return {
     x: pageLeft + (pageWidth - width) / 2,
     y: topInset + HEADER_HEIGHT + CARD_TOP_GAP - width * CARD_TOP_SHADOW_RATIO,
