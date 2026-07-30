@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -85,6 +85,8 @@ interface PageLayoutProps {
 
   // Additional content (e.g., modals that need to be outside ScrollView)
   additionalContent?: ReactNode;
+  // Lets an overlay outside this layout blur the scrolling content on Android.
+  blurTargetRef?: RefObject<View | null>;
 
   // Styling
   className?: string;
@@ -169,6 +171,7 @@ export default function PageLayout({
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
+  blurTargetRef,
   className = '',
   contentClassName = '',
 }: PageLayoutProps) {
@@ -192,6 +195,8 @@ export default function PageLayout({
   const shouldOverlayMobileNavbar = shouldShowMobileNavbar && !customMobileHeader;
   const shouldShowScrollableWhatsNew =
     shouldOverlayMobileNavbar && mobileHeaderRightAction === 'default';
+  const shouldWrapBlurTarget = shouldOverlayMobileNavbar || !!blurTargetRef;
+  const resolvedBlurTargetRef = blurTargetRef ?? mobileBlurTargetRef;
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
   const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
 
@@ -288,8 +293,8 @@ export default function PageLayout({
         className={`flex-1 bg-background text-foreground ${className}`}
         edges={safeAreaEdges}
       >
-        {shouldOverlayMobileNavbar ? (
-          <BlurTargetView ref={mobileBlurTargetRef} style={styles.mobileBlurTarget}>
+        {shouldWrapBlurTarget ? (
+          <BlurTargetView ref={resolvedBlurTargetRef} style={styles.mobileBlurTarget}>
             {scrollView}
           </BlurTargetView>
         ) : (
@@ -311,9 +316,9 @@ export default function PageLayout({
       className={`flex-1 bg-background text-foreground ${className}`}
       edges={safeAreaEdges}
     >
-      {shouldOverlayMobileNavbar ? (
+      {shouldWrapBlurTarget ? (
         <>
-          <BlurTargetView ref={mobileBlurTargetRef} style={styles.mobileBlurTarget}>
+          <BlurTargetView ref={resolvedBlurTargetRef} style={styles.mobileBlurTarget}>
             <View
               className={`flex-1 ${contentClassName}`}
               style={mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined}
@@ -338,7 +343,9 @@ export default function PageLayout({
               {children}
             </View>
           </BlurTargetView>
-          <View style={styles.mobileNavbarOverlay}>{renderNavbar(true)}</View>
+          {shouldOverlayMobileNavbar && (
+            <View style={styles.mobileNavbarOverlay}>{renderNavbar(true)}</View>
+          )}
         </>
       ) : (
         <>

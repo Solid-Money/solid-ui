@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Dimensions, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { Dimensions, LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -26,6 +27,8 @@ import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { type AssetPath, getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
+
+import TierPointsSheet from './TierPointsSheet';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
@@ -223,7 +226,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     headline: 'Unmatched Spending Power',
     unlockCopy: 'Unlocks at 35M Points',
     stats: [
-      { label: 'Cashback', value: '4%' },
+      { label: 'Cashback', value: '5%' },
       { label: 'Yield boost', value: '+3%' },
       { label: 'Back on AI', value: '50%' },
     ],
@@ -255,11 +258,12 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
 interface TierSwitcherProps {
   selected: RewardsTier;
   onSelect: (tier: RewardsTier) => void;
+  blurTarget: RefObject<View | null>;
 }
 
 type SegmentLayout = { x: number; width: number };
 
-const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
+const TierSwitcher = ({ selected, onSelect, blurTarget }: TierSwitcherProps) => {
   const layouts = useRef<Partial<Record<RewardsTier, SegmentLayout>>>({});
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
@@ -285,12 +289,35 @@ const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
     transform: [{ translateX: indicatorX.value }],
     width: indicatorWidth.value,
   }));
+  const blurViewProps =
+    Platform.OS === 'android'
+      ? {
+          blurMethod: 'dimezisBlurView' as const,
+          blurReductionFactor: 3.2,
+          blurTarget,
+        }
+      : {};
 
   return (
     <View
-      className="h-[33px] w-[248px] flex-row items-center self-center rounded-full bg-black p-1"
-      style={{ transform: [{ translateY: 9 }] }}
+      className="h-[33px] w-[248px] flex-row items-center self-center overflow-hidden rounded-full p-1"
+      style={{
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: StyleSheet.hairlineWidth,
+        transform: [{ translateY: 9 }],
+      }}
     >
+      <BlurView
+        {...blurViewProps}
+        intensity={80}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        tint="systemChromeMaterialDark"
+      />
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.56)' }]}
+      />
       <Animated.View
         className="absolute bottom-1 top-1 rounded-full bg-white/15"
         style={indicatorStyle}
@@ -855,19 +882,28 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
           {content.headline}
         </Text>
 
-        <View className="mt-[14px] flex-row items-center gap-1">
-          <Text
-            className="text-white/70"
-            style={{
-              fontFamily: 'MonaSans_400Regular',
-              fontSize: 16,
-              lineHeight: 20,
-            }}
-          >
-            {subtitle}
-          </Text>
-          <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
-        </View>
+        <TierPointsSheet
+          trigger={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${subtitle}. Learn how to earn points`}
+              hitSlop={8}
+              className="mt-[14px] flex-row items-center gap-1"
+            >
+              <Text
+                className="text-white/70"
+                style={{
+                  fontFamily: 'MonaSans_400Regular',
+                  fontSize: 16,
+                  lineHeight: 20,
+                }}
+              >
+                {subtitle}
+              </Text>
+              <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
+            </Pressable>
+          }
+        />
       </View>
 
       <PremiumSummaryAndPerks tier={tier} />
@@ -883,6 +919,7 @@ export default function RewardsBenefitsScreenNew() {
     () => rewardsData?.currentTier ?? RewardsTier.CORE,
   );
   const insets = useSafeAreaInsets();
+  const tierBlurTargetRef = useRef<View>(null);
   // Suspends the page's vertical ScrollView while a horizontal swipe is active,
   // so the two gestures (a plain RN ScrollView isn't gesture-handler-aware)
   // don't both react to the same touch and fight over the drag.
@@ -932,7 +969,11 @@ export default function RewardsBenefitsScreenNew() {
           <View className="absolute left-4 top-4">
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
-          <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
+          <TierSwitcher
+            selected={selectedTier}
+            onSelect={setSelectedTier}
+            blurTarget={tierBlurTargetRef}
+          />
         </View>
       </LinearGradient>
 
@@ -1004,6 +1045,7 @@ export default function RewardsBenefitsScreenNew() {
       showNavbar={false}
       edges={['left', 'right']}
       additionalContent={overlays}
+      blurTargetRef={tierBlurTargetRef}
       scrollEnabled={!isSwiping}
     >
       <GestureDetector gesture={swipeGesture}>
