@@ -19,6 +19,7 @@ import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHer
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
+import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -52,6 +53,8 @@ const CLOSE_SETTLE_MS = 640;
 const CardDetailsPane = () => {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
+  // On desktop this pane is a column beside the sidebar, not the whole window.
+  const pageLeft = usePageLeft();
   const isOpen = useCardPaneStore(state => state.isOpen);
   const originRect = useCardPaneStore(state => state.originRect);
   const closePane = useCardPaneStore(state => state.close);
@@ -120,13 +123,13 @@ const CardDetailsPane = () => {
   const close = useCallback(() => {
     if (originRect) {
       startFlight(
-        getCardHeroDestination({ windowWidth, topInset: insets.top }),
+        getCardHeroDestination({ windowWidth, topInset: insets.top, pageLeft }),
         originRect,
         cardDetails?.card_details?.last_4 ?? '',
       );
     }
     closePane();
-  }, [originRect, startFlight, windowWidth, insets.top, cardDetails, closePane]);
+  }, [originRect, startFlight, windowWidth, pageLeft, insets.top, cardDetails, closePane]);
 
   // Android's hardware back closes the pane, matching what the header's back button
   // does — without this it would leave the wallet screen entirely.

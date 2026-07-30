@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
+import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -35,6 +36,9 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
   const ref = useRef<View>(null);
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // On desktop the pane the card flies to is a column beside the sidebar, not the
+  // whole window.
+  const pageLeft = usePageLeft();
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
 
@@ -69,7 +73,11 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
       const from = { x, y, width, height };
       // The destination is computed rather than reported by the pane, so the flight
       // starts on this frame instead of waiting on a layout pass.
-      start(from, getCardHeroDestination({ windowWidth, topInset: insets.top }), last4 ?? '');
+      start(
+        from,
+        getCardHeroDestination({ windowWidth, topInset: insets.top, pageLeft }),
+        last4 ?? '',
+      );
       openPane(from);
     });
   };

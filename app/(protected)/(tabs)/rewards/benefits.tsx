@@ -14,10 +14,9 @@ import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 
 export default function RewardsBenefits() {
-  // qa/preview builds see the redesigned tier-explore screen on mobile; desktop
-  // keeps the existing CompareTiersTable-based layout.
-  const { isDesktop } = useDimension();
-  return isDesktop ? <LegacyRewardsBenefits /> : <RewardsBenefitsScreenNew />;
+  // Desktop is the same redesigned tier-explore screen, stretched inside the
+  // sidebar shell — see `SidebarShell` in `(protected)/_layout.tsx`.
+  return <RewardsBenefitsScreenNew />;
 }
 
 function LegacyRewardsBenefits() {
