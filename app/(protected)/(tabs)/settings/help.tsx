@@ -1,111 +1,24 @@
-import { Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { router } from 'expo-router';
 
-import EmailIcon from '@/assets/images/email';
-import LegalIcon from '@/assets/images/legal';
-import LifebuoyIcon from '@/assets/images/lifebuoy';
-import MessageCircle from '@/assets/images/messages';
-import Navbar from '@/components/Navbar';
-import PageLayout from '@/components/PageLayout';
-import { SettingsCard } from '@/components/Settings';
-import { BackButton } from '@/components/ui/back-button';
-import { useDimension } from '@/hooks/useDimension';
-import { openIntercom } from '@/lib/intercom';
-import { cn } from '@/lib/utils';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
-interface SupportOption {
-  title: string;
-  description?: string;
-  icon: React.ReactNode;
-  link?: string;
-  onPress?: () => void;
-}
-
+/**
+ * Backwards-compatible route for existing links to `/settings/help`.
+ * New entry points open the global drawer directly so the current screen
+ * remains visible behind it.
+ */
 export default function Help() {
-  const { isDesktop } = useDimension();
+  useEffect(() => {
+    openSupportDrawer();
 
-  const supportOptions: SupportOption[] = [
-    {
-      title: 'Chat with us',
-      description: 'Live chat support',
-      icon: <MessageCircle color="#ffffff" />,
-      onPress: openIntercom,
-    },
-    {
-      title: 'FAQ',
-      description: 'Quick answers',
-      icon: <LifebuoyIcon color="#ffffff" />,
-      link: 'https://support.solid.xyz/en/collections/16780872-troubleshooting',
-    },
-    {
-      title: 'Email Support',
-      description: 'Contact our team',
-      icon: <EmailIcon color="#ffffff" />,
-      link: 'mailto:hello@solid.xyz',
-    },
-    {
-      title: 'Documentation',
-      description: 'Learn more',
-      icon: <LegalIcon color="#ffffff" />,
-      link: 'https://support.solid.xyz',
-    },
-  ];
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/settings');
+    }
+  }, []);
 
-  const mobileHeader = (
-    <View className="flex-row items-center justify-between px-4 py-3">
-      <BackButton />
-      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Help & Support</Text>
-    </View>
-  );
-
-  const desktopHeader = (
-    <>
-      <Navbar />
-      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
-        <View className="mb-8 flex-row items-center justify-between">
-          <BackButton />
-          <Text className="text-3xl font-semibold text-white">Help & Support</Text>
-          <View className="w-6" />
-        </View>
-      </View>
-    </>
-  );
-
-  return (
-    <PageLayout
-      customMobileHeader={mobileHeader}
-      customDesktopHeader={desktopHeader}
-      useDesktopBreakpoint
-    >
-      <View
-        className={cn('mx-auto w-full gap-3 px-4 py-4', {
-          'max-w-[512px]': isDesktop,
-          'max-w-7xl': !isDesktop,
-        })}
-      >
-        {/* Support Options */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
-          {supportOptions.map((option, index) => (
-            <View key={`support-${index}`}>
-              <SettingsCard
-                title={option.title}
-                description={option.description}
-                icon={option.icon}
-                link={option.link as any}
-                onPress={option.onPress}
-                isDesktop={isDesktop}
-              />
-              {index < supportOptions.length - 1 && <View className="border-t border-[#2a2a2a]" />}
-            </View>
-          ))}
-        </View>
-
-        {/* Additional Help Text */}
-        <View className="px-4 pb-2 pt-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Need more help? Email <Text className="font-medium text-white">hello@solid.xyz</Text>
-          </Text>
-        </View>
-      </View>
-    </PageLayout>
-  );
+  return <View className="flex-1 bg-[#111111]" />;
 }

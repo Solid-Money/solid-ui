@@ -124,8 +124,96 @@ function buildInfoPlist(targetName) {
 }
 
 /**
+ * Keep the extension embed phase ahead of scripts that mutate the containing
+ * app's Info.plist. Xcode 26 otherwise detects a dependency cycle between the
+ * app-extension copy command and the Firebase/Expo script phases.
+ */
+function orderNotificationServiceEmbedPhase(proj, targetName) {
+  const objects = proj.hash.project.objects;
+  const targets = objects.PBXNativeTarget ?? {};
+  const copyPhases = objects.PBXCopyFilesBuildPhase ?? {};
+
+  const appTarget = Object.entries(targets).find(
+    ([key, target]) =>
+      !key.endsWith('_comment') &&
+      target?.productType === '"com.apple.product-type.application"',
+  )?.[1];
+  if (!appTarget?.buildPhases) return;
+
+  const copyPhaseIndex = appTarget.buildPhases.findIndex((phaseRef) => {
+    const phase = copyPhases[phaseRef.value];
+    return phase?.files?.some((file) =>
+      file.comment?.includes(`${targetName}.appex`),
+    );
+  });
+  if (copyPhaseIndex < 0) return;
+
+  const firstInfoPlistScriptIndex = appTarget.buildPhases.findIndex(
+    (phaseRef) =>
+      phaseRef.comment?.includes('[CP-User] [RNFB] Core Configuration') ||
+      phaseRef.comment?.includes(
+        '[Expo Dev Launcher] Strip Local Network Keys for Release',
+      ),
+  );
+  if (
+    firstInfoPlistScriptIndex < 0 ||
+    copyPhaseIndex < firstInfoPlistScriptIndex
+  ) {
+    return;
+  }
+
+  const [copyPhase] = appTarget.buildPhases.splice(copyPhaseIndex, 1);
+  appTarget.buildPhases.splice(firstInfoPlistScriptIndex, 0, copyPhase);
+}
+
+/** Keep the extension's identity and version aligned with the containing app. */
+function configureNotificationServiceBuildSettings(proj, options) {
+  const {
+    targetName,
+    bundleIdentifier,
+    deploymentTarget,
+    appleTeamId,
+    marketingVersion,
+    currentProjectVersion,
+  } = options;
+  const objects = proj.hash.project.objects;
+  const target = Object.entries(objects.PBXNativeTarget ?? {}).find(
+    ([key, nativeTarget]) =>
+      !key.endsWith('_comment') &&
+      nativeTarget?.name?.replaceAll('"', '') === targetName,
+  )?.[1];
+  if (!target) return;
+
+  const configurationList =
+    objects.XCConfigurationList?.[target.buildConfigurationList];
+  for (const configurationRef of configurationList?.buildConfigurations ??
+    []) {
+    const buildSettings =
+      objects.XCBuildConfiguration?.[configurationRef.value]?.buildSettings;
+    if (!buildSettings) continue;
+
+    buildSettings.INFOPLIST_FILE = `"${targetName}/Info.plist"`;
+    buildSettings.PRODUCT_BUNDLE_IDENTIFIER = `"${bundleIdentifier}"`;
+    buildSettings.PRODUCT_NAME = `"${targetName}"`;
+    buildSettings.CURRENT_PROJECT_VERSION = `${currentProjectVersion}`;
+    buildSettings.MARKETING_VERSION = `${marketingVersion}`;
+    buildSettings.SWIFT_VERSION = '5.0';
+    buildSettings.IPHONEOS_DEPLOYMENT_TARGET = `"${deploymentTarget}"`;
+    buildSettings.TARGETED_DEVICE_FAMILY = '"1,2"';
+    buildSettings.CODE_SIGN_STYLE = 'Automatic';
+    buildSettings.CLANG_ENABLE_MODULES = 'YES';
+    if (configurationRef.comment === 'Debug') {
+      buildSettings.SWIFT_OPTIMIZATION_LEVEL = '"-Onone"';
+    }
+    if (appleTeamId) {
+      buildSettings.DEVELOPMENT_TEAM = `"${appleTeamId}"`;
+    }
+  }
+}
+
+/**
  * Create the NSE target in the generated Xcode project and embed it in the app.
- * Idempotent: a re-run (or a re-prebuild that kept the target) is a no-op.
+ * Idempotent: a re-run keeps the target and repairs its embed-phase ordering.
  */
 function addNotificationServiceTarget(config, options) {
   const { targetName, bundleIdentifier, deploymentTarget, appleTeamId } =
@@ -139,6 +227,8 @@ function addNotificationServiceTarget(config, options) {
       ? proj.pbxTargetByName(targetName)
       : undefined;
     if (existing) {
+      configureNotificationServiceBuildSettings(proj, options);
+      orderNotificationServiceEmbedPhase(proj, targetName);
       return config;
     }
 
@@ -200,25 +290,8 @@ function addNotificationServiceTarget(config, options) {
     });
 
     // 4. Per-configuration build settings for the new target.
-    const configurations = proj.pbxXCBuildConfigurationSection();
-    for (const key in configurations) {
-      const buildSettings = configurations[key].buildSettings;
-      if (!buildSettings) continue;
-      if (buildSettings.PRODUCT_NAME === `"${targetName}"`) {
-        buildSettings.INFOPLIST_FILE = `"${targetName}/Info.plist"`;
-        buildSettings.PRODUCT_BUNDLE_IDENTIFIER = `"${bundleIdentifier}"`;
-        buildSettings.SWIFT_VERSION = '5.0';
-        buildSettings.IPHONEOS_DEPLOYMENT_TARGET = `"${deploymentTarget}"`;
-        buildSettings.TARGETED_DEVICE_FAMILY = '"1,2"';
-        buildSettings.CODE_SIGN_STYLE = 'Automatic';
-        buildSettings.CLANG_ENABLE_MODULES = 'YES';
-        buildSettings.SWIFT_OPTIMIZATION_LEVEL = '"-Onone"';
-        if (appleTeamId) {
-          buildSettings.DEVELOPMENT_TEAM = `"${appleTeamId}"`;
-        }
-      }
-    }
-
+    configureNotificationServiceBuildSettings(proj, options);
+    orderNotificationServiceEmbedPhase(proj, targetName);
     return config;
   });
 }
@@ -242,6 +315,8 @@ module.exports = function withIosNotificationServiceExtension(config, props = {}
   const deploymentTarget =
     props.deploymentTarget ?? DEFAULT_DEPLOYMENT_TARGET;
   const appleTeamId = props.appleTeamId ?? config.ios?.appleTeamId;
+  const marketingVersion = config.version ?? '1.0';
+  const currentProjectVersion = config.ios?.buildNumber ?? '1';
 
   config = withRemoteNotificationBackgroundMode(config);
   config = addNotificationServiceTarget(config, {
@@ -249,6 +324,8 @@ module.exports = function withIosNotificationServiceExtension(config, props = {}
     bundleIdentifier,
     deploymentTarget,
     appleTeamId,
+    marketingVersion,
+    currentProjectVersion,
   });
   return config;
 };

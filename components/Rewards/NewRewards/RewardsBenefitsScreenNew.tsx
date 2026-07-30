@@ -164,7 +164,7 @@ const MUSIC_LOGOS: BrandLogo[] = [
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
   [RewardsTier.CORE]: {
     headline: 'The Solid Foundation',
-    unlockCopy: 'Your current tier',
+    unlockCopy: 'Starting tier',
     stats: [
       { label: 'Cashback', value: '3%' },
       { label: '24/7 Fast support', value: '' },
@@ -883,9 +883,8 @@ const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
 
 export default function RewardsBenefitsScreenNew() {
   const { data: rewardsData } = useRewardsUserData();
-  const [selectedTier, setSelectedTier] = useState<RewardsTier>(
-    () => rewardsData?.currentTier ?? RewardsTier.CORE,
-  );
+  const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(null);
+  const selectedTier = selectedTierOverride ?? rewardsData?.currentTier ?? RewardsTier.CORE;
   const insets = useSafeAreaInsets();
   // The pager's pages are as wide as the column the page gets, which on desktop is
   // the body column beside the sidebar rather than the whole window.
@@ -940,7 +939,7 @@ export default function RewardsBenefitsScreenNew() {
           <View className="absolute left-4 top-4">
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
-          <TierSwitcher selected={selectedTier} onSelect={setSelectedTier} />
+          <TierSwitcher selected={selectedTier} onSelect={setSelectedTierOverride} />
         </View>
       </LinearGradient>
 
@@ -996,7 +995,7 @@ export default function RewardsBenefitsScreenNew() {
         { duration: SLIDE_DURATION, easing: SLIDE_EASING },
         finished => {
           if (finished && targetIndex !== index) {
-            scheduleOnRN(setSelectedTier, TIERS[targetIndex]);
+            scheduleOnRN(setSelectedTierOverride, TIERS[targetIndex]);
           }
         },
       );

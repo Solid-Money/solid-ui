@@ -84,8 +84,8 @@ export const VirtualAccountDetailsModal = () => {
       </View>
 
       <Button
-        className="mt-auto h-14 rounded-2xl sm:mt-8"
-        style={{ backgroundColor: '#94F27F' }}
+        variant="brand"
+        className="mt-auto sm:mt-8"
         onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
       >
         <Text className="text-base font-bold text-black">Done</Text>

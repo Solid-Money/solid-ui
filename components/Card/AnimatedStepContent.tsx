@@ -53,9 +53,8 @@ export function AnimatedStepContent({
 
       {step.buttonText && !step.completed && (
         <Button
-          className={`mb-4 h-12 w-full rounded-xl ${
-            isButtonEnabled ? 'bg-[#94F27F]' : 'bg-gray-500 opacity-50'
-          }`}
+          variant="brand"
+          className={`mb-4 w-full ${isButtonEnabled ? '' : 'bg-gray-500 opacity-50'}`}
           onPress={isButtonEnabled ? step.onPress : undefined}
           disabled={!isButtonEnabled || activatingCard}
         >

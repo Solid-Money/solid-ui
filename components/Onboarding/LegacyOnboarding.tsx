@@ -197,7 +197,7 @@ export default function LegacyOnboarding() {
 
                   <Button
                     variant="ghost"
-                    className={`rounded-xl bg-white/15 ${isSmallScreen ? 'h-12' : 'h-14'}`}
+                    className={`rounded-full bg-white/15 ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleLoginPress}
                     disabled={isLoginPending}
                   >

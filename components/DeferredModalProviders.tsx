@@ -11,6 +11,7 @@ import TierModalProvider from '@/components/Rewards/TierModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
 import SpinWinModalProvider from '@/components/SpinAndWin/SpinWinModalProvider';
 import StakeModalProvider from '@/components/Stake/StakeModalProvider';
+import SupportDrawerProvider from '@/components/SupportDrawer/SupportDrawerProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
@@ -58,6 +59,7 @@ const DeferredModalProviders = () => {
       <CreditLineModalProvider />
       <ManagePinModalProvider />
       <TierModalProvider />
+      <SupportDrawerProvider />
     </>
   );
 };

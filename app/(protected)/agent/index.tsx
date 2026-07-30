@@ -267,7 +267,7 @@ function ProvisionedHeader({
               </Text>
             </View>
           </Button>
-          <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6" onPress={onDeposit}>
+          <Button variant="brand" className="border-0" onPress={onDeposit}>
             <View className="flex-row items-center gap-2">
               <Plus size={22} color="black" />
               <Text className="text-base font-bold text-black">Deposit</Text>

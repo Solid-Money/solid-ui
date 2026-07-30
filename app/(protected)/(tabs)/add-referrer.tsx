@@ -106,7 +106,8 @@ export default function AddReferrer() {
                   </View>
                 )}
                 <Button
-                  className="mt-6 h-12 w-full rounded-xl bg-[#94F27F]"
+                  variant="brand"
+                  className="mt-6 w-full"
                   onPress={onSubmit}
                   disabled={!code || loading}
                 >

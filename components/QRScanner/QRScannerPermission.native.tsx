@@ -145,13 +145,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   primaryButton: {
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#94F27F',
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingHorizontal: 24,
+    borderRadius: 30,
     minWidth: 220,
   },
   secondaryButton: {

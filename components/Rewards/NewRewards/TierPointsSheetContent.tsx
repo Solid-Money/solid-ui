@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 
 const POINTS_STAR = require('@/assets/images/rewards-tiers/points-drawer-star.png');
@@ -184,23 +185,24 @@ const TierPointsSheetContent = ({ animationSession, onClose }: TierPointsSheetCo
       <View className="absolute bottom-0 left-1/2 top-0 w-px bg-white/10" />
     </View>
 
-    <Pressable
+    <Button
+      variant="brand"
       accessibilityRole="button"
       accessibilityLabel="Close points information"
       onPress={onClose}
-      className="mt-[31px] h-12 w-full items-center justify-center rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+      className="mt-[31px] w-full transition-all active:scale-95 active:opacity-80"
     >
       <Text
         className="text-center text-black"
         style={{
-          fontFamily: 'MonaSans_700Bold',
+          fontFamily: 'MonaSans_600SemiBold',
           fontSize: 16,
           lineHeight: 20,
         }}
       >
         Close
       </Text>
-    </Pressable>
+    </Button>
   </View>
 );
 

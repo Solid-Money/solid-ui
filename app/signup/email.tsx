@@ -324,7 +324,7 @@ export default function SignupEmail() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <BackButton onPress={handleBack} />
+            <BackButton variant="header" onPress={handleBack} />
           </View>
 
           {/* Content - flex between to push button to bottom */}
@@ -418,12 +418,12 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                className="h-14 w-full rounded-xl font-semibold"
+                className="h-[50px] w-full max-w-[339px] self-center rounded-[30px] font-semibold"
               >
                 {isLoading ? (
                   <ActivityIndicator color="gray" />
                 ) : (
-                  <Text className="text-base font-bold">Create account</Text>
+                  <Text className="text-base font-semibold">Create account</Text>
                 )}
               </Button>
             </View>

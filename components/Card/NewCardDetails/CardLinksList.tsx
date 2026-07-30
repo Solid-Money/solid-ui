@@ -10,7 +10,7 @@ import {
 } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { openIntercom } from '@/lib/intercom';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 interface LinkRowProps {
   icon: ReactNode;
@@ -52,7 +52,7 @@ const CardLinksList = () => {
         onPress={() => router.push(path.REWARDS_BENEFITS)}
       />
       <View style={styles.divider} />
-      <LinkRow icon={<SupportRowIcon />} label="Contact support" onPress={openIntercom} />
+      <LinkRow icon={<SupportRowIcon />} label="Contact support" onPress={openSupportDrawer} />
     </View>
   );
 };

@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Check, ChevronRight, Globe } from 'lucide-react-native';
+import { Check, Globe } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -155,8 +155,8 @@ export const VirtualAccountApplyModal = () => {
 
       {/* Apply button */}
       <Button
-        className="mt-auto h-14 rounded-2xl sm:mt-8"
-        style={{ backgroundColor: '#94F27F' }}
+        variant="brand"
+        className="mt-auto sm:mt-8"
         onPress={handleApply}
         disabled={isChecking}
       >

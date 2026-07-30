@@ -3,16 +3,16 @@ import { TextStyle, View } from 'react-native';
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 
-// Same big-number treatment as the redesigned home headline (50px Mona Sans,
-// greyed decimals) so Wallet and Savings share one balance style.
+// Same big-number treatment as the redesigned home headline (45px Mona Sans
+// Semibold, with the decimal portion shown at 50% white).
 const WHOLE_STYLE: TextStyle = {
-  fontSize: 50,
-  fontWeight: '500',
-  fontFamily: 'MonaSans_500Medium',
+  fontSize: 45,
+  fontWeight: '600',
+  fontFamily: 'MonaSans_600SemiBold',
   color: '#ffffff',
 };
-const DECIMAL_STYLE: TextStyle = { ...WHOLE_STYLE, color: '#666666' };
-const SEPARATOR_STYLE: TextStyle = { ...WHOLE_STYLE };
+const DECIMAL_STYLE: TextStyle = { ...WHOLE_STYLE, color: 'rgba(255, 255, 255, 0.5)' };
+const SEPARATOR_STYLE: TextStyle = { ...DECIMAL_STYLE };
 
 interface SavingsBalanceHeadlineProps {
   balance: number;

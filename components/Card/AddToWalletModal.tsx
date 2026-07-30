@@ -154,7 +154,7 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
 
         {/* OK Button */}
         <View className="mt-12">
-          <Button onPress={() => onOpenChange(false)} className="rounded-xl bg-[#94F27F] py-6">
+          <Button variant="brand" onPress={() => onOpenChange(false)}>
             <Text className="text-base font-bold text-black">OK</Text>
           </Button>
         </View>

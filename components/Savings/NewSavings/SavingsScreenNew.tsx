@@ -79,11 +79,13 @@ export default function SavingsScreenNew() {
           <>
             <View className="gap-5">
               <SavingsBalanceHeadline balance={savingsBalance} />
-              <ApyDropdown
-                vaultType={selectedVaultType}
-                apyByType={apyByType}
-                onSelect={setSelectedVaultType}
-              />
+              <View style={{ transform: [{ translateY: -10 }] }}>
+                <ApyDropdown
+                  vaultType={selectedVaultType}
+                  apyByType={apyByType}
+                  onSelect={setSelectedVaultType}
+                />
+              </View>
               {isFunded ? (
                 <SavingsFundedActions vaultType={selectedVaultType} />
               ) : (

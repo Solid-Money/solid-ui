@@ -18,6 +18,7 @@ import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 
 import { REWARDS_HELP_SLIDES, type RewardsHelpSlide } from './rewardsHelpData';
+import TierPointsSheet from './TierPointsSheet';
 
 const MODAL_BACKGROUND = '#0f0f10';
 const DOT_TRANSITION_MS = 250;
@@ -63,10 +64,12 @@ const HelpPage = ({
   slide,
   isActive,
   playbackSession,
+  onOpenPoints,
 }: {
   slide: RewardsHelpSlide;
   isActive: boolean;
   playbackSession: number;
+  onOpenPoints: () => void;
 }) => {
   const introRef = useRef<Image>(null);
   const tiersLoopRef = useRef<Image>(null);
@@ -171,6 +174,26 @@ const HelpPage = ({
           >
             {slide.description}
           </Text>
+          {slide.key === 'rewards' && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="How to earn points?"
+              hitSlop={8}
+              onPress={onOpenPoints}
+              className="mt-2 transition-all active:opacity-70"
+            >
+              <Text
+                className="text-center text-base text-white/70 underline"
+                style={{
+                  fontFamily: 'MonaSans_700Bold',
+                  fontWeight: '700',
+                  lineHeight: 18,
+                }}
+              >
+                How to earn points?
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>
@@ -191,6 +214,7 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
   const pagerRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const [isPresented, setIsPresented] = useState(false);
+  const [isPointsOpen, setIsPointsOpen] = useState(false);
   const [playbackSession, setPlaybackSession] = useState(0);
   const slide = REWARDS_HELP_SLIDES[index];
   const isLastSlide = index === REWARDS_HELP_SLIDES.length - 1;
@@ -231,73 +255,83 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
     setIndex(boundedIndex);
   }, []);
 
+  const handleOpenPoints = useCallback(() => {
+    onClose();
+    setIsPointsOpen(true);
+  }, [onClose]);
+
   return (
-    <Modal
-      visible={isOpen}
-      animationType="fade"
-      transparent={false}
-      statusBarTranslucent
-      onShow={() => setIsPresented(true)}
-      onRequestClose={onClose}
-    >
-      <View
-        className="flex-1"
-        style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
+    <>
+      <Modal
+        visible={isOpen}
+        animationType="fade"
+        transparent={false}
+        statusBarTranslucent
+        onShow={() => setIsPresented(true)}
+        onRequestClose={onClose}
       >
-        <View className="flex-row items-center justify-between p-4">
-          <Pressable
-            accessibilityLabel="Close"
-            accessibilityRole="button"
-            onPress={onClose}
-            className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
-          >
-            <ArrowLeft color="#ffffff" size={22} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          ref={pagerRef}
-          horizontal
-          pagingEnabled
-          snapToInterval={SCREEN_WIDTH}
-          bounces={false}
-          overScrollMode="never"
-          directionalLockEnabled
-          disableIntervalMomentum
-          decelerationRate="fast"
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleSwipeEnd}
+        <View
           className="flex-1"
-          contentContainerStyle={{ alignItems: 'flex-start' }}
+          style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
         >
-          {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-            <HelpPage
-              key={item.key}
-              slide={item}
-              isActive={isOpen && isPresented && itemIndex === index}
-              playbackSession={playbackSession}
-            />
-          ))}
-        </ScrollView>
+          <View className="flex-row items-center justify-between p-4">
+            <Pressable
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+              onPress={onClose}
+              className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+            >
+              <ArrowLeft color="#ffffff" size={22} />
+            </Pressable>
+          </View>
 
-        <View className="flex-row items-center justify-center gap-[6px] pb-6">
-          {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-            <SlideDot key={item.key} active={itemIndex === index} />
-          ))}
-        </View>
-
-        <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
-          <Button
-            variant="brand"
-            size="lg"
-            onPress={handleNext}
-            className="h-14 w-full rounded-full bg-brand"
+          <ScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            snapToInterval={SCREEN_WIDTH}
+            bounces={false}
+            overScrollMode="never"
+            directionalLockEnabled
+            disableIntervalMomentum
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleSwipeEnd}
+            className="flex-1"
+            contentContainerStyle={{ alignItems: 'flex-start' }}
           >
-            <Text className="text-base font-semibold text-black">{slide.cta}</Text>
-          </Button>
+            {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+              <HelpPage
+                key={item.key}
+                slide={item}
+                isActive={isOpen && isPresented && itemIndex === index}
+                playbackSession={playbackSession}
+                onOpenPoints={handleOpenPoints}
+              />
+            ))}
+          </ScrollView>
+
+          <View className="flex-row items-center justify-center gap-[6px] pb-6">
+            {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+              <SlideDot key={item.key} active={itemIndex === index} />
+            ))}
+          </View>
+
+          <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
+            <Button
+              variant="brand"
+              size="lg"
+              onPress={handleNext}
+              className="h-14 w-full rounded-full bg-brand"
+            >
+              <Text className="text-base font-semibold text-black">{slide.cta}</Text>
+            </Button>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <TierPointsSheet open={isPointsOpen} onOpenChange={setIsPointsOpen} />
+    </>
   );
 };
 

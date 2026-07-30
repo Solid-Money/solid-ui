@@ -82,6 +82,7 @@ const DialogContent = React.forwardRef<
   DialogPrimitive.ContentProps & {
     portalHost?: string;
     onCloseAutoFocus?: (event: Event) => void;
+    overlayClassName?: string;
     showCloseButton?: boolean;
   }
 >(
@@ -91,6 +92,7 @@ const DialogContent = React.forwardRef<
       children,
       portalHost,
       onCloseAutoFocus,
+      overlayClassName,
       showCloseButton = true,
       style,
       onMoveShouldSetResponder,
@@ -186,7 +188,7 @@ const DialogContent = React.forwardRef<
       return (
         <DialogPortal hostName={portalHost}>
           <DialogOverlay
-            className={shouldAlignTop ? 'justify-start' : undefined}
+            className={cn(shouldAlignTop && 'justify-start', overlayClassName)}
             closeOnPress={false}
           />
           <View
@@ -208,7 +210,7 @@ const DialogContent = React.forwardRef<
 
     return (
       <DialogPortal hostName={portalHost}>
-        <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
+        <DialogOverlay className={cn(shouldAlignTop && 'justify-start', overlayClassName)}>
           <Animated.View
             entering={enteringAnimation}
             exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}

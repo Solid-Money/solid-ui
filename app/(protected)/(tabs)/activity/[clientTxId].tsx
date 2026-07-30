@@ -26,7 +26,6 @@ import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useIntercom } from '@/lib/intercom';
 import {
   ActivityEvent,
   CardProvider,
@@ -43,6 +42,7 @@ import {
   getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
   label: React.ReactNode;
@@ -132,16 +132,9 @@ const Back = memo(function Back({ title, className }: BackProps) {
 });
 
 const SupportSection = memo(function SupportSection({ transactionContext }: SupportSectionProps) {
-  const intercom = useIntercom();
-
   const handleSupportPress = useCallback(() => {
-    if (!intercom) return;
-    if (transactionContext) {
-      intercom.showNewMessage(transactionContext);
-    } else {
-      intercom.show();
-    }
-  }, [intercom, transactionContext]);
+    openSupportDrawer(transactionContext);
+  }, [transactionContext]);
 
   return (
     <View className="mt-6 items-center">

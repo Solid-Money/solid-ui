@@ -15,13 +15,19 @@ interface CardGlyphBadgeProps {
   last4?: string;
 }
 
+const DotGlyph = () => (
+  <View style={styles.dotGroup}>
+    <View style={styles.dot} />
+    <View style={styles.dot} />
+    <View style={styles.dot} />
+    <View style={styles.dot} />
+  </View>
+);
+
 /**
- * Glass glyph oval on the bottom-left of the VISA Platinum card. Uses the
- * pre-rendered glass artwork so it gets a real frosted-glass look:
- *  - card-oval.png (60×40): "••••" only — while the last-4 is loading or the
- *    user has no card.
- *  - card-oval-space.png (107×40): "••••" + empty space, with the card's last 4
- *    digits positioned in that space.
+ * Glass glyph oval on the bottom-left of the VISA Platinum card. The original
+ * pre-rendered artwork supplies the frosted texture and edge refraction at 50%
+ * opacity, while the dots and optional last four digits remain fully opaque.
  */
 const CardGlyphBadge = ({ last4 }: CardGlyphBadgeProps) => {
   return (
@@ -30,19 +36,23 @@ const CardGlyphBadge = ({ last4 }: CardGlyphBadgeProps) => {
         <View style={styles.spaceOval}>
           <Image
             source={getAsset('images/card-oval-space.png')}
-            style={StyleSheet.absoluteFill}
-            contentFit="contain"
+            style={[StyleSheet.absoluteFill, styles.glassArtwork]}
+            contentFit="fill"
           />
+          <DotGlyph />
           <View style={styles.digitsSlot}>
             <Text style={styles.digits}>{last4}</Text>
           </View>
         </View>
       ) : (
-        <Image
-          source={getAsset('images/card-oval.png')}
-          style={styles.dotsOval}
-          contentFit="contain"
-        />
+        <View style={styles.dotsOval}>
+          <Image
+            source={getAsset('images/card-oval.png')}
+            style={[StyleSheet.absoluteFill, styles.glassArtwork]}
+            contentFit="fill"
+          />
+          <DotGlyph />
+        </View>
       )}
     </View>
   );
@@ -55,8 +65,28 @@ const styles = StyleSheet.create({
   // at the bottom), and these percentages resolve against the IMAGE box — so the
   // design's offsets become 5.575 + 5.2×0.8885 = 10.2% and 9.91 + 8.7×0.827 = 17.1%.
   anchor: { position: 'absolute', left: '10.2%', bottom: '17.1%' },
-  dotsOval: { width: OVAL_WIDTH, height: OVAL_HEIGHT },
-  spaceOval: { width: OVAL_SPACE_WIDTH, height: OVAL_HEIGHT },
+  dotsOval: {
+    borderRadius: 100,
+    height: OVAL_HEIGHT,
+    overflow: 'hidden',
+    width: OVAL_WIDTH,
+  },
+  spaceOval: {
+    borderRadius: 100,
+    height: OVAL_HEIGHT,
+    overflow: 'hidden',
+    width: OVAL_SPACE_WIDTH,
+  },
+  glassArtwork: { opacity: 0.5 },
+  // Keep the four-dot content crisp while the glass material becomes transparent.
+  dotGroup: {
+    flexDirection: 'row',
+    gap: 5,
+    left: 15,
+    position: 'absolute',
+    top: 18,
+  },
+  dot: { backgroundColor: '#ffffff', borderRadius: 2, height: 4, width: 4 },
   // The empty area in card-oval-space.png (right of the dots ≈ 44%–92% of width).
   digitsSlot: {
     position: 'absolute',

@@ -17,6 +17,7 @@ import { useSpinStatus } from '@/hooks/useSpinWin';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
@@ -162,7 +163,7 @@ export default function RewardsScreenNew() {
           allTimeCashback={allTimeCashback}
           onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
           onReferralsPress={() => setIsReferralModalOpen(true)}
-          onSupportPress={() => router.push('/settings/help')}
+          onSupportPress={openSupportDrawer}
         />
       </View>
 

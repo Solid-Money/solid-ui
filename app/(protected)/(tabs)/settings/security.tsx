@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { BackButton } from '@/components/ui/back-button';
+import { Button } from '@/components/ui/button';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
@@ -188,10 +189,11 @@ export default function Security() {
                   Unlock to change settings
                 </Text>
               </View>
-              <Pressable
+              <Button
+                variant="brand"
                 onPress={handleUnlock}
                 disabled={isUnlocking}
-                className="mt-2 flex-row items-center justify-center gap-2 rounded-xl bg-[#94F27F] py-3 active:opacity-80"
+                className="mt-2 gap-2 active:opacity-80"
                 accessibilityLabel="Unlock security settings with passkey"
                 accessibilityRole="button"
                 accessibilityState={{ disabled: isUnlocking }}
@@ -201,10 +203,10 @@ export default function Security() {
                 ) : (
                   <>
                     <Image source={SecurityKeyIcon} style={{ width: 23, height: 11 }} />
-                    <Text className="text-base font-bold text-black">Unlock</Text>
+                    <Text className="text-base font-semibold text-black">Unlock</Text>
                   </>
                 )}
-              </Pressable>
+              </Button>
               {unlockError && (
                 <Text className="mt-3 text-center text-sm text-red-400">{unlockError}</Text>
               )}

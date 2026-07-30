@@ -179,9 +179,7 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          // Pushed white tier-star image, centered in a full-size box so its
-          // icon↔label gap matches the other tabs.
-          tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
+          tabBarIcon: ({ focused, size }) => <RewardsTabIcon focused={focused} size={size ?? 28} />,
           // Only surface the Rewards tab (and its route) on qa/preview builds;
           // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
           href: path.REWARDS,

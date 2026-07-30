@@ -357,7 +357,7 @@ function DesktopHeader({
         {isWithdrawFromCardAllowed && (
           <CardDirectDepositModal
             trigger={
-              <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+              <Button variant="brand" className="border-0">
                 <View className="flex-row items-center gap-2">
                   <Plus size={22} color="black" />
                   <Text className="text-base font-bold text-black">Deposit</Text>

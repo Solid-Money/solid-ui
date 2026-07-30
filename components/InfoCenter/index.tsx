@@ -5,7 +5,7 @@ import DocsIcon from '@/assets/images/docs';
 import QuestionIcon from '@/assets/images/question';
 import SupportIcon from '@/assets/images/support';
 import { Text } from '@/components/ui/text';
-import { useIntercom } from '@/lib/intercom';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 const InfoCenterTrigger = (props: any) => {
   return (
@@ -28,10 +28,7 @@ const InfoCenterSupport = () => {
 };
 
 const useInfoCenterSupportPress = () => {
-  const intercom = useIntercom();
-  return useCallback(() => {
-    intercom?.show();
-  }, [intercom]);
+  return useCallback(() => openSupportDrawer(), []);
 };
 
 const InfoCenterDocs = () => {
