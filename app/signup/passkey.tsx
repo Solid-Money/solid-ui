@@ -10,7 +10,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
-import { DesktopCarousel } from '@/components/Onboarding';
+import { DesktopHero } from '@/components/Onboarding';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -247,8 +247,8 @@ export default function SignupPasskey() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      <DesktopCarousel />
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

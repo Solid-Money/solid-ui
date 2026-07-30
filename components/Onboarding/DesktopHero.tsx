@@ -6,12 +6,13 @@ import { useLandingPageApy } from '@/hooks/useLandingPageApy';
 import { getAsset } from '@/lib/assets';
 
 /**
- * Left panel of the desktop onboarding split screen (Figma 907:1203) — the same
- * full-bleed hero the redesigned mobile landing uses, sized for the panel.
+ * Left panel of every desktop split screen — onboarding, welcome, recovery and the
+ * signup steps (Figma 907:1203). The same full-bleed hero the redesigned mobile
+ * landing uses, sized for the panel.
  *
- * It replaced `DesktopCarousel` here: one static image and one headline, no slides,
- * no pagination and no drag gesture. The carousel itself stays — the welcome
- * (account-selection) screen still uses it.
+ * It replaced `DesktopCarousel`, which is gone: one static image and one headline in
+ * place of three Lottie slides, gradient crossfades, pagination dots and a drag
+ * gesture.
  *
  * The headline steps up at `xl`; below that the panel is close to its 280px floor,
  * where the desktop type size would wrap mid-word.
