@@ -404,6 +404,10 @@ export const ASSETS = {
     module: require('@/assets/images/green_onboarding_bg.png'),
     hash: 'c358e28f',
   },
+  'images/header-help.tsx': {
+    module: require('@/assets/images/header-help.tsx'),
+    hash: '9bbbcaf1',
+  },
   'images/home-card.tsx': { module: require('@/assets/images/home-card.tsx'), hash: '08bd1dde' },
   'images/home-fund.tsx': { module: require('@/assets/images/home-fund.tsx'), hash: 'b5101922' },
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
@@ -600,6 +604,18 @@ export const ASSETS = {
     module: require('@/assets/images/reward-tier-star.png'),
     hash: 'e3b44279',
   },
+  'images/rewards-tiers/cashback-cap.png': {
+    module: require('@/assets/images/rewards-tiers/cashback-cap.png'),
+    hash: '47879d46',
+  },
+  'images/rewards-tiers/core-summary.png': {
+    module: require('@/assets/images/rewards-tiers/core-summary.png'),
+    hash: 'a92cddf6',
+  },
+  'images/rewards-tiers/core-tier-icons.tsx': {
+    module: require('@/assets/images/rewards-tiers/core-tier-icons.tsx'),
+    hash: '1c62358f',
+  },
   'images/rewards-tiers/glow.svg': {
     module: require('@/assets/images/rewards-tiers/glow.svg'),
     hash: 'a0404d08',
@@ -659,6 +675,50 @@ export const ASSETS = {
   'images/rewards-tiers/logo-openai.svg': {
     module: require('@/assets/images/rewards-tiers/logo-openai.svg'),
     hash: '7d9ea5cf',
+  },
+  'images/rewards-tiers/points-drawer-star.png': {
+    module: require('@/assets/images/rewards-tiers/points-drawer-star.png'),
+    hash: '0a01608d',
+  },
+  'images/rewards-tiers/points-invite.png': {
+    module: require('@/assets/images/rewards-tiers/points-invite.png'),
+    hash: '56450e5d',
+  },
+  'images/rewards-tiers/points-save.png': {
+    module: require('@/assets/images/rewards-tiers/points-save.png'),
+    hash: 'd4586bcd',
+  },
+  'images/rewards-tiers/points-spend.png': {
+    module: require('@/assets/images/rewards-tiers/points-spend.png'),
+    hash: '5ed52ec6',
+  },
+  'images/rewards-tiers/points-swap.png': {
+    module: require('@/assets/images/rewards-tiers/points-swap.png'),
+    hash: '32312168',
+  },
+  'images/rewards-tiers/prime-summary.png': {
+    module: require('@/assets/images/rewards-tiers/prime-summary.png'),
+    hash: 'd1e282a2',
+  },
+  'images/rewards-tiers/prime-tier-sparkle.png': {
+    module: require('@/assets/images/rewards-tiers/prime-tier-sparkle.png'),
+    hash: 'de1cd0c4',
+  },
+  'images/rewards-tiers/tier-info.png': {
+    module: require('@/assets/images/rewards-tiers/tier-info.png'),
+    hash: 'a241ad7e',
+  },
+  'images/rewards-tiers/ultra-summary.png': {
+    module: require('@/assets/images/rewards-tiers/ultra-summary.png'),
+    hash: '6fc62d90',
+  },
+  'images/rewards-tiers/ultra-tier-sparkle.png': {
+    module: require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png'),
+    hash: 'a06bb5c5',
+  },
+  'images/rewards-tiers/yield-boost.png': {
+    module: require('@/assets/images/rewards-tiers/yield-boost.png'),
+    hash: '0403ec32',
   },
   'images/right-chevron.png': {
     module: require('@/assets/images/right-chevron.png'),
@@ -906,6 +966,10 @@ export const ASSETS = {
     hash: '7816178c',
   },
   'images/warning.png': { module: require('@/assets/images/warning.png'), hash: '81dd623d' },
+  'images/wave-texture.png': {
+    module: require('@/assets/images/wave-texture.png'),
+    hash: '23db6965',
+  },
   'images/welcome-card.png': {
     module: require('@/assets/images/welcome-card.png'),
     hash: '01502018',

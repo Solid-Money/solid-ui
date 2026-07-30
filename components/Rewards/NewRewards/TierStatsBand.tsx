@@ -1,8 +1,9 @@
 import { StyleSheet, View } from 'react-native';
-import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 /** Total height of the band. Its foot is tucked behind the perks card below. */
 export const TIER_STATS_BAND_HEIGHT = 137;
@@ -14,9 +15,9 @@ const VISIBLE_HEIGHT = TIER_STATS_BAND_HEIGHT - TIER_STATS_BAND_TUCK;
 const BAND_GRADIENT = ['rgba(148, 242, 127, 0.15)', 'rgba(148, 242, 127, 0.05)'] as const;
 const DIVIDER_COLOR = 'rgba(255, 255, 255, 0.1)';
 
-// One tile of the wave texture: two half-period-offset rows, so tiling weaves them.
-const WAVE_TILE = { width: 40, height: 26 };
-const WAVE_COLOR = 'rgba(255, 255, 255, 0.08)';
+// The texture artwork is near-white, so it sits over the gradient at low opacity.
+// Matched against the design's own band at 385x137.
+const TEXTURE_OPACITY = 0.12;
 
 /** Measured off the design's band: 26px value over a 16px label. */
 const VALUE_STYLE = { fontFamily: 'MonaSans_600SemiBold', fontSize: 26, lineHeight: 30 } as const;
@@ -29,32 +30,16 @@ export interface TierStat {
 }
 
 /**
- * Tiled wave texture, drawn rather than shipped as a bitmap so it never stretches
- * with the band. Swap in an exported asset here if the design's own texture is
- * needed — `<Image resizeMode="repeat">` keeps the same tiling behaviour.
+ * The design's wave artwork, cropped rather than stretched — `cover` on a repeating
+ * pattern is invisible, where `fill` would skew the waves as the band widens.
  */
 const WaveTexture = () => (
-  <Svg width="100%" height="100%" style={StyleSheet.absoluteFillObject} pointerEvents="none">
-    <Defs>
-      <Pattern
-        id="tierStatsWaves"
-        x="0"
-        y="0"
-        width={WAVE_TILE.width}
-        height={WAVE_TILE.height}
-        patternUnits="userSpaceOnUse"
-      >
-        <Path d="M0 6.5 Q 10 0 20 6.5 T 40 6.5" stroke={WAVE_COLOR} strokeWidth={1} fill="none" />
-        <Path
-          d="M0 19.5 Q 10 26 20 19.5 T 40 19.5"
-          stroke={WAVE_COLOR}
-          strokeWidth={1}
-          fill="none"
-        />
-      </Pattern>
-    </Defs>
-    <Rect x="0" y="0" width="100%" height="100%" fill="url(#tierStatsWaves)" />
-  </Svg>
+  <Image
+    source={getAsset('images/wave-texture.png')}
+    alt=""
+    contentFit="cover"
+    style={[StyleSheet.absoluteFillObject, { opacity: TEXTURE_OPACITY }]}
+  />
 );
 
 /**
@@ -63,8 +48,8 @@ const WaveTexture = () => (
  *
  * This used to be a flat PNG per tier drawn with `contentFit="fill"`, which stretched
  * its baked-in text horizontally as soon as the band was wider than the 385px it was
- * exported at — badly so on desktop. Everything here is laid out instead, so it holds
- * at any width, and the copy comes from the tier's own `stats`.
+ * exported at — badly so on desktop. Everything but the texture is laid out now, so it
+ * holds at any width, and the copy comes from the tier's own `stats`.
  */
 const TierStatsBand = ({ stats }: { stats: readonly TierStat[] }) => (
   <View
