@@ -121,7 +121,7 @@ const BenefitCard = ({
       accessibilityRole={onPress ? 'button' : undefined}
       disabled={!onPress}
       onPress={onPress}
-      className="h-[136px] flex-1 items-center rounded-twice bg-card pt-[21px] transition-all active:scale-95 active:opacity-80"
+      className="h-[136px] w-full items-center rounded-twice bg-card pt-[21px] transition-all active:scale-95 active:opacity-80"
     >
       <Icon />
       <Text
@@ -154,14 +154,23 @@ const DailyBenefits = ({
   return (
     <View className="gap-[15px] px-4">
       <Text className="text-base font-normal text-white/50">Your tier benefits</Text>
+      {/* Every card sits in its own flex-1 column and sets its own height. The
+          cashback one is wrapped by CashbackDetailsSheet's own flex-1 View, so when
+          the cards themselves carried the flex the cashback card ended up flexing
+          along its column's vertical axis instead — which is what left it shorter
+          than the other two. */}
       <View className="flex-row gap-[15px]">
         <CashbackDetailsSheet
           trigger={<BenefitCard benefit={cashbackBenefit} />}
           {...cashbackData}
           onGetMoreCashback={onGetMoreCashback}
         />
-        <BenefitCard benefit={referralsBenefit} onPress={onReferralsPress} />
-        <BenefitCard benefit={supportBenefit} onPress={onSupportPress} />
+        <View className="flex-1">
+          <BenefitCard benefit={referralsBenefit} onPress={onReferralsPress} />
+        </View>
+        <View className="flex-1">
+          <BenefitCard benefit={supportBenefit} onPress={onSupportPress} />
+        </View>
       </View>
     </View>
   );
