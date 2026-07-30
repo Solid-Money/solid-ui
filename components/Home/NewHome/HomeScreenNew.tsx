@@ -160,9 +160,9 @@ export default function HomeScreenNew() {
           </View>
         )}
 
-        {/* The card is rendered full-bleed (no px-4): the PNG's baked-in drop
-            shadow (~4% each side) acts as the gutter, so the card BODY lines up
-            with the px-4 sections below instead of looking inset/narrower. */}
+        {/* HomeWalletCard brings its own px-4 and bleeds back out by the shadow the
+            PNG bakes into each side, so the visible card lines up with the sections
+            below rather than sitting inset. */}
         <View className="gap-3">
           <HomeWalletCard
             hasCard={userHasCard}

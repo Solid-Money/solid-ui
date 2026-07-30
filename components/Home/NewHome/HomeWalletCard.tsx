@@ -2,7 +2,10 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHeroLayout';
+import {
+  CARD_BODY_BLEED_PERCENT,
+  getCardHeroDestination,
+} from '@/components/Card/NewCardDetails/cardHeroLayout';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
@@ -47,7 +50,9 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
   if (!hasCard) {
     return (
       <>
-        <Pressable onPress={() => setIsVerificationOpen(true)}>{card}</Pressable>
+        <Pressable onPress={() => setIsVerificationOpen(true)} className="px-4">
+          <View style={styles.cardBox}>{card}</View>
+        </Pressable>
         <CardWaitingModal
           isOpen={isVerificationOpen}
           onClose={() => setIsVerificationOpen(false)}
@@ -86,17 +91,25 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
     // Hidden for as long as the pane owns the card — while it flies, and while the
     // pane is open — so no copy is left behind under the (background-less) pane.
     <Pressable
-      ref={ref}
-      collapsable={false}
       onPress={handlePress}
+      className="px-4"
       style={heroActive || isPaneOpen ? styles.hidden : undefined}
     >
-      {card}
+      {/* The measured node is the artwork box, not this gutter — the hero flight's
+          `from` rect has to be the same box getCardHeroDestination predicts. */}
+      <View ref={ref} collapsable={false} style={styles.cardBox}>
+        {card}
+      </View>
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
+  // The artwork bakes a drop shadow into each side, so a box the width of the content
+  // column draws a card visibly narrower than the sections around it. Sitting in the
+  // same px-4 gutter and bleeding back out by the shadow's share lines the visible
+  // card up with them exactly.
+  cardBox: { marginHorizontal: `${-CARD_BODY_BLEED_PERCENT}%` },
   hidden: { opacity: 0 },
 });
 

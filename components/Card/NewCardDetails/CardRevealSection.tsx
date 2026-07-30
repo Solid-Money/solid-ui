@@ -8,10 +8,10 @@ import CardDetailsPanel, {
   REVEAL_DURATION,
 } from '@/components/Card/NewCardDetails/CardDetailsPanel';
 import {
+  CARD_BODY_BLEED_PERCENT,
   CARD_BOTTOM_SHADOW_RATIO,
   CARD_TOP_GAP,
   CARD_TOP_SHADOW_RATIO,
-  CONTENT_PADDING,
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
 import CardRevealFace from '@/components/Card/NewCardDetails/CardRevealFace';
@@ -197,9 +197,15 @@ const CardRevealSection = ({
 };
 
 const styles = StyleSheet.create({
-  // Full-bleed past the screen's px-4, matching the home card exactly — that
-  // identical size is what makes the hero transition read as one card.
-  slot: { marginHorizontal: -CONTENT_PADDING, marginTop: CARD_TOP_GAP, position: 'relative' },
+  // Out past the screen's px-4 and far enough to cancel the shadow the artwork bakes
+  // into each side, so the visible card spans the content column rather than sitting
+  // inside it. Matches the home card exactly — that identical size is what makes the
+  // hero transition read as one card.
+  slot: {
+    marginHorizontal: `${-CARD_BODY_BLEED_PERCENT}%`,
+    marginTop: CARD_TOP_GAP,
+    position: 'relative',
+  },
   // Cancelling the artwork's baked-in shadow makes this box exactly the card BODY, so
   // the gap above and the panel tucked in below are measured off the visible card.
   // RN resolves percentage margins against the parent's WIDTH, which is why these

@@ -2,9 +2,11 @@ import { createContext, type ReactNode, useContext } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Href, router, usePathname } from 'expo-router';
-import { Bell, House, Sparkles, Zap } from 'lucide-react-native';
 
+import ActivityIcon from '@/assets/images/activity-nav-bar-icon';
+import HomeIcon from '@/assets/images/assets-nav-bar-icon';
 import ProfileIcon from '@/assets/images/profile';
+import SavingsIcon from '@/assets/images/savings-nav-bar-icon';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -25,9 +27,15 @@ export const SIDEBAR_BODY_WIDTH = 'mx-auto w-full max-w-[40rem]';
 /** The body starts level with the design's "Wallet Balance" label, 65px down. */
 export const SIDEBAR_BODY_TOP_GUTTER = 64;
 
-const ICON_SLOT_SIZE = 24;
-const ICON_COLOR = '#FFFFFF';
-const ICON_STROKE_WIDTH = 1.8;
+// Not literal white: the nav icons fill their glyph when handed white (see
+// `isInactiveColor` in each) and the sidebar wants the design's outline.
+const ICON_COLOR = 'rgba(255, 255, 255, 0.92)';
+/**
+ * The rewards mark is artwork rather than a line icon, and it carries padding of its
+ * own, so it needs a bigger box than the 24px icons to read at the same weight —
+ * which is the size Figma 901:1302 gives it.
+ */
+const REWARDS_ICON = { width: 31, height: 26 } as const;
 
 type SidebarItem = {
   label: string;
@@ -48,7 +56,7 @@ const NAV_ITEMS: SidebarItem[] = [
   {
     label: 'Wallet',
     href: path.HOME,
-    icon: <House size={ICON_SLOT_SIZE} color={ICON_COLOR} strokeWidth={ICON_STROKE_WIDTH} />,
+    icon: <HomeIcon color={ICON_COLOR} />,
     // The card lives on the wallet screen now (it opens as a pane), so its routes
     // keep Wallet selected.
     match: ['/', '/card', '/card-onboard'],
@@ -56,19 +64,26 @@ const NAV_ITEMS: SidebarItem[] = [
   {
     label: 'Savings',
     href: path.SAVINGS,
-    icon: <Zap size={ICON_SLOT_SIZE} color={ICON_COLOR} strokeWidth={ICON_STROKE_WIDTH} />,
+    icon: <SavingsIcon color={ICON_COLOR} />,
     match: ['/savings'],
   },
   {
     label: 'Rewards',
     href: path.REWARDS,
-    icon: <Sparkles size={ICON_SLOT_SIZE} color={ICON_COLOR} strokeWidth={ICON_STROKE_WIDTH} />,
+    icon: (
+      <Image
+        source={getAsset('images/reward-tier-star.png')}
+        alt=""
+        style={REWARDS_ICON}
+        contentFit="contain"
+      />
+    ),
     match: ['/rewards'],
   },
   {
     label: 'Activity',
     href: path.ACTIVITY,
-    icon: <Bell size={ICON_SLOT_SIZE} color={ICON_COLOR} strokeWidth={ICON_STROKE_WIDTH} />,
+    icon: <ActivityIcon color={ICON_COLOR} />,
     match: ['/activity'],
   },
 ];
