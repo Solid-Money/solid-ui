@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
-import { DesktopCarousel } from '@/components/Onboarding';
+import { DesktopHero } from '@/components/Onboarding';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { OtpInput } from '@/components/ui/otp-input';
@@ -394,10 +394,8 @@ export default function SignupOtp() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      <DesktopCarousel />
-      {/* TODO: lazy-loaded for FCP improvement */}
-      {/* <LazyDesktopCarousel /> */}
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

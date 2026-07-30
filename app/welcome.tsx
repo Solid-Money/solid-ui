@@ -8,7 +8,7 @@ import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
-import { DesktopCarousel } from '@/components/Onboarding';
+import { DesktopHero } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
@@ -231,10 +231,8 @@ export default function Welcome() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      <DesktopCarousel />
-      {/* TODO: lazy-loaded for FCP improvement */}
-      {/* <LazyDesktopCarousel /> */}
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">
