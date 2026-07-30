@@ -32,8 +32,17 @@ function getHash(filePath: string): string {
   return crypto.createHash('sha256').update(content).digest('hex').substring(0, 8);
 }
 
+function isDensityVariant(filePath: string): boolean {
+  const extension = path.extname(filePath);
+  const fileName = path.basename(filePath, extension);
+
+  return /@\d+(?:\.\d+)?x$/.test(fileName);
+}
+
 function updateRegistry() {
-  const allFiles = getFiles(ASSETS_DIR);
+  // Metro resolves @2x/@3x files automatically from the base asset. Requiring
+  // those variants directly makes native bundling fail.
+  const allFiles = getFiles(ASSETS_DIR).filter(file => !isDensityVariant(file));
   const registryEntries: string[] = [];
 
   for (const file of allFiles) {
