@@ -17,7 +17,9 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 
 export default function TabLayout() {
-  const { isDesktop } = useDimension();
+  // The desktop sidebar replaces the bottom bar from `isScreenMedium` up (the
+  // sidebar shell in `(protected)/_layout.tsx` renders it).
+  const { isScreenMedium } = useDimension();
 
   const tabs = (
     <Tabs
@@ -35,7 +37,7 @@ export default function TabLayout() {
           marginTop: 5,
         },
         tabBarStyle: {
-          display: isDesktop ? 'none' : 'flex',
+          display: isScreenMedium ? 'none' : 'flex',
           height: 80,
           paddingTop: 4,
           paddingBottom: 20,
@@ -49,7 +51,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={!isDesktop ? props => <NewCustomTabBar {...props} /> : undefined}
+      tabBar={!isScreenMedium ? props => <NewCustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen

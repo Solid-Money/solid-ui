@@ -12,6 +12,7 @@ import {
   BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
 import CardHeroOverlay from '@/components/Card/NewCardDetails/CardHeroOverlay';
+import { SidebarShell } from '@/components/Navbar/Sidebar';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -182,75 +183,79 @@ export default function ProtectedLayout() {
 
   return (
     <View style={styles.root}>
-      <Stack
-        screenOptions={{
-          contentStyle: {
-            backgroundColor: '#0F0F10',
-          },
-          headerStyle: {
-            backgroundColor: '#0F0F10',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
+      {/* The desktop sidebar is mounted here, above the navigator, so it lays out
+          once and stays put while the body beside it navigates or reloads. */}
+      <SidebarShell>
+        <Stack
+          screenOptions={{
+            contentStyle: {
+              backgroundColor: '#0F0F10',
+            },
+            headerStyle: {
+              backgroundColor: '#0F0F10',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: 'bold',
+            },
           }}
-        />
-        <Stack.Screen
-          name="quest-wallet"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="coins/[id]"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="deposit"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="qr-scanner"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_bottom',
-            presentation: 'fullScreenModal',
-          }}
-        />
-        <Stack.Screen
-          name="rescue-token"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="agent/index"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="gooddollar/index"
-          options={{
-            headerShown: false,
-          }}
-        />
-      </Stack>
+        >
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="quest-wallet"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="coins/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="deposit"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="qr-scanner"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_bottom',
+              presentation: 'fullScreenModal',
+            }}
+          />
+          <Stack.Screen
+            name="rescue-token"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="agent/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="gooddollar/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack>
+      </SidebarShell>
       {/* Root-level hero overlay for the card view-transition (redesigned
           screens only — stays dormant/null otherwise). Mounted above the whole
           navigator so the card can fly across the home → card/details change. */}

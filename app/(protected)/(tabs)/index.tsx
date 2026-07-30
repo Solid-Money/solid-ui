@@ -260,9 +260,7 @@ function LegacyHome() {
 }
 
 export default function Home() {
-  const { isDesktop } = useDimension();
-  // qa/preview builds on mobile-web see the redesigned wallet screen; desktop
-  // web and production keep the existing design.
-  const showNewHome = !isDesktop;
-  return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
+  // Desktop is the same redesigned wallet screen, stretched inside the sidebar
+  // shell — see `SidebarShell` in `(protected)/_layout.tsx`.
+  return <HomeScreenNew />;
 }

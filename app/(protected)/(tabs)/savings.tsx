@@ -43,11 +43,9 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
-  // qa/preview builds see the redesigned savings screen; production — and every
-  // desktop-web user — keep the existing design.
-  const { isDesktop } = useDimension();
-  const showNew = !isDesktop;
-  return showNew ? <SavingsScreenNew /> : <LegacySavings />;
+  // Desktop is the same redesigned savings screen, stretched inside the sidebar
+  // shell — see `SidebarShell` in `(protected)/_layout.tsx`.
+  return <SavingsScreenNew />;
 }
 
 function LegacySavings() {

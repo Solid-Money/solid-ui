@@ -15,6 +15,7 @@ import { useDimension } from '@/hooks/useDimension';
 import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
+import { SIDEBAR_BODY_TOP_GUTTER, SIDEBAR_BODY_WIDTH, useIsSidebarShell } from './Navbar/Sidebar';
 import WhatsNewButton from './Navbar/WhatsNewButton';
 import { useRegisterTabBarBlurTarget } from './tabBar/TabBarBlurContext';
 
@@ -176,6 +177,7 @@ export default function PageLayout({
   contentClassName = '',
 }: PageLayoutProps) {
   const { isScreenMedium, isDesktop } = useDimension();
+  const isSidebarShell = useIsSidebarShell();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const mobileBlurTargetRef = useRef<View>(null);
@@ -191,7 +193,10 @@ export default function PageLayout({
 
   // Determine what to show for navbar
   const shouldShowDesktopNavbar = showNavbar && (!desktopOnly || isLargeScreen);
-  const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen;
+  // Inside the desktop sidebar shell the sidebar carries navigation — including the
+  // profile and activity buttons that sit in the mobile header — so no page renders
+  // a navbar of its own there.
+  const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen && !isSidebarShell;
   const shouldOverlayMobileNavbar = shouldShowMobileNavbar && !customMobileHeader;
   const shouldShowScrollableWhatsNew =
     shouldOverlayMobileNavbar && mobileHeaderRightAction === 'default';
@@ -199,6 +204,10 @@ export default function PageLayout({
   const resolvedBlurTargetRef = blurTargetRef ?? mobileBlurTargetRef;
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
   const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
+  // Headerless pages in the sidebar shell get the design's top gutter here, so the
+  // content clears the top of the window the way the mobile navbar's offset does.
+  const contentTopOffset =
+    mobileContentOffset || (isSidebarShell && !customMobileHeader ? SIDEBAR_BODY_TOP_GUTTER : 0);
 
   useRegisterTabBarBlurTarget(mobileBlurTargetRef, shouldOverlayMobileNavbar && !isLoading);
 
@@ -217,6 +226,10 @@ export default function PageLayout({
 
   // Render navbar/header content
   const renderNavbar = (isOverlay = false) => {
+    // Desktop sidebar shell: the sidebar stands in for the navbar. Screens that
+    // bring their own header (settings and friends) keep it.
+    if (isSidebarShell) return customMobileHeader ?? null;
+
     if (isLargeScreen) {
       // Desktop navbar/header
       return customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />);
@@ -241,11 +254,32 @@ export default function PageLayout({
     );
   };
 
+  // In the sidebar shell the page is a centred 40rem column beside the sidebar. The
+  // top gutter goes on the header when there is one, and on the content otherwise
+  // (see contentTopOffset above).
+  const renderHeader = () => {
+    const header = renderNavbar();
+    if (!isSidebarShell || !header) return header;
+
+    return (
+      <View className={SIDEBAR_BODY_WIDTH} style={{ paddingTop: SIDEBAR_BODY_TOP_GUTTER }}>
+        {header}
+      </View>
+    );
+  };
+
+  const renderBody = (content: ReactNode, fill = false) =>
+    isSidebarShell ? (
+      <View className={`${SIDEBAR_BODY_WIDTH} ${fill ? 'flex-1' : ''}`}>{content}</View>
+    ) : (
+      content
+    );
+
   // Show loading state with navbar
   if (isLoading) {
     return (
       <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
-        {renderNavbar()}
+        {renderHeader()}
         <Loading />
       </SafeAreaView>
     );
@@ -256,9 +290,7 @@ export default function PageLayout({
     const scrollView = (
       <ScrollView
         className={`flex-1 ${contentClassName}`}
-        contentContainerStyle={
-          mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined
-        }
+        contentContainerStyle={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
         scrollEnabled={scrollEnabled}
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
@@ -283,8 +315,12 @@ export default function PageLayout({
             <WhatsNewButton />
           </View>
         )}
-        {stickyHeader && <View className="z-10 bg-background">{stickyHeader}</View>}
-        {children}
+        {stickyHeader && (
+          <View className={`z-10 bg-background ${isSidebarShell ? SIDEBAR_BODY_WIDTH : ''}`}>
+            {stickyHeader}
+          </View>
+        )}
+        {renderBody(children)}
       </ScrollView>
     );
 
@@ -299,7 +335,7 @@ export default function PageLayout({
           </BlurTargetView>
         ) : (
           <>
-            {renderNavbar()}
+            {renderHeader()}
             {scrollView}
           </>
         )}
@@ -321,7 +357,7 @@ export default function PageLayout({
           <BlurTargetView ref={resolvedBlurTargetRef} style={styles.mobileBlurTarget}>
             <View
               className={`flex-1 ${contentClassName}`}
-              style={mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined}
+              style={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
             >
               {shouldShowScrollableWhatsNew && (
                 <View
@@ -339,8 +375,13 @@ export default function PageLayout({
                   <WhatsNewButton />
                 </View>
               )}
-              {stickyHeader}
-              {children}
+              {renderBody(
+                <>
+                  {stickyHeader}
+                  {children}
+                </>,
+                true,
+              )}
             </View>
           </BlurTargetView>
           {shouldOverlayMobileNavbar && (
@@ -349,10 +390,18 @@ export default function PageLayout({
         </>
       ) : (
         <>
-          {renderNavbar()}
-          <View className={`flex-1 ${contentClassName}`}>
-            {stickyHeader}
-            {children}
+          {renderHeader()}
+          <View
+            className={`flex-1 ${contentClassName}`}
+            style={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
+          >
+            {renderBody(
+              <>
+                {stickyHeader}
+                {children}
+              </>,
+              true,
+            )}
           </View>
         </>
       )}

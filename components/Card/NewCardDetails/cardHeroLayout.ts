@@ -40,20 +40,29 @@ interface DestinationArgs {
   windowWidth: number;
   /** Safe-area top inset of the destination screen. */
   topInset: number;
+  /**
+   * Left edge of the page the card lands on, in window coordinates. Zero on mobile,
+   * where the page spans the window; the sidebar's width on desktop, where the page
+   * is a column beside it (see `usePageLeft`).
+   */
+  pageLeft?: number;
 }
 
 /**
- * Where the card's artwork box comes to rest on the card-details screen. The card is
- * full-bleed — it spans the content container's full width, padding included — so
- * its width is the container's, capped by `max-w-lg` and centred.
+ * Where the card's artwork box comes to rest on the card-details screen, in window
+ * coordinates. The card is full-bleed — it spans the content container's full width,
+ * padding included — so its width is the container's, capped by `max-w-lg` and
+ * centred.
  */
 export const getCardHeroDestination = ({
   windowWidth,
   topInset,
+  pageLeft = 0,
 }: DestinationArgs): CardHeroRect => {
-  const width = Math.min(windowWidth, CONTENT_MAX_WIDTH);
+  const pageWidth = windowWidth - pageLeft;
+  const width = Math.min(pageWidth, CONTENT_MAX_WIDTH);
   return {
-    x: (windowWidth - width) / 2,
+    x: pageLeft + (pageWidth - width) / 2,
     y: topInset + HEADER_HEIGHT + CARD_TOP_GAP - width * CARD_TOP_SHADOW_RATIO,
     width,
     height: width / NEW_CARD_ASPECT_RATIO,

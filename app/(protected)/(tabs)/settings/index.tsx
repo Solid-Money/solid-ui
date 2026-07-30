@@ -327,11 +327,8 @@ const DesktopSettings = () => {
 };
 
 export default function Settings() {
-  const { isDesktop } = useDimension();
-
-  if (isDesktop) {
-    return <DesktopSettings />;
-  }
-
+  // The sidebar's Profile item lands here, and desktop is the same redesigned
+  // profile screen, stretched inside the sidebar shell — see `SidebarShell` in
+  // `(protected)/_layout.tsx`.
   return <MobileSettings />;
 }

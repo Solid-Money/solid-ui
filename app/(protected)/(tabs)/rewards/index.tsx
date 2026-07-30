@@ -29,11 +29,9 @@ import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 
 export default function Rewards() {
-  // qa/preview builds see the redesigned rewards screen; production — and every
-  // desktop-web user — keep the existing design.
-  const { isDesktop } = useDimension();
-  const showNew = !isDesktop;
-  return showNew ? <RewardsScreenNew /> : <LegacyRewards />;
+  // Desktop is the same redesigned rewards screen, stretched inside the sidebar
+  // shell — see `SidebarShell` in `(protected)/_layout.tsx`.
+  return <RewardsScreenNew />;
 }
 
 function LegacyRewards() {

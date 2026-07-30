@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Dimensions, LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -20,6 +20,7 @@ import {
   CoreRocketPerkIcon,
   CoreTierSparkle,
 } from '@/assets/images/rewards-tiers/core-tier-icons';
+import { useIsSidebarShell, usePageWidth } from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -722,7 +723,6 @@ const SLIDE_DURATION = 260;
 const SLIDE_EASING = Easing.out(Easing.cubic);
 const SWIPE_DISTANCE_THRESHOLD = 50;
 const SWIPE_VELOCITY_THRESHOLD = 400;
-const SCREEN_WIDTH = Dimensions.get('window').width;
 // Dampens the drag past the first/last tier so it feels like it's resisting.
 const RUBBER_BAND_FACTOR = 0.3;
 // bg-background (--background), used as the solid end of the top/bottom fades.
@@ -735,6 +735,8 @@ const FADE_EXTENT = 120;
 interface TierPageProps {
   tier: RewardsTier;
   isCurrentTier: boolean;
+  /** Width of the page column — the window on mobile, the body column on desktop. */
+  pageWidth: number;
 }
 
 /**
@@ -743,7 +745,7 @@ interface TierPageProps {
  * between real, already-rendered pages instead of faking it with a fade/slide
  * of a single swapped-out content block.
  */
-const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
+const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
   const insets = useSafeAreaInsets();
   const content = TIER_CONTENT[tier];
   const subtitle = isCurrentTier ? 'Your current tier' : content.unlockCopy;
@@ -752,7 +754,7 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
     return (
       <View
         style={{
-          width: SCREEN_WIDTH,
+          width: pageWidth,
           paddingTop: insets.top + HEADER_ROW_HEIGHT,
           paddingBottom: insets.bottom,
         }}
@@ -825,7 +827,7 @@ const TierPage = ({ tier, isCurrentTier }: TierPageProps) => {
   return (
     <View
       style={{
-        width: SCREEN_WIDTH,
+        width: pageWidth,
         paddingTop: insets.top + HEADER_ROW_HEIGHT,
         paddingBottom: insets.bottom,
       }}
@@ -920,26 +922,30 @@ export default function RewardsBenefitsScreenNew() {
   );
   const insets = useSafeAreaInsets();
   const tierBlurTargetRef = useRef<View>(null);
+  // The pager's pages are as wide as the column the page gets, which on desktop is
+  // the body column beside the sidebar rather than the whole window.
+  const pageWidth = usePageWidth();
+  const isSidebarShell = useIsSidebarShell();
   // Suspends the page's vertical ScrollView while a horizontal swipe is active,
   // so the two gestures (a plain RN ScrollView isn't gesture-handler-aware)
   // don't both react to the same touch and fight over the drag.
   const [isSwiping, setIsSwiping] = useState(false);
 
-  // Pixel offset of the 3-wide pager row. -index * SCREEN_WIDTH is "at rest" on
+  // Pixel offset of the 3-wide pager row. -index * pageWidth is "at rest" on
   // that tier; onUpdate adds the live drag delta so real, already-rendered
   // neighboring pages follow the finger instead of faking a swipe with a
   // fade/slide of a single swapped-out content block.
-  const translateX = useSharedValue(-TIERS.indexOf(selectedTier) * SCREEN_WIDTH);
+  const translateX = useSharedValue(-TIERS.indexOf(selectedTier) * pageWidth);
   const isDragging = useSharedValue(false);
 
   useEffect(() => {
     if (isDragging.value) return;
     const index = TIERS.indexOf(selectedTier);
-    translateX.value = withTiming(-index * SCREEN_WIDTH, {
+    translateX.value = withTiming(-index * pageWidth, {
       duration: SLIDE_DURATION,
       easing: SLIDE_EASING,
     });
-  }, [selectedTier, translateX, isDragging]);
+  }, [selectedTier, translateX, isDragging, pageWidth]);
 
   const rowStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -1009,7 +1015,7 @@ export default function RewardsBenefitsScreenNew() {
       let dx = event.translationX;
       if (index === 0 && dx > 0) dx *= RUBBER_BAND_FACTOR;
       if (index === TIERS.length - 1 && dx < 0) dx *= RUBBER_BAND_FACTOR;
-      translateX.value = -index * SCREEN_WIDTH + dx;
+      translateX.value = -index * pageWidth + dx;
     })
     .onEnd(event => {
       'worklet';
@@ -1025,7 +1031,7 @@ export default function RewardsBenefitsScreenNew() {
       else if (isSwipeRight && index > 0) targetIndex = index - 1;
 
       translateX.value = withTiming(
-        -targetIndex * SCREEN_WIDTH,
+        -targetIndex * pageWidth,
         { duration: SLIDE_DURATION, easing: SLIDE_EASING },
         finished => {
           if (finished && targetIndex !== index) {
@@ -1049,11 +1055,20 @@ export default function RewardsBenefitsScreenNew() {
       scrollEnabled={!isSwiping}
     >
       <GestureDetector gesture={swipeGesture}>
-        <Animated.View style={[{ flexDirection: 'row' }, rowStyle]}>
-          {TIERS.map(tier => (
-            <TierPage key={tier} tier={tier} isCurrentTier={rewardsData?.currentTier === tier} />
-          ))}
-        </Animated.View>
+        {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
+            the column's edge — on mobile they simply hang off-screen. */}
+        <View style={isSidebarShell ? { width: pageWidth, overflow: 'hidden' } : undefined}>
+          <Animated.View style={[{ flexDirection: 'row' }, rowStyle]}>
+            {TIERS.map(tier => (
+              <TierPage
+                key={tier}
+                tier={tier}
+                isCurrentTier={rewardsData?.currentTier === tier}
+                pageWidth={pageWidth}
+              />
+            ))}
+          </Animated.View>
+        </View>
       </GestureDetector>
     </PageLayout>
   );
