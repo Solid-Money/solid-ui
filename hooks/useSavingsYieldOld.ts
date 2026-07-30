@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
-import { calculateYield, SECONDS_PER_YEAR } from '@/lib/financial';
+import { calculateYield, INTEREST_UNAVAILABLE, SECONDS_PER_YEAR } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 
 function amountGained(
@@ -90,6 +90,8 @@ export function useSavingsYieldOld({
       vaultDecimals,
     ).then(calculatedYield => {
       if (cancelled) return;
+      // Interest couldn't be measured from deposit history — hold the last value.
+      if (calculatedYield === INTEREST_UNAVAILABLE) return;
       const isSpuriousZero =
         mode === SavingMode.CURRENT && calculatedYield === 0 && balance > 0 && lastTimestamp > 0;
       if (!isSpuriousZero) {

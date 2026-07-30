@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { calculateYield } from '@/lib/financial';
+import { calculateYield, INTEREST_UNAVAILABLE } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 
 export const useCalculateSavings = (
@@ -52,6 +52,9 @@ export const useCalculateSavings = (
       transactionsRef.current,
       calculationParams.safeAddress,
     );
+    // Interest couldn't be measured from deposit history — keep the last value
+    // rather than publishing the sentinel.
+    if (calculatedSavings === INTEREST_UNAVAILABLE) return;
     setSavings(calculatedSavings);
   }, [calculationParams]);
 
