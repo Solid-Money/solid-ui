@@ -75,11 +75,15 @@ export default function SignupEmail() {
   const {
     control,
     handleSubmit,
+    clearErrors,
     formState: { errors },
     watch,
   } = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
-    mode: 'onChange',
+    // Validate on submit only so the error appears when the button is pressed,
+    // never while the user is still typing
+    mode: 'onSubmit',
+    reValidateMode: 'onSubmit',
     defaultValues: {
       email: email || '',
       marketingConsent: marketingConsent || false,
@@ -197,6 +201,13 @@ export default function SignupEmail() {
     router.replace(path.ONBOARDING);
   };
 
+  // Editing the email hides any error raised by the previous submit
+  const handleEmailChange = (onChange: (value: string) => void) => (text: string) => {
+    onChange(text);
+    if (errors.email) clearErrors('email');
+    if (error) setError(null);
+  };
+
   // Show validation error, API error, or rate limit error
   const displayError = errors.email?.message || error || rateLimitError;
 
@@ -233,7 +244,7 @@ export default function SignupEmail() {
                 <Input
                   id="email"
                   value={value}
-                  onChangeText={onChange}
+                  onChangeText={handleEmailChange(onChange)}
                   onBlur={onBlur}
                   placeholder="Enter your email"
                   keyboardType="email-address"
@@ -341,7 +352,7 @@ export default function SignupEmail() {
                       <Input
                         id="email"
                         value={value}
-                        onChangeText={onChange}
+                        onChangeText={handleEmailChange(onChange)}
                         onBlur={onBlur}
                         placeholder="Enter your email"
                         keyboardType="email-address"

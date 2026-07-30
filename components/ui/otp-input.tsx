@@ -127,6 +127,15 @@ export function OtpInput({
                 outline: 'none',
                 backgroundColor: 'transparent',
               }),
+              // Native inputs align text to the top of the box and add font
+              // padding, leaving the digit off-centre
+              ...(Platform.OS !== 'web' && {
+                textAlignVertical: 'center' as const,
+                verticalAlign: 'middle' as const,
+                includeFontPadding: false,
+                paddingTop: 0,
+                paddingBottom: 0,
+              }),
             }}
             // Handle paste on web
             {...(Platform.OS === 'web' && {
