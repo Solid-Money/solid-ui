@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 
+import { CARD_FLIGHT_DURATION, EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 
-const TIMING = { duration: 420, easing: Easing.out(Easing.cubic) };
+// Figma 20048:3338 — the card travels over 31% of the 2s timeline on a
+// cubic-bezier(0.16, 1, 0.3, 1) curve.
+const TIMING = { duration: CARD_FLIGHT_DURATION, easing: EASE_OUT_EXPO };
 // Safety net: if the destination never reports its rect, don't leave the clone
 // stuck on screen — tear the transition down after this long.
 const FALLBACK_MS = 1200;
@@ -38,10 +40,9 @@ const CardHeroOverlay = () => {
   useEffect(() => {
     if (!active || !fromRect) return;
 
-    // Before the destination is measured, hold the clone at the source rect and
-    // arm a fallback so a screen that never lays out can't leave it stuck. Once
-    // toRect arrives this effect re-runs, clearing the timer (so it never cuts a
-    // real animation) and starting the flight, which ends itself on completion.
+    // The destination is known at the tap (see getCardHeroDestination), so this
+    // normally runs on the tap's own frame. Should it ever be missing, hold the
+    // clone still and arm a fallback rather than leaving it stuck on screen.
     if (!toRect) {
       tx.value = 0;
       ty.value = 0;
@@ -54,6 +55,15 @@ const CardHeroOverlay = () => {
     const fromCy = fromRect.y + fromRect.height / 2;
     const toCx = toRect.x + toRect.width / 2;
     const toCy = toRect.y + toRect.height / 2;
+
+    // Back to the origin first. These shared values outlive a flight — the clone
+    // unmounts but they keep whatever offset it landed on — so without this the next
+    // flight would start from the last one's end transform. Dismissing was the case
+    // that showed it: the card set off from roughly a screen-height above the pane
+    // and covered twice the distance it should have.
+    tx.value = 0;
+    ty.value = 0;
+    scale.value = 1;
 
     tx.value = withTiming(toCx - fromCx, TIMING);
     ty.value = withTiming(toCy - fromCy, TIMING);

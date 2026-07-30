@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 
-import { BackButton } from '@/components/ui/back-button';
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 
@@ -39,6 +39,11 @@ type NavbarMobileProps = {
   /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
   rightAction?: 'default' | 'help';
   onHelpPress?: () => void;
+  /**
+   * Animate the left/right buttons out while a card hero transition runs. Only the
+   * home screen opts in — it's the screen the card flies away from.
+   */
+  animateCardHeroExit?: boolean;
 };
 
 const NavbarMobile = ({
@@ -51,6 +56,7 @@ const NavbarMobile = ({
   leftAction = 'profile',
   rightAction = 'default',
   onHelpPress,
+  animateCardHeroExit = false,
 }: NavbarMobileProps) => {
   const { user } = useUser();
   // Redesigned "glass" header: profile stays on the left, Activity stays on the
@@ -98,6 +104,13 @@ const NavbarMobile = ({
     [onContentOffsetChange],
   );
 
+  const rightActionButton =
+    rightAction === 'help' ? (
+      <HeaderHelpButton onPress={() => onHelpPress?.()} />
+    ) : (
+      <HeaderBellButton />
+    );
+
   return (
     <View
       className={hasBlurTarget ? 'overflow-hidden' : 'overflow-hidden bg-background'}
@@ -118,7 +131,13 @@ const NavbarMobile = ({
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">
-        {leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />}
+        {animateCardHeroExit ? (
+          <HeroExit spec={HERO_EXIT.headerLeft}>
+            <HeaderProfileButton />
+          </HeroExit>
+        ) : (
+          <HeaderProfileButton />
+        )}
         {!!title && (
           <Animated.View
             accessibilityElementsHidden={!isTitleVisible}
@@ -132,13 +151,13 @@ const NavbarMobile = ({
           </Animated.View>
         )}
         {user ? (
-          <View className="flex-row items-center gap-2">
-            {rightAction === 'help' ? (
-              <HeaderHelpButton onPress={() => onHelpPress?.()} />
-            ) : (
-              <HeaderBellButton />
-            )}
-          </View>
+          animateCardHeroExit ? (
+            <HeroExit spec={HERO_EXIT.headerRight} className="flex-row items-center gap-2">
+              {rightActionButton}
+            </HeroExit>
+          ) : (
+            <View className="flex-row items-center gap-2">{rightActionButton}</View>
+          )
         ) : (
           <RegisterButtons />
         )}
