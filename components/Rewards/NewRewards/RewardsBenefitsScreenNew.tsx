@@ -28,6 +28,7 @@ import { useRewardsUserData } from '@/hooks/useRewards';
 import { type AssetPath, getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
 
+import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
 import TierStatsBand from './TierStatsBand';
 
@@ -38,25 +39,6 @@ const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.PRIME]: 'Prime',
   [RewardsTier.ULTRA]: 'Ultra',
 };
-
-// Each Figma tier has its own transparent seven-second shader loop. Keeping
-// the radial glow as a separate layer lets it fade naturally into the page
-// instead of exposing the edge of an opaque WebP canvas.
-const TIER_HERO_ANIMATIONS: Record<RewardsTier, number> = {
-  [RewardsTier.CORE]: require('@/assets/animations/star-1.webp'),
-  [RewardsTier.PRIME]: require('@/assets/animations/star-2.webp'),
-  [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
-};
-
-// The source WebPs have slightly different transparent padding. These sizes
-// reproduce each star's visible bounds in its 304 × 304 Figma composition.
-const TIER_HERO_SIZES: Record<RewardsTier, number> = {
-  [RewardsTier.CORE]: 234,
-  [RewardsTier.PRIME]: 235,
-  [RewardsTier.ULTRA]: 236,
-};
-
-const TIER_HERO_GLOW_ASSET: AssetPath = 'images/rewards-tiers/glow.svg';
 
 const PRIME_TIER_SPARKLE = require('@/assets/images/rewards-tiers/prime-tier-sparkle.png');
 const ULTRA_TIER_SPARKLE = require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png');
@@ -726,24 +708,7 @@ const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
         }}
       >
         <View className="items-center pt-4">
-          <View className="h-[320px] w-[320px] items-center justify-center">
-            <View className="h-[304px] w-[304px] items-center justify-center">
-              <Image
-                source={getAsset(TIER_HERO_GLOW_ASSET)}
-                style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
-                contentFit="contain"
-              />
-              <Image
-                source={TIER_HERO_ANIMATIONS[tier]}
-                style={{
-                  width: TIER_HERO_SIZES[tier],
-                  height: TIER_HERO_SIZES[tier],
-                }}
-                contentFit="contain"
-                autoplay
-              />
-            </View>
-          </View>
+          <TierHero tier={tier} />
 
           <View className="-mt-1 flex-row items-center gap-1">
             <CoreTierSparkle />
@@ -799,25 +764,7 @@ const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
       }}
     >
       <View className="items-center pt-4">
-        <View className="h-[320px] w-[320px] items-center justify-center">
-          <View className="h-[304px] w-[304px] items-center justify-center">
-            <Image
-              source={getAsset(TIER_HERO_GLOW_ASSET)}
-              style={[StyleSheet.absoluteFillObject, { opacity: 0.5 }]}
-              contentFit="contain"
-            />
-            <Image
-              source={TIER_HERO_ANIMATIONS[tier]}
-              style={{
-                width: TIER_HERO_SIZES[tier],
-                height: TIER_HERO_SIZES[tier],
-                transform: tier === RewardsTier.PRIME ? [{ translateY: -5 }] : undefined,
-              }}
-              contentFit="contain"
-              autoplay
-            />
-          </View>
-        </View>
+        <TierHero tier={tier} />
 
         <View className="-mt-1 flex-row items-center gap-1">
           <Image

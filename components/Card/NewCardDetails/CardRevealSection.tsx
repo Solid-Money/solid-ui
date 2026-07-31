@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { InteractionManager, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
@@ -55,6 +55,7 @@ const CardRevealSection = ({
   const isPaneOpen = useCardPaneStore(state => state.isOpen);
   const [isRevealed, setIsRevealed] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
+  const [isRevealFaceWarm, setIsRevealFaceWarm] = useState(false);
   const clipboardTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Dismissing the pane puts the card back to its unrevealed face and drops the
@@ -73,13 +74,26 @@ const CardRevealSection = ({
     };
   }, []);
 
-  // Flip as soon as the request settles — on success with the real values, on
-  // failure with the placeholders.
+  // Flip once the request settles — on success with the real values, on failure with
+  // the placeholders. Held back by a frame on purpose: the values swap from
+  // placeholders to real ones in the render that the request triggers, and starting
+  // the flip and the panel in that same frame is what made the first reveal stutter
+  // on Android. A frame is enough for that render to commit first.
   useEffect(() => {
-    if (hasRequested && !isLoading && (cardDetails || error)) {
-      setIsRevealed(true);
-    }
+    if (!hasRequested || isLoading || !(cardDetails || error)) return;
+    const frame = requestAnimationFrame(() => setIsRevealed(true));
+    return () => cancelAnimationFrame(frame);
   }, [hasRequested, isLoading, cardDetails, error]);
+
+  // Build the revealed face while the pane sits idle, so the first tap doesn't pay
+  // for three pieces of pill artwork decoding and the copy icons rasterising. Runs
+  // after interactions so it never competes with the pane's own opening animation,
+  // and is never unset — the cost is paid once per session.
+  useEffect(() => {
+    if (!isPaneOpen || isRevealFaceWarm) return;
+    const task = InteractionManager.runAfterInteractions(() => setIsRevealFaceWarm(true));
+    return () => task.cancel();
+  }, [isPaneOpen, isRevealFaceWarm]);
 
   const issuingCountry = useMemo(
     () => COUNTRIES.find(country => country.code === issuingCountryCode)?.name,
@@ -169,11 +183,10 @@ const CardRevealSection = ({
             <Animated.View style={frontStyle} pointerEvents="none">
               <NewCardArt last4={last4} />
             </Animated.View>
-            {/* Mounted only once a reveal has been asked for. The back face pulls in
-                three pieces of pill artwork, and decoding those while the screen is
-                still arriving is enough to stutter the incoming transition — nobody
-                can see this face until the card flips anyway. */}
-            {hasRequested || isRevealed ? (
+            {/* Built once the pane has gone idle (see above), or on demand if the tap
+                beats that. Never on the wallet screen's own startup path — nobody can
+                see this face until the card flips. */}
+            {isRevealFaceWarm || hasRequested || isRevealed ? (
               <Animated.View
                 style={[styles.cardBack, backStyle]}
                 pointerEvents={isRevealed ? 'box-none' : 'none'}
