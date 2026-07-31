@@ -147,12 +147,14 @@ export default function HomeScreenNew() {
               <WalletBalanceHeadline balance={walletBalance} />
             </HeroExit>
             <HeroExit spec={HERO_EXIT.balance}>
-              <OtherBalancesDropdown
-                cardBalance={cardBalance}
-                savingsBalance={savingsBalance}
-                userHasCard={userHasCard}
-                walletBalance={walletBalance}
-              />
+              <View style={{ transform: [{ translateY: -10 }] }}>
+                <OtherBalancesDropdown
+                  cardBalance={cardBalance}
+                  savingsBalance={savingsBalance}
+                  userHasCard={userHasCard}
+                  walletBalance={walletBalance}
+                />
+              </View>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
               <WalletActions hasFunds={depositCompleted} />
@@ -177,24 +179,26 @@ export default function HomeScreenNew() {
         </View>
 
         {showAssets && (
-          <HeroExit spec={HERO_EXIT.belowCard} className="gap-3 px-4">
-            <Text className="text-base font-normal text-white/50">Balances</Text>
-            {tokenError ? (
-              <View className="flex-1 items-center justify-center p-4">
-                <WalletInfo text="Failed to load tokens" />
-                <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
-                <TouchableOpacity
-                  onPress={retryTokens}
-                  className="mt-4 rounded-lg bg-primary px-4 py-2"
-                >
-                  <Text className="text-primary-foreground">Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : isLoadingTokens ? (
-              <TokenListSkeleton />
-            ) : (
-              <LazyWalletTabs />
-            )}
+          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
+            <View className="gap-3" style={{ transform: [{ translateY: -20 }] }}>
+              <Text className="text-base font-normal text-white/50">Balances</Text>
+              {tokenError ? (
+                <View className="flex-1 items-center justify-center p-4">
+                  <WalletInfo text="Failed to load tokens" />
+                  <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
+                  <TouchableOpacity
+                    onPress={retryTokens}
+                    className="mt-4 rounded-lg bg-primary px-4 py-2"
+                  >
+                    <Text className="text-primary-foreground">Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : isLoadingTokens ? (
+                <TokenListSkeleton />
+              ) : (
+                <LazyWalletTabs />
+              )}
+            </View>
           </HeroExit>
         )}
       </View>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import { Check } from 'lucide-react-native';
 
@@ -11,12 +11,15 @@ const CopyToClipboard = ({
   className,
   iconClassName,
   size = 14,
+  icon,
   onCopy,
 }: {
   text: string;
   className?: string;
   iconClassName?: string;
   size?: number;
+  /** Replaces the default copy glyph; the copied-state checkmark is unaffected. */
+  icon?: ReactNode;
   onCopy?: () => void;
 }) => {
   const [copied, setCopied] = useState(false);
@@ -48,7 +51,7 @@ const CopyToClipboard = ({
       {copied ? (
         <Check size={size} className="text-green-500" />
       ) : (
-        <Copy className={iconClassName} />
+        (icon ?? <Copy className={iconClassName} />)
       )}
     </Button>
   );

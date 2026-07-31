@@ -183,7 +183,7 @@ export default function Welcome() {
       <Button
         variant="secondary"
         onPress={handleUseAnotherAccount}
-        className="mb-6 h-14 w-full rounded-xl border-0"
+        className="mb-6 h-14 w-full rounded-full border-0"
       >
         <Text className="text-base font-semibold text-white">Use another account</Text>
       </Button>

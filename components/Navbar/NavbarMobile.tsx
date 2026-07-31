@@ -9,6 +9,7 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 
@@ -37,7 +38,7 @@ type NavbarMobileProps = {
   /** Left-side action shown for signed-in users. */
   leftAction?: 'profile' | 'back';
   /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
-  rightAction?: 'default' | 'help';
+  rightAction?: 'default' | 'help' | 'none';
   onHelpPress?: () => void;
   /**
    * Animate the left/right buttons out while a card hero transition runs. Only the
@@ -105,11 +106,13 @@ const NavbarMobile = ({
   );
 
   const rightActionButton =
-    rightAction === 'help' ? (
+    rightAction === 'none' ? null : rightAction === 'help' ? (
       <HeaderHelpButton onPress={() => onHelpPress?.()} />
     ) : (
       <HeaderBellButton />
     );
+  const leftActionButton =
+    leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />;
 
   return (
     <View
@@ -132,11 +135,9 @@ const NavbarMobile = ({
       )}
       <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">
         {animateCardHeroExit ? (
-          <HeroExit spec={HERO_EXIT.headerLeft}>
-            <HeaderProfileButton />
-          </HeroExit>
+          <HeroExit spec={HERO_EXIT.headerLeft}>{leftActionButton}</HeroExit>
         ) : (
-          <HeaderProfileButton />
+          leftActionButton
         )}
         {!!title && (
           <Animated.View
@@ -151,7 +152,7 @@ const NavbarMobile = ({
           </Animated.View>
         )}
         {user ? (
-          animateCardHeroExit ? (
+          !rightActionButton ? null : animateCardHeroExit ? (
             <HeroExit spec={HERO_EXIT.headerRight} className="flex-row items-center gap-2">
               {rightActionButton}
             </HeroExit>

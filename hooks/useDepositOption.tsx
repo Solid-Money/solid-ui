@@ -316,7 +316,10 @@ const useDepositOption = ({
   };
 
   const getTitle = () => {
-    if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress) return undefined;
+    // Virtual account details renders its own flag + title in the content, so the
+    // header keeps only the back/close buttons (Figma 21445:3186).
+    if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress || isVirtualAccountDetails)
+      return undefined;
     if (isBankTransferKycInfo) return 'Identity Verification';
     if (isBankTransferKycFrame) return 'Identity Verification';
     if (isBankTransferAmount) return 'Amount to buy';
@@ -330,7 +333,6 @@ const useDepositOption = ({
     if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
     if (isVirtualAccountApply) return 'Bank transfer';
-    if (isVirtualAccountDetails) return 'Bank Deposit';
     if (isVirtualAccountTos) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
@@ -358,6 +360,11 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    // Details renders its own title, so it only needs the header buttons' own gap.
+    if (isVirtualAccountDetails) {
+      return 'gap-3';
+    }
+
     // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
     if (isFormAndAddress && !depositFromSolid) {
       return 'min-h-[40rem]';
@@ -690,12 +697,17 @@ const useDepositOption = ({
     isTokenSelector ||
     isVirtualAccountApply;
 
-  const disableScroll = Platform.OS !== 'web' && isDepositDirectlyAddress;
+  // The virtual account details screen owns its ScrollView so it can overlay the
+  // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
+  const disableScroll =
+    (Platform.OS !== 'web' && isDepositDirectlyAddress) || isVirtualAccountDetails;
+  const fillViewportHeight = isVirtualAccountDetails;
 
   return {
     shouldOpen,
     showBackButton,
     disableScroll,
+    fillViewportHeight,
     actionButton,
     shouldAnimate,
     isForward,

@@ -219,11 +219,7 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
             {alreadyApple ? (
               <Text className="text-muted-foreground">This card is already in Apple Wallet.</Text>
             ) : (
-              <Button
-                onPress={handleAddToAppleWallet}
-                disabled={isAddingApple}
-                className="rounded-xl bg-[#94F27F] py-6"
-              >
+              <Button variant="brand" onPress={handleAddToAppleWallet} disabled={isAddingApple}>
                 {isAddingApple ? (
                   <ActivityIndicator color="black" />
                 ) : (
@@ -240,11 +236,7 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
             {alreadyGoogle ? (
               <Text className="text-muted-foreground">This card is already in Google Wallet.</Text>
             ) : (
-              <Button
-                onPress={handleAddToGoogleWallet}
-                disabled={isAddingGoogle}
-                className="rounded-xl bg-[#94F27F] py-6"
-              >
+              <Button variant="brand" onPress={handleAddToGoogleWallet} disabled={isAddingGoogle}>
                 {isAddingGoogle ? (
                   <ActivityIndicator color="black" />
                 ) : (
@@ -256,7 +248,7 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
         )}
 
         <View className="mt-12">
-          <Button onPress={() => onOpenChange(false)} className="rounded-xl bg-[#94F27F] py-6">
+          <Button variant="brand" onPress={() => onOpenChange(false)}>
             <Text className="text-base font-bold text-black">OK</Text>
           </Button>
         </View>

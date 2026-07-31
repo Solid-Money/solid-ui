@@ -17,6 +17,7 @@ const DepositModalProvider = () => {
     shouldOpen,
     showBackButton,
     disableScroll,
+    fillViewportHeight,
     actionButton,
     shouldAnimate,
     isForward,
@@ -53,6 +54,7 @@ const DepositModalProvider = () => {
       isForward={isForward}
       contentKey={getContentKey()}
       disableScroll={disableScroll}
+      fillViewportHeight={fillViewportHeight}
     >
       {getContent()}
     </ResponsiveModal>

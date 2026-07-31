@@ -13,37 +13,37 @@ export const ASSETS = {
     module: require('@/assets/animations/lightning.json'),
     hash: '234b6520',
   },
-  'animations/rewards-help-perks.webp': {
-    module: require('@/assets/animations/rewards-help-perks.webp'),
-    hash: 'b3a692d5',
+  'animations/rewards-help-perks.mp4': {
+    module: require('@/assets/animations/rewards-help-perks.mp4'),
+    hash: '440d1d8c',
   },
-  'animations/rewards-help-rewards.webp': {
-    module: require('@/assets/animations/rewards-help-rewards.webp'),
-    hash: '6b2a696c',
+  'animations/rewards-help-rewards.mp4': {
+    module: require('@/assets/animations/rewards-help-rewards.mp4'),
+    hash: 'fba2ad34',
   },
-  'animations/rewards-help-tiers-shader-loop.webp': {
-    module: require('@/assets/animations/rewards-help-tiers-shader-loop.webp'),
-    hash: 'f9d350d4',
+  'animations/rewards-help-tiers-shader-loop.mp4': {
+    module: require('@/assets/animations/rewards-help-tiers-shader-loop.mp4'),
+    hash: '780aac56',
   },
-  'animations/rewards-help-tiers.webp': {
-    module: require('@/assets/animations/rewards-help-tiers.webp'),
-    hash: '29b52b5b',
+  'animations/rewards-help-tiers.mp4': {
+    module: require('@/assets/animations/rewards-help-tiers.mp4'),
+    hash: '6a39b2c7',
   },
   'animations/rocket.json': {
     module: require('@/assets/animations/rocket.json'),
     hash: '48d71bbc',
   },
-  'animations/savings-help-deposit.webp': {
-    module: require('@/assets/animations/savings-help-deposit.webp'),
-    hash: 'ecfbcb23',
+  'animations/savings-help-deposit.mp4': {
+    module: require('@/assets/animations/savings-help-deposit.mp4'),
+    hash: 'cdbb4e2d',
   },
-  'animations/savings-help-grow.webp': {
-    module: require('@/assets/animations/savings-help-grow.webp'),
-    hash: 'dbc93515',
+  'animations/savings-help-grow.mp4': {
+    module: require('@/assets/animations/savings-help-grow.mp4'),
+    hash: '90379bfb',
   },
-  'animations/savings-help-withdraw.webp': {
-    module: require('@/assets/animations/savings-help-withdraw.webp'),
-    hash: '4ee4c6e9',
+  'animations/savings-help-withdraw.mp4': {
+    module: require('@/assets/animations/savings-help-withdraw.mp4'),
+    hash: 'c4b097af',
   },
   'animations/spin-wheel.json': {
     module: require('@/assets/animations/spin-wheel.json'),
@@ -281,6 +281,10 @@ export const ASSETS = {
   'images/diamond.png': { module: require('@/assets/images/diamond.png'), hash: '9875c4f5' },
   'images/diamond.tsx': { module: require('@/assets/images/diamond.tsx'), hash: '6654209f' },
   'images/docs.tsx': { module: require('@/assets/images/docs.tsx'), hash: '458b69fc' },
+  'images/dollar-bill-texture.jpg': {
+    module: require('@/assets/images/dollar-bill-texture.jpg'),
+    hash: '00bd80e3',
+  },
   'images/dollar-green.png': {
     module: require('@/assets/images/dollar-green.png'),
     hash: '97437332',
@@ -408,6 +412,14 @@ export const ASSETS = {
     module: require('@/assets/images/header-help.tsx'),
     hash: '9bbbcaf1',
   },
+  'images/header-bell.tsx': {
+    module: require('@/assets/images/header-bell.tsx'),
+    hash: '519ad50d',
+  },
+  'images/header-help.tsx': {
+    module: require('@/assets/images/header-help.tsx'),
+    hash: 'dafee275',
+  },
   'images/home-card.tsx': { module: require('@/assets/images/home-card.tsx'), hash: '08bd1dde' },
   'images/home-fund.tsx': { module: require('@/assets/images/home-fund.tsx'), hash: 'b5101922' },
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
@@ -492,6 +504,14 @@ export const ASSETS = {
   'images/overview-withdraw.png': {
     module: require('@/assets/images/overview-withdraw.png'),
     hash: '1f8ed8ac',
+  },
+  'images/passkey-fingerprint-glow.png': {
+    module: require('@/assets/images/passkey-fingerprint-glow.png'),
+    hash: 'c4be05ab',
+  },
+  'images/passkey-outline-glow.png': {
+    module: require('@/assets/images/passkey-outline-glow.png'),
+    hash: '96ff3015',
   },
   'images/passkey-svg.tsx': {
     module: require('@/assets/images/passkey-svg.tsx'),

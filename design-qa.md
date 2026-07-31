@@ -1,48 +1,56 @@
 **Comparison Target**
 
-- Source visual truth: `/var/folders/kq/f7j7tsp96mjgyhrd2x1xmd3c0000gn/T/codex-clipboard-c50b2cce-d4de-46ec-9a03-c2928cd570d8.png`
-- Top-state screenshot: `/tmp/solid-ui-scroll-pill-top-v4.png`
-- Scrolled-state screenshot: `/tmp/solid-ui-fresh-scrolled.png`
-- Viewport/state: Android wallet home, dark theme, signed-in state, before and after vertical scrolling
-- Source pixels: 403 × 864, including the supplied device frame
-- Implementation pixels: 1080 × 2424 at 420 dpi
-- Density normalization: native 1080 px viewport used for both implementation states
+- Source visual truth: `/var/folders/kq/f7j7tsp96mjgyhrd2x1xmd3c0000gn/T/codex-clipboard-f5ed5805-57b9-43d5-8cb4-7be4e17bc21d.png`, with the requested card-width annotation.
+- Before screenshot: `/tmp/solid-wallet-card-before.png`.
+- Implementation screenshot: `/tmp/solid-wallet-card-final.png`.
+- Full-view comparison: `/tmp/solid-wallet-card-reference-comparison.png`.
+- Focused before/after comparison: `/tmp/solid-wallet-card-width-comparison.png`.
+- Viewport/state: Pixel 9a Android emulator, wallet home, dark theme, signed-in state.
+- Source pixels: 479 × 885, including the supplied emulator frame.
+- Before and implementation pixels: 1080 × 2424 at 420 dpi.
+- CSS/layout viewport: 392.7 dp wide (1080 px at Android density scale 2.75).
+- Density normalization: the exact-viewport before and after captures use the same native density; the supplied framed source is shown beside the implementation at a shared display height in the full-view comparison.
 
 **Findings**
 
-- No actionable P0/P1/P2 differences remain for the requested change.
-- Spacing and layout: the banner's native bounds are `[338,184][742,279]`, giving it an x-center of 540 px, exactly matching the 1080 px viewport center. The profile and notification controls remain independently anchored at the edges.
-- Scroll behavior: the banner is visible in the centered top position at scroll offset zero and leaves the viewport with the wallet content after scrolling. The profile, notification button, glass background, divider, and compact balance title remain fixed.
-- Fonts and typography: unchanged from the existing component.
-- Colors and visual tokens: unchanged from the existing component.
-- Image quality and asset fidelity: no image assets were changed.
+- No actionable P0/P1/P2 differences remain for the requested width change.
+- Spacing and layout rhythm: before the change, the visible green card body spanned x=59–1019 px while the balance card below spanned x=42–1037 px. After the change, the green body spans x=41–1037 px, aligning to the balance content edges within one antialiased pixel.
+- Fonts and typography: unchanged.
+- Colors and visual tokens: unchanged.
+- Image quality and asset fidelity: the original VISA artwork and its aspect ratio remain intact; only its responsive layout width changed.
 - Copy and content: unchanged.
+- Interaction: tapping the widened card still opens the card-details pane, and the pane's back control returns to the wallet with the widened card restored.
 
 **Full-view evidence**
 
-- The top-state screenshot shows the centered banner aligned with the fixed edge controls.
-- The scrolled-state screenshot shows the banner fully absent while the fixed header controls and compact balance title remain visible.
+- The supplied reference and final Android capture are combined in `/tmp/solid-wallet-card-reference-comparison.png`.
+- The final capture shows the visible green card body sharing the same horizontal content boundaries as the balance row below.
 
 **Focused region comparison evidence**
 
-- A separate crop was unnecessary because the header controls are clearly legible in the full-height comparison.
-- Android accessibility inspection confirms the banner remains a clickable control with the accessible name `What's new?`.
+- `/tmp/solid-wallet-card-width-comparison.png` compares the same 1080 px viewport and card/balance region before and after.
+- The comparison shows the card widening symmetrically while its artwork, badge, logo, and surrounding layout retain their proportions.
 
 **Comparison History**
 
-- Initial finding: the banner shared the right-side action group with the notification button, so the group layout shifted the banner away from the viewport center.
-- First fix: centered the banner independently from the notification control.
-- Follow-up finding: the centered banner was still owned by the fixed navigation layer.
-- Follow-up fix: moved the banner into an in-flow scrollable header slot that visually shares the initial top row, while leaving the profile and notification controls in the fixed navigation layer.
-- Post-fix evidence: native banner x-center is 540 px on a 1080 px viewport at the top and it is no longer visible after scrolling; lint and TypeScript checks pass.
+- Initial finding: the artwork's baked-in shadow gutters made its visible body 35 px narrower than the px-4 balance content on each side.
+- Fix: calculate a centered responsive artwork width from the card body's 88.85% share of the image box and the screen's 16 dp content gutter.
+- Post-fix evidence: the green body and balance content now terminate at x≈42 and x=1038, and the card-details open/close transition remains functional.
+
+**Validation**
+
+- Prettier: passed for `components/Home/NewHome/HomeWalletCard.tsx`.
+- ESLint: passed for `components/Home/NewHome/HomeWalletCard.tsx`.
+- TypeScript: the repository-wide check remains blocked by pre-existing errors in unrelated files; no error references the changed component.
+- Runtime log: no fatal Android or React Native exception occurred during the card open/close test. Existing 401 price-fallback logs are unrelated to this layout change.
 
 **Implementation Checklist**
 
-- [x] Center the banner against the viewport.
-- [x] Make the banner scroll with page content.
-- [x] Preserve profile and notification positioning.
-- [x] Preserve banner interaction and accessibility.
-- [x] Run lint and TypeScript validation.
+- [x] Match the visible card body to the balance content width.
+- [x] Keep the card centered and responsive.
+- [x] Preserve the original card artwork and aspect ratio.
+- [x] Verify card-details open and return interactions.
+- [x] Run targeted formatting and lint validation.
 
 **Follow-up Polish**
 

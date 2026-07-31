@@ -41,6 +41,7 @@ const HomeVerificationCard = ({ depositCompleted, className }: HomeVerificationC
               </Text>
               <Button
                 variant="brand"
+                size="sm"
                 className="mt-4 h-10 self-start rounded-full px-5"
                 onPress={() => setIsOpen(true)}
               >

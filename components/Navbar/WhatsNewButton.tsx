@@ -4,8 +4,9 @@ import { X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
+import { cn } from '@/lib/utils';
 
-const WhatsNewButton = () => {
+const WhatsNewButton = ({ className }: { className?: string }) => {
   const { showLatest, whatsNew, isButtonDismissed, dismissButton } = useWhatsNew();
 
   if (!whatsNew || isButtonDismissed) return null;
@@ -13,7 +14,10 @@ const WhatsNewButton = () => {
   return (
     <Pressable
       onPress={showLatest}
-      className="h-9 flex-row items-center gap-1 rounded-full bg-[#2A2A2A] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className={cn(
+        'h-9 flex-row items-center gap-1 rounded-full bg-[#2A2A2A] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover',
+        className,
+      )}
     >
       <Text className="text-base font-medium text-white/70">What&apos;s new?</Text>
       <Pressable

@@ -11,7 +11,6 @@ import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge, getProviderRouting } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
-import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import {
   CardProvider,
@@ -24,6 +23,7 @@ import { hasMetSavingsDeposit, withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 // Import helpers
 import { shouldStopKycFlow } from './endorsementHelpers';
@@ -254,7 +254,7 @@ export function useCardSteps(
     // DENIED is a final decision with no action — it renders no button, so it is not
     // handled here. LOCKED/CANCELED still offer a "Contact support" button.
     if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
-      openIntercom();
+      openSupportDrawer();
       return;
     }
     if (

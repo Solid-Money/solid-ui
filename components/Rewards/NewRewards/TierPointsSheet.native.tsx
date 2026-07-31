@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -9,21 +9,41 @@ import type { TierPointsSheetProps } from './TierPointsSheet.types';
 
 const FIGMA_SHEET_HEIGHT = 792;
 
-const TierPointsSheet = ({ trigger }: TierPointsSheetProps) => {
+const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPointsSheetProps) => {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
   const [animationSession, setAnimationSession] = useState(0);
+  const isControlled = controlledOpen !== undefined;
   const snapPoints = useMemo(
     () => [Math.min(FIGMA_SHEET_HEIGHT, height - insets.top - 16)],
     [height, insets.top],
   );
 
   const present = useCallback(() => {
-    setAnimationSession(session => session + 1);
-    sheetRef.current?.present();
-  }, []);
-  const dismiss = useCallback(() => sheetRef.current?.dismiss(), []);
+    if (!isControlled) {
+      setAnimationSession(session => session + 1);
+      sheetRef.current?.present();
+    }
+    onOpenChange?.(true);
+  }, [isControlled, onOpenChange]);
+  const dismiss = useCallback(() => {
+    if (!isControlled) {
+      sheetRef.current?.dismiss();
+    }
+    onOpenChange?.(false);
+  }, [isControlled, onOpenChange]);
+
+  useEffect(() => {
+    if (controlledOpen === undefined) return;
+
+    if (controlledOpen) {
+      setAnimationSession(session => session + 1);
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [controlledOpen]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -40,7 +60,7 @@ const TierPointsSheet = ({ trigger }: TierPointsSheetProps) => {
 
   return (
     <View>
-      {React.cloneElement(trigger, { onPress: present })}
+      {trigger && React.cloneElement(trigger, { onPress: present })}
       <BottomSheetModal
         ref={sheetRef}
         snapPoints={snapPoints}
@@ -58,6 +78,7 @@ const TierPointsSheet = ({ trigger }: TierPointsSheetProps) => {
           width: 73,
           height: 5,
         }}
+        onDismiss={() => onOpenChange?.(false)}
       >
         <BottomSheetScrollView
           showsVerticalScrollIndicator={false}

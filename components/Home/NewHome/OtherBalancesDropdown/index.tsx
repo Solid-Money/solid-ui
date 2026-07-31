@@ -74,7 +74,7 @@ export const OtherBalancesPill = React.forwardRef<View, PillProps>(
         ref={ref}
         accessibilityRole="button"
         accessibilityLabel="Show balance breakdown"
-        className="flex-row items-center gap-2 self-center rounded-full bg-[#1C1C1C] py-2 pl-2 pr-3 transition-all active:scale-95 active:opacity-80"
+        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
         {...props}
       >
         <OtherBalancesPie
@@ -85,7 +85,17 @@ export const OtherBalancesPill = React.forwardRef<View, PillProps>(
           cardColor={CARD_COLOR}
           savingsColor={SAVINGS_COLOR}
         />
-        <Text className="text-base font-semibold text-white">{formatBalanceUSD(total)}</Text>
+        <Text
+          className="font-semibold text-white"
+          style={{
+            fontFamily: 'MonaSans_600SemiBold',
+            fontSize: 16,
+            fontWeight: '600',
+            lineHeight: 18,
+          }}
+        >
+          {formatBalanceUSD(total)}
+        </Text>
         <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
       </Pressable>
     );

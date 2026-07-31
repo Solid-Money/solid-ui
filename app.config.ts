@@ -256,6 +256,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-image',
+    'expo-video',
     'expo-web-browser',
     // Camera for QR code scanning
     [

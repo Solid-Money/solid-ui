@@ -389,7 +389,7 @@ const DepositDirectlyAddress = () => {
           </View>
         )}
 
-        <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
+        <Button variant="brand" onPress={handleDone} className="mt-2 w-full">
           <Text className="text-base font-bold text-black">Done</Text>
         </Button>
 

@@ -215,9 +215,10 @@ const TotpVerificationModalContent: React.FC<{
       {/* Action Buttons */}
       <View className="gap-3">
         <Button
+          variant="brand"
           onPress={handleSubmit(onSubmit)}
           disabled={otpCode.length !== 6 || isLoading}
-          className="h-12 rounded-xl bg-[#94F27F] active:opacity-80"
+          className="active:opacity-80"
         >
           {isLoading ? (
             <ActivityIndicator color="#000000" size="small" />

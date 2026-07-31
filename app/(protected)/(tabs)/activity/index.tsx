@@ -38,7 +38,11 @@ export default function Activity() {
   );
 
   return (
-    <PageLayout isLoading={isCardStatusLoading} mobileHeaderLeftAction="back">
+    <PageLayout
+      isLoading={isCardStatusLoading}
+      mobileHeaderLeftAction="back"
+      mobileHeaderRightAction="none"
+    >
       {pageHeader}
       <View
         className={cn('mx-auto w-full max-w-7xl px-4 pb-8 md:pb-12', {

@@ -7,10 +7,14 @@ import { RewardsTier } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
 
 const NUMBER_STYLE: TextStyle = {
-  fontSize: 50,
+  fontSize: 45,
   fontWeight: '600',
   fontFamily: 'MonaSans_600SemiBold',
   color: '#ffffff',
+};
+const DECIMAL_STYLE: TextStyle = {
+  ...NUMBER_STYLE,
+  color: 'rgba(255, 255, 255, 0.5)',
 };
 const SUFFIX_STYLE: TextStyle = {
   fontSize: 16,
@@ -27,6 +31,9 @@ interface PointsHeadlineProps {
 
 /** Current-tier badge + compact points count (e.g. "Prime" / "10.5M Points"). */
 const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
+  const formattedPoints = compactNumberFormat(points ?? 0);
+  const numberParts = formattedPoints.match(/^([\d,]+)(\.\d+)?(.*)$/);
+
   return (
     <View className="items-center gap-1 pt-2">
       <View className="flex-row items-center gap-1.5">
@@ -44,7 +51,19 @@ const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
         </Text>
       </View>
       <View className="flex-row items-baseline">
-        <Text style={NUMBER_STYLE}>{compactNumberFormat(points ?? 0)}</Text>
+        <Text style={NUMBER_STYLE}>
+          {numberParts ? (
+            <>
+              {numberParts[1]}
+              <Text style={DECIMAL_STYLE}>
+                {numberParts[2]}
+                {numberParts[3]}
+              </Text>
+            </>
+          ) : (
+            formattedPoints
+          )}
+        </Text>
         <Text style={[SUFFIX_STYLE, { marginLeft: 6 }]}>Points</Text>
       </View>
     </View>

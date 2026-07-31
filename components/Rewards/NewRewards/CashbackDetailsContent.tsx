@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, FeGaussianBlur, Filter, Path } from 'react-native-svg';
 
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { formatNumber } from '@/lib/utils';
 
@@ -186,13 +187,14 @@ const CashbackDetailsContent = ({
       </Text>
     </Text>
 
-    <Pressable
+    <Button
+      variant="brand"
       accessibilityRole="button"
       onPress={onGetMoreCashback}
-      className="mt-[35px] h-12 w-full items-center justify-center rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+      className="mt-[35px] w-full transition-all active:scale-95 active:opacity-80"
     >
-      <Text className="text-base font-bold text-black">Get more cashback</Text>
-    </Pressable>
+      <Text className="text-black">Get more cashback</Text>
+    </Button>
   </View>
 );
 
