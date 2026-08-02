@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useDimension } from '@/hooks/useDimension';
-import { cn } from '@/lib/utils';
 
 import TierPointsSheetContent from './TierPointsSheetContent';
 
 import type { TierPointsSheetProps } from './TierPointsSheet.types';
 
-// Bottom sheet on phones, the standard centred modal from `md` up.
+const MODAL_STATE: ModalState = { name: 'tier-points', number: 1 };
+const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
+
+/**
+ * How points work: a bottom sheet on phones, the standard `ResponsiveModal` from
+ * `md` up.
+ */
 const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPointsSheetProps) => {
   const { isScreenMedium } = useDimension();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -33,28 +39,44 @@ const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPo
     onOpenChange?.(nextOpen);
   };
 
+  const content = (
+    <TierPointsSheetContent
+      animationSession={animationSession}
+      isSheet={!isScreenMedium}
+      onClose={() => handleOpenChange(false)}
+    />
+  );
+
+  if (isScreenMedium) {
+    return (
+      <View>
+        <ResponsiveModal
+          currentModal={MODAL_STATE}
+          previousModal={CLOSE_STATE}
+          isOpen={open}
+          onOpenChange={handleOpenChange}
+          trigger={trigger ?? null}
+          contentKey="tier-points"
+          shouldAnimate={false}
+          hideHeader
+          contentClassName="bg-[#1C1C1C]"
+        >
+          {content}
+        </ResponsiveModal>
+      </View>
+    );
+  }
+
   return (
     <View>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
         <DialogContent
-          showCloseButton={isScreenMedium}
-          className={cn(
-            'overflow-hidden bg-[#1C1C1C] p-0',
-            isScreenMedium
-              ? 'max-h-[86vh] md:max-w-lg'
-              : 'fixed bottom-0 left-1/2 h-[min(792px,calc(100vh-16px))] w-full max-w-[419px] -translate-x-1/2 rounded-b-none rounded-t-[40px]',
-          )}
+          showCloseButton={false}
+          className="fixed bottom-0 left-1/2 h-[min(792px,calc(100vh-16px))] w-full max-w-[419px] -translate-x-1/2 overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
         >
-          {!isScreenMedium && (
-            <View className="absolute left-1/2 top-4 z-10 h-[5px] w-[73px] -translate-x-1/2 rounded-full bg-white/20" />
-          )}
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <TierPointsSheetContent
-              animationSession={animationSession}
-              onClose={() => handleOpenChange(false)}
-            />
-          </ScrollView>
+          <View className="absolute left-1/2 top-4 z-10 h-[5px] w-[73px] -translate-x-1/2 rounded-full bg-white/20" />
+          <ScrollView showsVerticalScrollIndicator={false}>{content}</ScrollView>
         </DialogContent>
       </Dialog>
     </View>
