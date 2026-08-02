@@ -1,5 +1,12 @@
-import { useEffect } from 'react';
-import { ImageSourcePropType, Platform, Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ImageSourcePropType,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,13 +17,20 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { HomeSetupStep } from '@/hooks/useHomeSetupSteps';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { resolveCardCountry } from '@/lib/cardCountryGate';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 
 interface CardWaitingModalProps {
   isOpen: boolean;
@@ -90,7 +104,14 @@ const BenefitCell = ({
  * original FinishSetupModal remains available.
  */
 const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModalProps) => {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [checkingCountry, setCheckingCountry] = useState(false);
+  const { data: cardStatus } = useCardStatus();
+  // Same escape hatch as `skipCountryCheck` in useActivateCard: someone holding
+  // a card, or already part-way through a Rain application, has cleared the
+  // country gate once and must not be bounced back out of the flow.
+  const skipCountryGate = hasCard(cardStatus) || hasCardStatusWithRainApplication(cardStatus);
   // On Android (edge-to-edge) the safe-area bottom inset can come back smaller
   // than the actual system nav bar inside the dialog portal, leaving the pinned
   // CTA sitting too close to the bottom edge. Floor it so the button always
@@ -131,9 +152,41 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
     ],
   }));
 
-  const handleVerify = () => {
-    onClose();
-    firstIncomplete?.onPress?.();
+  // The country gate the old `/card` page's "Get your card" button ran (via
+  // `/card/activate`) before anything else. The step actions below jump straight
+  // into KYC / activation, so without this the country selection screen would
+  // never be shown and KYC would start with no country to route the provider on.
+  // The deposit step needs no card country, so it skips the gate.
+  const handleVerify = async () => {
+    if (checkingCountry) return;
+
+    track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
+      source: 'home_card_waiting_modal',
+      step: firstIncomplete?.key,
+    });
+
+    if (!firstIncomplete || firstIncomplete.key === 'deposit' || skipCountryGate) {
+      onClose();
+      firstIncomplete?.onPress?.();
+      return;
+    }
+
+    setCheckingCountry(true);
+    try {
+      const result = await resolveCardCountry('home_card_waiting_modal');
+
+      // Close before navigating — the destination shouldn't mount under an open
+      // modal (matches the previous close-then-act ordering).
+      onClose();
+
+      if (result === 'supported') {
+        firstIncomplete.onPress?.();
+      } else {
+        router.push(path.CARD_COUNTRY_SELECTION);
+      }
+    } finally {
+      setCheckingCountry(false);
+    }
   };
 
   return (
@@ -249,8 +302,13 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
               variant="brand"
               className="h-[50px] w-full rounded-full border-0 active:opacity-90"
               onPress={handleVerify}
+              disabled={checkingCountry}
             >
-              <Text className="text-[16px] font-semibold text-black">Verify now</Text>
+              {checkingCountry ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text className="text-[16px] font-semibold text-black">Verify now</Text>
+              )}
             </Button>
           </View>
         </LinearGradient>
