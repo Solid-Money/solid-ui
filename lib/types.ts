@@ -837,7 +837,12 @@ export enum TransactionStatus {
   REFUNDED = 'refunded',
 }
 
-export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
+/**
+ * Progress of a deposit, in order.
+ * `received` means the transfer was seen on chain but is not confirmed yet
+ * (unconfirmed webhook). `detected` is the legacy alias for it.
+ */
+export type DepositStep = 'received' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;

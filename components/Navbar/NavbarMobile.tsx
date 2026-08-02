@@ -12,6 +12,7 @@ import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import HeaderBellButton from './HeaderBellButton';
 import HeaderHelpButton from './HeaderHelpButton';
@@ -60,11 +61,17 @@ const NavbarMobile = ({
   animateCardHeroExit = false,
 }: NavbarMobileProps) => {
   const { user } = useUser();
+  // On the screen the card flies away from, the whole navbar has to clear out — not
+  // just its buttons. The card-details pane draws over this screen with no
+  // background of its own, so a scrolled-in glass backdrop and balance title would
+  // otherwise sit behind (and collide with) the pane's own header and title.
+  const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
+  const isHeroExiting = animateCardHeroExit && isCardPaneOpen;
   // Redesigned "glass" header: profile stays on the left, Activity stays on the
   // right, and transient content such as What's-new scrolls beneath this layer.
   const hasBlurTarget = !!blurTarget;
-  const isGlassVisible = hasBlurTarget && !!showDivider;
-  const isTitleVisible = !!title && !!showTitle;
+  const isGlassVisible = hasBlurTarget && !!showDivider && !isHeroExiting;
+  const isTitleVisible = !!title && !!showTitle && !isHeroExiting;
   const blurViewProps =
     Platform.OS === 'android'
       ? {

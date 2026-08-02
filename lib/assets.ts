@@ -108,6 +108,10 @@ export const ASSETS = {
     module: require('@/assets/images/apple-google-pay.png'),
     hash: '5a4d6b29',
   },
+  'images/apple-pay-circle.tsx': {
+    module: require('@/assets/images/apple-pay-circle.tsx'),
+    hash: '7d96415a',
+  },
   'images/apple_pay.png': { module: require('@/assets/images/apple_pay.png'), hash: 'c12b79b1' },
   'images/arbitrum.png': { module: require('@/assets/images/arbitrum.png'), hash: 'f6ebb536' },
   'images/assets-nav-bar-icon.tsx': {
@@ -120,6 +124,7 @@ export const ASSETS = {
   },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
+  'images/badge-apay.png': { module: require('@/assets/images/badge-apay.png'), hash: 'e8b4d849' },
   'images/badge-cashback.png': {
     module: require('@/assets/images/badge-cashback.png'),
     hash: 'a3554390',
@@ -153,6 +158,10 @@ export const ASSETS = {
     hash: '532402c1',
   },
   'images/card-fade.png': { module: require('@/assets/images/card-fade.png'), hash: '95c9dba2' },
+  'images/card-flipped.png': {
+    module: require('@/assets/images/card-flipped.png'),
+    hash: 'f3020fff',
+  },
   'images/card-global.png': {
     module: require('@/assets/images/card-global.png'),
     hash: '80bbf480',
@@ -170,18 +179,6 @@ export const ASSETS = {
     hash: '1d9d5c25',
   },
   'images/card-oval.png': { module: require('@/assets/images/card-oval.png'), hash: '07e162f1' },
-  'images/card-pill-cvv.png': {
-    module: require('@/assets/images/card-pill-cvv.png'),
-    hash: 'b168c30e',
-  },
-  'images/card-pill-expiry.png': {
-    module: require('@/assets/images/card-pill-expiry.png'),
-    hash: '8116b0c8',
-  },
-  'images/card-pill-number.png': {
-    module: require('@/assets/images/card-pill-number.png'),
-    hash: 'e2dc5afb',
-  },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
   'images/card-waiting-hero.png': {
     module: require('@/assets/images/card-waiting-hero.png'),
@@ -339,6 +336,7 @@ export const ASSETS = {
     module: require('@/assets/images/exclamation_mark.png'),
     hash: '962c5177',
   },
+  'images/face-scan.tsx': { module: require('@/assets/images/face-scan.tsx'), hash: 'f9d44e3f' },
   'images/face-verification.png': {
     module: require('@/assets/images/face-verification.png'),
     hash: 'd630cb67',
@@ -363,6 +361,10 @@ export const ASSETS = {
   'images/freeze_button_icon.png': {
     module: require('@/assets/images/freeze_button_icon.png'),
     hash: 'e4b22d73',
+  },
+  'images/fund-dollar.tsx': {
+    module: require('@/assets/images/fund-dollar.tsx'),
+    hash: '7f4fcddb',
   },
   'images/fund-wallet-tokens.png': {
     module: require('@/assets/images/fund-wallet-tokens.png'),

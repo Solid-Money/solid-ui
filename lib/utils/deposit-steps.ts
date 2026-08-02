@@ -1,7 +1,7 @@
 import { ActivityEvent, DepositStep, TransactionStatus, TransactionType } from '@/lib/types';
 
 export const DEPOSIT_STEPS = [
-  { key: 'detected' as const, label: 'Detected' },
+  { key: 'received' as const, label: 'Received' },
   { key: 'confirmed' as const, label: 'Confirmed' },
   { key: 'depositing' as const, label: 'Depositing' },
   { key: 'minting' as const, label: 'Minting soUSD' },
@@ -9,21 +9,45 @@ export const DEPOSIT_STEPS = [
 ] as const;
 
 /**
+ * Steps the backend used to emit before `received` existed, mapped onto the
+ * current ladder so old activities still render a sensible progress state.
+ */
+const LEGACY_STEP_ALIASES: Record<string, DepositStep> = {
+  detected: 'received',
+  transferring_to_card: 'depositing',
+};
+
+export function normalizeDepositStep(step?: string | null): DepositStep | undefined {
+  if (!step) return undefined;
+  if (DEPOSIT_STEPS.some(s => s.key === step)) return step as DepositStep;
+  return LEGACY_STEP_ALIASES[step];
+}
+
+/**
+ * Coarse step implied by the activity status. Used when the backend never sent
+ * an explicit step (SSE event missed, older activity) and to stop a stale
+ * `metadata.depositStep` from holding the progress back.
+ */
+function inferStepFromStatus(status: TransactionStatus): DepositStep | undefined {
+  if (status === TransactionStatus.SUCCESS) return 'complete';
+  if (status === TransactionStatus.PROCESSING) return 'confirmed';
+  if (status === TransactionStatus.DETECTED) return 'received';
+  return undefined;
+}
+
+/**
  * Extract the current deposit step from an activity.
- * Uses explicit metadata.depositStep if available, falls back to status inference
- * (handles SSE-missed events when user reconnects).
+ * Uses explicit metadata.depositStep when it is ahead of what the status
+ * implies, otherwise falls back to the status (handles SSE-missed events).
  */
 export function getDepositStep(activity: ActivityEvent): DepositStep | undefined {
-  // If activity has an explicit step from backend, use it
-  if (activity.metadata?.depositStep) {
-    return activity.metadata.depositStep as DepositStep;
-  }
-  // Infer from status as fallback (SSE events may have been missed)
-  if (activity.status === TransactionStatus.SUCCESS) return 'complete';
-  if (activity.status === TransactionStatus.PROCESSING) return 'confirmed';
-  if (activity.status === TransactionStatus.DETECTED) return 'detected';
-  if (activity.status === TransactionStatus.PENDING) return 'detected';
-  return undefined;
+  const explicit = normalizeDepositStep(activity.metadata?.depositStep as string | undefined);
+  const inferred = inferStepFromStatus(activity.status);
+
+  if (!explicit) return inferred;
+  if (!inferred) return explicit;
+
+  return getDepositStepIndex(inferred) > getDepositStepIndex(explicit) ? inferred : explicit;
 }
 
 /**
@@ -31,8 +55,7 @@ export function getDepositStep(activity: ActivityEvent): DepositStep | undefined
  */
 export function isDepositWithSteps(activity: ActivityEvent): boolean {
   return (
-    activity.type === TransactionType.DEPOSIT ||
-    activity.type === TransactionType.BRIDGE_DEPOSIT
+    activity.type === TransactionType.DEPOSIT || activity.type === TransactionType.BRIDGE_DEPOSIT
   );
 }
 
@@ -42,7 +65,7 @@ export function isDepositWithSteps(activity: ActivityEvent): boolean {
  */
 export function getDepositStepIndex(step: DepositStep | undefined): number {
   if (!step) return -1;
-  return DEPOSIT_STEPS.findIndex((s) => s.key === step);
+  return DEPOSIT_STEPS.findIndex(s => s.key === step);
 }
 
 /**
@@ -51,7 +74,7 @@ export function getDepositStepIndex(step: DepositStep | undefined): number {
  */
 export function getDepositStepDescription(step: DepositStep | undefined): string | null {
   switch (step) {
-    case 'detected':
+    case 'received':
       return 'Transfer detected';
     case 'confirmed':
       return 'Transfer confirmed';
@@ -64,4 +87,103 @@ export function getDepositStepDescription(step: DepositStep | undefined): string
     default:
       return null;
   }
+}
+
+export type DepositProgressState = 'complete' | 'active' | 'pending' | 'failed';
+
+export type DepositProgressRow = {
+  key: 'received' | 'confirmed' | 'depositing';
+  label: string;
+  state: DepositProgressState;
+};
+
+const CONFIRMED_INDEX = getDepositStepIndex('confirmed');
+const COMPLETE_INDEX = getDepositStepIndex('complete');
+
+/** Direct deposits are flagged by the webhook handler through metadata.description. */
+function isDirectDeposit(activity: ActivityEvent): boolean {
+  const description = activity.metadata?.description;
+  return description === 'Direct deposit' || description === 'Card deposit';
+}
+
+function destinationLabel(activity: ActivityEvent): string {
+  if (activity.metadata?.destinationType === 'RAIN_CARD') return 'card';
+  const symbol = activity.symbol?.toLowerCase();
+  if (symbol === 'sousd' || symbol === 'sofuse' || symbol === 'soeth') return 'savings';
+  return 'balance';
+}
+
+/**
+ * Local amount formatter — this module is imported by pure unit tests, so it
+ * deliberately avoids pulling in `@/lib/utils` (react-native / wagmi barrel).
+ */
+function formatStepAmount(amount: string): string {
+  const num = Number(amount);
+  if (!Number.isFinite(num)) return amount;
+  return new Intl.NumberFormat('en-us', { maximumFractionDigits: 6 }).format(num);
+}
+
+function receivedLabel(activity: ActivityEvent, state: DepositProgressState): string {
+  const amount = formatStepAmount(activity.amount);
+  const symbol = activity.symbol ?? '';
+
+  if (isDirectDeposit(activity)) {
+    return state === 'complete'
+      ? `We received your ${amount} ${symbol}`.trim()
+      : 'Waiting for your transfer';
+  }
+
+  return state === 'complete'
+    ? `We received your ${amount} ${symbol}`.trim()
+    : `Sending ${amount} ${symbol} from your wallet`.trim();
+}
+
+function confirmedLabel(state: DepositProgressState): string {
+  if (state === 'complete') return 'Confirmed on the network';
+  if (state === 'failed') return 'Transaction failed to confirm';
+  return 'Waiting for network confirmations';
+}
+
+function depositingLabel(activity: ActivityEvent, state: DepositProgressState): string {
+  const symbol = activity.symbol ?? '';
+  const destination = destinationLabel(activity);
+
+  if (state === 'complete') return `${symbol} added to your ${destination}`.trim();
+  if (state === 'failed') return `Failed to deposit ${symbol} to your ${destination}`.trim();
+  return `Depositing ${symbol} to your ${destination}`.trim();
+}
+
+/**
+ * Build the three progress rows shown on the deposit detail screen.
+ *
+ * The five-step ladder is collapsed into the three rows the design calls for:
+ * `depositing` and `minting` are both "still moving your funds", so they share
+ * the last row.
+ */
+export function getDepositProgressRows(activity: ActivityEvent): DepositProgressRow[] {
+  const stepIndex = getDepositStepIndex(getDepositStep(activity));
+  const isFailed =
+    activity.status === TransactionStatus.FAILED ||
+    activity.status === TransactionStatus.CANCELLED ||
+    activity.status === TransactionStatus.EXPIRED;
+
+  const stateFor = (completeAt: number, activeAt: number): DepositProgressState => {
+    if (stepIndex >= completeAt) return 'complete';
+    if (stepIndex >= activeAt) return isFailed ? 'failed' : 'active';
+    return 'pending';
+  };
+
+  const receivedState = stateFor(0, -1);
+  const confirmedState = stateFor(CONFIRMED_INDEX, 0);
+  const depositingState = stateFor(COMPLETE_INDEX, CONFIRMED_INDEX);
+
+  return [
+    { key: 'received', label: receivedLabel(activity, receivedState), state: receivedState },
+    { key: 'confirmed', label: confirmedLabel(confirmedState), state: confirmedState },
+    {
+      key: 'depositing',
+      label: depositingLabel(activity, depositingState),
+      state: depositingState,
+    },
+  ];
 }
