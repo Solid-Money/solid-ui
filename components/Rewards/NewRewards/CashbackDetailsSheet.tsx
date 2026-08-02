@@ -58,7 +58,6 @@ const CashbackDetailsSheet = ({
           contentKey="cashback-details"
           shouldAnimate={false}
           hideHeader
-          contentClassName="bg-[#1C1C1C]"
         >
           {content}
         </ResponsiveModal>
