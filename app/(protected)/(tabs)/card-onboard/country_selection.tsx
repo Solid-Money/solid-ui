@@ -36,8 +36,15 @@ export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
 
+  // Return to wherever the flow started — the redesigned home reaches this
+  // screen from its card CTAs, so a hard replace to /card would strand the user
+  // on a page the new UI no longer links to.
   const goBack = () => {
-    router.replace(path.CARD);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.CARD);
+    }
   };
 
   const [loading, setLoading] = useState(true);

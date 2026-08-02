@@ -8,6 +8,8 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useDepositStore } from '@/store/useDepositStore';
 
 export interface HomeSetupStep {
+  /** Stable identifier — callers gate on this rather than matching on `title`. */
+  key: 'kyc' | 'card' | 'deposit';
   title: string;
   description: string;
   /** Short label used on the primary CTA button when this is the next step */
@@ -48,6 +50,7 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
 
     const steps: HomeSetupStep[] = [
       {
+        key: 'kyc',
         title: 'Verify your identity',
         description: '3 min to unlock all features',
         cta: 'Verify your identity',
@@ -55,6 +58,7 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         onPress: kycStep?.onPress ?? (() => router.push(path.CARD)),
       },
       {
+        key: 'card',
         title: 'Get your free virtual card',
         description: 'Global payments, cashback and more',
         cta: 'Get your card',
@@ -62,6 +66,7 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         onPress: cardStep?.onPress ?? (() => router.push(path.CARD)),
       },
       {
+        key: 'deposit',
         title: 'Top up your balance',
         description: 'Via bank transfers or crypto',
         cta: 'Top up your balance',
