@@ -7,47 +7,58 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { Check } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { DepositStep } from '@/lib/types';
-import { DEPOSIT_STEPS, getDepositStepIndex } from '@/lib/utils/deposit-steps';
+import { cn } from '@/lib/utils';
+import { DepositProgressRow, DepositProgressState } from '@/lib/utils/deposit-steps';
 
-const STEP_LABELS: Record<string, string> = {
-  detected: 'Transfer Detected',
-  confirmed: 'Transfer Confirmed',
-  depositing: 'Depositing to Vault',
-  minting: 'Minting soUSD',
-  complete: 'Complete',
-};
+const BRAND = '#94F27F';
+const CIRCLE_SIZE = 22;
 
 interface DepositStepperProps {
-  currentStep: DepositStep | undefined;
-  isFailed?: boolean;
+  rows: DepositProgressRow[];
+  className?: string;
 }
 
-/**
- * A single step row: circle indicator + label.
- * Extracted for clarity; the pulse animation is driven by the parent via `isActive`.
- */
 function CompletedCircle() {
   return (
-    <View className="h-6 w-6 items-center justify-center rounded-full bg-[#34C759]">
-      <Check size={14} color="white" strokeWidth={3} />
+    <View
+      className="items-center justify-center rounded-full bg-brand"
+      style={{ width: CIRCLE_SIZE, height: CIRCLE_SIZE }}
+    >
+      <Check size={13} color="#404041" strokeWidth={2.5} />
     </View>
   );
 }
 
 function PendingCircle() {
-  return <View className="h-6 w-6 rounded-full border border-[#3A3A3C]" />;
+  return (
+    <View
+      className="rounded-full border-[1.5px] border-white/50"
+      style={{ width: CIRCLE_SIZE, height: CIRCLE_SIZE }}
+    />
+  );
 }
 
-function ActiveCircle({ isFailed }: { isFailed: boolean }) {
+function FailedCircle() {
+  return (
+    <View
+      className="items-center justify-center rounded-full bg-red-500"
+      style={{ width: CIRCLE_SIZE, height: CIRCLE_SIZE }}
+    >
+      <X size={13} color="#FFFFFF" strokeWidth={2.5} />
+    </View>
+  );
+}
+
+/** Ring with a pulsing dot, marking the step currently in progress. */
+function ActiveCircle() {
   const scale = useSharedValue(1);
 
   useEffect(() => {
     scale.value = withRepeat(
-      withSequence(withTiming(1.15, { duration: 600 }), withTiming(1.0, { duration: 600 })),
+      withSequence(withTiming(1.25, { duration: 700 }), withTiming(1, { duration: 700 })),
       -1,
       false,
     );
@@ -58,78 +69,74 @@ function ActiveCircle({ isFailed }: { isFailed: boolean }) {
   }));
 
   return (
-    <Animated.View
-      style={animatedStyle}
-      className={`h-6 w-6 rounded-full ${isFailed ? 'bg-red-500' : 'bg-brand'}`}
-    />
-  );
-}
-
-/**
- * Connecting line between two steps.
- * Animates its background color based on whether the segment is completed.
- */
-function ConnectingLine({ completed }: { completed: boolean }) {
-  const opacity = useSharedValue(completed ? 1 : 0);
-
-  useEffect(() => {
-    opacity.value = withTiming(completed ? 1 : 0, { duration: 300 });
-  }, [completed, opacity]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return (
-    <View className="ml-[11px] h-5 w-0.5 bg-[#2C2C2E]">
-      <Animated.View style={[{ flex: 1, backgroundColor: '#34C759' }, animatedStyle]} />
+    <View
+      className="items-center justify-center rounded-full border-[1.5px] border-brand"
+      style={{ width: CIRCLE_SIZE, height: CIRCLE_SIZE }}
+    >
+      <Animated.View
+        style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: BRAND }, animatedStyle]}
+      />
     </View>
   );
 }
 
-function DepositStepperInner({ currentStep, isFailed = false }: DepositStepperProps) {
-  const currentStepIndex = getDepositStepIndex(currentStep);
+function StepCircle({ state }: { state: DepositProgressState }) {
+  if (state === 'complete') return <CompletedCircle />;
+  if (state === 'failed') return <FailedCircle />;
+  if (state === 'active') return <ActiveCircle />;
+  return <PendingCircle />;
+}
+
+/** Connecting line between two steps — brand green once the segment is done. */
+function ConnectingLine({ completed }: { completed: boolean }) {
+  const progress = useSharedValue(completed ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(completed ? 1 : 0, { duration: 300 });
+  }, [completed, progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
 
   return (
-    <View className="rounded-[20px] bg-[#1C1C1E] p-4">
-      {DEPOSIT_STEPS.map((step, index) => {
-        const isCompleted = currentStepIndex >= 0 && index < currentStepIndex;
-        const isActive = currentStepIndex >= 0 && index === currentStepIndex;
-        const isLast = index === DEPOSIT_STEPS.length - 1;
+    <View
+      className="my-1 rounded-full bg-white/50"
+      style={{ width: 1.5, height: 12, marginLeft: (CIRCLE_SIZE - 1.5) / 2 }}
+    >
+      <Animated.View style={[{ flex: 1, backgroundColor: BRAND }, animatedStyle]} />
+    </View>
+  );
+}
 
-        // Determine the line completion state: the line *after* step i is completed
-        // if the step at i+1 is completed (i.e., i+1 < currentStepIndex).
-        const lineCompleted = currentStepIndex >= 0 && index + 1 <= currentStepIndex;
+function DepositStepperInner({ rows, className }: DepositStepperProps) {
+  if (!rows.length) return null;
+
+  return (
+    <View className={cn('rounded-twice bg-card px-5 py-4', className)}>
+      {rows.map((row, index) => {
+        const isLast = index === rows.length - 1;
+        const nextRow = rows[index + 1];
 
         return (
-          <View key={step.key}>
-            {/* Step row */}
+          <View key={row.key}>
             <View className="flex-row items-center gap-3">
-              {/* Circle indicator */}
-              {isCompleted ? (
-                <CompletedCircle />
-              ) : isActive ? (
-                <ActiveCircle isFailed={isFailed} />
-              ) : (
-                <PendingCircle />
-              )}
-
-              {/* Label */}
+              <StepCircle state={row.state} />
               <Text
-                className={`text-sm font-medium ${
-                  isActive && isFailed
-                    ? 'text-red-500'
-                    : isCompleted || isActive
-                      ? 'text-white'
-                      : 'text-[#8E8E93]'
-                }`}
+                className={cn(
+                  'flex-1 text-base font-medium',
+                  row.state === 'failed'
+                    ? 'text-red-400'
+                    : row.state === 'pending'
+                      ? 'text-white/50'
+                      : 'text-white',
+                )}
               >
-                {STEP_LABELS[step.key] ?? step.label}
+                {row.label}
               </Text>
             </View>
 
-            {/* Connecting line (skip after last step) */}
-            {!isLast && <ConnectingLine completed={lineCompleted} />}
+            {!isLast && <ConnectingLine completed={nextRow?.state !== 'pending'} />}
           </View>
         );
       })}

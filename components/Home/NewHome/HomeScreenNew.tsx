@@ -5,7 +5,7 @@ import { Address } from 'viem';
 
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
-import HomeVerificationCard from '@/components/Home/NewHome/HomeVerificationCard';
+import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
@@ -20,6 +20,7 @@ import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkele
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
@@ -123,6 +124,9 @@ export default function HomeScreenNew() {
   const spendableBalance = getSpendableTotal({ walletBalance, cardBalance, userHasCard });
   const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(spendableBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
+  // Which next-step prompt (verify / fund / Apple Pay) belongs under the card,
+  // if any — null once the user is done or has snoozed the current one.
+  const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
 
   return (
     // The card details are a layer on this screen rather than a route of their own,
@@ -171,9 +175,13 @@ export default function HomeScreenNew() {
             last4={cardDetails?.card_details?.last_4}
             depositCompleted={depositCompleted}
           />
-          {!userHasCard && (
+          {promptKey && (
             <HeroExit spec={HERO_EXIT.belowCard}>
-              <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
+              <HomePromptCard
+                promptKey={promptKey}
+                depositCompleted={depositCompleted}
+                className="px-4"
+              />
             </HeroExit>
           )}
         </View>

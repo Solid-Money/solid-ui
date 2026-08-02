@@ -62,12 +62,20 @@ export const EyeOffIcon = () => (
   </Svg>
 );
 
+/** The copy/tick glyphs share a box so swapping between them doesn't shift layout. */
+const COPY_ICON_SIZE = 15.0251;
+
+interface SizedIconProps {
+  /** Overrides the design size — the card's ovals scale with the artwork. */
+  size?: number;
+}
+
 /**
  * Figma 21742:4248 / 21742:4265 — the copy affordance. Used at full strength on the
  * card's pills and at 50% on the panel's rows, so opacity is the caller's choice.
  */
-export const CopyIcon = () => (
-  <Svg width={15.0251} height={15.0251} viewBox="0 0 15.0251 15.0251" fill="none">
+export const CopyIcon = ({ size = COPY_ICON_SIZE }: SizedIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 15.0251 15.0251" fill="none">
     <Path
       d="M6.06205 3.75557C6.30047 1.48539 7.39412 0.75 10.1424 0.75C13.3027 0.75 14.2751 1.72239 14.2751 4.88266C14.2751 7.63096 13.5397 8.72461 11.2695 8.96303M0.75 10.1424C0.75 6.98213 1.72239 6.00975 4.88266 6.00975C8.04295 6.00975 9.01533 6.98213 9.01533 10.1424C9.01533 13.3027 8.04295 14.2751 4.88266 14.2751C1.72239 14.2751 0.75 13.3027 0.75 10.1424Z"
       stroke="white"
@@ -191,6 +199,24 @@ export const RowChevronIcon = () => (
       strokeOpacity={0.5}
       strokeWidth={1.5}
       strokeLinecap="round"
+    />
+  </Svg>
+);
+
+/**
+ * Confirmation shown in the copy button's place for a moment after a value is copied.
+ * The design doesn't specify one, so it's drawn to match CopyIcon exactly — same box,
+ * same 1.5 stroke, same round caps — so the swap reads as the glyph changing rather
+ * than the control moving.
+ */
+export const CheckIcon = ({ size = COPY_ICON_SIZE }: SizedIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 15.0251 15.0251" fill="none">
+    <Path
+      d="M1.5 8.1L5.3 11.9L13.5 3.7"
+      stroke="white"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   </Svg>
 );

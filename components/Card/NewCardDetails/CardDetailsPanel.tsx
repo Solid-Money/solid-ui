@@ -3,8 +3,9 @@ import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } f
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { CardRevealValues } from '@/components/Card/NewCardDetails/cardRevealValues';
+import CopyButton from '@/components/Card/NewCardDetails/CopyButton';
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
-import { CopyIcon, EyeIcon, EyeOffIcon } from '@/components/Card/NewCardDetails/icons';
+import { EyeIcon, EyeOffIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 
 /**
@@ -41,15 +42,11 @@ const DetailRow = ({ label, value, onCopy }: DetailRowProps) => (
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
-    <Pressable
+    <CopyButton
       accessibilityLabel={`Copy ${label.toLowerCase()}`}
-      accessibilityRole="button"
-      hitSlop={14}
-      onPress={onCopy}
+      onCopy={onCopy}
       style={styles.detailCopy}
-    >
-      <CopyIcon />
-    </Pressable>
+    />
   </View>
 );
 
