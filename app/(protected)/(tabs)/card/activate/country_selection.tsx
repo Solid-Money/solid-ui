@@ -27,7 +27,14 @@ export default function ActivateCountrySelection() {
   );
 
   const goBack = () => {
-    router.replace(path.CARD);
+    // Leaving the activation flow: `/card` is a redirect shim that would send a
+    // user without a card straight back into onboarding, so fall back to the
+    // wallet page.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.HOME);
+    }
   };
 
   const [loading, setLoading] = useState(true);

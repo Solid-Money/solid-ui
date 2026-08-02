@@ -22,6 +22,9 @@ const activity: MenuItem = {
   href: path.ACTIVITY,
 };
 
+// The one nav entry that can't pick a destination up front — a card holder and a
+// first-timer need different screens — so it goes through the `/card` redirect
+// shim, which branches on card status.
 const card: MenuItem = {
   label: 'Card',
   href: path.CARD,

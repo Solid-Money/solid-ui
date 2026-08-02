@@ -101,6 +101,9 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, size }) => (
             <LottieTabIcon source={cardAnimation} focused={focused} size={size} />
           ),
+          // The card is part of the wallet page in the redesign, so this tab is
+          // filtered out of NewCustomTabBar. The route stays registered because
+          // `/card` is the redirect shim old links resolve through.
           href: path.CARD,
         }}
       />

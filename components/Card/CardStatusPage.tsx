@@ -26,7 +26,9 @@ export function CardStatusPage({
     <PageLayout desktopOnly contentClassName="pb-10">
       <View className="mx-auto w-full max-w-lg px-4 pt-8">
         <View className="flex-row items-center justify-between">
-          <BackButton fallbackHref="/card" />
+          {/* No fallbackHref: the default is the wallet page, which is where the
+              card lives now. `/card` only redirects back into this flow. */}
+          <BackButton />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             {header ? header : 'Solid card'}
           </Text>

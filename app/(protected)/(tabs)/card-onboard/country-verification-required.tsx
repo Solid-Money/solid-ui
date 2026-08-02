@@ -26,7 +26,7 @@ export default function CountryVerificationRequired() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.push(path.CARD);
+      router.replace(path.HOME);
     }
   };
 

@@ -13,6 +13,13 @@ type Path = {
   SAVINGS_OLD: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
+  /**
+   * @deprecated Not a page any more — `/card` is a redirect shim that branches on
+   * card status (details / activate / country selection) so old deep links keep
+   * working. New navigation should name the destination directly:
+   * `CARD_COUNTRY_SELECTION` to start onboarding, `CARD_ACTIVATE` to resume
+   * issuance, `CARD_DETAILS` for an existing card.
+   */
   CARD: Href;
   USER_KYC_INFO: Href;
   BANK_TRANSFER: Href;

@@ -37,7 +37,13 @@ export default function CountrySelection() {
   const { user } = useUser();
 
   const goBack = () => {
-    router.replace(path.CARD);
+    // Leaving card onboarding: `/card` is a redirect shim that would send a
+    // user without a card straight back here, so fall back to the wallet page.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.HOME);
+    }
   };
 
   const [loading, setLoading] = useState(true);

@@ -94,7 +94,9 @@ export function useActivateCard() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.push(path.CARD);
+      // Nothing to go back to (deep link into the flow) — the wallet page is
+      // where the card lives now.
+      router.replace(path.HOME);
     }
   };
 
