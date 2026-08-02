@@ -37,7 +37,6 @@ const SupportDrawerProvider = () => {
           contentKey="support"
           shouldAnimate={false}
           hideHeader
-          contentClassName="bg-[#1c1c1c]"
         >
           <SupportDrawerContent isSheet={false} />
         </ResponsiveModal>

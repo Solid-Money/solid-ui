@@ -143,7 +143,7 @@ const CashbackDetailsContent = ({
   animationSession,
   isSheet = true,
 }: CashbackDetailsContentProps) => (
-  <View className={cn('items-center px-[34px]', isSheet && 'pt-[46px]')}>
+  <View className={cn('items-center', isSheet && 'px-[34px] pt-[46px]')}>
     <CashbackDiamondIcon key={animationSession} />
 
     <Text
