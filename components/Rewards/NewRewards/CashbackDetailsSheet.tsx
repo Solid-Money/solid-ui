@@ -57,7 +57,6 @@ const CashbackDetailsSheet = ({
           trigger={trigger}
           contentKey="cashback-details"
           shouldAnimate={false}
-          hideHeader
         >
           {content}
         </ResponsiveModal>

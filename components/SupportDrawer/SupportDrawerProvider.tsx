@@ -36,7 +36,6 @@ const SupportDrawerProvider = () => {
           trigger={null}
           contentKey="support"
           shouldAnimate={false}
-          hideHeader
         >
           <SupportDrawerContent isSheet={false} />
         </ResponsiveModal>
