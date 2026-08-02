@@ -140,7 +140,7 @@ export const TIER_BENEFITS: Record<RewardsTier, TierBenefitItem[]> = {
     {
       icon: 'images/rocket-yellow.png',
       title: 'Free virtual card',
-      description: '200M+ Visa merchants',
+      description: '175M Visa merchants',
     },
   ],
   [RewardsTier.PRIME]: [
@@ -157,7 +157,7 @@ export const TIER_BENEFITS: Record<RewardsTier, TierBenefitItem[]> = {
     {
       icon: 'images/rocket-yellow.png',
       title: 'Free virtual card',
-      description: '200M+ Visa merchants',
+      description: '175M Visa merchants',
     },
   ],
   [RewardsTier.ULTRA]: [
@@ -174,7 +174,7 @@ export const TIER_BENEFITS: Record<RewardsTier, TierBenefitItem[]> = {
     {
       icon: 'images/rocket-yellow.png',
       title: 'Free virtual card',
-      description: '200M+ Visa merchants',
+      description: '175M Visa merchants',
     },
   ],
 };
