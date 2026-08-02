@@ -204,7 +204,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
       disableScroll
       fillViewportHeight
       containerClassName="gap-0"
-      contentClassName="bg-[#111] px-0 pb-0 pt-0 md:px-0 md:pt-0"
+      contentClassName="overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:px-0 md:pt-0"
     >
       <View className="flex-1">
         <ScrollView

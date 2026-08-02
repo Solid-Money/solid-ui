@@ -156,7 +156,7 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
+          'px-4 pb-0 pt-4 md:max-w-lg md:px-8 md:pb-0 md:pt-8',
           !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
           webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect

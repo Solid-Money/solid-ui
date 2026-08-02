@@ -170,7 +170,9 @@ const CardDetailsPane = () => {
         !isVisible && styles.warm,
       ]}
     >
-      <View style={{ paddingTop: insets.top }}>
+      {/* Same column as the content below, so the back button doesn't drift out to
+          the edge of the desktop body area. */}
+      <View className="mx-auto w-full max-w-lg" style={{ paddingTop: insets.top }}>
         <CardDetailsHeader onBack={close} />
       </View>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
