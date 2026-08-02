@@ -58,7 +58,6 @@ const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPo
           trigger={trigger ?? null}
           contentKey="tier-points"
           shouldAnimate={false}
-          hideHeader
         >
           {content}
         </ResponsiveModal>
