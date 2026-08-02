@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 const POINTS_STAR = require('@/assets/images/rewards-tiers/points-drawer-star.png');
 const POINTS_SAVE = require('@/assets/images/rewards-tiers/points-save.png');
@@ -22,6 +23,11 @@ const POINTS_SWAP = require('@/assets/images/rewards-tiers/points-swap.png');
 interface TierPointsSheetContentProps {
   animationSession: number;
   onClose: () => void;
+  /**
+   * Bottom-sheet presentation: adds the top padding that clears the sheet's drag
+   * handle. False inside a modal, which brings its own padding.
+   */
+  isSheet?: boolean;
 }
 
 interface PointsMethod {
@@ -147,8 +153,12 @@ const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean
   </View>
 );
 
-const TierPointsSheetContent = ({ animationSession, onClose }: TierPointsSheetContentProps) => (
-  <View className="items-center px-[34px] pt-[46px]">
+const TierPointsSheetContent = ({
+  animationSession,
+  onClose,
+  isSheet = true,
+}: TierPointsSheetContentProps) => (
+  <View className={cn('items-center px-[34px]', isSheet && 'pt-[46px]')}>
     <AnimatedTierStar key={animationSession} />
 
     <Text

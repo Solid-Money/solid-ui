@@ -107,7 +107,15 @@ const SupportRow = ({ icon, label, onPress }: SupportRowProps) => (
 
 const Divider = () => <View className="h-px bg-white/10" />;
 
-const SupportDrawerContent = () => {
+interface SupportDrawerContentProps {
+  /**
+   * Bottom-sheet presentation: draws the drag handle and the top padding that
+   * clears it. False inside a modal, which supplies its own chrome and padding.
+   */
+  isSheet?: boolean;
+}
+
+const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => {
   const intercom = useIntercom();
   const chatMessage = useSupportDrawerStore(state => state.chatMessage);
 
@@ -136,12 +144,12 @@ const SupportDrawerContent = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.handle} />
+    <View style={isSheet ? styles.container : undefined}>
+      {isSheet && <View style={styles.handle} />}
       <Text className="text-center text-[30px] font-semibold leading-[36px] text-white">
         Help & Support
       </Text>
-      <View style={styles.card}>
+      <View style={[styles.card, isSheet ? undefined : styles.cardInModal]}>
         <SupportRow icon={<ChatIcon />} label="Chat with us" onPress={handleChatPress} />
         <Divider />
         <SupportRow icon={<FaqIcon />} label="FAQ" onPress={() => openLink(FAQ_URL)} />
@@ -185,6 +193,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#2b2b2b',
   },
+  // The modal already supplies its own horizontal padding.
+  cardInModal: { marginHorizontal: 0, marginTop: 24 },
 });
 
 export default SupportDrawerContent;

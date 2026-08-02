@@ -13,13 +13,18 @@ import Svg, { Defs, FeGaussianBlur, Filter, Path } from 'react-native-svg';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
 
 interface CashbackDetailsContentProps extends CashbackDetailsData {
   onGetMoreCashback: () => void;
   animationSession: number;
+  /**
+   * Bottom-sheet presentation: adds the top padding that clears the sheet's drag
+   * handle. False inside a modal, which brings its own padding.
+   */
+  isSheet?: boolean;
 }
 
 const formatWholeDollars = (value: number) => `$${formatNumber(value || 0, 0, 0)}`;
@@ -136,8 +141,9 @@ const CashbackDetailsContent = ({
   allTimeCashback,
   onGetMoreCashback,
   animationSession,
+  isSheet = true,
 }: CashbackDetailsContentProps) => (
-  <View className="items-center px-[34px] pt-[46px]">
+  <View className={cn('items-center px-[34px]', isSheet && 'pt-[46px]')}>
     <CashbackDiamondIcon key={animationSession} />
 
     <Text
