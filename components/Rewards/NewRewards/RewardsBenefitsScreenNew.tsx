@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -817,7 +817,7 @@ export default function RewardsBenefitsScreenNew() {
             tiers={TIERS}
             labels={TIER_LABELS}
             selected={selectedTier}
-            onSelect={setSelectedTier}
+            onSelect={setSelectedTierOverride}
           />
         </View>
       </LinearGradient>

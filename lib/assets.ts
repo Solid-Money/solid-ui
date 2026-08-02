@@ -408,10 +408,6 @@ export const ASSETS = {
     module: require('@/assets/images/green_onboarding_bg.png'),
     hash: 'c358e28f',
   },
-  'images/header-help.tsx': {
-    module: require('@/assets/images/header-help.tsx'),
-    hash: '9bbbcaf1',
-  },
   'images/header-bell.tsx': {
     module: require('@/assets/images/header-bell.tsx'),
     hash: '519ad50d',
