@@ -37,7 +37,7 @@ const BENEFITS: Benefit[] = [
   { badge: getAsset('images/badge-cashback.png'), badgeWidth: 50, label: 'Up to 5%\ncashback' },
   { badge: getAsset('images/badge-gpay.png'), badgeWidth: 94, label: 'Google Pay\nsupport' },
   { badge: getAsset('images/badge-visa.png'), badgeWidth: 94, label: 'Free Visa\nvirtual card' },
-  { badge: getAsset('images/badge-globe.png'), badgeWidth: 50, label: '+200M merchants worldwide' },
+  { badge: getAsset('images/badge-globe.png'), badgeWidth: 50, label: '175M merchants worldwide' },
   { badge: getAsset('images/badge-star.png'), badgeWidth: 50, label: 'Unlock tier\nrewards' },
   { badge: getAsset('images/badge-usd.png'), badgeWidth: 50, label: 'USD Personal account' },
 ];

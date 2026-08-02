@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -31,6 +31,7 @@ import { RewardsTier } from '@/lib/types';
 import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
 import TierStatsBand from './TierStatsBand';
+import TierSwitcher from './TierSwitcher';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
@@ -233,80 +234,6 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       cashbackCap: 'Up to 200$ monthly',
     },
   },
-};
-
-interface TierSwitcherProps {
-  selected: RewardsTier;
-  onSelect: (tier: RewardsTier) => void;
-}
-
-type SegmentLayout = { x: number; width: number };
-
-const TIER_TAB_STYLE = { fontFamily: 'MonaSans_500Medium', fontSize: 15, lineHeight: 18 } as const;
-
-/**
- * Segmented tier control. The selected tab is a filled pill that slides from the
- * previous tab to the tapped one; the track itself is transparent, so the tabs read
- * as buttons over the page rather than as a black bar.
- */
-const TierSwitcher = ({ selected, onSelect }: TierSwitcherProps) => {
-  const layouts = useRef<Partial<Record<RewardsTier, SegmentLayout>>>({});
-  const indicatorX = useSharedValue(0);
-  const indicatorWidth = useSharedValue(0);
-
-  // The pill covers its tab exactly — it used to be inset by 8px, which read as a
-  // stray highlight rather than a selected button.
-  const handleLayout = (tier: RewardsTier) => (event: LayoutChangeEvent) => {
-    const { x, width } = event.nativeEvent.layout;
-    layouts.current[tier] = { x, width };
-    if (tier === selected) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
-    }
-  };
-
-  useEffect(() => {
-    const layout = layouts.current[selected];
-    if (!layout) return;
-    indicatorX.value = withTiming(layout.x, { duration: 250 });
-    indicatorWidth.value = withTiming(layout.width, { duration: 250 });
-  }, [selected, indicatorX, indicatorWidth]);
-
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-    width: indicatorWidth.value,
-  }));
-
-  return (
-    <View
-      className="h-11 flex-row items-center self-center rounded-full p-1"
-      style={{
-        borderColor: 'rgba(255,255,255,0.12)',
-        borderWidth: StyleSheet.hairlineWidth,
-      }}
-    >
-      {/* left-0 anchors the pill to the track's own origin, so translateX can be the
-          tab's measured x. Without it the pill starts at its static position — one
-          padding-width in — and lands offset from the tab it is meant to cover. */}
-      <Animated.View
-        className="absolute bottom-1 left-0 top-1 rounded-full bg-white/15"
-        pointerEvents="none"
-        style={indicatorStyle}
-      />
-      {TIERS.map(tier => (
-        <Pressable
-          key={tier}
-          onPress={() => onSelect(tier)}
-          onLayout={handleLayout(tier)}
-          className="h-9 items-center justify-center rounded-full px-6 transition-all active:opacity-70"
-        >
-          <Text className="text-white" style={TIER_TAB_STYLE}>
-            {TIER_LABELS[tier]}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
 };
 
 interface BrandBadgeProps {
@@ -886,7 +813,12 @@ export default function RewardsBenefitsScreenNew() {
           <View className="absolute left-4 top-4">
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
-          <TierSwitcher selected={selectedTier} onSelect={setSelectedTierOverride} />
+          <TierSwitcher
+            tiers={TIERS}
+            labels={TIER_LABELS}
+            selected={selectedTier}
+            onSelect={setSelectedTierOverride}
+          />
         </View>
       </LinearGradient>
 
