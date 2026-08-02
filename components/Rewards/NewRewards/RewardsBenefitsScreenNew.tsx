@@ -19,7 +19,7 @@ import {
   CoreRocketPerkIcon,
   CoreTierSparkle,
 } from '@/assets/images/rewards-tiers/core-tier-icons';
-import { useIsSidebarShell, usePageWidth } from '@/components/Navbar/Sidebar';
+import { SIDEBAR_BODY_WIDTH, useIsSidebarShell, usePageWidth } from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -594,6 +594,8 @@ const PremiumFeesCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA
  * CompareTiersTable-based screen.
  */
 const HEADER_ROW_HEIGHT = 56;
+/** Figma leaves 20px above the tier tabs. */
+const HEADER_TOP_SPACING = 20;
 const SLIDE_DURATION = 260;
 const SLIDE_EASING = Easing.out(Easing.cubic);
 const SWIPE_DISTANCE_THRESHOLD = 50;
@@ -802,15 +804,18 @@ export default function RewardsBenefitsScreenNew() {
           top: 0,
           left: 0,
           right: 0,
-          height: insets.top + HEADER_ROW_HEIGHT + FADE_EXTENT,
+          height: insets.top + HEADER_TOP_SPACING + HEADER_ROW_HEIGHT + FADE_EXTENT,
           zIndex: 10,
         }}
       >
+        {/* Constrained to the page column so the back button lines up with the
+            content rather than floating out at the edge of the desktop body. */}
         <View
-          className="relative flex-row items-center justify-center px-4"
-          style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top }}
+          className={`relative flex-row items-center justify-center px-4 ${SIDEBAR_BODY_WIDTH}`}
+          style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top + HEADER_TOP_SPACING }}
         >
-          <View className="absolute left-4 top-4">
+          {/* Stretched top-to-bottom so it centres on the tabs beside it. */}
+          <View className="absolute bottom-0 left-4 top-0 justify-center">
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
           <TierSwitcher

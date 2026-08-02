@@ -26,7 +26,7 @@ export default function ReferralProgramModalNew({ isOpen, onClose }: ReferralPro
       }}
       trigger={null}
       contentKey="referral-program-new"
-      contentClassName="bg-background px-0 pb-0 pt-0 md:max-w-lg md:px-0 md:pt-0"
+      contentClassName="overflow-hidden bg-background px-0 pb-0 pt-0 md:max-w-xl md:px-0 md:pt-0"
       shouldAnimate={false}
       hideHeader
       disableScroll
