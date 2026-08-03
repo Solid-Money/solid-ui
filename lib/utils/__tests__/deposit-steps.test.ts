@@ -1,16 +1,13 @@
 /// <reference types="jest" />
-import {
-  ActivityEvent,
-  TransactionStatus,
-  TransactionType,
-  DepositStep,
-} from '@/lib/types';
+import { ActivityEvent, DepositStep, TransactionStatus, TransactionType } from '@/lib/types';
 import {
   DEPOSIT_STEPS,
+  getDepositProgressRows,
   getDepositStep,
-  getDepositStepIndex,
   getDepositStepDescription,
+  getDepositStepIndex,
   isDepositWithSteps,
+  normalizeDepositStep,
 } from '@/lib/utils/deposit-steps';
 
 /**
@@ -36,15 +33,33 @@ function makeActivity(
 // ---------------------------------------------------------------------------
 describe('getDepositStep', () => {
   describe('when metadata.depositStep is set explicitly', () => {
-    const steps: DepositStep[] = ['detected', 'confirmed', 'depositing', 'minting', 'complete'];
+    const steps: DepositStep[] = ['received', 'confirmed', 'depositing', 'minting', 'complete'];
 
-    it.each(steps)('returns "%s" from metadata regardless of status', (step) => {
+    it.each(steps)('returns "%s" from metadata when the status is behind it', step => {
       const activity = makeActivity({
         type: TransactionType.DEPOSIT,
-        status: TransactionStatus.PENDING, // status should be ignored
+        status: TransactionStatus.PENDING, // PENDING implies no step yet
         metadata: { depositStep: step },
       });
       expect(getDepositStep(activity)).toBe(step);
+    });
+
+    it('maps the legacy "detected" step onto "received"', () => {
+      const activity = makeActivity({
+        type: TransactionType.DEPOSIT,
+        status: TransactionStatus.DETECTED,
+        metadata: { depositStep: 'detected' },
+      });
+      expect(getDepositStep(activity)).toBe('received');
+    });
+
+    it('prefers the status when it is ahead of a stale metadata step', () => {
+      const activity = makeActivity({
+        type: TransactionType.DEPOSIT,
+        status: TransactionStatus.SUCCESS,
+        metadata: { depositStep: 'received' },
+      });
+      expect(getDepositStep(activity)).toBe('complete');
     });
   });
 
@@ -65,12 +80,20 @@ describe('getDepositStep', () => {
       expect(getDepositStep(activity)).toBe('confirmed');
     });
 
-    it('returns "detected" for PENDING status', () => {
+    it('returns "received" for DETECTED status', () => {
+      const activity = makeActivity({
+        type: TransactionType.DEPOSIT,
+        status: TransactionStatus.DETECTED,
+      });
+      expect(getDepositStep(activity)).toBe('received');
+    });
+
+    it('returns undefined for PENDING status (nothing detected yet)', () => {
       const activity = makeActivity({
         type: TransactionType.DEPOSIT,
         status: TransactionStatus.PENDING,
       });
-      expect(getDepositStep(activity)).toBe('detected');
+      expect(getDepositStep(activity)).toBeUndefined();
     });
 
     it('returns undefined for FAILED status', () => {
@@ -172,7 +195,7 @@ describe('isDepositWithSteps', () => {
     TransactionType.REPAY_AND_WITHDRAW_COLLATERAL,
   ];
 
-  it.each(nonDepositTypes)('returns false for %s type', (type) => {
+  it.each(nonDepositTypes)('returns false for %s type', type => {
     const activity = makeActivity({
       type,
       status: TransactionStatus.PENDING,
@@ -185,8 +208,8 @@ describe('isDepositWithSteps', () => {
 // getDepositStepIndex
 // ---------------------------------------------------------------------------
 describe('getDepositStepIndex', () => {
-  it('returns 0 for "detected"', () => {
-    expect(getDepositStepIndex('detected')).toBe(0);
+  it('returns 0 for "received"', () => {
+    expect(getDepositStepIndex('received')).toBe(0);
   });
 
   it('returns 1 for "confirmed"', () => {
@@ -220,8 +243,8 @@ describe('getDepositStepIndex', () => {
 // getDepositStepDescription
 // ---------------------------------------------------------------------------
 describe('getDepositStepDescription', () => {
-  it('returns "Transfer detected" for "detected"', () => {
-    expect(getDepositStepDescription('detected')).toBe('Transfer detected');
+  it('returns "Transfer detected" for "received"', () => {
+    expect(getDepositStepDescription('received')).toBe('Transfer detected');
   });
 
   it('returns "Transfer confirmed" for "confirmed"', () => {
@@ -254,12 +277,130 @@ describe('DEPOSIT_STEPS', () => {
   });
 
   it('has the expected keys in order', () => {
-    const keys = DEPOSIT_STEPS.map((s) => s.key);
-    expect(keys).toEqual(['detected', 'confirmed', 'depositing', 'minting', 'complete']);
+    const keys = DEPOSIT_STEPS.map(s => s.key);
+    expect(keys).toEqual(['received', 'confirmed', 'depositing', 'minting', 'complete']);
   });
 
   it('has the expected labels in order', () => {
-    const labels = DEPOSIT_STEPS.map((s) => s.label);
-    expect(labels).toEqual(['Detected', 'Confirmed', 'Depositing', 'Minting soUSD', 'Complete']);
+    const labels = DEPOSIT_STEPS.map(s => s.label);
+    expect(labels).toEqual(['Received', 'Confirmed', 'Depositing', 'Minting soUSD', 'Complete']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeDepositStep
+// ---------------------------------------------------------------------------
+describe('normalizeDepositStep', () => {
+  it('passes through current step keys', () => {
+    expect(normalizeDepositStep('confirmed')).toBe('confirmed');
+  });
+
+  it('maps legacy backend steps', () => {
+    expect(normalizeDepositStep('detected')).toBe('received');
+    expect(normalizeDepositStep('transferring_to_card')).toBe('depositing');
+  });
+
+  it('returns undefined for unknown or empty steps', () => {
+    expect(normalizeDepositStep('nonsense')).toBeUndefined();
+    expect(normalizeDepositStep(undefined)).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getDepositProgressRows
+// ---------------------------------------------------------------------------
+describe('getDepositProgressRows', () => {
+  const directDeposit = (overrides: Partial<ActivityEvent> = {}) =>
+    makeActivity({
+      type: TransactionType.DEPOSIT,
+      status: TransactionStatus.DETECTED,
+      amount: '100',
+      symbol: 'USDC',
+      ...overrides,
+      metadata: { description: 'Direct deposit', ...(overrides.metadata ?? {}) },
+    });
+
+  it('marks the transfer received and confirmations pending for an unconfirmed tx', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({ metadata: { description: 'Direct deposit', depositStep: 'received' } }),
+    );
+
+    expect(rows.map(r => r.state)).toEqual(['complete', 'active', 'pending']);
+    expect(rows[0].label).toBe('We received your 100 USDC');
+    expect(rows[1].label).toBe('Waiting for network confirmations');
+    expect(rows[2].label).toBe('Depositing USDC to your balance');
+  });
+
+  it('advances to the deposit row once the tx is confirmed', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        status: TransactionStatus.PROCESSING,
+        metadata: { description: 'Direct deposit', depositStep: 'confirmed' },
+      }),
+    );
+
+    expect(rows.map(r => r.state)).toEqual(['complete', 'complete', 'active']);
+  });
+
+  it('completes every row on success', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        status: TransactionStatus.SUCCESS,
+        metadata: { description: 'Direct deposit' },
+      }),
+    );
+
+    expect(rows.map(r => r.state)).toEqual(['complete', 'complete', 'complete']);
+  });
+
+  it('waits on the transfer while the deposit is still PENDING', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        status: TransactionStatus.PENDING,
+        metadata: { description: 'Direct deposit' },
+      }),
+    );
+
+    expect(rows.map(r => r.state)).toEqual(['active', 'pending', 'pending']);
+    expect(rows[0].label).toBe('Waiting for your transfer');
+  });
+
+  it('flags the in-flight row as failed when the deposit fails', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        status: TransactionStatus.FAILED,
+        metadata: { description: 'Direct deposit', depositStep: 'confirmed' },
+      }),
+    );
+
+    expect(rows.map(r => r.state)).toEqual(['complete', 'complete', 'failed']);
+  });
+
+  it('routes card deposits to the card destination', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        metadata: {
+          description: 'Card deposit',
+          depositStep: 'depositing',
+          destinationType: 'RAIN_CARD',
+        },
+      }),
+    );
+
+    expect(rows[2].label).toBe('Depositing USDC to your card');
+  });
+
+  it('uses wallet-transfer wording for connect-wallet deposits', () => {
+    const rows = getDepositProgressRows(
+      makeActivity({
+        type: TransactionType.DEPOSIT,
+        status: TransactionStatus.PENDING,
+        amount: '100',
+        symbol: 'soUSD',
+      }),
+    );
+
+    expect(rows[0].label).toBe('Sending 100 soUSD from your wallet');
+    expect(rows[2].label).toBe('Depositing soUSD to your savings');
   });
 });

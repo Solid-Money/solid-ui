@@ -59,9 +59,9 @@ export function usePushNotifications() {
     if (!isAuthenticated) return;
     if (Platform.OS === 'web') return;
 
-    // Ensure push notifications are registered for existing users who
-    // may have missed the onboarding screen. This is a no-op if already granted.
-    registerForPushNotificationsAsync().catch(err => {
+    // Refresh the push token for users who already granted permission without
+    // putting the OS prompt in front of the notification onboarding drawer.
+    registerForPushNotificationsAsync({ requestPermission: false }).catch(err => {
       console.warn('Push notification registration failed:', err);
     });
 

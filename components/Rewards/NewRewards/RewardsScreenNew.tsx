@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
 import Loading from '@/components/Loading';
@@ -35,6 +36,7 @@ import RewardsSummaryCard from './RewardsSummaryCard';
  * (full tier comparison).
  */
 export default function RewardsScreenNew() {
+  const isFocused = useIsFocused();
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
@@ -53,13 +55,13 @@ export default function RewardsScreenNew() {
   const hasOptedIn = rewardsData?.hasOptedIn ?? true;
   const rewardsLocked = Boolean(rewardsData && !hasOptedIn);
   const legacyPoints = rewardsData?.legacyPoints ?? 0;
-  const showWelcomePopup = rewardsLocked && !welcomeDismissed;
+  const showWelcomePopup = isFocused && rewardsLocked && !welcomeDismissed;
 
   useEffect(() => {
-    if (rewardsLocked && welcomeDismissed) {
+    if (isFocused && rewardsLocked && welcomeDismissed) {
       router.replace(path.HOME);
     }
-  }, [rewardsLocked, welcomeDismissed]);
+  }, [isFocused, rewardsLocked, welcomeDismissed]);
 
   // Support the `/rewards?referral=open` deep link (e.g. settings "Refer & Earn").
   useEffect(() => {

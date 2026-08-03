@@ -54,7 +54,7 @@ const VideoIllustration = ({
       player.replay();
     } else {
       player.pause();
-      player.currentTime = 0;
+      player.seekBy(-player.currentTime);
     }
   }, [isActive, restartKey, player]);
 

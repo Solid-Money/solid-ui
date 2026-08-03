@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useQuery } from '@tanstack/react-query';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { useCardDetails } from '@/hooks/useCardDetails';
-import { getMppCredentials, getWalletEligibility } from '@/lib/api';
+import { useWalletEligibility } from '@/hooks/useWalletEligibility';
+import { getMppCredentials } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
 import type { CardDetailsResponseDto } from '@/lib/types';
@@ -42,20 +42,13 @@ interface AddToWalletRainProps {
 const MODAL_STATE: ModalState = { name: 'add-to-wallet-rain', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 
-const WALLET_ELIGIBILITY_KEY = 'walletEligibility';
-
 export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddToWalletRainProps) {
   const [activeTab, setActiveTab] = useState<DigitalWalletType>(DigitalWalletType.Apple);
   const [isAddingApple, setIsAddingApple] = useState(false);
   const [isAddingGoogle, setIsAddingGoogle] = useState(false);
 
   const { data: cardDetails } = useCardDetails();
-  const { data: eligibility, isLoading: eligibilityLoading } = useQuery({
-    queryKey: [WALLET_ELIGIBILITY_KEY],
-    queryFn: () => withRefreshToken(() => getWalletEligibility()),
-    enabled: isOpen,
-    staleTime: 60 * 1000,
-  });
+  const { data: eligibility, isLoading: eligibilityLoading } = useWalletEligibility(isOpen);
 
   const eligible = eligibility?.eligible ?? false;
   const alreadyApple = eligibility?.alreadyInAppleWallet ?? false;

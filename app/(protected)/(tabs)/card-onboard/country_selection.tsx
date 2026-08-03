@@ -36,9 +36,10 @@ export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
 
+  // Return to wherever the flow started — the redesigned home reaches this
+  // screen from its card CTAs. `/card` is a redirect shim now, and it would send
+  // a user without a card straight back here, so fall back to the wallet page.
   const goBack = () => {
-    // Leaving card onboarding: `/card` is a redirect shim that would send a
-    // user without a card straight back here, so fall back to the wallet page.
     if (router.canGoBack()) {
       router.back();
     } else {

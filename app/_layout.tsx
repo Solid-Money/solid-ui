@@ -444,7 +444,9 @@ function RootLayout() {
                       </Stack>
                       <PortalHost />
                       <DeferredModalProviders />
-                      {hasSelectedUser && <WhatsNewWrapper />}
+                      {hasSelectedUser && params.notificationPermission !== 'open' && (
+                        <WhatsNewWrapper />
+                      )}
                       {hasSelectedUser && Platform.OS !== 'web' && <CashbackStoreReviewTrigger />}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>

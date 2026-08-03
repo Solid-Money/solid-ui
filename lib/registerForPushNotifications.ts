@@ -5,7 +5,14 @@ import messaging from '@react-native-firebase/messaging';
 
 import { registerPushToken } from '@/lib/api';
 
-export async function registerForPushNotificationsAsync() {
+interface RegisterForPushNotificationsOptions {
+  /** Whether an undetermined/denied permission should trigger the system prompt. */
+  requestPermission?: boolean;
+}
+
+export async function registerForPushNotificationsAsync({
+  requestPermission = true,
+}: RegisterForPushNotificationsOptions = {}) {
   if (!Device.isDevice) {
     throw new Error('Must use physical device for push notifications');
   }
@@ -22,13 +29,13 @@ export async function registerForPushNotificationsAsync() {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
-  if (existingStatus !== 'granted') {
+  if (existingStatus !== 'granted' && requestPermission) {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Permission not granted to get push token for push notification!');
+    console.warn('Permission not granted to get push token for push notification!');
 
     return null;
   }

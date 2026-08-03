@@ -462,6 +462,12 @@ export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
   /** Set by backend when available */
   provider?: CardProvider;
+  /**
+   * ISO 3166-1 alpha-2 of the address the card was issued against, read from the
+   * provider's consumer record. Distinct from `CardStatusResponse.country`, which is
+   * the user's KYC residence.
+   */
+  issuing_country?: string;
 }
 
 /**
@@ -837,7 +843,12 @@ export enum TransactionStatus {
   REFUNDED = 'refunded',
 }
 
-export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
+/**
+ * Progress of a deposit, in order.
+ * `received` means the transfer was seen on chain but is not confirmed yet
+ * (unconfirmed webhook). `detected` is the legacy alias for it.
+ */
+export type DepositStep = 'received' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;

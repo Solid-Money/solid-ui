@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
@@ -107,9 +106,7 @@ export default function OnboardingNew() {
       <OnboardingHeroBackground />
       <View className="absolute inset-0 bg-black/30" />
 
-      <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-        <LandingScreen onGetStarted={() => setShowWelcome(true)} />
-      </SafeAreaView>
+      <LandingScreen onGetStarted={() => setShowWelcome(true)} />
 
       <WelcomeSheet
         visible={showWelcome}

@@ -1,15 +1,21 @@
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 
 import {
   CARD_BODY_BLEED_PERCENT,
+  CARD_BODY_WIDTH_RATIO,
+  CARD_BOTTOM_SHADOW_RATIO,
+  CARD_TOP_SHADOW_RATIO,
   getCardHeroDestination,
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
-import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
+import NewCardArt, { NEW_CARD_ASPECT_RATIO } from '@/components/Card/NewCardDetails/NewCardArt';
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
+import { Text } from '@/components/ui/text';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
+import { getAsset } from '@/lib/assets';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
@@ -21,6 +27,18 @@ interface HomeWalletCardProps {
   /** Whether the user has already funded their account (deposit step). */
   depositCompleted: boolean;
 }
+
+const CARD_BODY_ASPECT_RATIO =
+  CARD_BODY_WIDTH_RATIO /
+  (1 / NEW_CARD_ASPECT_RATIO - CARD_TOP_SHADOW_RATIO - CARD_BOTTOM_SHADOW_RATIO);
+const GET_CARD_PANEL_WIDTH = 387;
+const GET_CARD_PANEL_HEIGHT = 140;
+const GET_CARD_PANEL_COVER = 88;
+const GET_CARD_LABEL_BOTTOM = 13;
+const GET_CARD_PANEL_ASPECT_RATIO = GET_CARD_PANEL_WIDTH / GET_CARD_PANEL_HEIGHT;
+const CARDLESS_STACK_ASPECT_RATIO =
+  GET_CARD_PANEL_WIDTH /
+  (GET_CARD_PANEL_WIDTH / CARD_BODY_ASPECT_RATIO + GET_CARD_PANEL_HEIGHT - GET_CARD_PANEL_COVER);
 
 /**
  * The merged green VISA Platinum "glass" card shown on the wallet page. Always
@@ -49,16 +67,40 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
 
   if (!hasCard) {
     return (
-      <>
-        <Pressable onPress={() => setIsVerificationOpen(true)} className="px-4">
-          <View style={styles.cardBox}>{card}</View>
+      <View>
+        <Pressable
+          accessibilityLabel="Get your card"
+          accessibilityRole="button"
+          onPress={() => setIsVerificationOpen(true)}
+          className="px-4"
+        >
+          <View style={styles.cardlessStack}>
+            <View
+              className="items-center justify-end overflow-hidden bg-card"
+              style={styles.getCardPanel}
+            >
+              <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
+                <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
+                  Get your card
+                </Text>
+                <Image
+                  source={getAsset('images/get-your-card-chevron.svg')}
+                  style={styles.getCardChevron}
+                  contentFit="fill"
+                />
+              </View>
+            </View>
+            <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
+              <View style={styles.cardBox}>{card}</View>
+            </View>
+          </View>
         </Pressable>
         <CardWaitingModal
           isOpen={isVerificationOpen}
           onClose={() => setIsVerificationOpen(false)}
           firstIncomplete={firstIncomplete}
         />
-      </>
+      </View>
     );
   }
 
@@ -97,19 +139,42 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
     >
       {/* The measured node is the artwork box, not this gutter — the hero flight's
           `from` rect has to be the same box getCardHeroDestination predicts. */}
-      <View ref={ref} collapsable={false} style={styles.cardBox}>
-        {card}
+      <View style={styles.cardBodyFrame}>
+        <View ref={ref} collapsable={false} style={styles.cardBox}>
+          {card}
+        </View>
       </View>
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  // The artwork bakes a drop shadow into each side, so a box the width of the content
-  // column draws a card visibly narrower than the sections around it. Sitting in the
-  // same px-4 gutter and bleeding back out by the shadow's share lines the visible
-  // card up with them exactly.
-  cardBox: { marginHorizontal: `${-CARD_BODY_BLEED_PERCENT}%` },
+  // The frame represents only the visible green card body. The artwork is positioned
+  // inside it with its baked-in shadow extending beyond the frame, so surrounding
+  // layout gaps are measured from the visible edges on every side.
+  cardBodyFrame: { aspectRatio: CARD_BODY_ASPECT_RATIO, position: 'relative', zIndex: 1 },
+  cardBox: {
+    left: `${-CARD_BODY_BLEED_PERCENT}%`,
+    marginTop: `${-(CARD_TOP_SHADOW_RATIO / CARD_BODY_WIDTH_RATIO) * 100}%`,
+    position: 'absolute',
+    width: `${(1 / CARD_BODY_WIDTH_RATIO) * 100}%`,
+  },
+  // Figma 22024:3490 is a 387x140 panel. Most of it sits behind the card, leaving
+  // only the compact CTA strip peeking out below it.
+  cardlessStack: { aspectRatio: CARDLESS_STACK_ASPECT_RATIO, position: 'relative' },
+  cardlessCardBodyFrame: { left: 0, position: 'absolute', right: 0, top: 0 },
+  getCardPanel: {
+    aspectRatio: GET_CARD_PANEL_ASPECT_RATIO,
+    bottom: 0,
+    borderRadius: 23,
+    left: 0,
+    paddingBottom: `${(GET_CARD_LABEL_BOTTOM / GET_CARD_PANEL_WIDTH) * 100}%`,
+    position: 'absolute',
+    right: 0,
+  },
+  getCardLabel: { minHeight: 23 },
+  getCardText: { fontFamily: 'MonaSans_500Medium', lineHeight: 23 },
+  getCardChevron: { height: 12, width: 7 },
   hidden: { opacity: 0 },
 });
 

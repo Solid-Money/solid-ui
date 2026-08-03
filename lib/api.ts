@@ -973,7 +973,7 @@ export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   return response.json();
 };
 
-export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
+export const getCardDetails = async (): Promise<CardDetailsResponseDto | null> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`, {
@@ -983,6 +983,11 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  // A user who has not issued a card yet has no details resource. Treat that as
+  // the expected empty state, just like getCardStatus, instead of throwing a
+  // Response that appears as a raw LogBox error in development.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
