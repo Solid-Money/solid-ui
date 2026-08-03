@@ -311,6 +311,7 @@ const useDepositOption = ({
     if (isTokenSelector) return 'token-selector';
     if (isVirtualAccountDetails) return 'virtual-account-details';
     if (isVirtualAccountTos) return 'virtual-account-tos';
+    if (isVirtualAccountApply) return 'virtual-account-apply';
     if (isOptions) return 'deposit-options';
     return 'deposit-type-selection';
   };
@@ -341,6 +342,9 @@ const useDepositOption = ({
   };
 
   const getContentClassName = () => {
+    if (isVirtualAccountApply) {
+      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-[419px] md:max-w-[419px] md:px-0 md:pt-0';
+    }
     if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
@@ -360,6 +364,10 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    if (isVirtualAccountApply) {
+      return 'gap-0';
+    }
+
     // Details renders its own title, so it only needs the header buttons' own gap.
     if (isVirtualAccountDetails) {
       return 'gap-3';
@@ -700,14 +708,18 @@ const useDepositOption = ({
   // The virtual account details screen owns its ScrollView so it can overlay the
   // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
   const disableScroll =
-    (Platform.OS !== 'web' && isDepositDirectlyAddress) || isVirtualAccountDetails;
-  const fillViewportHeight = isVirtualAccountDetails;
+    (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
+    isVirtualAccountDetails ||
+    isVirtualAccountApply;
+  const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
+  const hideHeader = isVirtualAccountApply;
 
   return {
     shouldOpen,
     showBackButton,
     disableScroll,
     fillViewportHeight,
+    hideHeader,
     actionButton,
     shouldAnimate,
     isForward,

@@ -11,12 +11,12 @@ import { useSavingStore } from '@/store/useSavingStore';
 
 // Both DepositTrigger and UnstakeModal inject onPress via SlotTrigger.cloneElement,
 // so these trigger components MUST forward props to their root Pressable.
-const AddFundsTrigger = (props: React.ComponentProps<typeof Pressable>) => (
+const DepositTriggerButton = (props: React.ComponentProps<typeof Pressable>) => (
   <Pressable
     {...props}
     className="h-14 flex-1 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
   >
-    <Text className="text-base font-bold text-black">Add funds</Text>
+    <Text className="text-base font-bold text-black">Deposit</Text>
   </Pressable>
 );
 
@@ -35,8 +35,8 @@ interface SavingsFundedActionsProps {
 }
 
 /**
- * Funded-savings action row: "Add funds" (deposit-to-savings) + "Withdraw"
- * (unstake). Add funds pre-selects the currently chosen vault.
+ * Funded-savings action row: "Deposit" (deposit-to-savings) + "Withdraw"
+ * (unstake). Deposit pre-selects the currently chosen vault.
  */
 const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
   return (
@@ -52,7 +52,7 @@ const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
           }
           useDepositStore.getState().setDepositFromSolid(true);
         }}
-        trigger={<AddFundsTrigger />}
+        trigger={<DepositTriggerButton />}
       />
       <UnstakeModal trigger={<WithdrawTrigger />} />
     </View>

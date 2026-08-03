@@ -8,8 +8,10 @@ import {
   ScrollView,
   View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
@@ -25,10 +27,6 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const TITLE_SLOT_HEIGHT = 40;
 const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
-// Exactly the length of rewards-help-tiers.mp4, which is where the shape morph
-// ends and the shader loop takes over.
-const TIERS_INTRO_DURATION_MS = 5217;
-const TIERS_SHADER_LOOP: number = require('@/assets/animations/rewards-help-tiers-shader-loop.mp4');
 
 const SLIDE_ANIMATIONS: Record<string, number> = {
   rewards: require('@/assets/animations/rewards-help-rewards.mp4'),
@@ -69,63 +67,17 @@ const HelpPage = ({
   playbackSession: number;
   onOpenPoints: () => void;
 }) => {
-  const [isIntroReady, setIsIntroReady] = useState(false);
-  const [isLoopReady, setIsLoopReady] = useState(false);
-  const [hasIntroFinished, setHasIntroFinished] = useState(false);
-  const isTiersSlide = slide.key === 'tiers';
-  const showLoop = isTiersSlide && hasIntroFinished && isLoopReady;
-
-  // Leaving the page (or reopening the modal) rewinds it, so the next visit
-  // replays the intro from the beginning rather than resuming the shader loop.
-  useEffect(() => {
-    if (!isActive) {
-      setHasIntroFinished(false);
-    }
-  }, [isActive, playbackSession]);
-
-  // Hand off to the shader loop when the morph ends. Timed from first frame
-  // rather than from mount, so a slow first decode doesn't cut the intro short.
-  useEffect(() => {
-    if (!isTiersSlide || !isActive || !isIntroReady) return;
-
-    const timeout = setTimeout(() => setHasIntroFinished(true), TIERS_INTRO_DURATION_MS);
-    return () => clearTimeout(timeout);
-  }, [isActive, isIntroReady, isTiersSlide]);
-
   return (
     <View style={{ width: SCREEN_WIDTH, height: '100%' }}>
       <View className="flex-1 items-center justify-center">
-        {/* Mounted (and warmed up) behind the intro from the moment the intro
-            is on screen, so the handoff is a swap between two ready players
-            rather than a visible load. */}
-        {isTiersSlide && isIntroReady && (
-          <VideoIllustration
-            source={TIERS_SHADER_LOOP}
-            isActive={showLoop}
-            restartKey={playbackSession}
-            loop
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              opacity: showLoop ? 1 : 0,
-            }}
-            contentFit="contain"
-            onReady={() => setIsLoopReady(true)}
-          />
-        )}
-
-        {!showLoop && (
-          <VideoIllustration
-            source={SLIDE_ANIMATIONS[slide.key]}
-            isActive={isActive}
-            restartKey={playbackSession}
-            loop={slide.key === 'perks'}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="contain"
-            onReady={() => setIsIntroReady(true)}
-          />
-        )}
+        <VideoIllustration
+          source={SLIDE_ANIMATIONS[slide.key]}
+          isActive={isActive}
+          restartKey={playbackSession}
+          loop={slide.key === 'tiers' || slide.key === 'perks'}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="contain"
+        />
       </View>
 
       <View className="items-center px-6" style={{ paddingBottom: COPY_BOTTOM_PADDING }}>
@@ -180,14 +132,15 @@ const HelpPage = ({
  *
  * Each illustration is a single-play H.264 clip, hardware decoded rather than
  * decoded frame by frame on the main thread. Its first frame stays visible
- * until the modal is presented; while paging, the nearest slide starts as
- * soon as it crosses halfway into view. Returning to a page replays it from
- * frame zero. Tiers hands off to a preloaded shader-only loop after its shape
- * morph ends.
+ * until the modal is presented. Button navigation starts the incoming slide
+ * immediately; a manual swipe starts it as it crosses halfway into view.
+ * Returning to a page replays it from frame zero. Tiers uses the complete
+ * seven-second Figma morph timeline and loops without swapping players.
  */
 const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelpModalProps) => {
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<ScrollView>(null);
+  const navigationTargetRef = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
   const [isPresented, setIsPresented] = useState(false);
   const [isPointsOpen, setIsPointsOpen] = useState(false);
@@ -197,11 +150,14 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
 
   useEffect(() => {
     if (!isOpen) {
+      navigationTargetRef.current = null;
       setIsPresented(false);
+      setIsPointsOpen(false);
       setPlaybackSession(session => session + 1);
       return;
     }
 
+    navigationTargetRef.current = null;
     setIndex(0);
     const frame = requestAnimationFrame(() => {
       pagerRef.current?.scrollTo({ x: 0, animated: false });
@@ -211,6 +167,10 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
   }, [isOpen]);
 
   const goToSlide = useCallback((targetIndex: number) => {
+    // Start the incoming illustration when navigation begins. Waiting for the
+    // pager to cross its midpoint leaves the next slide paused while it opens.
+    navigationTargetRef.current = targetIndex;
+    setIndex(targetIndex);
     pagerRef.current?.scrollTo({
       x: targetIndex * SCREEN_WIDTH,
       animated: true,
@@ -218,6 +178,8 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
   }, []);
 
   const handleNext = useCallback(() => {
+    if (navigationTargetRef.current !== null) return;
+
     if (isLastSlide) {
       onComplete();
       return;
@@ -229,90 +191,117 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
   // to end can leave an incoming video's first frame paused for several
   // seconds after a manual swipe, especially on web.
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const targetIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const navigationTarget = navigationTargetRef.current;
+
+    // Scroll events begin at the outgoing page during an animated scrollTo.
+    // Keep the requested page active until the pager reaches its destination.
+    if (navigationTarget !== null) {
+      if (Math.abs(offsetX - navigationTarget * SCREEN_WIDTH) < 1) {
+        navigationTargetRef.current = null;
+      }
+      setIndex(currentIndex =>
+        currentIndex === navigationTarget ? currentIndex : navigationTarget,
+      );
+      return;
+    }
+
+    const targetIndex = Math.round(offsetX / SCREEN_WIDTH);
     const boundedIndex = Math.max(0, Math.min(targetIndex, REWARDS_HELP_SLIDES.length - 1));
     setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
   }, []);
 
   const handleOpenPoints = useCallback(() => {
-    onClose();
     setIsPointsOpen(true);
-  }, [onClose]);
+  }, []);
+  const handleRequestClose = useCallback(() => {
+    if (isPointsOpen) {
+      setIsPointsOpen(false);
+      return;
+    }
+
+    onClose();
+  }, [isPointsOpen, onClose]);
 
   return (
-    <>
-      <Modal
-        visible={isOpen}
-        animationType="fade"
-        transparent={false}
-        statusBarTranslucent
-        onShow={() => setIsPresented(true)}
-        onRequestClose={onClose}
-      >
-        <View
-          className="flex-1"
-          style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
-        >
-          <View className="flex-row items-center justify-between p-4">
-            <Pressable
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-              onPress={onClose}
-              className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
-            >
-              <ArrowLeft color="#ffffff" size={22} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            ref={pagerRef}
-            horizontal
-            pagingEnabled
-            snapToInterval={SCREEN_WIDTH}
-            bounces={false}
-            overScrollMode="never"
-            directionalLockEnabled
-            disableIntervalMomentum
-            decelerationRate="fast"
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            onMomentumScrollEnd={handleScroll}
-            scrollEventThrottle={16}
+    <Modal
+      visible={isOpen}
+      animationType="fade"
+      transparent={false}
+      statusBarTranslucent
+      onShow={() => setIsPresented(true)}
+      onRequestClose={handleRequestClose}
+    >
+      {/* Native modals have their own window on Android, so they also need
+          their own gesture root. The local sheet provider keeps its portal
+          above this modal instead of behind it at the app root. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheetModalProvider>
+          <View
             className="flex-1"
-            contentContainerStyle={{ alignItems: 'flex-start' }}
+            style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
           >
-            {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-              <HelpPage
-                key={item.key}
-                slide={item}
-                isActive={isOpen && isPresented && itemIndex === index}
-                playbackSession={playbackSession}
-                onOpenPoints={handleOpenPoints}
-              />
-            ))}
-          </ScrollView>
+            <View className="flex-row items-center justify-between p-4">
+              <Pressable
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+                onPress={onClose}
+                className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+              >
+                <ArrowLeft color="#ffffff" size={22} />
+              </Pressable>
+            </View>
 
-          <View className="flex-row items-center justify-center gap-[6px] pb-6">
-            {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-              <SlideDot key={item.key} active={itemIndex === index} />
-            ))}
-          </View>
-
-          <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
-            <Button
-              variant="brand"
-              size="lg"
-              onPress={handleNext}
-              className="h-14 w-full rounded-full bg-brand"
+            <ScrollView
+              ref={pagerRef}
+              horizontal
+              pagingEnabled
+              snapToInterval={SCREEN_WIDTH}
+              bounces={false}
+              overScrollMode="never"
+              directionalLockEnabled
+              disableIntervalMomentum
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              onMomentumScrollEnd={handleScroll}
+              scrollEventThrottle={16}
+              className="flex-1"
+              contentContainerStyle={{ alignItems: 'flex-start' }}
             >
-              <Text className="text-base font-semibold text-black">{slide.cta}</Text>
-            </Button>
-          </View>
-        </View>
-      </Modal>
+              {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+                <HelpPage
+                  key={item.key}
+                  slide={item}
+                  isActive={isOpen && isPresented && !isPointsOpen && itemIndex === index}
+                  playbackSession={playbackSession}
+                  onOpenPoints={handleOpenPoints}
+                />
+              ))}
+            </ScrollView>
 
-      <TierPointsSheet open={isPointsOpen} onOpenChange={setIsPointsOpen} />
-    </>
+            <View className="flex-row items-center justify-center gap-[6px] pb-6">
+              {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+                <SlideDot key={item.key} active={itemIndex === index} />
+              ))}
+            </View>
+
+            <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
+              <Button
+                variant="brand"
+                size="lg"
+                onPress={handleNext}
+                className="h-14 w-full rounded-full bg-brand"
+              >
+                <Text className="text-base font-semibold text-black">{slide.cta}</Text>
+              </Button>
+            </View>
+          </View>
+
+          <TierPointsSheet open={isPointsOpen} onOpenChange={setIsPointsOpen} />
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </Modal>
   );
 };
 

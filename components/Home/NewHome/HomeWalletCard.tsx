@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
-  getCardLabel: { minHeight: 23 },
+  getCardLabel: { minHeight: 23, transform: [{ translateY: -2 }] },
   getCardText: { fontFamily: 'MonaSans_500Medium', lineHeight: 23 },
   getCardChevron: { height: 12, width: 7 },
   hidden: { opacity: 0 },

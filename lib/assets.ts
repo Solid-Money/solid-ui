@@ -124,19 +124,30 @@ export const ASSETS = {
   },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
-  'images/badge-apay.png': { module: require('@/assets/images/badge-apay.png'), hash: 'e8b4d849' },
-  'images/badge-cashback.png': {
-    module: require('@/assets/images/badge-cashback.png'),
-    hash: 'a3554390',
+  'images/badge-apple-pay.svg': {
+    module: require('@/assets/images/badge-apple-pay.svg'),
+    hash: '99352f93',
   },
-  'images/badge-globe.png': {
-    module: require('@/assets/images/badge-globe.png'),
-    hash: '9250a521',
+  'images/badge-globe-icon.svg': {
+    module: require('@/assets/images/badge-globe-icon.svg'),
+    hash: '117696be',
   },
-  'images/badge-gpay.png': { module: require('@/assets/images/badge-gpay.png'), hash: 'f95b2614' },
-  'images/badge-star.png': { module: require('@/assets/images/badge-star.png'), hash: 'e36fe881' },
-  'images/badge-usd.png': { module: require('@/assets/images/badge-usd.png'), hash: '04bf1275' },
-  'images/badge-visa.png': { module: require('@/assets/images/badge-visa.png'), hash: '38df1f6f' },
+  'images/badge-google-pay.svg': {
+    module: require('@/assets/images/badge-google-pay.svg'),
+    hash: '7e7419f4',
+  },
+  'images/badge-star-icon.svg': {
+    module: require('@/assets/images/badge-star-icon.svg'),
+    hash: '2d5142f9',
+  },
+  'images/badge-usd-icon.svg': {
+    module: require('@/assets/images/badge-usd-icon.svg'),
+    hash: '916e3c37',
+  },
+  'images/badge-visa-logo.svg': {
+    module: require('@/assets/images/badge-visa-logo.svg'),
+    hash: '51781d1c',
+  },
   'images/bank_deposit.png': {
     module: require('@/assets/images/bank_deposit.png'),
     hash: '96c19d92',
@@ -251,19 +262,19 @@ export const ASSETS = {
   },
   'images/deposit-cash-us.png': {
     module: require('@/assets/images/deposit-cash-us.png'),
-    hash: 'c033e13c',
+    hash: '3126d064',
   },
   'images/deposit-cash-usd.png': {
     module: require('@/assets/images/deposit-cash-usd.png'),
-    hash: 'e16d9fe7',
+    hash: '7b7b6e3d',
   },
   'images/deposit-crypto-usdc.png': {
     module: require('@/assets/images/deposit-crypto-usdc.png'),
-    hash: '10265cc5',
+    hash: 'c09eeace',
   },
   'images/deposit-crypto-usdt.png': {
     module: require('@/assets/images/deposit-crypto-usdt.png'),
-    hash: 'bd367dde',
+    hash: 'a51266f1',
   },
   'images/deposit-green.png': {
     module: require('@/assets/images/deposit-green.png'),
@@ -734,22 +745,6 @@ export const ASSETS = {
     module: require('@/assets/images/rewards-tiers/points-drawer-star.png'),
     hash: '0a01608d',
   },
-  'images/rewards-tiers/points-invite.png': {
-    module: require('@/assets/images/rewards-tiers/points-invite.png'),
-    hash: '56450e5d',
-  },
-  'images/rewards-tiers/points-save.png': {
-    module: require('@/assets/images/rewards-tiers/points-save.png'),
-    hash: 'd4586bcd',
-  },
-  'images/rewards-tiers/points-spend.png': {
-    module: require('@/assets/images/rewards-tiers/points-spend.png'),
-    hash: '5ed52ec6',
-  },
-  'images/rewards-tiers/points-swap.png': {
-    module: require('@/assets/images/rewards-tiers/points-swap.png'),
-    hash: '32312168',
-  },
   'images/rewards-tiers/prime-summary.png': {
     module: require('@/assets/images/rewards-tiers/prime-summary.png'),
     hash: 'd1e282a2',
@@ -1010,6 +1005,22 @@ export const ASSETS = {
   'images/user.tsx': { module: require('@/assets/images/user.tsx'), hash: 'f4988f53' },
   'images/username.tsx': { module: require('@/assets/images/username.tsx'), hash: 'fa07b216' },
   'images/veda.png': { module: require('@/assets/images/veda.png'), hash: 'e41bfe57' },
+  'images/virtual-account-ach-wire.svg': {
+    module: require('@/assets/images/virtual-account-ach-wire.svg'),
+    hash: '15984fce',
+  },
+  'images/virtual-account-bank.svg': {
+    module: require('@/assets/images/virtual-account-bank.svg'),
+    hash: '85e23a97',
+  },
+  'images/virtual-account-hero-v2.png': {
+    module: require('@/assets/images/virtual-account-hero-v2.png'),
+    hash: '6c513641',
+  },
+  'images/virtual-account-settlement.svg': {
+    module: require('@/assets/images/virtual-account-settlement.svg'),
+    hash: '39517475',
+  },
   'images/visa-platinum-card.png': {
     module: require('@/assets/images/visa-platinum-card.png'),
     hash: 'ef91cb7a',

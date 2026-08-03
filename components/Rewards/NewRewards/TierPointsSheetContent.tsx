@@ -9,16 +9,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { Blend, CreditCard, type LucideIcon, RefreshCw, Zap } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
 const POINTS_STAR = require('@/assets/images/rewards-tiers/points-drawer-star.png');
-const POINTS_SAVE = require('@/assets/images/rewards-tiers/points-save.png');
-const POINTS_SPEND = require('@/assets/images/rewards-tiers/points-spend.png');
-const POINTS_INVITE = require('@/assets/images/rewards-tiers/points-invite.png');
-const POINTS_SWAP = require('@/assets/images/rewards-tiers/points-swap.png');
 
 interface TierPointsSheetContentProps {
   animationSession: number;
@@ -33,29 +30,36 @@ interface TierPointsSheetContentProps {
 interface PointsMethod {
   title: string;
   description: string;
-  icon: number;
+  icon: LucideIcon;
+  iconSize: number;
+  iconRotation?: `${number}deg`;
 }
 
 const POINTS_METHODS: PointsMethod[] = [
   {
     title: 'Save',
     description: '1 point/hour for\nevery $1 deposited',
-    icon: POINTS_SAVE,
+    icon: Zap,
+    iconSize: 24,
   },
   {
     title: 'Spend',
     description: '1 point per\n$1 spent',
-    icon: POINTS_SPEND,
+    icon: CreditCard,
+    iconSize: 26,
   },
   {
     title: 'Invite friends',
     description: 'Earn 10% of their\ndaily points',
-    icon: POINTS_INVITE,
+    icon: Blend,
+    iconSize: 26,
+    iconRotation: '-45deg',
   },
   {
     title: 'Swap',
     description: '1 point per\n$1 swapped',
-    icon: POINTS_SWAP,
+    icon: RefreshCw,
+    iconSize: 26,
   },
 ];
 
@@ -121,37 +125,48 @@ const AnimatedTierStar = () => {
   );
 };
 
-const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean }) => (
-  <View
-    className="w-1/2 items-center"
-    style={{
-      height: bottom ? 177 : 169,
-      paddingTop: bottom ? 31 : 23,
-    }}
-  >
-    <Image source={method.icon} style={{ width: 50, height: 50 }} contentFit="contain" />
-    <Text
-      className="mt-2 text-center text-white"
+const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean }) => {
+  const MethodIcon = method.icon;
+
+  return (
+    <View
+      className="w-1/2 items-center"
       style={{
-        fontFamily: 'MonaSans_600SemiBold',
-        fontSize: 16,
-        lineHeight: 17,
+        height: bottom ? 177 : 169,
+        paddingTop: bottom ? 31 : 23,
       }}
     >
-      {method.title}
-    </Text>
-    <Text
-      className="mt-1 text-center text-white/70"
-      style={{
-        fontFamily: 'MonaSans_500Medium',
-        fontSize: 14,
-        lineHeight: 17,
-      }}
-    >
-      {method.description}
-    </Text>
-  </View>
-);
+      <View className="size-[50px] items-center justify-center rounded-full bg-white/10">
+        <MethodIcon
+          color="#ffffff"
+          size={method.iconSize}
+          strokeWidth={1.75}
+          style={method.iconRotation ? { transform: [{ rotate: method.iconRotation }] } : undefined}
+        />
+      </View>
+      <Text
+        className="mt-2 text-center text-white"
+        style={{
+          fontFamily: 'MonaSans_600SemiBold',
+          fontSize: 16,
+          lineHeight: 17,
+        }}
+      >
+        {method.title}
+      </Text>
+      <Text
+        className="mt-1 text-center text-white/70"
+        style={{
+          fontFamily: 'MonaSans_500Medium',
+          fontSize: 14,
+          lineHeight: 17,
+        }}
+      >
+        {method.description}
+      </Text>
+    </View>
+  );
+};
 
 const TierPointsSheetContent = ({
   animationSession,

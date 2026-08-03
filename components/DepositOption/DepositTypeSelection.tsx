@@ -13,8 +13,8 @@ import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
-const ICON_SIZE = 36;
-const ICON_OVERLAP = 10;
+const ICON_SIZE = 40;
+const ICON_OVERLAP = 4;
 
 const CASH_ICONS = [
   { key: 'us', source: getAsset('images/deposit-cash-us.png') },
@@ -30,11 +30,17 @@ const CircleIcon = ({ source, index }: { source: ReturnType<typeof getAsset>; in
   <View
     className="items-center justify-center overflow-hidden rounded-full"
     style={[
-      { width: ICON_SIZE, height: ICON_SIZE },
+      { width: ICON_SIZE, height: ICON_SIZE, zIndex: index === 0 ? 1 : 0 },
       index > 0 ? { marginLeft: -ICON_OVERLAP } : undefined,
     ]}
   >
     <Image source={source} style={{ width: ICON_SIZE, height: ICON_SIZE }} contentFit="cover" />
+    {index > 0 && (
+      <View
+        pointerEvents="none"
+        className="absolute inset-0 rounded-full border-[1.5px] border-card"
+      />
+    )}
   </View>
 );
 

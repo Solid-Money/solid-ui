@@ -40,9 +40,11 @@ interface CardWaitingModalProps {
 }
 
 interface Benefit {
-  badge: ImageSourcePropType;
-  /** Badge intrinsic size — circles are 50×49, logo pills are 94×49 (Figma). */
+  /** Badge size — circles are 50×49, logo pills are 94×49 (Figma). */
   badgeWidth: number;
+  content:
+    | { type: 'text'; value: string }
+    | { type: 'icon'; source: ImageSourcePropType; width: number; height: number };
   label: string;
 }
 
@@ -50,17 +52,75 @@ interface Benefit {
 // node 22052:915/933), Google Pay everywhere else.
 const WALLET_BENEFIT: Benefit =
   Platform.OS === 'ios'
-    ? { badge: getAsset('images/badge-apay.png'), badgeWidth: 94, label: 'Apple Pay\nsupport' }
-    : { badge: getAsset('images/badge-gpay.png'), badgeWidth: 94, label: 'Google Pay\nsupport' };
+    ? {
+        badgeWidth: 94,
+        content: {
+          type: 'icon',
+          source: getAsset('images/badge-apple-pay.svg'),
+          width: 58,
+          height: 25,
+        },
+        label: 'Apple Pay\nsupport',
+      }
+    : {
+        badgeWidth: 94,
+        content: {
+          type: 'icon',
+          source: getAsset('images/badge-google-pay.svg'),
+          width: 63,
+          height: 30,
+        },
+        label: 'Google Pay\nsupport',
+      };
 
-// Benefits grid — 2 columns × 3 rows, matching Figma node 20609:4815.
+// Benefits grid — 2 columns × 3 rows, matching Figma node 20964:2674.
 const BENEFITS: Benefit[] = [
-  { badge: getAsset('images/badge-cashback.png'), badgeWidth: 50, label: 'Up to 5%\ncashback' },
+  {
+    badgeWidth: 50,
+    content: { type: 'text', value: '5%' },
+    label: 'Up to 5%\ncashback',
+  },
   WALLET_BENEFIT,
-  { badge: getAsset('images/badge-visa.png'), badgeWidth: 94, label: 'Free Visa\nvirtual card' },
-  { badge: getAsset('images/badge-globe.png'), badgeWidth: 50, label: '175M merchants worldwide' },
-  { badge: getAsset('images/badge-star.png'), badgeWidth: 50, label: 'Unlock tier\nrewards' },
-  { badge: getAsset('images/badge-usd.png'), badgeWidth: 50, label: 'USD Personal account' },
+  {
+    badgeWidth: 94,
+    content: {
+      type: 'icon',
+      source: getAsset('images/badge-visa-logo.svg'),
+      width: 55,
+      height: 28,
+    },
+    label: 'Free Visa\nvirtual card',
+  },
+  {
+    badgeWidth: 50,
+    content: {
+      type: 'icon',
+      source: getAsset('images/badge-globe-icon.svg'),
+      width: 25,
+      height: 25,
+    },
+    label: '175M merchants worldwide',
+  },
+  {
+    badgeWidth: 50,
+    content: {
+      type: 'icon',
+      source: getAsset('images/badge-star-icon.svg'),
+      width: 26,
+      height: 26,
+    },
+    label: 'Unlock tier\nrewards',
+  },
+  {
+    badgeWidth: 50,
+    content: {
+      type: 'icon',
+      source: getAsset('images/badge-usd-icon.svg'),
+      width: 27,
+      height: 27,
+    },
+    label: 'USD Personal account',
+  },
 ];
 
 const BADGE_HEIGHT = 49;
@@ -90,11 +150,22 @@ const BenefitCell = ({
       borderRightColor: HAIRLINE,
     }}
   >
-    <Image
-      source={benefit.badge}
-      style={{ width: benefit.badgeWidth, height: BADGE_HEIGHT }}
-      contentFit="contain"
-    />
+    <View
+      className="items-center justify-center bg-white/10"
+      style={{ width: benefit.badgeWidth, height: BADGE_HEIGHT, borderRadius: BADGE_HEIGHT / 2 }}
+    >
+      {benefit.content.type === 'text' ? (
+        <Text className="text-[20px] font-bold text-white" style={{ lineHeight: 24 }}>
+          {benefit.content.value}
+        </Text>
+      ) : (
+        <Image
+          source={benefit.content.source}
+          style={{ width: benefit.content.width, height: benefit.content.height }}
+          contentFit="contain"
+        />
+      )}
+    </View>
     <Text
       className="mt-[9px] text-center text-[16px] font-medium text-white"
       style={{ lineHeight: 18 }}
@@ -248,10 +319,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
 
           {/* Benefits grid */}
           <View className="mt-[51px] px-[18px]">
-            <View
-              className="overflow-hidden rounded-[23px] border"
-              style={{ borderColor: HAIRLINE }}
-            >
+            <View className="overflow-hidden rounded-[23px] bg-[#1C1C1C]">
               {[0, 2, 4].map((start, rowIndex) => (
                 <View
                   key={start}
