@@ -48,6 +48,12 @@ type Path = {
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
   OVERVIEW: Href;
+  /**
+   * @deprecated Same story as `CARD` — `/card-onboard` served the standalone card
+   * waitlist page and is now a shim that hands off to `/card`. Name a real
+   * destination instead: `CARD_COUNTRY_SELECTION`, `CARD_ACTIVATE` or
+   * `CARD_DETAILS`.
+   */
   CARD_WAITLIST: Href;
   CARD_WAITLIST_SUCCESS: Href;
   CARD_COUNTRY_VERIFICATION_REQUIRED: Href;

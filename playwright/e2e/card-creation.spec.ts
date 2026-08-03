@@ -1,37 +1,26 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Card Creation Flow', () => {
-  test('should display the card onboard page', async ({ page }) => {
-    // Navigate to the card onboard page
-    await page.goto('/card-onboard');
+  // /card and /card-onboard both used to render the standalone card waitlist
+  // page. Both are redirect shims now, so neither should ever paint it — getting
+  // a card starts at country selection, and the card itself lives on the wallet
+  // page. The country-selection → activate hand-off is covered by the
+  // "traveling user" test below.
+  for (const deprecatedRoute of ['/card', '/card-onboard']) {
+    test(`should redirect away from the deprecated ${deprecatedRoute} page`, async ({ page }) => {
+      await page.goto(deprecatedRoute);
 
-    // Wait for the page to fully load
-    await page.waitForLoadState('networkidle');
+      // Wait for the page to fully load
+      await page.waitForLoadState('networkidle');
 
-    // Verify the page title is visible
-    await expect(page.getByText('Introducing the Solid Card')).toBeVisible({ timeout: 15000 });
+      // The shim replaces itself, so the URL must have moved on
+      await expect(page).not.toHaveURL(new RegExp(`${deprecatedRoute}/?$`), { timeout: 15000 });
 
-    // Verify key features are displayed
-    await expect(page.getByText('Global acceptance')).toBeVisible();
-    await expect(page.getByText('Earn while you spend')).toBeVisible();
-  });
-
-  test('should navigate to card activate when clicking Get Card', async ({ page }) => {
-    // Navigate to the card onboard page
-    await page.goto('/card-onboard');
-
-    // Wait for the page to fully load
-    await page.waitForLoadState('networkidle');
-
-    // Click the Get Card button (first one visible)
-    await page.getByRole('button', { name: 'Get your card' }).first().click();
-
-    // Verify navigation to card activate page
-    await page.waitForURL('**/card/activate**', { timeout: 15000 });
-
-    // Verify the URL changed (the page content itself can vary)
-    await expect(page).toHaveURL(/card\/activate/);
-  });
+      // And none of the retired waitlist copy should be on screen
+      await expect(page.getByText('Introducing the Solid Card')).toHaveCount(0);
+      await expect(page.getByText('Global acceptance')).toHaveCount(0);
+    });
+  }
 });
 
 test.describe('Card Creation Flow - With Mocking', () => {
@@ -48,7 +37,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     });
 
     // Navigate to the card/activate page (which checks card status and redirects)
-    // Note: /card now redirects to /card-onboard, so we use /card/activate directly
+    // Note: /card is only a redirect shim now, so we use /card/activate directly
     await page.goto('/card/activate?countryConfirmed=true');
 
     // Wait for the page to process the mocked response
