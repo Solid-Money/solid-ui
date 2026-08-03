@@ -184,7 +184,7 @@ const CashbackDetailsContent = ({
     </View>
 
     <Text
-      className="mt-7 w-[323px] text-base text-white/70"
+      className="mt-7 w-full text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
     >
       Cashback is credited 14 days after the transaction settles and paid straight into your Savings{' '}

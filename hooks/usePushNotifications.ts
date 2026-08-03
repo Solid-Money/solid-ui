@@ -35,8 +35,10 @@ function getNotificationRoute(type?: string): Href {
   }
 
   switch (type) {
+    // Only a card holder gets a transaction push, so open the card itself
+    // rather than the `/card` shim's status check.
     case 'card-transaction':
-      return path.CARD;
+      return path.CARD_DETAILS;
     default:
       return path.HOME;
   }

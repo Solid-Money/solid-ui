@@ -226,7 +226,7 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
         <Pressable
           onPress={() => {
             onClose?.();
-            router.push(path.CARD);
+            router.push(path.CARD_COUNTRY_SELECTION);
           }}
           className="flex-row items-center justify-between rounded-twice bg-card p-4 web:transition-colors web:hover:bg-card/70"
         >

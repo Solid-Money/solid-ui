@@ -30,7 +30,10 @@ const FinishSetupModal = ({ isOpen, onClose, steps, firstIncomplete }: FinishSet
 
   const handleLearnMore = () => {
     onClose();
-    router.push(path.CARD_WAITLIST);
+    // The card's benefits — cashback rate, merchant acceptance, support tier —
+    // live on the tier benefits screen now. `/card-onboard` was the old
+    // standalone waitlist page and no longer renders anything.
+    router.push(path.REWARDS_BENEFITS);
   };
 
   return (

@@ -37,13 +37,13 @@ export default function CountrySelection() {
   const { user } = useUser();
 
   // Return to wherever the flow started — the redesigned home reaches this
-  // screen from its card CTAs, so a hard replace to /card would strand the user
-  // on a page the new UI no longer links to.
+  // screen from its card CTAs. `/card` is a redirect shim now, and it would send
+  // a user without a card straight back here, so fall back to the wallet page.
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace(path.CARD);
+      router.replace(path.HOME);
     }
   };
 
