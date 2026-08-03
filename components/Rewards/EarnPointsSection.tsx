@@ -7,8 +7,15 @@ import { useRewardsConfig } from '@/hooks/useRewards';
 import RewardBenefit from './RewardBenefit';
 
 // Amount deposited counts toward Save points across every supported vault.
-const SAVE_DEPOSIT_TOOLTIP =
-  'Amount deposited is calculated across the USDC, FUSE and ETH vaults';
+const SAVE_DEPOSIT_TOOLTIP = 'Amount deposited is calculated across the USDC, FUSE and ETH vaults';
+
+// Card balance points accrue on the balance sitting on the card, separately
+// from (and on top of) the points earned when that balance is spent.
+const CARD_BALANCE_TOOLTIP =
+  'Points accrue daily on the balance available on your card, on top of the points you earn when you spend it';
+
+// Default when the backend has not sent a rate yet: 1 point per $1 per day.
+const DEFAULT_CARD_BALANCE_POINTS_PER_DAY = 1;
 
 interface EarningMethod {
   icon: string;
@@ -40,6 +47,13 @@ const EarnPointsSection = () => {
           description: 'Earn points for spending',
         },
         {
+          icon: 'images/dollar-yellow.png',
+          title: 'Card balance',
+          description: 'Earn points for the balance on your card',
+          tooltip: CARD_BALANCE_TOOLTIP,
+          tooltipAnalyticsContext: 'rewards_card_balance_holding',
+        },
+        {
           icon: 'images/invite-yellow.png',
           title: 'Invite friends',
           description: 'Earn referral rewards',
@@ -56,6 +70,12 @@ const EarnPointsSection = () => {
     // Format card spend description (points per dollar for every $1 spent)
     const spendPoints = points.cardSpendPointsPerDollar;
     const spendDesc = `${spendPoints.toLocaleString()} points per $1 spent`;
+
+    // Format card balance description. Unlike Save (quoted per hour) card
+    // balance points accrue per day.
+    const cardBalancePoints =
+      points.cardBalancePointsPerDollarPerDay ?? DEFAULT_CARD_BALANCE_POINTS_PER_DAY;
+    const cardBalanceDesc = `${cardBalancePoints.toLocaleString()} point/day for every $1 on your card`;
 
     // Format referral description
     const referralPercent = referral.recurringPercentage * 100;
@@ -74,6 +94,19 @@ const EarnPointsSection = () => {
         tooltipAnalyticsContext: 'rewards_save_deposit_vaults',
       },
       { icon: 'images/spend-yellow.png', title: 'Spend', description: spendDesc },
+      // Only advertise card balance points while the backend is accruing them;
+      // the rate is behind a config switch for a staged rollout.
+      ...(points.cardBalanceEnabled === false
+        ? []
+        : [
+            {
+              icon: 'images/dollar-yellow.png',
+              title: 'Card balance',
+              description: cardBalanceDesc,
+              tooltip: CARD_BALANCE_TOOLTIP,
+              tooltipAnalyticsContext: 'rewards_card_balance_holding',
+            },
+          ]),
       { icon: 'images/invite-yellow.png', title: 'Invite friends', description: referralDesc },
       { icon: 'images/swap-yellow.png', title: 'Swap', description: swapDesc },
     ];

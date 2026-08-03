@@ -1216,9 +1216,14 @@ export interface PointsEarningConfig {
   cardSpendEnabled: boolean;
   swapEnabled: boolean;
   holdingFundsEnabled: boolean;
+  /** Whether points accrue on the balance held on the card. */
+  cardBalanceEnabled?: boolean;
   cardSpendPointsPerDollar: number;
   swapPointsPerDollar: number;
+  /** Points per $1 of deposited funds, per HOUR. */
   holdingFundsMultiplier: number;
+  /** Points per $1 of card balance held, per DAY. */
+  cardBalancePointsPerDollarPerDay?: number;
 }
 
 export interface FullRewardsConfig {
