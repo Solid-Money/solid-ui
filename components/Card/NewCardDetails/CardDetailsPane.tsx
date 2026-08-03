@@ -181,7 +181,9 @@ const CardDetailsPane = () => {
             last4={cardDetails?.card_details?.last_4}
             cardholderName={cardDetails?.cardholder_name}
             provider={provider}
-            issuingCountryCode={cardStatus?.country}
+            // The card's own issuing country, falling back to the KYC residence
+            // country the status endpoint reports (it's absent for test overrides).
+            issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
           />
           <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
             <CardActionsRow

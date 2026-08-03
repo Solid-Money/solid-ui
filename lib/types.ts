@@ -462,6 +462,12 @@ export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
   /** Set by backend when available */
   provider?: CardProvider;
+  /**
+   * ISO 3166-1 alpha-2 of the address the card was issued against, read from the
+   * provider's consumer record. Distinct from `CardStatusResponse.country`, which is
+   * the user's KYC residence.
+   */
+  issuing_country?: string;
 }
 
 /**
