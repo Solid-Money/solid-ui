@@ -10,4 +10,5 @@ export interface CashbackDetailsData {
 export interface CashbackDetailsSheetProps extends CashbackDetailsData {
   trigger: ReactElement<{ onPress?: () => void }>;
   onGetMoreCashback: () => void;
+  triggerContainerClassName?: string;
 }

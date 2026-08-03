@@ -34,7 +34,7 @@ const TIER_STAR_VIDEOS: Record<RewardsTier, number> = {
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.mov'),
 };
 
-const TierStar = ({ tier }: { tier: RewardsTier }) => {
+const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; size?: number }) => {
   const player = useVideoPlayer(TIER_STAR_VIDEOS[tier], p => {
     p.loop = true;
     p.muted = true;
@@ -48,8 +48,8 @@ const TierStar = ({ tier }: { tier: RewardsTier }) => {
     <VideoView
       player={player}
       style={{
-        width: TIER_STAR_SIZES[tier],
-        height: TIER_STAR_SIZES[tier],
+        width: size,
+        height: size,
         transform: tierStarOffset(tier),
       }}
       contentFit="contain"

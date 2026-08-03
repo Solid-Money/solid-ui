@@ -20,6 +20,7 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 const CashbackDetailsSheet = ({
   trigger,
   onGetMoreCashback,
+  triggerContainerClassName = 'flex-1',
   ...cashbackData
 }: CashbackDetailsSheetProps) => {
   const { isScreenMedium } = useDimension();
@@ -48,7 +49,7 @@ const CashbackDetailsSheet = ({
 
   if (isScreenMedium) {
     return (
-      <View className="flex-1">
+      <View className={triggerContainerClassName}>
         <ResponsiveModal
           currentModal={MODAL_STATE}
           previousModal={CLOSE_STATE}
@@ -65,7 +66,7 @@ const CashbackDetailsSheet = ({
   }
 
   return (
-    <View className="flex-1">
+    <View className={triggerContainerClassName}>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent

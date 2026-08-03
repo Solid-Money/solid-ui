@@ -104,14 +104,14 @@ const FIXED_BENEFITS = [
   {
     title: 'Referrals',
     Icon: ReferralsIcon,
-    titleClassName: 'font-bold',
+    titleClassName: 'font-medium',
     titleMargin: 'mt-[23px]',
   },
   {
     title: 'Standard Support',
     Icon: SupportIcon,
-    titleClassName: 'font-bold',
-    titleMargin: 'mt-3',
+    titleClassName: 'font-medium',
+    titleMargin: 'mt-[14px]',
   },
 ] as const;
 

@@ -6,7 +6,6 @@ import Animated, {
   type SharedValue,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -138,14 +137,10 @@ export default function ReferralHeroAnimation({ isActive }: ReferralHeroAnimatio
     progress.value = 0;
 
     if (isActive) {
-      progress.value = withRepeat(
-        withTiming(1, {
-          duration: TIMELINE_DURATION_MS,
-          easing: Easing.linear,
-        }),
-        -1,
-        false,
-      );
+      progress.value = withTiming(1, {
+        duration: TIMELINE_DURATION_MS,
+        easing: Easing.linear,
+      });
     }
 
     return () => cancelAnimation(progress);

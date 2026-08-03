@@ -14,12 +14,12 @@ const TIER_STAR_ANIMATIONS: Record<RewardsTier, number> = {
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
 };
 
-const TierStar = ({ tier }: { tier: RewardsTier }) => (
+const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; size?: number }) => (
   <Image
     source={TIER_STAR_ANIMATIONS[tier]}
     style={{
-      width: TIER_STAR_SIZES[tier],
-      height: TIER_STAR_SIZES[tier],
+      width: size,
+      height: size,
       transform: tierStarOffset(tier),
     }}
     contentFit="contain"

@@ -27,7 +27,7 @@ const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
 // Exactly the length of rewards-help-tiers.mp4, which is where the shape morph
 // ends and the shader loop takes over.
-const TIERS_INTRO_DURATION_MS = 7033;
+const TIERS_INTRO_DURATION_MS = 5217;
 const TIERS_SHADER_LOOP: number = require('@/assets/animations/rewards-help-tiers-shader-loop.mp4');
 
 const SLIDE_ANIMATIONS: Record<string, number> = {
@@ -39,6 +39,8 @@ const SLIDE_ANIMATIONS: Record<string, number> = {
 interface RewardsHelpModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called only after the user reaches the final slide and taps "Got it". */
+  onComplete?: () => void;
 }
 
 const SlideDot = ({ active }: { active: boolean }) => {
@@ -118,6 +120,7 @@ const HelpPage = ({
             source={SLIDE_ANIMATIONS[slide.key]}
             isActive={isActive}
             restartKey={playbackSession}
+            loop={slide.key === 'perks'}
             style={{ width: '100%', height: '100%' }}
             contentFit="contain"
             onReady={() => setIsIntroReady(true)}
@@ -177,11 +180,12 @@ const HelpPage = ({
  *
  * Each illustration is a single-play H.264 clip, hardware decoded rather than
  * decoded frame by frame on the main thread. Its first frame stays visible
- * until the modal or pager transition completes, then playback begins.
- * Returning to a page replays it from frame zero. Tiers hands off to a
- * preloaded shader-only loop after its shape morph ends.
+ * until the modal is presented; while paging, the nearest slide starts as
+ * soon as it crosses halfway into view. Returning to a page replays it from
+ * frame zero. Tiers hands off to a preloaded shader-only loop after its shape
+ * morph ends.
  */
-const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
+const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelpModalProps) => {
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
@@ -215,16 +219,19 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
 
   const handleNext = useCallback(() => {
     if (isLastSlide) {
-      onClose();
+      onComplete();
       return;
     }
     goToSlide(index + 1);
-  }, [goToSlide, index, isLastSlide, onClose]);
+  }, [goToSlide, index, isLastSlide, onComplete]);
 
-  const handleSwipeEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Activate the nearest page while it moves into view. Waiting for momentum
+  // to end can leave an incoming video's first frame paused for several
+  // seconds after a manual swipe, especially on web.
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const targetIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     const boundedIndex = Math.max(0, Math.min(targetIndex, REWARDS_HELP_SLIDES.length - 1));
-    setIndex(boundedIndex);
+    setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
   }, []);
 
   const handleOpenPoints = useCallback(() => {
@@ -268,7 +275,9 @@ const RewardsHelpModal = ({ isOpen, onClose }: RewardsHelpModalProps) => {
             disableIntervalMomentum
             decelerationRate="fast"
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleSwipeEnd}
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScroll}
+            scrollEventThrottle={16}
             className="flex-1"
             contentContainerStyle={{ alignItems: 'flex-start' }}
           >

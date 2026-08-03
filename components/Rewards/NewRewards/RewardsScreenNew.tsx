@@ -16,9 +16,11 @@ import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { RewardsTier } from '@/lib/types';
+import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
@@ -43,6 +45,11 @@ export default function RewardsScreenNew() {
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const hasCompletedIntro = useRewardsIntroStore(
+    state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
+  );
+  const completeIntro = useRewardsIntroStore(state => state.complete);
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
 
@@ -55,13 +62,14 @@ export default function RewardsScreenNew() {
   const hasOptedIn = rewardsData?.hasOptedIn ?? true;
   const rewardsLocked = Boolean(rewardsData && !hasOptedIn);
   const legacyPoints = rewardsData?.legacyPoints ?? 0;
-  const showWelcomePopup = isFocused && rewardsLocked && !welcomeDismissed;
+  const showRewardsIntro = isFocused && rewardsLocked && !hasCompletedIntro;
+  const showWelcomePopup = isFocused && rewardsLocked && hasCompletedIntro && !welcomeDismissed;
 
   useEffect(() => {
-    if (isFocused && rewardsLocked && welcomeDismissed) {
+    if (isFocused && rewardsLocked && hasCompletedIntro && welcomeDismissed) {
       router.replace(path.HOME);
     }
-  }, [isFocused, rewardsLocked, welcomeDismissed]);
+  }, [hasCompletedIntro, isFocused, rewardsLocked, welcomeDismissed]);
 
   // Support the `/rewards?referral=open` deep link (e.g. settings "Refer & Earn").
   useEffect(() => {
@@ -87,6 +95,16 @@ export default function RewardsScreenNew() {
   if (rewardsLocked) {
     return (
       <PageLayout isLoading={welcomeDismissed}>
+        <RewardsHelpModal
+          isOpen={showRewardsIntro}
+          onClose={() => router.replace(path.HOME)}
+          onComplete={() => {
+            if (selectedUserId) {
+              setWelcomeDismissed(false);
+              completeIntro(selectedUserId);
+            }
+          }}
+        />
         <RewardsWelcomePopup
           isOpen={showWelcomePopup}
           variant={legacyPoints > 0 ? 'existing' : 'new'}

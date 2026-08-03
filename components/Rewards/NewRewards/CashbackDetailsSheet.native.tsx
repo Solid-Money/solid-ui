@@ -10,6 +10,7 @@ import type { CashbackDetailsSheetProps } from './CashbackDetailsSheet.types';
 const CashbackDetailsSheet = ({
   trigger,
   onGetMoreCashback,
+  triggerContainerClassName = 'flex-1',
   ...cashbackData
 }: CashbackDetailsSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -41,7 +42,7 @@ const CashbackDetailsSheet = ({
   );
 
   return (
-    <View className="flex-1">
+    <View className={triggerContainerClassName}>
       {React.cloneElement(trigger, { onPress: present })}
       <BottomSheetModal
         ref={sheetRef}

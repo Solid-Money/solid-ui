@@ -113,9 +113,9 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
             accessibilityLabel={`Dismiss ${title}`}
             onPress={() => dismiss(promptKey)}
             hitSlop={16}
-            className="absolute right-[21px] top-[17px]"
+            className="absolute right-[10px] top-[11px]"
           >
-            <X size={12} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            <X size={24} color="rgba(255,255,255,0.5)" strokeWidth={2} />
           </Pressable>
         </View>
       </View>

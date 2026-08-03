@@ -37,23 +37,8 @@ type MobileSettingsRow = {
 };
 
 const mobileHeader = (
-  <View className="h-11 flex-row items-start justify-between px-4 pt-1">
-    <Pressable
-      onPress={() => (router.canGoBack() ? router.back() : router.replace(path.HOME))}
-      className="h-10 w-10 items-center justify-center rounded-full bg-[#303030] active:opacity-70"
-      accessibilityLabel="Go back"
-      accessibilityRole="button"
-    >
-      <Svg width={40} height={40} viewBox="0 0 40 40" fill="none">
-        <Path
-          d="M24 27L17 20L24 13"
-          stroke="white"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    </Pressable>
+  <View className="flex-row items-center justify-between p-4">
+    <BackButton variant="header" fallbackHref={path.HOME} />
     <WhatsNewButton />
   </View>
 );

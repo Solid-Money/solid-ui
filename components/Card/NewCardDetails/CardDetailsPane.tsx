@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
@@ -20,10 +21,13 @@ import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
+import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
+import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
@@ -70,6 +74,7 @@ const CardDetailsPane = () => {
   const { data: cardDetails, refetch } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
   const { data: customer } = useCustomer();
+  const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
   // Held true through the dismissal, so the sections have something to animate out
@@ -157,6 +162,14 @@ const CardDetailsPane = () => {
     }
   }, [isCardFrozen, refetch]);
 
+  const handleGetMoreCashback = useCallback(() => {
+    closePane();
+    router.push(path.REWARDS_BENEFITS);
+  }, [closePane]);
+
+  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
+  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+
   return (
     // Three states: cold (out of layout, so it costs the wallet screen nothing at
     // startup), warm (laid out but transparent and untouchable, ready to open
@@ -195,7 +208,15 @@ const CardDetailsPane = () => {
             />
           </HeroEnter>
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
-            <CardCashbackCard />
+            <CashbackDetailsSheet
+              trigger={<CardCashbackCard />}
+              triggerContainerClassName="w-full"
+              cashbackRate={rewardsData?.cashbackRate ?? 0}
+              cashbackThisMonth={cashbackThisMonth}
+              maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+              allTimeCashback={allTimeCashback}
+              onGetMoreCashback={handleGetMoreCashback}
+            />
           </HeroEnter>
           <HeroEnter spec={HERO_ENTER.links} style={styles.linksList}>
             <CardLinksList />

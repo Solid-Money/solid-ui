@@ -249,6 +249,22 @@ export const ASSETS = {
     module: require('@/assets/images/delete-account.tsx'),
     hash: 'cda6dcfa',
   },
+  'images/deposit-cash-us.png': {
+    module: require('@/assets/images/deposit-cash-us.png'),
+    hash: 'c033e13c',
+  },
+  'images/deposit-cash-usd.png': {
+    module: require('@/assets/images/deposit-cash-usd.png'),
+    hash: 'e16d9fe7',
+  },
+  'images/deposit-crypto-usdc.png': {
+    module: require('@/assets/images/deposit-crypto-usdc.png'),
+    hash: '10265cc5',
+  },
+  'images/deposit-crypto-usdt.png': {
+    module: require('@/assets/images/deposit-crypto-usdt.png'),
+    hash: 'bd367dde',
+  },
   'images/deposit-green.png': {
     module: require('@/assets/images/deposit-green.png'),
     hash: '9d913b52',
@@ -757,6 +773,10 @@ export const ASSETS = {
   'images/rewards-tiers/yield-boost.png': {
     module: require('@/assets/images/rewards-tiers/yield-boost.png'),
     hash: '0403ec32',
+  },
+  'images/rewards-welcome-texture.png': {
+    module: require('@/assets/images/rewards-welcome-texture.png'),
+    hash: '8dfadf4b',
   },
   'images/right-chevron.png': {
     module: require('@/assets/images/right-chevron.png'),

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
@@ -10,7 +10,11 @@ import { formatNumber } from '@/lib/utils';
  * hint (Figma 21843:872). Numbers come from the rewards user data, the same
  * source the Rewards tab's cashback card reads.
  */
-const CardCashbackCard = () => {
+interface CardCashbackCardProps {
+  onPress?: () => void;
+}
+
+const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   const { data: rewardsData } = useRewardsUserData();
 
   const earned = rewardsData?.cashbackThisMonth ?? 0;
@@ -22,7 +26,13 @@ const CardCashbackCard = () => {
   const remainingSpend = rate > 0 ? (Math.max(0, cap - earned) * 100) / rate : 0;
 
   return (
-    <View className="overflow-hidden rounded-twice bg-card">
+    <Pressable
+      accessibilityLabel="View cashback details"
+      accessibilityRole="button"
+      disabled={!onPress}
+      onPress={onPress}
+      className="overflow-hidden rounded-twice bg-card"
+    >
       <View style={styles.titleRow}>
         <CashbackDiamondIcon />
         <Text className="ml-[6px] text-[18px] font-medium text-white">
@@ -45,7 +55,7 @@ const CardCashbackCard = () => {
           </Text>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 };
 
