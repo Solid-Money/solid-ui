@@ -341,6 +341,10 @@ export const ASSETS = {
     module: require('@/assets/images/face-verification.png'),
     hash: 'd630cb67',
   },
+  'images/get-your-card-chevron.svg': {
+    module: require('@/assets/images/get-your-card-chevron.svg'),
+    hash: '57eb8af0',
+  },
   'images/favicon.png': { module: require('@/assets/images/favicon.png'), hash: '7b8f50eb' },
   'images/fingetprint copy.tsx': {
     module: require('@/assets/images/fingetprint copy.tsx'),
@@ -478,6 +482,22 @@ export const ASSETS = {
   'images/notification.tsx': {
     module: require('@/assets/images/notification.tsx'),
     hash: '4ee89298',
+  },
+  'images/onboarding-landing-mark.svg': {
+    module: require('@/assets/images/onboarding-landing-mark.svg'),
+    hash: '14373c77',
+  },
+  'images/onboarding-landing-solid.svg': {
+    module: require('@/assets/images/onboarding-landing-solid.svg'),
+    hash: '9373294b',
+  },
+  'images/onboarding-welcome-key.svg': {
+    module: require('@/assets/images/onboarding-welcome-key.svg'),
+    hash: '4abaf0dc',
+  },
+  'images/onboarding-welcome-logo.svg': {
+    module: require('@/assets/images/onboarding-welcome-logo.svg'),
+    hash: '278d6481',
   },
   'images/onboarding_hero_bg.png': {
     module: require('@/assets/images/onboarding_hero_bg.png'),

@@ -52,6 +52,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
             source={{ uri: item.imageUrl }}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
+            cachePolicy="memory-disk"
           />
         </View>
         <View className="px-6 pt-6">
@@ -137,8 +138,15 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
             </View>
 
             <View className="w-20 items-end">
-              <Button onPress={handleNext} variant="brand" className="h-10 rounded-[12px] px-4">
-                <Text className="font-bold text-black">{isLastStep ? 'Done' : 'Next'}</Text>
+              <Button
+                onPress={handleNext}
+                variant="brand"
+                size="sm"
+                className="h-10 min-w-[72px] rounded-[20px] px-4"
+              >
+                <Text numberOfLines={1} className="font-bold text-black">
+                  {isLastStep ? 'Done' : 'Next'}
+                </Text>
               </Button>
             </View>
           </View>

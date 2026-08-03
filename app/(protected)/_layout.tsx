@@ -1,6 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, InteractionManager, Platform, StyleSheet, View } from 'react-native';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import {
+  Redirect,
+  Stack,
+  useGlobalSearchParams,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -13,6 +19,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import CardHeroOverlay from '@/components/Card/NewCardDetails/CardHeroOverlay';
 import { SidebarShell } from '@/components/Navbar/Sidebar';
+import NotificationPermissionSheet from '@/components/Notifications/NotificationPermissionSheet';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -27,6 +34,7 @@ import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
 // Lazy load Loading component - only used during hydration
@@ -38,7 +46,28 @@ export default function ProtectedLayout() {
     useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
   );
   const searchParams = useLocalSearchParams();
+  const globalSearchParams = useGlobalSearchParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const hasSeenNotificationOnboarding = useOnboardingStore(
+    state => state.hasSeenNotificationOnboarding,
+  );
+  const setHasSeenNotificationOnboarding = useOnboardingStore(
+    state => state.setHasSeenNotificationOnboarding,
+  );
+  const notificationPermissionRequested = globalSearchParams.notificationPermission === 'open';
+  const showNotificationPermissionSheet =
+    notificationPermissionRequested && !hasSeenNotificationOnboarding;
+
+  const handleNotificationPermissionDismiss = useCallback(() => {
+    setHasSeenNotificationOnboarding(true);
+  }, [setHasSeenNotificationOnboarding]);
+
+  useEffect(() => {
+    if (notificationPermissionRequested && hasSeenNotificationOnboarding) {
+      router.replace(path.HOME);
+    }
+  }, [hasSeenNotificationOnboarding, notificationPermissionRequested, router]);
 
   // Defer non-critical startup work (webhook auto-subscribe, MeaWallet init)
   // until after the first interactions so it doesn't compete with first paint.
@@ -260,6 +289,10 @@ export default function ProtectedLayout() {
           screens only — stays dormant/null otherwise). Mounted above the whole
           navigator so the card can fly across the home → card/details change. */}
       <CardHeroOverlay />
+      <NotificationPermissionSheet
+        visible={showNotificationPermissionSheet}
+        onDismiss={handleNotificationPermissionDismiss}
+      />
     </View>
   );
 }

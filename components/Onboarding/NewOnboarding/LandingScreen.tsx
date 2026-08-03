@@ -1,10 +1,10 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useLandingPageApy } from '@/hooks/useLandingPageApy';
 import { getAsset } from '@/lib/assets';
 
 interface LandingScreenProps {
@@ -21,37 +21,92 @@ interface LandingScreenProps {
  * Figma: node 20048-2441.
  */
 export function LandingScreen({ onGetStarted }: LandingScreenProps) {
-  const { apy } = useLandingPageApy();
-  // Fall back to 8 while loading or when no APY is configured, so the copy
-  // never renders "0%".
-  const apyLabel = apy > 0 ? Number(apy.toFixed(1)) : 8;
+  const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 justify-end px-5 pb-3">
+    <View style={StyleSheet.absoluteFill}>
       {/* Solid logo lockup */}
-      <Image
-        source={getAsset('images/solid-wordmark.png')}
-        alt="Solid"
-        style={{ width: 92, height: 27 }}
-        contentFit="contain"
-      />
+      <View accessible accessibilityLabel="Solid" style={styles.logoLockup}>
+        <Image
+          source={getAsset('images/onboarding-landing-mark.svg')}
+          alt=""
+          style={styles.logoMark}
+          contentFit="fill"
+        />
+        <Image
+          source={getAsset('images/onboarding-landing-solid.svg')}
+          alt=""
+          style={styles.logoWord}
+          contentFit="fill"
+        />
+      </View>
 
-      <Text className="mt-9 text-[40px] font-medium leading-[40px] -tracking-[2px] text-white">
-        Your Money{'\n'}Never Sleeps
+      <Text className="font-normal text-white" style={styles.title}>
+        The stablecoin money app
       </Text>
 
-      <Text className="mt-4 text-base leading-[1.2] text-white/70">
-        Earn up to {apyLabel}% return on your savings automatically, and spend globally with your
-        Solid card, all in one account.
+      <Text className="font-normal text-white/70" style={styles.description}>
+        A dollar account for anyone, anywhere. Save, earn, and spend globally with your Solid card
       </Text>
 
       <Button
         variant="secondary"
-        className="mt-8 h-[54px] w-full rounded-full border-0 bg-white active:opacity-90"
+        className="absolute left-[20px] right-[20px] h-[54px] rounded-full border-0 bg-white active:opacity-90"
+        style={{ bottom: insets.bottom + 12 }}
         onPress={onGetStarted}
       >
-        <Text className="text-lg font-semibold text-black">Get started</Text>
+        <Text className="text-[18px] font-semibold text-black">Get started</Text>
       </Button>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  logoLockup: {
+    position: 'absolute',
+    top: 97,
+    left: '50%',
+    width: 92.046,
+    height: 27.092,
+    marginLeft: -46.023,
+  },
+  logoMark: {
+    position: 'absolute',
+    top: 3.02,
+    left: 0,
+    width: 21.098,
+    height: 24.072,
+  },
+  logoWord: {
+    position: 'absolute',
+    top: 0,
+    left: 28.53,
+    width: 63.516,
+    height: 24.903,
+  },
+  title: {
+    position: 'absolute',
+    top: 157,
+    left: '50%',
+    width: 303,
+    marginLeft: -151.5,
+    color: '#fff',
+    fontFamily: 'MonaSans_400Regular',
+    fontSize: 44,
+    lineHeight: 44,
+    letterSpacing: -2,
+    textAlign: 'center',
+  },
+  description: {
+    position: 'absolute',
+    top: 268,
+    left: '50%',
+    width: 303,
+    marginLeft: -151.5,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontFamily: 'MonaSans_400Regular',
+    fontSize: 18,
+    lineHeight: 21.6,
+    textAlign: 'center',
+  },
+});

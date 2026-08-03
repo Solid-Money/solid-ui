@@ -68,7 +68,7 @@ export default function SavingsScreenNew() {
         <SavingsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }
     >
-      <View className="mb-5 w-full gap-8 pb-24">
+      <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceLoading ? (
           <View className="items-center gap-6 pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />

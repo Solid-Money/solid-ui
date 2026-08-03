@@ -138,7 +138,7 @@ export default function HomeScreenNew() {
       animateCardHeroExit
       additionalContent={<CardDetailsPane />}
     >
-      <View className="mb-5 w-full gap-8 pb-24">
+      <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceSectionLoading ? (
           <View className="items-center gap-6 pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />
@@ -169,7 +169,7 @@ export default function HomeScreenNew() {
         {/* HomeWalletCard brings its own px-4 and bleeds back out by the shadow the
             PNG bakes into each side, so the visible card lines up with the sections
             below rather than sitting inset. */}
-        <View className="gap-3">
+        <View className="gap-5">
           <HomeWalletCard
             hasCard={userHasCard}
             last4={cardDetails?.card_details?.last_4}
