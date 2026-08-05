@@ -38,6 +38,7 @@ type NavbarMobileProps = {
   topInset?: number;
   /** Left-side action shown for signed-in users. */
   leftAction?: 'profile' | 'back';
+  onBackPress?: () => void;
   /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
   rightAction?: 'default' | 'help' | 'none';
   onHelpPress?: () => void;
@@ -56,6 +57,7 @@ const NavbarMobile = ({
   title,
   topInset = 0,
   leftAction = 'profile',
+  onBackPress,
   rightAction = 'default',
   onHelpPress,
   animateCardHeroExit = false,
@@ -119,7 +121,11 @@ const NavbarMobile = ({
       <HeaderBellButton />
     );
   const leftActionButton =
-    leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />;
+    leftAction === 'back' ? (
+      <BackButton variant="header" onPress={onBackPress} />
+    ) : (
+      <HeaderProfileButton />
+    );
 
   return (
     <View

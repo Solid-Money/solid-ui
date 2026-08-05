@@ -1,4 +1,5 @@
 import { Platform, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
 import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
@@ -41,6 +42,7 @@ export default function Activity() {
     <PageLayout
       isLoading={isCardStatusLoading}
       mobileHeaderLeftAction="back"
+      onMobileHeaderBackPress={() => router.navigate('/')}
       mobileHeaderRightAction="none"
     >
       {pageHeader}

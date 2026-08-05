@@ -13,6 +13,14 @@
       "distribution": "internal",
       "channel": "preview"
     },
+    "preview-production": {
+      "extends": "preview",
+      "environment": "production",
+      "channel": "preview-production",
+      "env": {
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",

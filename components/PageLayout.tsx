@@ -66,6 +66,7 @@ interface PageLayoutProps {
 
   // Mobile navbar right-side action override (e.g. Savings screen's "?" help button)
   mobileHeaderLeftAction?: 'profile' | 'back';
+  onMobileHeaderBackPress?: () => void;
   mobileHeaderRightAction?: 'default' | 'help' | 'none';
   onMobileHeaderHelpPress?: () => void;
 
@@ -163,6 +164,7 @@ export default function PageLayout({
   customMobileHeader,
   customDesktopHeader,
   mobileHeaderLeftAction = 'profile',
+  onMobileHeaderBackPress,
   mobileHeaderRightAction = 'default',
   onMobileHeaderHelpPress,
   animateCardHeroExit = false,
@@ -243,6 +245,7 @@ export default function PageLayout({
           title={resolvedMobileTitle}
           topInset={isOverlay ? insets.top : 0}
           leftAction={mobileHeaderLeftAction}
+          onBackPress={onMobileHeaderBackPress}
           rightAction={mobileHeaderRightAction}
           onHelpPress={onMobileHeaderHelpPress}
           animateCardHeroExit={animateCardHeroExit}
