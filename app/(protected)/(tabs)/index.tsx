@@ -30,6 +30,7 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
@@ -242,7 +243,7 @@ function LegacyHome() {
 
         <View className="gap-3 px-4 md:mt-10 md:px-0">
           <Text className="mb-2 text-lg font-semibold text-muted-foreground">For You</Text>
-          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
+          {isDevFeatureEnabled && Platform.OS !== 'web' && spinStatus?.isAllowed && (
             <SpinWinCard
               currentStreak={spinStatus?.currentStreak ?? 0}
               spinAvailable={spinStatus?.spinAvailableToday ?? true}
