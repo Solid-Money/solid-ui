@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import AddFundsDestinationModal from '@/components/Home/NewHome/AddFundsDestinationModal';
 import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
@@ -40,17 +41,29 @@ const ActionPill = ({ children, ...props }: TriggerProps) => (
 interface WalletActionsProps {
   /** When false, only "Add Funds" is shown full-width; when true, Swap/Send appear. */
   hasFunds: boolean;
+  /** Card holders first pick where the money goes (card or wallet). */
+  hasCard?: boolean;
 }
 
 /**
  * Home action row. No funds → full-width white "Add Funds". Funded → "Add Funds"
  * plus "Swap" and "Send". Reuses the global Deposit/Swap/Send modals. Note
  * SwapModal renders null on iOS, so Swap self-hides there (same as the legacy row).
+ *
+ * With a card, "Add Funds" opens a destination picker first (card vs wallet) and
+ * routes to the matching deposit flow; without one it goes straight to the
+ * wallet deposit modal.
  */
-const WalletActions = ({ hasFunds }: WalletActionsProps) => {
+const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
+  const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} />;
+
   return (
     <View className="flex-row items-center gap-3 px-4">
-      <DepositOptionModal trigger={<AddFundsTrigger fullWidth={!hasFunds} />} />
+      {hasCard ? (
+        <AddFundsDestinationModal trigger={addFundsTrigger} />
+      ) : (
+        <DepositOptionModal trigger={addFundsTrigger} />
+      )}
       {hasFunds && (
         <>
           <SwapModal

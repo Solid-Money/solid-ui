@@ -162,7 +162,7 @@ export default function HomeScreenNew() {
               </View>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={depositCompleted} />
+              <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />
             </HeroExit>
           </View>
         )}
