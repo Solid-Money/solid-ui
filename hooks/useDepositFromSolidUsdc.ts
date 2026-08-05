@@ -6,6 +6,7 @@ import { useBlockNumber, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
@@ -83,6 +84,9 @@ const useDepositFromSolidUsdc = (
       fromAddress: safeAddress,
       toAddress: spender,
       type: isCard ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
+      // Off-target chains route through the bridge, so the source-chain approve
+      // receipt must not be treated as the deposit completing.
+      metadata: isTargetChain ? undefined : { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true },
     });
     return clientTxId;
   };

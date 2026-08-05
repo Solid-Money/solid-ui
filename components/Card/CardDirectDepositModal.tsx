@@ -5,8 +5,10 @@ import { useDimension } from '@/hooks/useDimension';
 import CardDirectDepositModalDesktop from './CardDirectDepositModalDesktop';
 import CardDirectDepositModalMobile from './CardDirectDepositModalMobile';
 
-interface CardDirectDepositModalProps {
-  trigger: React.ReactNode;
+export interface CardDirectDepositModalProps {
+  /** Omit (or pass null) when driving the modal with isOpen/onOpenChange. */
+  trigger?: React.ReactNode;
+  /** Controlled mode: when provided, the modal no longer owns its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }

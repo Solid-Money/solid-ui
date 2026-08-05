@@ -8,7 +8,7 @@ import { CoinBreakdown } from '@/hooks/useCoinBreakdown';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { TokenVault } from '@/lib/vaults';
+import { isVaultShareToken, TokenVault } from '@/lib/vaults';
 
 type CoinSummaryProps = {
   token: TokenBalance | undefined;
@@ -24,6 +24,9 @@ const ICON_TOP_OFFSET = 36;
 /** Coin identity and total balance, with the back button floated over it. */
 const CoinSummary = ({ token, breakdown, tokenVault }: CoinSummaryProps) => {
   const symbol = breakdown?.symbol ?? token?.contractTickerSymbol ?? '';
+  // APY belongs to the vault share token (soUSD / soETH / soFUSE), not to the
+  // underlying asset — holding USDC in the wallet earns nothing.
+  const showApy = isVaultShareToken(token?.contractAddress);
 
   return (
     <View className="items-center gap-2" style={{ paddingTop: ICON_TOP_OFFSET }}>
@@ -47,14 +50,14 @@ const CoinSummary = ({ token, breakdown, tokenVault }: CoinSummaryProps) => {
       </Text>
 
       <Text className="text-3.5xl font-semibold">
-        {formatNumber(breakdown?.totalBalance ?? 0, 6, 0)} {symbol}
+        {formatNumber(breakdown?.totalBalance ?? 0, 3, 0)} {symbol}
       </Text>
 
       <Text className="text-base font-semibold text-foreground/70">
         ${formatNumber(breakdown?.totalBalanceUSD ?? 0, 2, 2)}
       </Text>
 
-      <CoinApyPill tokenVault={tokenVault} className="mt-1" />
+      {showApy && <CoinApyPill tokenVault={tokenVault} className="mt-1" />}
     </View>
   );
 };

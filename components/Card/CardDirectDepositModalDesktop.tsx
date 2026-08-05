@@ -44,17 +44,21 @@ const STEP_TITLES: Record<Step, string> = {
 };
 
 interface CardDirectDepositModalProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
 export default function CardDirectDepositModal({
-  trigger,
-  isOpen: controlledIsOpen,
+  trigger = null,
+  isOpen: isOpenProp,
   onOpenChange,
 }: CardDirectDepositModalProps) {
-  const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
+  // Uncontrolled by default (trigger drives it); controlled when isOpen is passed,
+  // e.g. by the home "Add funds" destination picker which has no trigger of its own.
+  const isControlled = isOpenProp !== undefined;
+  const [isOpenState, setIsOpenState] = useState(false);
+  const isOpen = isControlled ? isOpenProp : isOpenState;
   const [stepState, setStepState] = useState<{ current: Step; previous: ModalState }>({
     current: 'options',
     previous: CLOSE_STATE,
@@ -90,21 +94,17 @@ export default function CardDirectDepositModal({
     setStepState(prev => ({ current: nextStep, previous: MODAL_STATES[prev.current] }));
   }, []);
 
-  const isOpen = controlledIsOpen ?? uncontrolledIsOpen;
-
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open && walletConnectingRef.current) return;
-      if (controlledIsOpen === undefined) {
-        setUncontrolledIsOpen(open);
-      }
+      if (!isControlled) setIsOpenState(open);
       onOpenChange?.(open);
       if (!open) {
         setStepState({ current: 'options', previous: CLOSE_STATE });
         setDepositAddress(undefined);
       }
     },
-    [controlledIsOpen, onOpenChange],
+    [isControlled, onOpenChange],
   );
 
   const handleConnectWallet = useCallback(async () => {
