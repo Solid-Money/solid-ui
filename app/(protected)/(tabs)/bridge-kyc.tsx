@@ -250,7 +250,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Verify identity
           </Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 50 }} />
         </View>
 
         <View style={styles.inlineContainer}>

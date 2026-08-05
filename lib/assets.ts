@@ -1037,7 +1037,7 @@ export const ASSETS = {
   'images/warning.png': { module: require('@/assets/images/warning.png'), hash: '81dd623d' },
   'images/wave-texture.png': {
     module: require('@/assets/images/wave-texture.png'),
-    hash: '23db6965',
+    hash: 'cf0cffad',
   },
   'images/welcome-card.png': {
     module: require('@/assets/images/welcome-card.png'),

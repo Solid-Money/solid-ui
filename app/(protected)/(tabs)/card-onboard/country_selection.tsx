@@ -350,7 +350,7 @@ export default function CountrySelection() {
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Solid card
           </Text>
-          <View className="w-10" />
+          <View className="w-[50px]" />
         </View>
 
         {showCountrySelector ? (

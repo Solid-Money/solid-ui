@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
@@ -9,9 +9,7 @@ import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
-import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
@@ -19,7 +17,6 @@ import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
-import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -43,8 +40,6 @@ export default function RewardsScreenNew() {
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
-  const { data: spinStatus } = useSpinStatus();
-  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const hasCompletedIntro = useRewardsIntroStore(
@@ -136,8 +131,8 @@ export default function RewardsScreenNew() {
         <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }
     >
-      <View className="mb-5 w-full gap-8 pb-24">
-        <View className="gap-5">
+      <View className="mb-5 w-full pb-24">
+        <View className="mb-5 gap-5">
           <PointsHeadline tier={currentTier} points={totalPoints} />
           <View className="flex-row gap-3 px-4">
             <Pressable
@@ -178,15 +173,17 @@ export default function RewardsScreenNew() {
 
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
-        <DailyBenefits
-          cashbackRate={rewardsData?.cashbackRate ?? 0}
-          cashbackThisMonth={cashback}
-          maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
-          allTimeCashback={allTimeCashback}
-          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
-          onReferralsPress={() => setIsReferralModalOpen(true)}
-          onSupportPress={openSupportDrawer}
-        />
+        <View className="mt-8">
+          <DailyBenefits
+            cashbackRate={rewardsData?.cashbackRate ?? 0}
+            cashbackThisMonth={cashback}
+            maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+            allTimeCashback={allTimeCashback}
+            onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+            onReferralsPress={() => setIsReferralModalOpen(true)}
+            onSupportPress={openSupportDrawer}
+          />
+        </View>
       </View>
 
       <ReferralProgramModalNew

@@ -237,6 +237,14 @@ export default function ProtectedLayout() {
             }}
           />
           <Stack.Screen
+            name="activity"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+            }}
+          />
+          <Stack.Screen
             name="quest-wallet"
             options={{
               headerShown: false,
