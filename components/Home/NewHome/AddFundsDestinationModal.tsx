@@ -7,6 +7,7 @@ import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositOption from '@/components/DepositOption/DepositOption';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import SlotTrigger from '@/components/SlotTrigger';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
@@ -40,9 +41,12 @@ const AddFundsDestinationModal = ({ trigger }: AddFundsDestinationModalProps) =>
   const openDepositFlow = useOpenDepositFlow();
   const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (handoffTimer.current) clearTimeout(handoffTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+    },
+    [],
+  );
 
   // Close this popup, then open the picked flow once it's off screen.
   const handOffTo = useCallback((open: () => void) => {
@@ -63,12 +67,17 @@ const AddFundsDestinationModal = ({ trigger }: AddFundsDestinationModalProps) =>
 
   return (
     <>
+      {/* The trigger is cloned in place (rather than handed to ResponsiveModal,
+          which wraps it in a Dialog trigger) so it keeps the layout classes the
+          action row gives it — otherwise the "Add Funds" pill loses its flex-1
+          width on native. */}
+      <SlotTrigger onPress={() => setIsOpen(true)}>{trigger}</SlotTrigger>
       <ResponsiveModal
         currentModal={OPTIONS_STATE}
         previousModal={CLOSE_STATE}
         isOpen={isOpen}
         onOpenChange={setIsOpen}
-        trigger={trigger}
+        trigger={null}
         title="Add funds"
         contentKey="add-funds-destination"
       >

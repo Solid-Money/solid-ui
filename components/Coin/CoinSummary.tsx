@@ -50,7 +50,7 @@ const CoinSummary = ({ token, breakdown, tokenVault }: CoinSummaryProps) => {
       </Text>
 
       <Text className="text-3.5xl font-semibold">
-        {formatNumber(breakdown?.totalBalance ?? 0, 6, 0)} {symbol}
+        {formatNumber(breakdown?.totalBalance ?? 0, 3, 0)} {symbol}
       </Text>
 
       <Text className="text-base font-semibold text-foreground/70">

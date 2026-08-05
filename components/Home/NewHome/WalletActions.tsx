@@ -29,10 +29,12 @@ const AddFundsTrigger = ({ fullWidth, ...props }: TriggerProps & { fullWidth: bo
   </Pressable>
 );
 
+// flex-1 like "Add Funds", so the row always splits evenly between however many
+// pills it has — two halves on iOS (no Swap there), three thirds elsewhere.
 const ActionPill = ({ children, ...props }: TriggerProps) => (
   <Pressable
     {...props}
-    className="h-14 flex-row items-center justify-center gap-2 rounded-full bg-[#1C1C1C] px-6 transition-all active:scale-95 active:opacity-80"
+    className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#1C1C1C] px-4 transition-all active:scale-95 active:opacity-80"
   >
     {children}
   </Pressable>
