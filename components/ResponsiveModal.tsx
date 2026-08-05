@@ -189,13 +189,13 @@ const ResponsiveModal = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    className="h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 ) : (
-                  <View className="w-10" />
+                  <View className="w-[50px]" />
                 )}
                 {title ? (
                   <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>

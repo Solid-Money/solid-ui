@@ -12,11 +12,14 @@ export const TIER_STATS_BAND_TUCK = 41;
 /** The part that stays on screen — the stats sit here so nothing is tucked away. */
 const VISIBLE_HEIGHT = TIER_STATS_BAND_HEIGHT - TIER_STATS_BAND_TUCK;
 
-const BAND_GRADIENT = ['rgba(148, 242, 127, 0.15)', 'rgba(148, 242, 127, 0.05)'] as const;
-const DIVIDER_COLOR = 'rgba(255, 255, 255, 0.1)';
+const BAND_GRADIENT = ['rgba(148, 242, 127, 0.28)', 'rgba(148, 242, 127, 0.05)'] as const;
+const DIVIDER_COLOR = 'rgba(255, 255, 255, 0.25)';
 
-// The texture artwork is near-white, so it sits over the gradient at low opacity.
-// Matched against the design's own band at 385x137.
+// The Figma artwork is intentionally much larger than the band and center-cropped.
+// Keeping those source dimensions preserves the same pattern density at every width.
+const TEXTURE_WIDTH = 848;
+const TEXTURE_HEIGHT = 565;
+const TEXTURE_TOP = -214;
 const TEXTURE_OPACITY = 0.12;
 
 /** Measured off the design's band: 26px value over a 16px label. */
@@ -29,16 +32,20 @@ export interface TierStat {
   value: string;
 }
 
-/**
- * The design's wave artwork, cropped rather than stretched — `cover` on a repeating
- * pattern is invisible, where `fill` would skew the waves as the band widens.
- */
 const WaveTexture = () => (
   <Image
     source={getAsset('images/wave-texture.png')}
     alt=""
     contentFit="cover"
-    style={[StyleSheet.absoluteFillObject, { opacity: TEXTURE_OPACITY }]}
+    style={{
+      position: 'absolute',
+      top: TEXTURE_TOP,
+      left: '50%',
+      width: TEXTURE_WIDTH,
+      height: TEXTURE_HEIGHT,
+      marginLeft: -TEXTURE_WIDTH / 2 - 0.5,
+      opacity: TEXTURE_OPACITY,
+    }}
   />
 );
 
@@ -83,7 +90,6 @@ const TierStatsBand = ({ stats }: { stats: readonly TierStat[] }) => (
 const styles = StyleSheet.create({
   divider: {
     backgroundColor: DIVIDER_COLOR,
-    marginVertical: 10,
     width: StyleSheet.hairlineWidth,
   },
 });

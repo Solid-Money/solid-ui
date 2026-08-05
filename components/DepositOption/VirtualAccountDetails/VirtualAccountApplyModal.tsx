@@ -163,7 +163,7 @@ export const VirtualAccountApplyModal = () => {
           accessibilityRole="button"
           accessibilityLabel="Go back"
           onPress={handleBack}
-          className="absolute left-[18px] z-10 h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+          className="absolute left-[18px] z-10 h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
           style={{ top: heroTop }}
         >
           <ArrowLeft size={22} color="#fff" />
@@ -210,7 +210,7 @@ export const VirtualAccountApplyModal = () => {
               accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={handleBack}
-              className="absolute left-[18px] top-0 z-10 h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+              className="absolute left-[18px] top-0 z-10 h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
             >
               <ArrowLeft size={22} color="#fff" />
             </Pressable>

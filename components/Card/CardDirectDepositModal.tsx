@@ -7,6 +7,8 @@ import CardDirectDepositModalMobile from './CardDirectDepositModalMobile';
 
 interface CardDirectDepositModalProps {
   trigger: React.ReactNode;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -15,12 +17,12 @@ interface CardDirectDepositModalProps {
  * variant. This also keeps thirdweb hooks off the web-mobile render path, which
  * is required now that the ThirdwebProvider is mounted on desktop only.
  */
-export default function CardDirectDepositModal({ trigger }: CardDirectDepositModalProps) {
+export default function CardDirectDepositModal(props: CardDirectDepositModalProps) {
   const { isDesktop } = useDimension();
 
   return isDesktop ? (
-    <CardDirectDepositModalDesktop trigger={trigger} />
+    <CardDirectDepositModalDesktop {...props} />
   ) : (
-    <CardDirectDepositModalMobile trigger={trigger} />
+    <CardDirectDepositModalMobile {...props} />
   );
 }

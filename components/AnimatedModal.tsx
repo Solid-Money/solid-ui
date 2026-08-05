@@ -117,7 +117,7 @@ const AnimatedModal = ({
                 {showBackButton && onBackPress && (
                   <Button
                     variant="ghost"
-                    className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    className="h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
@@ -126,7 +126,7 @@ const AnimatedModal = ({
                 <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
                   <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
                 </Animated.View>
-                {showBackButton && <View className="w-10" />}
+                {showBackButton && <View className="w-[50px]" />}
               </DialogHeader>
             )}
             <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>

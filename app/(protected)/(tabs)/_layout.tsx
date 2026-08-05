@@ -3,14 +3,11 @@ import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Leaf, Star } from 'lucide-react-native';
 
-import bellAnimation from '@/assets/tabs-icons/bell.json';
 import cardAnimation from '@/assets/tabs-icons/card.json';
-import homeAnimation from '@/assets/tabs-icons/home.json';
-import lightningAnimation from '@/assets/tabs-icons/lightning.json';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
+import { AnimatedTabIcon } from '@/components/tabBar/AnimatedTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
-import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
 import { TabBarBlurProvider } from '@/components/tabBar/TabBarBlurContext';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
@@ -62,7 +59,7 @@ export default function TabLayout() {
           headerShown: false,
 
           tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={homeAnimation} focused={focused} size={size} />
+            <AnimatedTabIcon name="wallet" focused={focused} size={size} />
           ),
           href: path.HOME,
         }}
@@ -76,7 +73,7 @@ export default function TabLayout() {
           headerShown: false,
 
           tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={lightningAnimation} focused={focused} size={size} />
+            <AnimatedTabIcon name="savings" focused={focused} size={size} />
           ),
           href: path.SAVINGS,
         }}
@@ -114,20 +111,6 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
           href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="activity"
-        options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
-          title: 'Activity',
-          headerShown: false,
-
-          tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={bellAnimation} focused={focused} size={size} />
-          ),
-          href: path.ACTIVITY,
         }}
       />
 
@@ -182,7 +165,9 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          tabBarIcon: ({ focused, size }) => <RewardsTabIcon focused={focused} size={size ?? 28} />,
+          tabBarIcon: ({ focused, size }) => (
+            <AnimatedTabIcon name="rewards" focused={focused} size={size} />
+          ),
           // Only surface the Rewards tab (and its route) on qa/preview builds;
           // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
           href: path.REWARDS,

@@ -61,7 +61,7 @@ export default function Email() {
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
       <BackButton />
-      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Email</Text>
+      <Text className="mr-[50px] flex-1 text-center text-xl font-bold text-white">Email</Text>
     </View>
   );
 
@@ -72,7 +72,7 @@ export default function Email() {
         <View className="mb-8 flex-row items-center justify-between">
           <BackButton />
           <Text className="text-3xl font-semibold text-white">Email</Text>
-          <View className="w-6" />
+          <View className="w-[50px]" />
         </View>
       </View>
     </>

@@ -32,7 +32,7 @@ export function CardStatusPage({
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             {header ? header : 'Solid card'}
           </Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 50 }} />
         </View>
 
         <View className="mb-10 mt-8">

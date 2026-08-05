@@ -150,7 +150,7 @@ export default function Security() {
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
       <BackButton />
-      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Security</Text>
+      <Text className="mr-[50px] flex-1 text-center text-xl font-bold text-white">Security</Text>
     </View>
   );
 
@@ -161,7 +161,7 @@ export default function Security() {
         <View className="mb-8 flex-row items-center justify-between">
           <BackButton />
           <Text className="text-3xl font-semibold text-white">Security</Text>
-          <View className="w-6" />
+          <View className="w-[50px]" />
         </View>
       </View>
     </>

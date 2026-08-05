@@ -220,7 +220,7 @@ const DepositToCard = () => {
         <View className="mb-8 flex-row items-center justify-between">
           <BackButton />
           <Text className="text-center text-xl font-semibold md:text-2xl">Deposit to card</Text>
-          <View className="w-6" />
+          <View className="w-[50px]" />
         </View>
 
         {isLoadingFunding ? (

@@ -92,7 +92,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
       style={styles.tabButton}
     >
       <View style={[styles.tabContent, pressStyle]}>
-        <View style={[styles.iconWrapper, { opacity: isFocused ? 1 : 0.5 }]}>{icon}</View>
+        <View style={styles.iconWrapper}>{icon}</View>
         <Text style={[styles.tabLabel, { color: labelColor }]}>{label}</Text>
       </View>
     </Pressable>
@@ -200,11 +200,7 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (
-    currentRouteName === 'activity' ||
-    currentRouteName === 'settings' ||
-    focusedNestedRoute === 'benefits'
-  ) {
+  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
     return null;
   }
 

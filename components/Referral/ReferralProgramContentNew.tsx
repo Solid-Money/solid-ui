@@ -343,7 +343,7 @@ export default function ReferralProgramContentNew({
       >
         <Pressable
           onPress={onClose}
-          className="absolute right-4 h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+          className="absolute right-4 h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
           style={{ top: 12 }}
         >
           <X size={18} color="rgba(255,255,255,0.7)" />

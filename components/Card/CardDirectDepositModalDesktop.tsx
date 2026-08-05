@@ -45,10 +45,16 @@ const STEP_TITLES: Record<Step, string> = {
 
 interface CardDirectDepositModalProps {
   trigger: React.ReactNode;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function CardDirectDepositModal({ trigger }: CardDirectDepositModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function CardDirectDepositModal({
+  trigger,
+  isOpen: controlledIsOpen,
+  onOpenChange,
+}: CardDirectDepositModalProps) {
+  const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
   const [stepState, setStepState] = useState<{ current: Step; previous: ModalState }>({
     current: 'options',
     previous: CLOSE_STATE,
@@ -84,14 +90,22 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     setStepState(prev => ({ current: nextStep, previous: MODAL_STATES[prev.current] }));
   }, []);
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open && walletConnectingRef.current) return;
-    setIsOpen(open);
-    if (!open) {
-      setStepState({ current: 'options', previous: CLOSE_STATE });
-      setDepositAddress(undefined);
-    }
-  }, []);
+  const isOpen = controlledIsOpen ?? uncontrolledIsOpen;
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && walletConnectingRef.current) return;
+      if (controlledIsOpen === undefined) {
+        setUncontrolledIsOpen(open);
+      }
+      onOpenChange?.(open);
+      if (!open) {
+        setStepState({ current: 'options', previous: CLOSE_STATE });
+        setDepositAddress(undefined);
+      }
+    },
+    [controlledIsOpen, onOpenChange],
+  );
 
   const handleConnectWallet = useCallback(async () => {
     try {
@@ -247,10 +261,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
     if (step === 'address') {
       return depositAddress ? (
-        <DepositPublicAddress
-          address={depositAddress}
-          onDone={() => handleOpenChange(false)}
-        />
+        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
       ) : (
         <View className="items-center py-12">
           <ActivityIndicator color="white" />
