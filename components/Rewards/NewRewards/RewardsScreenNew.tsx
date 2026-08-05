@@ -15,6 +15,7 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -153,13 +154,14 @@ export default function RewardsScreenNew() {
             </Pressable>
           </View>
 
-          {/* The spin & win flow is a native-only modal — SpinWinModalProvider
-              force-closes itself on web — so the button stays native-only. It is
-              deliberately NOT gated on `spinStatus.isAllowed`: the provider
-              already closes itself when the backend says the user isn't
-              eligible, and gating here made the button vanish silently whenever
-              the status request hadn't resolved or failed. */}
-          {Platform.OS !== 'web' && (
+          {/* Spin & Win is an in-development feature: shown on qa/preview builds,
+              hidden in production. The flow is also a native-only modal
+              (SpinWinModalProvider force-closes on web). It is deliberately NOT
+              gated on `spinStatus.isAllowed`: the provider already closes itself
+              when the backend says the user isn't eligible, and gating here made
+              the button vanish silently whenever the status request hadn't
+              resolved or failed. */}
+          {isDevFeatureEnabled && Platform.OS !== 'web' && (
             <View className="px-4">
               <Pressable
                 onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
