@@ -270,6 +270,7 @@ export default function CardDepositExternalForm() {
           type: 'error',
           text1: 'Deposit failed',
           text2: 'Please try again or check your wallet balance',
+          props: { badgeText: 'Onchain' },
         });
       }
     },

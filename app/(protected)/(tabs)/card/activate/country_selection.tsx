@@ -27,7 +27,14 @@ export default function ActivateCountrySelection() {
   );
 
   const goBack = () => {
-    router.replace(path.CARD);
+    // Leaving the activation flow: `/card` is a redirect shim that would send a
+    // user without a card straight back into onboarding, so fall back to the
+    // wallet page.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.HOME);
+    }
   };
 
   const [loading, setLoading] = useState(true);
@@ -402,7 +409,8 @@ function CountrySelector({
           </Pressable>
 
           <Button
-            className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+            variant="brand"
+            className="mb-4 w-full"
             onPress={onOk}
             disabled={!selectedCountry || processing}
           >
@@ -444,7 +452,7 @@ function CountryUnavailableView({
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
         {`We're rolling out access in your region. Join the waitlist to be notified first.`}
       </Text>
-      <Button className="mt-6 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onChangeCountry}>
+      <Button variant="brand" className="mt-6 w-full" onPress={onChangeCountry}>
         <Text className="text-base font-bold text-black">Change country</Text>
       </Button>
     </>

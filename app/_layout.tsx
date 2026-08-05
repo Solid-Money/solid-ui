@@ -374,7 +374,7 @@ function RootLayout() {
                       <Stack
                         screenOptions={{
                           contentStyle: {
-                            backgroundColor: '#000',
+                            backgroundColor: '#0F0F10',
                           },
                         }}
                       >
@@ -444,7 +444,9 @@ function RootLayout() {
                       </Stack>
                       <PortalHost />
                       <DeferredModalProviders />
-                      {hasSelectedUser && <WhatsNewWrapper />}
+                      {hasSelectedUser && params.notificationPermission !== 'open' && (
+                        <WhatsNewWrapper />
+                      )}
                       {hasSelectedUser && Platform.OS !== 'web' && <CashbackStoreReviewTrigger />}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>

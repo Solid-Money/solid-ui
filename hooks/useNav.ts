@@ -1,7 +1,7 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 type MenuItem = {
   label: string;
@@ -23,6 +23,9 @@ const activity: MenuItem = {
   href: path.ACTIVITY,
 };
 
+// The one nav entry that can't pick a destination up front — a card holder and a
+// first-timer need different screens — so it goes through the `/card` redirect
+// shim, which branches on card status.
 const card: MenuItem = {
   label: 'Card',
   href: path.CARD,
@@ -34,17 +37,17 @@ const stocks: MenuItem = {
 };
 
 const useNav = () => {
-  const isTestUser = useIsTestUser();
   const rewards: MenuItem = {
     label: 'Rewards',
     href: path.REWARDS,
   };
   // Agent lives in the account-center menu, not the navbar.
+  // Stocks is an in-development feature: shown on qa/preview builds, hidden in production.
   const menuItems: MenuItem[] = [
     home,
     savings,
     card,
-    ...(isTestUser ? [stocks] : []),
+    ...(isDevFeatureEnabled ? [stocks] : []),
     rewards,
     activity,
   ];

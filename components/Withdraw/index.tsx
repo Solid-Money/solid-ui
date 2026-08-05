@@ -97,6 +97,7 @@ const Withdraw = () => {
         text1: 'Withdrawal transaction completed',
         text2: `${data.amount} soUSD`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
@@ -122,6 +123,7 @@ const Withdraw = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };

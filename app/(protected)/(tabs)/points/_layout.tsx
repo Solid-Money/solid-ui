@@ -7,7 +7,7 @@ export default function PointsLayout() {
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#000000',
+          backgroundColor: '#0F0F10',
         },
         headerTitleAlign: 'center',
         headerTintColor: '#ffffff',

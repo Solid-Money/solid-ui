@@ -1,7 +1,7 @@
 {
   "name": "solid",
   "main": "index.js",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start --clear",
@@ -76,6 +76,8 @@
     "@rn-primitives/types": "^1.2.0",
     "@sentry/react-native": "~7.11.0",
     "@shopify/flash-list": "2.0.2",
+    "@sumsub/react-native-mobilesdk-module": "^1.44.1",
+    "@sumsub/websdk": "^2.3.7",
     "@tanstack/react-query": "^5.90.21",
     "@thirdweb-dev/react-native-adapter": "^1.5.5",
     "@turnkey/react-native-wallet-kit": "^1.5.2",
@@ -115,6 +117,7 @@
     "expo-system-ui": "~55.0.14",
     "expo-tracking-transparency": "~55.0.12",
     "expo-updates": "~55.0.19",
+    "expo-video": "~55.0.19",
     "expo-web-browser": "~55.0.13",
     "fuse.js": "^7.1.0",
     "graphql": "^16.13.2",

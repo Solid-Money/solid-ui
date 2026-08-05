@@ -31,7 +31,7 @@ export const ApyPill = React.forwardRef<View, ApyPillProps>(
         ref={ref}
         accessibilityRole="button"
         accessibilityLabel="Show vault APYs"
-        className="flex-row items-center gap-2 self-center rounded-full bg-[#1C1C1C] py-2 pl-2 pr-3 transition-all active:scale-95 active:opacity-80"
+        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
         {...props}
       >
         <Image
@@ -39,7 +39,15 @@ export const ApyPill = React.forwardRef<View, ApyPillProps>(
           style={{ width: 20, height: 20, borderRadius: 10 }}
           contentFit="contain"
         />
-        <Text className="text-base font-semibold text-brand">
+        <Text
+          className="font-semibold text-brand"
+          style={{
+            fontFamily: 'MonaSans_600SemiBold',
+            fontSize: 16,
+            fontWeight: '600',
+            lineHeight: 18,
+          }}
+        >
           {formatApyLabel(maxAPY, isAPYsLoading)} APY
         </Text>
         <ChevronDown size={16} color="rgba(255,255,255,0.6)" />

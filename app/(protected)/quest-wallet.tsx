@@ -150,7 +150,8 @@ function WalletAddressInput({
           </View>
         )}
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          variant="brand"
+          className="mb-4 w-full"
           onPress={onSubmit}
           disabled={!walletAddress || loading}
         >
@@ -183,7 +184,7 @@ function Success({ onClose, isUpdate }: SuccessProps) {
             : 'Your external wallet address has been saved successfully. You can now use it to complete quests on our partner platform.'}
         </Text>
 
-        <Button className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onClose}>
+        <Button variant="brand" className="mb-4 w-full" onPress={onClose}>
           <Text className="text-base font-bold text-black">Done</Text>
         </Button>
       </View>

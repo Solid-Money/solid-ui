@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard } from 'lucide-react-native';
 import { z } from 'zod';
 
@@ -198,9 +198,7 @@ export default function OrderPhysicalCardModal({
                   />
                 </View>
                 {formState.errors.firstName && (
-                  <Text className="text-sm text-red-500">
-                    {formState.errors.firstName.message}
-                  </Text>
+                  <Text className="text-sm text-red-500">{formState.errors.firstName.message}</Text>
                 )}
               </View>
               <View className="flex-1 gap-1.5">
@@ -227,9 +225,7 @@ export default function OrderPhysicalCardModal({
                   />
                 </View>
                 {formState.errors.lastName && (
-                  <Text className="text-sm text-red-500">
-                    {formState.errors.lastName.message}
-                  </Text>
+                  <Text className="text-sm text-red-500">{formState.errors.lastName.message}</Text>
                 )}
               </View>
             </View>
@@ -306,7 +302,7 @@ export default function OrderPhysicalCardModal({
 
           <View className="mt-6 gap-4">
             <Button
-              className="h-14 rounded-xl bg-[#94F27F]"
+              variant="brand"
               onPress={handleSubmit(onSubmit)}
               disabled={orderMutation.isPending}
             >
@@ -353,12 +349,7 @@ function FormField({
   return (
     <View className="gap-1.5">
       <Text className="font-medium opacity-50">{label}</Text>
-      <View
-        className={cn(
-          'rounded-2xl bg-accent px-5 py-3',
-          error && 'border border-red-500',
-        )}
-      >
+      <View className={cn('rounded-2xl bg-accent px-5 py-3', error && 'border border-red-500')}>
         <Controller
           control={control}
           name={name}

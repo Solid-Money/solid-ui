@@ -13,10 +13,18 @@ type Path = {
   SAVINGS_OLD: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
+  /**
+   * @deprecated Not a page any more — `/card` is a redirect shim that branches on
+   * card status (details / activate / country selection) so old deep links keep
+   * working. New navigation should name the destination directly:
+   * `CARD_COUNTRY_SELECTION` to start onboarding, `CARD_ACTIVATE` to resume
+   * issuance, `CARD_DETAILS` for an existing card.
+   */
   CARD: Href;
   USER_KYC_INFO: Href;
   BANK_TRANSFER: Href;
   KYC: Href;
+  SUMSUB_KYC: Href;
   BRIDGE_KYC: Href;
   CARD_TERMS_OF_SERVICE: Route;
   CARD_DETAILS: Route;
@@ -40,6 +48,12 @@ type Path = {
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
   OVERVIEW: Href;
+  /**
+   * @deprecated Same story as `CARD` — `/card-onboard` served the standalone card
+   * waitlist page and is now a shim that hands off to `/card`. Name a real
+   * destination instead: `CARD_COUNTRY_SELECTION`, `CARD_ACTIVATE` or
+   * `CARD_DETAILS`.
+   */
   CARD_WAITLIST: Href;
   CARD_WAITLIST_SUCCESS: Href;
   CARD_COUNTRY_VERIFICATION_REQUIRED: Href;
@@ -69,6 +83,7 @@ export const path: Path = {
   CARD: '/card',
   USER_KYC_INFO: '/user-kyc-info',
   KYC: '/kyc',
+  SUMSUB_KYC: '/sumsub-kyc',
   BRIDGE_KYC: '/bridge-kyc',
   BANK_TRANSFER: '/bank-transfer',
   CARD_TERMS_OF_SERVICE: '/card/bridge_terms_of_service',

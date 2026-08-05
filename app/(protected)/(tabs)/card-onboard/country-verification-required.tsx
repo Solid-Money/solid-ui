@@ -8,7 +8,7 @@ import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { openIntercom } from '@/lib/intercom';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 /**
  * Verification Failed Screen
@@ -26,7 +26,7 @@ export default function CountryVerificationRequired() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.push(path.CARD);
+      router.replace(path.HOME);
     }
   };
 
@@ -35,7 +35,7 @@ export default function CountryVerificationRequired() {
   };
 
   const handleContactSupport = () => {
-    openIntercom();
+    openSupportDrawer();
   };
 
   return (
@@ -76,10 +76,7 @@ export default function CountryVerificationRequired() {
 
             {/* Actions */}
             <View className="w-full gap-3">
-              <Button
-                className="h-11 w-full rounded-xl bg-[#94F27F]"
-                onPress={handleContactSupport}
-              >
+              <Button variant="brand" className="w-full" onPress={handleContactSupport}>
                 <Text className="text-base font-bold text-black">Contact Support</Text>
               </Button>
 

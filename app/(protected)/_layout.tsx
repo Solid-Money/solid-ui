@@ -1,6 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, InteractionManager, Platform, StyleSheet, View } from 'react-native';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import {
+  Redirect,
+  Stack,
+  useGlobalSearchParams,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -12,6 +18,8 @@ import {
   BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
 import CardHeroOverlay from '@/components/Card/NewCardDetails/CardHeroOverlay';
+import { SidebarShell } from '@/components/Navbar/Sidebar';
+import NotificationPermissionSheet from '@/components/Notifications/NotificationPermissionSheet';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -26,6 +34,7 @@ import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
 // Lazy load Loading component - only used during hydration
@@ -37,7 +46,28 @@ export default function ProtectedLayout() {
     useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
   );
   const searchParams = useLocalSearchParams();
+  const globalSearchParams = useGlobalSearchParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const hasSeenNotificationOnboarding = useOnboardingStore(
+    state => state.hasSeenNotificationOnboarding,
+  );
+  const setHasSeenNotificationOnboarding = useOnboardingStore(
+    state => state.setHasSeenNotificationOnboarding,
+  );
+  const notificationPermissionRequested = globalSearchParams.notificationPermission === 'open';
+  const showNotificationPermissionSheet =
+    notificationPermissionRequested && !hasSeenNotificationOnboarding;
+
+  const handleNotificationPermissionDismiss = useCallback(() => {
+    setHasSeenNotificationOnboarding(true);
+  }, [setHasSeenNotificationOnboarding]);
+
+  useEffect(() => {
+    if (notificationPermissionRequested && hasSeenNotificationOnboarding) {
+      router.replace(path.HOME);
+    }
+  }, [hasSeenNotificationOnboarding, notificationPermissionRequested, router]);
 
   // Defer non-critical startup work (webhook auto-subscribe, MeaWallet init)
   // until after the first interactions so it doesn't compete with first paint.
@@ -182,79 +212,87 @@ export default function ProtectedLayout() {
 
   return (
     <View style={styles.root}>
-      <Stack
-        screenOptions={{
-          contentStyle: {
-            backgroundColor: '#000',
-          },
-          headerStyle: {
-            backgroundColor: '#000',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
+      {/* The desktop sidebar is mounted here, above the navigator, so it lays out
+          once and stays put while the body beside it navigates or reloads. */}
+      <SidebarShell>
+        <Stack
+          screenOptions={{
+            contentStyle: {
+              backgroundColor: '#0F0F10',
+            },
+            headerStyle: {
+              backgroundColor: '#0F0F10',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: 'bold',
+            },
           }}
-        />
-        <Stack.Screen
-          name="quest-wallet"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="coins/[id]"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="deposit"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="qr-scanner"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_bottom',
-            presentation: 'fullScreenModal',
-          }}
-        />
-        <Stack.Screen
-          name="rescue-token"
-          options={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="agent/index"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="gooddollar/index"
-          options={{
-            headerShown: false,
-          }}
-        />
-      </Stack>
-      {/* Root-level hero overlay for the card view-transition (whitelisted new
+        >
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="quest-wallet"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="coins/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="deposit"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="qr-scanner"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_bottom',
+              presentation: 'fullScreenModal',
+            }}
+          />
+          <Stack.Screen
+            name="rescue-token"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="agent/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="gooddollar/index"
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack>
+      </SidebarShell>
+      {/* Root-level hero overlay for the card view-transition (redesigned
           screens only — stays dormant/null otherwise). Mounted above the whole
           navigator so the card can fly across the home → card/details change. */}
       <CardHeroOverlay />
+      <NotificationPermissionSheet
+        visible={showNotificationPermissionSheet}
+        onDismiss={handleNotificationPermissionDismiss}
+      />
     </View>
   );
 }

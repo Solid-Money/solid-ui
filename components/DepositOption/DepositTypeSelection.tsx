@@ -13,38 +13,34 @@ import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
-const ICON_SIZE = 36;
-const ICON_OVERLAP = 10;
+const ICON_SIZE = 40;
+const ICON_OVERLAP = 4;
 
-const CASH_FLAG_ICONS = [{ key: 'us', source: getAsset('images/us.png') }];
-
-const CRYPTO_CHAIN_ICONS = [
-  { key: 'eth', source: getAsset('images/eth.png') },
-  { key: 'fuse', source: getAsset('images/fuse.png') },
-  { key: 'base', source: getAsset('images/base.png') },
-  { key: 'arbitrum', source: getAsset('images/arbitrum.png') },
-  { key: 'bsc', source: getAsset('images/bsc.png') },
+const CASH_ICONS = [
+  { key: 'us', source: getAsset('images/deposit-cash-us.png') },
+  { key: 'usd', source: getAsset('images/deposit-cash-usd.png') },
 ];
 
-const CircleIcon = ({
-  source,
-  index,
-}: {
-  source: ReturnType<typeof getAsset>;
-  index: number;
-}) => (
+const CRYPTO_ICONS = [
+  { key: 'usdc', source: getAsset('images/deposit-crypto-usdc.png') },
+  { key: 'usdt', source: getAsset('images/deposit-crypto-usdt.png') },
+];
+
+const CircleIcon = ({ source, index }: { source: ReturnType<typeof getAsset>; index: number }) => (
   <View
-    className="items-center justify-center overflow-hidden rounded-full border-[1.5px] border-card bg-card"
+    className="items-center justify-center overflow-hidden rounded-full"
     style={[
-      { width: ICON_SIZE, height: ICON_SIZE },
+      { width: ICON_SIZE, height: ICON_SIZE, zIndex: index === 0 ? 1 : 0 },
       index > 0 ? { marginLeft: -ICON_OVERLAP } : undefined,
     ]}
   >
-    <Image
-      source={source}
-      style={{ width: ICON_SIZE, height: ICON_SIZE }}
-      contentFit="cover"
-    />
+    <Image source={source} style={{ width: ICON_SIZE, height: ICON_SIZE }} contentFit="cover" />
+    {index > 0 && (
+      <View
+        pointerEvents="none"
+        className="absolute inset-0 rounded-full border-[1.5px] border-card"
+      />
+    )}
   </View>
 );
 
@@ -77,7 +73,7 @@ const DepositTypeSelection = () => {
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
             <View className="mb-3 flex-row items-center">
-              {CASH_FLAG_ICONS.map(({ key, source }, index) => (
+              {CASH_ICONS.map(({ key, source }, index) => (
                 <CircleIcon key={key} source={source} index={index} />
               ))}
             </View>
@@ -95,7 +91,7 @@ const DepositTypeSelection = () => {
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
             <View className="mb-3 flex-row items-center">
-              {CRYPTO_CHAIN_ICONS.map(({ key, source }, index) => (
+              {CRYPTO_ICONS.map(({ key, source }, index) => (
                 <CircleIcon key={key} source={source} index={index} />
               ))}
             </View>

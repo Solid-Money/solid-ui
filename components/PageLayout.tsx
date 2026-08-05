@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -15,6 +15,8 @@ import { useDimension } from '@/hooks/useDimension';
 import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
+import { SIDEBAR_BODY_TOP_GUTTER, SIDEBAR_BODY_WIDTH, useIsSidebarShell } from './Navbar/Sidebar';
+import { useRegisterTabBarBlurTarget } from './tabBar/TabBarBlurContext';
 
 const MOBILE_NAVBAR_DIVIDER_OFFSET = 1;
 const MOBILE_NAVBAR_TITLE_REVEAL_OFFSET = 28;
@@ -62,8 +64,20 @@ interface PageLayoutProps {
   customMobileHeader?: ReactNode; // Custom header for mobile (replaces NavbarMobile)
   customDesktopHeader?: ReactNode; // Custom header for desktop (replaces Navbar)
 
+  // Mobile navbar right-side action override (e.g. Savings screen's "?" help button)
+  mobileHeaderLeftAction?: 'profile' | 'back';
+  mobileHeaderRightAction?: 'default' | 'help' | 'none';
+  onMobileHeaderHelpPress?: () => void;
+
+  // Animate the mobile navbar buttons out while a card hero transition runs
+  // (home screen only — it's the screen the card flies away from).
+  animateCardHeroExit?: boolean;
+
   // Layout options
   scrollable?: boolean;
+  // Lets a child temporarily suspend scrolling (e.g. while it's running its own
+  // horizontal swipe gesture, so the two don't fight over the same touch).
+  scrollEnabled?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
 
   // Sticky header (sticks to top when scrolling)
@@ -71,6 +85,8 @@ interface PageLayoutProps {
 
   // Additional content (e.g., modals that need to be outside ScrollView)
   additionalContent?: ReactNode;
+  // Lets an overlay outside this layout blur the scrolling content on Android.
+  blurTargetRef?: RefObject<View | null>;
 
   // Styling
   className?: string;
@@ -146,14 +162,21 @@ export default function PageLayout({
   mobileTitle,
   customMobileHeader,
   customDesktopHeader,
+  mobileHeaderLeftAction = 'profile',
+  mobileHeaderRightAction = 'default',
+  onMobileHeaderHelpPress,
+  animateCardHeroExit = false,
   scrollable = true,
+  scrollEnabled = true,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
+  blurTargetRef,
   className = '',
   contentClassName = '',
 }: PageLayoutProps) {
   const { isScreenMedium, isDesktop } = useDimension();
+  const isSidebarShell = useIsSidebarShell();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const mobileBlurTargetRef = useRef<View>(null);
@@ -169,10 +192,21 @@ export default function PageLayout({
 
   // Determine what to show for navbar
   const shouldShowDesktopNavbar = showNavbar && (!desktopOnly || isLargeScreen);
-  const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen;
+  // Inside the desktop sidebar shell the sidebar carries navigation — including the
+  // profile and activity buttons that sit in the mobile header — so no page renders
+  // a navbar of its own there.
+  const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen && !isSidebarShell;
   const shouldOverlayMobileNavbar = shouldShowMobileNavbar && !customMobileHeader;
+  const shouldWrapBlurTarget = shouldOverlayMobileNavbar || !!blurTargetRef;
+  const resolvedBlurTargetRef = blurTargetRef ?? mobileBlurTargetRef;
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
   const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
+  // Headerless pages in the sidebar shell get the design's top gutter here, so the
+  // content clears the top of the window the way the mobile navbar's offset does.
+  const contentTopOffset =
+    mobileContentOffset || (isSidebarShell && !customMobileHeader ? SIDEBAR_BODY_TOP_GUTTER : 0);
+
+  useRegisterTabBarBlurTarget(mobileBlurTargetRef, shouldOverlayMobileNavbar && !isLoading);
 
   const handleMobileScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -189,6 +223,10 @@ export default function PageLayout({
 
   // Render navbar/header content
   const renderNavbar = (isOverlay = false) => {
+    // Desktop sidebar shell: the sidebar stands in for the navbar. Screens that
+    // bring their own header (settings and friends) keep it.
+    if (isSidebarShell) return customMobileHeader ?? null;
+
     if (isLargeScreen) {
       // Desktop navbar/header
       return customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />);
@@ -204,16 +242,41 @@ export default function PageLayout({
           showTitle={isOverlay && isMobileTitleVisible}
           title={resolvedMobileTitle}
           topInset={isOverlay ? insets.top : 0}
+          leftAction={mobileHeaderLeftAction}
+          rightAction={mobileHeaderRightAction}
+          onHelpPress={onMobileHeaderHelpPress}
+          animateCardHeroExit={animateCardHeroExit}
         />
       ))
     );
   };
 
+  // In the sidebar shell the page is a centred 40rem column beside the sidebar. The
+  // top gutter goes on the header when there is one, and on the content otherwise
+  // (see contentTopOffset above).
+  const renderHeader = () => {
+    const header = renderNavbar();
+    if (!isSidebarShell || !header) return header;
+
+    return (
+      <View className={SIDEBAR_BODY_WIDTH} style={{ paddingTop: SIDEBAR_BODY_TOP_GUTTER }}>
+        {header}
+      </View>
+    );
+  };
+
+  const renderBody = (content: ReactNode, fill = false) =>
+    isSidebarShell ? (
+      <View className={`${SIDEBAR_BODY_WIDTH} ${fill ? 'flex-1' : ''}`}>{content}</View>
+    ) : (
+      content
+    );
+
   // Show loading state with navbar
   if (isLoading) {
     return (
       <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
-        {renderNavbar()}
+        {renderHeader()}
         <Loading />
       </SafeAreaView>
     );
@@ -224,16 +287,19 @@ export default function PageLayout({
     const scrollView = (
       <ScrollView
         className={`flex-1 ${contentClassName}`}
-        contentContainerStyle={
-          mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined
-        }
+        contentContainerStyle={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
+        scrollEnabled={scrollEnabled}
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}
         stickyHeaderIndices={stickyHeader && !isScreenMedium ? [0] : undefined}
       >
-        {stickyHeader && <View className="z-10 bg-background">{stickyHeader}</View>}
-        {children}
+        {stickyHeader && (
+          <View className={`z-10 bg-background ${isSidebarShell ? SIDEBAR_BODY_WIDTH : ''}`}>
+            {stickyHeader}
+          </View>
+        )}
+        {renderBody(children)}
       </ScrollView>
     );
 
@@ -242,13 +308,13 @@ export default function PageLayout({
         className={`flex-1 bg-background text-foreground ${className}`}
         edges={safeAreaEdges}
       >
-        {shouldOverlayMobileNavbar ? (
-          <BlurTargetView ref={mobileBlurTargetRef} style={styles.mobileBlurTarget}>
+        {shouldWrapBlurTarget ? (
+          <BlurTargetView ref={resolvedBlurTargetRef} style={styles.mobileBlurTarget}>
             {scrollView}
           </BlurTargetView>
         ) : (
           <>
-            {renderNavbar()}
+            {renderHeader()}
             {scrollView}
           </>
         )}
@@ -265,25 +331,40 @@ export default function PageLayout({
       className={`flex-1 bg-background text-foreground ${className}`}
       edges={safeAreaEdges}
     >
-      {shouldOverlayMobileNavbar ? (
+      {shouldWrapBlurTarget ? (
         <>
-          <BlurTargetView ref={mobileBlurTargetRef} style={styles.mobileBlurTarget}>
+          <BlurTargetView ref={resolvedBlurTargetRef} style={styles.mobileBlurTarget}>
             <View
               className={`flex-1 ${contentClassName}`}
-              style={mobileContentOffset ? { paddingTop: mobileContentOffset } : undefined}
+              style={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
             >
-              {stickyHeader}
-              {children}
+              {renderBody(
+                <>
+                  {stickyHeader}
+                  {children}
+                </>,
+                true,
+              )}
             </View>
           </BlurTargetView>
-          <View style={styles.mobileNavbarOverlay}>{renderNavbar(true)}</View>
+          {shouldOverlayMobileNavbar && (
+            <View style={styles.mobileNavbarOverlay}>{renderNavbar(true)}</View>
+          )}
         </>
       ) : (
         <>
-          {renderNavbar()}
-          <View className={`flex-1 ${contentClassName}`}>
-            {stickyHeader}
-            {children}
+          {renderHeader()}
+          <View
+            className={`flex-1 ${contentClassName}`}
+            style={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
+          >
+            {renderBody(
+              <>
+                {stickyHeader}
+                {children}
+              </>,
+              true,
+            )}
           </View>
         </>
       )}

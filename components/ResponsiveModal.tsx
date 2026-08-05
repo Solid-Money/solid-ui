@@ -156,7 +156,11 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
+          // Desktop popups get a uniform 40px inset. Three of the four sides live
+          // here; the bottom stays 0 so the scroll viewport (and its bottom fade)
+          // reaches the card edge, and the matching 40px goes on the scroll
+          // content container below.
+          'px-4 pb-0 pt-4 md:max-w-lg md:px-10 md:pb-0 md:pt-10',
           !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
           webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect
@@ -233,7 +237,7 @@ const ResponsiveModal = ({
                 >
                   <ScrollView
                     className="web:max-h-[80vh]"
-                    contentContainerClassName="pb-4 md:pb-8"
+                    contentContainerClassName="pb-4 md:pb-10"
                     contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
                     style={useFixedHeightLayout ? { flex: 1 } : undefined}
                     showsVerticalScrollIndicator={false}

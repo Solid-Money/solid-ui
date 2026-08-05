@@ -124,6 +124,7 @@ export function useTransactionAwait(
           text1: successInfo.title,
           text2: successInfo.description,
           props: {
+            badgeText: 'Onchain',
             link: `${getChain(successInfo.chainId || 122)?.blockExplorers?.default.url}/tx/${hash}`,
             linkText: eclipseAddress(hash),
             image: getTokenIcon({

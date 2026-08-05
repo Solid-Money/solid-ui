@@ -1,45 +1,20 @@
-import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useMemo } from 'react';
+import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { ArrowDown, ArrowUp } from 'lucide-react-native';
-import { Address, zeroAddress } from 'viem';
-import { useShallow } from 'zustand/react/shallow';
+import { zeroAddress } from 'viem';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
-import BalanceBreakdown from '@/components/Coin/BalanceBreakdown';
+import CoinActionPills from '@/components/Coin/CoinActionPills';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
-import CoinButtons from '@/components/Coin/CoinButtons';
-import CoinChartTime from '@/components/Coin/CoinChartTime';
-import CoinName from '@/components/Coin/CoinName';
-import EarningYield from '@/components/Coin/EarningYield';
-import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import DepositTrigger from '@/components/DepositOption/DepositTrigger';
-import LazyAreaChart from '@/components/LazyAreaChart';
+import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
+import CoinSummary from '@/components/Coin/CoinSummary';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { times } from '@/constants/coins';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
-import { useCoinHistoricalChart } from '@/hooks/useAnalytics';
-import { useDimension } from '@/hooks/useDimension';
+import { useCoinBreakdown } from '@/hooks/useCoinBreakdown';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { TokenBalance, TokenType } from '@/lib/types';
-import { eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
-import { useCoinStore } from '@/store/useCoinStore';
-import { useDepositStore } from '@/store/useDepositStore';
-
-const MAX_SAMPLE_SIZE = 20;
-
-const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined }) => {
-  const { isScreenMedium } = useDimension();
-
-  return (
-    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative md:min-w-[406px]">
-      <BalanceBreakdown token={token} className="z-10" />
-      <EarningYield token={token} className="-mt-4 ml-[1%] w-[98%] rounded-t-none" />
-    </View>
-  );
-};
+import { TokenBalance } from '@/lib/types';
+import { eclipseAddress } from '@/lib/utils';
+import { getTokenVault } from '@/lib/vaults';
 
 function normalizeCoinAddress(contractAddress: string): string {
   const lower = contractAddress?.toLowerCase() ?? '';
@@ -48,6 +23,15 @@ function normalizeCoinAddress(contractAddress: string): string {
   return contractAddress;
 }
 
+/**
+ * Token detail screen. One layout at every width — desktop is the redesigned
+ * screen, stretched inside the sidebar shell.
+ *
+ * The redesign has no price chart, so the CoinGecko history request, the
+ * selected-price store state and the chart-only header (time selector, area chart,
+ * balance-breakdown column) are all gone with the desktop layout that used them.
+ * `CoinSummary` carries the back button, which is why no navbar is rendered here.
+ */
 export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [chainId, rawContractAddress] = id.split('-');
@@ -56,19 +40,6 @@ export default function Coin() {
     [rawContractAddress],
   );
   const { tokens, isLoading } = useWalletTokens();
-  const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore(
-    useShallow(state => ({
-      selectedTime: state.selectedTime,
-      selectedPrice: state.selectedPrice,
-      selectedPriceChange: state.selectedPriceChange,
-    })),
-  );
-  const { isScreenMedium } = useDimension();
-  const isPriceIncrease = selectedPriceChange != null && selectedPriceChange >= 0;
-
-  const time = useMemo(() => {
-    return times.find(time => time.value === selectedTime);
-  }, [selectedTime]);
 
   const token = useMemo(() => {
     return tokens.find(
@@ -78,187 +49,24 @@ export default function Coin() {
     );
   }, [tokens, chainId, contractAddress]);
 
-  const chartCoinId = useMemo(
-    () =>
-      token?.tokenId ??
-      (token?.type === TokenType.NATIVE && token?.chainId != null
-        ? NATIVE_COINGECKO_TOKENS[token.chainId]
-        : undefined),
-    [token?.tokenId, token?.type, token?.chainId],
-  );
-  const chartQuery =
-    token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '';
+  const tokenVault = useMemo(() => getTokenVault(token), [token]);
+  const breakdown = useCoinBreakdown(token);
 
-  const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
-    useCoinHistoricalChart(chartCoinId, chartQuery, time?.value);
-
-  const setSelectedPrice = useCoinStore(state => state.setSelectedPrice);
-  const setSelectedPriceChange = useCoinStore(state => state.setSelectedPriceChange);
-
-  const formattedChartData = useMemo(() => {
-    if (!coinHistoricalChart?.prices) return [];
-
-    const prices = coinHistoricalChart.prices;
-
-    const sampled =
-      prices.length > MAX_SAMPLE_SIZE
-        ? Array.from({ length: MAX_SAMPLE_SIZE }, (_, i) => {
-            const index = Math.round((i * (prices.length - 1)) / (MAX_SAMPLE_SIZE - 1));
-            return prices[index];
-          })
-        : prices;
-
-    return sampled.map(([timestamp, price]) => ({
-      time: timestamp,
-      value: price,
-    }));
-  }, [coinHistoricalChart]);
-
-  useEffect(() => {
-    setSelectedPrice(null);
-    setSelectedPriceChange(null);
-  }, [id, setSelectedPrice, setSelectedPriceChange]);
-
-  useEffect(() => {
-    if (formattedChartData.length > 0 && selectedPrice == null && !isLoadingCoinHistoricalChart) {
-      const last = formattedChartData[formattedChartData.length - 1];
-      setSelectedPrice(last.value);
-      if (formattedChartData.length >= 2) {
-        const prev = formattedChartData[formattedChartData.length - 2];
-        const change = prev.value === 0 ? null : ((last.value - prev.value) / prev.value) * 100;
-        setSelectedPriceChange(change ?? null);
-      }
-    }
-  }, [
-    formattedChartData,
-    selectedPrice,
-    isLoadingCoinHistoricalChart,
-    setSelectedPrice,
-    setSelectedPriceChange,
-  ]);
-
-  const coinHeaderContent = useMemo(
+  const headerContent = useMemo(
     () => (
-      <View className="gap-12 py-8 md:py-12">
-        {isScreenMedium && (
-          <View className="flex-row items-center justify-between gap-2">
-            <View className="flex-row items-center gap-5">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-              <CoinName
-                contractName={token?.contractName || ''}
-                contractTickerSymbol={token?.contractTickerSymbol || ''}
-              />
-            </View>
-            <View className="flex-row gap-2">
-              <DashboardHeaderButtons deposit={{ title: 'Add funds' }} hideWithdraw hideDeposit />
-              <DepositTrigger
-                buttonText="Deposit To Savings"
-                modal={DEPOSIT_MODAL.OPEN_FORM}
-                source="coin_header"
-                onBeforeOpen={() => {
-                  useDepositStore.getState().setDepositFromSolid(true);
-                }}
-              />
-            </View>
-          </View>
-        )}
+      <View className="gap-8 py-6">
+        <CoinSummary token={token} breakdown={breakdown} tokenVault={tokenVault} />
 
-        <View className="justify-between gap-6 md:flex-row md:gap-10">
-          {!isScreenMedium && (
-            <View className="items-start">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-            </View>
-          )}
-          <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1 gap-2">
-                {!isScreenMedium && (
-                  <CoinName
-                    contractName={token?.contractName || ''}
-                    contractTickerSymbol={token?.contractTickerSymbol || ''}
-                  />
-                )}
+        <CoinActionPills tokenVault={tokenVault} />
 
-                <Text className="text-4xl font-semibold md:text-5xl">
-                  {selectedPrice
-                    ? `$${formatNumber(selectedPrice)}`
-                    : formattedChartData.length > 0
-                      ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
-                      : '$0.00'}
-                </Text>
-
-                <View className="flex-row items-center gap-1">
-                  <Text
-                    className="text-sm font-medium"
-                    style={{ color: isPriceIncrease ? '#94F27F' : '#EF4444' }}
-                  >
-                    {selectedPriceChange != null
-                      ? `${isPriceIncrease ? '+' : '-'}${formatNumber(Math.abs(selectedPriceChange), 2)}%`
-                      : '0.00%'}
-                  </Text>
-                  {isPriceIncrease ? (
-                    <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
-                  ) : (
-                    <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
-                  )}
-                </View>
-              </View>
-              {isScreenMedium && <CoinChartTime />}
-            </View>
-
-            <View className="-mt-2 px-4 md:mt-0">
-              {isLoadingCoinHistoricalChart ? (
-                <View className="h-[200px] items-center justify-center">
-                  <ActivityIndicator size="large" color="white" />
-                </View>
-              ) : formattedChartData.length > 0 ? (
-                <View style={{ marginLeft: -16, marginRight: -16 }}>
-                  <LazyAreaChart
-                    data={formattedChartData}
-                    isYAxisLabel={false}
-                    formatYAxis={value => {
-                      if (value === 0) return '$0';
-                      const abs = Math.abs(value);
-                      if (abs >= 1) return `$${formatNumber(value, 1, 0)}`;
-                      const maxDigits = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs)) + 2));
-                      return `$${formatNumber(value, maxDigits, 0)}`;
-                    }}
-                  />
-                </View>
-              ) : null}
-            </View>
-          </View>
-          {isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
-        </View>
-
-        {!isScreenMedium && <CoinChartTime />}
-
-        {!isScreenMedium && (
-          <CoinButtons
-            contractAddress={contractAddress as Address}
-            isWithdraw={isSoUSDEthereum(contractAddress)}
-          />
-        )}
-
-        {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
+        <CoinBalanceBreakdown breakdown={breakdown} />
 
         {token?.contractTickerSymbol && (
-          <View className="pt-12">
-            <Text className="text-lg font-semibold text-muted-foreground">Recent activity</Text>
-          </View>
+          <Text className="text-base font-semibold text-muted-foreground">Recent activity</Text>
         )}
       </View>
     ),
-    [
-      isScreenMedium,
-      token,
-      contractAddress,
-      selectedPrice,
-      selectedPriceChange,
-      isPriceIncrease,
-      formattedChartData,
-      isLoadingCoinHistoricalChart,
-    ],
+    [token, breakdown, tokenVault],
   );
 
   return (
@@ -272,7 +80,7 @@ export default function Coin() {
           <ActivityTransactions
             symbol={token?.contractTickerSymbol}
             showTimestamp={false}
-            listHeaderComponent={coinHeaderContent}
+            listHeaderComponent={headerContent}
           />
         </View>
       )}

@@ -503,6 +503,7 @@ export default function CardRepayForm() {
           type: 'error',
           text1: 'Repay failed',
           text2: 'Please try again or check your wallet balance',
+          props: { badgeText: 'Onchain' },
         });
       }
     },

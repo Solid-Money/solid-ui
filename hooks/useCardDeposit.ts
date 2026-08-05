@@ -160,6 +160,7 @@ const useCardDeposit = (): CardDepositResult => {
           type: 'error',
           text1: 'Deposit failed',
           text2: err instanceof Error ? err.message : 'Please try again',
+          props: { badgeText: 'Onchain' },
         });
         throw err;
       }

@@ -1,23 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { RotateCw } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 
+import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
-import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
+import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
+import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { SPIN_WIN } from '@/constants/spinWinDesign';
+import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { useSpinStatus } from '@/hooks/useSpinWin';
+import { isDevFeatureEnabled } from '@/lib/config';
+import { RewardsTier } from '@/lib/types';
+import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
+import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
 
 /**
- * Redesigned rewards screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in rewards/index.tsx. Public users and all
+ * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in rewards/index.tsx. Production and all
  * desktop-web users keep the legacy rewards screen.
  *
  * Shows the user's CURRENT tier + points, a rewards summary (cashback +
@@ -26,27 +39,38 @@ import RewardsSummaryCard from './RewardsSummaryCard';
  * (full tier comparison).
  */
 export default function RewardsScreenNew() {
-  const { data: rewardsData, isLoading, isError, refetch } = useRewardsUserData();
+  const isFocused = useIsFocused();
+  const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: spinStatus } = useSpinStatus();
+  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const hasCompletedIntro = useRewardsIntroStore(
+    state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
+  );
+  const completeIntro = useRewardsIntroStore(state => state.complete);
   const welcomeDismissed = useRewardsWelcomePopupStore(state => state.dismissed);
   const setWelcomeDismissed = useRewardsWelcomePopupStore(state => state.setDismissed);
 
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
   // true when the backend doesn't send it, so we never prompt prematurely.
   const hasOptedIn = rewardsData?.hasOptedIn ?? true;
   const rewardsLocked = Boolean(rewardsData && !hasOptedIn);
   const legacyPoints = rewardsData?.legacyPoints ?? 0;
-  const showWelcomePopup = rewardsLocked && !welcomeDismissed;
+  const showRewardsIntro = isFocused && rewardsLocked && !hasCompletedIntro;
+  const showWelcomePopup = isFocused && rewardsLocked && hasCompletedIntro && !welcomeDismissed;
 
   useEffect(() => {
-    if (rewardsLocked && welcomeDismissed) {
+    if (isFocused && rewardsLocked && hasCompletedIntro && welcomeDismissed) {
       router.replace(path.HOME);
     }
-  }, [rewardsLocked, welcomeDismissed]);
+  }, [hasCompletedIntro, isFocused, rewardsLocked, welcomeDismissed]);
 
   // Support the `/rewards?referral=open` deep link (e.g. settings "Refer & Earn").
   useEffect(() => {
@@ -56,38 +80,38 @@ export default function RewardsScreenNew() {
     }
   }, [referralParam]);
 
-  if (isError && !isLoading) {
+  if (isLoading) {
     return (
-      <PageLayout>
-        <View className="flex-1 items-center justify-center px-4 py-12">
-          <Text className="mb-4 text-gray-400">Failed to load rewards</Text>
-          <Pressable
-            onPress={() => refetch()}
-            className="flex-row items-center rounded-lg bg-[#2E2E2E] px-4 py-2"
-          >
-            <RotateCw size={16} color="white" className="mr-2" />
-            <Text className="text-white">Try Again</Text>
-          </Pressable>
-        </View>
+      <PageLayout scrollable={false} mobileTitle={null} mobileHeaderRightAction="help">
+        <Loading />
       </PageLayout>
     );
   }
 
-  if (isLoading || !rewardsData) {
-    return <PageLayout isLoading={true}>{null}</PageLayout>;
-  }
-
-  const { currentTier, totalPoints } = rewardsData;
+  // Rewards data failed to load (or the user has none yet) — render the full
+  // page with Core-tier defaults and zeroed stats rather than an error state.
+  const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
+  const totalPoints = rewardsData?.totalPoints ?? 0;
 
   if (rewardsLocked) {
     return (
       <PageLayout isLoading={welcomeDismissed}>
+        <RewardsHelpModal
+          isOpen={showRewardsIntro}
+          onClose={() => router.replace(path.HOME)}
+          onComplete={() => {
+            if (selectedUserId) {
+              setWelcomeDismissed(false);
+              completeIntro(selectedUserId);
+            }
+          }}
+        />
         <RewardsWelcomePopup
           isOpen={showWelcomePopup}
           variant={legacyPoints > 0 ? 'existing' : 'new'}
           oldPoints={legacyPoints}
-          legacyCarryoverPoints={rewardsData.legacyCarryoverPoints ?? 0}
-          startingTier={rewardsData.startingTier ?? currentTier}
+          legacyCarryoverPoints={rewardsData?.legacyCarryoverPoints ?? 0}
+          startingTier={rewardsData?.startingTier ?? currentTier}
           isJoining={isJoining}
           onAgree={() => joinRewards()}
           onClose={() => {
@@ -99,11 +123,19 @@ export default function RewardsScreenNew() {
     );
   }
 
-  const cashback = rewardsData.cashbackThisMonth ?? 0;
+  const cashback = rewardsData?.cashbackThisMonth ?? 0;
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
+  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
 
   return (
-    <PageLayout mobileTitle={null}>
+    <PageLayout
+      mobileTitle={null}
+      mobileHeaderRightAction="help"
+      onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      additionalContent={
+        <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      }
+    >
       <View className="mb-5 w-full gap-8 pb-24">
         <View className="gap-5">
           <PointsHeadline tier={currentTier} points={totalPoints} />
@@ -121,14 +153,43 @@ export default function RewardsScreenNew() {
               <Text className="text-base font-semibold text-white">Explore tiers</Text>
             </Pressable>
           </View>
+
+          {/* Spin & Win is an in-development feature: shown on qa/preview builds,
+              hidden in production. The flow is also a native-only modal
+              (SpinWinModalProvider force-closes on web). It is deliberately NOT
+              gated on `spinStatus.isAllowed`: the provider already closes itself
+              when the backend says the user isn't eligible, and gating here made
+              the button vanish silently whenever the status request hadn't
+              resolved or failed. */}
+          {isDevFeatureEnabled && Platform.OS !== 'web' && (
+            <View className="px-4">
+              <Pressable
+                onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
+                style={{ backgroundColor: SPIN_WIN.colors.goldSubtle }}
+                className="h-14 items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"
+              >
+                <Text className="text-base font-bold" style={{ color: SPIN_WIN.colors.gold }}>
+                  {spinStatus?.spinAvailableToday === false ? 'Spin & Win' : 'Spin the wheel'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
-        <RewardsSummaryCard cashback={cashback} referrals={referrals} tier={currentTier} />
+        <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
-        <DailyBenefits tier={currentTier} />
+        <DailyBenefits
+          cashbackRate={rewardsData?.cashbackRate ?? 0}
+          cashbackThisMonth={cashback}
+          maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+          allTimeCashback={allTimeCashback}
+          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+          onReferralsPress={() => setIsReferralModalOpen(true)}
+          onSupportPress={openSupportDrawer}
+        />
       </View>
 
-      <ReferralProgramModal
+      <ReferralProgramModalNew
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
       />

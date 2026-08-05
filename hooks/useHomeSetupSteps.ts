@@ -8,6 +8,8 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useDepositStore } from '@/store/useDepositStore';
 
 export interface HomeSetupStep {
+  /** Stable identifier — callers gate on this rather than matching on `title`. */
+  key: 'kyc' | 'card' | 'deposit';
   title: string;
   description: string;
   /** Short label used on the primary CTA button when this is the next step */
@@ -45,23 +47,32 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
     const cardStep = cardSteps.find(step => step.key === 'activate');
 
     const openDeposit = () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    // Card onboarding starts at country selection (same entry ReserveCardButton and
+    // useCountryCheck use). These steps used to fall back to `/card`, the deprecated
+    // waitlist page — and they fall back often: `activate` has no onPress until KYC
+    // is complete, and `kyc` has none while its button is disabled.
+    const startCardOnboarding = () => router.push(path.CARD_COUNTRY_SELECTION);
 
     const steps: HomeSetupStep[] = [
       {
+        key: 'kyc',
         title: 'Verify your identity',
         description: '3 min to unlock all features',
         cta: 'Verify your identity',
         completed: Boolean(kycStep?.completed),
-        onPress: kycStep?.onPress ?? (() => router.push(path.CARD)),
+        onPress: kycStep?.onPress ?? startCardOnboarding,
       },
       {
+        key: 'card',
         title: 'Get your free virtual card',
         description: 'Global payments, cashback and more',
         cta: 'Get your card',
         completed: Boolean(cardStep?.completed),
-        onPress: cardStep?.onPress ?? (() => router.push(path.CARD)),
+        // No activate action means KYC isn't done yet, so send them to that instead.
+        onPress: cardStep?.onPress ?? kycStep?.onPress ?? startCardOnboarding,
       },
       {
+        key: 'deposit',
         title: 'Top up your balance',
         description: 'Via bank transfers or crypto',
         cta: 'Top up your balance',

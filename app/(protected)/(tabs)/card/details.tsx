@@ -6,35 +6,17 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Asterisk,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  KeyRound,
-  Plus,
-  Settings,
-} from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Copy, KeyRound, Plus } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
-import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import { CreditLineCards } from '@/components/Card/CreditLine/CreditLineCards';
 import ManagePinModal from '@/components/Card/ManagePinModal';
-import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
-import ShowDetailsButton from '@/components/Card/NewCardDetails/ShowDetailsButton';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,19 +24,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
-import { useCardHeroStore } from '@/store/useCardHeroStore';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
 export default function CardDetails() {
@@ -62,13 +44,6 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
-  // Whitelisted internal users get the redesigned mobile card screen (Card
-  // Balance headline, full-row Show details, card view-transition). Public users
-  // and desktop keep the existing layout untouched.
-  const isTestUser = useIsTestUser();
-  // While the card hero transition is flying, the real card is hidden; hide the
-  // peek button too so it doesn't sit detached under the empty card slot.
-  const heroActive = useCardHeroStore(state => state.active);
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
@@ -96,7 +71,6 @@ export default function CardDetails() {
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
-  const cardLast4 = cardDetails?.card_details?.last_4;
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const canUnfreeze =
@@ -157,7 +131,7 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
-  const pageHeader = isScreenMedium ? (
+  const pageHeader = (
     <View className="mx-auto w-full max-w-7xl px-4 pt-12">
       <DesktopHeader
         isCardFrozen={isCardFrozen}
@@ -170,10 +144,6 @@ export default function CardDetails() {
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
       />
-    </View>
-  ) : (
-    <View className="mx-auto w-full max-w-lg px-4 pb-[10px] pt-6">
-      <MobileHeader />
     </View>
   );
 
@@ -229,90 +199,33 @@ export default function CardDetails() {
     );
   }
 
-  // Mobile layout
-  const cardImageSection = (
-    <CardImageSection
-      isScreenMedium={isScreenMedium}
-      isCardFrozen={isCardFrozen}
-      flipAnimation={flipAnimation}
-      isCardFlipped={isCardFlipped}
-      cardholderName={cardDetails?.cardholder_name}
-      shouldRevealDetails={shouldRevealDetails}
-      onCardDetailsLoaded={handleCardDetailsLoaded}
-      provider={provider}
-      useNewCard={isTestUser}
-      last4={cardLast4}
-    />
-  );
-
-  return (
-    // Whitelisted screen renders immediately (never the full-screen loader): the
-    // card must be laid out right away so the hero transition can measure its
-    // destination and land smoothly. Data fills in as it arrives (balance/last-4
-    // are usually already warm from the home screen's query).
-    <PageLayout isLoading={isTestUser ? false : isLoading}>
-      {/* Whitelisted screen drops the "Card" heading — the card image is the top
-          section; public/desktop keep the heading. */}
-      {!isTestUser && pageHeader}
-      <View className="mx-auto w-full max-w-lg px-4">
-        <View className={cn('flex-1', isTestUser && 'pt-4')}>
-          {!isTestUser && <BalanceDisplay amount={availableAmount} />}
-          {isTestUser ? (
-            // Card is the top section, full-bleed (cancel the container's px-4) to
-            // match the home card width. The Show details button peeks out from
-            // behind it (card sits above via z-10).
-            <View style={styles.fullBleedCard} className="relative mb-6">
-              {/* pointerEvents none: the card sits above the button (z-10) and
-                  its bounds include the transparent bottom-shadow region that
-                  overlaps the button — without this it would swallow the button's
-                  taps. The card itself isn't interactive on this screen. */}
-              <View className="z-10" style={styles.cardLift} pointerEvents="none">
-                <CardHeroTarget>{cardImageSection}</CardHeroTarget>
-              </View>
-              <ShowDetailsButton
-                peek
-                hidden={heroActive}
-                isFlipped={isCardFlipped}
-                isLoading={isLoadingCardDetails}
-                onPress={handleCardFlip}
-              />
-            </View>
-          ) : (
-            cardImageSection
-          )}
-          <CardActions
-            isCardFrozen={isCardFrozen}
-            canUnfreeze={!!canUnfreeze}
-            isFreezing={isFreezing}
-            isCardFlipped={isCardFlipped}
-            isLoadingCardDetails={isLoadingCardDetails}
-            onCardDetails={handleCardFlip}
-            onFreezeToggle={handleFreezeToggle}
-            isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
-            isRain={provider === CardProvider.RAIN}
-            hideCardDetailsButton={isTestUser}
-          />
-          <CreditLineCards className="mb-4" />
-          <CashbackDisplay cashback={cardDetails?.cashback} />
-          <ViewCardTransactionsButton />
-          <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-          <View className="h-32"></View>
-        </View>
-      </View>
-
-      <AddToWalletModal
-        isOpen={isAddToWalletModalOpen}
-        onOpenChange={setIsAddToWalletModalOpen}
-        trigger={null}
-      />
-
-      <CardWelcomePopup isOpen={shouldShowWelcomePopup} onClose={handleCloseWelcomePopup} />
-    </PageLayout>
-  );
+  // Mobile hands off to the pane on the wallet screen. The card details used to be
+  // this route on mobile too, but pushing a screen meant mounting one while the card
+  // was mid-flight, which no amount of animation tuning could stop stuttering. The
+  // route stays — the desktop layout above needs it, and several places still link
+  // here (activity, card banners, activation) — it just redirects now, so every
+  // entry point ends up on the same surface.
+  return <CardDetailsRedirect />;
 }
 
-function MobileHeader() {
-  return <Text className="text-3xl font-semibold">Card</Text>;
+/**
+ * Opens the wallet screen's card pane and replaces this route with the wallet, so
+ * back doesn't land the user on a redirect that bounces them forward again.
+ */
+function CardDetailsRedirect() {
+  const router = useRouter();
+  const openPane = useCardPaneStore(state => state.open);
+
+  useEffect(() => {
+    openPane();
+    router.replace(path.HOME);
+  }, [openPane, router]);
+
+  return (
+    <PageLayout isLoading showNavbar={false}>
+      <View />
+    </PageLayout>
+  );
 }
 
 interface DesktopHeaderProps {
@@ -444,7 +357,7 @@ function DesktopHeader({
         {isWithdrawFromCardAllowed && (
           <CardDirectDepositModal
             trigger={
-              <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+              <Button variant="brand" className="border-0">
                 <View className="flex-row items-center gap-2">
                   <Plus size={22} color="black" />
                   <Text className="text-base font-bold text-black">Deposit</Text>
@@ -541,7 +454,7 @@ interface CardImageSectionProps {
   shouldRevealDetails: boolean;
   onCardDetailsLoaded: () => void;
   provider?: CardProvider | null;
-  /** Whitelisted screen: render the new VISA Platinum artwork (with code-drawn
+  /** Redesigned screen: render the new VISA Platinum artwork (with code-drawn
    *  glyph badge + white "reveal" overlay) instead of the legacy card image. */
   useNewCard?: boolean;
   /** Last 4 digits for the glyph badge (new card only). */
@@ -831,200 +744,6 @@ function CardDetailsOverlay({
   );
 }
 
-interface CardActionsProps {
-  isCardFrozen: boolean;
-  canUnfreeze: boolean;
-  isFreezing: boolean;
-  isCardFlipped: boolean;
-  isLoadingCardDetails: boolean;
-  onCardDetails: () => void;
-  onFreezeToggle: () => Promise<void>;
-  isWithdrawFromCardAllowed: boolean;
-  isRain: boolean;
-  /** Hide the circular "Card details" action (whitelisted screen uses a full-row button instead). */
-  hideCardDetailsButton?: boolean;
-}
-
-function CardActions({
-  isCardFrozen,
-  canUnfreeze,
-  isFreezing,
-  isCardFlipped,
-  isLoadingCardDetails,
-  onCardDetails,
-  onFreezeToggle,
-  isWithdrawFromCardAllowed,
-  isRain,
-  hideCardDetailsButton = false,
-}: CardActionsProps) {
-  const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
-  const showManageButton = isRain || !isCardFrozen || canUnfreeze;
-
-  return (
-    <View className="mb-8 flex-row items-center justify-evenly">
-      {isWithdrawFromCardAllowed && (
-        <CardDirectDepositModal
-          trigger={
-            <CircularActionButton
-              icon={getAsset('images/card_actions_fund.png')}
-              label="Add funds"
-              onPress={() => {}}
-            />
-          }
-        />
-      )}
-      {!hideCardDetailsButton && (
-        <View className="items-center">
-          <Pressable
-            onPress={onCardDetails}
-            className="items-center justify-center rounded-full bg-[#303030] web:hover:opacity-70"
-            style={{ width: 50, height: 50 }}
-            disabled={isLoadingCardDetails}
-          >
-            {isLoadingCardDetails ? (
-              <ActivityIndicator size="small" color="#BFBFBF" />
-            ) : (
-              <Asterisk size={24} color="#BFBFBF" />
-            )}
-          </Pressable>
-          <Text className="mt-2 text-[#BFBFBF]">
-            {isCardFlipped ? 'Hide details' : 'Card details'}
-          </Text>
-        </View>
-      )}
-      {showManageButton && (
-        <Dialog open={isManageSheetOpen} onOpenChange={setIsManageSheetOpen}>
-          <DialogTrigger asChild>
-            <View className="items-center">
-              <Pressable
-                onPress={() => setIsManageSheetOpen(true)}
-                className="items-center justify-center rounded-full bg-[#303030]"
-                style={{ width: 50, height: 50 }}
-              >
-                <Settings size={24} color="#BFBFBF" />
-              </Pressable>
-              <Text className="mt-2 text-[#BFBFBF]">Manage</Text>
-            </View>
-          </DialogTrigger>
-          <DialogContent className="mt-[5vh] w-screen max-w-full justify-start px-4 pb-6 pt-4">
-            <DialogHeader className="flex-row items-center justify-center">
-              <DialogTitle className="native:text-2xl text-xl font-semibold">Manage</DialogTitle>
-            </DialogHeader>
-            <View className="gap-2 pb-4">
-              {isRain && (
-                <ManagePinModal
-                  trigger={
-                    <Pressable
-                      className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
-                      onPress={() => setIsManageSheetOpen(false)}
-                    >
-                      <View className="items-center justify-center rounded-full bg-[#303030] p-3">
-                        <KeyRound size={20} color="white" />
-                      </View>
-                      <Text className="text-base font-bold text-white">PIN</Text>
-                    </Pressable>
-                  }
-                />
-              )}
-              {(!isCardFrozen || canUnfreeze) && (
-                <Pressable
-                  className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
-                  onPress={() => {
-                    setIsManageSheetOpen(false);
-                    onFreezeToggle();
-                  }}
-                  disabled={isFreezing}
-                >
-                  {isFreezing ? (
-                    <View className="items-center justify-center" style={{ width: 44, height: 44 }}>
-                      <ActivityIndicator size="small" color="white" />
-                    </View>
-                  ) : (
-                    <Image
-                      source={getAsset('images/card_actions_freeze.png')}
-                      style={{ width: 44, height: 44 }}
-                      contentFit="contain"
-                    />
-                  )}
-                  <Text className="text-base font-bold text-white">
-                    {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </DialogContent>
-        </Dialog>
-      )}
-      {isWithdrawFromCardAllowed && (
-        <WithdrawToCardModal
-          trigger={
-            <CircularActionButton
-              icon={getAsset('images/card-withdraw-mobile.png')}
-              label="Withdraw"
-              onPress={() => {}}
-              showBackground
-            />
-          }
-        />
-      )}
-    </View>
-  );
-}
-
-interface CashbackDisplayProps {
-  cashback?: {
-    monthlySoUsdAmount: number;
-    monthlyUsdValue: number;
-    totalSoUsdAmount: number;
-    totalUsdValue: number;
-    percentage: number;
-  };
-}
-
-function CashbackDisplay({ cashback }: CashbackDisplayProps) {
-  const totalUsdValue = cashback?.totalUsdValue ? cashback.totalUsdValue.toFixed(2) : '0.00';
-
-  const cashbackPercentage = cashback?.percentage || 0;
-
-  return (
-    <View className="relative mb-4 overflow-hidden rounded-[20px] py-[10px]">
-      <LinearGradient
-        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.6, y: 1 }}
-        pointerEvents="none"
-        style={styles.gradientOverlayWithOpacity}
-      />
-      {/* Top Section */}
-      <View className="mb-2 flex-row items-start justify-between px-4">
-        <View>
-          <Text className="mb-1 text-lg text-white/70">Cashback earned</Text>
-          <Text className="text-2xl font-semibold text-[#94F27F]">${totalUsdValue}</Text>
-        </View>
-        <Image
-          source={getAsset('images/diamond.png')}
-          style={styles.diamondIconSmall}
-          contentFit="contain"
-        />
-      </View>
-
-      {/* Divider */}
-      <View style={styles.cashbackDivider} />
-
-      {/* Bottom Text */}
-      <View>
-        <Text className="pb-2 pl-4 text-lg font-light text-white" style={styles.lineHeight20}>
-          you are receiving{' '}
-          <Text className="font-bold text-[#94F27F]">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
-          cashback on
-          {'\n'}
-          all purchases
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 interface AddToWalletButtonProps {
   onPress: () => void;
 }
@@ -1095,15 +814,6 @@ const styles = StyleSheet.create({
     zIndex: -1,
     opacity: 0.25,
   },
-
-  // Whitelisted card: extend past the container's px-4 (16px) padding so the
-  // card is as wide as the home screen card.
-  fullBleedCard: { marginHorizontal: -16 },
-  // The artwork's bottom ~6.5% is transparent drop-shadow. RN resolves % margins
-  // against the parent width, and that shadow height is also ~6.5% of the card
-  // width — so this negative margin reclaims exactly the shadow's layout space at
-  // any screen size, letting the Show details button sit against the card body.
-  cardLift: { marginBottom: '-6.5%' },
 
   // Card flip animation
   cardContainer: { position: 'relative', width: '100%' },

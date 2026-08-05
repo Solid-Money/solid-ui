@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated as NativeAnimated,
-  Easing as NativeEasing,
   Platform,
   Pressable,
   ScrollView,
@@ -13,30 +11,37 @@ import Reanimated, {
   Easing as ReanimatedEasing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { FAQ } from '@/components/FAQ';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import ConfettiOverlay from '@/components/SpinAndWin/ConfettiOverlay';
 import PrizePoolCard from '@/components/SpinAndWin/PrizePoolCard';
-import SpinWheelCarousel from '@/components/SpinAndWin/SpinWheelCarousel';
+import PrizeWheel from '@/components/SpinAndWin/PrizeWheel';
 import StreakTracker from '@/components/SpinAndWin/StreakTracker';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { useCurrentGiveaway, useGiveawayCountdown, useGiveawayWinners } from '@/hooks/useGiveaway';
 import { usePerformSpin, useSpinStatus } from '@/hooks/useSpinWin';
+import { isProduction } from '@/lib/config';
 import { Faq } from '@/lib/types';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useSpinWinStore } from '@/store/useSpinWinStore';
+
+const WIN_SCREEN_ANIMATION = require('@/assets/animations/win_screen_2.json');
 
 const SPIN_WIN_FAQS = [
   {
@@ -64,22 +69,6 @@ const SPIN_WIN_FAQS = [
     answer: 'You need to maintain a savings balance of at least $50 to be eligible for Spin & Win.',
   },
 ] as unknown as Faq[];
-
-const DEMO_INTRO_HOLD_MS = 970;
-const DEMO_INTRO_ZOOM_MS = 800;
-const DEMO_WHEEL_START_SCALE = 0.6;
-const DEMO_CTA_REVEAL_DELAY_MS = 65;
-const DEMO_CTA_REVEAL_MS = 1388;
-const DEMO_CTA_EXIT_MS = 230;
-const DEMO_CTA_START_OFFSET = 210;
-const DEMO_WHEEL_TRANSLATE_KEYFRAMES = [
-  { toValue: 0.757, duration: 65, easing: NativeEasing.bezier(0.377, 0, 0.225, 0.452) },
-  { toValue: 38.171, duration: 184, easing: NativeEasing.bezier(0.708, 0.091, 0.358, 0.351) },
-  { toValue: 66.856, duration: 92, easing: NativeEasing.bezier(0.321, 0.42, 0.414, 0.313) },
-  { toValue: 95.78, duration: 92, easing: NativeEasing.bezier(0.399, 0.387, 0.589, 0.144) },
-  { toValue: 126.806, duration: 368, easing: NativeEasing.bezier(0.146, 0.411, 0.413, 0) },
-  { toValue: 130, duration: 376, easing: NativeEasing.bezier(0.26, 0.632, 0, 0) },
-] as const;
 
 type HeaderProps = {
   title?: string;
@@ -158,7 +147,13 @@ function SpinWinHomeScreen({ onClose, onSpin }: { onClose: () => void; onSpin: (
   const countdown = useGiveawayCountdown(giveaway?.giveawayDate);
 
   useEffect(() => {
-    if (!isStatusLoading && (Platform.OS === 'web' || spinStatus?.isAllowed === false)) {
+    // Spin & Win is native-only and an in-development feature (hidden in
+    // production); it also closes once the backend says the user isn't eligible.
+    if (
+      Platform.OS === 'web' ||
+      isProduction ||
+      (!isStatusLoading && spinStatus?.isAllowed === false)
+    ) {
       onClose();
     }
   }, [isStatusLoading, onClose, spinStatus?.isAllowed]);
@@ -324,322 +319,226 @@ function SpinWinWheelScreen({
   onBack: () => void;
   onSpinFinished: (points: number) => void;
 }) {
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [resultPoints, setResultPoints] = useState<number | undefined>();
-  const [spinError, setSpinError] = useState<string | null>(null);
-  const [introComplete, setIntroComplete] = useState(false);
-  const { mutateAsync: spin } = usePerformSpin();
-  const introAnimationRef = useRef<NativeAnimated.CompositeAnimation | null>(null);
-  const wheelScale = useRef(new NativeAnimated.Value(DEMO_WHEEL_START_SCALE)).current;
-  const wheelTranslateY = useRef(new NativeAnimated.Value(0)).current;
-  const ctaOpacity = useRef(new NativeAnimated.Value(0)).current;
-  const ctaTranslateY = useRef(new NativeAnimated.Value(DEMO_CTA_START_OFFSET)).current;
+  const { mutateAsync: performSpin } = usePerformSpin();
+  const [resultPoints, setResultPoints] = useState<number | null>(null);
 
-  const showCta = useCallback(() => {
-    NativeAnimated.parallel([
-      NativeAnimated.timing(ctaOpacity, {
-        toValue: 1,
-        duration: 240,
-        easing: NativeEasing.out(NativeEasing.cubic),
-        useNativeDriver: true,
-      }),
-      NativeAnimated.timing(ctaTranslateY, {
-        toValue: 0,
-        duration: 240,
-        easing: NativeEasing.out(NativeEasing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [ctaOpacity, ctaTranslateY]);
-
-  const hideCta = useCallback(() => {
-    NativeAnimated.parallel([
-      NativeAnimated.timing(ctaOpacity, {
-        toValue: 0,
-        duration: DEMO_CTA_EXIT_MS,
-        easing: NativeEasing.in(NativeEasing.cubic),
-        useNativeDriver: true,
-      }),
-      NativeAnimated.timing(ctaTranslateY, {
-        toValue: DEMO_CTA_START_OFFSET,
-        duration: DEMO_CTA_EXIT_MS,
-        easing: NativeEasing.in(NativeEasing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [ctaOpacity, ctaTranslateY]);
-
-  useEffect(() => {
-    introAnimationRef.current = NativeAnimated.sequence([
-      NativeAnimated.delay(DEMO_INTRO_HOLD_MS),
-      NativeAnimated.parallel([
-        NativeAnimated.timing(wheelScale, {
-          toValue: 1,
-          duration: DEMO_INTRO_ZOOM_MS,
-          easing: NativeEasing.out(NativeEasing.cubic),
-          useNativeDriver: true,
-        }),
-        NativeAnimated.sequence(
-          DEMO_WHEEL_TRANSLATE_KEYFRAMES.map(({ toValue, duration, easing }) =>
-            NativeAnimated.timing(wheelTranslateY, {
-              toValue,
-              duration,
-              easing,
-              useNativeDriver: true,
-            }),
-          ),
-        ),
-        NativeAnimated.sequence([
-          NativeAnimated.delay(DEMO_CTA_REVEAL_DELAY_MS),
-          NativeAnimated.parallel([
-            NativeAnimated.timing(ctaOpacity, {
-              toValue: 1,
-              duration: DEMO_CTA_REVEAL_MS,
-              easing: NativeEasing.linear,
-              useNativeDriver: true,
-            }),
-            NativeAnimated.timing(ctaTranslateY, {
-              toValue: 0,
-              duration: DEMO_CTA_REVEAL_MS,
-              easing: NativeEasing.out(NativeEasing.cubic),
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ]),
-    ]);
-
-    introAnimationRef.current.start(({ finished }) => {
-      if (finished) {
-        setIntroComplete(true);
-      }
-    });
-
-    return () => {
-      introAnimationRef.current?.stop();
-    };
-  }, [ctaOpacity, ctaTranslateY, wheelScale, wheelTranslateY]);
-
-  const handleTapToSpin = async () => {
-    if (isSpinning || !introComplete) return;
-
+  const onSpin = useCallback(async () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
-    hideCta();
-    setIsSpinning(true);
-    setSpinError(null);
-
     try {
-      const result = await spin();
-      if (result) {
-        setResultPoints(result.pointsEarned);
+      const spinResult = await performSpin();
+      if (spinResult) {
+        return spinResult.pointsEarned;
       }
-    } catch {
-      setIsSpinning(false);
-      setSpinError('Failed to spin. Please try again.');
-      showCta();
+    } catch (error) {
+      console.error('Error performing spin:', error);
     }
-  };
+  }, [performSpin]);
 
-  const handleSpinComplete = useCallback(
-    (points: number) => {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+  const handleSpinComplete = useCallback((points: number) => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
 
-      setIsSpinning(false);
-      setResultPoints(undefined);
-
-      setTimeout(() => {
-        onSpinFinished(points);
-      }, 500);
-    },
-    [onSpinFinished],
-  );
+    setTimeout(() => {
+      setResultPoints(points);
+    }, 500);
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: SPIN_WIN.colors.background }}>
       <SpinWinHeader title="Spin & Win" onBack={onBack} onClose={onClose} />
 
-      <View style={{ flex: 1, overflow: 'hidden' }}>
-        <NativeAnimated.View
-          style={{
-            flex: 1,
-            transform: [{ translateY: wheelTranslateY }, { scale: wheelScale }],
-          }}
-        >
-          <SpinWheelCarousel
-            onSpinComplete={handleSpinComplete}
-            isSpinning={isSpinning}
-            resultPoints={resultPoints}
-          />
-        </NativeAnimated.View>
+      <View style={{ flex: 1, alignItems: 'center', overflow: 'hidden' }}>
+        <PrizeWheel onSpin={onSpin} onSpinEnd={handleSpinComplete} />
       </View>
 
-      <NativeAnimated.View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          left: 24,
-          right: 24,
-          bottom: 80,
-          opacity: ctaOpacity,
-          transform: [{ translateY: ctaTranslateY }],
-        }}
-      >
-        <View className="items-center pb-4" style={{ gap: 4 }}>
-          <Text
-            style={{
-              fontSize: SPIN_WIN.typography.subtitleSize,
-              fontWeight: SPIN_WIN.typography.subtitleWeight,
-              color: SPIN_WIN.colors.goldTransparent,
-            }}
-          >
-            Spin to get daily points
-          </Text>
-        </View>
-
-        {spinError && (
-          <View className="items-center px-6 pb-4">
-            <Text
-              style={{
-                fontSize: 14,
-                color: SPIN_WIN.colors.goldTransparent,
-              }}
-            >
-              {spinError}
-            </Text>
-          </View>
-        )}
-
-        <Pressable onPress={handleTapToSpin} disabled={isSpinning} style={{ width: '100%' }}>
-          <View
-            style={{
-              backgroundColor: isSpinning ? SPIN_WIN.colors.ctaDisabledBg : SPIN_WIN.colors.gold,
-              borderRadius: SPIN_WIN.borderRadius.button,
-              borderCurve: 'continuous',
-              paddingVertical: 15,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: SPIN_WIN.typography.ctaSize,
-                fontWeight: SPIN_WIN.typography.ctaWeight,
-                color: isSpinning ? SPIN_WIN.colors.ctaDisabledText : '#000000',
-              }}
-            >
-              {isSpinning ? 'Spinning...' : 'Tap to spin'}
-            </Text>
-          </View>
-        </Pressable>
-      </NativeAnimated.View>
+      {resultPoints !== null ? (
+        <SpinWinResultScreen
+          points={resultPoints}
+          onContinue={() => onSpinFinished(resultPoints)}
+        />
+      ) : null}
     </View>
   );
 }
 
-function SpinWinResultScreen({
-  points,
-  onClose,
-  onContinue,
-}: {
-  points: number;
-  onClose: () => void;
-  onContinue: () => void;
-}) {
-  const [showConfetti, setShowConfetti] = useState(false);
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
+function SpinWinResultScreen({ points, onContinue }: { points: number; onContinue: () => void }) {
+  const prizeCardOffset = useSharedValue(280);
+  const buttonOpacity = useSharedValue(0);
+  const buttonOffset = useSharedValue(24);
 
   useEffect(() => {
-    scale.value = withSequence(
-      withTiming(1.3, { duration: 400, easing: ReanimatedEasing.out(ReanimatedEasing.back(2)) }),
-      withTiming(1, { duration: 200 }),
+    prizeCardOffset.value = withDelay(
+      367,
+      withSpring(0, {
+        mass: 1,
+        stiffness: 80,
+        damping: 9,
+        velocity: 0,
+        overshootClamping: false,
+      }),
     );
-    opacity.value = withTiming(1, { duration: 300 });
+    buttonOpacity.value = withDelay(1200, withTiming(1, { duration: 250 }));
+    buttonOffset.value = withDelay(
+      1200,
+      withTiming(0, {
+        duration: 300,
+        easing: ReanimatedEasing.out(ReanimatedEasing.cubic),
+      }),
+    );
 
-    const confettiTimer = setTimeout(() => {
-      setShowConfetti(true);
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    }, 300);
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [buttonOffset, buttonOpacity, prizeCardOffset]);
 
-    return () => clearTimeout(confettiTimer);
-  }, [opacity, scale]);
+  const prizeCardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: prizeCardOffset.value }],
+  }));
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: buttonOpacity.value,
+    transform: [{ translateY: buttonOffset.value }],
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: SPIN_WIN.colors.background }}>
-      <SpinWinHeader onClose={onClose} showTitle={false} />
-      <ConfettiOverlay visible={showConfetti} />
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        zIndex: 20,
+        overflow: 'hidden',
+      }}
+    >
+      <BlurView
+        pointerEvents="none"
+        intensity={24}
+        tint="dark"
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+      />
 
-      <View className="flex-1 items-center justify-center px-6">
-        <Image
-          source={SPIN_WIN.result.glowSvgAsset}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          'rgba(0,0,0,0.38)',
+          'rgba(8,8,8,0.46)',
+          'rgba(92,36,105,0.48)',
+          'rgba(190,78,220,0.86)',
+        ]}
+        locations={[0, 0.42, 0.7, 1]}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+      />
+
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingHorizontal: 28,
+          paddingBottom: 28,
+        }}
+      >
+        <LottieView
+          source={WIN_SCREEN_ANIMATION}
+          autoPlay
+          loop={false}
+          resizeMode="contain"
           style={{
             position: 'absolute',
-            width: SPIN_WIN.result.glowSize,
-            height: SPIN_WIN.result.glowSize,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: 3,
           }}
-          contentFit="contain"
-          pointerEvents="none"
         />
 
-        <Reanimated.View style={[{ alignItems: 'center' }, animatedStyle]}>
+        <Reanimated.View
+          style={[
+            {
+              width: '100%',
+              maxWidth: 270,
+              height: 164,
+              borderRadius: 20,
+              borderWidth: 4,
+              borderColor: '#61C95A',
+              backgroundColor: '#94EB80',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 28,
+              zIndex: 2,
+            },
+            prizeCardAnimatedStyle,
+          ]}
+        >
           <Text
             style={{
-              fontSize: SPIN_WIN.typography.hugeResult,
-              fontWeight: '400',
-              color: SPIN_WIN.colors.textPrimary,
-              fontVariant: ['tabular-nums'],
-              lineHeight: 120,
+              color: '#000000',
+              fontSize: 76,
+              lineHeight: 84,
+              letterSpacing: -3,
             }}
           >
-            +{points.toLocaleString()}
-          </Text>
-
-          <Text
-            style={{
-              fontSize: SPIN_WIN.typography.subtitleSize,
-              fontWeight: SPIN_WIN.typography.subtitleWeight,
-              color: SPIN_WIN.result.subtitleColor,
-              marginTop: 8,
-            }}
-          >
-            Points earned
+            {points.toLocaleString()}
           </Text>
         </Reanimated.View>
-      </View>
 
-      <View className="items-center px-6 pb-28">
-        <Pressable onPress={onContinue} style={{ width: '100%', maxWidth: 388 }}>
-          <View
+        <Reanimated.View
+          style={[
+            {
+              width: '100%',
+              maxWidth: 388,
+              zIndex: 4,
+            },
+            buttonAnimatedStyle,
+          ]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Claim ${points.toLocaleString()} points now`}
+            onPress={onContinue}
             style={{
-              backgroundColor: SPIN_WIN.colors.gold,
+              width: '100%',
+              minHeight: 60,
               borderRadius: SPIN_WIN.borderRadius.button,
-              borderCurve: 'continuous',
-              paddingVertical: 15,
+              backgroundColor: '#000000',
               alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            <Text
-              style={{
-                fontSize: SPIN_WIN.typography.ctaSize,
-                fontWeight: SPIN_WIN.typography.ctaWeight,
-                color: '#000000',
-              }}
-            >
-              Continue
-            </Text>
-          </View>
-        </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontSize: SPIN_WIN.typography.ctaSize,
+                  fontWeight: SPIN_WIN.typography.ctaWeight,
+                  color: '#FFFFFF',
+                }}
+              >
+                Claim
+              </Text>
+              <Image
+                source={require('@/assets/images/reward-star.png')}
+                style={{ width: 23, height: 27, marginHorizontal: 5 }}
+                contentFit="contain"
+              />
+              <Text
+                style={{
+                  fontSize: SPIN_WIN.typography.ctaSize,
+                  fontWeight: SPIN_WIN.typography.ctaWeight,
+                  color: '#FFFFFF',
+                }}
+              >
+                {points.toLocaleString()} Now
+              </Text>
+            </View>
+          </Pressable>
+        </Reanimated.View>
       </View>
     </View>
   );
@@ -1195,7 +1094,7 @@ const SpinWinModalProvider = () => {
   const handleSpinFinished = useCallback(
     (points: number) => {
       setResultPoints(points);
-      setModal(SPIN_WIN_MODAL.OPEN_RESULT);
+      setModal(SPIN_WIN_MODAL.OPEN_SUMMARY);
     },
     [setModal, setResultPoints],
   );
@@ -1236,7 +1135,6 @@ const SpinWinModalProvider = () => {
         return (
           <SpinWinResultScreen
             points={resultPoints ?? 0}
-            onClose={reset}
             onContinue={() => setModal(SPIN_WIN_MODAL.OPEN_SUMMARY)}
           />
         );

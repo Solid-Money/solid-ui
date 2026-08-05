@@ -3,8 +3,12 @@ import { TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
-import HomeVerificationCard from '@/components/Home/NewHome/HomeVerificationCard';
+import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
+import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
+import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
@@ -17,6 +21,7 @@ import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkele
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
@@ -27,13 +32,15 @@ import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
- * Redesigned home/wallet screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in index(.native).tsx. Public users and all
+ * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in index(.native).tsx. Production and all
  * desktop-web users keep LegacyHome.
  *
- * Big "Wallet Balance" number = wallet token balance (excludes soUSD/soFUSE).
- * Card + Savings live behind the OtherBalancesDropdown pill. The green card is
- * merged in here; Activity moved to the header bell.
+ * Big "Wallet Balance" number = Wallet + Card (combined for display only — the
+ * breakdown sheet lists Wallet, Card and Savings separately and notes that funds
+ * must be moved onto the card to spend). Savings sits behind the pill, so
+ * headline + pill covers everything. The green card is merged in here; Activity
+ * moved to the header bell.
  */
 export default function HomeScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
@@ -111,12 +118,28 @@ export default function HomeScreenNew() {
     isLoadingTokens || isBalanceLoading || isTotalSavingsLoading || totalSavingsUSD === undefined;
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
-  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(walletBalance);
+  // Headline = Wallet + Card. They're only combined for display; the breakdown
+  // sheet lists them separately and explains that funds must be moved onto the
+  // card to be spent. Savings stays out of it (it's the pill), so
+  // headline + pill = everything the user holds.
+  const spendableBalance = getSpendableTotal({ walletBalance, cardBalance, userHasCard });
+  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(spendableBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
+  // Which next-step prompt (verify / fund / Apple Pay) belongs under the card,
+  // if any — null once the user is done or has snoozed the current one.
+  const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
 
   return (
-    <PageLayout mobileTitle={walletTitle}>
-      <View className="mb-5 w-full gap-8 pb-24">
+    // The card details are a layer on this screen rather than a route of their own,
+    // so opening them is a state change on an already-mounted tree — that's what
+    // lets the card animate without a screen mounting underneath it. This screen's
+    // own content clears out of the way as the card flies (Figma 20048:3312).
+    <PageLayout
+      mobileTitle={walletTitle}
+      animateCardHeroExit
+      additionalContent={<CardDetailsPane />}
+    >
+      <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceSectionLoading ? (
           <View className="items-center gap-6 pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />
@@ -125,46 +148,70 @@ export default function HomeScreenNew() {
           </View>
         ) : (
           <View className="gap-5">
-            <WalletBalanceHeadline balance={walletBalance} />
-            <OtherBalancesDropdown
-              cardBalance={cardBalance}
-              savingsBalance={savingsBalance}
-              userHasCard={userHasCard}
-            />
-            <WalletActions hasFunds={depositCompleted} />
+            <HeroExit spec={HERO_EXIT.balance}>
+              <WalletBalanceHeadline balance={walletBalance} />
+            </HeroExit>
+            <HeroExit spec={HERO_EXIT.balance}>
+              <View style={{ transform: [{ translateY: -10 }] }}>
+                <OtherBalancesDropdown
+                  cardBalance={cardBalance}
+                  savingsBalance={savingsBalance}
+                  userHasCard={userHasCard}
+                  walletBalance={walletBalance}
+                />
+              </View>
+            </HeroExit>
+            <HeroExit spec={HERO_EXIT.actions}>
+              <WalletActions hasFunds={depositCompleted} />
+            </HeroExit>
           </View>
         )}
 
-        {/* The card is rendered full-bleed (no px-4): the PNG's baked-in drop
-            shadow (~4% each side) acts as the gutter, so the card BODY lines up
-            with the px-4 sections below instead of looking inset/narrower. */}
-        <View className="gap-3">
-          <HomeWalletCard hasCard={userHasCard} last4={cardDetails?.card_details?.last_4} />
-          {!userHasCard && (
-            <HomeVerificationCard depositCompleted={depositCompleted} className="px-4" />
+        {/* HomeWalletCard brings its own px-4 and bleeds back out by the shadow the
+            PNG bakes into each side, so the visible card lines up with the sections
+            below rather than sitting inset. */}
+        <View className="gap-5">
+          <HomeWalletCard
+            hasCard={userHasCard}
+            last4={cardDetails?.card_details?.last_4}
+            depositCompleted={depositCompleted}
+          />
+          {promptKey && (
+            <HeroExit spec={HERO_EXIT.belowCard}>
+              <HomePromptCard
+                promptKey={promptKey}
+                depositCompleted={depositCompleted}
+                className="px-4"
+              />
+            </HeroExit>
           )}
+          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
+            <HomeCashbackPromoBanner />
+          </HeroExit>
         </View>
 
         {showAssets && (
-          <View className="gap-3 px-4">
-            <Text className="text-lg font-semibold text-muted-foreground">Balances</Text>
-            {tokenError ? (
-              <View className="flex-1 items-center justify-center p-4">
-                <WalletInfo text="Failed to load tokens" />
-                <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
-                <TouchableOpacity
-                  onPress={retryTokens}
-                  className="mt-4 rounded-lg bg-primary px-4 py-2"
-                >
-                  <Text className="text-primary-foreground">Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : isLoadingTokens ? (
-              <TokenListSkeleton />
-            ) : (
-              <LazyWalletTabs />
-            )}
-          </View>
+          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
+            <View className="gap-3">
+              <Text className="text-base font-normal text-white/50">Balances</Text>
+              {tokenError ? (
+                <View className="flex-1 items-center justify-center p-4">
+                  <WalletInfo text="Failed to load tokens" />
+                  <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
+                  <TouchableOpacity
+                    onPress={retryTokens}
+                    className="mt-4 rounded-lg bg-primary px-4 py-2"
+                  >
+                    <Text className="text-primary-foreground">Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : isLoadingTokens ? (
+                <TokenListSkeleton />
+              ) : (
+                <LazyWalletTabs />
+              )}
+            </View>
+          </HeroExit>
         )}
       </View>
     </PageLayout>

@@ -113,7 +113,8 @@ export function UserInfoFooter({
       )}
 
       <Button
-        className="mt-8 h-14 rounded-xl bg-[#94F27F]"
+        variant="brand"
+        className="mt-8"
         onPress={onContinue}
         disabled={!isValid || isLoading}
       >

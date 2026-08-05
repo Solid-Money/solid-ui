@@ -24,6 +24,7 @@ interface UserState {
   updateUser: (user: User) => void;
   selectUserById: (userId: string) => void;
   unselectUser: () => void;
+  clearUserCredentialId: (userId: string) => void;
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
@@ -111,6 +112,21 @@ export const useUserStore = create<UserState>()(
         set(
           produce(state => {
             state.users = state.users.map((user: User) => ({ ...user, selected: false }));
+          }),
+        );
+      },
+
+      /**
+       * Drop a stored credentialId that Turnkey has rejected as unknown. It feeds
+       * TurnkeyProvider's `allowCredentials`, so leaving it in place pins every
+       * retry to the same unusable passkey — clearing it lets the authenticator
+       * offer all of the user's passkeys for the relying party instead.
+       */
+      clearUserCredentialId: (userId: string) => {
+        set(
+          produce(state => {
+            const user = state.users.find((u: User) => u.userId === userId);
+            if (user) user.credentialId = undefined;
           }),
         );
       },

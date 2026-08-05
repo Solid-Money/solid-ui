@@ -798,6 +798,7 @@ export default function CardDepositInternalForm() {
           type: 'error',
           text1: 'Bridge failed',
           text2: error instanceof Error ? error.message : 'Unknown error occurred',
+          props: { badgeText: 'Onchain' },
         });
       }
     },

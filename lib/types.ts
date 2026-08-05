@@ -59,6 +59,25 @@ export interface CardDepositBonusConfig {
   cap: number;
 }
 
+export interface LandingPageApyWindows {
+  allTime: number;
+  sevenDay: number;
+  fifteenDay: number;
+  thirtyDay: number;
+}
+
+/** Response of GET /accounts/v1/app-config/landing-page-apy — admin-managed APY. */
+export interface LandingPageApyConfig {
+  overrideEnabled: boolean;
+  mode: 'simple' | 'advanced';
+  apy: number;
+  apys: {
+    usdc: LandingPageApyWindows;
+    fuse: LandingPageApyWindows;
+    eth: LandingPageApyWindows;
+  };
+}
+
 export interface CardWithdrawalDestination {
   chain: string;
   address: string;
@@ -420,6 +439,16 @@ export interface CashbackData {
 export enum CardProvider {
   BRIDGE = 'bridge',
   RAIN = 'rain',
+  WIREX = 'wirex',
+}
+
+/**
+ * Identity-verification provider. Didit backs the Rain flow; Sumsub backs the
+ * Wirex (EU/EEA) flow. Chosen by jurisdiction at the /card/activate KYC step.
+ */
+export enum KycProvider {
+  DIDIT = 'didit',
+  SUMSUB = 'sumsub',
 }
 
 /** Card deposit activity metadata processing status */
@@ -433,6 +462,12 @@ export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
   /** Set by backend when available */
   provider?: CardProvider;
+  /**
+   * ISO 3166-1 alpha-2 of the address the card was issued against, read from the
+   * provider's consumer record. Distinct from `CardStatusResponse.country`, which is
+   * the user's KYC residence.
+   */
+  issuing_country?: string;
 }
 
 /**
@@ -549,6 +584,34 @@ export interface DiditVerificationStatusResponse {
   status: string;
   kycStatus: KycStatus;
   sessionId?: string;
+}
+
+/** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
+export interface SumsubSessionResponse {
+  /** WebSDK access token passed to snsWebSdk.init(). */
+  token: string;
+  /** externalUserId bound to the token (our internal userId). */
+  userId: string;
+  /** Verification level the token was minted for. */
+  levelName: string;
+}
+
+/** Response from GET /accounts/v1/sumsub/status. */
+export interface SumsubVerificationStatusResponse {
+  /** GREEN | RED (Sumsub review answer), if reviewed. */
+  reviewAnswer?: string;
+  /** Sumsub review status (init | pending | completed | onHold …). */
+  reviewStatus?: string;
+  /** Canonical backend KYC status (reflects Sumsub + Wirex). */
+  kycStatus?: KycStatus;
+  applicantId?: string;
+}
+
+/** Response from GET /accounts/v1/sumsub/provider-routing. */
+export interface ProviderRoutingResponse {
+  countryCode: string | null;
+  cardProvider: CardProvider;
+  kycProvider: KycProvider;
 }
 
 // --- Rain balance (cents) ---
@@ -780,7 +843,12 @@ export enum TransactionStatus {
   REFUNDED = 'refunded',
 }
 
-export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
+/**
+ * Progress of a deposit, in order.
+ * `received` means the transfer was seen on chain but is not confirmed yet
+ * (unconfirmed webhook). `detected` is the legacy alias for it.
+ */
+export type DepositStep = 'received' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;

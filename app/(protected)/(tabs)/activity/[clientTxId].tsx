@@ -4,12 +4,21 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
-import { ArrowUpRight, X } from 'lucide-react-native';
+import {
+  ArrowDown,
+  ArrowUpRight,
+  ChevronRight,
+  CreditCard,
+  MessagesSquare,
+  Wallet,
+  X,
+} from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
 import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -21,28 +30,26 @@ import { path } from '@/constants/path';
 import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
+import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useIntercom } from '@/lib/intercom';
 import {
-  ActivityEvent,
   CardProvider,
   CardTransaction,
   CardTransactionCategory,
+  TokenIcon,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import {
-  formatCardAmount,
-  getCashbackAmount,
-  getColorForTransaction,
-  getInitials,
-} from '@/lib/utils/cardHelpers';
+import { formatCardAmount, getCashbackAmount } from '@/lib/utils/cardHelpers';
+import { getDepositProgressRows, isDepositWithSteps } from '@/lib/utils/deposit-steps';
+import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
   label: React.ReactNode;
@@ -70,12 +77,13 @@ type SupportSectionProps = {
 };
 
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
+const CARD_DATE_FORMAT = "MMM d yyyy 'at' h:mm a";
 
 const Row = memo(function Row({ label, value, isLast }: RowProps) {
   return (
     <View
       className={cn(
-        'flex-row justify-between border-b border-[#2C2C2E] p-5',
+        'flex-row items-center justify-between border-b border-[#2C2C2E] px-6 py-5',
         isLast && 'border-b-0',
       )}
     >
@@ -86,7 +94,7 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
 });
 
 const Label = memo(function Label({ children }: LabelProps) {
-  return <Text className="text-base font-medium text-[#8E8E93]">{children}</Text>;
+  return <Text className="text-base font-medium text-[#ACACAC]">{children}</Text>;
 });
 
 const Value = memo(function Value({ children, className }: ValueProps) {
@@ -132,16 +140,9 @@ const Back = memo(function Back({ title, className }: BackProps) {
 });
 
 const SupportSection = memo(function SupportSection({ transactionContext }: SupportSectionProps) {
-  const intercom = useIntercom();
-
   const handleSupportPress = useCallback(() => {
-    if (!intercom) return;
-    if (transactionContext) {
-      intercom.showNewMessage(transactionContext);
-    } else {
-      intercom.show();
-    }
-  }, [intercom, transactionContext]);
+    openSupportDrawer(transactionContext);
+  }, [transactionContext]);
 
   return (
     <View className="mt-6 items-center">
@@ -168,25 +169,78 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
 
 type CardTransactionDetailProps = {
   transaction: CardTransaction;
-  activity?: ActivityEvent | null;
   cardProvider?: CardProvider | null;
 };
 
+type DetailCardProps = {
+  rows: { key: string; label: React.ReactNode; value: React.ReactNode }[];
+};
+
+const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
+  if (!rows.length) return null;
+
+  return (
+    <View className="overflow-hidden rounded-twice bg-card">
+      {rows.map((row, index) => (
+        <Row key={row.key} label={row.label} value={row.value} isLast={index === rows.length - 1} />
+      ))}
+    </View>
+  );
+});
+
+const ContactSupportCard = memo(function ContactSupportCard({
+  transactionContext,
+}: SupportSectionProps) {
+  const handlePress = useCallback(() => {
+    openSupportDrawer(transactionContext);
+  }, [transactionContext]);
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      className="flex-row items-center justify-between rounded-twice bg-card p-5 active:opacity-70 web:transition-colors web:hover:bg-card-hover"
+    >
+      <View className="flex-row items-center gap-3">
+        <MessagesSquare size={20} color="#FFFFFF" />
+        <Text className="text-base font-medium text-white">Contact support</Text>
+      </View>
+      <ChevronRight size={18} color="#FFFFFF" />
+    </Pressable>
+  );
+});
+
+/** Token icon with the incoming-transfer badge from the deposit design. */
+const DepositTokenIcon = memo(function DepositTokenIcon({ tokenIcon }: { tokenIcon: TokenIcon }) {
+  return (
+    <View className="relative">
+      <RenderTokenIcon tokenIcon={tokenIcon} size={72} />
+      <View
+        className="absolute h-[34px] w-[34px] items-center justify-center rounded-full bg-white"
+        style={{ left: -9, top: -3 }}
+      >
+        <ArrowDown size={18} color="#000000" strokeWidth={2.5} />
+      </View>
+    </View>
+  );
+});
+
 const CardTransactionDetail = memo(function CardTransactionDetail({
   transaction,
-  activity,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName = (
-    transaction.merchant_name?.trim() ||
-    transaction.description?.trim() ||
-    'Unknown'
-  );
-  const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
-    .filter(Boolean)
-    .join(' ') || undefined;
+  const merchantName =
+    transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
+  const merchantLocation =
+    [transaction.merchant_city, transaction.merchant_country]
+      .filter(Boolean)
+      .join(', ')
+      .toUpperCase() || undefined;
+  const merchantCategory = getMerchantCategory(transaction.merchant_category_code);
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
+  const { data: cardDetails } = useCardDetails();
+  const last4 = cardDetails?.card_details?.last_4;
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
   const isApproved = transaction.status === 'approved';
@@ -199,8 +253,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return dateStr ? new Date(dateStr) : new Date();
   }, [isApproved, transaction.authorized_at, transaction.posted_at]);
 
-  const initials = useMemo(() => getInitials(merchantName), [merchantName]);
-  const color = useMemo(() => getColorForTransaction(merchantName), [merchantName]);
+  const initial = useMemo(() => merchantName.charAt(0).toUpperCase(), [merchantName]);
 
   const transactionContext = useMemo(
     () =>
@@ -221,15 +274,37 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       : isReversed
         ? 'Reversed'
         : 'Confirmed';
-  const statusColor = isApproved
-    ? 'text-yellow-500'
-    : isDeclined
-      ? 'text-red-400'
-      : '';
+  const statusColor = isApproved ? 'text-yellow-500' : isDeclined ? 'text-red-400' : '';
+
+  const merchantRows = useMemo(
+    () =>
+      [
+        {
+          key: 'from',
+          label: <Label>Sent from</Label>,
+          value: (
+            <View className="flex-row items-center gap-2">
+              <CreditCard size={20} color="#FFFFFF" />
+              <Value>{last4 ? `****${last4}` : 'Card'}</Value>
+            </View>
+          ),
+        },
+        merchantLocation && {
+          key: 'location',
+          label: <Label>Location</Label>,
+          value: <Value>{merchantLocation}</Value>,
+        },
+        merchantCategory && {
+          key: 'category',
+          label: <Label>Category</Label>,
+          value: <Value>{merchantCategory}</Value>,
+        },
+      ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
+    [last4, merchantLocation, merchantCategory],
+  );
 
   const rows = useMemo(() => {
     const allRows = [
-      { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
       {
         key: 'status',
         label: <Label>Status</Label>,
@@ -254,9 +329,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </View>
         ),
         value: (
-          <Value
-            className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-[#34C759]'}
-          >
+          <Value className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-brand'}>
             {cashbackInfo.amount === 'Pending'
               ? cashbackInfo.isEscrowed
                 ? 'Escrowed'
@@ -309,54 +382,31 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   return (
     <PageLayout desktopOnly>
-      <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <View>
-          <Back title={merchantName} className="text-xl md:text-3xl" />
-          {merchantLocation && (
-            <Text className="text-center text-sm text-muted-foreground">{merchantLocation}</Text>
-          )}
-        </View>
+      <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+        <Back title="Transaction details" className="text-xl md:text-2xl" />
 
         <View className="items-center gap-4">
-          {/* Avatar with initials or token icon */}
+          {/* Avatar with merchant initial or token icon */}
           {isPurchase ? (
-            <View
-              className="h-[75px] w-[75px] items-center justify-center rounded-full"
-              style={{ backgroundColor: color.bg }}
-            >
-              <Text className="text-5xl font-semibold" style={{ color: color.text }}>
-                {initials}
-              </Text>
+            <View className="h-[75px] w-[75px] items-center justify-center rounded-full bg-[#2A2A2A]">
+              <Text className="text-3xl text-[#A0A0A0]">{initial}</Text>
             </View>
           ) : (
             <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
           )}
 
-          <View className="items-center">
-            <Text className="text-4xl font-bold text-white">
+          <View className="items-center gap-1">
+            <Text className="text-2xl font-bold text-white">
               {formatCardAmount(transaction.amount, cardProvider)}
             </Text>
-            <Text className="mt-2 font-semibold text-muted-foreground">
-              {`${toTitleCase(activity?.metadata?.destination || 'savings')} account`}
-            </Text>
-            <Text className="font-semibold text-muted-foreground">
-              {format(postedDate, DATE_FORMAT)}
-            </Text>
+            <Text className="text-base text-white/70">{merchantName}</Text>
+            <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
           </View>
         </View>
 
-        <View className="rounded-[20px] bg-[#1C1C1E]">
-          {rows.map((row, index) => (
-            <Row
-              key={row.key}
-              label={row.label}
-              value={row.value}
-              isLast={index === rows.length - 1}
-            />
-          ))}
-        </View>
-
-        <SupportSection transactionContext={transactionContext} />
+        <DetailCard rows={merchantRows} />
+        <DetailCard rows={rows} />
+        <ContactSupportCard transactionContext={transactionContext} />
       </View>
     </PageLayout>
   );
@@ -605,6 +655,143 @@ export default function ActivityDetail() {
     handleExplorerPress,
   ]);
 
+  // --- Deposit progress view (Figma: deposit transaction details) ---
+  const isDepositDetail = !!finalActivity && isDepositWithSteps(finalActivity);
+
+  const depositProgressRows = useMemo(
+    () => (finalActivity && isDepositDetail ? getDepositProgressRows(finalActivity) : []),
+    [finalActivity, isDepositDetail],
+  );
+
+  const depositDestination = useMemo(() => {
+    if (!finalActivity) return { label: 'Wallet', isCard: false };
+    if (finalActivity.metadata?.destinationType === 'RAIN_CARD') {
+      return { label: 'Card', isCard: true };
+    }
+    return { label: isSavingsDeposit ? 'Savings' : 'Wallet', isCard: false };
+  }, [finalActivity, isSavingsDeposit]);
+
+  const depositStatus = useMemo(() => {
+    if (isFailed) return { label: 'Failed', className: 'text-red-400' };
+    if (isCancelled) return { label: 'Cancelled', className: 'text-muted-foreground' };
+    if (isSuccess) return { label: 'Completed', className: 'text-brand' };
+    if (isPending || isDetected || isProcessing) {
+      return { label: 'Processing', className: 'text-[#ECDC76]' };
+    }
+    // REFUNDED / EXPIRED and anything added later keep their own wording
+    return {
+      label: toTitleCase(finalActivity?.status ?? ''),
+      className: 'text-muted-foreground',
+    };
+  }, [
+    isFailed,
+    isCancelled,
+    isSuccess,
+    isPending,
+    isDetected,
+    isProcessing,
+    finalActivity?.status,
+  ]);
+
+  const depositTransferRows = useMemo(() => {
+    if (!finalActivity) return [];
+
+    return [
+      finalActivity.fromAddress && {
+        key: 'from',
+        label: <Label>Sent from</Label>,
+        value: (
+          <View className="flex-row items-center gap-1">
+            <Value>{eclipseAddress(finalActivity.fromAddress)}</Value>
+            <CopyToClipboard text={finalActivity.fromAddress} />
+          </View>
+        ),
+      },
+      {
+        key: 'to',
+        label: <Label>Sent to</Label>,
+        value: (
+          <View className="flex-row items-center gap-2">
+            {depositDestination.isCard ? (
+              <CreditCard size={18} color="#FFFFFF" />
+            ) : (
+              <Wallet size={18} color="#FFFFFF" />
+            )}
+            <Value>{depositDestination.label}</Value>
+          </View>
+        ),
+      },
+    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  }, [finalActivity, depositDestination]);
+
+  const depositStatusRows = useMemo(() => {
+    if (!finalActivity) return [];
+
+    const { url, hash, metadata } = finalActivity;
+    const isInProgress = isPending || isDetected || isProcessing;
+
+    return [
+      {
+        key: 'status',
+        label: <Label>Status</Label>,
+        value: <Value className={depositStatus.className}>{depositStatus.label}</Value>,
+      },
+      isInProgress && {
+        key: 'estimated',
+        label: <Label>Estimated time</Label>,
+        value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
+      },
+      metadata?.inputAmount &&
+        metadata?.inputToken && {
+          key: 'paid',
+          label: <Label>Paid</Label>,
+          value: (
+            <Value>
+              {metadata.inputAmount} {metadata.inputToken}
+            </Value>
+          ),
+        },
+      metadata?.outputAmount &&
+        metadata?.outputToken && {
+          key: 'received',
+          label: <Label>Received</Label>,
+          value: (
+            <Value>
+              {metadata.outputAmount} {metadata.outputToken}
+            </Value>
+          ),
+        },
+      {
+        key: 'fee',
+        label: <Label>Fee</Label>,
+        value: <Value>No fees</Value>,
+      },
+      url &&
+        hash && {
+          key: 'explorer',
+          label: <Label>Explorer</Label>,
+          value: (
+            <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(hash)}
+                </Underline>
+                <ArrowUpRight color="white" size={16} />
+              </View>
+            </Pressable>
+          ),
+        },
+    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  }, [
+    finalActivity,
+    depositStatus,
+    isPending,
+    isDetected,
+    isProcessing,
+    currentTime,
+    handleExplorerPress,
+  ]);
+
   const transactionContext = useMemo(() => {
     if (!finalActivity) return '';
     return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
@@ -621,13 +808,7 @@ export default function ActivityDetail() {
 
   // Card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
-    return (
-      <CardTransactionDetail
-        transaction={cardTransaction}
-        activity={finalActivity}
-        cardProvider={cardProvider}
-      />
-    );
+    return <CardTransactionDetail transaction={cardTransaction} cardProvider={cardProvider} />;
   }
 
   // Loading
@@ -645,6 +826,57 @@ export default function ActivityDetail() {
       <PageLayout desktopOnly>
         <View className="mx-auto w-full max-w-lg gap-8 px-4 py-8 md:gap-16 md:py-12">
           <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
+        </View>
+      </PageLayout>
+    );
+  }
+
+  // Deposit: progress-stepper layout
+  if (isDepositDetail) {
+    const showStepper =
+      !isCancelled &&
+      finalActivity.status !== TransactionStatus.REFUNDED &&
+      finalActivity.status !== TransactionStatus.EXPIRED;
+    const depositSign = isFailed
+      ? TransactionDirection.FAILED
+      : isCancelled
+        ? TransactionDirection.CANCELLED
+        : TransactionDirection.IN;
+
+    return (
+      <PageLayout desktopOnly isLoading={isAnyLoading}>
+        <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+          <Back title={finalActivity.title} className="text-xl md:text-2xl" />
+
+          <View className="items-center gap-4">
+            {tokenIcon && <DepositTokenIcon tokenIcon={tokenIcon} />}
+
+            <View className="items-center gap-1">
+              {hideSavingsAmount ? (
+                isSuccess && (
+                  <Text className="text-lg font-semibold text-muted-foreground">
+                    Confirming amount...
+                  </Text>
+                )
+              ) : (
+                <Text className={cn('text-2xl font-bold text-white', isFailed && 'text-red-400')}>
+                  {depositSign}
+                  {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
+                </Text>
+              )}
+              <Text className="text-base text-white/70">
+                {format(Number(finalActivity.timestamp) * 1000, CARD_DATE_FORMAT)}
+              </Text>
+            </View>
+          </View>
+
+          {showStepper && depositProgressRows.length > 0 && (
+            <DepositStepper rows={depositProgressRows} />
+          )}
+
+          <DetailCard rows={depositTransferRows} />
+          <DetailCard rows={depositStatusRows} />
+          <ContactSupportCard transactionContext={transactionContext} />
         </View>
       </PageLayout>
     );

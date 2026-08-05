@@ -148,6 +148,7 @@ const FastWithdrawForm = () => {
             text1: 'Fast withdraw transaction completed',
             text2: `${data.amount} soUSD`,
             props: {
+              badgeText: 'Onchain',
               link: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
               linkText: eclipseAddress(tx.transactionHash),
               image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
@@ -176,6 +177,7 @@ const FastWithdrawForm = () => {
             text1: 'Withdraw transaction submitted',
             text2: `${data.amount} soUSD`,
             props: {
+              badgeText: 'Onchain',
               link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
               linkText: eclipseAddress(tx.transactionHash),
               image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
@@ -192,6 +194,7 @@ const FastWithdrawForm = () => {
           type: 'error',
           text1: 'Bridge failed',
           text2: error instanceof Error ? error.message : 'Unknown error occurred',
+          props: { badgeText: 'Onchain' },
         });
       }
     },

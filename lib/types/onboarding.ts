@@ -54,7 +54,7 @@ export const ONBOARDING_DATA: OnboardingPageData[] = [
   {
     id: '2',
     title: 'Spend while you earn',
-    subtitle: 'Your funds instantly spendable at over 200M merchants worldwide',
+    subtitle: 'Your funds instantly spendable at 175M merchants worldwide',
     animation: require('@/assets/animations/card.json'),
   },
   {

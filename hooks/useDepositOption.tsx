@@ -311,12 +311,16 @@ const useDepositOption = ({
     if (isTokenSelector) return 'token-selector';
     if (isVirtualAccountDetails) return 'virtual-account-details';
     if (isVirtualAccountTos) return 'virtual-account-tos';
+    if (isVirtualAccountApply) return 'virtual-account-apply';
     if (isOptions) return 'deposit-options';
     return 'deposit-type-selection';
   };
 
   const getTitle = () => {
-    if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress) return undefined;
+    // Virtual account details renders its own flag + title in the content, so the
+    // header keeps only the back/close buttons (Figma 21445:3186).
+    if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress || isVirtualAccountDetails)
+      return undefined;
     if (isBankTransferKycInfo) return 'Identity Verification';
     if (isBankTransferKycFrame) return 'Identity Verification';
     if (isBankTransferAmount) return 'Amount to buy';
@@ -330,7 +334,6 @@ const useDepositOption = ({
     if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
     if (isVirtualAccountApply) return 'Bank transfer';
-    if (isVirtualAccountDetails) return 'Bank Deposit';
     if (isVirtualAccountTos) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
@@ -339,6 +342,9 @@ const useDepositOption = ({
   };
 
   const getContentClassName = () => {
+    if (isVirtualAccountApply) {
+      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-[419px] md:max-w-[419px] md:px-0 md:pt-0';
+    }
     if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
@@ -358,6 +364,15 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    if (isVirtualAccountApply) {
+      return 'gap-0';
+    }
+
+    // Details renders its own title, so it only needs the header buttons' own gap.
+    if (isVirtualAccountDetails) {
+      return 'gap-3';
+    }
+
     // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
     if (isFormAndAddress && !depositFromSolid) {
       return 'min-h-[40rem]';
@@ -690,12 +705,21 @@ const useDepositOption = ({
     isTokenSelector ||
     isVirtualAccountApply;
 
-  const disableScroll = Platform.OS !== 'web' && isDepositDirectlyAddress;
+  // The virtual account details screen owns its ScrollView so it can overlay the
+  // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
+  const disableScroll =
+    (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
+    isVirtualAccountDetails ||
+    isVirtualAccountApply;
+  const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
+  const hideHeader = isVirtualAccountApply;
 
   return {
     shouldOpen,
     showBackButton,
     disableScroll,
+    fillViewportHeight,
+    hideHeader,
     actionButton,
     shouldAnimate,
     isForward,

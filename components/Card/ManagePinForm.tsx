@@ -180,9 +180,10 @@ export default function ManagePinForm() {
       </View>
 
       <Button
+        variant="brand"
         onPress={handleSubmit(onSubmit)}
         disabled={updatePinMutation.isPending || !isValid}
-        className="mt-4 h-12 rounded-xl bg-[#94F27F]"
+        className="mt-4"
       >
         {updatePinMutation.isPending ? (
           <ActivityIndicator size="small" color="black" />

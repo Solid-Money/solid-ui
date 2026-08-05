@@ -36,8 +36,15 @@ export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
 
+  // Return to wherever the flow started — the redesigned home reaches this
+  // screen from its card CTAs. `/card` is a redirect shim now, and it would send
+  // a user without a card straight back here, so fall back to the wallet page.
   const goBack = () => {
-    router.replace(path.CARD);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.HOME);
+    }
   };
 
   const [loading, setLoading] = useState(true);
@@ -495,7 +502,8 @@ function CountrySelector({
             </Pressable>
 
             <Button
-              className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+              variant="brand"
+              className="mb-4 w-full"
               onPress={onOk}
               disabled={!selectedCountry || processing}
             >
@@ -561,7 +569,7 @@ function CountryUnavailableView({
         <Text className="text-base font-bold text-white">Change country</Text>
       </Pressable>
       {!isInNotifyWaitlist && (
-        <Button className="mt-6 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onNotifyByMail}>
+        <Button variant="brand" className="mt-6 w-full" onPress={onNotifyByMail}>
           <Text className="text-base font-bold text-black">Notify by mail</Text>
         </Button>
       )}
