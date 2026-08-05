@@ -12,6 +12,7 @@ import { TabBarBlurProvider } from '@/components/tabBar/TabBarBlurContext';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 export default function TabLayout() {
   // The desktop sidebar replaces the bottom bar from `isScreenMedium` up (the
@@ -173,14 +174,19 @@ export default function TabLayout() {
           href: path.REWARDS,
         }}
       />
-      <Tabs.Screen
-        name="stocks"
-        options={{
-          title: 'Stocks',
-          headerShown: false,
-          href: path.STOCKS,
-        }}
-      />
+      {/* Stocks is an in-development feature: its tab/route is only registered on
+          qa/preview builds and hidden in production. The screen itself also
+          redirects in production as a deep-link safeguard. */}
+      {isDevFeatureEnabled && (
+        <Tabs.Screen
+          name="stocks"
+          options={{
+            title: 'Stocks',
+            headerShown: false,
+            href: path.STOCKS,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="referral"
         options={{

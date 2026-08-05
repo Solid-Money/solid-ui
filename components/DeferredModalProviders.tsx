@@ -15,6 +15,7 @@ import SupportDrawerProvider from '@/components/SupportDrawer/SupportDrawerProvi
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 /**
  * Deferred modal providers component.
@@ -47,7 +48,9 @@ const DeferredModalProviders = () => {
     <>
       <DepositModalProvider />
       <SendModalProvider />
-      <SpinWinModalProvider />
+      {/* Spin & Win is an in-development feature: the modal (popup) machinery is
+          not mounted at all in production, so it can never be opened. */}
+      {isDevFeatureEnabled && <SpinWinModalProvider />}
       <SwapModalProvider />
       <WithdrawModalProvider />
       <StakeModalProvider />

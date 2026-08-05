@@ -12,6 +12,8 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { useSpinStatus } from '@/hooks/useSpinWin';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -146,6 +148,27 @@ export default function RewardsScreenNew() {
               <Text className="text-base font-semibold text-white">Explore tiers</Text>
             </Pressable>
           </View>
+
+          {/* Spin & Win is an in-development feature: shown on qa/preview builds,
+              hidden in production. The flow is also a native-only modal
+              (SpinWinModalProvider force-closes on web). It is deliberately NOT
+              gated on `spinStatus.isAllowed`: the provider already closes itself
+              when the backend says the user isn't eligible, and gating here made
+              the button vanish silently whenever the status request hadn't
+              resolved or failed. */}
+          {isDevFeatureEnabled && Platform.OS !== 'web' && (
+            <View className="px-4">
+              <Pressable
+                onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
+                style={{ backgroundColor: SPIN_WIN.colors.goldSubtle }}
+                className="h-14 items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"
+              >
+                <Text className="text-base font-bold" style={{ color: SPIN_WIN.colors.gold }}>
+                  {spinStatus?.spinAvailableToday === false ? 'Spin & Win' : 'Spin the wheel'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />

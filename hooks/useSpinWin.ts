@@ -3,6 +3,7 @@ import { secondsToMilliseconds } from 'date-fns';
 
 import useUser from '@/hooks/useUser';
 import { fetchSpinStatus, performSpin } from '@/lib/api/spin-win';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
 import { useSpinWinStore } from '@/store/useSpinWinStore';
 
@@ -21,7 +22,9 @@ export const useSpinStatus = () => {
       }
       return data;
     },
-    enabled: !!user?.userId,
+    // Spin & Win is an in-development feature: never query its status in
+    // production so no game data reaches the client there.
+    enabled: !!user?.userId && isDevFeatureEnabled,
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
   });

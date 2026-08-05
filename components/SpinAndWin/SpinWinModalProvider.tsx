@@ -36,6 +36,7 @@ import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { useCurrentGiveaway, useGiveawayCountdown, useGiveawayWinners } from '@/hooks/useGiveaway';
 import { usePerformSpin, useSpinStatus } from '@/hooks/useSpinWin';
+import { isProduction } from '@/lib/config';
 import { Faq } from '@/lib/types';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useSpinWinStore } from '@/store/useSpinWinStore';
@@ -146,12 +147,18 @@ function SpinWinHomeScreen({ onClose, onSpin }: { onClose: () => void; onSpin: (
   const countdown = useGiveawayCountdown(giveaway?.giveawayDate);
 
   useEffect(() => {
-    if (!isStatusLoading && (Platform.OS === 'web' || spinStatus?.isAllowed === false)) {
+    // Spin & Win is native-only and an in-development feature (hidden in
+    // production); it also closes once the backend says the user isn't eligible.
+    if (
+      Platform.OS === 'web' ||
+      isProduction ||
+      (!isStatusLoading && spinStatus?.isAllowed === false)
+    ) {
       onClose();
     }
   }, [isStatusLoading, onClose, spinStatus?.isAllowed]);
 
-  const canSpin = true;
+  const canSpin = spinStatus?.spinAvailableToday && spinStatus?.isEligible;
 
   if (isStatusLoading) {
     return (

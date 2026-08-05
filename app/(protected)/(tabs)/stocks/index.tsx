@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import BuyStockModal from '@/components/Stocks/BuyStockModal';
@@ -12,11 +13,23 @@ import StocksHoldingsList from '@/components/Stocks/StocksHoldingsList';
 import StocksPendingStrip from '@/components/Stocks/StocksPendingStrip';
 import StocksPortfolioCard from '@/components/Stocks/StocksPortfolioCard';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useXStockHoldings } from '@/hooks/useXStockHoldings';
 import { useXStockPrices } from '@/hooks/useXStockPrices';
+import { isProduction } from '@/lib/config';
 
+// Stocks is an in-development feature: not accessible in production builds.
+// Guards the deep-link/direct-navigation path (the tab/nav entries are gated too).
 export default function StocksPage() {
+  if (isProduction) {
+    return <Redirect href={path.HOME} />;
+  }
+
+  return <StocksPageContent />;
+}
+
+function StocksPageContent() {
   const { isScreenMedium } = useDimension();
   const scrollRef = useRef<ScrollView>(null);
 

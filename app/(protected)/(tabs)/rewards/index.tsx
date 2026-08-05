@@ -23,6 +23,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { useOptInToRewards, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { track } from '@/lib/analytics';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -174,7 +175,8 @@ function SpinWinButton() {
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
 
-  if (Platform.OS === 'web') return null;
+  // Spin & Win is an in-development feature: fully hidden in production.
+  if (!isDevFeatureEnabled || Platform.OS === 'web') return null;
 
   return (
     <Pressable
