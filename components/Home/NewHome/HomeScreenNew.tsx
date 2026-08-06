@@ -27,6 +27,7 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -185,9 +186,13 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
-          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <HomeCashbackPromoBanner />
-          </HeroExit>
+          {/* New-app cashback promo: dev/qa/preview only — hidden in production
+              until the promotion is ready to launch. */}
+          {isDevFeatureEnabled && (
+            <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
+              <HomeCashbackPromoBanner />
+            </HeroExit>
+          )}
         </View>
 
         {showAssets && (
