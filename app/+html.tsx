@@ -39,6 +39,11 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="description" content={SEO.SHORT_DESCRIPTION} />
         <link rel="canonical" href={SEO.SITE_URL} />
 
+        {/* Brand icons */}
+        <link rel="icon" href="/assets/images/solid-favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/assets/images/favicon.png" type="image/png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/assets/images/solid-favicon-180.png" sizes="180x180" />
+
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={SEO.TITLE} />
