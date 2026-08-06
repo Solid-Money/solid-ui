@@ -301,9 +301,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
     // does not fail. See plugins/withMlkitVisionDependencies.js.
     './plugins/withMlkitVisionDependencies.js',
-    // Sumsub marks android.hardware.camera as required, which makes Play drop
-    // every camera-less device. See plugins/withOptionalCameraFeatures.js.
-    './plugins/withOptionalCameraFeatures.js',
   ],
   experiments: {
     typedRoutes: true,
