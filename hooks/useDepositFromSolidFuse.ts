@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
-import * as Sentry from '@sentry/react-native';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
-import { ERRORS } from '@/constants/errors';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
-import { track, trackIdentity } from '@/lib/analytics';
-import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import {
+  captureDepositError,
+  depositBreadcrumb,
+  DepositContext,
+  trackDepositCompleted,
+  trackDepositInitiated,
+  trackDepositValidated,
+} from '@/lib/deposit/telemetry';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, StatusInfo, TransactionStatus, TransactionType } from '@/lib/types';
-import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -90,56 +92,41 @@ const useDepositFromSolidFuse = (
   const deposit = async (amount: string) => {
     if (!isFuseChain || (token !== 'WFUSE' && token !== 'FUSE')) return undefined;
 
-    const attributionData = useAttributionStore.getState().getAttributionForEvent();
-    const attributionChannel = getAttributionChannel(attributionData);
+    const isSponsor = Number(amount) >= Number(minimumAmount);
+    const ctx: DepositContext = {
+      user,
+      amount,
+      chainId: srcChainId,
+      chainName: 'fuse',
+      depositType: 'solid_wallet',
+      depositMethod: 'fuse_solid',
+      depositDestination: 'savings',
+      isSponsor,
+      operation: 'deposit_from_solid_fuse',
+    };
+
     let trackingId: string | undefined;
 
     try {
-      track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        deposit_type: 'solid_wallet',
-        deposit_method: 'fuse_solid',
-        chain_id: srcChainId,
-        chain_name: 'fuse',
-        is_sponsor: Number(amount) >= Number(minimumAmount),
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      trackDepositInitiated(ctx);
 
       if (!safeAddress) {
-        const err = new Error('Solid wallet (Safe) address not found');
-        Sentry.captureException(err, {
-          tags: {
-            operation: 'deposit_from_solid_fuse',
-            step: 'validation',
-            reason: 'no_safe_address',
-          },
-          extra: { amount, srcChainId, hasUser: !!user },
-        });
-        throw err;
+        throw new Error('Solid wallet (Safe) address not found');
       }
 
-      const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
-      track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        is_sponsor: isSponsor,
-        chain_id: srcChainId,
-        deposit_type: 'solid_wallet',
-      });
+      trackDepositValidated(ctx);
 
       setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
       setError(null);
 
-      Sentry.addBreadcrumb({
-        message: 'Starting deposit from Solid wallet',
-        category: 'deposit',
-        data: { amount, safeAddress, srcChainId, token, isSponsor },
+      depositBreadcrumb('Starting deposit from Solid wallet', {
+        amount,
+        safeAddress,
+        srcChainId,
+        token,
+        isSponsor,
       });
 
       const amountWei = parseUnits(amount, 18);
@@ -232,83 +219,29 @@ const useDepositFromSolidFuse = (
       updateUser({ ...user!, isDeposited: true });
       setDepositStatus({ status: Status.SUCCESS });
 
-      Sentry.addBreadcrumb({
-        message: 'Deposit from Solid wallet completed successfully',
-        category: 'deposit',
-        data: { amount, transactionHash: txHash, safeAddress, srcChainId, isSponsor },
-      });
-
-      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
+      depositBreadcrumb('Deposit from Solid wallet completed successfully', {
         amount,
-        transaction_hash: txHash,
-        deposit_type: 'solid_wallet',
-        deposit_method: 'fuse_solid',
-        chain_id: srcChainId,
-        chain_name: 'fuse',
-        is_sponsor: isSponsor,
-        is_first_deposit: !user?.isDeposited,
-        ...attributionData,
-        attribution_channel: attributionChannel,
+        transactionHash: txHash,
+        safeAddress,
+        srcChainId,
+        isSponsor,
       });
 
-      trackIdentity(user?.userId!, {
-        last_deposit_amount: parseFloat(amount),
-        last_deposit_date: new Date().toISOString(),
-        last_deposit_method: 'fuse_solid',
-        last_deposit_chain: 'fuse',
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      trackDepositCompleted(ctx, { transactionHash: txHash });
 
       return trackingId;
     } catch (error: any) {
       console.error(error);
-      const errorMessage = error?.message || 'Unknown error';
-
-      Sentry.captureException(error, {
-        tags: { operation: 'deposit_from_solid_fuse', step: 'execution' },
-        extra: {
-          amount,
-          safeAddress: user?.safeAddress,
-          srcChainId,
-          errorMessage,
-          depositStatus,
-        },
-        user: { id: user?.suborgId, address: user?.safeAddress },
-      });
-
-      const errAttribution = useAttributionStore.getState().getAttributionForEvent();
-      track(TRACKING_EVENTS.DEPOSIT_ERROR, {
-        amount,
-        safe_address: user?.safeAddress,
-        src_chain_id: srcChainId,
-        deposit_status: depositStatus,
-        source: 'deposit_from_solid_fuse',
-        error: errorMessage,
-        ...errAttribution,
-        attribution_channel: getAttributionChannel(errAttribution),
-      });
-
-      const msg = errorMessage?.toLowerCase();
-      let errMsg = '';
-      if (
-        msg.includes('user rejected') ||
-        msg.includes('user denied') ||
-        msg.includes('rejected by user') ||
-        msg.includes('user cancelled')
-      ) {
-        errMsg = 'User rejected transaction';
-      } else if (errorMessage?.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) {
-        errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
-      }
+      const errMsg = captureDepositError(error, { ...ctx, depositStatus });
 
       // Mark activity as FAILED so it doesn't stay stuck in PENDING
       if (trackingId) {
         updateActivity(trackingId, {
           status: TransactionStatus.FAILED,
-          metadata: { error: errorMessage, failedAt: new Date().toISOString() },
+          metadata: {
+            error: error?.message || 'Unknown error',
+            failedAt: new Date().toISOString(),
+          },
         });
       }
 
