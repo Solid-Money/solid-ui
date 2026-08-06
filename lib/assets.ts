@@ -163,6 +163,22 @@ export const ASSETS = {
   },
   'images/bsc.png': { module: require('@/assets/images/bsc.png'), hash: '4135f6a8' },
   'images/buy_crypto.png': { module: require('@/assets/images/buy_crypto.png'), hash: 'a072a946' },
+  'images/card-action-add-funds.png': {
+    module: require('@/assets/images/card-action-add-funds.png'),
+    hash: 'c480422f',
+  },
+  'images/card-action-freeze.png': {
+    module: require('@/assets/images/card-action-freeze.png'),
+    hash: '6668da7b',
+  },
+  'images/card-action-more.png': {
+    module: require('@/assets/images/card-action-more.png'),
+    hash: '61d34013',
+  },
+  'images/card-action-withdraw.png': {
+    module: require('@/assets/images/card-action-withdraw.png'),
+    hash: 'c8909ba5',
+  },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
   'images/card-effortless.png': {
     module: require('@/assets/images/card-effortless.png'),
@@ -368,7 +384,7 @@ export const ASSETS = {
     module: require('@/assets/images/face-verification.png'),
     hash: 'd630cb67',
   },
-  'images/favicon.png': { module: require('@/assets/images/favicon.png'), hash: '7b8f50eb' },
+  'images/favicon.png': { module: require('@/assets/images/favicon.png'), hash: '904fae4a' },
   'images/fingetprint copy.tsx': {
     module: require('@/assets/images/fingetprint copy.tsx'),
     hash: '0b09bf2a',
@@ -908,6 +924,14 @@ export const ASSETS = {
   'images/solid-dark-purple.png': {
     module: require('@/assets/images/solid-dark-purple.png'),
     hash: 'e599ecfa',
+  },
+  'images/solid-favicon-180.png': {
+    module: require('@/assets/images/solid-favicon-180.png'),
+    hash: '0b2fb9ee',
+  },
+  'images/solid-favicon.svg': {
+    module: require('@/assets/images/solid-favicon.svg'),
+    hash: '092b0961',
   },
   'images/solid-green.png': {
     module: require('@/assets/images/solid-green.png'),
