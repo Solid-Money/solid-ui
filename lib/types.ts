@@ -15,16 +15,33 @@ import {
 
 import type { AssetPath } from './assets';
 
-export interface CountryFromIp {
-  countryCode: string;
-  countryName: string;
-}
-
 export interface CountryInfo {
   countryCode: string;
   countryName: string;
+  /**
+   * Whether the **card** is available here. Virtual account availability is a
+   * separate list — ask `resolveCountryAccess('virtual_account')` for it rather
+   * than reading this field.
+   */
   isAvailable: boolean;
   source?: 'ip' | 'manual';
+  /** State / province, when the IP lookup resolved one. */
+  state?: string;
+  city?: string;
+}
+
+/** Products gated on where the user is. */
+export type GatedProduct = 'card' | 'virtual_account';
+
+/** Body of `POST /accounts/v1/region-interest`. */
+export interface RegionInterestPayload {
+  product: GatedProduct;
+  countryCode: string;
+  countryName?: string;
+  state?: string;
+  city?: string;
+  detectionSource?: 'ip' | 'manual' | 'kyc';
+  source?: string;
 }
 
 export interface CardAccessResponse {

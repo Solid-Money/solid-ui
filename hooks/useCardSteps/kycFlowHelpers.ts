@@ -3,12 +3,11 @@ import { Router } from 'expo-router';
 
 import { Endorsements } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
-import { RainConsumerType } from '@/lib/types';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getKycLinkForExistingCustomer } from '@/lib/api';
-import { KycStatus } from '@/lib/types';
+import { KycStatus, RainConsumerType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkCountryAccessForKyc, startKycFlow } from '@/lib/utils/kyc';
 
@@ -27,11 +26,6 @@ export function buildKycRedirectUri(): string {
 export async function checkAndBlockForCountryAccess(
   countryStore: {
     countryInfo: { isAvailable: boolean; countryCode?: string; source?: string } | null;
-    getCachedIp: () => string | null;
-    setCachedIp: (ip: string) => void;
-    getIpDetectedCountry: (ip: string) => any;
-    setIpDetectedCountry: (ip: string, country: any) => void;
-    countryDetectionFailed: boolean;
   },
   kycLinkId: string | null,
 ): Promise<boolean> {
@@ -47,13 +41,7 @@ export async function checkAndBlockForCountryAccess(
     return false; // Not blocked
   }
 
-  const countryCheck = await checkCountryAccessForKyc({
-    getCachedIp: countryStore.getCachedIp,
-    setCachedIp: countryStore.setCachedIp,
-    getIpDetectedCountry: countryStore.getIpDetectedCountry,
-    setIpDetectedCountry: countryStore.setIpDetectedCountry,
-    countryDetectionFailed: countryStore.countryDetectionFailed,
-  });
+  const countryCheck = await checkCountryAccessForKyc();
 
   if (!countryCheck.isAvailable) {
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {

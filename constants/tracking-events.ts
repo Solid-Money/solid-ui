@@ -204,11 +204,13 @@ export const TRACKING_EVENTS = {
   CARD_KYC_COUNTRY_DETECTION_FAILED: 'card_kyc_country_detection_failed',
   CARD_KYC_COUNTRY_NOT_SUPPORTED: 'card_kyc_country_not_supported',
   CARD_COUNTRY_CHECK_STARTED: 'card_country_check_started',
-  CARD_COUNTRY_CHECK_IP_FETCHED: 'card_country_check_ip_fetched',
-  CARD_COUNTRY_CHECK_IP_FAILED: 'card_country_check_ip_failed',
-  CARD_COUNTRY_CHECK_DETECTED: 'card_country_check_detected',
   CARD_KYC_COUNTRY_SUPPORTED: 'card_kyc_country_supported',
   CARD_COUNTRY_CHECK_FAILED: 'card_country_check_failed',
+
+  // Unsupported-region pop-ups (card / USD virtual account)
+  REGION_UNAVAILABLE_SHOWN: 'region_unavailable_shown',
+  REGION_UNAVAILABLE_CONTINUE_PRESSED: 'region_unavailable_continue_pressed',
+  REGION_UNAVAILABLE_CHANGE_COUNTRY_PRESSED: 'region_unavailable_change_country_pressed',
   CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
   USER_KYC_INFO_PAGE_VIEWED: 'user_kyc_info_page_viewed',
   USER_KYC_INFO_FORM_STARTED: 'user_kyc_info_form_started',

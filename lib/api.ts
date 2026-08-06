@@ -49,7 +49,6 @@ import {
   CardWithdrawalResponse,
   Cashback,
   CoinHistoricalChart,
-  CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
   DepositTransaction,
@@ -91,6 +90,7 @@ import {
   RainContractResponseDto,
   RainKycSubmitResponse,
   ReferralSummary,
+  RegionInterestPayload,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
@@ -1218,31 +1218,6 @@ export const addToCardWaitlist = async (
   return response.json();
 };
 
-export const addToCardWaitlistToNotify = async (
-  email: string,
-  countryCode: string,
-): Promise<CardWaitlistResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify({ email, countryCode }),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/cards/check-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
@@ -1295,24 +1270,6 @@ export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitli
   return response.json();
 };
 
-export const checkCardWaitlistToNotifyStatus = async (
-  email: string,
-): Promise<CardWaitlistResponse> => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify/check?email=${encodeURIComponent(email)}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-      },
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const fetchLayerZeroBridgeTransactions = async (
   transactionHash: string,
 ): Promise<LayerZeroTransaction> => {
@@ -1322,28 +1279,32 @@ export const fetchLayerZeroBridgeTransactions = async (
   return response.data;
 };
 
-export const getClientIp = async (): Promise<string | null> => {
+/**
+ * Record that the user hit a "not available in your region" pop-up, so the
+ * country shows up in the lead list we activate when it opens.
+ *
+ * Never throws: this is passive capture behind a pop-up the user is already
+ * looking at, and a logging failure must not change what they see.
+ */
+export const logRegionInterest = async (payload: RegionInterestPayload): Promise<boolean> => {
   try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Error fetching IP from ipify:', error);
-    return null;
-  }
-};
+    const jwt = getJWTToken();
 
-export const getCountryFromIp = async (): Promise<CountryFromIp | null> => {
-  try {
-    const response = await axios.get('https://ipapi.co/json/');
-    const { country_code, country_name } = response.data;
+    const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/region-interest`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
 
-    return {
-      countryCode: country_code,
-      countryName: country_name,
-    };
+    return response.ok;
   } catch (error) {
-    console.error('Error fetching country from IP:', error);
-    return null;
+    console.error('Error logging region interest:', error);
+    return false;
   }
 };
 
