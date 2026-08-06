@@ -765,9 +765,29 @@ export const ASSETS = {
     module: require('@/assets/images/rewards-tiers/logo-openai.svg'),
     hash: '7d9ea5cf',
   },
-  'images/rewards-tiers/points-drawer-star.png': {
-    module: require('@/assets/images/rewards-tiers/points-drawer-star.png'),
-    hash: '0a01608d',
+  'images/rewards-tiers/points-invite-left.svg': {
+    module: require('@/assets/images/rewards-tiers/points-invite-left.svg'),
+    hash: '0a9f461a',
+  },
+  'images/rewards-tiers/points-invite-middle.svg': {
+    module: require('@/assets/images/rewards-tiers/points-invite-middle.svg'),
+    hash: 'f6f335c4',
+  },
+  'images/rewards-tiers/points-invite-right.svg': {
+    module: require('@/assets/images/rewards-tiers/points-invite-right.svg'),
+    hash: '0704fc1a',
+  },
+  'images/rewards-tiers/points-save.svg': {
+    module: require('@/assets/images/rewards-tiers/points-save.svg'),
+    hash: 'd97dd337',
+  },
+  'images/rewards-tiers/points-spend.svg': {
+    module: require('@/assets/images/rewards-tiers/points-spend.svg'),
+    hash: '47b4744c',
+  },
+  'images/rewards-tiers/points-swap.svg': {
+    module: require('@/assets/images/rewards-tiers/points-swap.svg'),
+    hash: '6c2e7510',
   },
   'images/rewards-tiers/prime-summary.png': {
     module: require('@/assets/images/rewards-tiers/prime-summary.png'),

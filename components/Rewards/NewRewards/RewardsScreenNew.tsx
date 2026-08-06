@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
 import Loading from '@/components/Loading';
+import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
@@ -77,7 +78,21 @@ export default function RewardsScreenNew() {
 
   if (isLoading) {
     return (
-      <PageLayout scrollable={false} mobileTitle={null} mobileHeaderRightAction="help">
+      <PageLayout
+        scrollable={false}
+        mobileTitle={null}
+        mobileHeaderRightAction="help"
+        onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+        desktopHeaderRightAction={
+          <HeaderHelpButton
+            accessibilityLabel="How rewards work"
+            onPress={() => setIsHelpOpen(true)}
+          />
+        }
+        additionalContent={
+          <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+        }
+      >
         <Loading />
       </PageLayout>
     );
@@ -127,6 +142,12 @@ export default function RewardsScreenNew() {
       mobileTitle={null}
       mobileHeaderRightAction="help"
       onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      desktopHeaderRightAction={
+        <HeaderHelpButton
+          accessibilityLabel="How rewards work"
+          onPress={() => setIsHelpOpen(true)}
+        />
+      }
       additionalContent={
         <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }

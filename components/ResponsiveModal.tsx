@@ -47,6 +47,7 @@ export interface ResponsiveModalProps {
   // Styling
   contentClassName?: string;
   containerClassName?: string;
+  overlayClassName?: string;
   titleClassName?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
@@ -79,6 +80,7 @@ const ResponsiveModal = ({
   children,
   contentClassName,
   containerClassName,
+  overlayClassName,
   titleClassName,
   showBackButton = false,
   onBackPress,
@@ -155,6 +157,7 @@ const ResponsiveModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
+        overlayClassName={overlayClassName}
         className={cn(
           // Desktop popups get a uniform 40px inset. Three of the four sides live
           // here; the bottom stays 0 so the scroll viewport (and its bottom fade)
