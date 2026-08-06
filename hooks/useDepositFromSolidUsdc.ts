@@ -3,6 +3,7 @@ import { type Address, erc20Abi, parseUnits } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
+import { getBridgeTokenDecimals } from '@/constants/bridge';
 import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
@@ -147,7 +148,12 @@ const useDepositFromSolidUsdc = (
         isSponsor,
       });
 
-      const amountWei = parseUnits(amount, 6);
+      // Approve in the source token's real decimals. BNB Chain USDC/USDT are
+      // 18-decimal, so a hardcoded 6 under-approved by 1e12 and the backend's
+      // transferFrom could never be covered - the deposit stalled at the pull.
+      // The backend parses the same amount with these decimals, so they must match.
+      const srcDecimals = getBridgeTokenDecimals(srcChainId, token);
+      const amountWei = parseUnits(amount, srcDecimals);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
       // Let the backend pull these funds out of the Safe on the source chain.
