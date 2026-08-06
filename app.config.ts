@@ -79,6 +79,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'Access your microphone to transcribe voice messages and to record video during identity verification',
       NSPhotoLibraryUsageDescription:
         'Solid needs photo library access to upload identity documents during verification',
+      // Required by Sumsub's IdensicMobileSDK, which links CoreLocation for the
+      // geolocation step of identity verification. Apple's static scanner flags
+      // the reference whether or not the step runs (ITMS-90683), and iOS crashes
+      // the app if the SDK asks for location without this key.
+      NSLocationWhenInUseUsageDescription:
+        'Solid uses your location during identity verification to confirm the country you are applying from. It is only requested while you complete verification and is never used to track you.',
     },
     privacyManifests: {
       NSPrivacyTracking: true,
@@ -295,6 +301,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
     // does not fail. See plugins/withMlkitVisionDependencies.js.
     './plugins/withMlkitVisionDependencies.js',
+    // Sumsub marks android.hardware.camera as required, which makes Play drop
+    // every camera-less device. See plugins/withOptionalCameraFeatures.js.
+    './plugins/withOptionalCameraFeatures.js',
   ],
   experiments: {
     typedRoutes: true,
