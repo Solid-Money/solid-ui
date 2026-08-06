@@ -17,7 +17,7 @@ import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 import { readContract } from 'wagmi/actions';
 
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
@@ -443,9 +443,7 @@ const useDepositFromEOA = (
       // Source token decimals (defaults to 6). Some chains' USDC is not 6
       // decimals (e.g. Binance-Peg USDC on BNB Chain is 18), so derive it from
       // the bridge config rather than hardcoding.
-      const srcDecimals =
-        Object.values(BRIDGE_TOKENS[srcChainId]?.tokens ?? {}).find(t => t.name === token)
-          ?.decimals ?? 6;
+      const srcDecimals = getBridgeTokenDecimals(srcChainId, token);
       const amountWei = parseUnits(amount, srcDecimals);
 
       let txHash: `0x${string}` | undefined;
