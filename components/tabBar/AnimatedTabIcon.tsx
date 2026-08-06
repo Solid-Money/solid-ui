@@ -12,12 +12,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
-export type AnimatedTabIconName = 'wallet' | 'savings' | 'rewards';
+export type AnimatedTabIconName = 'wallet' | 'savings' | 'rewards' | 'activity' | 'profile';
 
 interface AnimatedTabIconProps {
   name: AnimatedTabIconName;
   focused: boolean;
-  /** The tab-bar icon slot; the Figma glyph stays 24px inside it. */
+  /** The navigation icon slot; the Figma glyph stays 24px inside it. */
   size?: number;
 }
 
@@ -42,6 +42,15 @@ const REWARDS_DETAIL_PATH =
 const REWARDS_FILL_PATH =
   'M17.7502 14.8966L9.98405 19.4726C9.7162 19.6246 9.58228 19.7004 9.44052 19.7302C9.31491 19.7566 9.18552 19.7566 9.06 19.7302C8.91815 19.7004 8.78423 19.6246 8.51638 19.4726L1.52746 15.5101C1.24459 15.3497 1.10314 15.2695 1.00014 15.1554C0.909033 15.0545 0.840079 14.9349 0.797891 14.8046C0.750215 14.6573 0.750215 14.4922 0.750215 14.1619V6.33805C0.750215 6.00779 0.750215 5.84266 0.797891 5.69538C0.840079 5.56508 0.909033 5.44548 1.00014 5.34458C1.10314 5.23051 1.24458 5.15032 1.52746 4.98993L8.51638 1.02733C8.78423 0.875465 8.91815 0.799531 9.06 0.769757C9.18552 0.743414 9.31491 0.743414 9.44052 0.769757C9.58228 0.799531 9.7162 0.875465 9.98405 1.02733L16.9729 4.98993C17.2559 5.15032 17.3973 5.23051 17.5003 5.34458C17.5914 5.44548 17.6604 5.56508 17.7025 5.69538C17.7502 5.84266 17.7502 6.00779 17.7502 6.33805V14.8966Z';
 
+const ACTIVITY_PATH =
+  'M6.60589 19.0101C7.28358 19.6083 8.17371 19.9711 9.14871 19.9711C10.1236 19.9711 11.0138 19.6083 11.6915 19.0101M14.9151 6.51634C14.9151 4.98701 14.3075 3.52032 13.2261 2.43892C12.1447 1.35752 10.678 0.75 9.14871 0.75C7.61938 0.75 6.15266 1.35752 5.07126 2.43892C3.98987 3.52032 3.38233 4.98701 3.38233 6.51634C3.38233 9.4862 2.63316 11.5196 1.79627 12.8645C1.09034 13.999 0.73737 14.5663 0.750315 14.7245C0.764645 14.8997 0.801761 14.9665 0.942959 15.0713C1.07047 15.1659 1.64532 15.1659 2.79499 15.1659H15.5024C16.6521 15.1659 17.2269 15.1659 17.3544 15.0713C17.4956 14.9665 17.5327 14.8997 17.547 14.7245C17.56 14.5663 17.207 13.999 16.5011 12.8645C15.6642 11.5196 14.9151 9.4862 14.9151 6.51634Z';
+
+const PROFILE_HEAD_PATH =
+  'M8.75052 8.74996C10.9597 8.74996 12.7505 6.95911 12.7505 4.74998C12.7505 2.54085 10.9597 0.75 8.75052 0.75C6.5414 0.75 4.75055 2.54085 4.75055 4.74998C4.75055 6.95911 6.5414 8.74996 8.75052 8.74996Z';
+
+const PROFILE_BODY_PATH =
+  'M16.75 16.25C16.75 18.7353 16.75 20.75 8.75009 20.75C0.750134 20.75 0.750134 18.7353 0.750134 16.25C0.750134 13.7647 4.33183 11.75 8.75009 11.75C13.1684 11.75 16.75 13.7647 16.75 16.25Z';
+
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const LINEAR = 0;
@@ -53,11 +62,11 @@ type EasingKind = typeof LINEAR | typeof EASE_IN_OUT | typeof EASE_OUT;
 const easeInOut = Easing.bezier(0.42, 0, 0.58, 1).factory();
 const easeOut = Easing.bezier(0, 0, 0.58, 1).factory();
 
-const WALLET_SCALE_TIMES = [0, 0.06, 0.131, 0.21, 0.3335, 1] as const;
+const WALLET_SCALE_TIMES = [0, 0.045, 0.09825, 0.1575, 0.25015, 1] as const;
 const WALLET_SCALE_VALUES = [1, 0.926, 1.035, 0.992, 0.998, 0.998] as const;
 const WALLET_SCALE_EASINGS = [EASE_IN_OUT, EASE_IN_OUT, EASE_IN_OUT, EASE_OUT, LINEAR] as const;
 
-const SAVINGS_SCALE_TIMES = [0, 0.0375, 0.0915, 0.17, 0.26, 0.3335, 1] as const;
+const SAVINGS_SCALE_TIMES = [0, 0.0281, 0.0686, 0.1275, 0.195, 0.25015, 1] as const;
 const SAVINGS_SCALE_VALUES = [1, 0.935, 1.071, 0.993, 1.002, 0.999, 0.999] as const;
 const SAVINGS_SCALE_EASINGS = [
   EASE_IN_OUT,
@@ -68,9 +77,13 @@ const SAVINGS_SCALE_EASINGS = [
   LINEAR,
 ] as const;
 
-const SAVINGS_ROTATE_TIMES = [0, 0.0215, 0.0755, 0.102, 1] as const;
+const SAVINGS_ROTATE_TIMES = [0, 0.01615, 0.0566, 0.0765, 1] as const;
 const SAVINGS_ROTATE_VALUES = [0, 0, 5, 0, 0] as const;
 const SAVINGS_ROTATE_EASINGS = [LINEAR, EASE_OUT, EASE_OUT, LINEAR] as const;
+
+const ACTIVITY_ROTATE_TIMES = [0, 0.01615, 0.0566, 0.0915, 0.1275, 1] as const;
+const ACTIVITY_ROTATE_VALUES = [0, 0, 7, -3.5, 0, 0] as const;
+const ACTIVITY_ROTATE_EASINGS = [LINEAR, EASE_OUT, EASE_IN_OUT, EASE_OUT, LINEAR] as const;
 
 const applyEasing = (progress: number, easing: EasingKind) => {
   'worklet';
@@ -128,6 +141,15 @@ const getScale = (progress: number, name: AnimatedTabIconName) => {
 const getRotation = (progress: number, name: AnimatedTabIconName) => {
   'worklet';
 
+  if (name === 'activity') {
+    return interpolateKeyframes(
+      progress,
+      ACTIVITY_ROTATE_TIMES,
+      ACTIVITY_ROTATE_VALUES,
+      ACTIVITY_ROTATE_EASINGS,
+    );
+  }
+
   if (name !== 'savings') return 0;
 
   return interpolateKeyframes(
@@ -141,8 +163,8 @@ const getRotation = (progress: number, name: AnimatedTabIconName) => {
 const getFillOpacity = (progress: number, name: AnimatedTabIconName) => {
   'worklet';
 
-  const fadeStart = name === 'savings' ? 0.2085 : 0.1835;
-  const fadeEnd = name === 'savings' ? 0.3335 : 0.3165;
+  const fadeStart = name === 'savings' ? 0.15635 : 0.1376;
+  const fadeEnd = name === 'savings' ? 0.25015 : 0.2374;
 
   if (progress <= fadeStart) return 0;
   if (progress >= fadeEnd) return 1;
@@ -153,10 +175,19 @@ const getFillOpacity = (progress: number, name: AnimatedTabIconName) => {
 const getOutlineColorProgress = (progress: number) => {
   'worklet';
 
-  if (progress <= 0.1) return 0;
-  if (progress >= 0.2) return 1;
+  if (progress <= 0.075) return 0;
+  if (progress >= 0.15) return 1;
 
-  return easeOut((progress - 0.1) / 0.1);
+  return easeOut((progress - 0.075) / 0.075);
+};
+
+const getRewardsOutlineOpacity = (progress: number) => {
+  'worklet';
+
+  if (progress <= 0.15) return 1;
+  if (progress >= 0.225) return 0;
+
+  return 1 - easeOut((progress - 0.15) / 0.075);
 };
 
 type VectorFrameProps = {
@@ -184,7 +215,7 @@ function VectorFrame({ width, height, children }: VectorFrameProps) {
 }
 
 /**
- * Wallet, Savings, and Rewards icons from the Figma tab-icon motion set.
+ * Wallet, Savings, Rewards, Activity, and Profile icons from the Figma motion set.
  * Every icon drives its layers from one 2-second progress value so the scale,
  * stroke, and fill tracks stay coordinated with the exported timeline.
  */
@@ -225,6 +256,10 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
 
   const fillStyle = useAnimatedStyle(() => ({
     opacity: getFillOpacity(progress.value, name),
+  }));
+
+  const outlineStyle = useAnimatedStyle(() => ({
+    opacity: name === 'rewards' ? getRewardsOutlineOpacity(progress.value) : 1,
   }));
 
   const outlineAnimatedProps = useAnimatedProps(() => ({
@@ -268,17 +303,58 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
       );
     }
 
+    if (name === 'rewards') {
+      return (
+        <VectorFrame width={18.5004} height={20.5}>
+          <Svg width="100%" height="100%" viewBox="0 0 18.5004 20.5" fill="none">
+            <AnimatedPath
+              animatedProps={outlineAnimatedProps}
+              d={REWARDS_OUTLINE_PATH}
+              fill="none"
+              stroke={OUTLINE_COLOR}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </VectorFrame>
+      );
+    }
+
+    if (name === 'activity') {
+      return (
+        <VectorFrame width={18.2973} height={20.7211}>
+          <Svg width="100%" height="100%" viewBox="0 0 18.2973 20.7211" fill="none">
+            <AnimatedPath
+              animatedProps={outlineAnimatedProps}
+              d={ACTIVITY_PATH}
+              fill="none"
+              stroke={OUTLINE_COLOR}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </VectorFrame>
+      );
+    }
+
     return (
-      <VectorFrame width={18.5004} height={20.5}>
-        <Svg width="100%" height="100%" viewBox="0 0 18.5004 20.5" fill="none">
+      <VectorFrame width={17.5002} height={21.5}>
+        <Svg width="100%" height="100%" viewBox="0 0 17.5002 21.5" fill="none">
           <AnimatedPath
             animatedProps={outlineAnimatedProps}
-            d={REWARDS_OUTLINE_PATH}
+            d={PROFILE_HEAD_PATH}
             fill="none"
             stroke={OUTLINE_COLOR}
             strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          />
+          <AnimatedPath
+            animatedProps={outlineAnimatedProps}
+            d={PROFILE_BODY_PATH}
+            fill="none"
+            stroke={OUTLINE_COLOR}
+            strokeWidth={1.5}
           />
         </Svg>
       </VectorFrame>
@@ -311,16 +387,44 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
       );
     }
 
+    if (name === 'rewards') {
+      return (
+        <VectorFrame width={18.5004} height={20.5}>
+          <Svg width="100%" height="100%" viewBox="0 0 18.5004 20.5" fill="none">
+            <Path
+              d={REWARDS_FILL_PATH}
+              fill={ACTIVE_COLOR}
+              stroke={ACTIVE_COLOR}
+              strokeWidth={1.5}
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </VectorFrame>
+      );
+    }
+
+    if (name === 'activity') {
+      return (
+        <VectorFrame width={18.2973} height={20.7211}>
+          <Svg width="100%" height="100%" viewBox="0 0 18.2973 20.7211" fill="none">
+            <Path
+              d={ACTIVITY_PATH}
+              fill={ACTIVE_COLOR}
+              stroke={ACTIVE_COLOR}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </VectorFrame>
+      );
+    }
+
     return (
-      <VectorFrame width={18.5004} height={20.5}>
-        <Svg width="100%" height="100%" viewBox="0 0 18.5004 20.5" fill="none">
-          <Path
-            d={REWARDS_FILL_PATH}
-            fill={ACTIVE_COLOR}
-            stroke={ACTIVE_COLOR}
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-          />
+      <VectorFrame width={17.5002} height={21.5}>
+        <Svg width="100%" height="100%" viewBox="0 0 17.5002 21.5" fill="none">
+          <Path d={PROFILE_HEAD_PATH} fill={ACTIVE_COLOR} stroke={ACTIVE_COLOR} strokeWidth={1.5} />
+          <Path d={PROFILE_BODY_PATH} fill={ACTIVE_COLOR} stroke={ACTIVE_COLOR} strokeWidth={1.5} />
         </Svg>
       </VectorFrame>
     );
@@ -329,7 +433,7 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
   return (
     <View style={[styles.slot, { width: size, height: size }]}>
       <Animated.View style={[styles.icon, motionStyle]}>
-        {renderOutline()}
+        <Animated.View style={[styles.fillLayer, outlineStyle]}>{renderOutline()}</Animated.View>
         <Animated.View style={[styles.fillLayer, fillStyle]}>{renderFill()}</Animated.View>
         {name === 'rewards' && (
           <Animated.View style={[styles.fillLayer, fillStyle]}>

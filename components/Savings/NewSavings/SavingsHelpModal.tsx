@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
   Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, X } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import VideoIllustration from '@/components/ui/video-illustration';
+import { useDimension } from '@/hooks/useDimension';
 
 import { SAVINGS_HELP_SLIDES, SavingsHelpSlide } from './savingsHelpData';
 
 const MODAL_BACKGROUND = '#0f0f10';
 const DOT_TRANSITION_MS = 250;
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const DESKTOP_MODAL_WIDTH = 512;
+const DESKTOP_MODAL_HEIGHT = 720;
 const TITLE_SLOT_HEIGHT = 40;
 const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
@@ -48,20 +51,24 @@ const SlideDot = ({ active }: { active: boolean }) => {
     opacity: 0.3 + progress.value * 0.7,
   }));
 
-  return <Animated.View className="h-[6px] rounded-full bg-white" style={style} />;
+  return (
+    <Animated.View style={[{ height: 6, borderRadius: 999, backgroundColor: '#ffffff' }, style]} />
+  );
 };
 
 const HelpPage = ({
   slide,
   isActive,
   playbackSession,
+  pageWidth,
 }: {
   slide: SavingsHelpSlide;
   isActive: boolean;
   playbackSession: number;
+  pageWidth: number;
 }) => {
   return (
-    <View style={{ width: SCREEN_WIDTH, height: '100%' }}>
+    <View style={{ width: pageWidth, height: '100%' }}>
       <View className="flex-1 items-center justify-center">
         <VideoIllustration
           source={SLIDE_ANIMATIONS[slide.key]}
@@ -117,7 +124,13 @@ const HelpPage = ({
  */
 const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
   const insets = useSafeAreaInsets();
+  const { isScreenMedium } = useDimension();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isDesktopPopup = Platform.OS === 'web' && isScreenMedium;
+  const pageWidth = isDesktopPopup ? Math.min(DESKTOP_MODAL_WIDTH, windowWidth - 32) : windowWidth;
+  const modalHeight = Math.min(DESKTOP_MODAL_HEIGHT, windowHeight - 32);
   const pagerRef = useRef<ScrollView>(null);
+  const navigationTargetRef = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
   const [playbackSession, setPlaybackSession] = useState(0);
   const slide = SAVINGS_HELP_SLIDES[index];
@@ -126,6 +139,7 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
   // Reset the pager and restart the first illustration each time the modal
   // opens so its single-play animation starts from the beginning.
   useEffect(() => {
+    navigationTargetRef.current = null;
     if (!isOpen) return;
 
     setIndex(0);
@@ -137,15 +151,21 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
     return () => cancelAnimationFrame(frame);
   }, [isOpen]);
 
-  const goToSlide = useCallback((targetIndex: number) => {
-    setIndex(targetIndex);
-    pagerRef.current?.scrollTo({
-      x: targetIndex * SCREEN_WIDTH,
-      animated: true,
-    });
-  }, []);
+  const goToSlide = useCallback(
+    (targetIndex: number) => {
+      navigationTargetRef.current = targetIndex;
+      setIndex(targetIndex);
+      pagerRef.current?.scrollTo({
+        x: targetIndex * pageWidth,
+        animated: true,
+      });
+    },
+    [pageWidth],
+  );
 
   const handleNext = useCallback(() => {
+    if (navigationTargetRef.current !== null) return;
+
     if (isLastSlide) {
       onClose();
       return;
@@ -153,75 +173,123 @@ const SavingsHelpModal = ({ isOpen, onClose }: SavingsHelpModalProps) => {
     goToSlide(index + 1);
   }, [goToSlide, index, isLastSlide, onClose]);
 
-  const handleSwipeEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const targetIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    const boundedIndex = Math.max(0, Math.min(targetIndex, SAVINGS_HELP_SLIDES.length - 1));
-    setIndex(boundedIndex);
-  }, []);
+  // Activate the nearest page while it moves into view. On web, momentum-end
+  // is not guaranteed to fire after a manual swipe, which can leave the old
+  // page active and the visible illustration paused on its first frame.
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const navigationTarget = navigationTargetRef.current;
+
+      // Animated scrollTo emits events from the outgoing page first. Keep the
+      // requested page active until the pager reaches its destination.
+      if (navigationTarget !== null) {
+        if (Math.abs(offsetX - navigationTarget * pageWidth) < 1) {
+          navigationTargetRef.current = null;
+        }
+        setIndex(currentIndex =>
+          currentIndex === navigationTarget ? currentIndex : navigationTarget,
+        );
+        return;
+      }
+
+      const targetIndex = Math.round(offsetX / pageWidth);
+      const boundedIndex = Math.max(0, Math.min(targetIndex, SAVINGS_HELP_SLIDES.length - 1));
+      setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
+    },
+    [pageWidth],
+  );
 
   return (
     <Modal
       visible={isOpen}
       animationType="fade"
-      transparent={false}
+      transparent={isDesktopPopup}
       statusBarTranslucent
       onRequestClose={onClose}
     >
       <View
-        className="flex-1"
-        style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
+        className={`flex-1 ${isDesktopPopup ? 'items-center justify-center p-4' : ''}`}
+        style={{
+          backgroundColor: isDesktopPopup ? 'rgba(0, 0, 0, 0.8)' : MODAL_BACKGROUND,
+        }}
       >
-        <View className="flex-row items-center justify-between p-4">
-          <Pressable
-            accessibilityLabel="Close"
-            accessibilityRole="button"
-            onPress={onClose}
-            className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
-          >
-            <ArrowLeft color="#ffffff" size={22} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          ref={pagerRef}
-          horizontal
-          pagingEnabled
-          snapToInterval={SCREEN_WIDTH}
-          bounces={false}
-          overScrollMode="never"
-          directionalLockEnabled
-          disableIntervalMomentum
-          decelerationRate="fast"
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleSwipeEnd}
-          className="flex-1"
-          contentContainerStyle={{ alignItems: 'flex-start' }}
+        <View
+          className={isDesktopPopup ? 'overflow-hidden rounded-[32px]' : 'flex-1'}
+          style={{
+            width: isDesktopPopup ? pageWidth : '100%',
+            height: isDesktopPopup ? modalHeight : '100%',
+            paddingTop: isDesktopPopup ? 0 : insets.top,
+            backgroundColor: MODAL_BACKGROUND,
+          }}
         >
-          {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
-            <HelpPage
-              key={item.key}
-              slide={item}
-              isActive={itemIndex === index}
-              playbackSession={playbackSession}
-            />
-          ))}
-        </ScrollView>
-
-        <View className="flex-row items-center justify-center gap-[6px] pb-6">
-          {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
-            <SlideDot key={item.key} active={itemIndex === index} />
-          ))}
-        </View>
-
-        <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
-          <Button
-            variant="brand"
-            size="lg"
-            onPress={handleNext}
-            className="h-14 w-full rounded-full bg-brand"
+          <View
+            className={`flex-row items-center p-4 ${isDesktopPopup ? 'justify-end' : 'justify-between'}`}
           >
-            <Text className="text-base font-semibold text-black">{slide.cta}</Text>
-          </Button>
+            <Pressable
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+              onPress={onClose}
+              className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+            >
+              {isDesktopPopup ? (
+                <X color="#ffffff" size={22} />
+              ) : (
+                <ArrowLeft color="#ffffff" size={22} />
+              )}
+            </Pressable>
+          </View>
+
+          <ScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            snapToInterval={pageWidth}
+            bounces={false}
+            overScrollMode="never"
+            directionalLockEnabled
+            disableIntervalMomentum
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScroll}
+            scrollEventThrottle={16}
+            className="flex-1"
+            contentContainerStyle={{ alignItems: 'stretch', height: '100%' }}
+          >
+            {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
+              <HelpPage
+                key={item.key}
+                slide={item}
+                isActive={itemIndex === index}
+                playbackSession={playbackSession}
+                pageWidth={pageWidth}
+              />
+            ))}
+          </ScrollView>
+
+          <View
+            className="flex-row items-center justify-center gap-[6px]"
+            style={{ height: 30, flexShrink: 0, transform: [{ translateY: -35 }] }}
+          >
+            {SAVINGS_HELP_SLIDES.map((item, itemIndex) => (
+              <SlideDot key={item.key} active={itemIndex === index} />
+            ))}
+          </View>
+
+          <View
+            className="px-4"
+            style={{ paddingBottom: (isDesktopPopup ? 0 : insets.bottom) + 16 }}
+          >
+            <Button
+              variant="brand"
+              size="lg"
+              onPress={handleNext}
+              className="h-14 w-full rounded-full bg-brand"
+            >
+              <Text className="text-base font-semibold text-black">{slide.cta}</Text>
+            </Button>
+          </View>
         </View>
       </View>
     </Modal>

@@ -33,7 +33,9 @@ const CARD_BODY_ASPECT_RATIO =
   (1 / NEW_CARD_ASPECT_RATIO - CARD_TOP_SHADOW_RATIO - CARD_BOTTOM_SHADOW_RATIO);
 const GET_CARD_PANEL_WIDTH = 387;
 const GET_CARD_PANEL_HEIGHT = 140;
-const GET_CARD_PANEL_COVER = 88;
+// Let the card cover 10px more of the panel, shortening the empty space above
+// the CTA without changing its bottom padding.
+const GET_CARD_PANEL_COVER = 98;
 const GET_CARD_LABEL_BOTTOM = 13;
 const GET_CARD_PANEL_ASPECT_RATIO = GET_CARD_PANEL_WIDTH / GET_CARD_PANEL_HEIGHT;
 const CARDLESS_STACK_ASPECT_RATIO =

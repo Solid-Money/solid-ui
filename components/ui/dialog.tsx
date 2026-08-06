@@ -84,6 +84,12 @@ const DialogContent = React.forwardRef<
     onCloseAutoFocus?: (event: Event) => void;
     overlayClassName?: string;
     showCloseButton?: boolean;
+    /**
+     * Web-only presentation override. Bottom sheets are laid out by the overlay
+     * instead of using `position: fixed`, which would otherwise be contained by
+     * the dialog's transformed animation wrapper on small screens.
+     */
+    webPresentation?: 'modal' | 'bottom-sheet';
   }
 >(
   (
@@ -94,6 +100,7 @@ const DialogContent = React.forwardRef<
       onCloseAutoFocus,
       overlayClassName,
       showCloseButton = true,
+      webPresentation = 'modal',
       style,
       onMoveShouldSetResponder,
       onStartShouldSetResponder,
@@ -105,13 +112,16 @@ const DialogContent = React.forwardRef<
     const { height: windowHeight } = useWindowDimensions();
     const shouldAlignTop = className?.includes('justify-start');
     const { open } = DialogPrimitive.useRootContext();
+    const isWebBottomSheet =
+      Platform.OS === 'web' && !isScreenMedium && webPresentation === 'bottom-sheet';
     const mobileSheetHeight =
       !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 1 - 16, 0) : undefined;
 
     // Web bounce animation using useAnimatedStyle
     const opacityWeb = useSharedValue(0);
     const translateYWeb = useSharedValue(25);
-    const isWebBounce = Platform.OS === 'web' && !isScreenMedium;
+    const isWebBounce =
+      Platform.OS === 'web' && !isScreenMedium && webPresentation !== 'bottom-sheet';
 
     React.useEffect(() => {
       if (isWebBounce && open) {
@@ -204,6 +214,23 @@ const DialogContent = React.forwardRef<
             </Animated.View>
             <Toast {...toastProps} />
           </View>
+        </DialogPortal>
+      );
+    }
+
+    if (isWebBottomSheet) {
+      return (
+        <DialogPortal hostName={portalHost}>
+          <DialogOverlay className={cn('items-stretch justify-end p-0', overlayClassName)}>
+            <Animated.View
+              className="w-full"
+              entering={FadeInDown.springify().stiffness(300).damping(12).mass(0.8)}
+              exiting={FadeOutDown.duration(180)}
+            >
+              {content}
+            </Animated.View>
+            <Toast {...toastProps} />
+          </DialogOverlay>
         </DialogPortal>
       );
     }
