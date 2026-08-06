@@ -7,7 +7,7 @@ export default function BankTransferLayout() {
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#000',
+          backgroundColor: '#0F0F10',
         },
         headerTitleAlign: 'center',
         headerTintColor: '#ffffff',

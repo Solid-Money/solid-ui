@@ -466,7 +466,7 @@ const useGoodDollarClaim = () => {
         type: 'success',
         text1: `Claimed ${amount} G$`,
         text2: 'Your GoodDollar UBI is on the way.',
-        props: { badgeText: 'Success' },
+        props: { badgeText: 'Onchain' },
       });
 
       await refresh();
@@ -486,7 +486,7 @@ const useGoodDollarClaim = () => {
         text2: isUserCancelled(error)
           ? 'Passkey prompt was cancelled'
           : getErrorMessage(error, 'Please try again'),
-        props: { badgeText: 'Error' },
+        props: { badgeText: 'Onchain' },
       });
     } finally {
       setIsClaiming(false);
@@ -601,7 +601,7 @@ const useGoodDollarClaim = () => {
         type: 'success',
         text1: `Moved ${amount} G$ to your wallet`,
         text2: 'It’s now available across Solid.',
-        props: { badgeText: 'Success' },
+        props: { badgeText: 'Onchain' },
       });
 
       await refresh();
@@ -621,7 +621,7 @@ const useGoodDollarClaim = () => {
         text2: isUserCancelled(error)
           ? 'Passkey prompt was cancelled'
           : getErrorMessage(error, 'Please try again'),
-        props: { badgeText: 'Error' },
+        props: { badgeText: 'Onchain' },
       });
     } finally {
       setIsSweeping(false);

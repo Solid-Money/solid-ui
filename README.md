@@ -128,7 +128,8 @@ Solid is a React Native/Expo mobile application that provides users with:
 ```
 
 ### Key Directories
-- **`app/(protected)/(tabs)/`**: Main authenticated screens (Home, Savings, Activity, etc.)
+- **`app/(protected)/(tabs)/`**: Main authenticated tabs (Home, Savings, Card, etc.)
+- **`app/(protected)/activity/`**: Stack-based Activity list and transaction details
 - **`components/`**: Organized by feature (Dashboard, Wallet, BankTransfer, etc.)
 - **`lib/`**: Core business logic, API calls, and Web3 utilities
 - **`hooks/`**: Custom hooks for Web3, authentication, and data fetching

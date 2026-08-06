@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
 import { fetchCurrentGiveaway, fetchGiveawayWinners } from '@/lib/api/spin-win';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useSpinWinStore } from '@/store/useSpinWinStore';
 
 const SPIN_WIN = 'spin-win';
@@ -42,6 +43,8 @@ export const useCurrentGiveaway = () => {
       setGiveaway(data);
       return data;
     },
+    // Spin & Win is an in-development feature: no giveaway polling in production.
+    enabled: isDevFeatureEnabled,
     staleTime: secondsToMilliseconds(30),
     gcTime: minutesToMilliseconds(10),
     refetchInterval: query => getRefetchInterval(query.state.data?.giveawayDate),
@@ -54,6 +57,7 @@ export const useGiveawayWinners = () => {
   return useQuery({
     queryKey: [SPIN_WIN, 'giveaway', 'winners'],
     queryFn: fetchGiveawayWinners,
+    enabled: isDevFeatureEnabled,
     staleTime: minutesToMilliseconds(5),
     gcTime: minutesToMilliseconds(10),
   });

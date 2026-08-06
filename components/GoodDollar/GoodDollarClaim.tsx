@@ -162,7 +162,8 @@ function Header({
           )}
           {!isWhitelisted ? (
             <Button
-              className="h-12 rounded-xl border-0 bg-[#94F27F] px-6"
+              variant="brand"
+              className="border-0"
               onPress={() => void onVerify()}
               disabled={isVerifying}
             >
@@ -179,7 +180,8 @@ function Header({
             </Button>
           ) : canClaim ? (
             <Button
-              className="h-12 rounded-xl border-0 bg-[#94F27F] px-6"
+              variant="brand"
+              className="border-0"
               onPress={() => void onClaim()}
               disabled={isClaiming}
             >

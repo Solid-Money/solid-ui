@@ -12,8 +12,8 @@ export const SIMULATE_AMOUNTS = [100, 1000, 10000] as const;
 
 const formatAmount = (amount: number) => `$${formatNumber(amount, 0, 0)}`;
 
-// Figma: Mona Sans / Bold 700 / 18px / line-height 100%.
-const AMOUNT_STYLE = { fontFamily: 'MonaSans_700Bold', fontSize: 18, lineHeight: 18 } as const;
+// Figma: Mona Sans / Medium 500 / 16px / line-height 100%.
+const AMOUNT_STYLE = { fontFamily: 'MonaSans_500Medium', fontSize: 16, lineHeight: 16 } as const;
 
 type AmountPillProps = {
   amount: number;

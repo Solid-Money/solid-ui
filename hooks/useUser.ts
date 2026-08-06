@@ -12,6 +12,7 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
+import { PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
@@ -346,9 +347,14 @@ const useUser = (): UseUserReturn => {
       }
     } catch (error: any) {
       let errorMessage =
-        error?.status === 404
-          ? 'User not found, please sign up'
-          : error?.message || 'Network request timed out';
+        // The backend's own copy for an unregistered passkey is more precise than
+        // the generic 404 fallback, which reads as "no such account" even when the
+        // account exists and only this passkey is unusable.
+        error?.code === PASSKEY_NOT_REGISTERED_CODE
+          ? error.message
+          : error?.status === 404
+            ? 'User not found, please sign up'
+            : error?.message || 'Network request timed out';
 
       if (error?.name === 'NotAllowedError') {
         errorMessage = 'User cancelled login';

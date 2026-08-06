@@ -35,7 +35,7 @@ const CoinBackButton = ({ title, tokenSymbol, size = 32, className }: CoinBackBu
     <View className="flex-row items-center justify-between gap-2">
       <Pressable
         onPress={handleBackPress}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+        className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
       >
         <ArrowLeft color="white" />
       </Pressable>

@@ -3,16 +3,16 @@ import { TextStyle, View } from 'react-native';
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 
-// Big-number styling lifted from DashboardHeaderMobile so the headline matches
-// the existing balance treatment (50px Mona Sans, greyed decimals).
+// Big-number styling for the wallet balance headline (45px Mona Sans Semibold,
+// with the decimal portion shown at 50% white).
 const WHOLE_STYLE: TextStyle = {
-  fontSize: 50,
-  fontWeight: '500',
-  fontFamily: 'MonaSans_500Medium',
+  fontSize: 45,
+  fontWeight: '600',
+  fontFamily: 'MonaSans_600SemiBold',
   color: '#ffffff',
 };
-const DECIMAL_STYLE: TextStyle = { ...WHOLE_STYLE, color: '#666666' };
-const SEPARATOR_STYLE: TextStyle = { ...WHOLE_STYLE };
+const DECIMAL_STYLE: TextStyle = { ...WHOLE_STYLE, color: 'rgba(255, 255, 255, 0.5)' };
+const SEPARATOR_STYLE: TextStyle = { ...DECIMAL_STYLE };
 
 interface WalletBalanceHeadlineProps {
   balance: number;
@@ -20,8 +20,9 @@ interface WalletBalanceHeadlineProps {
 
 /**
  * "Wallet Balance" label + big number for the redesigned home screen.
- * `balance` is the wallet token balance (excludes soUSD/soFUSE); Card and
- * Savings live behind the OtherBalancesDropdown pill.
+ * `balance` is Wallet + Card combined (see getSpendableTotal) — the two are
+ * added up for display only and broken out in the balances sheet. Savings is
+ * excluded; it lives behind the OtherBalancesDropdown pill.
  */
 const WalletBalanceHeadline = ({ balance }: WalletBalanceHeadlineProps) => {
   return (

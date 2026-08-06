@@ -62,10 +62,22 @@ export function buildCardSteps(
   const isRainKycApproved =
     options?.cardIssuer === CardProvider.RAIN &&
     options?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  // Wirex has no Bridge endorsement and no Rain application, so it must key off
+  // the canonical backend kycStatus. Without this branch it fell through to the
+  // endorsement check, which is a Bridge concept that never exists for a Wirex
+  // user — leaving isKycComplete permanently false, so the KYC step stayed open
+  // and "Activate your card" never became enabled even once Wirex had approved.
   const isKycComplete =
     options?.cardIssuer === CardProvider.RAIN
       ? isRainKycApproved
-      : cardsEndorsement?.status === EndorsementStatus.APPROVED;
+      : // Deliberately NOT gated on cardIssuer === WIREX: /cards/status does not
+        // return cardProvider, so cardIssuer is null for Wirex users and a
+        // provider-specific branch never matched — leaving the step incomplete
+        // and the activate button unrendered even with kycStatus "approved".
+        // kycStatus is the canonical backend decision for every non-Rain issuer,
+        // with the Bridge endorsement kept as the legacy fallback.
+        options?.kycStatus === KycStatus.APPROVED ||
+        cardsEndorsement?.status === EndorsementStatus.APPROVED;
 
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'

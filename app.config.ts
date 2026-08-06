@@ -51,7 +51,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Solid',
   slug: 'flash-frontend',
-  version: '1.0.12',
+  version: '2.0.0',
   orientation: 'portrait',
   icon: './assets/images/adaptive-icon.png',
   scheme: 'solid',
@@ -71,11 +71,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     appStoreUrl: 'https://apps.apple.com/app/id6758618401',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
+      NSCameraUsageDescription:
+        'Solid needs camera access to scan QR codes and to capture your ID and selfie during identity verification',
       NSUserTrackingUsageDescription:
         'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
       NSMicrophoneUsageDescription:
-        'Access your microphone to transcribe voice messages in conversations',
+        'Access your microphone to transcribe voice messages and to record video during identity verification',
+      NSPhotoLibraryUsageDescription:
+        'Solid needs photo library access to upload identity documents during verification',
     },
     privacyManifests: {
       NSPrivacyTracking: true,
@@ -212,6 +215,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           compileSdkVersion: 36,
           enableProguardInReleaseBuilds: true,
           enableShrinkResourcesInReleaseBuilds: true,
+          // Sumsub Android SDK (@sumsub/react-native-mobilesdk-module) is hosted
+          // on Sumsub's Maven, not Maven Central — register the repo so the
+          // native module resolves during the Android build.
+          extraMavenRepos: ['https://maven.sumsub.com/repository/maven-public/'],
           extraProguardRules: `
               # JNA (Java Native Access) - WalletConnect dependency
               # JNA includes desktop-specific code paths that reference java.awt classes
@@ -249,6 +256,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-image',
+    'expo-video',
     'expo-web-browser',
     // Camera for QR code scanning
     [
@@ -277,6 +285,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
     ['./meawallet/configIos.js', { meaConfig: 'meawallet/mea_config' }],
     './plugins/withJitpackContentFilter.js',
+    // Force FMT_USE_CONSTEVAL=0 so fmt 11.0.2 (pinned by RN 0.83) compiles under
+    // Xcode 26+ clang. See plugins/withFmtConstevalFix.js.
+    './plugins/withFmtConstevalFix.js',
+    // IdensicMobileSDK (Sumsub's native iOS SDK) lives in Sumsub's own
+    // CocoaPods spec repo, not trunk. See plugins/withSumsubPodSource.js.
+    './plugins/withSumsubPodSource.js',
+    // Sumsub ("face") and expo-camera ("barcode_ui") both declare the ML Kit
+    // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
+    // does not fail. See plugins/withMlkitVisionDependencies.js.
+    './plugins/withMlkitVisionDependencies.js',
   ],
   experiments: {
     typedRoutes: true,

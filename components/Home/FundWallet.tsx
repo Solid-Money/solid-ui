@@ -44,7 +44,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
           <View className="gap-2">
             <Text className="max-w-lg text-3xl font-semibold">Fund your wallet</Text>
             <Text className="text-base text-muted-foreground md:max-w-60">
-              Fund your account with crypto you already own or with cash
+              Add funds to start spending with your card
             </Text>
           </View>
           <DepositOptionModal trigger={getTrigger()} />

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import type { SlottableTextProps, TextRef } from '@rn-primitives/types';
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
+const TextClassOverrideContext = React.createContext<string | undefined>(undefined);
 
 // see: https://github.com/expo/expo/issues/27647#issuecomment-2138495439
 // type FontWeight =
@@ -43,8 +44,14 @@ const TextClassContext = React.createContext<string | undefined>(undefined);
 const Text = React.forwardRef<TextRef, SlottableTextProps>(
   ({ className, asChild = false, style, ...props }, ref) => {
     const textClass = React.useContext(TextClassContext);
+    const textClassOverride = React.useContext(TextClassOverrideContext);
     const Component = asChild ? Slot.Text : RNText;
-    const textClassName = cn('text-foreground web:select-text', textClass, className);
+    const textClassName = cn(
+      'text-foreground web:select-text',
+      textClass,
+      className,
+      textClassOverride,
+    );
 
     return (
       <Component
@@ -65,4 +72,4 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
 );
 Text.displayName = 'Text';
 
-export { Text, TextClassContext };
+export { Text, TextClassContext, TextClassOverrideContext };

@@ -7,18 +7,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
 
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import useUser from '@/hooks/useUser';
-import { getAsset } from '@/lib/assets';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import HeaderBellButton from './HeaderBellButton';
+import HeaderHelpButton from './HeaderHelpButton';
 import HeaderProfileButton from './HeaderProfileButton';
 import RegisterButtons from './RegisterButtons';
-import WhatsNewButton from './WhatsNewButton';
 
 const GLASS_TRANSITION = {
   duration: 320,
@@ -37,6 +36,16 @@ type NavbarMobileProps = {
   showTitle?: boolean;
   title?: string;
   topInset?: number;
+  /** Left-side action shown for signed-in users. */
+  leftAction?: 'profile' | 'back';
+  /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
+  rightAction?: 'default' | 'help' | 'none';
+  onHelpPress?: () => void;
+  /**
+   * Animate the left/right buttons out while a card hero transition runs. Only the
+   * home screen opts in — it's the screen the card flies away from.
+   */
+  animateCardHeroExit?: boolean;
 };
 
 const NavbarMobile = ({
@@ -46,16 +55,23 @@ const NavbarMobile = ({
   showTitle,
   title,
   topInset = 0,
+  leftAction = 'profile',
+  rightAction = 'default',
+  onHelpPress,
+  animateCardHeroExit = false,
 }: NavbarMobileProps) => {
   const { user } = useUser();
-  const isTestUser = useIsTestUser();
-  // Whitelisted "glass" header: profile moves to the left, the bell (Activity)
-  // joins What's-new on the right, and the Solid logo is dropped. Public users
-  // keep the existing header untouched.
-  const showNewHeader = isTestUser && !!user;
+  // On the screen the card flies away from, the whole navbar has to clear out — not
+  // just its buttons. The card-details pane draws over this screen with no
+  // background of its own, so a scrolled-in glass backdrop and balance title would
+  // otherwise sit behind (and collide with) the pane's own header and title.
+  const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
+  const isHeroExiting = animateCardHeroExit && isCardPaneOpen;
+  // Redesigned "glass" header: profile stays on the left, Activity stays on the
+  // right, and transient content such as What's-new scrolls beneath this layer.
   const hasBlurTarget = !!blurTarget;
-  const isGlassVisible = hasBlurTarget && !!showDivider;
-  const isTitleVisible = !!title && !!showTitle;
+  const isGlassVisible = hasBlurTarget && !!showDivider && !isHeroExiting;
+  const isTitleVisible = !!title && !!showTitle && !isHeroExiting;
   const blurViewProps =
     Platform.OS === 'android'
       ? {
@@ -96,10 +112,20 @@ const NavbarMobile = ({
     [onContentOffsetChange],
   );
 
+  const rightActionButton =
+    rightAction === 'none' ? null : rightAction === 'help' ? (
+      <HeaderHelpButton onPress={() => onHelpPress?.()} />
+    ) : (
+      <HeaderBellButton />
+    );
+  const leftActionButton =
+    leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />;
+
   return (
     <View
       className={hasBlurTarget ? 'overflow-hidden' : 'overflow-hidden bg-background'}
       onLayout={handleLayout}
+      pointerEvents="box-none"
       style={topInset ? { paddingTop: topInset } : undefined}
     >
       {hasBlurTarget && (
@@ -114,16 +140,11 @@ const NavbarMobile = ({
           <View pointerEvents="none" style={[styles.overlay, styles.glassOverlay]} />
         </Animated.View>
       )}
-      <View className="flex-row items-center justify-between p-4">
-        {showNewHeader ? (
-          <HeaderProfileButton />
+      <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">
+        {animateCardHeroExit ? (
+          <HeroExit spec={HERO_EXIT.headerLeft}>{leftActionButton}</HeroExit>
         ) : (
-          <Image
-            source={getAsset('images/solid-logo-4x.png')}
-            alt="Solid logo"
-            style={{ width: 30, height: 30 }}
-            contentFit="contain"
-          />
+          leftActionButton
         )}
         {!!title && (
           <Animated.View
@@ -138,10 +159,13 @@ const NavbarMobile = ({
           </Animated.View>
         )}
         {user ? (
-          <View className="flex-row items-center gap-2">
-            <WhatsNewButton />
-            {showNewHeader ? <HeaderBellButton /> : <AccountCenterDropdown />}
-          </View>
+          !rightActionButton ? null : animateCardHeroExit ? (
+            <HeroExit spec={HERO_EXIT.headerRight} className="flex-row items-center gap-2">
+              {rightActionButton}
+            </HeroExit>
+          ) : (
+            <View className="flex-row items-center gap-2">{rightActionButton}</View>
+          )
         ) : (
           <RegisterButtons />
         )}
@@ -156,7 +180,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   glassOverlay: {
-    backgroundColor: 'rgba(18, 18, 18, 0.66)',
+    backgroundColor: 'rgba(0, 0, 0, 0.66)',
   },
   title: {
     alignItems: 'center',

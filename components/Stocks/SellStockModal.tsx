@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCowOrder, useCowQuote } from '@/hooks/useCowSwap';
 import { sharesToAtoms, USDC_MAINNET, usdcAtomsToUsd } from '@/lib/cowswap';
@@ -360,17 +361,16 @@ function SellInputStep({
       </Text>
 
       {/* CTA */}
-      <Pressable
+      <Button
+        variant="brand"
         onPress={onReview}
         disabled={!hasContract}
-        className={`items-center justify-center rounded-[16px] py-4 active:opacity-80 ${hasContract ? 'bg-[#94f27f]' : 'bg-[#2a2a2a]'}`}
+        className={hasContract ? 'active:opacity-80' : 'bg-[#2a2a2a]'}
       >
-        <Text
-          className={`text-base font-semibold ${hasContract ? 'text-black' : 'text-[#808080]'}`}
-        >
+        <Text className={hasContract ? 'text-black' : 'text-[#808080]'}>
           {hasContract ? 'Review order' : 'Coming soon'}
         </Text>
-      </Pressable>
+      </Button>
     </View>
   );
 }
@@ -475,17 +475,18 @@ function SellReviewStep({
       )}
 
       <View className="gap-4">
-        <Pressable
+        <Button
+          variant="brand"
           onPress={onPlaceOrder}
           disabled={isSubmitting}
-          className="items-center justify-center rounded-[16px] bg-[#94f27f] py-4 active:opacity-80"
+          className="active:opacity-80"
         >
           {isSubmitting ? (
             <ActivityIndicator color="black" />
           ) : (
             <Text className="text-base font-semibold text-black">Place order</Text>
           )}
-        </Pressable>
+        </Button>
         <Text className="text-center text-xs text-[#808080]">
           Signing is off-chain — no gas required.
         </Text>

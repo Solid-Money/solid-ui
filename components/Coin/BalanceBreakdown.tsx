@@ -2,13 +2,12 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { formatUnits } from 'viem';
-import { base, bsc, fuse, mainnet } from 'viem/chains';
 
 import SavingsIcon from '@/assets/images/savings';
 import WalletIcon from '@/assets/images/wallet';
 import { Text } from '@/components/ui/text';
+import { CHAIN_ICONS, CHAIN_NAMES } from '@/constants/chains';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { getAsset } from '@/lib/assets';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber, isWalletCardExcludedToken } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
@@ -31,20 +30,6 @@ interface BreakdownItem {
   balanceUSD: number;
   percentage: number;
 }
-
-const CHAIN_ICONS: Record<number, any> = {
-  [mainnet.id]: getAsset('images/eth.png'),
-  [fuse.id]: getAsset('images/fuse-4x.png'),
-  [base.id]: getAsset('images/base.png'),
-  [bsc.id]: getAsset('images/bsc.png'),
-};
-
-const CHAIN_NAMES: Record<number, string> = {
-  [mainnet.id]: 'Ethereum',
-  [fuse.id]: 'Fuse',
-  [base.id]: 'Base',
-  [bsc.id]: 'BNB Chain',
-};
 
 const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
   const { tokens } = useWalletTokens();

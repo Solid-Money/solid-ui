@@ -25,7 +25,7 @@ const MoreSavingsOptions = ({ selectedType, apyByType, onSelect }: MoreSavingsOp
 
   return (
     <View className="gap-3 px-4">
-      <Text className="text-lg font-semibold text-muted-foreground">More savings options</Text>
+      <Text className="text-base font-normal text-white/50">More savings options</Text>
       <View className="overflow-hidden rounded-twice bg-card">
         {others.map((vault, index) => {
           const { maxAPY, isAPYsLoading } = apyByType[vault.type];

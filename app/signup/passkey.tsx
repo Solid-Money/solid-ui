@@ -9,8 +9,8 @@ import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
-import PasskeySvg from '@/assets/images/passkey-svg';
-import { DesktopCarousel } from '@/components/Onboarding';
+import { DesktopHero } from '@/components/Onboarding';
+import { AnimatedPasskeyIcon } from '@/components/Onboarding/AnimatedPasskeyIcon';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -143,23 +143,25 @@ export default function SignupPasskey() {
         )}
 
         {/* Passkey Icon */}
-        <PasskeySvg />
+        <AnimatedPasskeyIcon />
 
         {/* Header */}
         <View className="mb-8 mt-8 items-center">
           <Text className="mb-4 text-center text-[34px] font-semibold leading-none -tracking-[1px] text-white">
-            Secure sign-in{'\n'}with Passkey
+            Protect your account{'\n'}with a passkey
           </Text>
           <View className="px-4">
-            <View className="flex-row flex-wrap items-baseline justify-center">
-              <Text className="text-center text-base text-white/60">
-                Passkeys let you sign in using biometrics or your device PIN—no email needed.
-                They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
-              </Text>
-              <Underline onPress={handleLearnMore} textClassName="text-base text-white/60">
+            <Text className="text-center text-base font-normal leading-[19px] text-white/60">
+              Sign in with Face ID, fingerprint, or your device PIN. No passwords, no codes.
+              Passkeys are phishing-resistant and act as built-in 2FA.{' '}
+              <Text
+                accessibilityRole="link"
+                className="font-bold text-white/60 underline"
+                onPress={handleLearnMore}
+              >
                 Learn more
-              </Underline>
-            </View>
+              </Text>
+            </Text>
           </View>
         </View>
 
@@ -174,7 +176,7 @@ export default function SignupPasskey() {
           ) : (
             <View className="flex-row items-center">
               <LoginKeyIcon color="#000" />
-              <Text className="ml-2 text-base font-bold text-black">Continue</Text>
+              <Text className="ml-2 text-base font-semibold text-black">Continue</Text>
             </View>
           )}
         </Button>
@@ -189,28 +191,34 @@ export default function SignupPasskey() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <BackButton onPress={handleBack} />
+            <BackButton variant="header" onPress={handleBack} />
           </View>
 
           {/* Content - positioned at top, centered horizontally */}
-          <View className="mt-8 items-center px-6">
+          <View className="mt-2 items-center px-6">
             {/* Passkey Icon */}
-            <PasskeySvg />
+            <AnimatedPasskeyIcon />
 
             {/* Header */}
-            <View className="mt-8 items-center">
-              <Text className="mb-4 text-center text-[34px] font-semibold leading-[1.1] -tracking-[1px] text-white">
-                Your account is{'\n'}protected with{'\n'}Passkey
+            <View className="mt-7 items-center">
+              <Text className="w-[330px] text-center text-[30px] font-medium leading-[32px] -tracking-[1px] text-white">
+                Protect your account{'\n'}with a passkey
               </Text>
-              <View className="px-4">
-                <View className="flex-row flex-wrap items-baseline justify-center">
-                  <Text className="text-center text-[16px] text-white/60">
-                    Passkeys let you sign in using biometrics or your device PIN—no email needed.
-                    They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
+              <View className="mt-[15px] w-[330px] items-center">
+                <Text className="text-center text-[16px] font-normal leading-[19px] text-white/60">
+                  Sign in with Face ID, fingerprint, or your{'\n'}
+                  device PIN. No passwords, no codes.{'\n'}
+                  Passkeys are phishing-resistant and act as
+                </Text>
+                <View className="flex-row items-baseline justify-center">
+                  <Text className="text-[16px] font-normal leading-[19px] text-white/60">
+                    built-in 2FA.{' '}
                   </Text>
                   <Underline
                     onPress={handleLearnMore}
-                    textClassName="text-[16px] font-medium text-white/60"
+                    textClassName="text-[16px] font-bold leading-[19px] text-white/60"
+                    borderColor="rgba(255, 255, 255, 0.6)"
+                    borderWidth={0.5}
                   >
                     Learn more
                   </Underline>
@@ -223,18 +231,18 @@ export default function SignupPasskey() {
           <View className="flex-1" />
 
           {/* Bottom section: Continue Button */}
-          <View className="px-6 pb-8">
+          <View className="px-[18px] pb-0">
             <Button
               variant="brand"
               onPress={handleContinue}
-              className="h-14 w-full rounded-xl font-semibold"
+              className="w-full max-w-[339px] self-center"
             >
               {isLoading ? (
                 <ActivityIndicator color="#000" />
               ) : (
                 <>
                   <LoginKeyIcon color="#000" />
-                  <Text className="ml-2 text-base font-bold text-black">Continue</Text>
+                  <Text className="ml-2 text-base font-semibold text-black">Continue</Text>
                 </>
               )}
             </Button>
@@ -247,8 +255,8 @@ export default function SignupPasskey() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      <DesktopCarousel />
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

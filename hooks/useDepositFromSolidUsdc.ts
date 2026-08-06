@@ -3,6 +3,7 @@ import { type Address, erc20Abi, parseUnits } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
+import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
@@ -95,6 +96,9 @@ const useDepositFromSolidUsdc = (
       fromAddress: safeAddress,
       toAddress: spender,
       type: isCard ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
+      // Off-target chains route through the bridge, so the source-chain approve
+      // receipt must not be treated as the deposit completing.
+      metadata: isTargetChain ? undefined : { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true },
     });
     return clientTxId;
   };

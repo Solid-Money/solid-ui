@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
 
 import Trash from '@/assets/images/trash';
-import RenderTokenIcon from '@/components/RenderTokenIcon';
+import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -214,6 +214,7 @@ const Transaction = ({
     tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
     size: 44,
   });
+  const activityBadge = getActivityBadge(type);
 
   const getDescription = () => {
     if (isPending) return isCardDeposit && isDirectDeposit ? 'Processing' : 'Pending';
@@ -259,7 +260,7 @@ const Transaction = ({
       )}
     >
       <View className="min-w-0 flex-[1.5] flex-row items-center gap-2 md:gap-4">
-        <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
+        <ActivityTokenIcon tokenIcon={tokenIcon} size={44} badge={activityBadge} variant="list" />
         <View className="min-w-0 flex-shrink">
           <Text className="text-base font-medium web:text-lg" numberOfLines={1}>
             {title}

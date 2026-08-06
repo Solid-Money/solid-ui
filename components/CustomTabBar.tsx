@@ -123,7 +123,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
 }
 
 // Visible tabs - these are the main navigation tabs
-const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
+const VISIBLE_TAB_NAMES = ['index', 'savings', 'card'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     // height and paddingBottom are applied dynamically from the safe-area inset
     paddingTop: 10,
-    backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+    backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
     bottom: 0,

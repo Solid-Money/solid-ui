@@ -34,7 +34,7 @@ const CardBanner = () => {
         title: 'Solid Card is live!',
         description: 'Get your card today.',
         ctaText: 'Get your card',
-        action: () => router.push(path.CARD),
+        action: () => router.push(path.CARD_COUNTRY_SELECTION),
         showPromo: true,
       };
     }

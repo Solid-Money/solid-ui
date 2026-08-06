@@ -32,8 +32,27 @@ function getHash(filePath: string): string {
   return crypto.createHash('sha256').update(content).digest('hex').substring(0, 8);
 }
 
+// The registry is imported on every platform, so anything listed here ends up
+// in every bundle. `.mov` is reserved for iOS-only HEVC-with-alpha video, which
+// is required directly from a `.ios.tsx` so Android never pulls it in — see
+// components/Rewards/NewRewards/TierHero. Opaque `.mp4` is shared and stays in.
+function isPlatformSpecificVideo(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === '.mov';
+}
+
+function isDensityVariant(filePath: string): boolean {
+  const extension = path.extname(filePath);
+  const fileName = path.basename(filePath, extension);
+
+  return /@\d+(?:\.\d+)?x$/.test(fileName);
+}
+
 function updateRegistry() {
-  const allFiles = getFiles(ASSETS_DIR);
+  // Metro resolves @2x/@3x files automatically from the base asset. Requiring
+  // those variants directly makes native bundling fail.
+  const allFiles = getFiles(ASSETS_DIR).filter(
+    file => !isDensityVariant(file) && !isPlatformSpecificVideo(file),
+  );
   const registryEntries: string[] = [];
 
   for (const file of allFiles) {

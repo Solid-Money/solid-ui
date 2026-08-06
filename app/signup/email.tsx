@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
-import { DesktopCarousel } from '@/components/Onboarding';
+import { DesktopHero } from '@/components/Onboarding';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -75,11 +75,15 @@ export default function SignupEmail() {
   const {
     control,
     handleSubmit,
+    clearErrors,
     formState: { errors },
     watch,
   } = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
-    mode: 'onChange',
+    // Validate on submit only so the error appears when the button is pressed,
+    // never while the user is still typing
+    mode: 'onSubmit',
+    reValidateMode: 'onSubmit',
     defaultValues: {
       email: email || '',
       marketingConsent: marketingConsent || false,
@@ -197,6 +201,13 @@ export default function SignupEmail() {
     router.replace(path.ONBOARDING);
   };
 
+  // Editing the email hides any error raised by the previous submit
+  const handleEmailChange = (onChange: (value: string) => void) => (text: string) => {
+    onChange(text);
+    if (errors.email) clearErrors('email');
+    if (error) setError(null);
+  };
+
   // Show validation error, API error, or rate limit error
   const displayError = errors.email?.message || error || rateLimitError;
 
@@ -233,7 +244,7 @@ export default function SignupEmail() {
                 <Input
                   id="email"
                   value={value}
-                  onChangeText={onChange}
+                  onChangeText={handleEmailChange(onChange)}
                   onBlur={onBlur}
                   placeholder="Enter your email"
                   keyboardType="email-address"
@@ -313,7 +324,7 @@ export default function SignupEmail() {
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
-            <BackButton onPress={handleBack} />
+            <BackButton variant="header" onPress={handleBack} />
           </View>
 
           {/* Content - flex between to push button to bottom */}
@@ -341,7 +352,7 @@ export default function SignupEmail() {
                       <Input
                         id="email"
                         value={value}
-                        onChangeText={onChange}
+                        onChangeText={handleEmailChange(onChange)}
                         onBlur={onBlur}
                         placeholder="Enter your email"
                         keyboardType="email-address"
@@ -407,12 +418,12 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                className="h-14 w-full rounded-xl font-semibold"
+                className="h-[50px] w-full max-w-[339px] self-center rounded-[30px] font-semibold"
               >
                 {isLoading ? (
                   <ActivityIndicator color="gray" />
                 ) : (
-                  <Text className="text-base font-bold">Create account</Text>
+                  <Text className="text-base font-semibold">Create account</Text>
                 )}
               </Button>
             </View>
@@ -425,10 +436,8 @@ export default function SignupEmail() {
   // Desktop Layout - Split Screen
   return (
     <View className="flex-1 flex-row bg-background">
-      {/* Left Section - Interactive Carousel */}
-      <DesktopCarousel />
-      {/* TODO: lazy-loaded for FCP improvement */}
-      {/* <LazyDesktopCarousel /> */}
+      {/* Left Section - Static hero */}
+      <DesktopHero />
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

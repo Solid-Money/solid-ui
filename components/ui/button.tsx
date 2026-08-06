@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Pressable } from 'react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 
-import { TextClassContext } from '@/components/ui/text';
+import { TextClassContext, TextClassOverrideContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
@@ -50,7 +50,11 @@ const buttonTextVariants = cva(
         secondary: 'text-secondary-foreground group-active:text-secondary-foreground',
         ghost: 'group-active:text-accent-foreground',
         link: 'text-primary group-active:underline',
-        brand: 'text-primary-foreground',
+        // Explicit black rather than a theme token: the brand background is a
+        // light green in every theme, and `text-primary-foreground` was being
+        // beaten by the base `text-foreground` in some renders, so the label
+        // intermittently came out white and unreadable.
+        brand: 'text-black',
         accent: 'text-primary-foreground',
         purple: 'text-primary-foreground',
         rewards: 'text-primary-foreground',
@@ -75,22 +79,30 @@ type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
 
 const Button = React.forwardRef<React.ComponentRef<typeof Pressable>, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {
+    const isStandardBrandButton = variant === 'brand' && size !== 'sm' && size !== 'icon';
+
     return (
       <TextClassContext.Provider
         value={buttonTextVariants({ variant, size, className: 'web:pointer-events-none' })}
       >
-        <Pressable
-          className={cn(
-            {
-              'opacity-50 web:pointer-events-none': props.disabled,
-              'opacity-100': !props.disabled,
-            },
-            buttonVariants({ variant, size, className }),
-          )}
-          ref={ref}
-          role="button"
-          {...props}
-        />
+        <TextClassOverrideContext.Provider
+          value={isStandardBrandButton ? 'text-base font-semibold native:text-base' : undefined}
+        >
+          <Pressable
+            className={cn(
+              {
+                'opacity-50 web:pointer-events-none': props.disabled,
+                'opacity-100': !props.disabled,
+              },
+              buttonVariants({ variant, size, className }),
+              isStandardBrandButton &&
+                'native:h-[50px] native:px-6 native:py-0 h-[50px] rounded-[30px] px-6 py-0',
+            )}
+            ref={ref}
+            role="button"
+            {...props}
+          />
+        </TextClassOverrideContext.Provider>
       </TextClassContext.Provider>
     );
   },

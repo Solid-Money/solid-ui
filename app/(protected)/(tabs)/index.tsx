@@ -24,13 +24,13 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useCurrentGiveaway, useGiveawayCountdown } from '@/hooks/useGiveaway';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatBalanceUSD, hasCard } from '@/lib/utils';
@@ -243,7 +243,7 @@ function LegacyHome() {
 
         <View className="gap-3 px-4 md:mt-10 md:px-0">
           <Text className="mb-2 text-lg font-semibold text-muted-foreground">For You</Text>
-          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
+          {isDevFeatureEnabled && Platform.OS !== 'web' && spinStatus?.isAllowed && (
             <SpinWinCard
               currentStreak={spinStatus?.currentStreak ?? 0}
               spinAvailable={spinStatus?.spinAvailableToday ?? true}
@@ -261,9 +261,7 @@ function LegacyHome() {
 }
 
 export default function Home() {
-  const { isDesktop } = useDimension();
-  // Whitelisted internal team members on mobile-web see the redesigned wallet
-  // screen; desktop web and all other users keep the existing design.
-  const showNewHome = useIsTestUser() && !isDesktop;
-  return showNewHome ? <HomeScreenNew /> : <LegacyHome />;
+  // Desktop is the same redesigned wallet screen, stretched inside the sidebar
+  // shell — see `SidebarShell` in `(protected)/_layout.tsx`.
+  return <HomeScreenNew />;
 }

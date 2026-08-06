@@ -18,16 +18,19 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 import { Text } from '@/components/ui/text';
 import { WHITELIST_TAB_LABELS, WHITELIST_TAB_NAMES } from '@/constants/tabs';
+
+import { useTabBarBlurTarget } from './TabBarBlurContext';
 
 // Taller than CustomTabBar so the bigger figma oval (≈122×67, radius 46) fits.
 const TAB_BAR_CONTENT_HEIGHT = 60;
 const TAB_BAR_MIN_BOTTOM_INSET = 35;
 const TAB_BAR_ANDROID_EXTRA_INSET = 16;
 const TAB_BAR_PADDING_TOP = 10;
+const TAB_BAR_GRADIENT_EXTENSION = 30;
 
 const ACTIVE_TAB_COLOR = 'white';
 const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
@@ -36,6 +39,9 @@ const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
 // measured tab slot so it reads as a pill rather than a full-width block.
 const PILL_INSET_X = 4;
 const PILL_INSET_Y = 2;
+// The icon and label read slightly lower than their geometric center because of
+// the label's font metrics, so match the pill to their visual center.
+const PILL_CENTER_OFFSET_Y = 4;
 // Extra vertical height (centered) so the icon + label sit inside the oval with
 // the figma padding rather than overflowing above/below it.
 const PILL_EXTRA_HEIGHT = 16;
@@ -86,7 +92,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
       style={styles.tabButton}
     >
       <View style={[styles.tabContent, pressStyle]}>
-        <View style={[styles.iconWrapper, { opacity: isFocused ? 1 : 0.5 }]}>{icon}</View>
+        <View style={styles.iconWrapper}>{icon}</View>
         <Text style={[styles.tabLabel, { color: labelColor }]}>{label}</Text>
       </View>
     </Pressable>
@@ -94,14 +100,20 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
 }
 
 /**
- * Whitelisted "glass" bottom tab bar. Identical navigation semantics to
+ * Redesigned "glass" bottom tab bar. Identical navigation semantics to
  * CustomTabBar (route filtering, originalIndex/isFocused mapping, tabPress →
  * CommonActions.navigate) plus a sliding oval glass indicator that animates
  * from the previously active tab to the tapped one.
  */
 export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const currentRouteName = state.routes[state.index]?.name;
+  const blurTarget = useTabBarBlurTarget();
+  const activeRoute = state.routes[state.index];
+  const currentRouteName = activeRoute?.name;
+  // Deepest focused route inside the active tab's nested navigator — the
+  // redesigned rewards benefits screen renders its own bottom fade + CTA and
+  // hides this bar entirely.
+  const focusedNestedRoute = activeRoute ? getFocusedRouteNameFromRoute(activeRoute) : undefined;
 
   const bottomInset = Math.max(
     insets.bottom + (Platform.OS === 'android' ? TAB_BAR_ANDROID_EXTRA_INSET : 0),
@@ -160,7 +172,7 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     if (!layout) return;
 
     const targetX = layout.x + PILL_INSET_X;
-    const targetY = layout.y + PILL_INSET_Y - PILL_EXTRA_HEIGHT / 2;
+    const targetY = layout.y + PILL_INSET_Y - PILL_EXTRA_HEIGHT / 2 + PILL_CENTER_OFFSET_Y;
     const targetWidth = Math.max(layout.width - PILL_INSET_X * 2, 0);
     const targetHeight = Math.max(layout.height - PILL_INSET_Y * 2 + PILL_EXTRA_HEIGHT, 0);
 
@@ -188,9 +200,18 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (currentRouteName === 'settings') {
+  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
     return null;
   }
+
+  const blurViewProps =
+    Platform.OS === 'android' && blurTarget
+      ? {
+          blurMethod: 'dimezisBlurView' as const,
+          blurReductionFactor: 3.2,
+          blurTarget,
+        }
+      : {};
 
   return (
     <View
@@ -199,20 +220,18 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
         { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
       ]}
     >
-      {/* Figma: linear-gradient(180deg, rgba(17,17,17,0) 0%, #111111 100%).
-          `locations` reaches opaque by ~60% of the bar height so the tabs sit on
-          solid #111 (content fades out as it scrolls under the top edge) instead
-          of the opaque end being wasted in the bottom safe-area inset. */}
+      {/* Extend only the fade above the bar so content starts disappearing sooner
+          without changing the tab bar's size or moving its buttons. */}
       <LinearGradient
         colors={['rgba(17, 17, 17, 0)', '#111111', '#111111']}
         locations={[0, 0.6, 1]}
         pointerEvents="none"
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { top: -TAB_BAR_GRADIENT_EXTENSION }]}
       />
       <View style={styles.row}>
         <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]}>
           {/* Figma oval: #1B1B1BCC + backdrop blur(19). */}
-          <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView {...blurViewProps} intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
           <View pointerEvents="none" style={styles.pillTint} />
         </Animated.View>
         {visibleRoutes.map((route, visibleIndex) => {
@@ -292,7 +311,7 @@ const styles = StyleSheet.create({
   },
   pillTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27, 27, 27, 0.8)',
+    backgroundColor: 'rgba(17, 17, 17, 0.18)',
   },
   tabButton: {
     flex: 1,

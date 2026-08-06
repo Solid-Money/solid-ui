@@ -14,6 +14,7 @@ import MoreSavingsOptions from './MoreSavingsOptions';
 import RecentSavingsActivity from './RecentSavingsActivity';
 import SavingsBalanceHeadline from './SavingsBalanceHeadline';
 import SavingsFundedActions from './SavingsFundedActions';
+import SavingsHelpModal from './SavingsHelpModal';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
 import VaultSavingsSection from './VaultSavingsSection';
@@ -21,8 +22,8 @@ import VaultSavingsSection from './VaultSavingsSection';
 import type { ApyByType } from './savingsVaultData';
 
 /**
- * Redesigned savings screen (Apple "glass" style), shown only to whitelisted
- * internal users via the dispatcher in savings.tsx. Public users and all
+ * Redesigned savings screen (Apple "glass" style), shown only on qa/preview
+ * builds via the dispatcher in savings.tsx. Production and all
  * desktop-web users keep the legacy savings screen.
  *
  * Two states share the "Savings Balance" headline + APY pill:
@@ -38,6 +39,7 @@ export default function SavingsScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
 
   const [selectedVaultType, setSelectedVaultType] = useState<VaultType>(VaultType.USDC);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { data: totalSavingsUSD, isLoading: isSavingsLoading } = useTotalSavingsUSD();
 
@@ -58,8 +60,15 @@ export default function SavingsScreenNew() {
   const isFunded = savingsBalance > 0;
 
   return (
-    <PageLayout mobileTitle={mobileTitle}>
-      <View className="mb-5 w-full gap-8 pb-24">
+    <PageLayout
+      mobileTitle={mobileTitle}
+      mobileHeaderRightAction="help"
+      onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      additionalContent={
+        <SavingsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      }
+    >
+      <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceLoading ? (
           <View className="items-center gap-6 pt-6">
             <Skeleton className="h-16 w-48 rounded-xl" />
@@ -70,11 +79,13 @@ export default function SavingsScreenNew() {
           <>
             <View className="gap-5">
               <SavingsBalanceHeadline balance={savingsBalance} />
-              <ApyDropdown
-                vaultType={selectedVaultType}
-                apyByType={apyByType}
-                onSelect={setSelectedVaultType}
-              />
+              <View style={{ transform: [{ translateY: -10 }] }}>
+                <ApyDropdown
+                  vaultType={selectedVaultType}
+                  apyByType={apyByType}
+                  onSelect={setSelectedVaultType}
+                />
+              </View>
               {isFunded ? (
                 <SavingsFundedActions vaultType={selectedVaultType} />
               ) : (

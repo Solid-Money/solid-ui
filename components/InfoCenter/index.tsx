@@ -5,12 +5,12 @@ import DocsIcon from '@/assets/images/docs';
 import QuestionIcon from '@/assets/images/question';
 import SupportIcon from '@/assets/images/support';
 import { Text } from '@/components/ui/text';
-import { useIntercom } from '@/lib/intercom';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 const InfoCenterTrigger = (props: any) => {
   return (
     <Pressable
-      className="h-9 w-9 flex-row items-center justify-center rounded-full bg-[#2C2C2C] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="h-[50px] w-[50px] flex-row items-center justify-center rounded-full bg-[#2C2C2C] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
       {...props}
     >
       <QuestionIcon width={14} height={14} />
@@ -28,10 +28,7 @@ const InfoCenterSupport = () => {
 };
 
 const useInfoCenterSupportPress = () => {
-  const intercom = useIntercom();
-  return useCallback(() => {
-    intercom?.show();
-  }, [intercom]);
+  return useCallback(() => openSupportDrawer(), []);
 };
 
 const InfoCenterDocs = () => {

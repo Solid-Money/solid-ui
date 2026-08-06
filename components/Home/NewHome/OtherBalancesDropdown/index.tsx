@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -12,63 +12,89 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import OtherBalancesPie from './OtherBalancesPie';
 
-/** Data required by both the native and web "other balances" sheets. */
+/** Data required by both the native and web balances sheets. */
 export type OtherBalances = {
+  walletBalance: number;
   cardBalance: number;
   savingsBalance: number;
   userHasCard: boolean;
   isLoading?: boolean;
 };
 
+const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 
 /**
- * Whether the Card belongs in "other balances". Shown when the user has an
- * active card OR when there's a (e.g. internal test-override) card balance to
- * surface — so the balance and its pie segment aren't dropped for testers whose
- * card status isn't ACTIVE yet.
+ * Whether the Card belongs in the breakdown. Shown when the user has an active
+ * card OR when there's a card balance to surface — so the balance isn't dropped
+ * for testers whose card status isn't ACTIVE yet.
  */
 export const shouldShowCard = (cardBalance: number, userHasCard: boolean) =>
   userHasCard || (cardBalance || 0) > 0;
 
-/** Combined "other balances" figure shown on the pill. */
-export const getOtherBalancesTotal = ({
+/**
+ * The headline figure: Wallet + Card. They're combined in the UI only — the two
+ * balances stay separate under the hood (funds must be moved from the wallet to
+ * the card before they can be spent), which the breakdown sheet lays out.
+ */
+export const getSpendableTotal = ({
+  walletBalance,
+  cardBalance,
+  userHasCard,
+}: Pick<OtherBalances, 'walletBalance' | 'cardBalance' | 'userHasCard'>) =>
+  (walletBalance || 0) + (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0);
+
+/** Everything the user holds: Wallet + Card + Savings (the pill's figure). */
+export const getTotalBalance = ({
+  walletBalance,
   cardBalance,
   savingsBalance,
   userHasCard,
 }: OtherBalances) =>
-  (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0) + (savingsBalance || 0);
+  getSpendableTotal({ walletBalance, cardBalance, userHasCard }) + (savingsBalance || 0);
 
 type PillProps = {
-  total: number;
-  /** Card contribution to the total (0 when the user has no card). */
+  walletValue: number;
   cardValue: number;
-  /** Savings contribution to the total. */
   savingsValue: number;
 } & React.ComponentProps<typeof Pressable>;
 
 /**
- * The dropdown pill trigger: a real proportional Card/Savings donut + combined
- * total + chevron. The donut segments reflect how much each balance contributes.
+ * The dropdown pill trigger: a proportional Wallet/Card/Savings donut + the
+ * total across all three + chevron. Tapping opens the full breakdown.
  */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ total, cardValue, savingsValue, ...props }, ref) => {
+  ({ walletValue, cardValue, savingsValue, ...props }, ref) => {
+    const total = (walletValue || 0) + (cardValue || 0) + (savingsValue || 0);
+
     return (
       <Pressable
         ref={ref}
         accessibilityRole="button"
-        accessibilityLabel="Show other balances"
-        className="flex-row items-center gap-2 self-center rounded-full bg-[#1C1C1C] py-2 pl-2 pr-3 transition-all active:scale-95 active:opacity-80"
+        accessibilityLabel="Show balance breakdown"
+        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
         {...props}
       >
         <OtherBalancesPie
+          walletValue={walletValue}
           cardValue={cardValue}
           savingsValue={savingsValue}
+          walletColor={WALLET_COLOR}
           cardColor={CARD_COLOR}
           savingsColor={SAVINGS_COLOR}
         />
-        <Text className="text-base font-semibold text-white">{formatBalanceUSD(total)}</Text>
+        <Text
+          className="font-semibold text-white"
+          style={{
+            fontFamily: 'MonaSans_600SemiBold',
+            fontSize: 16,
+            fontWeight: '600',
+            lineHeight: 18,
+          }}
+        >
+          {formatBalanceUSD(total)}
+        </Text>
         <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
       </Pressable>
     );
@@ -115,24 +141,38 @@ const BalanceRow = ({
   </View>
 );
 
-/** Card balance row. "Add" opens the "Fund your card" popup (share deposit
- *  address / transfer from wallet) — the same modal used on the card screen,
- *  replacing the keypad deposit screen. */
-export const CardBalanceRow = ({
-  cardBalance,
+/** Wallet balance row (white). "Add" opens the standard Add Funds flow. */
+export const WalletBalanceRow = ({
+  walletBalance,
   isLoading,
+  onDismiss,
 }: {
-  cardBalance: number;
+  walletBalance: number;
   isLoading?: boolean;
-  // Accepted for parity with SavingsBalanceRow; the popup opens over the sheet.
   onDismiss?: () => void;
 }) => (
-  <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
-    <CardDirectDepositModal trigger={<AddButton />} />
+  <BalanceRow color={WALLET_COLOR} label="Wallet" value={walletBalance} isLoading={isLoading}>
+    <DepositOptionModal onBeforeOpen={onDismiss} trigger={<AddButton />} />
   </BalanceRow>
 );
 
-/** Savings balance row. "Add" opens the existing savings deposit modal (global). */
+/** Card balance row (green). "Add" opens the "Fund your card" popup (share
+ *  deposit address / transfer from wallet) — same modal as the card screen. */
+export const CardBalanceRow = ({
+  cardBalance,
+  isLoading,
+  onAdd,
+}: {
+  cardBalance: number;
+  isLoading?: boolean;
+  onAdd?: () => void;
+}) => (
+  <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
+    <AddButton onPress={onAdd} />
+  </BalanceRow>
+);
+
+/** Savings balance row (purple). "Add" opens the savings deposit modal (global). */
 export const SavingsBalanceRow = ({
   savingsBalance,
   isLoading,
@@ -154,4 +194,27 @@ export const SavingsBalanceRow = ({
       trigger={<AddButton />}
     />
   </BalanceRow>
+);
+
+/** The three balances, in order: Wallet, Card (when relevant), Savings. */
+export const BalanceBreakdownRows = ({
+  walletBalance,
+  cardBalance,
+  savingsBalance,
+  userHasCard,
+  isLoading,
+  onDismiss,
+  onCardAdd,
+}: OtherBalances & { onDismiss?: () => void; onCardAdd?: () => void }) => (
+  <>
+    <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
+    {shouldShowCard(cardBalance, userHasCard) && (
+      <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onAdd={onCardAdd} />
+    )}
+    <SavingsBalanceRow
+      savingsBalance={savingsBalance}
+      isLoading={isLoading}
+      onDismiss={onDismiss}
+    />
+  </>
 );

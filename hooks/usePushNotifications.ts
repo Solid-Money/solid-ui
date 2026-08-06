@@ -35,8 +35,10 @@ function getNotificationRoute(type?: string): Href {
   }
 
   switch (type) {
+    // Only a card holder gets a transaction push, so open the card itself
+    // rather than the `/card` shim's status check.
     case 'card-transaction':
-      return path.CARD;
+      return path.CARD_DETAILS;
     default:
       return path.HOME;
   }
@@ -57,9 +59,9 @@ export function usePushNotifications() {
     if (!isAuthenticated) return;
     if (Platform.OS === 'web') return;
 
-    // Ensure push notifications are registered for existing users who
-    // may have missed the onboarding screen. This is a no-op if already granted.
-    registerForPushNotificationsAsync().catch(err => {
+    // Refresh the push token for users who already granted permission without
+    // putting the OS prompt in front of the notification onboarding drawer.
+    registerForPushNotificationsAsync({ requestPermission: false }).catch(err => {
       console.warn('Push notification registration failed:', err);
     });
 

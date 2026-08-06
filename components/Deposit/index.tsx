@@ -96,6 +96,7 @@ const Deposit = () => {
         text1: 'Deposit transaction completed',
         text2: `${data.amount} USDC`,
         props: {
+          badgeText: 'Onchain',
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'USDC' }),
@@ -105,6 +106,7 @@ const Deposit = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while depositing',
+        props: { badgeText: 'Onchain' },
       });
     }
   };

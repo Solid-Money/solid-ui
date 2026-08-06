@@ -57,7 +57,7 @@ const transformTierBenefitsToItems = (
   items.push({
     icon: 'images/rocket-yellow.png',
     title: 'Free virtual card',
-    description: '200M+ Visa merchants',
+    description: '175M Visa merchants',
   });
 
   return items;

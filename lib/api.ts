@@ -53,6 +53,8 @@ import {
   CustomerFromBridgeResponse,
   Deposit,
   DepositTransaction,
+  DiditSessionResponse,
+  DiditVerificationStatusResponse,
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
@@ -68,6 +70,7 @@ import {
   KycLinkAgreements,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
+  LandingPageApyConfig,
   LayerZeroTransaction,
   LeaderboardResponse,
   LifiOrder,
@@ -78,6 +81,7 @@ import {
   OnrampAutomationResponseDto,
   Points,
   PromotionsBannerResponse,
+  ProviderRoutingResponse,
   ProvisioningActivity,
   ProvisioningInitResponse,
   ProvisioningSessionRequest,
@@ -92,6 +96,8 @@ import {
   SearchCoin,
   SourceDepositInstructions,
   SubmitPersonaKycResponse,
+  SumsubSessionResponse,
+  SumsubVerificationStatusResponse,
   SwapTokenRequest,
   SwapTokenResponse,
   SyncActivitiesOptions,
@@ -573,11 +579,35 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Turn a non-2xx response into an ApiError, reading the backend's
+ * `{ code, message }` envelope so callers can branch on a stable code instead of
+ * an opaque throw. Falls back to `fallbackMessage` when the body isn't JSON.
+ */
+export const toApiError = async (
+  response: Response,
+  fallbackMessage: string,
+): Promise<ApiError> => {
+  let code: string | undefined;
+  let message: string | undefined;
+  try {
+    const body = await response.json();
+    if (body && typeof body === 'object') {
+      if (typeof body.code === 'string') code = body.code;
+      if (typeof body.message === 'string') message = body.message;
+      else if (Array.isArray(body.message)) message = body.message.join(', ');
+    }
+  } catch {
+    // non-JSON error body — keep the generic fallback
+  }
+  return new ApiError(response.status, message ?? fallbackMessage, code);
+};
+
 /** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
 export const createDiditSession = async (
   callback?: string,
   flow: 'card' | 'va' = 'card',
-): Promise<import('./types').DiditSessionResponse> => {
+): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
     method: 'POST',
@@ -590,22 +620,7 @@ export const createDiditSession = async (
     body: JSON.stringify({ ...(callback ? { callback } : {}), flow }),
   });
   if (!response.ok) {
-    // Parse the backend error envelope ({ code, message }) so callers can branch
-    // on a stable code instead of the previous opaque throw. Falls back to a
-    // generic message when the body isn't JSON.
-    let code: string | undefined;
-    let message: string | undefined;
-    try {
-      const body = await response.json();
-      if (body && typeof body === 'object') {
-        if (typeof body.code === 'string') code = body.code;
-        if (typeof body.message === 'string') message = body.message;
-        else if (Array.isArray(body.message)) message = body.message.join(', ');
-      }
-    } catch {
-      // non-JSON error body — keep the generic fallback
-    }
-    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+    throw await toApiError(response, 'Failed to create verification session');
   }
   return response.json();
 };
@@ -640,9 +655,7 @@ export const topUpGoodDollarGas = async (
 };
 
 /** Get the current user's Didit verification status. */
-export const getDiditVerificationStatus = async (): Promise<
-  import('./types').DiditVerificationStatusResponse
-> => {
+export const getDiditVerificationStatus = async (): Promise<DiditVerificationStatusResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`, {
     credentials: 'include',
@@ -651,6 +664,79 @@ export const getDiditVerificationStatus = async (): Promise<
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+// --- Sumsub identity verification (Wirex / EU flow) ---
+
+/**
+ * Create a Sumsub WebSDK session. The backend mints an access token bound to
+ * the user and returns it for the WebSDK. Mirrors createDiditSession's error
+ * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
+ */
+export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const body = await response.json();
+      if (body && typeof body === 'object') {
+        if (typeof body.code === 'string') code = body.code;
+        if (typeof body.message === 'string') message = body.message;
+        else if (Array.isArray(body.message)) message = body.message.join(', ');
+      }
+    } catch {
+      // non-JSON error body — keep the generic fallback
+    }
+    throw new ApiError(response.status, message ?? 'Failed to create verification session', code);
+  }
+  return response.json();
+};
+
+/** Get the current user's Sumsub verification status. */
+export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationStatusResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/status`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Ask the backend which KYC + card providers a country routes to. Server-driven
+ * so the Wirex/Sumsub geography can change without an app release.
+ */
+export const getProviderRouting = async (countryCode: string): Promise<ProviderRoutingResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/provider-routing?countryCode=${encodeURIComponent(
+      countryCode,
+    )}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };
@@ -887,7 +973,7 @@ export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   return response.json();
 };
 
-export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
+export const getCardDetails = async (): Promise<CardDetailsResponseDto | null> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`, {
@@ -897,6 +983,11 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  // A user who has not issued a card yet has no details resource. Treat that as
+  // the expected empty state, just like getCardStatus, instead of throwing a
+  // Response that appears as a raw LogBox error in development.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
@@ -1419,7 +1510,11 @@ export const login = async (signedRequest: any) => {
       ...signedRequest,
     }),
   });
-  if (!response.ok) throw response;
+  // Parsed rather than thrown raw: the backend distinguishes an unregistered
+  // passkey (404 PASSKEY_NOT_REGISTERED) from other failures, and the raw
+  // Response carried neither `code` nor `message`, so every login failure
+  // surfaced as the same contentless toast.
+  if (!response.ok) throw await toApiError(response, 'Failed to log in');
   return response.json();
 };
 
@@ -2824,6 +2919,22 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
 export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfig> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/card-deposit-bonus`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/landing-page-apy`,
     {
       credentials: 'include',
       headers: {

@@ -1,18 +1,13 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
-import { useShallow } from 'zustand/react/shallow';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import useUser from '@/hooks/useUser';
-import { track } from '@/lib/analytics';
+import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import { DepositModal } from '@/lib/types';
-import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 export interface DepositTriggerProps {
   buttonText?: string;
@@ -37,35 +32,11 @@ const DepositTrigger = ({
   preserveSelectedVault = false,
   onBeforeOpen,
 }: DepositTriggerProps) => {
-  const { user } = useUser();
-  const { setModal, setSrcChainId } = useDepositStore(
-    useShallow(state => ({
-      setModal: state.setModal,
-      setSrcChainId: state.setSrcChainId,
-    })),
-  );
+  const openDepositFlow = useOpenDepositFlow();
 
   const handlePress = () => {
     onBeforeOpen?.();
-    if (!preserveSelectedVault) {
-      useSavingStore.getState().selectVaultForDeposit(0);
-    }
-    setSrcChainId(0); // reset chain so modal always opens to options
-    const modalToOpen = user && !user.email ? DEPOSIT_MODAL.OPEN_EMAIL_GATE : modal;
-
-    track(TRACKING_EVENTS.DEPOSIT_TRIGGER_CLICKED, {
-      source,
-      button_text: buttonText,
-      has_email: !!user?.email,
-      has_src_chain: false,
-      modal_to_open: modalToOpen,
-    });
-
-    if (user && !user.email) {
-      setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
-    } else {
-      setModal(modal);
-    }
+    openDepositFlow({ modal, source, buttonText, preserveSelectedVault });
   };
 
   // Default trigger button when no custom trigger provided

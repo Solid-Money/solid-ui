@@ -3,30 +3,28 @@ import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Leaf, Star } from 'lucide-react-native';
 
-import bellAnimation from '@/assets/tabs-icons/bell.json';
 import cardAnimation from '@/assets/tabs-icons/card.json';
-import homeAnimation from '@/assets/tabs-icons/home.json';
-import lightningAnimation from '@/assets/tabs-icons/lightning.json';
-import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
+import { AnimatedTabIcon } from '@/components/tabBar/AnimatedTabIcon';
 import { NewCustomTabBar } from '@/components/tabBar/NewCustomTabBar';
-import RewardsTabIcon from '@/components/tabBar/RewardsTabIcon';
+import { TabBarBlurProvider } from '@/components/tabBar/TabBarBlurContext';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useIsTestUser } from '@/hooks/useIsTestUser';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 export default function TabLayout() {
-  const { isDesktop } = useDimension();
-  const isTestUser = useIsTestUser();
+  // The desktop sidebar replaces the bottom bar from `isScreenMedium` up (the
+  // sidebar shell in `(protected)/_layout.tsx` renders it).
+  const { isScreenMedium } = useDimension();
 
-  return (
+  const tabs = (
     <Tabs
       screenOptions={{
         animation: 'none',
         freezeOnBlur: Platform.OS !== 'web',
-        sceneStyle: { backgroundColor: '#121212' },
+        sceneStyle: { backgroundColor: '#0F0F10' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
@@ -37,13 +35,13 @@ export default function TabLayout() {
           marginTop: 5,
         },
         tabBarStyle: {
-          display: isDesktop ? 'none' : 'flex',
+          display: isScreenMedium ? 'none' : 'flex',
           height: 80,
           paddingTop: 4,
           paddingBottom: 20,
           borderTopWidth: 0,
           // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
-          backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
+          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,
@@ -51,11 +49,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={
-        !isDesktop
-          ? props => (isTestUser ? <NewCustomTabBar {...props} /> : <CustomTabBar {...props} />)
-          : undefined
-      }
+      tabBar={!isScreenMedium ? props => <NewCustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen
@@ -66,7 +60,7 @@ export default function TabLayout() {
           headerShown: false,
 
           tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={homeAnimation} focused={focused} size={size} />
+            <AnimatedTabIcon name="wallet" focused={focused} size={size} />
           ),
           href: path.HOME,
         }}
@@ -80,7 +74,7 @@ export default function TabLayout() {
           headerShown: false,
 
           tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={lightningAnimation} focused={focused} size={size} />
+            <AnimatedTabIcon name="savings" focused={focused} size={size} />
           ),
           href: path.SAVINGS,
         }}
@@ -105,6 +99,9 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, size }) => (
             <LottieTabIcon source={cardAnimation} focused={focused} size={size} />
           ),
+          // The card is part of the wallet page in the redesign, so this tab is
+          // filtered out of NewCustomTabBar. The route stays registered because
+          // `/card` is the redirect shim old links resolve through.
           href: path.CARD,
         }}
       />
@@ -115,20 +112,6 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
           href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="activity"
-        options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
-          title: 'Activity',
-          headerShown: false,
-
-          tabBarIcon: ({ focused, size }) => (
-            <LottieTabIcon source={bellAnimation} focused={focused} size={size} />
-          ),
-          href: path.ACTIVITY,
         }}
       />
 
@@ -149,6 +132,13 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="kyc"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="sumsub-kyc"
         options={{
           href: null,
         }}
@@ -176,15 +166,18 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Rewards',
           headerShown: false,
-          // Pushed white tier-star image, centered in a full-size box so its
-          // icon↔label gap matches the other tabs.
-          tabBarIcon: ({ size }) => <RewardsTabIcon size={size ?? 28} />,
-          // Only surface the Rewards tab (and its route) for whitelisted users;
-          // the whitelisted NewCustomTabBar renders Wallet/Savings/Rewards.
-          href: isTestUser ? path.REWARDS : null,
+          tabBarIcon: ({ focused, size }) => (
+            <AnimatedTabIcon name="rewards" focused={focused} size={size} />
+          ),
+          // Only surface the Rewards tab (and its route) on qa/preview builds;
+          // the redesigned NewCustomTabBar renders Wallet/Savings/Rewards.
+          href: path.REWARDS,
         }}
       />
-      {isTestUser && (
+      {/* Stocks is an in-development feature: its tab/route is only registered on
+          qa/preview builds and hidden in production. The screen itself also
+          redirects in production as a deep-link safeguard. */}
+      {isDevFeatureEnabled && (
         <Tabs.Screen
           name="stocks"
           options={{
@@ -217,4 +210,6 @@ export default function TabLayout() {
       />
     </Tabs>
   );
+
+  return <TabBarBlurProvider>{tabs}</TabBarBlurProvider>;
 }

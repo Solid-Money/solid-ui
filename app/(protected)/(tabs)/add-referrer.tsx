@@ -72,7 +72,7 @@ export default function AddReferrer() {
             <Text className="text-center text-lg font-semibold text-white md:text-xl">
               Enter your friend&apos;s referral code
             </Text>
-            <View className="w-10" />
+            <View className="w-[50px]" />
           </View>
           <View className=" w-full">
             {checkingReferrer ? (
@@ -106,7 +106,8 @@ export default function AddReferrer() {
                   </View>
                 )}
                 <Button
-                  className="mt-6 h-12 w-full rounded-xl bg-[#94F27F]"
+                  variant="brand"
+                  className="mt-6 w-full"
                   onPress={onSubmit}
                   disabled={!code || loading}
                 >

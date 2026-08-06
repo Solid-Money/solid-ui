@@ -160,10 +160,10 @@ export default function SignupCreating() {
       if (redirectFrom) {
         setRedirectFrom(null);
         router.replace(redirectFrom as any);
-      } else if (Platform.OS === 'web') {
-        router.replace(path.HOME);
       } else {
-        router.replace(path.NOTIFICATIONS);
+        // Signup already completed on a previous render/session. Returning to
+        // this screen must not replay notification onboarding.
+        router.replace(path.HOME);
       }
       return;
     }

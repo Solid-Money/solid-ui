@@ -3,23 +3,22 @@ import { create } from 'zustand';
 export type CardHeroRect = { x: number; y: number; width: number; height: number };
 
 interface CardHeroState {
-  /** A card hero transition is currently in progress. */
+  /** The card is in the air. */
   active: boolean;
-  /** Window-space rect of the home wallet card at the moment it was tapped. */
+  /** Window-space rect the card is flying from. */
   fromRect: CardHeroRect | null;
-  /** Window-space resting rect of the card on the card-details screen. */
+  /** Window-space rect the card is flying to. */
   toRect: CardHeroRect | null;
   /** Last 4 digits rendered on the flying clone's glyph badge (may be empty). */
   last4: string;
   /**
-   * Begin a transition from the home wallet card. Called right before navigating
-   * to /card/details; the root <CardHeroOverlay/> then flies a card snapshot from
-   * `fromRect` to the details card's measured `toRect`.
+   * Fly the card between two rects. Both are known up front — the live one is
+   * measured, the other comes from `getCardHeroDestination` — so the flight starts on
+   * the frame of the tap with nothing to wait for. Used in both directions: wallet
+   * card → pane when opening, and back again when dismissing.
    */
-  start: (fromRect: CardHeroRect, last4: string) => void;
-  /** The details screen reports its resting card rect once laid out. */
-  setToRect: (toRect: CardHeroRect) => void;
-  /** Transition finished (or aborted) — clear everything. */
+  start: (fromRect: CardHeroRect, toRect: CardHeroRect, last4: string) => void;
+  /** Flight finished (or aborted) — clear everything. */
   end: () => void;
 }
 
@@ -28,7 +27,6 @@ export const useCardHeroStore = create<CardHeroState>(set => ({
   fromRect: null,
   toRect: null,
   last4: '',
-  start: (fromRect, last4) => set({ active: true, fromRect, toRect: null, last4 }),
-  setToRect: toRect => set({ toRect }),
+  start: (fromRect, toRect, last4) => set({ active: true, fromRect, toRect, last4 }),
   end: () => set({ active: false, fromRect: null, toRect: null, last4: '' }),
 }));

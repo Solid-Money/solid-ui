@@ -482,6 +482,7 @@ function DepositToVaultForm() {
       text1: `Depositing ${toastToken}`,
       text2: `Staking ${toastToken} to the protocol`,
       props: {
+        badgeText: 'Onchain',
         link: `${explorerUrl}/tx/${hashForVault}`,
         linkText: eclipseAddress(hashForVault),
         image: getAsset(toastIcon),

@@ -1,0 +1,234 @@
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import { Blend, CreditCard, type LucideIcon, RefreshCw, Zap } from 'lucide-react-native';
+
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
+
+const POINTS_STAR = require('@/assets/images/rewards-tiers/points-drawer-star.png');
+
+interface TierPointsSheetContentProps {
+  animationSession: number;
+  onClose: () => void;
+  /**
+   * Bottom-sheet presentation: adds the top padding that clears the sheet's drag
+   * handle. False inside a modal, which brings its own padding.
+   */
+  isSheet?: boolean;
+}
+
+interface PointsMethod {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  iconSize: number;
+  iconRotation?: `${number}deg`;
+}
+
+const POINTS_METHODS: PointsMethod[] = [
+  {
+    title: 'Save',
+    description: '1 point/hour for\nevery $1 deposited',
+    icon: Zap,
+    iconSize: 24,
+  },
+  {
+    title: 'Spend',
+    description: '1 point per\n$1 spent',
+    icon: CreditCard,
+    iconSize: 26,
+  },
+  {
+    title: 'Invite friends',
+    description: 'Earn 10% of their\ndaily points',
+    icon: Blend,
+    iconSize: 26,
+    iconRotation: '-45deg',
+  },
+  {
+    title: 'Swap',
+    description: '1 point per\n$1 swapped',
+    icon: RefreshCw,
+    iconSize: 26,
+  },
+];
+
+const AnimatedTierStar = () => {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withTiming(1, {
+      duration: 2000,
+      easing: Easing.linear,
+    });
+  }, [progress]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      progress.value,
+      [0, 0.04, 0.275, 1],
+      [0, 0, 1, 1],
+      Extrapolation.CLAMP,
+    );
+    const rotate = interpolate(
+      progress.value,
+      [0, 0.04, 0.51, 1],
+      [90, 90, 0, 0],
+      Extrapolation.CLAMP,
+    );
+    const scale = interpolate(
+      progress.value,
+      [0, 0.04, 0.49, 1],
+      [0.78, 0.78, 1, 1],
+      Extrapolation.CLAMP,
+    );
+    const glow = interpolate(
+      progress.value,
+      [0, 0.15, 0.525, 0.875, 1],
+      [0.5, 0.5, 0.95, 0.5, 0.5],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      opacity,
+      shadowOpacity: glow,
+      shadowRadius: 8 + glow * 18,
+      transform: [{ rotate: `${rotate}deg` }, { scale }],
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 94,
+          height: 94,
+          shadowColor: '#ffffff',
+          shadowOffset: { width: 0, height: 0 },
+        },
+        animatedStyle,
+      ]}
+    >
+      <Image source={POINTS_STAR} style={{ width: 94, height: 94 }} contentFit="contain" />
+    </Animated.View>
+  );
+};
+
+const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean }) => {
+  const MethodIcon = method.icon;
+
+  return (
+    <View
+      className="w-1/2 items-center"
+      style={{
+        height: bottom ? 177 : 169,
+        paddingTop: bottom ? 31 : 23,
+      }}
+    >
+      <View className="size-[50px] items-center justify-center rounded-full bg-white/10">
+        <MethodIcon
+          color="#ffffff"
+          size={method.iconSize}
+          strokeWidth={1.75}
+          style={method.iconRotation ? { transform: [{ rotate: method.iconRotation }] } : undefined}
+        />
+      </View>
+      <Text
+        className="mt-2 text-center text-white"
+        style={{
+          fontFamily: 'MonaSans_600SemiBold',
+          fontSize: 16,
+          lineHeight: 17,
+        }}
+      >
+        {method.title}
+      </Text>
+      <Text
+        className="mt-1 text-center text-white/70"
+        style={{
+          fontFamily: 'MonaSans_500Medium',
+          fontSize: 14,
+          lineHeight: 17,
+        }}
+      >
+        {method.description}
+      </Text>
+    </View>
+  );
+};
+
+const TierPointsSheetContent = ({
+  animationSession,
+  onClose,
+  isSheet = true,
+}: TierPointsSheetContentProps) => (
+  <View className={cn('items-center', isSheet && 'px-[34px] pt-[46px]')}>
+    <AnimatedTierStar key={animationSession} />
+
+    <Text
+      className="mt-[31px] w-[219px] text-center text-white"
+      style={{
+        fontFamily: 'MonaSans_600SemiBold',
+        fontSize: 30,
+        lineHeight: 30,
+      }}
+    >
+      How do you{'\n'}earn points?
+    </Text>
+    <Text
+      className="mt-[10px] w-[284px] text-center text-white/70"
+      style={{
+        fontFamily: 'MonaSans_400Regular',
+        fontSize: 16,
+        lineHeight: 18,
+      }}
+    >
+      Earn points for every action you take with Solid and unlock rewards
+    </Text>
+
+    <View className="mt-9 h-[346px] w-full overflow-hidden rounded-[23px] bg-[#2B2B2B]">
+      <View className="flex-row">
+        <PointsCell method={POINTS_METHODS[0]} />
+        <PointsCell method={POINTS_METHODS[1]} />
+      </View>
+      <View className="h-px bg-white/10" />
+      <View className="flex-row">
+        <PointsCell method={POINTS_METHODS[2]} bottom />
+        <PointsCell method={POINTS_METHODS[3]} bottom />
+      </View>
+      <View className="absolute bottom-0 left-1/2 top-0 w-px bg-white/10" />
+    </View>
+
+    <Button
+      variant="brand"
+      accessibilityRole="button"
+      accessibilityLabel="Close points information"
+      onPress={onClose}
+      className="mt-[31px] w-full transition-all active:scale-95 active:opacity-80"
+    >
+      <Text
+        className="text-center text-black"
+        style={{
+          fontFamily: 'MonaSans_600SemiBold',
+          fontSize: 16,
+          lineHeight: 20,
+        }}
+      >
+        Close
+      </Text>
+    </Button>
+  </View>
+);
+
+export default TierPointsSheetContent;

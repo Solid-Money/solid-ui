@@ -26,7 +26,7 @@ const InfoCenterDropdown = () => {
 
   const handleSupportPress = useCallback(() => {
     bottomSheetModalRef.current?.dismiss();
-    onInfoCenterSupportPress();
+    setTimeout(onInfoCenterSupportPress, 180);
   }, [onInfoCenterSupportPress]);
 
   const handleDocsPress = useCallback(() => {
