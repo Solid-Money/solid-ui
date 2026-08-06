@@ -5,6 +5,7 @@ import { Address } from 'viem';
 
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
@@ -26,6 +27,7 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -182,6 +184,13 @@ export default function HomeScreenNew() {
                 depositCompleted={depositCompleted}
                 className="px-4"
               />
+            </HeroExit>
+          )}
+          {/* New-app cashback promo: dev/qa/preview only — hidden in production
+              until the promotion is ready to launch. */}
+          {isDevFeatureEnabled && (
+            <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
+              <HomeCashbackPromoBanner />
             </HeroExit>
           )}
         </View>
