@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
 
@@ -93,6 +94,7 @@ const ResponsiveModal = ({
   fillViewportHeight = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
+  const insets = useSafeAreaInsets();
   const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
   // On web, opt into the flex layout (header fixed, body scrolls) that native
   // small screens already use, capping the card to the viewport (see below).
@@ -241,7 +243,13 @@ const ResponsiveModal = ({
                   <ScrollView
                     className="web:max-h-[80vh]"
                     contentContainerClassName="pb-4 md:pb-10"
-                    contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
+                    // The sheet runs to the bottom edge of the screen, so the last
+                    // element (usually the primary button) needs to clear the home
+                    // indicator / gesture bar on top of the base pb-4.
+                    contentContainerStyle={{
+                      ...(useFixedHeightLayout ? { flexGrow: 1 } : null),
+                      ...(isNativeSmallScreen ? { paddingBottom: 16 + insets.bottom } : null),
+                    }}
                     style={useFixedHeightLayout ? { flex: 1 } : undefined}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
