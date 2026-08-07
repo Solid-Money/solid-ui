@@ -18,6 +18,12 @@ import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
 
+/**
+ * Fraction of the viewport left above a top-aligned mobile sheet. Must match the
+ * `mt-[5vh]` ResponsiveModal puts on small-screen dialog content.
+ */
+export const MOBILE_SHEET_TOP_RATIO = 0.05;
+
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -114,8 +120,15 @@ const DialogContent = React.forwardRef<
     const { open } = DialogPrimitive.useRootContext();
     const isWebBottomSheet =
       Platform.OS === 'web' && !isScreenMedium && webPresentation === 'bottom-sheet';
+    // Top-aligned sheets are pushed down by `mt-[5vh]` (ResponsiveModal) and sit
+    // inside an overlay with 8px padding, so a full-viewport height overflowed the
+    // bottom of the screen by that much — clipping whatever the content ended with
+    // (e.g. the deposit form's submit button). Subtract the offset so the sheet
+    // ends exactly at the bottom edge.
     const mobileSheetHeight =
-      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 1 - 16, 0) : undefined;
+      !isScreenMedium && shouldAlignTop
+        ? Math.max(windowHeight * (1 - MOBILE_SHEET_TOP_RATIO) - 8, 0)
+        : undefined;
 
     // Web bounce animation using useAnimatedStyle
     const opacityWeb = useSharedValue(0);
