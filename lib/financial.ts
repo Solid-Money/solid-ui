@@ -13,6 +13,19 @@ import { SavingMode } from './types';
 
 export const SECONDS_PER_YEAR = 31_557_600;
 
+/**
+ * Sentinel returned by `calculateYield` for the interest modes (CURRENT /
+ * INTEREST_ONLY) when interest cannot be derived from real data — no deposit
+ * history yet, or the subgraph query came back empty.
+ *
+ * Interest earned is a measurement, not a forecast, so there is no safe numeric
+ * answer in that case: returning an APY projection instead used to make the
+ * counter jump by ~2x whenever the deposit history flickered in and out, and
+ * returning 0 wipes a real balance's interest to nothing. Callers must keep
+ * showing the last known value (or a skeleton) when they see this.
+ */
+export const INTEREST_UNAVAILABLE = -1;
+
 // Cache for API responses to prevent repeated calls
 const exchangeRateCache = new Map<string, { data: Map<number, number>; timestamp: number }>();
 const vaultTransfersCache = new Map<string, { data: FuseTransferData[]; timestamp: number }>();
@@ -230,8 +243,7 @@ export const calculateActualDepositedAmount = async (
     tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase() ||
     tokenAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
   // Subgraph deposits/withdrawals are USDC-vault only; for FUSE vault use only chain vault transfers
-  const isFuseVault =
-    tokenAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
+  const isFuseVault = tokenAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
 
   const vaultTransferAddresses = isUsdcVault
     ? [ADDRESSES.ethereum.vault, ADDRESSES.fuse.vault]
@@ -359,6 +371,21 @@ export const calculateActualDepositedAmount = async (
   return { actualDeposited, timeWeightedBalances };
 };
 
+/**
+ * Compute a savings figure for the given display mode.
+ *
+ * The interest modes (CURRENT / INTEREST_ONLY) are *measurements*: they report
+ * realized profit only — `balance x exchangeRate - actualDeposited` — and never
+ * add an APY projection over the holding period. Layering a projection on top of
+ * realized profit double-counted the same period and made "interest earned"
+ * scale with the APY, so the displayed total moved retroactively (downwards)
+ * every time the vault's rate changed. Forward-looking smoothing belongs to the
+ * per-second tick in `useSavingsYield`, which only projects from the timestamp
+ * the measurement was taken.
+ *
+ * When realized profit can't be established, the interest modes return
+ * INTEREST_UNAVAILABLE rather than guessing.
+ */
 export const calculateYield = async (
   balance: number,
   apy: number,
@@ -371,14 +398,18 @@ export const calculateYield = async (
   tokenAddress: string = ADDRESSES.fuse.vault,
   decimals: number = 6,
 ): Promise<number> => {
+  const isInterestMode = mode === SavingMode.CURRENT || mode === SavingMode.INTEREST_ONLY;
+
   if (balance <= 0 || !isFinite(balance)) return 0;
   if (mode === SavingMode.BALANCE_ONLY) return balance;
-  if (!isFinite(apy) || apy < 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
-  // Without a valid start time we can't compute interest; return 0 for interest modes
-  if (!lastTimestamp || lastTimestamp <= 0)
-    return mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT ? 0 : balance;
-  if (!currentTime || currentTime <= 0)
-    return mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT ? 0 : balance;
+  // APY and a start time are only inputs to the projecting modes. The interest
+  // modes are derived from deposit history, so a missing/failed APY fetch must
+  // not blank out interest that is already sitting on-chain.
+  if (!isInterestMode) {
+    if (!isFinite(apy) || apy < 0) return balance;
+    if (!lastTimestamp || lastTimestamp <= 0) return balance;
+    if (!currentTime || currentTime <= 0) return balance;
+  }
 
   const { setEarnedUSD } = useBalanceStore.getState();
 
@@ -416,16 +447,16 @@ export const calculateYield = async (
           interestEarnedUSD = 0;
         }
 
-        const amountGained =
-          (balanceUSD * (apy / 100) * (currentTime - lastTimestamp)) / SECONDS_PER_YEAR;
-        const currentInterest = Math.max(0, interestEarnedUSD + amountGained);
-        if (mode === SavingMode.CURRENT) {
-          return currentInterest;
-        }
-
-        if (mode === SavingMode.INTEREST_ONLY) {
+        // Realized profit is the whole answer for the interest modes — no APY
+        // projection is layered on top (see the function doc).
+        if (isInterestMode) {
           return Math.max(0, interestEarnedUSD);
         }
+
+        const elapsed =
+          lastTimestamp > 0 && currentTime > lastTimestamp ? currentTime - lastTimestamp : 0;
+        const amountGained =
+          isFinite(apy) && apy > 0 ? (balanceUSD * (apy / 100) * elapsed) / SECONDS_PER_YEAR : 0;
 
         if (mode === SavingMode.TOTAL_USD) {
           return balanceUSD + amountGained;
@@ -454,19 +485,22 @@ export const calculateYield = async (
     }
   }
 
+  // No usable deposit history. The projecting modes can still fall back to a
+  // simple APY estimate, but the interest modes cannot: reporting a projection as
+  // "interest earned" is what made the counter swing by ~2x whenever this
+  // fallback was hit. Signal "unknown" and let the caller hold the last value.
+  if (isInterestMode) {
+    return INTEREST_UNAVAILABLE;
+  }
+
   // Fallback to original calculation
   const deltaTime = Math.max(0, currentTime - lastTimestamp);
   const timeInYears = deltaTime / SECONDS_PER_YEAR;
   const interestEarned = balance * (apy / 100) * timeInYears;
   const interestEarnedUSD = balanceUSD * (apy / 100) * timeInYears;
   if (deltaTime === 0) {
-    if (mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT) return 0;
     if (mode === SavingMode.TOTAL_USD) return balanceUSD;
     return balance;
-  }
-
-  if (mode === SavingMode.INTEREST_ONLY) {
-    return Math.max(0, interestEarnedUSD);
   }
 
   if (mode === SavingMode.TOTAL) {
@@ -480,10 +514,6 @@ export const calculateYield = async (
     const totalReturn = balanceUSD - estimatedOriginalDeposit;
     const totalReturnPercentage = (totalReturn / estimatedOriginalDeposit) * 100;
     return totalReturnPercentage;
-  }
-
-  if (mode === SavingMode.CURRENT) {
-    return Math.max(0, interestEarnedUSD);
   }
 
   if (mode === SavingMode.TOTAL_USD) {

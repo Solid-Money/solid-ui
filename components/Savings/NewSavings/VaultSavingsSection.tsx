@@ -5,12 +5,7 @@ import { fuse, mainnet } from 'viem/chains';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
-import {
-  useAPYs,
-  useLatestTokenTransfer,
-  useMaxAPY,
-  useUserTransactions,
-} from '@/hooks/useAnalytics';
+import { useLatestTokenTransfer, useMaxAPY, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useSavingsSummary } from '@/hooks/useSavingsSummary';
@@ -53,12 +48,12 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
   const display = getVaultDisplay(vaultType);
 
   const { data: balance } = useVaultBalance(user?.safeAddress as Address, vault);
-  const { maxAPY } = useMaxAPY(vault.type);
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault.type);
+  const { maxAPY, isAPYsLoading } = useMaxAPY(vault.type);
   const { data: exchangeRate } = useVaultExchangeRate(vault.name);
 
-  const vaultAPY =
-    apys?.allTime != null && Number.isFinite(Number(apys.allTime)) ? Number(apys.allTime) : 0;
+  // Tick the live interest counter at the rate this card displays (maxAPY), not
+  // the all-time APY — the two disagree, and the counter must match the headline.
+  const tickAPY = Number.isFinite(maxAPY) ? maxAPY : 0;
 
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
@@ -75,17 +70,19 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
     lastTimestamp,
     vault.decimals,
   );
-  const { data: savingsSummary } = useSavingsSummary(vault.name, vault.name === 'FUSE');
+  // Source of truth for interest earned on every vault (high-water-mark based).
+  const { data: savingsSummary } = useSavingsSummary(vault.name);
 
   // USD price of the vault's native token (1 for USDC; FUSE/ETH priced live).
   const fusePriceUsd = useNativePriceUsd(fuse.id, 'fusePriceUsd', vault.name === 'FUSE');
   const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.name === 'ETH');
   const priceUsd = vault.name === 'USDC' ? 1 : vault.name === 'FUSE' ? fusePriceUsd : ethPriceUsd;
 
-  // Live interest (USD for USDC/FUSE; ETH-native × price for ETH).
+  // Live interest, denominated in the vault's base asset (USD for soUSD, FUSE
+  // for soFUSE, ETH for soETH) — converted to USD below.
   const interestRaw = useSavingsYield({
     balance: balance ?? 0,
-    apy: vaultAPY,
+    apy: tickAPY,
     lastTimestamp: firstDepositTimestamp ?? 0,
     mode: SavingMode.CURRENT,
     decimals: vault.decimals,
@@ -99,7 +96,10 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
 
   const redeemableNative = (balance ?? 0) * (exchangeRate ?? 1);
   const availableUsd = vault.name === 'USDC' ? redeemableNative : redeemableNative * priceUsd;
-  const interestUsd = vault.name === 'ETH' ? interestRaw * priceUsd : interestRaw;
+  // Interest must be converted on the same basis as `availableUsd`. FUSE was
+  // previously left unconverted, so on the soFUSE card a FUSE-denominated
+  // interest figure was rendered with a $ sign and subtracted from a USD total.
+  const interestUsd = vault.name === 'USDC' ? interestRaw : interestRaw * priceUsd;
   const depositedUsd = Math.max(availableUsd - interestUsd, 0);
 
   // No exact historical "this month" breakdown exists, so approximate from APY:
@@ -133,7 +133,7 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
           <Stat label="Interest earned" value={fmtUsd(interestUsd)} />
         </View>
         <View className="flex-row">
-          <Stat label="This month" value={`+${fmtUsd(thisMonthUsd)}`} positive />
+          <Stat label="This month (est.)" value={`+${fmtUsd(thisMonthUsd)}`} positive />
           <Stat label="Next 30 days (est.)" value={`+${fmtUsd(nextThirtyUsd)}`} positive />
         </View>
       </View>

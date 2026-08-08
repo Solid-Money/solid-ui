@@ -85,8 +85,15 @@ function LegacySavings() {
   const { data: exchangeRate } = useVaultExchangeRate(currentVault.name);
 
   const rawAllTime = apys?.allTime;
+  // Shown in the "All time yield" panel and used for the 1Y projection.
   const vaultAPY =
     rawAllTime != null && Number.isFinite(Number(rawAllTime)) ? Number(rawAllTime) : 0;
+
+  // Rate the live counters tick at. It must be the same figure the screen
+  // advertises as "Current Yield" (maxAPY) — ticking on the all-time APY while
+  // displaying the recent one made the two disagree, so a change in the headline
+  // rate looked unrelated to how fast the numbers moved.
+  const tickAPY = Number.isFinite(maxAPY) ? maxAPY : 0;
 
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
@@ -110,11 +117,10 @@ function LegacySavings() {
     currentVault.decimals,
   );
 
-  // Backend summary for soFUSE interest (FUSE has no subgraph)
-  const { data: savingsSummary } = useSavingsSummary(
-    currentVault.name,
-    currentVault.name === 'FUSE',
-  );
+  // Backend summary is the source of truth for interest earned on every vault:
+  // it measures realized profit against a high-water-mark exchange rate, so the
+  // figure can't step backwards on a transient NAV dip.
+  const { data: savingsSummary } = useSavingsSummary(currentVault.name);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
   const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
@@ -245,7 +251,7 @@ function LegacySavings() {
                           balance={balance ?? 0}
                           decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                           decimals={currentVault.decimals}
-                          apy={vaultAPY}
+                          apy={tickAPY}
                           lastTimestamp={firstDepositTimestamp ?? 0}
                           userDepositTransactions={userDepositTransactions}
                           exchangeRate={exchangeRate}
@@ -294,7 +300,7 @@ function LegacySavings() {
                           suffix={displaySuffix ?? ''}
                           balance={balance ?? 0}
                           decimals={currentVault.decimals}
-                          apy={vaultAPY}
+                          apy={tickAPY}
                           lastTimestamp={firstDepositTimestamp ?? 0}
                           mode={SavingMode.CURRENT}
                           inputsReady={
@@ -448,7 +454,7 @@ function LegacySavings() {
                           balance={balance ?? 0}
                           decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                           decimals={currentVault.decimals}
-                          apy={vaultAPY}
+                          apy={tickAPY}
                           lastTimestamp={firstDepositTimestamp ?? 0}
                           userDepositTransactions={userDepositTransactions}
                           exchangeRate={exchangeRate}
@@ -497,7 +503,7 @@ function LegacySavings() {
                           suffix={displaySuffix ?? ''}
                           balance={balance ?? 0}
                           decimals={currentVault.decimals}
-                          apy={vaultAPY}
+                          apy={tickAPY}
                           lastTimestamp={firstDepositTimestamp ?? 0}
                           mode={SavingMode.CURRENT}
                           inputsReady={
