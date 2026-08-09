@@ -5,7 +5,7 @@ import { Address } from 'viem';
 
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
-import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
+import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
@@ -27,13 +27,9 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-
-// Temporarily paused; keep the promo implementation ready for a future relaunch.
-const isCashbackPromoEnabled = false;
 
 /**
  * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
@@ -189,17 +185,10 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
-          {/* New-app cashback promo: hidden until the promotion is relaunched. */}
-          {isCashbackPromoEnabled && isDevFeatureEnabled && (
-            <HeroExit spec={HERO_EXIT.belowCard}>
-              {/* Keep layout styles on a regular View: Animated.View does not
-                  consistently resolve NativeWind padding on web. HeroExit stays
-                  outside so its native and web motion behavior is unchanged. */}
-              <View className="px-4">
-                <HomeCashbackPromoBanner />
-              </View>
-            </HeroExit>
-          )}
+          {/* Renders nothing at all when no banner is targeted at this build and
+              the hardcoded cashback promo is still paused, so the slot leaves no
+              gap behind. */}
+          <HomePromoBanners />
         </View>
 
         {showAssets && (

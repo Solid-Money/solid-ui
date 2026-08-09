@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
 import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
@@ -2507,12 +2508,21 @@ export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
 };
 
 export const fetchPromotionsBanner = async (): Promise<PromotionsBannerResponse> => {
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner`, {
-    credentials: 'include',
-    headers: {
-      ...getPlatformHeaders(),
+  // The installed native version, so the backend can drop banners gated to
+  // other versions before they reach the device. Absent on web, which always
+  // runs the latest build and is never gated.
+  const appVersion = Application.nativeApplicationVersion;
+  const query = appVersion ? `?appVersion=${encodeURIComponent(appVersion)}` : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner${query}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
     },
-  });
+  );
 
   if (!response.ok) throw response;
 
