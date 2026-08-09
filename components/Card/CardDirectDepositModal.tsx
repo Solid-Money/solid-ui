@@ -5,8 +5,12 @@ import { useDimension } from '@/hooks/useDimension';
 import CardDirectDepositModalDesktop from './CardDirectDepositModalDesktop';
 import CardDirectDepositModalMobile from './CardDirectDepositModalMobile';
 
-interface CardDirectDepositModalProps {
-  trigger: React.ReactNode;
+export interface CardDirectDepositModalProps {
+  /** Omit (or pass null) when driving the modal with isOpen/onOpenChange. */
+  trigger?: React.ReactNode;
+  /** Controlled mode: when provided, the modal no longer owns its open state. */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -15,12 +19,12 @@ interface CardDirectDepositModalProps {
  * variant. This also keeps thirdweb hooks off the web-mobile render path, which
  * is required now that the ThirdwebProvider is mounted on desktop only.
  */
-export default function CardDirectDepositModal({ trigger }: CardDirectDepositModalProps) {
+export default function CardDirectDepositModal(props: CardDirectDepositModalProps) {
   const { isDesktop } = useDimension();
 
   return isDesktop ? (
-    <CardDirectDepositModalDesktop trigger={trigger} />
+    <CardDirectDepositModalDesktop {...props} />
   ) : (
-    <CardDirectDepositModalMobile trigger={trigger} />
+    <CardDirectDepositModalMobile {...props} />
   );
 }

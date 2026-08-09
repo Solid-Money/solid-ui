@@ -63,6 +63,7 @@ interface PageLayoutProps {
   // Custom headers
   customMobileHeader?: ReactNode; // Custom header for mobile (replaces NavbarMobile)
   customDesktopHeader?: ReactNode; // Custom header for desktop (replaces Navbar)
+  desktopHeaderRightAction?: ReactNode; // Action pinned to the page's top-right on desktop
 
   // Mobile navbar right-side action override (e.g. Savings screen's "?" help button)
   mobileHeaderLeftAction?: 'profile' | 'back';
@@ -162,6 +163,7 @@ export default function PageLayout({
   mobileTitle,
   customMobileHeader,
   customDesktopHeader,
+  desktopHeaderRightAction,
   mobileHeaderLeftAction = 'profile',
   mobileHeaderRightAction = 'default',
   onMobileHeaderHelpPress,
@@ -265,6 +267,15 @@ export default function PageLayout({
     );
   };
 
+  const renderDesktopHeaderRightAction = () =>
+    isLargeScreen && desktopHeaderRightAction ? (
+      <View pointerEvents="box-none" style={styles.desktopHeaderRightAction}>
+        <View className={`${SIDEBAR_BODY_WIDTH} items-end`} pointerEvents="box-none">
+          {desktopHeaderRightAction}
+        </View>
+      </View>
+    ) : null;
+
   const renderBody = (content: ReactNode, fill = false) =>
     isSidebarShell ? (
       <View className={`${SIDEBAR_BODY_WIDTH} ${fill ? 'flex-1' : ''}`}>{content}</View>
@@ -278,6 +289,7 @@ export default function PageLayout({
       <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
         {renderHeader()}
         <Loading />
+        {renderDesktopHeaderRightAction()}
       </SafeAreaView>
     );
   }
@@ -321,6 +333,7 @@ export default function PageLayout({
         {shouldOverlayMobileNavbar && (
           <View style={styles.mobileNavbarOverlay}>{renderNavbar(true)}</View>
         )}
+        {renderDesktopHeaderRightAction()}
         {additionalContent}
       </SafeAreaView>
     );
@@ -368,12 +381,20 @@ export default function PageLayout({
           </View>
         </>
       )}
+      {renderDesktopHeaderRightAction()}
       {additionalContent}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  desktopHeaderRightAction: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 15,
+    zIndex: 10,
+  },
   mobileBlurTarget: {
     flex: 1,
   },

@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { CONTENT_MAX_WIDTH } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import { CardRevealValues } from '@/components/Card/NewCardDetails/cardRevealValues';
 import CopyButton from '@/components/Card/NewCardDetails/CopyButton';
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
 import { EyeIcon, EyeOffIcon } from '@/components/Card/NewCardDetails/icons';
+import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
 
 /**
@@ -74,9 +76,16 @@ const CardDetailsPanel = ({
   onCopyName,
   onCopyCountry,
 }: CardDetailsPanelProps) => {
-  const { width } = useWindowDimensions();
-  const cardCover = width * CARD_COVER_FRACTION;
-  const contentTop = width * CONTENT_TOP_FRACTION;
+  const { width: windowWidth } = useWindowDimensions();
+  const pageLeft = usePageLeft();
+  // These fractions were measured from the 419pt Figma frame. On mobile that
+  // frame is the window; on desktop the pane is capped at max-w-lg beside the
+  // sidebar. Using the full browser width here made the panel hundreds of pixels
+  // tall while the card itself stayed at 512px, pushing every section below it
+  // far down the page.
+  const layoutWidth = Math.min(Math.max(windowWidth - pageLeft, 0), CONTENT_MAX_WIDTH);
+  const cardCover = layoutWidth * CARD_COVER_FRACTION;
+  const contentTop = layoutWidth * CONTENT_TOP_FRACTION;
   const collapsedHeight = contentTop + COLLAPSED_CONTENT;
   const expandedHeight = contentTop + EXPANDED_CONTENT;
 

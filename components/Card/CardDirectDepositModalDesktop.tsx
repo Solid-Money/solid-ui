@@ -44,11 +44,21 @@ const STEP_TITLES: Record<Step, string> = {
 };
 
 interface CardDirectDepositModalProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function CardDirectDepositModal({ trigger }: CardDirectDepositModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function CardDirectDepositModal({
+  trigger = null,
+  isOpen: isOpenProp,
+  onOpenChange,
+}: CardDirectDepositModalProps) {
+  // Uncontrolled by default (trigger drives it); controlled when isOpen is passed,
+  // e.g. by the home "Add funds" destination picker which has no trigger of its own.
+  const isControlled = isOpenProp !== undefined;
+  const [isOpenState, setIsOpenState] = useState(false);
+  const isOpen = isControlled ? isOpenProp : isOpenState;
   const [stepState, setStepState] = useState<{ current: Step; previous: ModalState }>({
     current: 'options',
     previous: CLOSE_STATE,
@@ -84,14 +94,18 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
     setStepState(prev => ({ current: nextStep, previous: MODAL_STATES[prev.current] }));
   }, []);
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open && walletConnectingRef.current) return;
-    setIsOpen(open);
-    if (!open) {
-      setStepState({ current: 'options', previous: CLOSE_STATE });
-      setDepositAddress(undefined);
-    }
-  }, []);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && walletConnectingRef.current) return;
+      if (!isControlled) setIsOpenState(open);
+      onOpenChange?.(open);
+      if (!open) {
+        setStepState({ current: 'options', previous: CLOSE_STATE });
+        setDepositAddress(undefined);
+      }
+    },
+    [isControlled, onOpenChange],
+  );
 
   const handleConnectWallet = useCallback(async () => {
     try {
@@ -247,10 +261,7 @@ export default function CardDirectDepositModal({ trigger }: CardDirectDepositMod
 
     if (step === 'address') {
       return depositAddress ? (
-        <DepositPublicAddress
-          address={depositAddress}
-          onDone={() => handleOpenChange(false)}
-        />
+        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
       ) : (
         <View className="items-center py-12">
           <ActivityIndicator color="white" />

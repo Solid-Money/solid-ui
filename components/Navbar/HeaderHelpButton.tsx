@@ -4,16 +4,17 @@ import HeaderHelpIcon from '@/assets/images/header-help';
 
 interface HeaderHelpButtonProps {
   onPress: () => void;
+  accessibilityLabel?: string;
 }
 
 /**
  * Circular "?" button shown in the top-right of the redesigned mobile header,
  * opening the contextual help carousel for the current screen.
  */
-const HeaderHelpButton = ({ onPress }: HeaderHelpButtonProps) => {
+const HeaderHelpButton = ({ onPress, accessibilityLabel = 'Open help' }: HeaderHelpButtonProps) => {
   return (
     <Pressable
-      accessibilityLabel="How savings works"
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onPress={onPress}
       className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"

@@ -29,6 +29,18 @@ const TITLE_TRANSITION = {
   easing: Easing.out(Easing.cubic),
 };
 
+// A nested backdrop filter cannot sample through the opacity-animated parent on
+// web, so keep the web filter on that parent itself. Native continues to use
+// BlurView below, including the Android blur target.
+const WEB_GLASS_BLUR =
+  Platform.OS === 'web'
+    ? {
+        backgroundColor: 'rgba(17, 17, 17, 0.6)',
+        backdropFilter: 'saturate(180%) blur(11.2px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(11.2px)',
+      }
+    : undefined;
+
 type NavbarMobileProps = {
   blurTarget?: RefObject<View | null>;
   onContentOffsetChange?: (height: number) => void;
@@ -129,15 +141,22 @@ const NavbarMobile = ({
       style={topInset ? { paddingTop: topInset } : undefined}
     >
       {hasBlurTarget && (
-        <Animated.View pointerEvents="none" style={[styles.overlay, glassAnimatedStyle]}>
-          <BlurView
-            {...blurViewProps}
-            intensity={56}
-            pointerEvents="none"
-            style={StyleSheet.absoluteFill}
-            tint="systemChromeMaterialDark"
-          />
-          <View pointerEvents="none" style={[styles.overlay, styles.glassOverlay]} />
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.overlay, WEB_GLASS_BLUR, glassAnimatedStyle]}
+        >
+          {Platform.OS !== 'web' && (
+            <BlurView
+              {...blurViewProps}
+              intensity={56}
+              pointerEvents="none"
+              style={StyleSheet.absoluteFill}
+              tint="systemChromeMaterialDark"
+            />
+          )}
+          {Platform.OS !== 'web' && (
+            <View pointerEvents="none" style={[styles.overlay, styles.glassOverlay]} />
+          )}
         </Animated.View>
       )}
       <View className="flex-row items-center justify-between p-4" pointerEvents="box-none">

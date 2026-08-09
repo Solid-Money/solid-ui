@@ -6,8 +6,8 @@ import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
 import { Text } from '@/components/ui/text';
 import { RewardsTier } from '@/lib/types';
 
-/** Figma 20609:5949 — 264×34 track, 3px inset, so each tab is 86 wide. */
-const TRACK_WIDTH = 264;
+/** Slightly tightened from the 264px Figma track to better fit the mobile header. */
+const TRACK_WIDTH = 252;
 const TRACK_HEIGHT = 34;
 const TRACK_INSET = 3;
 const TAB_HEIGHT = TRACK_HEIGHT - TRACK_INSET * 2;

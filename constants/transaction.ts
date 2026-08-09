@@ -170,3 +170,29 @@ export const SOURCE_RECEIPT_NON_FINAL_TYPES: ReadonlySet<TransactionType> = new 
  */
 export const isSourceReceiptFinalizable = (type: TransactionType): boolean =>
   !SOURCE_RECEIPT_NON_FINAL_TYPES.has(type);
+
+/**
+ * Metadata flag stamped by the deposit hooks when a `DEPOSIT` activity is
+ * actually routed through a bridge (source chain !== Ethereum/Base target).
+ * These are created as `TransactionType.DEPOSIT`, not `BRIDGE_DEPOSIT`, so the
+ * type alone can't tell them apart from a same-chain deposit.
+ */
+export const CROSS_CHAIN_DEPOSIT_METADATA_KEY = 'isCrossChainDeposit';
+
+/**
+ * Whether a successful source-chain receipt means this specific activity is
+ * done. Prefer this over `isSourceReceiptFinalizable`: it also rejects deposits
+ * whose funds still have to cross a bridge before landing.
+ *
+ * A cross-chain deposit's source tx (approve / pull-from-user) mines in seconds
+ * while the bridge fill + vault deposit take minutes, so finalizing on that
+ * receipt showed "USDC added to your balance" / "Completed" while the backend
+ * BridgeTransaction was still at `bridge_initiated`. Those deposits are
+ * finalized by the backend once the bridge and vault deposit both complete.
+ */
+export const canFinalizeFromSourceReceipt = (activity: {
+  type: TransactionType;
+  metadata?: Record<string, any>;
+}): boolean =>
+  isSourceReceiptFinalizable(activity.type) &&
+  activity.metadata?.[CROSS_CHAIN_DEPOSIT_METADATA_KEY] !== true;

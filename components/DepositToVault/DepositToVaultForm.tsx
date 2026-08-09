@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -83,7 +83,7 @@ function DepositToVaultForm() {
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens } =
     useWalletTokens();
 
   // Sum across all (chain, token) pairs the selected vault accepts. If nothing
@@ -95,6 +95,7 @@ function DepositToVaultForm() {
       ...polygonTokens,
       ...baseTokens,
       ...arbitrumTokens,
+      ...bscTokens,
     ];
 
     const supportedSet = new Set<string>();
@@ -112,7 +113,7 @@ function DepositToVaultForm() {
       if (!supportedSet.has(`${token.chainId}:${symbol}`)) return false;
       return BigInt(token.balance || '0') > 0n;
     });
-  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, vault]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens, vault]);
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
   const vaultTokenIcon =
@@ -163,6 +164,7 @@ function DepositToVaultForm() {
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
+      decimals: tokenData?.decimals,
     };
   }, [normalizedSelection.chainId, normalizedSelection.principalToken]);
 
@@ -249,7 +251,7 @@ function DepositToVaultForm() {
       contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
       contractAddress: selectedTokenInfo.address,
       balance: '0',
-      contractDecimals: isFuseVault || isEthVault ? 18 : 6,
+      contractDecimals: selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6),
       type: TokenType.ERC20,
       chainId: normalizedSelection.chainId,
       logoUrl: undefined,
@@ -274,7 +276,7 @@ function DepositToVaultForm() {
       : useSolidForUsdc
         ? balanceSolidUsdc
         : balance;
-  const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
+  const balanceDecimals = selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6);
   const depositFn = isEthVault
     ? useSolidForEth
       ? depositSolidEth
@@ -384,6 +386,30 @@ function DepositToVaultForm() {
 
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
+
+  const amountInputRef = useRef<TextInput>(null);
+
+  // "Max" fills the field with the full-precision balance (up to 18 decimals),
+  // which is far wider than the input on small screens. Left alone the field
+  // keeps its caret at the end and shows only the trailing decimals, so the
+  // amount reads as gibberish. Pull the caret/scroll back to the start so the
+  // leading digits — the ones the user cares about — stay visible.
+  const showAmountFromStart = useCallback(() => {
+    requestAnimationFrame(() => {
+      const input = amountInputRef.current as any;
+      if (!input) return;
+      // Native: TextInput's imperative command. Web (RN-web): the DOM input.
+      if (typeof input.setSelection === 'function') input.setSelection(0, 0);
+      if (typeof input.setSelectionRange === 'function') {
+        try {
+          input.setSelectionRange(0, 0);
+        } catch {
+          // Some browsers throw on number-ish inputs; the scroll reset below still applies.
+        }
+      }
+      if ('scrollLeft' in input) input.scrollLeft = 0;
+    });
+  }, []);
 
   // Track form viewed (once per mount)
   const hasTrackedFormView = useRef(false);
@@ -571,6 +597,7 @@ function DepositToVaultForm() {
                       });
                       setValue('amount', formattedBalance);
                       trigger('amount');
+                      showAmountFromStart();
                     }}
                   />
                 </View>
@@ -581,6 +608,7 @@ function DepositToVaultForm() {
                   name="amount"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
+                      ref={amountInputRef}
                       keyboardType="decimal-pad"
                       className="min-w-0 flex-1 text-2xl font-semibold text-white web:focus:outline-none"
                       value={value.toString()}

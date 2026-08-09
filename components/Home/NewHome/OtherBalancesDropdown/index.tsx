@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
@@ -146,12 +145,14 @@ const BalanceRow = ({
 export const WalletBalanceRow = ({
   walletBalance,
   isLoading,
+  onDismiss,
 }: {
   walletBalance: number;
   isLoading?: boolean;
+  onDismiss?: () => void;
 }) => (
   <BalanceRow color={WALLET_COLOR} label="Wallet" value={walletBalance} isLoading={isLoading}>
-    <DepositOptionModal trigger={<AddButton />} />
+    <DepositOptionModal onBeforeOpen={onDismiss} trigger={<AddButton />} />
   </BalanceRow>
 );
 
@@ -160,14 +161,14 @@ export const WalletBalanceRow = ({
 export const CardBalanceRow = ({
   cardBalance,
   isLoading,
+  onAdd,
 }: {
   cardBalance: number;
   isLoading?: boolean;
-  // Accepted for parity with SavingsBalanceRow; the popup opens over the sheet.
-  onDismiss?: () => void;
+  onAdd?: () => void;
 }) => (
   <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
-    <CardDirectDepositModal trigger={<AddButton />} />
+    <AddButton onPress={onAdd} />
   </BalanceRow>
 );
 
@@ -203,11 +204,12 @@ export const BalanceBreakdownRows = ({
   userHasCard,
   isLoading,
   onDismiss,
-}: OtherBalances & { onDismiss?: () => void }) => (
+  onCardAdd,
+}: OtherBalances & { onDismiss?: () => void; onCardAdd?: () => void }) => (
   <>
-    <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} />
+    <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
     {shouldShowCard(cardBalance, userHasCard) && (
-      <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onDismiss={onDismiss} />
+      <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onAdd={onCardAdd} />
     )}
     <SavingsBalanceRow
       savingsBalance={savingsBalance}

@@ -40,7 +40,7 @@ const WalletTokenSelectorScreen: React.FC<WalletTokenSelectorScreenProps> = ({
   emptyDescription,
   includeZeroBalance = false,
 }) => {
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens } =
     useWalletTokens();
 
   const depositableTokens = useMemo(() => {
@@ -50,20 +50,17 @@ const WalletTokenSelectorScreen: React.FC<WalletTokenSelectorScreenProps> = ({
       ...polygonTokens,
       ...baseTokens,
       ...arbitrumTokens,
+      ...bscTokens,
     ];
     const chainSet = new Set(supportedChainIds);
-    const symbolSet = new Set(
-      supportedTokenSymbols.map(symbol => symbol.toUpperCase()),
-    );
+    const symbolSet = new Set(supportedTokenSymbols.map(symbol => symbol.toUpperCase()));
 
     return allTokens.filter(token => {
       const symbol = token.contractTickerSymbol?.toUpperCase();
       if (!symbol || !symbolSet.has(symbol)) return false;
       if (!chainSet.has(token.chainId)) return false;
       if (includeZeroBalance) return true;
-      const balance = Number(
-        formatUnits(BigInt(token.balance || '0'), token.contractDecimals),
-      );
+      const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
       return balance > 0;
     });
   }, [
@@ -72,6 +69,7 @@ const WalletTokenSelectorScreen: React.FC<WalletTokenSelectorScreenProps> = ({
     polygonTokens,
     baseTokens,
     arbitrumTokens,
+    bscTokens,
     supportedChainIds,
     supportedTokenSymbols,
     includeZeroBalance,

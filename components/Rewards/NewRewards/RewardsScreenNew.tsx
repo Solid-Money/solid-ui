@@ -5,6 +5,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
 import Loading from '@/components/Loading';
+import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
@@ -82,7 +83,21 @@ export default function RewardsScreenNew() {
 
   if (isLoading) {
     return (
-      <PageLayout scrollable={false} mobileTitle={null} mobileHeaderRightAction="help">
+      <PageLayout
+        scrollable={false}
+        mobileTitle={null}
+        mobileHeaderRightAction="help"
+        onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+        desktopHeaderRightAction={
+          <HeaderHelpButton
+            accessibilityLabel="How rewards work"
+            onPress={() => setIsHelpOpen(true)}
+          />
+        }
+        additionalContent={
+          <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+        }
+      >
         <Loading />
       </PageLayout>
     );
@@ -132,12 +147,18 @@ export default function RewardsScreenNew() {
       mobileTitle={null}
       mobileHeaderRightAction="help"
       onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      desktopHeaderRightAction={
+        <HeaderHelpButton
+          accessibilityLabel="How rewards work"
+          onPress={() => setIsHelpOpen(true)}
+        />
+      }
       additionalContent={
         <RewardsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }
     >
-      <View className="mb-5 w-full gap-8 pb-24">
-        <View className="gap-5">
+      <View className="mb-5 w-full pb-24">
+        <View className="mb-5 gap-5">
           <PointsHeadline tier={currentTier} points={totalPoints} />
           <View className="flex-row gap-3 px-4">
             <Pressable
@@ -178,15 +199,17 @@ export default function RewardsScreenNew() {
 
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
-        <DailyBenefits
-          cashbackRate={rewardsData?.cashbackRate ?? 0}
-          cashbackThisMonth={cashback}
-          maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
-          allTimeCashback={allTimeCashback}
-          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
-          onReferralsPress={() => setIsReferralModalOpen(true)}
-          onSupportPress={openSupportDrawer}
-        />
+        <View className="mt-8">
+          <DailyBenefits
+            cashbackRate={rewardsData?.cashbackRate ?? 0}
+            cashbackThisMonth={cashback}
+            maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+            allTimeCashback={allTimeCashback}
+            onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+            onReferralsPress={() => setIsReferralModalOpen(true)}
+            onSupportPress={openSupportDrawer}
+          />
+        </View>
       </View>
 
       <ReferralProgramModalNew

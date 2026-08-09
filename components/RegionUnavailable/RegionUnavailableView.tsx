@@ -59,6 +59,8 @@ const CTA_HEIGHT = 50;
 const CTA_PADDING_TOP = 34;
 const CTA_PADDING_BOTTOM = 39;
 const CHANGE_COUNTRY_HEIGHT = 44;
+// Matches the 50pt back button the rest of the app standardised on.
+const BACK_BUTTON_SIZE = 50;
 // Extra height the pinned bars fade over, so scrolled content dims out instead
 // of getting a hard clip — same treatment as CardWaitingModal.
 const FADE_EXTENT = 120;
@@ -309,14 +311,14 @@ export const RegionUnavailableView = ({
         <LinearGradient
           colors={[BACKGROUND, `${BACKGROUND}00`]}
           pointerEvents="box-none"
-          style={[styles.topFade, { height: contentTop + 44 + FADE_EXTENT }]}
+          style={[styles.topFade, { height: contentTop + BACK_BUTTON_SIZE + FADE_EXTENT }]}
         >
           <View style={{ paddingTop: contentTop }} className="px-[18px]">
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={onBack}
-              className="h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+              className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
             >
               <ArrowLeft color="#ffffff" size={22} />
             </Pressable>

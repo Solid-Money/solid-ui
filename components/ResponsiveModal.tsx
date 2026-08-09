@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
 
@@ -47,6 +48,7 @@ export interface ResponsiveModalProps {
   // Styling
   contentClassName?: string;
   containerClassName?: string;
+  overlayClassName?: string;
   titleClassName?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
@@ -79,6 +81,7 @@ const ResponsiveModal = ({
   children,
   contentClassName,
   containerClassName,
+  overlayClassName,
   titleClassName,
   showBackButton = false,
   onBackPress,
@@ -91,6 +94,7 @@ const ResponsiveModal = ({
   fillViewportHeight = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
+  const insets = useSafeAreaInsets();
   const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
   // On web, opt into the flex layout (header fixed, body scrolls) that native
   // small screens already use, capping the card to the viewport (see below).
@@ -155,6 +159,7 @@ const ResponsiveModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
+        overlayClassName={overlayClassName}
         className={cn(
           // Desktop popups get a uniform 40px inset. Three of the four sides live
           // here; the bottom stays 0 so the scroll viewport (and its bottom fade)
@@ -189,13 +194,13 @@ const ResponsiveModal = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    className="h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 ) : (
-                  <View className="w-10" />
+                  <View className="w-[50px]" />
                 )}
                 {title ? (
                   <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
@@ -238,7 +243,13 @@ const ResponsiveModal = ({
                   <ScrollView
                     className="web:max-h-[80vh]"
                     contentContainerClassName="pb-4 md:pb-10"
-                    contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
+                    // The sheet runs to the bottom edge of the screen, so the last
+                    // element (usually the primary button) needs to clear the home
+                    // indicator / gesture bar on top of the base pb-4.
+                    contentContainerStyle={{
+                      ...(useFixedHeightLayout ? { flexGrow: 1 } : null),
+                      ...(isNativeSmallScreen ? { paddingBottom: 16 + insets.bottom } : null),
+                    }}
                     style={useFixedHeightLayout ? { flex: 1 } : undefined}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
