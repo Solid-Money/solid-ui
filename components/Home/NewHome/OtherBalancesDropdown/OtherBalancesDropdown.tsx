@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
@@ -18,7 +19,12 @@ const OtherBalancesDropdown = ({
   isLoading,
 }: OtherBalances) => {
   const [open, setOpen] = useState(false);
+  const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
   const dismiss = () => setOpen(false);
+  const openCardDeposit = () => {
+    dismiss();
+    setIsCardDepositOpen(true);
+  };
 
   return (
     <View className="items-center">
@@ -39,9 +45,15 @@ const OtherBalancesDropdown = ({
             userHasCard={userHasCard}
             isLoading={isLoading}
             onDismiss={dismiss}
+            onCardAdd={openCardDeposit}
           />
         </DialogContent>
       </Dialog>
+      <CardDirectDepositModal
+        trigger={null}
+        isOpen={isCardDepositOpen}
+        onOpenChange={setIsCardDepositOpen}
+      />
     </View>
   );
 };

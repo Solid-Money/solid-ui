@@ -123,7 +123,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
 }
 
 // Visible tabs - these are the main navigation tabs
-const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
+const VISIBLE_TAB_NAMES = ['index', 'savings', 'card'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();

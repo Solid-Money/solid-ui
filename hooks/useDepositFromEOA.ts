@@ -17,9 +17,10 @@ import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 import { readContract } from 'wagmi/actions';
 
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
@@ -280,7 +281,14 @@ const useDepositFromEOA = (
     };
   };
 
-  const createEvent = async (amount: string, spender: Address, token: string) => {
+  const createEvent = async (
+    amount: string,
+    spender: Address,
+    token: string,
+    // Bridged deposits must not be finalized from their source-chain receipt —
+    // the funds only land after the bridge fill and the vault deposit.
+    isCrossChain = false,
+  ) => {
     const clientTxId = await createActivity({
       title: `Deposit ${token}`,
       amount,
@@ -289,7 +297,10 @@ const useDepositFromEOA = (
       fromAddress: eoaAddress,
       toAddress: spender,
       type: TransactionType.DEPOSIT,
-      metadata: { tokenAddress },
+      metadata: {
+        tokenAddress,
+        ...(isCrossChain ? { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true } : {}),
+      },
     });
 
     return clientTxId;
@@ -432,9 +443,7 @@ const useDepositFromEOA = (
       // Source token decimals (defaults to 6). Some chains' USDC is not 6
       // decimals (e.g. Binance-Peg USDC on BNB Chain is 18), so derive it from
       // the bridge config rather than hardcoding.
-      const srcDecimals =
-        Object.values(BRIDGE_TOKENS[srcChainId]?.tokens ?? {}).find(t => t.name === token)
-          ?.decimals ?? 6;
+      const srcDecimals = getBridgeTokenDecimals(srcChainId, token);
       const amountWei = parseUnits(amount, srcDecimals);
 
       let txHash: `0x${string}` | undefined;
@@ -614,7 +623,7 @@ const useDepositFromEOA = (
             data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: true },
           });
 
-          trackingId = await createEvent(amount, spender, token);
+          trackingId = await createEvent(amount, spender, token, true);
 
           withRefreshToken(() =>
             bridgeDeposit({
@@ -662,7 +671,7 @@ const useDepositFromEOA = (
 
           await switchChain(srcChainId);
 
-          trackingId = await createEvent(amount, spender, token);
+          trackingId = await createEvent(amount, spender, token, true);
 
           const quote = await getLifiQuote({
             fromAddress: eoaAddress,

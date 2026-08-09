@@ -346,7 +346,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
           <View className="px-[18px] pb-2 pt-2">
             <Pressable
               onPress={onClose}
-              className="h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+              className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
             >
               <ArrowLeft color="#ffffff" size={22} />
             </Pressable>

@@ -339,6 +339,18 @@ function DesktopHeader({
           </DropdownMenu>
         )}
         {isWithdrawFromCardAllowed && (
+          <CardDirectDepositModal
+            trigger={
+              <Button variant="brand" className="border-0">
+                <View className="flex-row items-center gap-2">
+                  <Plus size={22} color="black" />
+                  <Text className="text-base font-bold text-black">Deposit</Text>
+                </View>
+              </Button>
+            }
+          />
+        )}
+        {isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
             trigger={
               <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
@@ -349,18 +361,6 @@ function DesktopHeader({
                     contentFit="contain"
                   />
                   <Text className="text-base font-bold text-white">Withdraw</Text>
-                </View>
-              </Button>
-            }
-          />
-        )}
-        {isWithdrawFromCardAllowed && (
-          <CardDirectDepositModal
-            trigger={
-              <Button variant="brand" className="border-0">
-                <View className="flex-row items-center gap-2">
-                  <Plus size={22} color="black" />
-                  <Text className="text-base font-bold text-black">Deposit</Text>
                 </View>
               </Button>
             }

@@ -162,7 +162,7 @@ export default function HomeScreenNew() {
               </View>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={depositCompleted} />
+              <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />
             </HeroExit>
           </View>
         )}
@@ -185,14 +185,15 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
-          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <HomePromoBanners />
-          </HeroExit>
+          {/* Renders nothing at all when no banner is targeted at this build and
+              the hardcoded cashback promo is still paused, so the slot leaves no
+              gap behind. */}
+          <HomePromoBanners />
         </View>
 
         {showAssets && (
-          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <View className="gap-3">
+          <HeroExit spec={HERO_EXIT.belowCard}>
+            <View className="mt-5 gap-3 px-4">
               <Text className="text-base font-normal text-white/50">Balances</Text>
               {tokenError ? (
                 <View className="flex-1 items-center justify-center p-4">

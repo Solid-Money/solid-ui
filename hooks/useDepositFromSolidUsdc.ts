@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
-import * as Sentry from '@sentry/react-native';
-import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
+import { type Address, erc20Abi, parseUnits } from 'viem';
 import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
-import { ERRORS } from '@/constants/errors';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { getBridgeTokenDecimals } from '@/constants/bridge';
+import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
-import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
-import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { buildDepositApproval } from '@/lib/deposit/allowance';
+import {
+  captureDepositError,
+  depositBreadcrumb,
+  DepositContext,
+  trackDepositCompleted,
+  trackDepositInitiated,
+} from '@/lib/deposit/telemetry';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import {
   DepositCategory,
@@ -21,7 +26,6 @@ import {
   VaultType,
 } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -53,7 +57,6 @@ const useDepositFromSolidUsdc = (
   const isCard = category === DepositCategory.CARD;
   const targetChainId = isCard ? base.id : mainnet.id;
   const isTargetChain = srcChainId === targetChainId;
-  const isEthereum = srcChainId === mainnet.id;
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -74,6 +77,17 @@ const useDepositFromSolidUsdc = (
     },
   });
 
+  const chainName =
+    srcChainId === mainnet.id ? 'ethereum' : srcChainId === base.id ? 'base' : String(srcChainId);
+
+  const depositMethod = isTargetChain
+    ? isCard
+      ? 'usdc_solid_base_card'
+      : 'usdc_solid_ethereum'
+    : isCard
+      ? 'usdc_solid_bridge_card'
+      : 'usdc_solid_bridge';
+
   const createEvent = async (amount: string, spender: Address, tokenSymbol: string) => {
     const clientTxId = await createActivity({
       title: isCard ? `Deposit ${tokenSymbol} to Card` : `Deposit ${tokenSymbol}`,
@@ -83,6 +97,9 @@ const useDepositFromSolidUsdc = (
       fromAddress: safeAddress,
       toAddress: spender,
       type: isCard ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
+      // Off-target chains route through the bridge, so the source-chain approve
+      // receipt must not be treated as the deposit completing.
+      metadata: isTargetChain ? undefined : { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true },
     });
     return clientTxId;
   };
@@ -95,63 +112,51 @@ const useDepositFromSolidUsdc = (
       );
     }
 
-    const attributionData = useAttributionStore.getState().getAttributionForEvent();
-    const attributionChannel = getAttributionChannel(attributionData);
+    const isSponsor = Number(amount) >= Number(minimumAmount);
+    const ctx: DepositContext = {
+      user,
+      amount,
+      chainId: srcChainId,
+      chainName,
+      depositType: 'solid_wallet',
+      depositMethod,
+      depositDestination: isCard ? 'card' : 'savings',
+      isSponsor,
+      operation: 'deposit_from_solid_usdc',
+    };
+
     let trackingId: string | undefined;
 
     try {
-      track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        deposit_type: 'solid_wallet',
-        deposit_method: isTargetChain
-          ? isCard
-            ? 'usdc_solid_base_card'
-            : 'usdc_solid_ethereum'
-          : isCard
-            ? 'usdc_solid_bridge_card'
-            : 'usdc_solid_bridge',
-        deposit_destination: isCard ? 'card' : 'savings',
-        chain_id: srcChainId,
-        is_sponsor: Number(amount) >= Number(minimumAmount),
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      trackDepositInitiated(ctx);
 
       if (!safeAddress) {
-        const err = new Error('Solid wallet (Safe) address not found');
-        Sentry.captureException(err, {
-          tags: {
-            operation: 'deposit_from_solid_usdc',
-            step: 'validation',
-            reason: 'no_safe_address',
-          },
-          extra: { amount, srcChainId, hasUser: !!user },
-        });
-        throw err;
+        throw new Error('Solid wallet (Safe) address not found');
       }
-
-      const isSponsor = Number(amount) >= Number(minimumAmount);
-
       if (!isCard && !isSponsor) {
         throw new Error(`Minimum deposit amount is $${minimumAmount}`);
       }
 
-      const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
-
       setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
       setError(null);
 
-      Sentry.addBreadcrumb({
-        message: 'Starting deposit from Solid wallet (USDC)',
-        category: 'deposit',
-        data: { amount, safeAddress, srcChainId, token, isSponsor },
+      depositBreadcrumb('Starting deposit from Solid wallet (USDC)', {
+        amount,
+        safeAddress,
+        srcChainId,
+        token,
+        isSponsor,
       });
 
-      const amountWei = parseUnits(amount, 6);
+      // Approve in the source token's real decimals. BNB Chain USDC/USDT are
+      // 18-decimal, so a hardcoded 6 under-approved by 1e12 and the backend's
+      // transferFrom could never be covered - the deposit stalled at the pull.
+      // The backend parses the same amount with these decimals, so they must match.
+      const srcDecimals = getBridgeTokenDecimals(srcChainId, token);
+      const amountWei = parseUnits(amount, srcDecimals);
+      const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
-      // Approve the bridge/deposit address to pull tokens from Safe on the src chain.
+      // Let the backend pull these funds out of the Safe on the source chain.
       const chain =
         srcChainId === mainnet.id
           ? mainnet
@@ -159,16 +164,13 @@ const useDepositFromSolidUsdc = (
             ? base
             : ({ id: srcChainId } as any);
       const smartAccountClient = await safeAA(chain, user!.suborgId, user!.signWith);
-
-      const approveTransaction = {
-        to: tokenAddress,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [spender, amountWei],
-        }),
-        value: 0n,
-      };
+      const approveTransaction = await buildDepositApproval({
+        tokenAddress,
+        owner: safeAddress,
+        spender,
+        amount: amountWei,
+        chainId: srcChainId,
+      });
 
       // Create activity for tracking
       trackingId = await createEvent(amount, spender, token);
@@ -232,54 +234,14 @@ const useDepositFromSolidUsdc = (
           updateUser({ ...user!, isDeposited: true });
           setDepositStatus({ status: Status.SUCCESS });
 
-          Sentry.addBreadcrumb({
-            message: 'Deposit from Solid wallet (USDC) completed successfully',
-            category: 'deposit',
-            data: { amount, safeAddress, srcChainId, isSponsor },
+          depositBreadcrumb('Deposit from Solid wallet (USDC) completed successfully', {
+            amount,
+            safeAddress,
+            srcChainId,
+            isSponsor,
           });
 
-          const depositMethod = isTargetChain
-            ? isCard
-              ? 'usdc_solid_base_card'
-              : 'usdc_solid_ethereum'
-            : isCard
-              ? 'usdc_solid_bridge_card'
-              : 'usdc_solid_bridge';
-
-          // Amplitude emitted server-side by the backend connect-wallet deposit
-          // workflow ("Savings Deposit Completed" for savings, "Card Deposit
-          // Completed" for card); suppress client Amplitude to avoid double-
-          // counting. Firebase + GTM still fire for web attribution.
-          track(
-            TRACKING_EVENTS.DEPOSIT_COMPLETED,
-            {
-              user_id: user?.userId,
-              safe_address: user?.safeAddress,
-              amount,
-              deposit_type: 'solid_wallet',
-              deposit_method: depositMethod,
-              deposit_destination: isCard ? 'card' : 'savings',
-              chain_id: srcChainId,
-              is_sponsor: isSponsor,
-              is_first_deposit: !user?.isDeposited,
-              ...attributionData,
-              attribution_channel: attributionChannel,
-            },
-            { amplitude: false },
-          );
-
-          trackIdentity(user?.userId!, {
-            last_deposit_amount: parseFloat(amount),
-            last_deposit_date: new Date().toISOString(),
-            last_deposit_method: depositMethod,
-            last_deposit_chain: isEthereum
-              ? 'ethereum'
-              : srcChainId === base.id
-                ? 'base'
-                : String(srcChainId),
-            ...attributionData,
-            attribution_channel: attributionChannel,
-          });
+          trackDepositCompleted(ctx);
         })
         .catch(err => {
           console.error('Sponsored Solid USDC deposit failed:', err);
@@ -293,49 +255,15 @@ const useDepositFromSolidUsdc = (
       return trackingId;
     } catch (error: any) {
       console.error(error);
-      const errorMessage = error?.message || 'Unknown error';
-
-      Sentry.captureException(error, {
-        tags: { operation: 'deposit_from_solid_usdc', step: 'execution' },
-        extra: {
-          amount,
-          safeAddress: user?.safeAddress,
-          srcChainId,
-          errorMessage,
-          depositStatus,
-        },
-        user: { id: user?.suborgId, address: user?.safeAddress },
-      });
-
-      const errAttribution = useAttributionStore.getState().getAttributionForEvent();
-      track(TRACKING_EVENTS.DEPOSIT_ERROR, {
-        amount,
-        safe_address: user?.safeAddress,
-        src_chain_id: srcChainId,
-        deposit_status: depositStatus,
-        source: 'deposit_from_solid_usdc',
-        error: errorMessage,
-        ...errAttribution,
-        attribution_channel: getAttributionChannel(errAttribution),
-      });
-
-      const msg = errorMessage?.toLowerCase();
-      let errMsg = '';
-      if (
-        msg.includes('user rejected') ||
-        msg.includes('user denied') ||
-        msg.includes('rejected by user') ||
-        msg.includes('user cancelled')
-      ) {
-        errMsg = 'User rejected transaction';
-      } else if (errorMessage?.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) {
-        errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
-      }
+      const errMsg = captureDepositError(error, { ...ctx, depositStatus });
 
       if (trackingId) {
         updateActivity(trackingId, {
           status: TransactionStatus.FAILED,
-          metadata: { error: errorMessage, failedAt: new Date().toISOString() },
+          metadata: {
+            error: error?.message || 'Unknown error',
+            failedAt: new Date().toISOString(),
+          },
         });
       }
 

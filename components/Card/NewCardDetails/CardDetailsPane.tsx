@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
@@ -77,6 +78,7 @@ const CardDetailsPane = () => {
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
+  const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
   // Held true through the dismissal, so the sections have something to animate out
   // of; without it `isOpen` going false would yank the pane off screen instantly.
   const [isSettling, setIsSettling] = useState(false);
@@ -118,6 +120,7 @@ const CardDetailsPane = () => {
     isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
   const isCustomerPausedOrOffboarded =
     customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
+  const canMoveCardFunds = !isCardFrozen && !isCustomerPausedOrOffboarded;
 
   /**
    * Dismiss: fly the card back to where it came from, then let the pane's sections
@@ -204,7 +207,9 @@ const CardDetailsPane = () => {
               canUnfreeze={!!canUnfreeze}
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
-              canAddFunds={!isCardFrozen && !isCustomerPausedOrOffboarded}
+              onMorePress={() => setIsAddToWalletOpen(true)}
+              canAddFunds={canMoveCardFunds}
+              canWithdraw={canMoveCardFunds}
             />
           </HeroEnter>
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
@@ -227,6 +232,11 @@ const CardDetailsPane = () => {
       <CardWelcomePopup
         isOpen={isOpen && shouldShowWelcomePopup}
         onClose={() => setShouldShowWelcomePopup(false)}
+      />
+      <AddToWalletModal
+        trigger={null}
+        isOpen={isAddToWalletOpen}
+        onOpenChange={setIsAddToWalletOpen}
       />
     </View>
   );

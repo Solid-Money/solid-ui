@@ -269,7 +269,7 @@ const DesktopSettings = () => {
         <View className="mb-8 flex-row items-center justify-between">
           <BackButton />
           <Text className="text-3xl font-semibold text-white">Settings</Text>
-          <View className="w-6" />
+          <View className="w-[50px]" />
         </View>
       </View>
     </>

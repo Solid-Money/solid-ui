@@ -1,27 +1,25 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import {
-  AddFundsIcon,
-  SettingsAsteriskIcon,
-  SnowflakeIcon,
-} from '@/components/Card/NewCardDetails/icons';
+import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 interface CircleActionProps {
   label: string;
   children: ReactNode;
-  /** Set when the icon asset doesn't draw its own circle (e.g. the snowflake). */
+  /** Used for the loading state, when there is no Figma icon behind the spinner. */
   circleBackground?: string;
   onPress?: () => void;
   disabled?: boolean;
 }
 
 /**
- * One 50pt circular action with its label underneath (Figma 20095:5552). Items are
- * a fixed width so the three land on the design's x-centres regardless of how wide
- * their labels are. `onPress` is optional because modal triggers inject it.
+ * One 50pt circular action with its label underneath (Figma 20095:5552). Items share
+ * the available row width, capped at the original design spacing. `onPress` is
+ * optional because modal triggers inject it.
  */
 const CircleAction = ({
   label,
@@ -35,7 +33,7 @@ const CircleAction = ({
     accessibilityRole="button"
     disabled={disabled}
     onPress={onPress}
-    style={styles.item}
+    style={styles.action}
     className="items-center transition-all active:scale-95 active:opacity-80"
   >
     <View style={[styles.circle, circleBackground ? { backgroundColor: circleBackground } : null]}>
@@ -50,53 +48,96 @@ interface CardActionsRowProps {
   canUnfreeze: boolean;
   isFreezing: boolean;
   onFreezeToggle: () => void;
+  onMorePress: () => void;
   /** Add funds is hidden while the card can't take deposits (frozen / paused KYC). */
   canAddFunds: boolean;
+  /** Withdraw is hidden while funds can't be moved off the card (frozen / paused KYC). */
+  canWithdraw: boolean;
 }
 
-/** The Add funds / Freeze / Settings row on the redesigned card-details screen. */
+/** The Add funds / Withdraw / Freeze / More row on the redesigned card screen. */
 const CardActionsRow = ({
   isCardFrozen,
   canUnfreeze,
   isFreezing,
   onFreezeToggle,
+  onMorePress,
   canAddFunds,
+  canWithdraw,
 }: CardActionsRowProps) => {
   const showFreeze = !isCardFrozen || canUnfreeze;
 
   return (
     <View className="flex-row items-start justify-center">
       {canAddFunds && (
-        <CardDirectDepositModal
-          trigger={
-            <CircleAction label="Add funds">
-              <AddFundsIcon />
-            </CircleAction>
-          }
-        />
+        <View style={styles.item}>
+          <CardDirectDepositModal
+            trigger={
+              <CircleAction label="Add funds">
+                <Image
+                  source={getAsset('images/card-action-add-funds.png')}
+                  style={styles.actionIcon}
+                  contentFit="contain"
+                />
+              </CircleAction>
+            }
+          />
+        </View>
+      )}
+      {canWithdraw && (
+        <View style={styles.item}>
+          <WithdrawToCardModal
+            trigger={
+              <CircleAction label="Withdraw">
+                <Image
+                  source={getAsset('images/card-action-withdraw.png')}
+                  style={styles.actionIcon}
+                  contentFit="contain"
+                />
+              </CircleAction>
+            }
+          />
+        </View>
       )}
       {showFreeze && (
-        <CircleAction
-          label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
-          circleBackground="#2A2A2A"
-          disabled={isFreezing}
-          onPress={onFreezeToggle}
-        >
-          {isFreezing ? <ActivityIndicator size="small" color="white" /> : <SnowflakeIcon />}
-        </CircleAction>
+        <View style={styles.item}>
+          <CircleAction
+            label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
+            circleBackground="#2A2A2A"
+            disabled={isFreezing}
+            onPress={onFreezeToggle}
+          >
+            {isFreezing ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Image
+                source={getAsset('images/card-action-freeze.png')}
+                style={styles.actionIcon}
+                contentFit="contain"
+              />
+            )}
+          </CircleAction>
+        </View>
       )}
-      {/* Card settings screen isn't built yet — the button is rendered per the
-          design and does nothing until that screen exists. */}
-      <CircleAction label="Settings">
-        <SettingsAsteriskIcon />
-      </CircleAction>
+      <View style={styles.item}>
+        <CircleAction label="More" onPress={onMorePress}>
+          <Image
+            source={getAsset('images/card-action-more.png')}
+            style={styles.actionIcon}
+            contentFit="contain"
+          />
+        </CircleAction>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  // Figma centres the three actions 109pt apart (x≈97 / 209 / 316 on a 419 frame).
-  item: { width: 109 },
+  // The equal-width wrapper must sit outside the modal components. Otherwise their
+  // trigger labels determine the first two columns' widths and shift the icon centres.
+  item: { flex: 1, maxWidth: 109 },
+  action: { width: '100%' },
+  actionIcon: { height: 50, width: 50 },
   circle: {
     alignItems: 'center',
     borderRadius: 25,

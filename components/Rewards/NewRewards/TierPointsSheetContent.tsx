@@ -1,21 +1,12 @@
-import { useEffect } from 'react';
 import { View } from 'react-native';
-import Animated, {
-  Easing,
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Blend, CreditCard, type LucideIcon, RefreshCw, Zap } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { type AssetPath, getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
-const POINTS_STAR = require('@/assets/images/rewards-tiers/points-drawer-star.png');
+import PointsDrawerStarAnimation from './PointsDrawerStarAnimation';
 
 interface TierPointsSheetContentProps {
   animationSession: number;
@@ -30,104 +21,85 @@ interface TierPointsSheetContentProps {
 interface PointsMethod {
   title: string;
   description: string;
-  icon: LucideIcon;
-  iconSize: number;
-  iconRotation?: `${number}deg`;
+  iconLayers: {
+    asset: AssetPath;
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+  }[];
 }
 
 const POINTS_METHODS: PointsMethod[] = [
   {
     title: 'Save',
     description: '1 point/hour for\nevery $1 deposited',
-    icon: Zap,
-    iconSize: 24,
+    iconLayers: [
+      {
+        asset: 'images/rewards-tiers/points-save.svg',
+        width: 19.4179,
+        height: 22.5652,
+        left: 15.2911,
+        top: 13.7174,
+      },
+    ],
   },
   {
     title: 'Spend',
     description: '1 point per\n$1 spent',
-    icon: CreditCard,
-    iconSize: 26,
+    iconLayers: [
+      {
+        asset: 'images/rewards-tiers/points-spend.svg',
+        width: 22.9799,
+        height: 18.7839,
+        left: 13.5101,
+        top: 15.6081,
+      },
+    ],
   },
   {
     title: 'Invite friends',
     description: 'Earn 10% of their\ndaily points',
-    icon: Blend,
-    iconSize: 26,
-    iconRotation: '-45deg',
+    iconLayers: [
+      {
+        asset: 'images/rewards-tiers/points-invite-left.svg',
+        width: 11.3828,
+        height: 13.8528,
+        left: 10.25,
+        top: 18.42,
+      },
+      {
+        asset: 'images/rewards-tiers/points-invite-middle.svg',
+        width: 14.2376,
+        height: 17.4215,
+        left: 16.07,
+        top: 16.49,
+      },
+      {
+        asset: 'images/rewards-tiers/points-invite-right.svg',
+        width: 16.6532,
+        height: 20.441,
+        left: 23.1,
+        top: 15.4,
+      },
+    ],
   },
   {
     title: 'Swap',
     description: '1 point per\n$1 swapped',
-    icon: RefreshCw,
-    iconSize: 26,
+    iconLayers: [
+      {
+        asset: 'images/rewards-tiers/points-swap.svg',
+        width: 27.4014,
+        height: 26.776,
+        left: 11.2993,
+        top: 11.612,
+      },
+    ],
   },
 ];
 
-const AnimatedTierStar = () => {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = 0;
-    progress.value = withTiming(1, {
-      duration: 2000,
-      easing: Easing.linear,
-    });
-  }, [progress]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      progress.value,
-      [0, 0.04, 0.275, 1],
-      [0, 0, 1, 1],
-      Extrapolation.CLAMP,
-    );
-    const rotate = interpolate(
-      progress.value,
-      [0, 0.04, 0.51, 1],
-      [90, 90, 0, 0],
-      Extrapolation.CLAMP,
-    );
-    const scale = interpolate(
-      progress.value,
-      [0, 0.04, 0.49, 1],
-      [0.78, 0.78, 1, 1],
-      Extrapolation.CLAMP,
-    );
-    const glow = interpolate(
-      progress.value,
-      [0, 0.15, 0.525, 0.875, 1],
-      [0.5, 0.5, 0.95, 0.5, 0.5],
-      Extrapolation.CLAMP,
-    );
-
-    return {
-      opacity,
-      shadowOpacity: glow,
-      shadowRadius: 8 + glow * 18,
-      transform: [{ rotate: `${rotate}deg` }, { scale }],
-    };
-  });
-
-  return (
-    <Animated.View
-      style={[
-        {
-          width: 94,
-          height: 94,
-          shadowColor: '#ffffff',
-          shadowOffset: { width: 0, height: 0 },
-        },
-        animatedStyle,
-      ]}
-    >
-      <Image source={POINTS_STAR} style={{ width: 94, height: 94 }} contentFit="contain" />
-    </Animated.View>
-  );
-};
-
 const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean }) => {
-  const MethodIcon = method.icon;
-
   return (
     <View
       className="w-1/2 items-center"
@@ -136,13 +108,22 @@ const PointsCell = ({ method, bottom }: { method: PointsMethod; bottom?: boolean
         paddingTop: bottom ? 31 : 23,
       }}
     >
-      <View className="size-[50px] items-center justify-center rounded-full bg-white/10">
-        <MethodIcon
-          color="#ffffff"
-          size={method.iconSize}
-          strokeWidth={1.75}
-          style={method.iconRotation ? { transform: [{ rotate: method.iconRotation }] } : undefined}
-        />
+      <View className="relative size-[50px] rounded-full bg-white/10">
+        {method.iconLayers.map(layer => (
+          <Image
+            key={layer.asset}
+            source={getAsset(layer.asset)}
+            alt=""
+            contentFit="fill"
+            style={{
+              position: 'absolute',
+              width: layer.width,
+              height: layer.height,
+              left: layer.left,
+              top: layer.top,
+            }}
+          />
+        ))}
       </View>
       <Text
         className="mt-2 text-center text-white"
@@ -174,7 +155,7 @@ const TierPointsSheetContent = ({
   isSheet = true,
 }: TierPointsSheetContentProps) => (
   <View className={cn('items-center', isSheet && 'px-[34px] pt-[46px]')}>
-    <AnimatedTierStar key={animationSession} />
+    <PointsDrawerStarAnimation key={animationSession} />
 
     <Text
       className="mt-[31px] w-[219px] text-center text-white"

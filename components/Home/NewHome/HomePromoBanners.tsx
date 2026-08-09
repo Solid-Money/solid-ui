@@ -1,61 +1,84 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
-import Skeleton from '@/components/ui/skeleton';
 import { useDimension } from '@/hooks/useDimension';
 import { usePromotionsBannerPress, usePromotionsBanners } from '@/hooks/usePromotionsBanners';
+import { isDevFeatureEnabled } from '@/lib/config';
 
 import type { PromotionsBannerItem } from '@/lib/types';
 
-// Matches the hardcoded Figma card (22024:1057) so swapping an admin banner in
-// for the fallback never moves the rest of the screen.
+// Matches the hardcoded Figma card (22024:1057) so an admin banner and the
+// fallback occupy the same space.
 const BANNER_HEIGHT = 98;
 const BANNER_RADIUS = 23;
+
+// The hardcoded 10% cashback promo is paused; keep the implementation ready for
+// a future relaunch. Admin-managed banners are not gated by this — the whole
+// point of them is that the dashboard controls what runs, in production too.
+const isCashbackPromoEnabled = false;
+
+/**
+ * Wraps whatever fills the promo slot. Padding stays on a regular View because
+ * Animated.View does not consistently resolve NativeWind padding on web, and
+ * HeroExit stays outside it so its native and web motion behaviour is unchanged.
+ */
+const PromoSlot = ({ children }: { children: React.ReactNode }) => (
+  <HeroExit spec={HERO_EXIT.belowCard}>
+    <View className="px-4">{children}</View>
+  </HeroExit>
+);
 
 /**
  * The promo slot on the redesigned home screen.
  *
  * Banners come from the admin dashboard, targeted by platform, app version and
  * page, so a campaign like "10% Cashback for 7 Days!" can be swapped without
- * shipping a build. `HomeCashbackPromoBanner` — the same card hardcoded from
- * Figma — stays as the fallback for when no banner targets this build, which is
- * what production shows until a banner is created.
+ * shipping a build. `HomeCashbackPromoBanner` — that same card hardcoded from
+ * Figma — is the fallback for when no banner targets this build, and stays
+ * behind its pause flag.
+ *
+ * Renders nothing at all rather than an empty wrapper when there is nothing to
+ * show, which is the common case while the promo is paused: an empty View would
+ * still take a slot in the parent's flex gap.
  */
 const HomePromoBanners = () => {
   const { isScreenMedium } = useDimension();
-  const { banners, isLoading } = usePromotionsBanners();
+  const { banners } = usePromotionsBanners();
   const getBannerPress = usePromotionsBannerPress();
 
-  // A skeleton rather than the fallback while the list is in flight: rendering
-  // the hardcoded card first would visibly swap itself out on a cold cache.
-  if (isLoading) {
-    return <Skeleton className="w-full" style={styles.skeleton} />;
-  }
-
   if (!banners.length) {
-    return <HomeCashbackPromoBanner />;
+    return isCashbackPromoEnabled && isDevFeatureEnabled ? (
+      <PromoSlot>
+        <HomeCashbackPromoBanner />
+      </PromoSlot>
+    ) : null;
   }
 
   return (
-    <View style={styles.stack}>
-      {banners.map((banner: PromotionsBannerItem, index) => (
-        <Pressable
-          key={`promo-${banner.slug}-${index}`}
-          onPress={getBannerPress(banner)}
-          style={styles.card}
-        >
-          <Image
-            source={{
-              uri:
-                !isScreenMedium && banner.mobileImageURL ? banner.mobileImageURL : banner.imageURL,
-            }}
-            contentFit="contain"
-            style={styles.image}
-          />
-        </Pressable>
-      ))}
-    </View>
+    <PromoSlot>
+      <View style={styles.stack}>
+        {banners.map((banner: PromotionsBannerItem, index) => (
+          <Pressable
+            key={`promo-${banner.slug}-${index}`}
+            onPress={getBannerPress(banner)}
+            style={styles.card}
+          >
+            <Image
+              source={{
+                uri:
+                  !isScreenMedium && banner.mobileImageURL
+                    ? banner.mobileImageURL
+                    : banner.imageURL,
+              }}
+              contentFit="contain"
+              style={styles.image}
+            />
+          </Pressable>
+        ))}
+      </View>
+    </PromoSlot>
   );
 };
 
@@ -72,10 +95,6 @@ const styles = StyleSheet.create({
   image: {
     height: '100%',
     width: '100%',
-  },
-  skeleton: {
-    borderRadius: BANNER_RADIUS,
-    height: BANNER_HEIGHT,
   },
 });
 

@@ -18,6 +18,12 @@ import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
 
+/**
+ * Fraction of the viewport left above a top-aligned mobile sheet. Must match the
+ * `mt-[5vh]` ResponsiveModal puts on small-screen dialog content.
+ */
+export const MOBILE_SHEET_TOP_RATIO = 0.05;
+
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -84,6 +90,12 @@ const DialogContent = React.forwardRef<
     onCloseAutoFocus?: (event: Event) => void;
     overlayClassName?: string;
     showCloseButton?: boolean;
+    /**
+     * Web-only presentation override. Bottom sheets are laid out by the overlay
+     * instead of using `position: fixed`, which would otherwise be contained by
+     * the dialog's transformed animation wrapper on small screens.
+     */
+    webPresentation?: 'modal' | 'bottom-sheet';
   }
 >(
   (
@@ -94,6 +106,7 @@ const DialogContent = React.forwardRef<
       onCloseAutoFocus,
       overlayClassName,
       showCloseButton = true,
+      webPresentation = 'modal',
       style,
       onMoveShouldSetResponder,
       onStartShouldSetResponder,
@@ -105,13 +118,23 @@ const DialogContent = React.forwardRef<
     const { height: windowHeight } = useWindowDimensions();
     const shouldAlignTop = className?.includes('justify-start');
     const { open } = DialogPrimitive.useRootContext();
+    const isWebBottomSheet =
+      Platform.OS === 'web' && !isScreenMedium && webPresentation === 'bottom-sheet';
+    // Top-aligned sheets are pushed down by `mt-[5vh]` (ResponsiveModal) and sit
+    // inside an overlay with 8px padding, so a full-viewport height overflowed the
+    // bottom of the screen by that much — clipping whatever the content ended with
+    // (e.g. the deposit form's submit button). Subtract the offset so the sheet
+    // ends exactly at the bottom edge.
     const mobileSheetHeight =
-      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 1 - 16, 0) : undefined;
+      !isScreenMedium && shouldAlignTop
+        ? Math.max(windowHeight * (1 - MOBILE_SHEET_TOP_RATIO) - 8, 0)
+        : undefined;
 
     // Web bounce animation using useAnimatedStyle
     const opacityWeb = useSharedValue(0);
     const translateYWeb = useSharedValue(25);
-    const isWebBounce = Platform.OS === 'web' && !isScreenMedium;
+    const isWebBounce =
+      Platform.OS === 'web' && !isScreenMedium && webPresentation !== 'bottom-sheet';
 
     React.useEffect(() => {
       if (isWebBounce && open) {
@@ -208,6 +231,23 @@ const DialogContent = React.forwardRef<
       );
     }
 
+    if (isWebBottomSheet) {
+      return (
+        <DialogPortal hostName={portalHost}>
+          <DialogOverlay className={cn('items-stretch justify-end p-0', overlayClassName)}>
+            <Animated.View
+              className="w-full"
+              entering={FadeInDown.springify().stiffness(300).damping(12).mass(0.8)}
+              exiting={FadeOutDown.duration(180)}
+            >
+              {content}
+            </Animated.View>
+            <Toast {...toastProps} />
+          </DialogOverlay>
+        </DialogPortal>
+      );
+    }
+
     return (
       <DialogPortal hostName={portalHost}>
         <DialogOverlay className={cn(shouldAlignTop && 'justify-start', overlayClassName)}>
@@ -283,7 +323,7 @@ const DialogCloseButton = React.forwardRef<
     <DialogPrimitive.Close
       ref={ref}
       className={cn(
-        'web:group web:focus:ring-none flex h-10 w-10 items-center justify-center rounded-full border-0 bg-popover web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
+        'web:group web:focus:ring-none flex h-[50px] w-[50px] items-center justify-center rounded-full border-0 bg-popover web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
         className,
       )}
       onPress={handlePress}

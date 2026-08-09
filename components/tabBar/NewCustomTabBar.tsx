@@ -35,6 +35,15 @@ const TAB_BAR_GRADIENT_EXTENSION = 30;
 const ACTIVE_TAB_COLOR = 'white';
 const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
 
+const WEB_ACTIVE_PILL =
+  Platform.OS === 'web'
+    ? {
+        backgroundColor: 'rgba(28, 28, 28, 0.8)',
+        backdropFilter: 'saturate(180%) blur(16px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(16px)',
+      }
+    : undefined;
+
 // The sliding "oval glass" background sits behind the active tab, inset from the
 // measured tab slot so it reads as a pill rather than a full-width block.
 const PILL_INSET_X = 4;
@@ -92,7 +101,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress, onLayout }: T
       style={styles.tabButton}
     >
       <View style={[styles.tabContent, pressStyle]}>
-        <View style={[styles.iconWrapper, { opacity: isFocused ? 1 : 0.5 }]}>{icon}</View>
+        <View style={styles.iconWrapper}>{icon}</View>
         <Text style={[styles.tabLabel, { color: labelColor }]}>{label}</Text>
       </View>
     </Pressable>
@@ -200,11 +209,7 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (
-    currentRouteName === 'activity' ||
-    currentRouteName === 'settings' ||
-    focusedNestedRoute === 'benefits'
-  ) {
+  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
     return null;
   }
 
@@ -233,10 +238,19 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
         style={[StyleSheet.absoluteFill, { top: -TAB_BAR_GRADIENT_EXTENSION }]}
       />
       <View style={styles.row}>
-        <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]}>
-          {/* Figma oval: #1B1B1BCC + backdrop blur(19). */}
-          <BlurView {...blurViewProps} intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-          <View pointerEvents="none" style={styles.pillTint} />
+        <Animated.View pointerEvents="none" style={[styles.pill, WEB_ACTIVE_PILL, pillStyle]}>
+          {Platform.OS !== 'web' && (
+            <>
+              {/* Figma oval: #1B1B1BCC + backdrop blur(19). */}
+              <BlurView
+                {...blurViewProps}
+                intensity={80}
+                tint="dark"
+                style={StyleSheet.absoluteFill}
+              />
+              <View pointerEvents="none" style={styles.pillTint} />
+            </>
+          )}
         </Animated.View>
         {visibleRoutes.map((route, visibleIndex) => {
           const { options } = descriptors[route.key];

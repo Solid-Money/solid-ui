@@ -14,7 +14,7 @@ interface CardDetailsHeaderProps {
 }
 
 /**
- * Mobile header of the card-details pane: a 44pt circular back button on the left
+ * Mobile header of the card-details pane: a 50pt circular back button on the left
  * and a centred "Solid card" title (Figma 20095:5396 / 20095:5761). Both fade +
  * settle in behind the flying card.
  */

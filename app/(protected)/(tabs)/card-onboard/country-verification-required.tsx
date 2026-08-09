@@ -47,7 +47,7 @@ export default function CountryVerificationRequired() {
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Verification Required
           </Text>
-          <View className="w-10" />
+          <View className="w-[50px]" />
         </View>
 
         {/* Content */}

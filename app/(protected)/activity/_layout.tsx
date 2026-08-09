@@ -6,6 +6,7 @@ export default function ActivityLayout() {
   return (
     <Stack
       screenOptions={{
+        gestureEnabled: true,
         headerStyle: {
           backgroundColor: '#0F0F10',
         },

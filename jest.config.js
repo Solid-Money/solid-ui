@@ -5,6 +5,11 @@ module.exports = {
     "**/?(*.)+(spec|test).[jt]s?(x)"
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  // Same '@/' alias the app and tsconfig use; without it no test can import
+  // application code.
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/$1"
+  },
   transformIgnorePatterns: [
     "node_modules/(?!(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|@unimodules/.*|sentry-expo|native-base|expo-router|expo-modules-core/.*|@react-navigation/.*)"
   ]

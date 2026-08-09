@@ -11,6 +11,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import { ActivityTab } from '@/lib/types';
 import { cn, hasCard } from '@/lib/utils';
 
+// This route is a protected stack screen so native back gestures can dismiss it.
 export default function Activity() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.ACTIVITY_SCREEN });
 

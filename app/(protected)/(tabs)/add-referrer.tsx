@@ -72,7 +72,7 @@ export default function AddReferrer() {
             <Text className="text-center text-lg font-semibold text-white md:text-xl">
               Enter your friend&apos;s referral code
             </Text>
-            <View className="w-10" />
+            <View className="w-[50px]" />
           </View>
           <View className=" w-full">
             {checkingReferrer ? (
