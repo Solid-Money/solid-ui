@@ -17,6 +17,17 @@ interface KycState {
   diditSessionId: string | null;
   setDiditSessionId: (sessionId: string) => void;
   clearDiditSessionId: () => void;
+  /**
+   * Epoch ms of the first time each user opened the verification SDK, keyed by
+   * userId. Local-only marker: a user who abandons Didit mid-flow leaves no
+   * server-side trace for a while, so this is what tells us they started at
+   * all. Keyed per user because the device is shared between accounts — a
+   * global flag would follow the next account that signs in, and would be lost
+   * on any re-login.
+   */
+  kycStartedAt: Record<string, number>;
+  markKycStarted: (userId: string) => void;
+  clearKycStartedAt: (userId: string) => void;
   /** Which product initiated KYC — drives post-KYC routing. */
   kycFlow: KycFlow | null;
   setKycFlow: (flow: KycFlow) => void;
@@ -31,12 +42,13 @@ const KYC_STORAGE_KEY = 'kyc-store';
 
 export const useKycStore = create<KycState>()(
   persist(
-    set => ({
+    (set, get) => ({
       kycLinkId: null,
       processingUntil: null,
       diditSessionId: null,
       kycFlow: null,
       kycProvider: null,
+      kycStartedAt: {},
 
       setKycLinkId: (kycLinkId: string) => {
         set({ kycLinkId });
@@ -60,6 +72,20 @@ export const useKycStore = create<KycState>()(
 
       clearDiditSessionId: () => {
         set({ diditSessionId: null });
+      },
+
+      markKycStarted: (userId: string) => {
+        // Keep the first timestamp: it dates the start of the attempt, and
+        // re-opening the SDK on a retry shouldn't reset that.
+        if (get().kycStartedAt[userId] != null) return;
+        set(state => ({ kycStartedAt: { ...state.kycStartedAt, [userId]: Date.now() } }));
+      },
+
+      clearKycStartedAt: (userId: string) => {
+        set(state => {
+          const { [userId]: _removed, ...rest } = state.kycStartedAt;
+          return { kycStartedAt: rest };
+        });
       },
 
       setKycFlow: (flow: KycFlow) => {
