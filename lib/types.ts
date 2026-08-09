@@ -1789,6 +1789,17 @@ export interface PromotionsBannerItem {
   sort: number;
   link?: string;
   platforms?: PromotionsBannerPlatforms;
+  /**
+   * Native app version gate set in the admin dashboard, e.g. '>=2.0.0' (that
+   * build and every newer one) or '1.0.12' (only that build). Absent means
+   * every version. Web ignores it — it always serves the latest build.
+   */
+  version?: string;
+  /**
+   * Pathname the banner is scoped to, e.g. '/' (home/wallet) or '/savings'.
+   * Absent means every page.
+   */
+  page?: string;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];

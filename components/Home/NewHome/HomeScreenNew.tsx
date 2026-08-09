@@ -5,7 +5,7 @@ import { Address } from 'viem';
 
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
-import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
+import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
@@ -186,7 +186,7 @@ export default function HomeScreenNew() {
             </HeroExit>
           )}
           <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <HomeCashbackPromoBanner />
+            <HomePromoBanners />
           </HeroExit>
         </View>
 
