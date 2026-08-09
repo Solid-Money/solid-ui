@@ -66,6 +66,23 @@ describe('detectGeo', () => {
     expect(mockFetch.mock.calls.length).toBeGreaterThan(3);
   });
 
+  it('gives up once the overall budget is spent instead of trying every provider', async () => {
+    // Each attempt "costs" 4s of wall clock, so the 8s budget runs out well
+    // before the provider list does — a caller is never blocked for the sum of
+    // every provider's timeout.
+    let now = 1_000_000;
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+    mockFetch.mockImplementation(() => {
+      now += 4_000;
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    await expect(detectGeo()).resolves.toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    nowSpy.mockRestore();
+  });
+
   it('memoises the result and shares one in-flight request', async () => {
     mockFetch.mockResolvedValue(okJson({ ip: '1.1.1.1', country_code: 'US', country: 'USA' }));
 

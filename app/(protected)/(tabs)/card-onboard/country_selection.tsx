@@ -29,8 +29,10 @@ export default function CountrySelection() {
     }
   };
 
-  const [loading, setLoading] = useState(true);
-  const [showCountrySelector, setShowCountrySelector] = useState(false);
+  // The selector renders immediately: it needs no network to be usable, and
+  // gating it on the geo lookup meant a blank loading screen for as long as the
+  // lookup took. Detection only preselects a country once it lands.
+  const [showCountrySelector, setShowCountrySelector] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
@@ -43,26 +45,29 @@ export default function CountrySelection() {
     })),
   );
 
-  // Detect where the user is so the selector opens on their country. The
-  // selector is always shown first — picking by hand stays available even when
-  // detection succeeds, because the IP is only a guess at residence.
+  // Detect where the user is so the selector opens on their country. Picking by
+  // hand stays available even when detection succeeds, because the IP is only a
+  // guess at residence — so this never blocks the screen, and a failure just
+  // leaves the field empty.
   useEffect(() => {
     let cancelled = false;
 
     const detect = async () => {
-      const access = await resolveCountryAccess('card', 'card_country_selection');
+      try {
+        const access = await resolveCountryAccess('card', 'card_country_selection');
 
-      if (cancelled) return;
+        if (cancelled || !access) return;
 
-      const country = access && COUNTRIES.find(c => c.code === access.countryCode);
+        const country = COUNTRIES.find(c => c.code === access.countryCode);
 
-      if (country) {
-        setSelectedCountry(country);
-        setSearchQuery(country.name);
+        // Don't stomp a country the user picked while detection was in flight.
+        if (country) {
+          setSelectedCountry(current => current ?? country);
+          setSearchQuery(current => current || country.name);
+        }
+      } catch (error) {
+        console.error('Error detecting country:', error);
       }
-
-      setShowCountrySelector(true);
-      setLoading(false);
     };
 
     void detect();
@@ -120,10 +125,6 @@ export default function CountrySelection() {
       setProcessing(false);
     }
   };
-
-  if (loading) {
-    return <LoadingView />;
-  }
 
   // Card isn't issued where they are — show what Solid still does for them
   // instead of a dead end, and record the country as a lead.
@@ -290,17 +291,5 @@ function CountrySelector({
         </Button>
       </View>
     </View>
-  );
-}
-
-// Loading View
-function LoadingView() {
-  return (
-    <PageLayout desktopOnly scrollable={false}>
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#94F27F" />
-        <Text className="mt-4 text-white/70">Loading...</Text>
-      </View>
-    </PageLayout>
   );
 }
