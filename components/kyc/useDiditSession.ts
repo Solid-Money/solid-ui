@@ -11,6 +11,7 @@ import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useKycStore } from '@/store/useKycStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export type SessionState =
   | { phase: 'loading' }
@@ -165,6 +166,11 @@ export function useDiditSession() {
   }, [debugState, kycFlow, redirectBasedOnKycStatus]);
 
   const markStarted = useCallback(() => {
+    // Persisted so the home screen can tell "started verification and walked
+    // away" from "never started" — the two look identical on /cards/status for
+    // a while, and only the former should be nudged to finish.
+    const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
+    if (userId) useKycStore.getState().markKycStarted(userId);
     setSession({ phase: 'started' });
   }, []);
 

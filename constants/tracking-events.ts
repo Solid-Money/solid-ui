@@ -191,6 +191,9 @@ export const TRACKING_EVENTS = {
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
 
+  // Home Prompt Card Events (verification / fund / Apple Pay nudges)
+  HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
+
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
   CARD_WAITLIST_COMPLETED: 'card_waitlist_completed',
