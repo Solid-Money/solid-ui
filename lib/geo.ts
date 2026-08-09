@@ -29,7 +29,14 @@ interface GeoProvider {
   parse: (data: Record<string, any>) => GeoLocation | null;
 }
 
-const REQUEST_TIMEOUT_MS = 5_000;
+const REQUEST_TIMEOUT_MS = 3_000;
+/**
+ * Ceiling on the whole fallback chain. Callers block a spinner — or a whole
+ * screen — on this, so trying every provider at its own timeout (which would
+ * add up to far longer than anyone will wait) is worse than giving up and
+ * letting them pick a country by hand.
+ */
+const TOTAL_BUDGET_MS = 8_000;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
 const isAlpha2 = (value: unknown): value is string =>
@@ -122,9 +129,9 @@ const PROVIDERS: GeoProvider[] = [
   },
 ];
 
-const fetchJson = async (url: string): Promise<Record<string, any> | null> => {
+const fetchJson = async (url: string, timeoutMs: number): Promise<Record<string, any> | null> => {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -144,8 +151,17 @@ let cached: { value: GeoLocation; at: number } | null = null;
 let inFlight: Promise<GeoLocation | null> | null = null;
 
 const lookup = async (): Promise<GeoLocation | null> => {
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+
   for (const provider of PROVIDERS) {
-    const data = await fetchJson(provider.url);
+    const remaining = deadline - Date.now();
+
+    if (remaining <= 0) {
+      console.warn('[geo] IP lookup budget exhausted');
+      return null;
+    }
+
+    const data = await fetchJson(provider.url, Math.min(REQUEST_TIMEOUT_MS, remaining));
     if (!data) continue;
 
     try {
