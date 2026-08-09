@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
 
+import { SIDEBAR_BODY_WIDTH } from '@/components/Navbar/Sidebar';
 import { REGION_BENEFITS, RegionBenefit } from '@/components/RegionUnavailable/benefits';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -264,86 +265,97 @@ export const RegionUnavailableView = ({
 
   return (
     <View className="flex-1 bg-[#111]">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          paddingTop: contentTop,
-          paddingBottom: ctaBlockHeight + 24,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {product === 'card' ? <CardHero /> : <VirtualAccountHero />}
-
-        {/* The Figma text boxes are 345/315 wide on a 419 frame; the 18pt
-            gutter keeps them off the edge on narrower devices. */}
-        <View className="items-center px-[18px]">
-          <Text
-            className="mt-[27px] text-center text-[30px] font-medium -tracking-[1px] text-white"
-            style={styles.title}
-          >
-            {title}
-          </Text>
-          <Text className="mt-[15px] text-center text-[16px] text-white/70" style={styles.subtitle}>
-            {subtitle}
-          </Text>
-        </View>
-
-        <View className="px-[18px]" style={{ marginTop: gridGap }}>
-          <BenefitsGrid />
-        </View>
-      </ScrollView>
-
-      {/* Back arrow — overlaid on the scrollable content so it fades in rather
-          than clipping it */}
-      <LinearGradient
-        colors={[BACKGROUND, `${BACKGROUND}00`]}
-        pointerEvents="box-none"
-        style={[styles.topFade, { height: contentTop + 44 + FADE_EXTENT }]}
-      >
-        <View style={{ paddingTop: contentTop }} className="px-[18px]">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={onBack}
-            className="h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
-          >
-            <ArrowLeft color="#ffffff" size={22} />
-          </Pressable>
-        </View>
-      </LinearGradient>
-
-      {/* Pinned CTA — same overlay treatment on the bottom edge */}
-      <LinearGradient
-        colors={[`${BACKGROUND}00`, BACKGROUND, BACKGROUND]}
-        locations={[0, FADE_EXTENT / (ctaBlockHeight + FADE_EXTENT), 1]}
-        pointerEvents="box-none"
-        style={[styles.bottomFade, { height: ctaBlockHeight + FADE_EXTENT }]}
-      >
-        <View
-          style={{
-            paddingHorizontal: 18,
-            paddingTop: CTA_PADDING_TOP,
-            paddingBottom: bottomInset + CTA_PADDING_BOTTOM,
+      {/* The same centred column `PageLayout` gives every other screen in the
+          desktop shell. This pop-up replaces a whole screen rather than
+          rendering inside `PageLayout`, so it has to apply the cap itself —
+          including to the pinned bars, which are absolute against this View and
+          would otherwise stretch the full viewport. A no-op on phones, where the
+          viewport is narrower than the cap. */}
+      <View className={`flex-1 ${SIDEBAR_BODY_WIDTH}`}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingTop: contentTop,
+            paddingBottom: ctaBlockHeight + 24,
           }}
+          showsVerticalScrollIndicator={false}
         >
-          {onChangeCountry ? (
-            <Pressable
-              onPress={handleChangeCountry}
-              className="mb-[10px] h-[34px] items-center justify-center web:hover:opacity-70"
-            >
-              <Text className="text-base font-bold text-white">Change country</Text>
-            </Pressable>
-          ) : null}
+          {product === 'card' ? <CardHero /> : <VirtualAccountHero />}
 
-          <Button
-            variant="brand"
-            className="h-[50px] w-full rounded-full border-0 active:opacity-90"
-            onPress={handleContinue}
+          {/* The Figma text boxes are 345/315 wide on a 419 frame; the 18pt
+            gutter keeps them off the edge on narrower devices. */}
+          <View className="items-center px-[18px]">
+            <Text
+              className="mt-[27px] text-center text-[30px] font-medium -tracking-[1px] text-white"
+              style={styles.title}
+            >
+              {title}
+            </Text>
+            <Text
+              className="mt-[15px] text-center text-[16px] text-white/70"
+              style={styles.subtitle}
+            >
+              {subtitle}
+            </Text>
+          </View>
+
+          <View className="px-[18px]" style={{ marginTop: gridGap }}>
+            <BenefitsGrid />
+          </View>
+        </ScrollView>
+
+        {/* Back arrow — overlaid on the scrollable content so it fades in rather
+          than clipping it */}
+        <LinearGradient
+          colors={[BACKGROUND, `${BACKGROUND}00`]}
+          pointerEvents="box-none"
+          style={[styles.topFade, { height: contentTop + 44 + FADE_EXTENT }]}
+        >
+          <View style={{ paddingTop: contentTop }} className="px-[18px]">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              onPress={onBack}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
+            >
+              <ArrowLeft color="#ffffff" size={22} />
+            </Pressable>
+          </View>
+        </LinearGradient>
+
+        {/* Pinned CTA — same overlay treatment on the bottom edge */}
+        <LinearGradient
+          colors={[`${BACKGROUND}00`, BACKGROUND, BACKGROUND]}
+          locations={[0, FADE_EXTENT / (ctaBlockHeight + FADE_EXTENT), 1]}
+          pointerEvents="box-none"
+          style={[styles.bottomFade, { height: ctaBlockHeight + FADE_EXTENT }]}
+        >
+          <View
+            style={{
+              paddingHorizontal: 18,
+              paddingTop: CTA_PADDING_TOP,
+              paddingBottom: bottomInset + CTA_PADDING_BOTTOM,
+            }}
           >
-            <Text className="text-[16px] font-semibold text-black">Continue to the app</Text>
-          </Button>
-        </View>
-      </LinearGradient>
+            {onChangeCountry ? (
+              <Pressable
+                onPress={handleChangeCountry}
+                className="mb-[10px] h-[34px] items-center justify-center web:hover:opacity-70"
+              >
+                <Text className="text-base font-bold text-white">Change country</Text>
+              </Pressable>
+            ) : null}
+
+            <Button
+              variant="brand"
+              className="h-[50px] w-full rounded-full border-0 active:opacity-90"
+              onPress={handleContinue}
+            >
+              <Text className="text-[16px] font-semibold text-black">Continue to the app</Text>
+            </Button>
+          </View>
+        </LinearGradient>
+      </View>
     </View>
   );
 };
