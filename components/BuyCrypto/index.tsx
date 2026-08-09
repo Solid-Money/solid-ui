@@ -9,7 +9,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { createMercuryoTransaction, getClientIp } from '@/lib/api';
+import { createMercuryoTransaction } from '@/lib/api';
+import { getClientIp } from '@/lib/geo';
 import { withRefreshToken } from '@/lib/utils';
 import { useComplianceStore } from '@/store/useComplianceStore';
 

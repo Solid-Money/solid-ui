@@ -4,140 +4,63 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { CountryInfo } from '@/lib/types';
 
-interface IpCountryCache {
-  info: CountryInfo;
-  fetchTime: number;
-}
-
-interface IpCache {
-  ip: string;
-  fetchTime: number;
-}
-
 interface CountryState {
-  // Current country info (can be manually selected or from IP)
+  /**
+   * The user's country — either detected from their IP or picked by hand on the
+   * country selection screen. `null` means "not resolved yet".
+   */
   countryInfo: CountryInfo | null;
+  /** When an IP-detected `countryInfo` was resolved. Manual picks don't expire. */
+  detectedAt: number | null;
 
-  // Cache for IP-detected countries
-  ipCountryCache: Record<string, IpCountryCache>;
-
-  // Cache for IP address
-  cachedIp: IpCache | null;
-
-  // Flag to indicate country detection failed (e.g., in ReserveCardButton)
-  countryDetectionFailed: boolean;
-
-  // Store methods
   setCountryInfo: (info: CountryInfo) => void;
-  setIpDetectedCountry: (ip: string, info: CountryInfo) => void;
-  getIpDetectedCountry: (ip: string) => CountryInfo | null;
-  setCachedIp: (ip: string) => void;
-  getCachedIp: () => string | null;
-  setCountryDetectionFailed: (failed: boolean) => void;
+  /** True when `countryInfo` came from an IP lookup old enough to redo. */
+  isStale: () => boolean;
   clearCountryInfo: () => void;
 }
 
 const COUNTRY_STORAGE_KEY = 'country-info-storage';
-const oneHour = 60 * 60 * 1000;
-const CACHE_DURATION = 24 * oneHour;
+/** How long an IP-detected country is trusted before it's looked up again. */
+const IP_COUNTRY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const useCountryStore = create<CountryState>()(
   persist(
     (set, get) => ({
       countryInfo: null,
-      ipCountryCache: {},
-      cachedIp: null,
-      countryDetectionFailed: false,
+      detectedAt: null,
 
       setCountryInfo: (info: CountryInfo) => {
-        set({ countryInfo: { ...info, source: info.source ?? 'manual' } });
-      },
-
-      setIpDetectedCountry: (ip: string, info: CountryInfo) => {
-        const ipInfo = { ...info, source: 'ip' as const };
-        set(state => ({
-          countryInfo: ipInfo,
-          ipCountryCache: {
-            ...state.ipCountryCache,
-            [ip]: {
-              info: ipInfo,
-              fetchTime: Date.now(),
-            },
-          },
-        }));
-      },
-
-      getIpDetectedCountry: (ip: string) => {
-        const state = get();
-        const cachedEntry = state.ipCountryCache[ip];
-
-        if (!cachedEntry) return null;
-
-        // Check if cache is still valid
-        const now = Date.now();
-        if (now - cachedEntry.fetchTime > CACHE_DURATION) {
-          return null;
-        }
-
-        return cachedEntry.info;
-      },
-
-      setCachedIp: (ip: string) => {
         set({
-          cachedIp: {
-            ip,
-            fetchTime: Date.now(),
-          },
+          countryInfo: { ...info, source: info.source ?? 'manual' },
+          detectedAt: Date.now(),
         });
       },
 
-      getCachedIp: () => {
-        const state = get();
-        const cached = state.cachedIp;
+      isStale: () => {
+        const { countryInfo, detectedAt } = get();
 
-        if (!cached) return null;
+        if (!countryInfo) return true;
+        // A country the user picked themselves stands until they change it.
+        if (countryInfo.source !== 'ip') return false;
 
-        // Check if cache is still valid
-        const now = Date.now();
-
-        if (now - cached.fetchTime > CACHE_DURATION) return null;
-
-        return cached.ip;
-      },
-
-      setCountryDetectionFailed: (failed: boolean) => {
-        set({ countryDetectionFailed: failed });
+        return !detectedAt || Date.now() - detectedAt > IP_COUNTRY_TTL_MS;
       },
 
       clearCountryInfo: () => {
-        set({
-          countryInfo: null,
-          ipCountryCache: {},
-          cachedIp: null,
-          countryDetectionFailed: false,
-        });
+        set({ countryInfo: null, detectedAt: null });
       },
     }),
     {
       name: COUNTRY_STORAGE_KEY,
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => mmkvStorage(COUNTRY_STORAGE_KEY)),
-      // v1: drop any cached country availability so clients re-detect against
-      // the current allowed-countries config. Unsticks users who were cached as
-      // "country not available" before their country became eligible for the
-      // Rain card (e.g. Argentina) and were stranded on the notify screen.
-      migrate: (persistedState, version) => {
-        if (version < 1) {
-          return {
-            ...(persistedState as Partial<CountryState>),
-            countryInfo: null,
-            ipCountryCache: {},
-            cachedIp: null,
-            countryDetectionFailed: false,
-          } as CountryState;
-        }
-        return persistedState as CountryState;
-      },
+      // v2 drops the per-IP cache map, the cached IP and the
+      // `countryDetectionFailed` latch that v1 kept — detection now lives in
+      // `lib/geo.ts`, which retries across several providers instead of
+      // remembering a failure. Any persisted v1 state is discarded so clients
+      // re-detect against the current allowed-countries config rather than
+      // staying stuck on a stale "not available".
+      migrate: () => ({ countryInfo: null, detectedAt: null }) as CountryState,
     },
   ),
 );

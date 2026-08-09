@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useShallow } from 'zustand/react/shallow';
 
 import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import { Button } from '@/components/ui/button';
@@ -10,9 +9,9 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import { addToCardWaitlist } from '@/lib/api';
+import { resolveCountryAccess } from '@/lib/countryAccess';
 import { withRefreshToken } from '@/lib/utils';
-import { useCountryStore } from '@/store/useCountryStore';
 
 export type DetectedCountryInfo = {
   countryCode: string;
@@ -26,24 +25,6 @@ const ReserveCardButton = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   const [detectedCountryInfo, setDetectedCountryInfo] = useState<DetectedCountryInfo | null>(null);
-
-  const {
-    setCountryInfo,
-    getIpDetectedCountry,
-    setIpDetectedCountry,
-    getCachedIp,
-    setCachedIp,
-    setCountryDetectionFailed,
-  } = useCountryStore(
-    useShallow(state => ({
-      setCountryInfo: state.setCountryInfo,
-      getIpDetectedCountry: state.getIpDetectedCountry,
-      setIpDetectedCountry: state.setIpDetectedCountry,
-      getCachedIp: state.getCachedIp,
-      setCachedIp: state.setCachedIp,
-      setCountryDetectionFailed: state.setCountryDetectionFailed,
-    })),
-  );
 
   const handleAddToWaitlist = async (countryCode: string) => {
     if (user?.email) {
@@ -69,96 +50,27 @@ const ReserveCardButton = () => {
     });
 
     try {
-      // First, check if we have a cached IP address
-      let ip = getCachedIp();
+      const access = await resolveCountryAccess('card', 'reserve_card_button');
 
-      // If no cached IP or cache expired, fetch a new one
-      if (!ip) {
-        ip = await getClientIp();
-
-        if (ip) {
-          setCachedIp(ip);
-        } else {
-          // If we can't get IP, go to country selection
-          router.push(path.CARD_COUNTRY_SELECTION);
-          return;
-        }
-      }
-
-      // Check if we have a valid cached country info for this IP
-      const cachedInfo = getIpDetectedCountry(ip);
-
-      if (cachedInfo) {
-        // Update countryInfo to match the IP-detected country
-        setCountryInfo(cachedInfo);
-
-        // If country is available, check email and add to waitlist
-        if (cachedInfo.isAvailable) {
-          if (user && !user.email) {
-            setDetectedCountryInfo({
-              countryCode: cachedInfo.countryCode,
-              countryName: cachedInfo.countryName,
-            });
-
-            setShowEmailModal(true);
-          } else {
-            await handleAddToWaitlist(cachedInfo.countryCode);
-          }
-        } else {
-          router.push(path.CARD_COUNTRY_SELECTION);
-        }
-
-        return;
-      }
-
-      // Fetch new country info if cache is invalid or missing
-      const countryData = await getCountryFromIp();
-
-      if (!countryData) {
-        // If we can't detect country, mark as failed and go to country selection
-        setCountryDetectionFailed(true);
+      // Country unknown or not served yet — let the user confirm where they are.
+      if (!access?.isAvailable) {
         router.push(path.CARD_COUNTRY_SELECTION);
         return;
       }
 
-      const { countryCode, countryName } = countryData;
-
-      // Check card access via backend
-      const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
-
-      if (!accessCheck) {
-        // If check fails, mark as failed and go to country selection
-        setCountryDetectionFailed(true);
-        router.push(path.CARD_COUNTRY_SELECTION);
+      // The waitlist entry is keyed by email, so collect one first if missing.
+      if (user && !user.email) {
+        setDetectedCountryInfo({
+          countryCode: access.countryCode,
+          countryName: access.countryName,
+        });
+        setShowEmailModal(true);
         return;
       }
 
-      const countryInfo = {
-        countryCode,
-        countryName,
-        isAvailable: accessCheck.hasAccess,
-      };
-
-      // Cache the country info and clear failure flag
-      setIpDetectedCountry(ip, countryInfo);
-      setCountryDetectionFailed(false);
-
-      // Navigate based on availability
-      if (accessCheck.hasAccess) {
-        // If country is available, check email and add to waitlist
-        if (user && !user.email) {
-          setDetectedCountryInfo({ countryCode, countryName });
-          setShowEmailModal(true);
-        } else {
-          await handleAddToWaitlist(countryCode);
-        }
-      } else {
-        router.push(path.CARD_COUNTRY_SELECTION);
-      }
+      await handleAddToWaitlist(access.countryCode);
     } catch (error) {
       console.error('Error checking country availability:', error);
-      // On error, mark as failed and go to country selection as fallback
-      setCountryDetectionFailed(true);
       router.push(path.CARD_COUNTRY_SELECTION);
     } finally {
       setLoading(false);
