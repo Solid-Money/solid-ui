@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
@@ -12,7 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
@@ -31,12 +33,25 @@ export default function CountrySelection() {
 
   // The selector renders immediately: it needs no network to be usable, and
   // gating it on the geo lookup meant a blank loading screen for as long as the
-  // lookup took. Detection only preselects a country once it lands.
+  // lookup took. Detection swaps in the pop-up if the card isn't issued where
+  // the user is, and otherwise just preselects their country.
   const [showCountrySelector, setShowCountrySelector] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [processing, setProcessing] = useState(false);
+  // Set as soon as the user touches the selector. Detection lands
+  // asynchronously, and yanking someone out of a country they're part-way
+  // through picking would be worse than not showing the pop-up at all.
+  const interacted = useRef(false);
+
+  // `isLoading`, not `isPending`: a disabled query (no selected user yet) stays
+  // pending forever, which would stall detection instead of merely delaying it.
+  const { data: cardStatus, isLoading: cardStatusLoading } = useCardStatus();
+  // Same escape hatch as `useActivateCard`: someone holding a card or part-way
+  // through a Rain application cleared the gate once. Their IP saying otherwise
+  // (travel, VPN) must not present them with a "no card in your region" wall.
+  const clearedGate = hasCard(cardStatus) || hasCardStatusWithRainApplication(cardStatus);
 
   const { countryInfo, setCountryInfo } = useCountryStore(
     useShallow(state => ({
@@ -45,11 +60,19 @@ export default function CountrySelection() {
     })),
   );
 
-  // Detect where the user is so the selector opens on their country. Picking by
-  // hand stays available even when detection succeeds, because the IP is only a
-  // guess at residence — so this never blocks the screen, and a failure just
-  // leaves the field empty.
+  // Where is the user, and is the card issued there? Answering by IP is the
+  // default so an unserved user reaches the pop-up without having to name their
+  // own country first — the same way the virtual account flow works. Picking by
+  // hand stays one tap away behind "Change country", because an IP is only a
+  // guess at residence and travellers will be guessed wrong.
+  //
+  // Never blocks the screen: the selector is already on screen, and a failed
+  // lookup simply leaves it there with an empty field.
   useEffect(() => {
+    // Wait for card status, or a card holder abroad would see the pop-up flash
+    // up before `clearedGate` resolves.
+    if (cardStatusLoading) return;
+
     let cancelled = false;
 
     const detect = async () => {
@@ -65,6 +88,10 @@ export default function CountrySelection() {
           setSelectedCountry(current => current ?? country);
           setSearchQuery(current => current || country.name);
         }
+
+        if (!access.isAvailable && !interacted.current && !clearedGate) {
+          setShowCountrySelector(false);
+        }
       } catch (error) {
         console.error('Error detecting country:', error);
       }
@@ -75,7 +102,7 @@ export default function CountrySelection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [cardStatusLoading, clearedGate]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -84,16 +111,22 @@ export default function CountrySelection() {
     );
   }, [searchQuery]);
 
+  // "Change country" on the pop-up — the traveller's way back to picking by
+  // hand. Marks the screen as interacted so a late lookup can't bounce them
+  // straight back out to the pop-up.
   const handleChangeCountry = () => {
+    interacted.current = true;
     setShowCountrySelector(true);
   };
 
   const handleOpenDropdown = () => {
+    interacted.current = true;
     setSearchQuery('');
     setShowDropdown(true);
   };
 
   const handleCountrySelect = (country: Country) => {
+    interacted.current = true;
     setSelectedCountry(country);
     setSearchQuery(country.name);
     setShowDropdown(false);
