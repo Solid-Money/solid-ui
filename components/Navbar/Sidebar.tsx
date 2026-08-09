@@ -3,10 +3,7 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Href, router, usePathname } from 'expo-router';
 
-import ActivityIcon from '@/assets/images/activity-nav-bar-icon';
-import HomeIcon from '@/assets/images/assets-nav-bar-icon';
-import ProfileIcon from '@/assets/images/profile';
-import SavingsIcon from '@/assets/images/savings-nav-bar-icon';
+import { AnimatedTabIcon, type AnimatedTabIconName } from '@/components/tabBar/AnimatedTabIcon';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -27,20 +24,10 @@ export const SIDEBAR_BODY_WIDTH = 'mx-auto w-full max-w-[40rem]';
 /** The body starts level with the design's "Wallet Balance" label, 65px down. */
 export const SIDEBAR_BODY_TOP_GUTTER = 64;
 
-// Not literal white: the nav icons fill their glyph when handed white (see
-// `isInactiveColor` in each) and the sidebar wants the design's outline.
-const ICON_COLOR = 'rgba(255, 255, 255, 0.92)';
-/**
- * The rewards mark is artwork rather than a line icon, and it carries padding of its
- * own, so it needs a bigger box than the 24px icons to read at the same weight —
- * which is the size Figma 901:1302 gives it.
- */
-const REWARDS_ICON = { width: 31, height: 26 } as const;
-
 type SidebarItem = {
   label: string;
   href: Href;
-  icon: ReactNode;
+  animatedIcon: AnimatedTabIconName;
   /**
    * Route prefixes that keep this item highlighted. `/` only ever matches itself;
    * everything else also matches its nested routes.
@@ -56,7 +43,7 @@ const NAV_ITEMS: SidebarItem[] = [
   {
     label: 'Wallet',
     href: path.HOME,
-    icon: <HomeIcon color={ICON_COLOR} />,
+    animatedIcon: 'wallet',
     // The card lives on the wallet screen now (it opens as a pane), so its routes
     // keep Wallet selected.
     match: ['/', '/card', '/card-onboard'],
@@ -64,26 +51,19 @@ const NAV_ITEMS: SidebarItem[] = [
   {
     label: 'Savings',
     href: path.SAVINGS,
-    icon: <SavingsIcon color={ICON_COLOR} />,
+    animatedIcon: 'savings',
     match: ['/savings'],
   },
   {
     label: 'Rewards',
     href: path.REWARDS,
-    icon: (
-      <Image
-        source={getAsset('images/reward-tier-star.png')}
-        alt=""
-        style={REWARDS_ICON}
-        contentFit="contain"
-      />
-    ),
+    animatedIcon: 'rewards',
     match: ['/rewards'],
   },
   {
     label: 'Activity',
     href: path.ACTIVITY,
-    icon: <ActivityIcon color={ICON_COLOR} />,
+    animatedIcon: 'activity',
     match: ['/activity'],
   },
 ];
@@ -92,7 +72,7 @@ const NAV_ITEMS: SidebarItem[] = [
 const PROFILE_ITEM: SidebarItem = {
   label: 'Profile',
   href: path.SETTINGS,
-  icon: <ProfileIcon width={16} height={20} />,
+  animatedIcon: 'profile',
   match: ['/settings'],
 };
 
@@ -117,7 +97,9 @@ const SidebarLink = ({ item, isActive }: SidebarLinkProps) => (
       isActive ? 'bg-[#2B2B2B]' : 'web:hover:bg-white/5',
     )}
   >
-    <View className="w-6 items-center">{item.icon}</View>
+    <View className="w-6 items-center">
+      <AnimatedTabIcon name={item.animatedIcon} focused={isActive} />
+    </View>
     <Text className="text-[20px] font-medium leading-[22px] text-white">{item.label}</Text>
   </Pressable>
 );

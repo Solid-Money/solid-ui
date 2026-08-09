@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
 import { useMaxAPY } from '@/hooks/useAnalytics';
@@ -64,6 +65,12 @@ export default function SavingsScreenNew() {
       mobileTitle={mobileTitle}
       mobileHeaderRightAction="help"
       onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
+      desktopHeaderRightAction={
+        <HeaderHelpButton
+          accessibilityLabel="How savings works"
+          onPress={() => setIsHelpOpen(true)}
+        />
+      }
       additionalContent={
         <SavingsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }

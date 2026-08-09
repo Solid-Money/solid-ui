@@ -5,7 +5,6 @@ import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
 import {
-  ArrowDown,
   ArrowUpRight,
   ChevronRight,
   CreditCard,
@@ -17,6 +16,7 @@ import { mainnet } from 'viem/chains';
 
 import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
+import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
@@ -40,7 +40,6 @@ import {
   CardProvider,
   CardTransaction,
   CardTransactionCategory,
-  TokenIcon,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -126,7 +125,12 @@ const Back = memo(function Back({ title, className }: BackProps) {
       return;
     }
     const tabParam = params.tab ? `?tab=${params.tab}` : '';
-    router.replace(`${path.ACTIVITY}${tabParam}` as any);
+    // Pop back to the existing Activity list instead of replacing this detail
+    // with a second copy of it. A duplicated list route makes the next system
+    // back gesture appear to do nothing because it reveals the same screen.
+    // `dismissTo` still replaces the detail when it was opened from a deep link
+    // and no Activity list exists in the protected Activity stack.
+    router.dismissTo(`${path.ACTIVITY}${tabParam}` as any);
   }, [params.from, params.tab, router]);
 
   return (
@@ -207,21 +211,6 @@ const ContactSupportCard = memo(function ContactSupportCard({
       </View>
       <ChevronRight size={18} color="#FFFFFF" />
     </Pressable>
-  );
-});
-
-/** Token icon with the incoming-transfer badge from the deposit design. */
-const DepositTokenIcon = memo(function DepositTokenIcon({ tokenIcon }: { tokenIcon: TokenIcon }) {
-  return (
-    <View className="relative">
-      <RenderTokenIcon tokenIcon={tokenIcon} size={72} />
-      <View
-        className="absolute h-[34px] w-[34px] items-center justify-center rounded-full bg-white"
-        style={{ left: -9, top: -3 }}
-      >
-        <ArrowDown size={18} color="#000000" strokeWidth={2.5} />
-      </View>
-    </View>
   );
 });
 
@@ -494,6 +483,7 @@ export default function ActivityDetail() {
   }, [finalActivity, isDeposit, isFund, createdAt, estimatedDurationSeconds]);
 
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
+  const activityBadge = getActivityBadge(finalActivity?.type);
 
   // Report unknown transaction types
   useEffect(() => {
@@ -849,7 +839,14 @@ export default function ActivityDetail() {
           <Back title={finalActivity.title} className="text-xl md:text-2xl" />
 
           <View className="items-center gap-4">
-            {tokenIcon && <DepositTokenIcon tokenIcon={tokenIcon} />}
+            {tokenIcon && (
+              <ActivityTokenIcon
+                tokenIcon={tokenIcon}
+                size={72}
+                badge="incoming"
+                variant="detail"
+              />
+            )}
 
             <View className="items-center gap-1">
               {hideSavingsAmount ? (
@@ -888,7 +885,17 @@ export default function ActivityDetail() {
         <Back title={finalActivity.title} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
-          {tokenIcon && <RenderTokenIcon tokenIcon={tokenIcon} size={75} />}
+          {tokenIcon &&
+            (activityBadge ? (
+              <ActivityTokenIcon
+                tokenIcon={tokenIcon}
+                size={75}
+                badge={activityBadge}
+                variant="detail"
+              />
+            ) : (
+              <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
+            ))}
 
           <View className="items-center">
             {hideSavingsAmount ? (

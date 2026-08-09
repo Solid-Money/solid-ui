@@ -214,6 +214,20 @@ export const getUsdcAddress = (chainId: number) => {
   return usdcAddress;
 };
 
+/**
+ * Decimals of a bridge source token, by token name, defaulting to 6.
+ *
+ * Most chains' USDC/USDT are 6 decimals (hence the default), but BNB Chain's
+ * Binance-Peg USDC/USDT are 18. Hardcoding 6 there under-approves the pull by
+ * 1e12, so the backend's transferFrom can never be covered and the deposit
+ * stalls at the allowance step. Always derive decimals from here.
+ */
+export const getBridgeTokenDecimals = (chainId: number, tokenName: string): number => {
+  const tokens = BRIDGE_TOKENS[chainId]?.tokens;
+  const token = tokens ? Object.values(tokens).find(t => t.name === tokenName) : undefined;
+  return token?.decimals ?? 6;
+};
+
 export const getBridgeChain = (chainId: number) => {
   return BRIDGE_TOKENS[chainId];
 };

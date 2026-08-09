@@ -132,7 +132,7 @@ export default function UserKycInfo() {
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Identity verification
           </Text>
-          <View className="w-10" />
+          <View className="w-[50px]" />
         </View>
 
         <View className="mb-32 mt-8 flex-1 justify-evenly">

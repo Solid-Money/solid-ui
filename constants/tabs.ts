@@ -9,12 +9,12 @@
  */
 
 /** Tabs shown on the legacy bar (production) — current behavior. */
-export const PUBLIC_TAB_NAMES = ['index', 'savings', 'card', 'activity'] as const;
+export const PUBLIC_TAB_NAMES = ['index', 'savings', 'card'] as const;
 
 /**
  * Tabs shown on the redesigned bar (qa/preview builds).
- * Card is merged into the wallet page and Activity moves to a header bell, so
- * neither appears here (their routes remain registered/navigable).
+ * Card is merged into the wallet page. Activity is opened from the header bell
+ * as a protected stack screen, so neither appears here.
  */
 export const WHITELIST_TAB_NAMES = ['index', 'savings', 'rewards'] as const;
 

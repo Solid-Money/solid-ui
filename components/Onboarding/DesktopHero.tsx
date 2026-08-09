@@ -1,45 +1,33 @@
 import { View } from 'react-native';
-import { Image } from 'expo-image';
 
+import { OnboardingHeroBackground } from '@/components/Onboarding/NewOnboarding/OnboardingHeroBackground';
 import { Text } from '@/components/ui/text';
-import { useLandingPageApy } from '@/hooks/useLandingPageApy';
-import { getAsset } from '@/lib/assets';
 
 /**
  * Left panel of every desktop split screen — onboarding, welcome, recovery and the
- * signup steps (Figma 907:1203). The same full-bleed hero the redesigned mobile
- * landing uses, sized for the panel.
+ * signup steps (Figma 20964:5584). Reuses the same full-bleed video and dark scrim
+ * as the redesigned mobile landing, with the desktop copy centered over it.
  *
- * It replaced `DesktopCarousel`, which is gone: one static image and one headline in
- * place of three Lottie slides, gradient crossfades, pagination dots and a drag
+ * It replaced `DesktopCarousel`, which is gone: one looping video and one headline
+ * in place of three Lottie slides, gradient crossfades, pagination dots and a drag
  * gesture.
  *
- * The headline steps up at `xl`; below that the panel is close to its 280px floor,
- * where the desktop type size would wrap mid-word.
+ * The type steps up at `xl` to match the 540px-wide Figma frame while remaining
+ * readable near the panel's 280px minimum width.
  */
 export function DesktopHero() {
-  const { apy } = useLandingPageApy();
-  // Falls back to 8 while loading or when no APY is configured, so the copy never
-  // renders "0%" — same as the mobile landing.
-  const apyLabel = apy > 0 ? Number(apy.toFixed(1)) : 8;
-
   return (
     <View className="m-4 w-[28%] min-w-[280px] max-w-[540px] overflow-hidden rounded-2xl bg-[#111]">
-      <Image
-        source={getAsset('images/onboarding_hero_bg.png')}
-        alt=""
-        style={{ position: 'absolute', width: '100%', height: '100%' }}
-        contentFit="cover"
-      />
+      <OnboardingHeroBackground />
+      <View className="absolute inset-0 bg-black/30" />
 
-      <View className="flex-1 justify-end px-8 pb-12 xl:px-10 xl:pb-14">
-        <Text className="text-[36px] font-medium leading-[36px] -tracking-[2px] text-white xl:text-[52px] xl:leading-[52px]">
-          Your Money{'\n'}Never Sleeps
+      <View className="flex-1 items-center justify-center px-8 pb-12 xl:px-10">
+        <Text className="w-full max-w-[430px] text-center text-[36px] font-normal leading-[36px] -tracking-[2px] text-white xl:text-[50px] xl:leading-[50px]">
+          The stablecoin money app
         </Text>
 
-        <Text className="mt-4 text-base leading-[1.2] text-white/70 xl:text-[20px]">
-          Earn up to {apyLabel}% return on your savings automatically, and spend globally with your
-          Solid card, all in one account.
+        <Text className="mt-6 max-w-[282px] text-center text-base leading-[1.2] text-white/70 xl:text-[18px]">
+          A dollar account for anyone, anywhere. Save, earn, and spend globally with your Solid card
         </Text>
       </View>
     </View>

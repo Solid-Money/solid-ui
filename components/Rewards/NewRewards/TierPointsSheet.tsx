@@ -11,6 +11,9 @@ import type { TierPointsSheetProps } from './TierPointsSheet.types';
 
 const MODAL_STATE: ModalState = { name: 'tier-points', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
+// React Native's web Modal sits at z-index 9999. This sheet is portalled to the
+// document body, so it needs to clear that layer when opened from Rewards help.
+const WEB_OVERLAY_CLASS_NAME = 'z-[10000]';
 
 /**
  * How points work: a bottom sheet on phones, the standard `ResponsiveModal` from
@@ -58,6 +61,7 @@ const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPo
           trigger={trigger ?? null}
           contentKey="tier-points"
           shouldAnimate={false}
+          overlayClassName={WEB_OVERLAY_CLASS_NAME}
         >
           {content}
         </ResponsiveModal>
@@ -71,7 +75,9 @@ const TierPointsSheet = ({ trigger, open: controlledOpen, onOpenChange }: TierPo
         {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
         <DialogContent
           showCloseButton={false}
-          className="fixed bottom-0 left-1/2 h-[min(792px,calc(100vh-16px))] w-full max-w-[419px] -translate-x-1/2 overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
+          webPresentation="bottom-sheet"
+          overlayClassName={WEB_OVERLAY_CLASS_NAME}
+          className="h-[min(792px,calc(100vh-16px))] w-full max-w-[419px] overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
         >
           <View className="absolute left-1/2 top-4 z-10 h-[5px] w-[73px] -translate-x-1/2 rounded-full bg-white/20" />
           <ScrollView showsVerticalScrollIndicator={false}>{content}</ScrollView>

@@ -106,6 +106,30 @@ export const executeTransactions = async (
 
     const transactionHash = receipt.receipt.transactionHash;
 
+    // ERC-4337 lets a UserOperation's execution revert *inside* a bundle whose
+    // own transaction succeeds, so the bundle receipt below is not enough: the
+    // EntryPoint's own success flag is the only thing that says our calls ran.
+    // Trusting the bundle alone made a reverted approval look like a completed
+    // one, and the caller went on to ask the backend to pull unapproved funds.
+    if (!receipt.success) {
+      const error = new Error(errorMessage);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'user_operation_reverted',
+          chainId: chain.id,
+        },
+        extra: {
+          transactionHash,
+          userOpHash,
+          reason: receipt.reason,
+          transactions,
+          accountAddress: smartAccountClient.account?.address,
+          nonce,
+        },
+      });
+      throw error;
+    }
+
     // Get the full transaction receipt
     const transaction = await publicClient(chain.id).waitForTransactionReceipt({
       hash: transactionHash,

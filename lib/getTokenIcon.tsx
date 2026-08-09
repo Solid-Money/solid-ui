@@ -11,6 +11,15 @@ type GetTokenIconProps = {
 };
 
 const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
+  // soUSD has a canonical in-app mark. External token metadata can return an
+  // older logo, so resolve it before the generic logoUrl override.
+  if (tokenSymbol?.toUpperCase() === 'SOUSD') {
+    return {
+      type: 'image',
+      source: getAsset('images/sousd-4x.png'),
+    };
+  }
+
   if (logoUrl) {
     return { type: 'image', source: { uri: logoUrl } };
   }
@@ -47,11 +56,6 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return {
         type: 'image',
         source: getAsset('images/fuse-4x.png'),
-      };
-    case 'SOUSD':
-      return {
-        type: 'image',
-        source: getAsset('images/sousd-4x.png'),
       };
     case 'SOETH':
       return {

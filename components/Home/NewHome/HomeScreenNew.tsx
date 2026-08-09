@@ -27,9 +27,13 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
+
+// Temporarily paused; keep the promo implementation ready for a future relaunch.
+const isCashbackPromoEnabled = false;
 
 /**
  * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
@@ -162,7 +166,7 @@ export default function HomeScreenNew() {
               </View>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={depositCompleted} />
+              <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />
             </HeroExit>
           </View>
         )}
@@ -185,14 +189,22 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
-          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <HomeCashbackPromoBanner />
-          </HeroExit>
+          {/* New-app cashback promo: hidden until the promotion is relaunched. */}
+          {isCashbackPromoEnabled && isDevFeatureEnabled && (
+            <HeroExit spec={HERO_EXIT.belowCard}>
+              {/* Keep layout styles on a regular View: Animated.View does not
+                  consistently resolve NativeWind padding on web. HeroExit stays
+                  outside so its native and web motion behavior is unchanged. */}
+              <View className="px-4">
+                <HomeCashbackPromoBanner />
+              </View>
+            </HeroExit>
+          )}
         </View>
 
         {showAssets && (
-          <HeroExit spec={HERO_EXIT.belowCard} className="px-4">
-            <View className="gap-3">
+          <HeroExit spec={HERO_EXIT.belowCard}>
+            <View className="mt-5 gap-3 px-4">
               <Text className="text-base font-normal text-white/50">Balances</Text>
               {tokenError ? (
                 <View className="flex-1 items-center justify-center p-4">

@@ -897,7 +897,7 @@ export default function RewardsBenefitsScreenNew() {
       additionalContent={overlays}
       scrollEnabled={!isSwiping}
     >
-      <GestureDetector gesture={swipeGesture}>
+      <GestureDetector gesture={swipeGesture} touchAction="pan-y">
         {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
             the column's edge — on mobile they simply hang off-screen. */}
         <View style={isSidebarShell ? { width: pageWidth, overflow: 'hidden' } : undefined}>

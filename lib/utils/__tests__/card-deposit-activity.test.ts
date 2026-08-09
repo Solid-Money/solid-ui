@@ -1,5 +1,10 @@
 /// <reference types="jest" />
-import { getTransactionCategory, isSourceReceiptFinalizable } from '@/constants/transaction';
+import {
+  canFinalizeFromSourceReceipt,
+  CROSS_CHAIN_DEPOSIT_METADATA_KEY,
+  getTransactionCategory,
+  isSourceReceiptFinalizable,
+} from '@/constants/transaction';
 import {
   ActivityEvent,
   TransactionCategory,
@@ -104,5 +109,34 @@ describe('isSourceReceiptFinalizable', () => {
   it('is true for same-chain types resolved by a source-chain receipt', () => {
     expect(isSourceReceiptFinalizable(TransactionType.SEND)).toBe(true);
     expect(isSourceReceiptFinalizable(TransactionType.CARD_TRANSACTION)).toBe(true);
+  });
+});
+
+describe('canFinalizeFromSourceReceipt', () => {
+  // A bridged deposit is created as type DEPOSIT with the source-chain approve
+  // hash, so only the metadata flag can stop it being marked complete while the
+  // BridgeTransaction is still at bridge_initiated.
+  it('is false for a DEPOSIT flagged as cross-chain', () => {
+    expect(
+      canFinalizeFromSourceReceipt({
+        type: TransactionType.DEPOSIT,
+        metadata: { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true },
+      }),
+    ).toBe(false);
+  });
+
+  it('is true for a same-chain DEPOSIT', () => {
+    expect(
+      canFinalizeFromSourceReceipt({
+        type: TransactionType.DEPOSIT,
+        metadata: { tokenAddress: '0x0' },
+      }),
+    ).toBe(true);
+    expect(canFinalizeFromSourceReceipt({ type: TransactionType.DEPOSIT })).toBe(true);
+  });
+
+  it('still rejects the non-final types regardless of metadata', () => {
+    expect(canFinalizeFromSourceReceipt({ type: TransactionType.BRIDGE_DEPOSIT })).toBe(false);
+    expect(canFinalizeFromSourceReceipt({ type: TransactionType.CARD_DEPOSIT })).toBe(false);
   });
 });

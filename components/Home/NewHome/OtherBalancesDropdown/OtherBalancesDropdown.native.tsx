@@ -1,8 +1,9 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Text } from '@/components/ui/text';
 
 import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
@@ -21,9 +22,20 @@ const OtherBalancesDropdown = ({
 }: OtherBalances) => {
   const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const shouldOpenCardDepositRef = useRef(false);
+  const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
 
   const present = useCallback(() => bottomSheetModalRef.current?.present(), []);
   const dismiss = useCallback(() => bottomSheetModalRef.current?.dismiss(), []);
+  const openCardDeposit = useCallback(() => {
+    shouldOpenCardDepositRef.current = true;
+    dismiss();
+  }, [dismiss]);
+  const handleDismiss = useCallback(() => {
+    if (!shouldOpenCardDepositRef.current) return;
+    shouldOpenCardDepositRef.current = false;
+    setIsCardDepositOpen(true);
+  }, []);
 
   const renderBackdrop = useCallback(
     (props: any) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />,
@@ -40,6 +52,7 @@ const OtherBalancesDropdown = ({
       />
       <BottomSheetModal
         ref={bottomSheetModalRef}
+        onDismiss={handleDismiss}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: '#1c1c1c', borderRadius: 20 }}
         handleIndicatorStyle={{
@@ -57,9 +70,15 @@ const OtherBalancesDropdown = ({
             userHasCard={userHasCard}
             isLoading={isLoading}
             onDismiss={dismiss}
+            onCardAdd={openCardDeposit}
           />
         </BottomSheetView>
       </BottomSheetModal>
+      <CardDirectDepositModal
+        trigger={null}
+        isOpen={isCardDepositOpen}
+        onOpenChange={setIsCardDepositOpen}
+      />
     </View>
   );
 };

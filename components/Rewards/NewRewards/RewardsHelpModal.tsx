@@ -1,29 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
   Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, X } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import VideoIllustration from '@/components/ui/video-illustration';
+import { useDimension } from '@/hooks/useDimension';
 
 import { REWARDS_HELP_SLIDES, type RewardsHelpSlide } from './rewardsHelpData';
 import TierPointsSheet from './TierPointsSheet';
 
 const MODAL_BACKGROUND = '#0f0f10';
 const DOT_TRANSITION_MS = 250;
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const DESKTOP_MODAL_WIDTH = 512;
+const DESKTOP_MODAL_HEIGHT = 720;
 const TITLE_SLOT_HEIGHT = 40;
 const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
@@ -53,7 +56,9 @@ const SlideDot = ({ active }: { active: boolean }) => {
     opacity: 0.3 + progress.value * 0.7,
   }));
 
-  return <Animated.View className="h-[6px] rounded-full bg-white" style={style} />;
+  return (
+    <Animated.View style={[{ height: 6, borderRadius: 999, backgroundColor: '#ffffff' }, style]} />
+  );
 };
 
 const HelpPage = ({
@@ -61,14 +66,16 @@ const HelpPage = ({
   isActive,
   playbackSession,
   onOpenPoints,
+  pageWidth,
 }: {
   slide: RewardsHelpSlide;
   isActive: boolean;
   playbackSession: number;
   onOpenPoints: () => void;
+  pageWidth: number;
 }) => {
   return (
-    <View style={{ width: SCREEN_WIDTH, height: '100%' }}>
+    <View style={{ width: pageWidth, height: '100%' }}>
       <View className="flex-1 items-center justify-center">
         <VideoIllustration
           source={SLIDE_ANIMATIONS[slide.key]}
@@ -139,6 +146,11 @@ const HelpPage = ({
  */
 const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelpModalProps) => {
   const insets = useSafeAreaInsets();
+  const { isScreenMedium } = useDimension();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isDesktopPopup = Platform.OS === 'web' && isScreenMedium;
+  const pageWidth = isDesktopPopup ? Math.min(DESKTOP_MODAL_WIDTH, windowWidth - 32) : windowWidth;
+  const modalHeight = Math.min(DESKTOP_MODAL_HEIGHT, windowHeight - 32);
   const pagerRef = useRef<ScrollView>(null);
   const navigationTargetRef = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
@@ -166,16 +178,19 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
     return () => cancelAnimationFrame(frame);
   }, [isOpen]);
 
-  const goToSlide = useCallback((targetIndex: number) => {
-    // Start the incoming illustration when navigation begins. Waiting for the
-    // pager to cross its midpoint leaves the next slide paused while it opens.
-    navigationTargetRef.current = targetIndex;
-    setIndex(targetIndex);
-    pagerRef.current?.scrollTo({
-      x: targetIndex * SCREEN_WIDTH,
-      animated: true,
-    });
-  }, []);
+  const goToSlide = useCallback(
+    (targetIndex: number) => {
+      // Start the incoming illustration when navigation begins. Waiting for the
+      // pager to cross its midpoint leaves the next slide paused while it opens.
+      navigationTargetRef.current = targetIndex;
+      setIndex(targetIndex);
+      pagerRef.current?.scrollTo({
+        x: targetIndex * pageWidth,
+        animated: true,
+      });
+    },
+    [pageWidth],
+  );
 
   const handleNext = useCallback(() => {
     if (navigationTargetRef.current !== null) return;
@@ -190,26 +205,29 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
   // Activate the nearest page while it moves into view. Waiting for momentum
   // to end can leave an incoming video's first frame paused for several
   // seconds after a manual swipe, especially on web.
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const navigationTarget = navigationTargetRef.current;
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const navigationTarget = navigationTargetRef.current;
 
-    // Scroll events begin at the outgoing page during an animated scrollTo.
-    // Keep the requested page active until the pager reaches its destination.
-    if (navigationTarget !== null) {
-      if (Math.abs(offsetX - navigationTarget * SCREEN_WIDTH) < 1) {
-        navigationTargetRef.current = null;
+      // Scroll events begin at the outgoing page during an animated scrollTo.
+      // Keep the requested page active until the pager reaches its destination.
+      if (navigationTarget !== null) {
+        if (Math.abs(offsetX - navigationTarget * pageWidth) < 1) {
+          navigationTargetRef.current = null;
+        }
+        setIndex(currentIndex =>
+          currentIndex === navigationTarget ? currentIndex : navigationTarget,
+        );
+        return;
       }
-      setIndex(currentIndex =>
-        currentIndex === navigationTarget ? currentIndex : navigationTarget,
-      );
-      return;
-    }
 
-    const targetIndex = Math.round(offsetX / SCREEN_WIDTH);
-    const boundedIndex = Math.max(0, Math.min(targetIndex, REWARDS_HELP_SLIDES.length - 1));
-    setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
-  }, []);
+      const targetIndex = Math.round(offsetX / pageWidth);
+      const boundedIndex = Math.max(0, Math.min(targetIndex, REWARDS_HELP_SLIDES.length - 1));
+      setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
+    },
+    [pageWidth],
+  );
 
   const handleOpenPoints = useCallback(() => {
     setIsPointsOpen(true);
@@ -227,7 +245,7 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
     <Modal
       visible={isOpen}
       animationType="fade"
-      transparent={false}
+      transparent={isDesktopPopup}
       statusBarTranslucent
       onShow={() => setIsPresented(true)}
       onRequestClose={handleRequestClose}
@@ -238,63 +256,89 @@ const RewardsHelpModal = ({ isOpen, onClose, onComplete = onClose }: RewardsHelp
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BottomSheetModalProvider>
           <View
-            className="flex-1"
-            style={{ paddingTop: insets.top, backgroundColor: MODAL_BACKGROUND }}
+            className={`flex-1 ${isDesktopPopup ? 'items-center justify-center p-4' : ''}`}
+            style={{
+              backgroundColor: isDesktopPopup ? 'rgba(0, 0, 0, 0.8)' : MODAL_BACKGROUND,
+            }}
           >
-            <View className="flex-row items-center justify-between p-4">
-              <Pressable
-                accessibilityLabel="Close"
-                accessibilityRole="button"
-                onPress={onClose}
-                className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
-              >
-                <ArrowLeft color="#ffffff" size={22} />
-              </Pressable>
-            </View>
-
-            <ScrollView
-              ref={pagerRef}
-              horizontal
-              pagingEnabled
-              snapToInterval={SCREEN_WIDTH}
-              bounces={false}
-              overScrollMode="never"
-              directionalLockEnabled
-              disableIntervalMomentum
-              decelerationRate="fast"
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              onMomentumScrollEnd={handleScroll}
-              scrollEventThrottle={16}
-              className="flex-1"
-              contentContainerStyle={{ alignItems: 'flex-start' }}
+            <View
+              className={isDesktopPopup ? 'overflow-hidden rounded-[32px]' : 'flex-1'}
+              style={{
+                width: isDesktopPopup ? pageWidth : '100%',
+                height: isDesktopPopup ? modalHeight : '100%',
+                paddingTop: isDesktopPopup ? 0 : insets.top,
+                backgroundColor: MODAL_BACKGROUND,
+              }}
             >
-              {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-                <HelpPage
-                  key={item.key}
-                  slide={item}
-                  isActive={isOpen && isPresented && !isPointsOpen && itemIndex === index}
-                  playbackSession={playbackSession}
-                  onOpenPoints={handleOpenPoints}
-                />
-              ))}
-            </ScrollView>
-
-            <View className="flex-row items-center justify-center gap-[6px] pb-6">
-              {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
-                <SlideDot key={item.key} active={itemIndex === index} />
-              ))}
-            </View>
-
-            <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
-              <Button
-                variant="brand"
-                size="lg"
-                onPress={handleNext}
-                className="h-14 w-full rounded-full bg-brand"
+              <View
+                className={`flex-row items-center p-4 ${isDesktopPopup ? 'justify-end' : 'justify-between'}`}
               >
-                <Text className="text-base font-semibold text-black">{slide.cta}</Text>
-              </Button>
+                <Pressable
+                  accessibilityLabel="Close"
+                  accessibilityRole="button"
+                  onPress={onClose}
+                  className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+                >
+                  {isDesktopPopup ? (
+                    <X color="#ffffff" size={22} />
+                  ) : (
+                    <ArrowLeft color="#ffffff" size={22} />
+                  )}
+                </Pressable>
+              </View>
+
+              <ScrollView
+                ref={pagerRef}
+                horizontal
+                pagingEnabled
+                snapToInterval={pageWidth}
+                bounces={false}
+                overScrollMode="never"
+                directionalLockEnabled
+                disableIntervalMomentum
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+                className="flex-1"
+                contentContainerStyle={{ alignItems: 'stretch', height: '100%' }}
+              >
+                {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+                  <HelpPage
+                    key={item.key}
+                    slide={item}
+                    isActive={isOpen && isPresented && !isPointsOpen && itemIndex === index}
+                    playbackSession={playbackSession}
+                    onOpenPoints={handleOpenPoints}
+                    pageWidth={pageWidth}
+                  />
+                ))}
+              </ScrollView>
+
+              <View
+                pointerEvents="none"
+                className="flex-row items-center justify-center gap-[6px]"
+                style={{ height: 30, flexShrink: 0, transform: [{ translateY: -35 }] }}
+              >
+                {REWARDS_HELP_SLIDES.map((item, itemIndex) => (
+                  <SlideDot key={item.key} active={itemIndex === index} />
+                ))}
+              </View>
+
+              <View
+                className="px-4"
+                style={{ paddingBottom: (isDesktopPopup ? 0 : insets.bottom) + 16 }}
+              >
+                <Button
+                  variant="brand"
+                  size="lg"
+                  onPress={handleNext}
+                  className="h-14 w-full rounded-full bg-brand"
+                >
+                  <Text className="text-base font-semibold text-black">{slide.cta}</Text>
+                </Button>
+              </View>
             </View>
           </View>
 

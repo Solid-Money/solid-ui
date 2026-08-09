@@ -19,9 +19,9 @@ import { CardHeroRect } from '@/store/useCardHeroStore';
 export const CONTENT_MAX_WIDTH = 512;
 /** `px-4` on the content container. */
 export const CONTENT_PADDING = 16;
-/** Header: the back button sits 15pt below the safe area and is 44pt tall. */
+/** Header: the back button sits 15pt below the safe area and is 50pt tall. */
 export const HEADER_TOP_PADDING = 15;
-export const HEADER_BUTTON_SIZE = 44;
+export const HEADER_BUTTON_SIZE = 50;
 export const HEADER_HEIGHT = HEADER_TOP_PADDING + HEADER_BUTTON_SIZE;
 /** Figma puts the card body 48pt below the header. */
 export const CARD_TOP_GAP = 48;
