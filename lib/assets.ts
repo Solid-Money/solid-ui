@@ -409,6 +409,14 @@ export const ASSETS = {
     module: require('@/assets/images/fund-dollar.tsx'),
     hash: '7f4fcddb',
   },
+  'images/fund-external-wallet.tsx': {
+    module: require('@/assets/images/fund-external-wallet.tsx'),
+    hash: '2c12db7f',
+  },
+  'images/fund-move-savings.tsx': {
+    module: require('@/assets/images/fund-move-savings.tsx'),
+    hash: 'cea5f9b9',
+  },
   'images/fund-wallet-tokens.png': {
     module: require('@/assets/images/fund-wallet-tokens.png'),
     hash: 'd7de7d8e',
@@ -477,7 +485,7 @@ export const ASSETS = {
   'images/home-fund.tsx': { module: require('@/assets/images/home-fund.tsx'), hash: 'b5101922' },
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
-  'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: '5ea4a65b' },
+  'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: 'ba220974' },
   'images/identity-review.png': {
     module: require('@/assets/images/identity-review.png'),
     hash: '6fe74800',

@@ -53,6 +53,7 @@ import {
   CustomerFromBridgeResponse,
   Deposit,
   DepositTransaction,
+  DetectedDirectDepositResponse,
   DiditSessionResponse,
   DiditVerificationStatusResponse,
   DirectDepositSessionResponse,
@@ -2600,6 +2601,36 @@ export const createDirectDepositSession = async (
         tokenSymbol,
         ...(destinationType ? { destinationType } : {}),
       }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Poll for a deposit landing on the user's direct deposit address.
+ * `since` is the epoch-ms instant the client started watching, so deposits from
+ * an earlier visit never trigger a redirect.
+ */
+export const getDetectedDirectDeposit = async (
+  since: number,
+  destinationType?: 'PROTOCOL' | 'RAIN_CARD',
+): Promise<DetectedDirectDepositResponse> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams({ since: String(since) });
+  if (destinationType) params.set('destinationType', destinationType);
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-deposit-detected?${params}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
   );
 

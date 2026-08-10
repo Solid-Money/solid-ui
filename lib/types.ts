@@ -53,6 +53,19 @@ export interface DirectDepositSessionResponse {
   clientTxId?: string;
 }
 
+/** Poll response for a deposit landing on the user's direct deposit address. */
+export interface DetectedDirectDepositResponse {
+  detected: boolean;
+  clientTxId?: string;
+  status?: string;
+  depositStep?: string;
+  amount?: string;
+  symbol?: string;
+  chainId?: number;
+  transactionHash?: string;
+  detectedAt?: string;
+}
+
 export interface CardDepositBonusConfig {
   isEnabled: boolean;
   percentage: number;
