@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from 'react-native-toast-message';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { path } from '@/constants/path';
@@ -12,15 +12,24 @@ import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useKycStore } from '@/store/useKycStore';
 
+import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
+
 export type SessionState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'unavailable'; message: string }
   | { phase: 'ready'; verificationUrl: string; sessionToken: string }
   | { phase: 'started' }
-  | { phase: 'completed' };
+  /**
+   * Hand-off: the user is being routed off /kyc. `destination` is retained so a
+   * navigation that does not land can be retried, and so the interstitial can
+   * offer a manual button instead of stranding the user on "Redirecting...".
+   */
+  | { phase: 'completed'; outcome: KycHandoffOutcome; destination?: string };
 
 const POLL_INTERVAL_MS = 5000;
+/** Re-issue the hand-off navigation once if we are still sitting on it. */
+const REDIRECT_RETRY_MS = 2500;
 
 export function useDiditSession() {
   const router = useRouter();
@@ -32,18 +41,13 @@ export function useDiditSession() {
   const [session, setSession] = useState<SessionState>({ phase: 'loading' });
   const sdkInitializedRef = useRef(false);
 
-  const redirectBasedOnKycStatus = useCallback(
-    async (kycStatus: KycStatus) => {
-      setSession({ phase: 'completed' });
-      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-
+  /** Where this KYC outcome should land the user. No navigation, just the href. */
+  const resolveDestination = useCallback(
+    async (kycStatus: KycStatus): Promise<string> => {
       // VA flow: KYC is just a gate for opening the virtual account. Always
       // surface the pending submission page after KYC — the user re-enters
       // the VA flow via Deposit when their KYC + Rain status is approved.
-      if (kycFlow === 'va') {
-        router.replace(path.CARD_PENDING as any);
-        return;
-      }
+      if (kycFlow === 'va') return String(path.CARD_PENDING);
 
       if (kycStatus === KycStatus.APPROVED) {
         // Didit KYC approved: route by Rain status. Approved -> ready.
@@ -54,24 +58,66 @@ export function useDiditSession() {
         try {
           const cardStatusResponse = await withRefreshToken(() => getCardStatus());
           if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
-            router.replace(path.CARD_READY as any);
-            return;
+            return String(path.CARD_READY);
           }
           if (cardStatusResponse?.kycStatus === KycStatus.UNDER_REVIEW) {
-            router.replace(path.CARD_PENDING as any);
-            return;
+            return String(path.CARD_PENDING);
           }
         } catch {
           // On error fall through to activate page as a safe default
         }
-        router.replace(path.CARD_ACTIVATE as any);
-      } else if (kycStatus === KycStatus.UNDER_REVIEW) {
-        router.replace(path.CARD_PENDING as any);
-      } else {
-        router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
+        return String(path.CARD_ACTIVATE);
       }
+      if (kycStatus === KycStatus.UNDER_REVIEW) return String(path.CARD_PENDING);
+      return `${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}`;
     },
-    [kycFlow, queryClient, router],
+    [kycFlow],
+  );
+
+  const redirectBasedOnKycStatus = useCallback(
+    async (kycStatus: KycStatus, outcome?: KycHandoffOutcome) => {
+      const handoff =
+        outcome ?? (kycStatus === KycStatus.APPROVED ? 'approved' : ('submitted' as const));
+      // Render the hand-off before resolving the destination: that resolution
+      // can make a network call, and this screen must not sit blank while it
+      // runs (nor silently hang if the call never settles).
+      setSession({ phase: 'completed', outcome: handoff });
+      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+
+      const destination = await resolveDestination(kycStatus);
+      setSession({ phase: 'completed', outcome: handoff, destination });
+      router.replace(destination as any);
+    },
+    [queryClient, resolveDestination, router],
+  );
+
+  /**
+   * Manual escape from the hand-off interstitial, wired to its Continue button.
+   * Falls back to the activate page when the destination never resolved. Read
+   * through a ref so this callback stays referentially stable — the
+   * interstitial keys its "looks stuck" timer on it, and a changing identity
+   * would keep restarting that timer.
+   */
+  const destinationRef = useRef<string | null>(null);
+  destinationRef.current =
+    session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
+  const retryRedirect = useCallback(() => {
+    router.replace((destinationRef.current ?? String(path.CARD_ACTIVATE)) as any);
+  }, [router]);
+
+  /**
+   * One automatic retry, because the hand-off is only ever a pass-through: if we
+   * are still focused on it a beat after navigating, the navigation did not
+   * take. `useFocusEffect` cleans up on blur, so a redirect that *did* land can
+   * never be yanked back by a late retry.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      if (session.phase !== 'completed' || !session.destination) return;
+      const destination = session.destination;
+      const timer = setTimeout(() => router.replace(destination as any), REDIRECT_RETRY_MS);
+      return () => clearTimeout(timer);
+    }, [router, session]),
   );
 
   const initSession = useCallback(async () => {
@@ -93,7 +139,10 @@ export function useDiditSession() {
         setSession({ phase: 'loading' });
         return;
       case 'completed':
-        setSession({ phase: 'completed' });
+        setSession({ phase: 'completed', outcome: 'approved' });
+        return;
+      case 'existing':
+        setSession({ phase: 'completed', outcome: 'existing' });
         return;
     }
 
@@ -127,19 +176,20 @@ export function useDiditSession() {
       // KYC_ALREADY_EXISTS (409): the user already has an established KYC
       // record (a provider consumer), so the backend refuses to create a new
       // Didit session rather than overwrite it — overwriting previously
-      // detached the user's existing card. This isn't a failure: they're
-      // already verified (or in review). Resolve their current status and route
-      // them to the right card screen instead of the red error/retry loop.
-      const isAlreadyVerified =
+      // detached the user's existing card. This is NOT a pass: the record may
+      // be expired, in review, or awaiting a resubmission. Resolve the real
+      // status, route on it, and label the hand-off 'existing' rather than
+      // claiming "Verification complete!" over a rejected selfie.
+      const hasExistingKyc =
         e?.code === 'KYC_ALREADY_EXISTS' || e?.status === 409 || e?.statusCode === 409;
-      if (isAlreadyVerified) {
+      if (hasExistingKyc) {
         try {
           const status = await withRefreshToken(() => getDiditVerificationStatus());
-          await redirectBasedOnKycStatus(status?.kycStatus ?? KycStatus.APPROVED);
+          await redirectBasedOnKycStatus(status?.kycStatus ?? KycStatus.APPROVED, 'existing');
         } catch {
-          // Status lookup failed — still treat as verified and let the card
-          // status page resolve the final destination.
-          await redirectBasedOnKycStatus(KycStatus.APPROVED);
+          // Status lookup failed — let the card status page resolve the final
+          // destination, still without claiming the check passed.
+          await redirectBasedOnKycStatus(KycStatus.APPROVED, 'existing');
         }
         return;
       }
@@ -203,7 +253,7 @@ export function useDiditSession() {
       text2: 'Review the details and try again with a valid document.',
       props: { badgeText: '' },
     });
-    redirectBasedOnKycStatus(KycStatus.REJECTED);
+    redirectBasedOnKycStatus(KycStatus.REJECTED, 'declined');
   }, [redirectBasedOnKycStatus]);
 
   /**
@@ -281,6 +331,7 @@ export function useDiditSession() {
     session,
     initSession,
     markStarted,
+    retryRedirect,
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,

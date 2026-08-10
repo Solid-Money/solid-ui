@@ -1,3 +1,4 @@
+export type { KycHandoffOutcome } from './KycStatusViews';
 export {
   KycCompleted,
   KycError,

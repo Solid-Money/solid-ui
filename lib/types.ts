@@ -499,6 +499,13 @@ export interface CardStatusResponse {
   kycWarnings?: KycWarning[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
+  /**
+   * True once a provider (Rain) consumer exists for this user. Creating a new
+   * Didit/Sumsub session in that state is refused with 409 KYC_ALREADY_EXISTS,
+   * so never offer a "start KYC" action when this is set — a resubmission has
+   * to go through `applicationExternalVerificationLink` instead.
+   */
+  kycApplicationEstablished?: boolean;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**

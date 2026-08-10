@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Toast from 'react-native-toast-message';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { path } from '@/constants/path';
@@ -10,6 +10,8 @@ import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+
+import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
 
 /**
  * Session state machine for the Sumsub WebSDK. Unlike Didit (which hands back a
@@ -22,9 +24,16 @@ export type SumsubSessionState =
   | { phase: 'unavailable'; message: string }
   | { phase: 'ready'; accessToken: string; levelName: string }
   | { phase: 'started' }
-  | { phase: 'completed' };
+  /**
+   * Hand-off: the user is being routed off the Sumsub screen. `destination` is
+   * retained so a navigation that does not land can be retried, and so the
+   * interstitial can offer a manual button instead of stranding the user.
+   */
+  | { phase: 'completed'; outcome: KycHandoffOutcome; destination?: string };
 
 const POLL_INTERVAL_MS = 5000;
+/** Re-issue the hand-off navigation once if we are still sitting on it. */
+const REDIRECT_RETRY_MS = 2500;
 
 /**
  * Drives the Sumsub KYC flow for the Wirex (EU/EEA) jurisdiction. Mirrors
@@ -38,25 +47,57 @@ export function useSumsubSession() {
   const debugState = useLocalSearchParams<{ state?: string }>().state;
   const [session, setSession] = useState<SumsubSessionState>({ phase: 'loading' });
 
-  const redirectBasedOnKycStatus = useCallback(
-    async (kycStatus: KycStatus) => {
-      setSession({ phase: 'completed' });
-      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+  /** Where this KYC outcome should land the user. No navigation, just the href. */
+  const resolveDestination = useCallback((kycStatus: KycStatus): string => {
+    // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
+    // hands off to Wirex, which then adjudicates. So:
+    //  - APPROVED (Wirex approved) → activate, where the user issues the card.
+    //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
+    //  - anything else → activate with the status so step 1 renders correctly.
+    if (kycStatus === KycStatus.APPROVED) return String(path.CARD_ACTIVATE);
+    if (kycStatus === KycStatus.UNDER_REVIEW) return String(path.CARD_PENDING);
+    return `${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}`;
+  }, []);
 
-      // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
-      // hands off to Wirex, which then adjudicates. So:
-      //  - APPROVED (Wirex approved) → activate, where the user issues the card.
-      //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
-      //  - anything else → activate with the status so step 1 renders correctly.
-      if (kycStatus === KycStatus.APPROVED) {
-        router.replace(path.CARD_ACTIVATE as any);
-      } else if (kycStatus === KycStatus.UNDER_REVIEW) {
-        router.replace(path.CARD_PENDING as any);
-      } else {
-        router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
-      }
+  const redirectBasedOnKycStatus = useCallback(
+    async (kycStatus: KycStatus, outcome?: KycHandoffOutcome) => {
+      const handoff =
+        outcome ?? (kycStatus === KycStatus.APPROVED ? 'approved' : ('submitted' as const));
+      const destination = resolveDestination(kycStatus);
+      setSession({ phase: 'completed', outcome: handoff, destination });
+      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      router.replace(destination as any);
     },
-    [queryClient, router],
+    [queryClient, resolveDestination, router],
+  );
+
+  /**
+   * Manual escape from the hand-off interstitial, wired to its Continue button.
+   * Falls back to the activate page when the destination never resolved. Read
+   * through a ref so this callback stays referentially stable — the
+   * interstitial keys its "looks stuck" timer on it, and a changing identity
+   * would keep restarting that timer.
+   */
+  const destinationRef = useRef<string | null>(null);
+  destinationRef.current =
+    session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
+  const retryRedirect = useCallback(() => {
+    router.replace((destinationRef.current ?? String(path.CARD_ACTIVATE)) as any);
+  }, [router]);
+
+  /**
+   * One automatic retry, because the hand-off is only ever a pass-through: if we
+   * are still focused on it a beat after navigating, the navigation did not
+   * take. `useFocusEffect` cleans up on blur, so a redirect that *did* land can
+   * never be yanked back by a late retry.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      if (session.phase !== 'completed' || !session.destination) return;
+      const destination = session.destination;
+      const timer = setTimeout(() => router.replace(destination as any), REDIRECT_RETRY_MS);
+      return () => clearTimeout(timer);
+    }, [router, session]),
   );
 
   /** Fetch a fresh access token — also used as the WebSDK expiration handler. */
@@ -81,7 +122,10 @@ export function useSumsubSession() {
         setSession({ phase: 'loading' });
         return;
       case 'completed':
-        setSession({ phase: 'completed' });
+        setSession({ phase: 'completed', outcome: 'approved' });
+        return;
+      case 'existing':
+        setSession({ phase: 'completed', outcome: 'existing' });
         return;
     }
 
@@ -96,16 +140,18 @@ export function useSumsubSession() {
       }
       setSession({ phase: 'ready', accessToken: res.token, levelName: res.levelName });
     } catch (e: any) {
-      // Already verified (or registered with Wirex): resolve status and route on
-      // instead of showing an error/retry loop.
-      const isAlreadyVerified =
+      // An identity check is already on file (a provider consumer exists), so
+      // the backend refuses a new session. That is not a pass — the record may
+      // be in review or awaiting a resubmission — so route on the real status
+      // and label the hand-off 'existing' rather than claiming completion.
+      const hasExistingKyc =
         e?.code === 'KYC_ALREADY_EXISTS' || e?.status === 409 || e?.statusCode === 409;
-      if (isAlreadyVerified) {
+      if (hasExistingKyc) {
         try {
           const status = await withRefreshToken(() => getSumsubVerificationStatus());
-          await redirectBasedOnKycStatus(status?.kycStatus ?? KycStatus.UNDER_REVIEW);
+          await redirectBasedOnKycStatus(status?.kycStatus ?? KycStatus.UNDER_REVIEW, 'existing');
         } catch {
-          await redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW);
+          await redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW, 'existing');
         }
         return;
       }
@@ -159,7 +205,7 @@ export function useSumsubSession() {
       text2: 'Review the details and try again with a valid document.',
       props: { badgeText: '' },
     });
-    redirectBasedOnKycStatus(KycStatus.REJECTED);
+    redirectBasedOnKycStatus(KycStatus.REJECTED, 'declined');
   }, [redirectBasedOnKycStatus]);
 
   /**
@@ -243,6 +289,7 @@ export function useSumsubSession() {
     session,
     initSession,
     markStarted,
+    retryRedirect,
     fetchAccessToken,
     onVerificationComplete,
     onVerificationPending,
