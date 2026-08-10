@@ -1,17 +1,17 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { Wallet } from 'lucide-react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { useShallow } from 'zustand/react/shallow';
 
-import HomeQR from '@/assets/images/home-qr';
-import HomeSwap from '@/assets/images/home-swap';
+import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
+import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
+import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
+import { getCardFundTokenIcon } from '@/components/Card/CardFund/constants';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
-import DepositOption from '@/components/DepositOption/DepositOption';
-import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
-import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -25,23 +25,19 @@ import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
-type Step = 'options' | 'networks' | 'form' | 'address';
+type Step = 'options' | 'networks' | 'address' | 'walletNetworks' | 'form';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
 const MODAL_STATES: Record<Step, ModalState> = {
   options: { name: 'options', number: 0 },
   networks: { name: 'networks', number: 1 },
-  form: { name: 'form', number: 2 },
+  walletNetworks: { name: 'wallet-networks', number: 1 },
   address: { name: 'address', number: 2 },
+  form: { name: 'form', number: 2 },
 };
 
-const STEP_TITLES: Record<Step, string> = {
-  options: 'Fund your card',
-  networks: 'Fund your card',
-  form: 'Fund your card',
-  address: 'Fund your card',
-};
+const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
 
 interface CardDirectDepositModalProps {
   trigger?: React.ReactNode;
@@ -63,7 +59,11 @@ export default function CardDirectDepositModal({
     current: 'options',
     previous: CLOSE_STATE,
   });
-  // Deposit address fetched after chain selection (wallet path) or on QR button press (Base).
+  // Token + chain picked in the direct-deposit flow (Stablecoins section).
+  const [selectedToken, setSelectedToken] = useState('USDC');
+  const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
+  // Deposit address fetched after chain selection (both the direct-deposit and
+  // the connected-wallet paths send to the same session wallet).
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -81,7 +81,6 @@ export default function CardDirectDepositModal({
 
   const depositConfig = getVaultDepositConfig();
 
-  // Fetched after the user picks a chain (wallet path) or immediately (QR path, Base chain).
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
       withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
@@ -102,16 +101,18 @@ export default function CardDirectDepositModal({
       if (!open) {
         setStepState({ current: 'options', previous: CLOSE_STATE });
         setDepositAddress(undefined);
+        setSelectedChainId(undefined);
       }
     },
     [isControlled, onOpenChange],
   );
 
+  // "Deposit from an external wallet" — connect a crypto wallet, then send.
   const handleConnectWallet = useCallback(async () => {
     try {
       if (isWalletOpen) return;
       if (activeAccount?.address) {
-        goToStep('networks');
+        goToStep('walletNetworks');
         return;
       }
       setIsWalletOpen(true);
@@ -123,7 +124,7 @@ export default function CardDirectDepositModal({
         wallets: thirdwebWallets,
         theme: thirdwebTheme,
       });
-      if (wallet) goToStep('networks');
+      if (wallet) goToStep('walletNetworks');
     } catch {
       // ignore dismiss
     } finally {
@@ -138,19 +139,39 @@ export default function CardDirectDepositModal({
     setDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   }, [handleOpenChange, setDepositModal]);
 
-  // "Share your deposit address" — address is chain-independent (same deterministic wallet
-  // across all chains), so fetch via Base and skip network selection entirely.
-  const handleShareAddress = useCallback(() => {
-    setDepositAddress(undefined);
-    prepareSession({ chainId: 8453, token: 'USDC' });
-    goToStep('address');
-  }, [goToStep, prepareSession]);
+  const handleTokenPress = useCallback(
+    (symbol: string) => {
+      setSelectedToken(symbol);
+      setSelectedChainId(undefined);
+      setDepositAddress(undefined);
+      goToStep('networks');
+    },
+    [goToStep],
+  );
 
-  // "Send from wallet" path only — always navigates to the send form.
-  const handleNetworkSelect = useCallback(
+  // Direct-deposit path: pick the chain the stablecoin is sent from.
+  const handleDirectNetworkSelect = useCallback(
     (chainId: number) => {
-      // Card deposits are USDC-only, so the send form is locked to USDC.
-      const selectedToken = 'USDC';
+      track(TRACKING_EVENTS.NETWORK_SELECTED, {
+        chain_id: chainId,
+        network_name: BRIDGE_TOKENS[chainId]?.name,
+        token_symbol: selectedToken,
+        deposit_type: 'card_direct_deposit',
+      });
+
+      setSelectedChainId(chainId);
+      setDepositAddress(undefined);
+      prepareSession({ chainId, token: selectedToken });
+      goToStep('address');
+    },
+    [goToStep, prepareSession, selectedToken],
+  );
+
+  // Connected-wallet path only — always navigates to the send form.
+  const handleWalletNetworkSelect = useCallback(
+    (chainId: number) => {
+      // Card deposits from a connected wallet are USDC-only.
+      const token = 'USDC';
       const network = BRIDGE_TOKENS[chainId];
 
       track(TRACKING_EVENTS.NETWORK_SELECTED, {
@@ -160,22 +181,30 @@ export default function CardDirectDepositModal({
       });
 
       setSrcChainId(chainId);
-      setPrincipalToken(selectedToken);
+      setPrincipalToken(token);
 
       setDepositAddress(undefined);
-      prepareSession({ chainId, token: selectedToken });
+      prepareSession({ chainId, token });
 
       goToStep('form');
     },
     [setSrcChainId, setPrincipalToken, goToStep, prepareSession],
   );
 
+  // The webhook has seen the transfer — hand the user straight to its progress screen.
+  const handleDepositDetected = useCallback(
+    (clientTxId: string) => {
+      handleOpenChange(false);
+      router.push(`/activity/${clientTxId}`);
+    },
+    [handleOpenChange],
+  );
+
   const handleBack = useCallback(() => {
     setStepState(prev => {
       const backStep: Step = (() => {
-        if (prev.current === 'networks') return 'options';
-        if (prev.current === 'form') return 'networks';
-        if (prev.current === 'address') return 'options'; // QR path: back goes straight to options
+        if (prev.current === 'address') return 'networks';
+        if (prev.current === 'form') return 'walletNetworks';
         return 'options';
       })();
       return { current: backStep, previous: MODAL_STATES[prev.current] };
@@ -186,37 +215,50 @@ export default function CardDirectDepositModal({
   const currentModal = MODAL_STATES[step];
   const canGoBack = step !== 'options';
 
+  const title = (() => {
+    if (step === 'networks') return selectedToken;
+    if (step === 'address') return `Deposit ${selectedToken}`;
+    return 'Fund your card';
+  })();
+
+  const titleIcon =
+    step === 'networks' || step === 'address' ? (
+      <Image
+        source={getCardFundTokenIcon(selectedToken)}
+        style={TITLE_ICON_STYLE}
+        contentFit="cover"
+      />
+    ) : undefined;
+
   const content = (() => {
     if (step === 'options') {
       return (
-        <View className="gap-y-2.5">
-          <DepositOption
-            text="Send from your crypto wallet"
-            subtitle="Add supported assets from supported networks directly to your card"
-            icon={<Wallet color="white" size={24} strokeWidth={1} />}
-            onPress={handleConnectWallet}
-            isLoading={isWalletOpen}
-          />
-          <DepositOption
-            text="Share your deposit address"
-            subtitle="Send supported tokens to your card deposit address from a supported network"
-            icon={<HomeQR />}
-            onPress={handleShareAddress}
-          />
-          <DepositOption
-            text="Transfer from wallet/savings"
-            subtitle="Transfer the funds from the assets you have in savings or wallet"
-            icon={<HomeSwap />}
-            onPress={handleTransferFromWallet}
-          />
-          <View className="mt-4 items-center">
-            <NeedHelp />
-          </View>
-        </View>
+        <CardFundOptions
+          onTokenPress={handleTokenPress}
+          onMoveFromSavingsPress={handleTransferFromWallet}
+          onExternalWalletPress={handleConnectWallet}
+          isExternalWalletLoading={isWalletOpen}
+        />
       );
     }
 
     if (step === 'networks') {
+      return <CardFundNetworks symbol={selectedToken} onSelect={handleDirectNetworkSelect} />;
+    }
+
+    if (step === 'address') {
+      return (
+        <CardFundDepositAddress
+          address={depositAddress}
+          symbol={selectedToken}
+          chainId={selectedChainId ?? 0}
+          onChangeNetwork={handleBack}
+          onDepositDetected={handleDepositDetected}
+        />
+      );
+    }
+
+    if (step === 'walletNetworks') {
       return (
         <View className="min-h-[33rem] gap-y-2">
           <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
@@ -236,7 +278,7 @@ export default function CardDirectDepositModal({
                     description={estimatedDesc}
                     icon={network.icon}
                     isComingSoon={network.isComingSoon}
-                    onPress={() => handleNetworkSelect(chainId)}
+                    onPress={() => handleWalletNetworkSelect(chainId)}
                   />
                 );
               })}
@@ -259,16 +301,6 @@ export default function CardDirectDepositModal({
       );
     }
 
-    if (step === 'address') {
-      return depositAddress ? (
-        <DepositPublicAddress address={depositAddress} onDone={() => handleOpenChange(false)} />
-      ) : (
-        <View className="items-center py-12">
-          <ActivityIndicator color="white" />
-        </View>
-      );
-    }
-
     return null;
   })();
 
@@ -279,7 +311,11 @@ export default function CardDirectDepositModal({
       isOpen={isOpen}
       onOpenChange={handleOpenChange}
       trigger={trigger}
-      title={STEP_TITLES[step]}
+      title={title}
+      titleIcon={titleIcon}
+      // The funding flow is designed at phone width; 420px keeps the desktop
+      // card at the same proportions instead of stretching to max-w-lg.
+      contentClassName="md:max-w-[450px]"
       showBackButton={canGoBack}
       onBackPress={handleBack}
       shouldAnimate={previousModal.name !== 'close'}
