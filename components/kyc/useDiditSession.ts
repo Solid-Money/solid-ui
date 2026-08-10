@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
@@ -10,6 +11,7 @@ import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -43,6 +45,16 @@ export function useDiditSession() {
       // the VA flow via Deposit when their KYC + Rain status is approved.
       if (kycFlow === 'va') {
         router.replace(path.CARD_PENDING as any);
+        return;
+      }
+
+      // TransFi buy-crypto flow: KYC (Didit) is a gate for sharing identity with
+      // TransFi. Re-enter the Add-funds modal at the buy-crypto KYC pending step
+      // (which forwards the freshly-approved Didit KYC to TransFi and polls) and
+      // return the user to the home screen where the modal is mounted.
+      if (kycFlow === 'transfi') {
+        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+        router.replace(path.HOME as any);
         return;
       }
 
@@ -103,7 +115,11 @@ export function useDiditSession() {
 
     try {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
-      const res = await withRefreshToken(() => createDiditSession(undefined, kycFlow ?? 'card'));
+      // The TransFi buy-crypto flow reuses the standard 'card' identity
+      // workflow — only 'va' has its own Didit workflow. We later forward the
+      // completed session to TransFi regardless of which workflow ran.
+      const diditFlow = kycFlow === 'va' ? 'va' : 'card';
+      const res = await withRefreshToken(() => createDiditSession(undefined, diditFlow));
       if (!res) {
         setSession({
           phase: 'error',

@@ -13,6 +13,9 @@ export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_
 export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? '';
+// Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
+// the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
+export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
 export const EXPO_PUBLIC_THIRDWEB_CLIENT_ID = process.env.EXPO_PUBLIC_THIRDWEB_CLIENT_ID ?? '';
 export const EXPO_PUBLIC_TURNKEY_API_BASE_URL = process.env.EXPO_PUBLIC_TURNKEY_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID =

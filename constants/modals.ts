@@ -91,6 +91,35 @@ export const DEPOSIT_MODAL = {
     name: 'open_virtual_account_apply',
     number: 20,
   },
+  // TransFi buy-crypto onramp steps
+  OPEN_BUY_CRYPTO_KYC_CONSENT: {
+    name: 'open_buy_crypto_kyc_consent',
+    number: 21,
+  },
+  OPEN_BUY_CRYPTO_KYC_PENDING: {
+    name: 'open_buy_crypto_kyc_pending',
+    number: 22,
+  },
+  OPEN_BUY_CRYPTO_AMOUNT: {
+    name: 'open_buy_crypto_amount',
+    number: 23,
+  },
+  OPEN_BUY_CRYPTO_CURRENCY: {
+    name: 'open_buy_crypto_currency',
+    number: 23.3,
+  },
+  OPEN_BUY_CRYPTO_PAYMENT_METHOD: {
+    name: 'open_buy_crypto_payment_method',
+    number: 23.6,
+  },
+  OPEN_BUY_CRYPTO_PAYMENT: {
+    name: 'open_buy_crypto_payment',
+    number: 24,
+  },
+  OPEN_BUY_CRYPTO_STATUS: {
+    name: 'open_buy_crypto_status',
+    number: 25,
+  },
 };
 
 export const SEND_MODAL = {

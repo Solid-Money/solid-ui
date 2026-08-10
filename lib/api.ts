@@ -97,6 +97,7 @@ import {
   SearchCoin,
   SourceDepositInstructions,
   SubmitPersonaKycResponse,
+  SumsubSessionFlow,
   SumsubSessionResponse,
   SumsubVerificationStatusResponse,
   SwapTokenRequest,
@@ -107,6 +108,12 @@ import {
   ToCurrency,
   TokenPriceUsd,
   TotalAPYResponse,
+  TransfiCreateOrderResponse,
+  TransfiOrderStatusResponse,
+  TransfiPaymentConfig,
+  TransfiPaymentMethodOption,
+  TransfiQuote,
+  TransfiStatusResponse,
   UpdateActivityEvent,
   User,
   VaultBreakdown,
@@ -669,14 +676,19 @@ export const getDiditVerificationStatus = async (): Promise<DiditVerificationSta
   return response.json();
 };
 
-// --- Sumsub identity verification (Wirex / EU flow) ---
+// --- Sumsub identity verification (Wirex card flow + TransFi onramp) ---
 
 /**
  * Create a Sumsub WebSDK session. The backend mints an access token bound to
  * the user and returns it for the WebSDK. Mirrors createDiditSession's error
  * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
+ *
+ * `flow` tells the backend which product is asking — it decides what gets
+ * recorded against the user's card customer, not what the SDK shows.
  */
-export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
+export const createSumsubSession = async (
+  flow: SumsubSessionFlow = 'card',
+): Promise<SumsubSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
     method: 'POST',
@@ -686,7 +698,7 @@ export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ flow }),
   });
   if (!response.ok) {
     let code: string | undefined;
@@ -1088,6 +1100,106 @@ export const createOnrampAutomation = async (
 
   if (!response.ok) throw response;
 
+  return response.json();
+};
+
+// -----------------------------------------------------------------------------
+// TransFi buy-crypto onramp
+// -----------------------------------------------------------------------------
+
+const transfiHeaders = () => {
+  const jwt = getJWTToken();
+  return {
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/** Buy-crypto gating status: ready | can_share | needs_kyc | pending | rejected. */
+export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/status`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Forward the user's approved Didit KYC to TransFi (after consent). */
+export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/share`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Supported currencies, default, and USDC token for the amount screen. */
+export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Payment methods available for a selected fiat currency. */
+export const getTransfiPaymentMethods = async (
+  currency: string,
+): Promise<TransfiPaymentMethodOption[]> => {
+  const params = new URLSearchParams({ currency });
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-methods?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Onramp quote for a USDC amount (fiat cost + fees + limits). */
+export const getTransfiQuote = async (
+  amount: string,
+  currency?: string,
+  paymentCode?: string,
+  signal?: AbortSignal,
+): Promise<TransfiQuote> => {
+  const params = new URLSearchParams({ amount });
+  if (currency) params.set('currency', currency);
+  if (paymentCode) params.set('paymentCode', paymentCode);
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders(), signal },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Create an onramp order; returns the hosted payUrl. Throws Response 412 if KYC incomplete. */
+export const createTransfiOrder = async (
+  usdcAmount: string,
+  paymentCode: string,
+  currency?: string,
+): Promise<TransfiCreateOrderResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify({ usdcAmount, paymentCode, currency }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Poll a TransFi order's status. */
+export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStatusResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
   return response.json();
 };
 
