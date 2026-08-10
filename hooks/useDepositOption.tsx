@@ -405,15 +405,18 @@ const useDepositOption = ({
       return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-[419px] md:max-w-[419px] md:px-0 md:pt-0';
     }
 
-    if (isBuyCrypto || isBuyCryptoPayment) {
+    if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
+    // The TransFi payment page opens in its own tab, so this step is now a
+    // short hand-off screen rather than an embedded frame.
     if (
       isBuyCryptoAmount ||
       isBuyCryptoCurrency ||
       isBuyCryptoPaymentMethod ||
       isBuyCryptoKycConsent ||
       isBuyCryptoKycPending ||
+      isBuyCryptoPayment ||
       isBuyCryptoStatus
     ) {
       return 'w-[470px] max-h-[90vh]';

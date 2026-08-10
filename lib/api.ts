@@ -1163,13 +1163,14 @@ export const getTransfiQuote = async (
   amount: string,
   currency?: string,
   paymentCode?: string,
+  signal?: AbortSignal,
 ): Promise<TransfiQuote> => {
   const params = new URLSearchParams({ amount });
   if (currency) params.set('currency', currency);
   if (paymentCode) params.set('paymentCode', paymentCode);
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
-    { credentials: 'include', headers: transfiHeaders() },
+    { credentials: 'include', headers: transfiHeaders(), signal },
   );
   if (!response.ok) throw response;
   return response.json();

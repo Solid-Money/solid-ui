@@ -1922,6 +1922,8 @@ export interface TransfiCreateOrderResponse {
 export type TransfiOrderPhase = 'pending_payment' | 'processing' | 'completed' | 'failed';
 
 export interface TransfiOrderStatusResponse {
+  /** On-chain hash of the USDC delivery, once the asset has settled. */
+  txnHash?: string;
   orderId: string;
   status: string;
   phase: TransfiOrderPhase;

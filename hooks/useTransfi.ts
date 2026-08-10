@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   createTransfiOrder,
@@ -64,7 +64,18 @@ export function useTransfiPaymentMethods(currency?: string) {
   });
 }
 
-/** Live quote for the entered USDC amount + selected currency/payment method. */
+/**
+ * Live quote for the entered USDC amount + selected currency/payment method.
+ *
+ * Pass a debounced amount — every distinct value is a separate request to
+ * TransFi. The queryFn consumes react-query's AbortSignal so a superseded quote
+ * (the user typed another digit) is cancelled rather than left in flight to
+ * resolve after the one we actually want.
+ *
+ * The previous quote is kept as placeholder data so the breakdown doesn't
+ * collapse between keystrokes; callers must check `usdcAmount` on the result
+ * before trusting it for the current input (see TransfiAmount).
+ */
 export function useTransfiQuote(
   amount: string,
   currency?: string,
@@ -74,8 +85,10 @@ export function useTransfiQuote(
   const numeric = Number(amount);
   return useQuery({
     queryKey: [TRANSFI_QUOTE_KEY, amount, currency, paymentCode],
-    queryFn: () => withRefreshToken(() => getTransfiQuote(amount, currency, paymentCode)),
+    queryFn: ({ signal }) =>
+      withRefreshToken(() => getTransfiQuote(amount, currency, paymentCode, signal)),
     enabled: enabled && Boolean(currency) && Number.isFinite(numeric) && numeric > 0,
+    placeholderData: keepPreviousData,
     retry: 1,
   });
 }

@@ -1,45 +1,41 @@
-import { View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useDepositStore } from '@/store/useDepositStore';
+import {
+  TransfiPaymentHandoff,
+  TransfiPaymentUnavailable,
+} from '@/components/BuyCrypto/Transfi/TransfiPaymentHandoff';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-/** Web: embed the TransFi hosted payment page in an iframe. */
+/**
+ * Web: hand off to TransFi's hosted payment page in a new tab rather than
+ * framing it. The page runs its own 3DS/redirect flows and provider widgets,
+ * which an iframe can break, and a real tab gives the user a visible, trusted
+ * URL for entering payment details.
+ */
 export const TransfiPayment = () => {
-  const setModal = useDepositStore(state => state.setModal);
   const payUrl = useTransfiStore(state => state.payUrl);
+  const [blocked, setBlocked] = useState(false);
+  const openedRef = useRef(false);
 
-  if (!payUrl) {
-    return (
-      <View className="flex-1 items-center justify-center px-4">
-        <Text className="text-center text-base text-red-500">
-          Could not load the payment page. Please try again.
-        </Text>
-      </View>
-    );
-  }
+  const open = useCallback(() => {
+    if (!payUrl) return;
+    const win = window.open(payUrl, '_blank', 'noopener,noreferrer');
+    // A null handle means a popup blocker stopped it — the user has to trigger
+    // the open themselves, so switch the screen to a button-first layout.
+    setBlocked(!win);
+  }, [payUrl]);
 
-  return (
-    <View className="flex-1 gap-3">
-      <View className="flex-1 overflow-hidden rounded-2xl">
-        <iframe
-          src={payUrl}
-          className="h-full min-h-[60vh] w-full"
-          allow="camera; microphone; payment"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation"
-        />
-      </View>
-      <Button
-        className="h-12 rounded-2xl"
-        variant="secondary"
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS)}
-      >
-        <Text className="text-base font-semibold text-primary">I&apos;ve completed payment</Text>
-      </Button>
-    </View>
-  );
+  // Attempt the open once on arrival. This runs outside the click that created
+  // the order, so it may be blocked; that path is handled rather than assumed.
+  useEffect(() => {
+    if (!payUrl || openedRef.current) return;
+    openedRef.current = true;
+    open();
+  }, [payUrl, open]);
+
+  if (!payUrl) return <TransfiPaymentUnavailable />;
+
+  return <TransfiPaymentHandoff onOpen={open} blocked={blocked} />;
 };
 
 export default TransfiPayment;

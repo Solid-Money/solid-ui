@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useDebounce from '@/hooks/useDebounce';
 import {
   useCreateTransfiOrder,
   useTransfiPaymentConfig,
@@ -16,6 +17,9 @@ import {
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
+
+/** Wait for typing to settle before quoting — each amount is a TransFi call. */
+const QUOTE_DEBOUNCE_MS = 500;
 
 const formatFiat = (value: number | undefined, currency: string) =>
   value == null
@@ -50,8 +54,11 @@ export const TransfiAmount = () => {
   const { data: methods } = useTransfiPaymentMethods(currency ?? undefined);
   const activePaymentCode = paymentCode || methods?.[0]?.paymentCode;
 
+  // Quote on the settled amount, not on every keystroke: typing "400" would
+  // otherwise fire quotes for 4, 40 and 400 and leave the first two racing.
+  const debouncedAmount = useDebounce(amount, QUOTE_DEBOUNCE_MS);
   const { data: quote, isFetching: quoteFetching } = useTransfiQuote(
-    amount,
+    debouncedAmount,
     currency ?? undefined,
     activePaymentCode,
     Boolean(config),
@@ -60,11 +67,26 @@ export const TransfiAmount = () => {
   const { mutate: createOrder, isPending: creatingOrder } = useCreateTransfiOrder();
 
   const amountNum = Number(amount);
-  const belowMin = quote?.minLimit != null && amountNum > 0 && amountNum < quote.minLimit;
-  const aboveMax = quote?.maxLimit != null && amountNum > quote.maxLimit;
+  // The quote trails the input by the debounce plus the round trip, and the
+  // previous one is kept as placeholder data — so only treat it as describing
+  // the current amount once the echoed usdcAmount matches what's in the box.
+  const isQuoteCurrent = quote != null && Number(quote.usdcAmount) === amountNum;
+  const isQuotePending =
+    amountNum > 0 && (quoteFetching || amount !== debouncedAmount || !isQuoteCurrent);
+  const liveQuote = isQuoteCurrent ? quote : undefined;
+
+  // Limits are fiat-denominated (e.g. 659–30,000 BDT), so they must be compared
+  // against the fiat total, never against the USDC amount being bought.
+  const fiatTotal = liveQuote?.fiatAmount;
+  const belowMin =
+    liveQuote?.minLimit != null && fiatTotal != null && fiatTotal < liveQuote.minLimit;
+  const aboveMax =
+    liveQuote?.maxLimit != null && fiatTotal != null && fiatTotal > liveQuote.maxLimit;
   const isValid =
     Number.isFinite(amountNum) &&
     amountNum > 0 &&
+    !isQuotePending &&
+    !!liveQuote &&
     !belowMin &&
     !aboveMax &&
     !!activePaymentCode &&
@@ -152,23 +174,38 @@ export const TransfiAmount = () => {
 
       {/* Quote breakdown */}
       <View className="gap-3 rounded-2xl bg-card p-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-sm font-semibold text-muted-foreground">Quote</Text>
+          {isQuotePending ? (
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator size="small" color="#94F27F" />
+              <Text className="text-xs text-muted-foreground">Updating…</Text>
+            </View>
+          ) : null}
+        </View>
         <QuoteRow
           label="Rate"
+          pending={isQuotePending}
           value={
-            quote?.exchangeRate != null
-              ? `1 USDC ≈ ${quote.exchangeRate} ${currency ?? ''}`
-              : quoteFetching
-                ? '…'
-                : '—'
+            liveQuote?.exchangeRate != null
+              ? `1 USDC ≈ ${liveQuote.exchangeRate} ${currency ?? ''}`
+              : '—'
           }
         />
-        <QuoteRow label="Fees" value={formatFiat(quote?.totalFee, currency ?? '')} />
+        <QuoteRow
+          label="Fees"
+          pending={isQuotePending}
+          value={formatFiat(liveQuote?.totalFee, currency ?? '')}
+        />
         <View className="h-px bg-border" />
         <QuoteRow
           label="Total you pay"
-          value={quoteFetching ? '…' : formatFiat(quote?.fiatAmount, currency ?? '')}
+          pending={isQuotePending}
+          value={formatFiat(liveQuote?.fiatAmount, currency ?? '')}
           emphasize
         />
+        {/* Limits depend only on the currency + method, so they stay accurate
+            while a new amount's quote is in flight. */}
         {quote?.minLimit != null || quote?.maxLimit != null ? (
           <Text className="text-xs text-muted-foreground">
             Limits: {formatFiat(quote?.minLimit, currency ?? '')} –{' '}
@@ -176,10 +213,14 @@ export const TransfiAmount = () => {
           </Text>
         ) : null}
         {belowMin ? (
-          <Text className="text-xs text-red-500">Amount is below the minimum.</Text>
+          <Text className="text-xs text-red-500">
+            Amount is below the {formatFiat(liveQuote?.minLimit, currency ?? '')} minimum.
+          </Text>
         ) : null}
         {aboveMax ? (
-          <Text className="text-xs text-red-500">Amount is above the maximum.</Text>
+          <Text className="text-xs text-red-500">
+            Amount is above the {formatFiat(liveQuote?.maxLimit, currency ?? '')} maximum.
+          </Text>
         ) : null}
       </View>
 
@@ -191,10 +232,14 @@ export const TransfiAmount = () => {
         className="mt-auto h-14 rounded-2xl"
         variant="brand"
         onPress={handleContinue}
-        disabled={!isValid || creatingOrder || quoteFetching}
+        disabled={!isValid || creatingOrder}
       >
         <Text className="text-base font-bold text-primary-foreground">
-          {creatingOrder ? 'Creating order…' : 'Continue to payment'}
+          {creatingOrder
+            ? 'Creating order…'
+            : isQuotePending
+              ? 'Getting quote…'
+              : 'Continue to payment'}
         </Text>
       </Button>
     </View>
@@ -237,10 +282,13 @@ const QuoteRow = ({
   label,
   value,
   emphasize,
+  pending,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  /** A newer quote is in flight — dim the value rather than showing it as final. */
+  pending?: boolean;
 }) => (
   <View className="flex-row items-center justify-between">
     <Text
@@ -250,8 +298,11 @@ const QuoteRow = ({
     >
       {label}
     </Text>
-    <Text className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}>
-      {value}
+    <Text
+      className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}
+      style={{ opacity: pending ? 0.4 : 1 }}
+    >
+      {pending ? '—' : value}
     </Text>
   </View>
 );
