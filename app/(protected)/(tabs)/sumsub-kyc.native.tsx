@@ -27,6 +27,7 @@ export default function SumsubKycNative() {
     session,
     initSession,
     markStarted,
+    retryRedirect,
     fetchAccessToken,
     onVerificationComplete,
     onVerificationDeclined,
@@ -114,7 +115,9 @@ export default function SumsubKycNative() {
         <KycUnavailable message={session.message} onRetry={initSession} />
       )}
       {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
-      {session.phase === 'completed' && <KycCompleted />}
+      {session.phase === 'completed' && (
+        <KycCompleted outcome={session.outcome} onContinue={retryRedirect} showBackButton />
+      )}
     </View>
   );
 }
