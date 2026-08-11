@@ -5,21 +5,20 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { getProviderRouting } from '@/lib/api';
 import { KycProvider } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 /**
- * Sends an unverified buy-crypto user to the identity provider their country
- * routes to — Wirex countries → Sumsub, everywhere else → Didit — mirroring
- * useCardSteps so a user only ever meets one provider.
+ * Sends an unverified buy-crypto user to Sumsub, regardless of jurisdiction.
  *
- * Falls back to Didit (available everywhere) when the country is unknown or the
- * routing call fails. `fallbackProvider` accepts the backend's own suggestion
- * from GET /transfi/status, used when the client has no country of its own.
+ * Buy-crypto does not follow the card flow's country routing (Wirex countries →
+ * Sumsub, everywhere else → Didit): TransFi is a Sumsub client, so a Sumsub
+ * applicant is imported by same-vendor share token, which is the path we want
+ * every *new* verification to take. Users who already hold a Didit verification
+ * never reach here — the backend reports them as `can_share` and forwards their
+ * existing session as documents instead of asking them to verify again.
  *
  * Shared by the entry point and by the mid-flow recovery paths — TransFi can
  * reject a share as needs_kyc if the verification it received was incomplete.
@@ -31,33 +30,20 @@ export const useBuyCryptoKycRoute = () => {
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
   const router = useRouter();
 
-  return useCallback(
-    async (fallbackProvider?: KycProvider) => {
-      setKycFlow('transfi');
+  return useCallback(async () => {
+    setKycFlow('transfi');
+    setKycProvider(KycProvider.SUMSUB);
 
-      let kycProvider = fallbackProvider ?? KycProvider.DIDIT;
-      if (countryCode) {
-        try {
-          const routing = await withRefreshToken(() => getProviderRouting(countryCode));
-          if (routing?.kycProvider) kycProvider = routing.kycProvider;
-        } catch {
-          // backend unavailable → keep the fallback
-        }
-      }
+    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+      action: 'route',
+      kycFlow: 'transfi',
+      kycProvider: KycProvider.SUMSUB,
+      countryCode,
+    });
 
-      setKycProvider(kycProvider);
-      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-        action: 'route',
-        kycFlow: 'transfi',
-        kycProvider,
-        countryCode,
-      });
-
-      setModal(DEPOSIT_MODAL.CLOSE);
-      router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
-    },
-    [countryCode, router, setKycFlow, setKycProvider, setModal],
-  );
+    setModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.SUMSUB_KYC as any);
+  }, [countryCode, router, setKycFlow, setKycProvider, setModal]);
 };
 
 export default useBuyCryptoKycRoute;
