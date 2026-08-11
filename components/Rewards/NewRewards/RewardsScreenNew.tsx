@@ -41,13 +41,13 @@ import RewardsSummaryCard from './RewardsSummaryCard';
  */
 export default function RewardsScreenNew() {
   const isFocused = useIsFocused();
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
-  const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
-  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
   );

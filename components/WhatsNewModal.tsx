@@ -118,7 +118,8 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
                 <Button
                   onPress={handleBack}
                   variant="secondary"
-                  className="h-10 rounded-[12px] border-0 bg-white/10 px-4 active:bg-white/20 web:hover:bg-white/20"
+                  size="sm"
+                  className="h-10 w-[72px] rounded-[100px] border-0 bg-white/10 px-4 active:bg-white/20 web:hover:bg-white/20"
                 >
                   <Text className="text-base font-bold text-white/50">Back</Text>
                 </Button>
@@ -142,7 +143,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
                 onPress={handleNext}
                 variant="brand"
                 size="sm"
-                className="h-10 min-w-[72px] rounded-[20px] px-4"
+                className="h-10 min-w-[72px] rounded-[100px] px-4"
               >
                 <Text numberOfLines={1} className="font-bold text-black">
                   {isLastStep ? 'Done' : 'Next'}
