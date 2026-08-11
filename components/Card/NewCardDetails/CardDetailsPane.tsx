@@ -131,7 +131,12 @@ const CardDetailsPane = () => {
   const close = useCallback(() => {
     if (originRect) {
       startFlight(
-        getCardHeroDestination({ windowWidth, topInset: insets.top, pageLeft }),
+        getCardHeroDestination({
+          windowWidth,
+          topInset: insets.top,
+          pageLeft,
+          centerX: originRect.x + originRect.width / 2,
+        }),
         originRect,
         cardDetails?.card_details?.last_4 ?? '',
       );
@@ -172,6 +177,14 @@ const CardDetailsPane = () => {
 
   const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  // The wallet's ScrollView loses the browser scrollbar's width on desktop web,
+  // while this absolute pane does not. Keep the pane on the measured card centre so
+  // opening it never adds the resulting half-scrollbar horizontal drift.
+  const pageCenterX = pageLeft + (windowWidth - pageLeft) / 2;
+  const originCenterX = originRect ? originRect.x + originRect.width / 2 : pageCenterX;
+  const columnAlignmentStyle = {
+    transform: [{ translateX: originCenterX - pageCenterX }],
+  };
 
   return (
     // Three states: cold (out of layout, so it costs the wallet screen nothing at
@@ -188,11 +201,14 @@ const CardDetailsPane = () => {
     >
       {/* Same column as the content below, so the back button doesn't drift out to
           the edge of the desktop body area. */}
-      <View className="mx-auto w-full max-w-lg" style={{ paddingTop: insets.top }}>
+      <View
+        className="mx-auto w-full max-w-[40rem]"
+        style={[{ paddingTop: insets.top }, columnAlignmentStyle]}
+      >
         <CardDetailsHeader onBack={close} />
       </View>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-        <View className="mx-auto w-full max-w-lg px-4">
+        <View className="mx-auto w-full max-w-[40rem] px-4" style={columnAlignmentStyle}>
           <CardRevealSection
             last4={cardDetails?.card_details?.last_4}
             cardholderName={cardDetails?.cardholder_name}

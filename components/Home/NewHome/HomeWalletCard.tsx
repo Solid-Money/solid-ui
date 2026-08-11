@@ -93,7 +93,12 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
               </View>
             </View>
             <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
-              <View style={styles.cardBox}>{card}</View>
+              {/* The artwork bleeds outside the pressable's layout frame for its
+                  baked-in shadow. Keep that visual overflow from becoming a hit
+                  target over the action buttons above. */}
+              <View pointerEvents="none" style={styles.cardBox}>
+                {card}
+              </View>
             </View>
           </View>
         </Pressable>
@@ -121,10 +126,17 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
       }
       const from = { x, y, width, height };
       // The destination is computed rather than reported by the pane, so the flight
-      // starts on this frame instead of waiting on a layout pass.
+      // starts on this frame instead of waiting on a layout pass. Preserve the
+      // measured card centre: on desktop web the page scrollbar makes the wallet's
+      // usable body slightly narrower than the absolute details pane.
       start(
         from,
-        getCardHeroDestination({ windowWidth, topInset: insets.top, pageLeft }),
+        getCardHeroDestination({
+          windowWidth,
+          topInset: insets.top,
+          pageLeft,
+          centerX: x + width / 2,
+        }),
         last4 ?? '',
       );
       openPane(from);
@@ -142,7 +154,9 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
       {/* The measured node is the artwork box, not this gutter — the hero flight's
           `from` rect has to be the same box getCardHeroDestination predicts. */}
       <View style={styles.cardBodyFrame}>
-        <View ref={ref} collapsable={false} style={styles.cardBox}>
+        {/* Only the Pressable's visible-card frame should be interactive. The
+            artwork itself extends upward for its transparent shadow padding. */}
+        <View ref={ref} collapsable={false} pointerEvents="none" style={styles.cardBox}>
           {card}
         </View>
       </View>

@@ -9,6 +9,7 @@ import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
 import { EyeIcon, EyeOffIcon } from '@/components/Card/NewCardDetails/icons';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 
 /**
  * Panel geometry, measured off the Figma frames (419pt-wide artboard):
@@ -22,7 +23,7 @@ import { Text } from '@/components/ui/text';
  */
 const CARD_COVER_FRACTION = 71 / 419;
 const CONTENT_TOP_FRACTION = 100 / 419;
-const COLLAPSED_CONTENT = 54;
+const COLLAPSED_CONTENT = 44;
 const EXPANDED_CONTENT = 186;
 /** Content-top → the expanded "Hide details" row (Figma 243 − 100). */
 const TOGGLE_OFFSET = 143;
@@ -77,11 +78,12 @@ const CardDetailsPanel = ({
   onCopyCountry,
 }: CardDetailsPanelProps) => {
   const { width: windowWidth } = useWindowDimensions();
+  const { isScreenMedium } = useDimension();
   const pageLeft = usePageLeft();
   // These fractions were measured from the 419pt Figma frame. On mobile that
-  // frame is the window; on desktop the pane is capped at max-w-lg beside the
+  // frame is the window; on desktop the pane is capped at the 40rem body width beside the
   // sidebar. Using the full browser width here made the panel hundreds of pixels
-  // tall while the card itself stayed at 512px, pushing every section below it
+  // tall while the card itself stayed at the content cap, pushing every section below it
   // far down the page.
   const layoutWidth = Math.min(Math.max(windowWidth - pageLeft, 0), CONTENT_MAX_WIDTH);
   const cardCover = layoutWidth * CARD_COVER_FRACTION;
@@ -125,7 +127,7 @@ const CardDetailsPanel = ({
   });
 
   return (
-    <Animated.View style={[styles.panel, panelStyle]} className="bg-card">
+    <Animated.View style={[styles.panel, panelStyle]}>
       {/* Absolutely positioned so the rows don't shove the toggle around while the
           panel is still growing. */}
       <Animated.View
@@ -142,7 +144,7 @@ const CardDetailsPanel = ({
         accessibilityRole="button"
         disabled={isLoading}
         onPress={onToggle}
-        style={[styles.toggle, toggleStyle]}
+        style={[styles.toggle, isScreenMedium && styles.desktopToggle, toggleStyle]}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="white" />
@@ -164,6 +166,7 @@ const styles = StyleSheet.create({
   // at any size: 21/419 wider than the card body on each side, pulled 71/419 up so
   // the top edge and its radius hide behind the card.
   panel: {
+    backgroundColor: '#1C1C1C',
     borderRadius: 23,
     marginHorizontal: '5%',
     marginTop: '-16.95%',
@@ -199,6 +202,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
+  desktopToggle: { transform: [{ translateY: 4 }] },
   toggleLabel: { color: '#ffffff', fontSize: 16, fontWeight: '500', lineHeight: 23 },
 });
 
