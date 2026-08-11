@@ -199,7 +199,7 @@ Key environment variables (see `.env.example`):
 - `EXPO_PUBLIC_AMPLITUDE_API_KEY`: Amplitude analytics
 - `EXPO_PUBLIC_INFO_GRAPH`: The Graph endpoint for project data
 - `EXPO_PUBLIC_ALGEBRA_INFO_GRAPH`: The Graph endpoint for DEX data
-- `EXPO_PUBLIC_COIN_GECKO_API_KEY`: CoinGecko API for price data
+- `EXPO_PUBLIC_COINGECKO_API_KEY`: CoinGecko Pro API key for price data (sent as `x-cg-pro-api-key`; the Pro endpoints 401 without it)
 - `EXPO_PUBLIC_THIRDWEB_CLIENT_ID`: ThirdWeb client configuration
 - `EXPO_PUBLIC_TURNKEY_API_BASE_URL`: Turnkey API endpoint
 - `EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID`: Turnkey organization ID

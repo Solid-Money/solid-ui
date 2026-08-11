@@ -186,29 +186,52 @@ axios.interceptors.request.use(config => {
   return config;
 });
 
+const captureAxiosError = (error: any) => {
+  const status = error.response?.status;
+  const url = error.config?.url;
+  const method = error.config?.method;
+
+  Sentry.captureException(error, {
+    tags: {
+      type: 'api_error',
+      status: status?.toString(),
+      method: method?.toUpperCase(),
+    },
+    extra: {
+      url,
+      responseData: error.response?.data,
+    },
+  });
+
+  return Promise.reject(error);
+};
+
 // Set up axios response interceptor to handle errors
-axios.interceptors.response.use(
-  response => response,
-  error => {
-    const status = error.response?.status;
-    const url = error.config?.url;
-    const method = error.config?.method;
+axios.interceptors.response.use(response => response, captureAxiosError);
 
-    Sentry.captureException(error, {
-      tags: {
-        type: 'api_error',
-        status: status?.toString(),
-        method: method?.toUpperCase(),
-      },
-      extra: {
-        url,
-        responseData: error.response?.data,
-      },
-    });
+/**
+ * Axios instance for third-party APIs (Alchemy Prices, CoinGecko).
+ *
+ * The global request interceptor above attaches the Solid backend Bearer JWT to
+ * every axios request on iOS/Android. Third-party hosts either reject that
+ * token or receive a credential they should never see:
+ *
+ *  - Alchemy treats an `Authorization: Bearer …` header as its own credential
+ *    and ignores the API key in the URL path, so the request 401s. Every price
+ *    lookup then resolves to 0 and balances render as $0.00 — on native only,
+ *    since `getJWTToken()` returns null on web and no header is attached there.
+ *  - CoinGecko authenticates via `x-cg-pro-api-key` and ignores the header, so
+ *    it still works, but the user's access token leaves the app for no reason.
+ *
+ * `axios.create()` starts with no interceptors, so this instance sends neither
+ * the JWT nor the platform headers. Error reporting is kept so failures against
+ * these hosts stay visible in Sentry.
+ *
+ * Same reasoning as the dedicated instance in `lib/alchemy.ts`.
+ */
+export const externalAxios = axios.create();
 
-    return Promise.reject(error);
-  },
-);
+externalAxios.interceptors.response.use(response => response, captureAxiosError);
 
 export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
@@ -384,7 +407,9 @@ export const fetchTokenTransfer = async ({
 };
 
 export const fetchTokenPriceUsd = async (token: string) => {
-  const response = await axios.get<TokenPriceUsd>(
+  // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
+  // attached, which zeroes out every price on native builds.
+  const response = await externalAxios.get<TokenPriceUsd>(
     `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`,
   );
   return response?.data?.data[0]?.prices[0]?.value;
@@ -2735,7 +2760,7 @@ export const deleteDirectDepositSession = async (
 };
 
 export const searchCoin = async (query: string) => {
-  const response = await axios.get<SearchCoin>(
+  const response = await externalAxios.get<SearchCoin>(
     `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
     {
       headers: {
@@ -2747,7 +2772,7 @@ export const searchCoin = async (query: string) => {
 };
 
 export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1') => {
-  const response = await axios.get<CoinHistoricalChart>(
+  const response = await externalAxios.get<CoinHistoricalChart>(
     `https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
     {
       headers: {
@@ -2763,7 +2788,7 @@ export const fetchCoinSimplePrice = async (
 ): Promise<Record<string, { usd?: number }>> => {
   if (coinIds.length === 0) return {};
   const ids = [...new Set(coinIds)].filter(Boolean).join(',');
-  const response = await axios.get<Record<string, { usd?: number }>>(
+  const response = await externalAxios.get<Record<string, { usd?: number }>>(
     `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
     {
       headers: {
