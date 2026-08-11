@@ -15,16 +15,33 @@ import {
 
 import type { AssetPath } from './assets';
 
-export interface CountryFromIp {
-  countryCode: string;
-  countryName: string;
-}
-
 export interface CountryInfo {
   countryCode: string;
   countryName: string;
+  /**
+   * Whether the **card** is available here. Virtual account availability is a
+   * separate list — ask `resolveCountryAccess('virtual_account')` for it rather
+   * than reading this field.
+   */
   isAvailable: boolean;
   source?: 'ip' | 'manual';
+  /** State / province, when the IP lookup resolved one. */
+  state?: string;
+  city?: string;
+}
+
+/** Products gated on where the user is. */
+export type GatedProduct = 'card' | 'virtual_account';
+
+/** Body of `POST /accounts/v1/region-interest`. */
+export interface RegionInterestPayload {
+  product: GatedProduct;
+  countryCode: string;
+  countryName?: string;
+  state?: string;
+  city?: string;
+  detectionSource?: 'ip' | 'manual' | 'kyc';
+  source?: string;
 }
 
 export interface CardAccessResponse {
@@ -606,6 +623,13 @@ export interface DiditVerificationStatusResponse {
   sessionId?: string;
 }
 
+/**
+ * Which product a Sumsub session belongs to. 'card' is the Wirex card flow;
+ * 'onramp' is buy-crypto (TransFi). The backend uses this to decide what it
+ * records on the card customer — the SDK experience is identical.
+ */
+export type SumsubSessionFlow = 'card' | 'onramp';
+
 /** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
 export interface SumsubSessionResponse {
   /** WebSDK access token passed to snsWebSdk.init(). */
@@ -614,6 +638,8 @@ export interface SumsubSessionResponse {
   userId: string;
   /** Verification level the token was minted for. */
   levelName: string;
+  /** Which product the session was created for. */
+  flow?: SumsubSessionFlow;
 }
 
 /** Response from GET /accounts/v1/sumsub/status. */
@@ -1792,6 +1818,17 @@ export interface PromotionsBannerItem {
   sort: number;
   link?: string;
   platforms?: PromotionsBannerPlatforms;
+  /**
+   * Native app version gate set in the admin dashboard, e.g. '>=2.0.0' (that
+   * build and every newer one) or '1.0.12' (only that build). Absent means
+   * every version. Web ignores it — it always serves the latest build.
+   */
+  version?: string;
+  /**
+   * Pathname the banner is scoped to, e.g. '/' (home/wallet) or '/savings'.
+   * Absent means every page.
+   */
+  page?: string;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];
@@ -1856,7 +1893,92 @@ export interface EnsureWebhookResponse {
   message: string;
 }
 
-export type DepositMethod = 'wallet' | 'deposit_directly' | 'credit_card' | 'bank_transfer';
+export type DepositMethod =
+  | 'wallet'
+  | 'deposit_directly'
+  | 'credit_card'
+  | 'bank_transfer'
+  | 'buy_crypto';
+
+// -----------------------------------------------------------------------------
+// TransFi buy-crypto onramp
+// -----------------------------------------------------------------------------
+
+/** Buy-crypto gating status returned by GET /accounts/v1/transfi/status. */
+export type TransfiBuyCryptoStatus = 'ready' | 'can_share' | 'needs_kyc' | 'pending' | 'rejected';
+
+export interface TransfiStatusResponse {
+  status: TransfiBuyCryptoStatus;
+  transfiKycStatus?: string;
+  reasons?: string[];
+  /**
+   * On `needs_kyc`, the identity provider this user's jurisdiction routes to.
+   * Resolved from the backend's country rules; the client's own country signal
+   * (from the geo store) takes precedence when it has one.
+   */
+  kycProvider?: KycProvider;
+}
+
+export interface TransfiPaymentMethodOption {
+  paymentCode: string;
+  paymentName?: string;
+  paymentType?: string;
+  logo?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface TransfiCurrencyOption {
+  currency: string;
+  logoUrl?: string;
+}
+
+export interface TransfiPaymentConfig {
+  currencies: TransfiCurrencyOption[];
+  defaultCurrency: string;
+  tokenSymbol: string;
+  tokenLogo?: string;
+}
+
+export interface TransfiQuote {
+  fiatCurrency: string;
+  cryptoCurrency: string;
+  usdcAmount: string;
+  paymentCode: string;
+  exchangeRate?: number;
+  totalFee?: number;
+  fiatAmount?: number;
+  minLimit?: number;
+  maxLimit?: number;
+}
+
+export interface TransfiFeeData {
+  depositAmount?: number;
+  withdrawAmount?: number;
+  exchangeRate?: number;
+  totalFee?: number;
+  [key: string]: unknown;
+}
+
+export interface TransfiCreateOrderResponse {
+  orderId: string;
+  payUrl?: string;
+  status: string;
+  feeData?: TransfiFeeData;
+}
+
+export type TransfiOrderPhase = 'pending_payment' | 'processing' | 'completed' | 'failed';
+
+export interface TransfiOrderStatusResponse {
+  /** On-chain hash of the USDC delivery, once the asset has settled. */
+  txnHash?: string;
+  orderId: string;
+  status: string;
+  phase: TransfiOrderPhase;
+  usdcAmount: string;
+  fiatCurrency: string;
+  feeData?: TransfiFeeData;
+}
 
 export interface VaultDepositConfig {
   methods: DepositMethod[];

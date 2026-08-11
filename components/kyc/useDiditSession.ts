@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
@@ -10,7 +11,9 @@ import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
 
@@ -49,6 +52,12 @@ export function useDiditSession() {
       // the VA flow via Deposit when their KYC + Rain status is approved.
       if (kycFlow === 'va') return String(path.CARD_PENDING);
 
+      // TransFi buy-crypto flow: KYC (Didit) is a gate for sharing identity with
+      // TransFi. The user resumes in the Add-funds modal, which is mounted on
+      // the home screen — see redirectBasedOnKycStatus, which re-opens that
+      // modal at the buy-crypto KYC pending step before navigating here.
+      if (kycFlow === 'transfi') return String(path.HOME);
+
       if (kycStatus === KycStatus.APPROVED) {
         // Didit KYC approved: route by Rain status. Approved -> ready.
         // Manual review (Rain pending/manualReview, which maps to backend
@@ -85,10 +94,19 @@ export function useDiditSession() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
       const destination = await resolveDestination(kycStatus);
+
+      // TransFi buy-crypto flow: re-enter the Add-funds modal at the buy-crypto
+      // KYC pending step, which forwards the freshly-approved Didit KYC to
+      // TransFi and polls. Set before navigating so the modal is already staged
+      // when the home screen that mounts it comes into focus.
+      if (kycFlow === 'transfi') {
+        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+      }
+
       setSession({ phase: 'completed', outcome: handoff, destination });
       router.replace(destination as any);
     },
-    [queryClient, resolveDestination, router],
+    [kycFlow, queryClient, resolveDestination, router],
   );
 
   /**
@@ -151,7 +169,11 @@ export function useDiditSession() {
 
     try {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
-      const res = await withRefreshToken(() => createDiditSession(undefined, kycFlow ?? 'card'));
+      // The TransFi buy-crypto flow reuses the standard 'card' identity
+      // workflow — only 'va' has its own Didit workflow. We later forward the
+      // completed session to TransFi regardless of which workflow ran.
+      const diditFlow = kycFlow === 'va' ? 'va' : 'card';
+      const res = await withRefreshToken(() => createDiditSession(undefined, diditFlow));
       if (!res) {
         setSession({
           phase: 'error',
@@ -215,6 +237,11 @@ export function useDiditSession() {
   }, [debugState, kycFlow, redirectBasedOnKycStatus]);
 
   const markStarted = useCallback(() => {
+    // Persisted so the home screen can tell "started verification and walked
+    // away" from "never started" — the two look identical on /cards/status for
+    // a while, and only the former should be nudged to finish.
+    const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
+    if (userId) useKycStore.getState().markKycStarted(userId);
     setSession({ phase: 'started' });
   }, []);
 

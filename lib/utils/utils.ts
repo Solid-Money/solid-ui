@@ -159,6 +159,12 @@ export const withRefreshToken = async <T>(
   try {
     return await apiCall();
   } catch (error: any) {
+    // A superseded request (react-query aborts the previous one when the query
+    // key changes) is expected control flow, not a failure to log.
+    if (error?.name === 'AbortError') {
+      throw error;
+    }
+
     if (!isHTTPError(error, 401)) {
       console.error(error);
       throw error;

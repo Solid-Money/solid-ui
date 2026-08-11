@@ -10,7 +10,9 @@ import PageLayout from '@/components/PageLayout';
 import ReferralProgramModalNew from '@/components/Referral/ReferralProgramModalNew';
 import RewardsWelcomePopup from '@/components/Rewards/RewardsWelcomePopup';
 import { Text } from '@/components/ui/text';
+import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
@@ -18,6 +20,7 @@ import { isDevFeatureEnabled } from '@/lib/config';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -41,6 +44,8 @@ export default function RewardsScreenNew() {
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: spinStatus } = useSpinStatus();
+  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const hasCompletedIntro = useRewardsIntroStore(

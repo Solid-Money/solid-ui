@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Wallet } from 'lucide-react-native';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { CreditCard, Wallet } from 'lucide-react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 
 import HomeQR from '@/assets/images/home-qr';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
+import { useBuyCryptoEntry } from './useBuyCryptoEntry';
 import { useDimension } from './useDimension';
 
 const useDepositExternalWalletOptions = () => {
@@ -17,6 +19,8 @@ const useDepositExternalWalletOptions = () => {
   const { connect } = useConnectModal();
   const setModal = useDepositStore(state => state.setModal);
   const { isScreenMedium } = useDimension();
+  const { isBuyCryptoAvailable } = useGeoCompliance();
+  const { handleBuyCryptoPress, isChecking: isBuyCryptoChecking } = useBuyCryptoEntry();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -75,7 +79,16 @@ const useDepositExternalWalletOptions = () => {
   }, [isWalletOpen, connect, address, setModal]);
 
   const externalWalletOptions = useMemo(() => {
-    const base = [
+    const base: {
+      text: string;
+      subtitle?: string;
+      icon: ReactNode;
+      onPress: () => void;
+      isLoading?: boolean;
+      isEnabled?: boolean;
+      chipText?: string;
+      method: DepositMethod;
+    }[] = [
       {
         text: 'Send from your crypto wallet',
         subtitle: isScreenMedium
@@ -97,8 +110,30 @@ const useDepositExternalWalletOptions = () => {
         method: 'deposit_directly' as DepositMethod,
       },
     ];
+
+    if (isBuyCryptoAvailable) {
+      base.push({
+        text: 'Buy crypto',
+        subtitle: 'Buy USDC with your card or bank',
+        icon: <CreditCard color="white" size={24} strokeWidth={1} />,
+        onPress: handleBuyCryptoPress,
+        isLoading: isBuyCryptoChecking,
+        isEnabled: true,
+        method: 'buy_crypto' as DepositMethod,
+        chipText: 'New',
+      });
+    }
+
     return base;
-  }, [openWallet, isWalletOpen, isScreenMedium, handleDepositDirectly]);
+  }, [
+    openWallet,
+    isWalletOpen,
+    isScreenMedium,
+    handleDepositDirectly,
+    isBuyCryptoAvailable,
+    handleBuyCryptoPress,
+    isBuyCryptoChecking,
+  ]);
 
   return { externalWalletOptions };
 };
