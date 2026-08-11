@@ -261,20 +261,9 @@ export default function LegacyOnboarding() {
         <View className="flex-1 items-center justify-center px-8">
           <View className="w-full max-w-[440px] items-center">
             {/* Welcome Text */}
-            <View className="mb-8 items-center">
-              <Text className="mb-2 text-base font-medium text-white/60">Welcome!</Text>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                className="mb-3 text-center text-[38px] font-semibold -tracking-[1px] text-white"
-              >
-                Your Stablecoin Super-app
-              </Text>
-              <Text className="max-w-[320px] text-center text-base font-normal text-white/60">
-                Save, earn yield and pay worldwide -
-              </Text>
-              <Text className="max-w-[320px] text-center text-base font-normal text-white/60">
-                powered by DeFi, without the complexity
+            <View className="mb-10 items-center">
+              <Text className="text-center text-[38px] font-semibold -tracking-[2px] text-white">
+                Welcome!
               </Text>
             </View>
 
@@ -331,6 +320,20 @@ export default function LegacyOnboarding() {
               )}
             </View>
           </View>
+        </View>
+
+        {/* Passkey help */}
+        <View className="absolute bottom-[54px] left-0 right-0 items-center">
+          <Text className="w-[324px] text-center text-base font-medium leading-[19px] text-white/60">
+            Having trouble? see our{' '}
+            <Text
+              className="font-medium text-white/80 underline"
+              onPress={() => setShowPasskeyFaq(true)}
+            >
+              Passkey FAQs
+            </Text>
+            .
+          </Text>
         </View>
       </View>
 
