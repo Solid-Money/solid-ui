@@ -12,10 +12,10 @@ const SAVE_DEPOSIT_TOOLTIP = 'Amount deposited is calculated across the USDC, FU
 // Card balance points accrue on the balance sitting on the card, separately
 // from (and on top of) the points earned when that balance is spent.
 const CARD_BALANCE_TOOLTIP =
-  'Points accrue daily on the balance available on your card, on top of the points you earn when you spend it';
+  'Points accrue every hour on the balance available on your card, on top of the points you earn when you spend it';
 
-// Default when the backend has not sent a rate yet: 1 point per $1 per day.
-const DEFAULT_CARD_BALANCE_POINTS_PER_DAY = 1;
+// Default when the backend has not sent a rate yet: 1 point per $1 per hour.
+const DEFAULT_CARD_BALANCE_POINTS_PER_HOUR = 1;
 
 interface EarningMethod {
   icon: string;
@@ -71,11 +71,10 @@ const EarnPointsSection = () => {
     const spendPoints = points.cardSpendPointsPerDollar;
     const spendDesc = `${spendPoints.toLocaleString()} points per $1 spent`;
 
-    // Format card balance description. Unlike Save (quoted per hour) card
-    // balance points accrue per day.
+    // Format card balance description, quoted per hour to match Save above.
     const cardBalancePoints =
-      points.cardBalancePointsPerDollarPerDay ?? DEFAULT_CARD_BALANCE_POINTS_PER_DAY;
-    const cardBalanceDesc = `${cardBalancePoints.toLocaleString()} point/day for every $1 on your card`;
+      points.cardBalancePointsPerDollarPerHour ?? DEFAULT_CARD_BALANCE_POINTS_PER_HOUR;
+    const cardBalanceDesc = `${cardBalancePoints.toLocaleString()} point/hour for every $1 on your card`;
 
     // Format referral description
     const referralPercent = referral.recurringPercentage * 100;
