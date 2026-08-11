@@ -10,9 +10,16 @@ import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { HomePromptKey, useHomePromptStore } from '@/store/useHomePromptStore';
+import {
+  HomePromptKey,
+  homePromptSnoozeDays,
+  useHomePromptStore,
+} from '@/store/useHomePromptStore';
 
 // Figma: Mona Sans / Bold 700 / 18px / line-height 100%.
 const TITLE_STYLE = { fontFamily: 'MonaSans_700Bold', fontSize: 18, lineHeight: 18 } as const;
@@ -54,21 +61,37 @@ interface HomePromptCardProps {
 
 /**
  * Next-step prompt card on the redesigned home screen. Which of the three
- * variants shows is decided by `useHomePrompt` from the user's state: no card
- * yet ("Finish verification"), card but no funds ("Fund your wallet"), or a
- * funded card that isn't in Apple Pay yet ("Add to Apple Pay").
+ * variants shows is decided by `useHomePrompt` from the user's state: an
+ * abandoned KYC ("Finish verification"), card but no funds ("Fund your
+ * wallet"), or a funded card that isn't in Apple Pay yet ("Add to Apple Pay").
  *
- * Each variant can be dismissed with the ✕; the dismissal is a snooze, so it
- * reappears a few days later (see `useHomePromptStore`). Separate from the
- * legacy HomeCardSetup so the public/legacy home is unaffected.
+ * Each variant can be dismissed with the ✕; the dismissal is a snooze persisted
+ * on the device, so it reappears once the variant's window is up — a week for
+ * verification (see `useHomePromptStore`). Separate from the legacy
+ * HomeCardSetup so the public/legacy home is unaffected.
  */
 const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCardProps) => {
   const [isWaitingOpen, setIsWaitingOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
   const dismiss = useHomePromptStore(state => state.dismiss);
+  const { data: cardStatus } = useCardStatus();
 
   const { title, description, cta, icon } = CONTENT[promptKey];
+
+  const onPressDismiss = () => {
+    // Which prompt was closed, how long that buys, and where the user was in the
+    // funnel — enough to tell "snoozed a nudge they'd already acted on" from
+    // "gave up on verification" without an event per variant.
+    track(TRACKING_EVENTS.HOME_PROMPT_DISMISSED, {
+      prompt: promptKey,
+      snoozeDays: homePromptSnoozeDays(promptKey),
+      kycStatus: cardStatus?.kycStatus,
+      rainApplicationStatus: cardStatus?.rainApplicationStatus,
+      depositCompleted,
+    });
+    dismiss(promptKey);
+  };
 
   const onPressCta = () => {
     switch (promptKey) {
@@ -111,7 +134,7 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Dismiss ${title}`}
-            onPress={() => dismiss(promptKey)}
+            onPress={onPressDismiss}
             hitSlop={16}
             className="absolute right-[10px] top-[11px]"
           >

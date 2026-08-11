@@ -3,13 +3,17 @@ import Toast from 'react-native-toast-message';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
+import { TRANSFI_STATUS_KEY } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
-import { KycStatus } from '@/lib/types';
+import { KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
+import { useKycStore } from '@/store/useKycStore';
 
 import type { KycHandoffOutcome } from '@/components/kyc/KycStatusViews';
 
@@ -36,28 +40,45 @@ const POLL_INTERVAL_MS = 5000;
 const REDIRECT_RETRY_MS = 2500;
 
 /**
- * Drives the Sumsub KYC flow for the Wirex (EU/EEA) jurisdiction. Mirrors
- * useDiditSession: creates the session, polls the backend for the canonical
- * kycStatus (which reflects Sumsub review + the downstream Wirex adjudication),
- * and routes accordingly. Reused by both the web and native Sumsub screens.
+ * Drives the Sumsub KYC flow. Mirrors useDiditSession: creates the session,
+ * polls the backend for the canonical status, and routes accordingly. Reused by
+ * both the web and native Sumsub screens.
+ *
+ * Serves two products, selected by the active `kycFlow`:
+ *  - card ('card'): the Wirex (EU/EEA) card flow. Sumsub GREEN hands off to
+ *    Wirex, which adjudicates, so the backend kycStatus is the source of truth.
+ *  - buy-crypto ('transfi'): identity for the TransFi onramp. Verification is
+ *    later imported by share token, and the user returns to the Add-funds modal.
  */
 export function useSumsubSession() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const kycFlow = useKycStore(state => state.kycFlow);
   const debugState = useLocalSearchParams<{ state?: string }>().state;
   const [session, setSession] = useState<SumsubSessionState>({ phase: 'loading' });
 
+  // The backend needs to know which product asked for the session so it doesn't
+  // record onramp users as Wirex card customers.
+  const sumsubFlow: SumsubSessionFlow = kycFlow === 'transfi' ? 'onramp' : 'card';
+
   /** Where this KYC outcome should land the user. No navigation, just the href. */
-  const resolveDestination = useCallback((kycStatus: KycStatus): string => {
-    // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
-    // hands off to Wirex, which then adjudicates. So:
-    //  - APPROVED (Wirex approved) → activate, where the user issues the card.
-    //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
-    //  - anything else → activate with the status so step 1 renders correctly.
-    if (kycStatus === KycStatus.APPROVED) return String(path.CARD_ACTIVATE);
-    if (kycStatus === KycStatus.UNDER_REVIEW) return String(path.CARD_PENDING);
-    return `${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}`;
-  }, []);
+  const resolveDestination = useCallback(
+    (kycStatus: KycStatus): string => {
+      // The TransFi buy-crypto flow is not a card journey: the verification is
+      // shared with TransFi and the user resumes in the Add-funds modal, which
+      // is mounted on the home screen.
+      if (kycFlow === 'transfi') return String(path.HOME);
+      // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
+      // hands off to Wirex, which then adjudicates. So:
+      //  - APPROVED (Wirex approved) → activate, where the user issues the card.
+      //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
+      //  - anything else → activate with the status so step 1 renders correctly.
+      if (kycStatus === KycStatus.APPROVED) return String(path.CARD_ACTIVATE);
+      if (kycStatus === KycStatus.UNDER_REVIEW) return String(path.CARD_PENDING);
+      return `${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}`;
+    },
+    [kycFlow],
+  );
 
   const redirectBasedOnKycStatus = useCallback(
     async (kycStatus: KycStatus, outcome?: KycHandoffOutcome) => {
@@ -66,9 +87,20 @@ export function useSumsubSession() {
       const destination = resolveDestination(kycStatus);
       setSession({ phase: 'completed', outcome: handoff, destination });
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+
+      // TransFi buy-crypto flow: this verification exists to be shared with
+      // TransFi. Re-enter the Add-funds modal at the buy-crypto KYC pending step
+      // (which fires the share and polls) and return to the home screen where
+      // that modal is mounted. Invalidating the gating query first stops the
+      // pending screen mounting against a stale needs_kyc.
+      if (kycFlow === 'transfi') {
+        queryClient.invalidateQueries({ queryKey: [TRANSFI_STATUS_KEY] });
+        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+      }
+
       router.replace(destination as any);
     },
-    [queryClient, resolveDestination, router],
+    [kycFlow, queryClient, resolveDestination, router],
   );
 
   /**
@@ -100,12 +132,16 @@ export function useSumsubSession() {
     }, [router, session]),
   );
 
-  /** Fetch a fresh access token — also used as the WebSDK expiration handler. */
+  /**
+   * Fetch a fresh access token — also used as the WebSDK expiration handler,
+   * which is why it must pass the same flow: a mid-session refresh that flipped
+   * to 'card' would re-run the card-side bookkeeping.
+   */
   const fetchAccessToken = useCallback(async (): Promise<string> => {
-    const res = await withRefreshToken(() => createSumsubSession());
+    const res = await withRefreshToken(() => createSumsubSession(sumsubFlow));
     if (!res?.token) throw new Error('No Sumsub access token in session response');
     return res.token;
-  }, []);
+  }, [sumsubFlow]);
 
   const initSession = useCallback(async () => {
     switch (debugState) {
@@ -132,8 +168,8 @@ export function useSumsubSession() {
     setSession({ phase: 'loading' });
 
     try {
-      track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'sumsub' });
-      const res = await withRefreshToken(() => createSumsubSession());
+      track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'sumsub', flow: sumsubFlow });
+      const res = await withRefreshToken(() => createSumsubSession(sumsubFlow));
       if (!res?.token) {
         setSession({ phase: 'error', message: 'Failed to create verification session' });
         return;
@@ -170,7 +206,7 @@ export function useSumsubSession() {
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, [debugState, redirectBasedOnKycStatus]);
+  }, [debugState, redirectBasedOnKycStatus, sumsubFlow]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });
@@ -183,8 +219,9 @@ export function useSumsubSession() {
       text2: 'Your identity is being finalised.',
       props: { badgeText: '' },
     });
-    // Sumsub done → hand-off to Wirex is in progress (backend), so land on the
-    // review/pending screen until Wirex approves.
+    // Sumsub done → the partner hand-off (Wirex for the card, TransFi for
+    // buy-crypto) is in progress on the backend, so land on the review/pending
+    // screen for whichever flow we're in.
     redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW);
   }, [redirectBasedOnKycStatus]);
 

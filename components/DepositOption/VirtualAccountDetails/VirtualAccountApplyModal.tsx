@@ -3,17 +3,18 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Globe } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 
+import { RegionUnavailableGeo, RegionUnavailableView } from '@/components/RegionUnavailable';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { COUNTRIES } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { checkVaAccess, getCountryFromIp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
 import { RainApplicationStatus } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -96,7 +97,9 @@ export const VirtualAccountApplyModal = () => {
   const { data: cardStatus } = useCardStatus();
 
   const [isChecking, setIsChecking] = useState(false);
-  const [countryNotSupported, setCountryNotSupported] = useState(false);
+  // Set once we know the user's region isn't served — swaps the pitch for the
+  // "everything else is live" pop-up.
+  const [unsupportedRegion, setUnsupportedRegion] = useState<RegionUnavailableGeo | null>(null);
 
   // The dialog itself sits inside the overlay's 8pt inset. Adding the device's
   // safe-area plus 7pt places the hero and back button at y=59 on the Figma frame.
@@ -128,67 +131,85 @@ export const VirtualAccountApplyModal = () => {
     router.push(path.KYC);
   }, [cardStatus, router, setKycFlow, setModal]);
 
+  /**
+   * Where the user is, for the virtual account gate.
+   *
+   * A completed KYC record is the authoritative residence country, so it wins
+   * over the IP; otherwise there is no country selection screen for virtual
+   * accounts, and the IP lookup is all we have.
+   */
+  const resolveRegion = useCallback(async (): Promise<{
+    geo: RegionUnavailableGeo;
+    isAvailable: boolean;
+  } | null> => {
+    const kycCountry = cardStatus?.country?.toUpperCase();
+
+    if (kycCountry) {
+      const hasAccess = await checkProductAccess('virtual_account', kycCountry);
+
+      if (hasAccess === null) return null;
+
+      return {
+        isAvailable: hasAccess,
+        geo: {
+          countryCode: kycCountry,
+          countryName: COUNTRIES.find(c => c.code === kycCountry)?.name,
+          detectionSource: 'kyc',
+        },
+      };
+    }
+
+    const access = await resolveCountryAccess('virtual_account', 'virtual_account_apply');
+
+    if (!access) return null;
+
+    return {
+      isAvailable: access.isAvailable,
+      geo: {
+        countryCode: access.countryCode,
+        countryName: access.countryName,
+        state: access.state,
+        city: access.city,
+        detectionSource: access.source,
+      },
+    };
+  }, [cardStatus]);
+
   const handleApply = useCallback(async () => {
     setIsChecking(true);
     try {
-      // Prefer the country from the completed KYC record; fall back to IP detection.
-      const countryCode = cardStatus?.country ?? (await getCountryFromIp())?.countryCode;
+      const region = await resolveRegion();
 
-      if (!countryCode) {
-        // Can't determine country — let the KYC flow handle it.
+      // Country undeterminable, or the access check itself failed — let the KYC
+      // flow surface the issue rather than blocking on our own uncertainty.
+      if (!region) {
         proceed();
         return;
       }
 
-      const { hasAccess } = await withRefreshToken(() => checkVaAccess(countryCode));
-
-      if (!hasAccess) {
-        setCountryNotSupported(true);
+      if (!region.isAvailable) {
+        setUnsupportedRegion(region.geo);
         return;
       }
 
       proceed();
-    } catch {
-      // On any error, fall through and let the KYC flow surface the issue.
-      proceed();
     } finally {
       setIsChecking(false);
     }
-  }, [cardStatus, proceed]);
+  }, [proceed, resolveRegion]);
 
-  if (countryNotSupported) {
+  if (unsupportedRegion) {
     return (
-      <View className="flex-1 bg-[#111] px-[18px]">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          onPress={handleBack}
-          className="absolute left-[18px] z-10 h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
-          style={{ top: heroTop }}
-        >
-          <ArrowLeft size={22} color="#fff" />
-        </Pressable>
-
-        <View className="flex-1 items-center justify-center gap-6">
-          <View className="items-center justify-center rounded-full bg-[#1C1C1C] p-6">
-            <Globe size={48} color="rgba(255,255,255,0.4)" />
-          </View>
-
-          <View className="items-center gap-2">
-            <Text className="text-center text-2xl font-bold text-white">
-              Not Available in Your Region
-            </Text>
-            <Text className="text-center text-base text-white/60">
-              Virtual bank accounts are not yet available in your country. We&apos;re working on
-              expanding access.
-            </Text>
-          </View>
-        </View>
-
-        <Button className="mb-6 h-14 w-full rounded-2xl bg-[#1C1C1C]" onPress={handleBack}>
-          <Text className="text-base font-bold text-white">Back</Text>
-        </Button>
-      </View>
+      <RegionUnavailableView
+        product="virtual_account"
+        source="virtual_account_apply"
+        geo={unsupportedRegion}
+        onBack={handleBack}
+        onContinue={() => setModal(DEPOSIT_MODAL.CLOSE)}
+        // The dialog already sits inside the overlay's 8pt inset, so the
+        // pop-up only needs the remaining 7pt to hit y=59 on the Figma frame.
+        topOffset={7}
+      />
     );
   }
 

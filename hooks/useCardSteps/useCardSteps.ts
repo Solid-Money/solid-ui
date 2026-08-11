@@ -72,16 +72,7 @@ export function useCardSteps(
     cardStatusResponse?.applicationExternalVerificationLink != null
       ? CardProvider.RAIN
       : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
-  const countryStore = useCountryStore(
-    useShallow(state => ({
-      countryInfo: state.countryInfo,
-      getCachedIp: state.getCachedIp,
-      setCachedIp: state.setCachedIp,
-      getIpDetectedCountry: state.getIpDetectedCountry,
-      setIpDetectedCountry: state.setIpDetectedCountry,
-      countryDetectionFailed: state.countryDetectionFailed,
-    })),
-  );
+  const countryStore = useCountryStore(useShallow(state => ({ countryInfo: state.countryInfo })));
 
   // Get customer data with cards endorsement
   const { data: customer } = useCustomer();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import PrizeBanner from '@/assets/images/banner';
 import { FAQ } from '@/components/FAQ';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import ConfettiOverlay from '@/components/SpinAndWin/ConfettiOverlay';
@@ -42,6 +43,14 @@ import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useSpinWinStore } from '@/store/useSpinWinStore';
 
 const WIN_SCREEN_ANIMATION = require('@/assets/animations/win_screen_2.json');
+
+const PRIZE_BANNER_WIDTH = 303;
+const PRIZE_BANNER_HEIGHT = 148;
+
+// Time the settled wheel stays visible before the win overlay covers it. Has to
+// outlast the wedge fade plus the flash burst that follows it (~1070ms) with
+// enough left over for the finished state to read.
+const RESULT_SCREEN_DELAY_MS = 1800;
 
 const SPIN_WIN_FAQS = [
   {
@@ -321,6 +330,13 @@ function SpinWinWheelScreen({
 }) {
   const { mutateAsync: performSpin } = usePerformSpin();
   const [resultPoints, setResultPoints] = useState<number | null>(null);
+  const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+    };
+  }, []);
 
   const onSpin = useCallback(async () => {
     if (Platform.OS !== 'web') {
@@ -342,9 +358,11 @@ function SpinWinWheelScreen({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setResultPoints(points);
-    }, 500);
+    }, RESULT_SCREEN_DELAY_MS);
+
+    resultTimerRef.current = timer;
   }, []);
 
   return (
@@ -462,13 +480,8 @@ function SpinWinResultScreen({ points, onContinue }: { points: number; onContinu
         <Reanimated.View
           style={[
             {
-              width: '100%',
-              maxWidth: 270,
-              height: 164,
-              borderRadius: 20,
-              borderWidth: 4,
-              borderColor: '#61C95A',
-              backgroundColor: '#94EB80',
+              width: PRIZE_BANNER_WIDTH,
+              height: PRIZE_BANNER_HEIGHT,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 28,
@@ -477,16 +490,30 @@ function SpinWinResultScreen({ points, onContinue }: { points: number; onContinu
             prizeCardAnimatedStyle,
           ]}
         >
-          <Text
+          <PrizeBanner />
+
+          <View
             style={{
-              color: '#000000',
-              fontSize: 76,
-              lineHeight: 84,
-              letterSpacing: -3,
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            {points.toLocaleString()}
-          </Text>
+            <Text
+              style={{
+                color: '#000000',
+                fontSize: 76,
+                lineHeight: 84,
+                letterSpacing: -3,
+              }}
+            >
+              {points.toLocaleString()}
+            </Text>
+          </View>
         </Reanimated.View>
 
         <Reanimated.View

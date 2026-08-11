@@ -33,7 +33,6 @@ type Path = {
   CARD_READY: Href;
   CARD_PENDING: Href;
   CARD_ACTIVATE: Href;
-  CARD_ACTIVATE_COUNTRY_SELECTION: Href;
   CARD_KYC_MOBILE: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
@@ -93,7 +92,6 @@ export const path: Path = {
   CARD_READY: '/card/ready' as Href,
   CARD_PENDING: '/card/pending' as Href,
   CARD_ACTIVATE: '/card/activate',
-  CARD_ACTIVATE_COUNTRY_SELECTION: '/card/activate/country_selection',
   CARD_KYC_MOBILE: '/card/kyc_mobile',
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
