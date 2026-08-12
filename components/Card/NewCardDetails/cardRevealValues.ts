@@ -1,3 +1,4 @@
+import { COUNTRIES } from '@/constants/countries';
 import { CardDetailsRevealResponse, CardHolderName } from '@/lib/types';
 
 export interface CardRevealValues {
@@ -27,6 +28,21 @@ const MASK = {
   cvv: '•••',
   nameOnCard: '',
   issuingCountry: '',
+};
+
+/**
+ * Country name for an ISO 3166-1 **alpha-2** code, for the "issuing country" row.
+ *
+ * Normalises case before matching: COUNTRIES is keyed on upper-case alpha-2, and
+ * an exact comparison silently blanked the row whenever the backend sent a
+ * differently-cased code. Alpha-3 cannot be resolved here — there is no 3→2 table
+ * on the client — so the backend is responsible for emitting alpha-2, and an
+ * unresolvable code yields undefined rather than a wrong country.
+ */
+export const resolveIssuingCountryName = (code?: string | null): string | undefined => {
+  const normalised = code?.trim().toUpperCase();
+  if (!normalised) return undefined;
+  return COUNTRIES.find(country => country.code === normalised)?.name;
 };
 
 /** Figma renders the number as four groups separated by three spaces. */

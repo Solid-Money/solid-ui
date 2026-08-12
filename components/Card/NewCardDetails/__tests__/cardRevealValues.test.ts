@@ -2,6 +2,7 @@
 import {
   groupCardNumber,
   resolveCardRevealValues,
+  resolveIssuingCountryName,
 } from '@/components/Card/NewCardDetails/cardRevealValues';
 
 /**
@@ -97,5 +98,36 @@ describe('resolveCardRevealValues', () => {
       // 15-digit PANs (Amex) must not gain characters.
       expect(groupCardNumber('411111111111111')).toBe('4111   1111   1111   111');
     });
+  });
+});
+
+/**
+ * The issuing-country row renders a country NAME resolved from an alpha-2 code.
+ * An exact, case-sensitive match against the upper-case country list is what
+ * blanked the row for Wirex cards.
+ */
+describe('resolveIssuingCountryName', () => {
+  it('resolves an upper-case alpha-2 code', () => {
+    expect(resolveIssuingCountryName('LT')).toBe('Lithuania');
+  });
+
+  it('resolves a lower-case code', () => {
+    expect(resolveIssuingCountryName('lt')).toBe('Lithuania');
+  });
+
+  it('tolerates surrounding whitespace', () => {
+    expect(resolveIssuingCountryName(' de ')).toBe('Germany');
+  });
+
+  it('returns undefined for an alpha-3 code rather than a wrong country', () => {
+    // There is no 3→2 table on the client, so the backend must send alpha-2.
+    // Guessing here would risk displaying the wrong issuing country.
+    expect(resolveIssuingCountryName('LTU')).toBeUndefined();
+  });
+
+  it('returns undefined for empty or missing input', () => {
+    expect(resolveIssuingCountryName('')).toBeUndefined();
+    expect(resolveIssuingCountryName(undefined)).toBeUndefined();
+    expect(resolveIssuingCountryName(null)).toBeUndefined();
   });
 });

@@ -15,10 +15,12 @@ import {
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
 import CardRevealFace from '@/components/Card/NewCardDetails/CardRevealFace';
-import { resolveCardRevealValues } from '@/components/Card/NewCardDetails/cardRevealValues';
+import {
+  resolveCardRevealValues,
+  resolveIssuingCountryName,
+} from '@/components/Card/NewCardDetails/cardRevealValues';
 import { EASE_OUT_EXPO, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
-import { COUNTRIES } from '@/constants/countries';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { CardHolderName, CardProvider } from '@/lib/types';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -110,7 +112,7 @@ const CardRevealSection = ({
   }, [isPaneOpen, isRevealFaceWarm]);
 
   const issuingCountry = useMemo(
-    () => COUNTRIES.find(country => country.code === issuingCountryCode)?.name,
+    () => resolveIssuingCountryName(issuingCountryCode),
     [issuingCountryCode],
   );
 
