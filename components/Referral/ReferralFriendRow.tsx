@@ -45,6 +45,9 @@ const formatJoined = (iso: string) => {
  */
 export const REFERRAL_SUCCESS_COLOR = '#68DB94';
 
+/** Literal form of `--referral-progress`, for the same reason. */
+const REFERRAL_PROGRESS_COLOR = '#6CC7FF';
+
 type ChipTone = 'neutral' | 'progress' | 'success' | 'unlocking' | 'warning';
 
 const CHIP_TONE: Record<ChipTone, { container: string; text: string }> = {
@@ -100,14 +103,20 @@ function SpendProgress({ ratio, tone }: { ratio: number; tone: ChipTone }) {
     width: `${width.value * 100}%`,
   }));
 
+  // The fill is itself an Animated.View, so its appearance goes through `style`
+  // rather than className — see the note on the row below for why className is
+  // inert on Reanimated components.
   return (
-    <View className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-white/10">
+    <View className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
       <Animated.View
-        className={cn(
-          'h-full rounded-full',
-          tone === 'success' ? 'bg-referral-success' : 'bg-referral-progress',
-        )}
-        style={animatedStyle}
+        style={[
+          {
+            height: '100%',
+            borderRadius: 999,
+            backgroundColor: tone === 'success' ? REFERRAL_SUCCESS_COLOR : REFERRAL_PROGRESS_COLOR,
+          },
+          animatedStyle,
+        ]}
       />
     </View>
   );
@@ -242,82 +251,90 @@ export default function ReferralFriendRow({
   ) : null;
 
   return (
+    // Animation only — no `className` here. NativeWind's JSX transform maps
+    // className→style for React Native's own components; Reanimated's
+    // Animated.View is a createAnimatedComponent wrapper, so className is
+    // accepted as an unknown prop and silently dropped. Layout therefore lives
+    // on the plain View below.
     <Animated.View
       // Rows cascade in rather than all appearing at once — same easing family
       // as the hero avatars so the screen reads as one motion system.
       entering={FadeIn.delay(Math.min(index, 8) * 60).duration(320)}
-      // Three columns: numbering, details, status. `items-center` matches the
-      // design, which centres the status pill against the row rather than
-      // aligning it to the name: the pill sits at y=38.5 with height 24 in a
-      // 100px row, so its centre lands on the row's centre.
-      //
-      // The divider is driven off `index` rather than a `first:` variant.
-      // NativeWind only maps hover/active/focus/disabled/empty pseudo-classes;
-      // anything else — `:first-child` included — is discarded when the
-      // stylesheet is converted for native, so `first:border-t-0` was silently
-      // dead. An explicit index check works on both native and web.
-      //
-      // Padding matches the design's row box (16px sides, 12px ends → 100px
-      // tall), and the divider is full-bleed because the card itself carries no
-      // horizontal padding.
-      className={cn(
-        'flex-row items-center justify-between gap-2 px-4 py-3',
-        index > 0 && 'border-t border-white/[0.06]',
-      )}
     >
-      <View className="flex-1 flex-row items-start gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-[18px] bg-[#2c2c2c]">
-          <Text className="text-xs font-medium leading-4 text-white/70">
-            {(index + 1).toString().padStart(2, '0')}
-          </Text>
-        </View>
+      <View
+        // Three columns: numbering, details, status. `items-center` matches the
+        // design, which centres the status pill against the row rather than
+        // aligning it to the name: the pill sits at y=38.5 with height 24 in a
+        // 100px row, so its centre lands on the row's centre.
+        //
+        // The divider is driven off `index` rather than a `first:` variant.
+        // NativeWind only maps hover/active/focus/disabled/empty pseudo-classes;
+        // anything else — `:first-child` included — is discarded when the
+        // stylesheet is converted for native, so `first:border-t-0` was silently
+        // dead. An explicit index check works on both native and web.
+        //
+        // Padding matches the design's row box (16px sides, 12px ends → 100px
+        // tall), and the divider is full-bleed because the card itself carries no
+        // horizontal padding.
+        className={cn(
+          'flex-row items-center justify-between gap-2 px-4 py-3',
+          index > 0 && 'border-t border-white/[0.06]',
+        )}
+      >
+        <View className="flex-1 flex-row items-start gap-3">
+          <View className="h-9 w-9 items-center justify-center rounded-[18px] bg-[#2c2c2c]">
+            <Text className="text-xs font-medium leading-4 text-white/70">
+              {(index + 1).toString().padStart(2, '0')}
+            </Text>
+          </View>
 
-        <View className="flex-1 gap-[3px]">
-          <Text className="text-sm font-medium leading-[18px] text-white" numberOfLines={1}>
-            {item.username || 'Invited friend'}
-          </Text>
-          <Text className="text-xs leading-[14px] text-white/50">
-            {formatJoined(item.signupAt)}
-          </Text>
-          <Text className="text-xs leading-[14px] text-white/50">{spentLine}</Text>
+          <View className="flex-1 gap-[3px]">
+            <Text className="text-sm font-medium leading-[18px] text-white" numberOfLines={1}>
+              {item.username || 'Invited friend'}
+            </Text>
+            <Text className="text-xs leading-[14px] text-white/50">
+              {formatJoined(item.signupAt)}
+            </Text>
+            <Text className="text-xs leading-[14px] text-white/50">{spentLine}</Text>
 
-          {presentation.showProgress ? (
-            <SpendProgress
-              ratio={spendTargetUsd > 0 ? item.spendUsd / spendTargetUsd : 0}
-              tone="progress"
-            />
-          ) : null}
+            {presentation.showProgress ? (
+              <SpendProgress
+                ratio={spendTargetUsd > 0 ? item.spendUsd / spendTargetUsd : 0}
+                tone="progress"
+              />
+            ) : null}
 
-          {/* Bottom row of the details column — the wrapping flex-row keeps the
+            {/* Bottom row of the details column — the wrapping flex-row keeps the
               pill hugging its label instead of stretching to the column width. */}
-          {detailChip ? (
-            <View className="flex-row items-start">
-              {isPaidWithProof ? (
-                // Tapping the unlocked reward opens the on-chain payout, so
-                // "you were paid" is verifiable rather than just asserted.
-                <Pressable
-                  onPress={handleOpenPayout}
-                  accessibilityRole="link"
-                  accessibilityLabel={`View the ${formatUsdWhole(
-                    item.rewardUsd,
-                  )} referral payout on the block explorer`}
-                  className="flex-row items-center gap-1 web:transition-opacity web:hover:opacity-80"
-                >
-                  {detailChip}
-                  <ExternalLink size={12} color={REFERRAL_SUCCESS_COLOR} />
-                </Pressable>
-              ) : (
-                detailChip
-              )}
-            </View>
-          ) : null}
+            {detailChip ? (
+              <View className="flex-row items-start">
+                {isPaidWithProof ? (
+                  // Tapping the unlocked reward opens the on-chain payout, so
+                  // "you were paid" is verifiable rather than just asserted.
+                  <Pressable
+                    onPress={handleOpenPayout}
+                    accessibilityRole="link"
+                    accessibilityLabel={`View the ${formatUsdWhole(
+                      item.rewardUsd,
+                    )} referral payout on the block explorer`}
+                    className="flex-row items-center gap-1 web:transition-opacity web:hover:opacity-80"
+                  >
+                    {detailChip}
+                    <ExternalLink size={12} color={REFERRAL_SUCCESS_COLOR} />
+                  </Pressable>
+                ) : (
+                  detailChip
+                )}
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
 
-      {/* Third column — the lifecycle status, always top-right. */}
-      <Chip tone={presentation.lifecycle.tone} className="shrink-0">
-        {presentation.lifecycle.label}
-      </Chip>
+        {/* Third column — the lifecycle status, vertically centred. */}
+        <Chip tone={presentation.lifecycle.tone} className="shrink-0">
+          {presentation.lifecycle.label}
+        </Chip>
+      </View>
     </Animated.View>
   );
 }

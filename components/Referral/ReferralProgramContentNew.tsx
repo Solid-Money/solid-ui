@@ -228,23 +228,25 @@ export default function ReferralProgramContentNew({
 
         {/* Earned so far — only once there is something to celebrate. */}
         {totalRewardedUsd > 0 ? (
-          <Animated.View
-            entering={FadeInDown.duration(400)}
-            className="-mt-3 flex-row items-center justify-center gap-2 rounded-twice bg-referral-success/[0.12] px-5 py-3"
-          >
-            <Text className="text-sm text-referral-success">Earned from referrals</Text>
-            <CountUp
-              count={totalRewardedUsd}
-              decimalPlaces={0}
-              prefix="$"
-              styles={{
-                wholeText: {
-                  color: REFERRAL_SUCCESS_COLOR,
-                  fontSize: 18,
-                  fontWeight: '600',
-                },
-              }}
-            />
+          // className is inert on Reanimated components (NativeWind's JSX
+          // transform only interops React Native's own components), so the
+          // animation wrapper stays bare and the styling lives on the View.
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View className="-mt-3 flex-row items-center justify-center gap-2 rounded-twice bg-referral-success/[0.12] px-5 py-3">
+              <Text className="text-sm text-referral-success">Earned from referrals</Text>
+              <CountUp
+                count={totalRewardedUsd}
+                decimalPlaces={0}
+                prefix="$"
+                styles={{
+                  wholeText: {
+                    color: REFERRAL_SUCCESS_COLOR,
+                    fontSize: 18,
+                    fontWeight: '600',
+                  },
+                }}
+              />
+            </View>
           </Animated.View>
         ) : null}
 
