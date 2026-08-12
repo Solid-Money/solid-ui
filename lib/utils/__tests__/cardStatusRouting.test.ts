@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import { CardProvider, CardStatus, type CardStatusResponse } from '@/lib/types';
-import { hasCard, hasPendingCard } from '@/lib/utils/cardStatusRouting';
+import { hasCard, hasPendingCard, resolveCardIssuer } from '@/lib/utils/cardStatusRouting';
 
 const cardStatus = (overrides: Partial<CardStatusResponse> = {}): CardStatusResponse =>
   ({ ...overrides }) as CardStatusResponse;
@@ -79,5 +79,86 @@ describe('card status routing predicates', () => {
       const value = cardStatus({ status, provider: CardProvider.WIREX });
       expect(hasCard(value) && hasPendingCard(value)).toBe(false);
     }
+  });
+});
+
+/**
+ * Every card consumer branches on `provider === RAIN` to decide whether
+ * Rain-only endpoints apply. Reporting Rain for a Wirex card is what sent the
+ * card-details reveal to Rain's `/cards/secrets` and produced
+ * "Card reveal via SessionId is only supported for Rain cards".
+ */
+describe('resolveCardIssuer', () => {
+  const active = (provider?: CardProvider) =>
+    ({ status: CardStatus.ACTIVE, provider }) as CardStatusResponse;
+
+  it('reports Wirex for an active Wirex card', () => {
+    expect(resolveCardIssuer({ cardStatus: active(CardProvider.WIREX) })).toBe(CardProvider.WIREX);
+  });
+
+  it('reports Rain for an active Rain card', () => {
+    expect(resolveCardIssuer({ cardStatus: active(CardProvider.RAIN) })).toBe(CardProvider.RAIN);
+  });
+
+  it('falls back to the issuer on card details when status has not loaded', () => {
+    expect(
+      resolveCardIssuer({
+        cardStatus: null,
+        cardDetails: { id: 'card-1', provider: CardProvider.WIREX },
+      }),
+    ).toBe(CardProvider.WIREX);
+  });
+
+  it('prefers the issuer from card status when both are present', () => {
+    expect(
+      resolveCardIssuer({
+        cardStatus: active(CardProvider.WIREX),
+        cardDetails: { id: 'card-1', provider: CardProvider.RAIN },
+      }),
+    ).toBe(CardProvider.WIREX);
+  });
+
+  it('treats a card with no reported issuer as Rain (legacy rows)', () => {
+    // The provider field postdates those cards, and they are all Rain.
+    expect(resolveCardIssuer({ cardStatus: active() })).toBe(CardProvider.RAIN);
+  });
+
+  it('reports no issuer for a Bridge-only card', () => {
+    expect(resolveCardIssuer({ cardStatus: active(CardProvider.BRIDGE) })).toBeNull();
+    expect(
+      resolveCardIssuer({ cardDetails: { id: 'card-1', provider: CardProvider.BRIDGE } }),
+    ).toBeNull();
+  });
+
+  it('reports no issuer before a card exists, so nothing fetches during KYC', () => {
+    // /cards/status names the issuer during KYC too; that must not start
+    // issuer-specific queries for a card that has not been created.
+    expect(
+      resolveCardIssuer({ cardStatus: { provider: CardProvider.WIREX } as CardStatusResponse }),
+    ).toBeNull();
+    expect(resolveCardIssuer({})).toBeNull();
+  });
+
+  it('reports Wirex for a pending Wirex card once details exist', () => {
+    // hasCard is false while pending, but the details response resolves, and the
+    // issuer must still be named so the reveal does not fall through to Rain.
+    expect(
+      resolveCardIssuer({
+        cardStatus: {
+          status: CardStatus.PENDING,
+          provider: CardProvider.WIREX,
+        } as CardStatusResponse,
+        cardDetails: { id: 'card-1', provider: CardProvider.WIREX },
+      }),
+    ).toBe(CardProvider.WIREX);
+  });
+
+  it('honours the build-level issuer override', () => {
+    expect(
+      resolveCardIssuer({
+        cardStatus: active(CardProvider.RAIN),
+        issuerOverride: CardProvider.WIREX,
+      }),
+    ).toBe(CardProvider.WIREX);
   });
 });

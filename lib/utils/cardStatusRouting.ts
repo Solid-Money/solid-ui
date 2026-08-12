@@ -1,4 +1,9 @@
-import { CardProvider, CardStatus, type CardStatusResponse } from '@/lib/types';
+import {
+  type CardDetailsResponseDto,
+  CardProvider,
+  CardStatus,
+  type CardStatusResponse,
+} from '@/lib/types';
 
 /**
  * Predicates that decide where a user in the card flow is routed.
@@ -42,3 +47,36 @@ export const hasCardStatusWithRainApplication = (
  */
 export const hasPendingCard = (cardStatus: CardStatusResponse | null | undefined): boolean =>
   cardStatus?.status === CardStatus.PENDING && cardStatus.provider !== CardProvider.BRIDGE;
+
+/**
+ * Which issuer the user's card is on, or null when they effectively have none.
+ *
+ * Every consumer branches on `provider === RAIN` to decide whether Rain-only
+ * endpoints apply (encrypted card secrets, spending-power balance, funding
+ * contracts). Naming the issuer correctly is therefore what keeps a Wirex card
+ * off those endpoints — reporting Rain for any non-Bridge card is what made the
+ * card-details reveal POST to Rain's `/cards/secrets` and fail.
+ *
+ * An issuer is only reported once a card exists, so nothing begins
+ * issuer-specific fetching while the user is still in KYC.
+ */
+export const resolveCardIssuer = ({
+  cardStatus,
+  cardDetails,
+  issuerOverride,
+}: {
+  cardStatus?: CardStatusResponse | null;
+  cardDetails?: Pick<CardDetailsResponseDto, 'id' | 'provider'> | null;
+  /** EXPO_PUBLIC_CARD_ISSUER — a build-level override for testing. */
+  issuerOverride?: CardProvider | null;
+}): CardProvider | null => {
+  if (issuerOverride) return issuerOverride;
+
+  const hasNonBridgeCard =
+    hasCard(cardStatus) || (!!cardDetails?.id && cardDetails?.provider !== CardProvider.BRIDGE);
+  if (!hasNonBridgeCard) return null;
+
+  const reported = cardStatus?.provider ?? cardDetails?.provider;
+  // Legacy rows predate the provider field; those cards are all Rain.
+  return reported && reported !== CardProvider.BRIDGE ? reported : CardProvider.RAIN;
+};
