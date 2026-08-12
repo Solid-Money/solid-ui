@@ -20,6 +20,8 @@ jest.mock('@/lib/mmvkStorage', () => {
   };
 });
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 describe('home prompt snoozing', () => {
   afterEach(() => {
     useHomePromptStore.setState({ dismissedAt: {} });
@@ -31,15 +33,21 @@ describe('home prompt snoozing', () => {
 
   it('hides a prompt for the snooze window, then brings it back', () => {
     const now = 1_700_000_000_000;
+    const dismissedAt = { fund: now };
+    const window = HOME_PROMPT_SNOOZE_MS.fund;
+
+    expect(isHomePromptSnoozed(dismissedAt, 'fund', now + 1000)).toBe(true);
+    expect(isHomePromptSnoozed(dismissedAt, 'fund', now + window - 1)).toBe(true);
+    expect(isHomePromptSnoozed(dismissedAt, 'fund', now + window)).toBe(false);
+  });
+
+  it('brings the verification prompt back a week after it was closed', () => {
+    const now = 1_700_000_000_000;
     const dismissedAt = { verification: now };
 
-    expect(isHomePromptSnoozed(dismissedAt, 'verification', now + 1000)).toBe(true);
-    expect(isHomePromptSnoozed(dismissedAt, 'verification', now + HOME_PROMPT_SNOOZE_MS - 1)).toBe(
-      true,
-    );
-    expect(isHomePromptSnoozed(dismissedAt, 'verification', now + HOME_PROMPT_SNOOZE_MS)).toBe(
-      false,
-    );
+    expect(HOME_PROMPT_SNOOZE_MS.verification).toBe(7 * DAY_MS);
+    expect(isHomePromptSnoozed(dismissedAt, 'verification', now + 6 * DAY_MS)).toBe(true);
+    expect(isHomePromptSnoozed(dismissedAt, 'verification', now + 7 * DAY_MS)).toBe(false);
   });
 
   it('snoozes each variant independently', () => {

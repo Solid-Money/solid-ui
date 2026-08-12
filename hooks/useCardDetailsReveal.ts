@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
+import { DUMMY_CARD_REVEAL, isDummyUserId } from '@/constants/dummyCard';
 import { revealCardDetailsComplete } from '@/lib/api';
 import { CardDetailsRevealResponse, CardProvider } from '@/lib/types';
+import { useUserStore } from '@/store/useUserStore';
 
 export interface UseCardDetailsRevealReturn {
   cardDetails: CardDetailsRevealResponse | null;
@@ -26,12 +28,14 @@ export interface UseCardDetailsRevealReturn {
 export const useCardDetailsReveal = (
   provider?: CardProvider | null,
 ): UseCardDetailsRevealReturn => {
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const isDummyUser = isDummyUserId(selectedUserId);
   // Store card details in local state (not in React Query cache for PCI compliance)
   const [cardDetails, setCardDetails] = useState<CardDetailsRevealResponse | null>(null);
 
   const {
     mutateAsync,
-    isPending: isLoading,
+    isPending: isMutationLoading,
     error: mutationError,
     reset,
   } = useMutation({
@@ -47,8 +51,12 @@ export const useCardDetailsReveal = (
   });
 
   const revealDetails = useCallback(async () => {
+    if (isDummyUser) {
+      setCardDetails(DUMMY_CARD_REVEAL);
+      return;
+    }
     await mutateAsync();
-  }, [mutateAsync]);
+  }, [isDummyUser, mutateAsync]);
 
   const clearCardDetails = useCallback(() => {
     setCardDetails(null);
@@ -64,8 +72,8 @@ export const useCardDetailsReveal = (
 
   return {
     cardDetails,
-    isLoading,
-    error,
+    isLoading: isDummyUser ? false : isMutationLoading,
+    error: isDummyUser ? null : error,
     revealDetails,
     clearCardDetails,
   };

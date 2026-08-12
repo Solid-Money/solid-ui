@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
+import { isDummyUserId } from '@/constants/dummyCard';
 import { getCardBalance } from '@/lib/api';
 import { CardDetailsResponseDto, CardProvider } from '@/lib/types';
 import { formatCentsToDollars, withRefreshToken } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
 
 import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
 import { useCardProvider } from './useCardProvider';
@@ -19,12 +21,14 @@ const CARD_BALANCE = 'cardBalance';
 // });
 
 export const useCardDetails = () => {
-  const detailsQuery = useQuery(cardDetailsQueryOptions());
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const isDummyUser = isDummyUserId(selectedUserId);
+  const detailsQuery = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { provider } = useCardProvider();
   const balanceQuery = useQuery({
-    queryKey: [CARD_BALANCE],
+    queryKey: [CARD_BALANCE, selectedUserId],
     queryFn: () => withRefreshToken(() => getCardBalance()),
-    enabled: provider === CardProvider.RAIN && !!detailsQuery.data,
+    enabled: !isDummyUser && provider === CardProvider.RAIN && !!detailsQuery.data,
     retry: false,
     refetchInterval: 5000,
   });

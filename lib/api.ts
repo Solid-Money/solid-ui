@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
 import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
@@ -49,7 +50,6 @@ import {
   CardWithdrawalResponse,
   Cashback,
   CoinHistoricalChart,
-  CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
   DepositTransaction,
@@ -92,11 +92,13 @@ import {
   RainContractResponseDto,
   RainKycSubmitResponse,
   ReferralSummary,
+  RegionInterestPayload,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
   SubmitPersonaKycResponse,
+  SumsubSessionFlow,
   SumsubSessionResponse,
   SumsubVerificationStatusResponse,
   SwapTokenRequest,
@@ -107,6 +109,12 @@ import {
   ToCurrency,
   TokenPriceUsd,
   TotalAPYResponse,
+  TransfiCreateOrderResponse,
+  TransfiOrderStatusResponse,
+  TransfiPaymentConfig,
+  TransfiPaymentMethodOption,
+  TransfiQuote,
+  TransfiStatusResponse,
   UpdateActivityEvent,
   User,
   VaultBreakdown,
@@ -179,29 +187,52 @@ axios.interceptors.request.use(config => {
   return config;
 });
 
+const captureAxiosError = (error: any) => {
+  const status = error.response?.status;
+  const url = error.config?.url;
+  const method = error.config?.method;
+
+  Sentry.captureException(error, {
+    tags: {
+      type: 'api_error',
+      status: status?.toString(),
+      method: method?.toUpperCase(),
+    },
+    extra: {
+      url,
+      responseData: error.response?.data,
+    },
+  });
+
+  return Promise.reject(error);
+};
+
 // Set up axios response interceptor to handle errors
-axios.interceptors.response.use(
-  response => response,
-  error => {
-    const status = error.response?.status;
-    const url = error.config?.url;
-    const method = error.config?.method;
+axios.interceptors.response.use(response => response, captureAxiosError);
 
-    Sentry.captureException(error, {
-      tags: {
-        type: 'api_error',
-        status: status?.toString(),
-        method: method?.toUpperCase(),
-      },
-      extra: {
-        url,
-        responseData: error.response?.data,
-      },
-    });
+/**
+ * Axios instance for third-party APIs (Alchemy Prices, CoinGecko).
+ *
+ * The global request interceptor above attaches the Solid backend Bearer JWT to
+ * every axios request on iOS/Android. Third-party hosts either reject that
+ * token or receive a credential they should never see:
+ *
+ *  - Alchemy treats an `Authorization: Bearer …` header as its own credential
+ *    and ignores the API key in the URL path, so the request 401s. Every price
+ *    lookup then resolves to 0 and balances render as $0.00 — on native only,
+ *    since `getJWTToken()` returns null on web and no header is attached there.
+ *  - CoinGecko authenticates via `x-cg-pro-api-key` and ignores the header, so
+ *    it still works, but the user's access token leaves the app for no reason.
+ *
+ * `axios.create()` starts with no interceptors, so this instance sends neither
+ * the JWT nor the platform headers. Error reporting is kept so failures against
+ * these hosts stay visible in Sentry.
+ *
+ * Same reasoning as the dedicated instance in `lib/alchemy.ts`.
+ */
+export const externalAxios = axios.create();
 
-    return Promise.reject(error);
-  },
-);
+externalAxios.interceptors.response.use(response => response, captureAxiosError);
 
 export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
@@ -377,7 +408,9 @@ export const fetchTokenTransfer = async ({
 };
 
 export const fetchTokenPriceUsd = async (token: string) => {
-  const response = await axios.get<TokenPriceUsd>(
+  // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
+  // attached, which zeroes out every price on native builds.
+  const response = await externalAxios.get<TokenPriceUsd>(
     `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`,
   );
   return response?.data?.data[0]?.prices[0]?.value;
@@ -669,14 +702,19 @@ export const getDiditVerificationStatus = async (): Promise<DiditVerificationSta
   return response.json();
 };
 
-// --- Sumsub identity verification (Wirex / EU flow) ---
+// --- Sumsub identity verification (Wirex card flow + TransFi onramp) ---
 
 /**
  * Create a Sumsub WebSDK session. The backend mints an access token bound to
  * the user and returns it for the WebSDK. Mirrors createDiditSession's error
  * handling so the UI can branch on KYC_ALREADY_EXISTS / VERIFICATION_UNAVAILABLE.
+ *
+ * `flow` tells the backend which product is asking — it decides what gets
+ * recorded against the user's card customer, not what the SDK shows.
  */
-export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
+export const createSumsubSession = async (
+  flow: SumsubSessionFlow = 'card',
+): Promise<SumsubSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
     method: 'POST',
@@ -686,7 +724,7 @@ export const createSumsubSession = async (): Promise<SumsubSessionResponse> => {
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ flow }),
   });
   if (!response.ok) {
     let code: string | undefined;
@@ -1091,6 +1129,106 @@ export const createOnrampAutomation = async (
   return response.json();
 };
 
+// -----------------------------------------------------------------------------
+// TransFi buy-crypto onramp
+// -----------------------------------------------------------------------------
+
+const transfiHeaders = () => {
+  const jwt = getJWTToken();
+  return {
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/** Buy-crypto gating status: ready | can_share | needs_kyc | pending | rejected. */
+export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/status`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Forward the user's approved Didit KYC to TransFi (after consent). */
+export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/share`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Supported currencies, default, and USDC token for the amount screen. */
+export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Payment methods available for a selected fiat currency. */
+export const getTransfiPaymentMethods = async (
+  currency: string,
+): Promise<TransfiPaymentMethodOption[]> => {
+  const params = new URLSearchParams({ currency });
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-methods?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Onramp quote for a USDC amount (fiat cost + fees + limits). */
+export const getTransfiQuote = async (
+  amount: string,
+  currency?: string,
+  paymentCode?: string,
+  signal?: AbortSignal,
+): Promise<TransfiQuote> => {
+  const params = new URLSearchParams({ amount });
+  if (currency) params.set('currency', currency);
+  if (paymentCode) params.set('paymentCode', paymentCode);
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
+    { credentials: 'include', headers: transfiHeaders(), signal },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Create an onramp order; returns the hosted payUrl. Throws Response 412 if KYC incomplete. */
+export const createTransfiOrder = async (
+  usdcAmount: string,
+  paymentCode: string,
+  currency?: string,
+): Promise<TransfiCreateOrderResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify({ usdcAmount, paymentCode, currency }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Poll a TransFi order's status. */
+export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStatusResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
+    { credentials: 'include', headers: transfiHeaders() },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 /** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
 export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
   const jwt = getJWTToken();
@@ -1219,31 +1357,6 @@ export const addToCardWaitlist = async (
   return response.json();
 };
 
-export const addToCardWaitlistToNotify = async (
-  email: string,
-  countryCode: string,
-): Promise<CardWaitlistResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify({ email, countryCode }),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/cards/check-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
@@ -1296,24 +1409,6 @@ export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitli
   return response.json();
 };
 
-export const checkCardWaitlistToNotifyStatus = async (
-  email: string,
-): Promise<CardWaitlistResponse> => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify/check?email=${encodeURIComponent(email)}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-      },
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const fetchLayerZeroBridgeTransactions = async (
   transactionHash: string,
 ): Promise<LayerZeroTransaction> => {
@@ -1323,28 +1418,32 @@ export const fetchLayerZeroBridgeTransactions = async (
   return response.data;
 };
 
-export const getClientIp = async (): Promise<string | null> => {
+/**
+ * Record that the user hit a "not available in your region" pop-up, so the
+ * country shows up in the lead list we activate when it opens.
+ *
+ * Never throws: this is passive capture behind a pop-up the user is already
+ * looking at, and a logging failure must not change what they see.
+ */
+export const logRegionInterest = async (payload: RegionInterestPayload): Promise<boolean> => {
   try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Error fetching IP from ipify:', error);
-    return null;
-  }
-};
+    const jwt = getJWTToken();
 
-export const getCountryFromIp = async (): Promise<CountryFromIp | null> => {
-  try {
-    const response = await axios.get('https://ipapi.co/json/');
-    const { country_code, country_name } = response.data;
+    const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/region-interest`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
 
-    return {
-      countryCode: country_code,
-      countryName: country_name,
-    };
+    return response.ok;
   } catch (error) {
-    console.error('Error fetching country from IP:', error);
-    return null;
+    console.error('Error logging region interest:', error);
+    return false;
   }
 };
 
@@ -2547,12 +2646,21 @@ export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
 };
 
 export const fetchPromotionsBanner = async (): Promise<PromotionsBannerResponse> => {
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner`, {
-    credentials: 'include',
-    headers: {
-      ...getPlatformHeaders(),
+  // The installed native version, so the backend can drop banners gated to
+  // other versions before they reach the device. Absent on web, which always
+  // runs the latest build and is never gated.
+  const appVersion = Application.nativeApplicationVersion;
+  const query = appVersion ? `?appVersion=${encodeURIComponent(appVersion)}` : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner${query}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
     },
-  });
+  );
 
   if (!response.ok) throw response;
 
@@ -2683,7 +2791,7 @@ export const deleteDirectDepositSession = async (
 };
 
 export const searchCoin = async (query: string) => {
-  const response = await axios.get<SearchCoin>(
+  const response = await externalAxios.get<SearchCoin>(
     `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
     {
       headers: {
@@ -2695,7 +2803,7 @@ export const searchCoin = async (query: string) => {
 };
 
 export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1') => {
-  const response = await axios.get<CoinHistoricalChart>(
+  const response = await externalAxios.get<CoinHistoricalChart>(
     `https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
     {
       headers: {
@@ -2711,7 +2819,7 @@ export const fetchCoinSimplePrice = async (
 ): Promise<Record<string, { usd?: number }>> => {
   if (coinIds.length === 0) return {};
   const ids = [...new Set(coinIds)].filter(Boolean).join(',');
-  const response = await axios.get<Record<string, { usd?: number }>>(
+  const response = await externalAxios.get<Record<string, { usd?: number }>>(
     `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
     {
       headers: {

@@ -1,7 +1,8 @@
 /// <reference types="jest" />
 
-import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import { checkCardAccess } from '@/lib/api';
 import { resolveCardCountry } from '@/lib/cardCountryGate';
+import { detectGeo } from '@/lib/geo';
 import { useCountryStore } from '@/store/useCountryStore';
 
 // The country store persists through MMKV, which has no native module under jest.
@@ -23,13 +24,13 @@ jest.mock('@/lib/utils', () => ({
 }));
 
 jest.mock('@/lib/api', () => ({
-  getClientIp: jest.fn(),
-  getCountryFromIp: jest.fn(),
   checkCardAccess: jest.fn(),
+  checkVaAccess: jest.fn(),
 }));
 
-const mockGetClientIp = getClientIp as jest.MockedFunction<typeof getClientIp>;
-const mockGetCountryFromIp = getCountryFromIp as jest.MockedFunction<typeof getCountryFromIp>;
+jest.mock('@/lib/geo', () => ({ detectGeo: jest.fn() }));
+
+const mockDetectGeo = detectGeo as jest.MockedFunction<typeof detectGeo>;
 const mockCheckCardAccess = checkCardAccess as jest.MockedFunction<typeof checkCardAccess>;
 
 describe('resolveCardCountry', () => {
@@ -38,75 +39,80 @@ describe('resolveCardCountry', () => {
     useCountryStore.getState().clearCountryInfo();
   });
 
-  it('proceeds without any lookup when the active country is already supported', async () => {
+  it('proceeds without a geo lookup when the country is already known', async () => {
     useCountryStore.getState().setCountryInfo({
       countryCode: 'US',
       countryName: 'United States',
       isAvailable: true,
+      source: 'manual',
     });
+    mockCheckCardAccess.mockResolvedValue({ hasAccess: true, countryCode: 'US' });
 
     await expect(resolveCardCountry()).resolves.toBe('supported');
-    expect(mockGetClientIp).not.toHaveBeenCalled();
+    expect(mockDetectGeo).not.toHaveBeenCalled();
+  });
+
+  it('re-checks a known country so an opened market is picked up', async () => {
+    useCountryStore.getState().setCountryInfo({
+      countryCode: 'AR',
+      countryName: 'Argentina',
+      isAvailable: false,
+      source: 'manual',
+    });
+    mockCheckCardAccess.mockResolvedValue({ hasAccess: true, countryCode: 'AR' });
+
+    await expect(resolveCardCountry()).resolves.toBe('supported');
+    expect(useCountryStore.getState().countryInfo).toMatchObject({
+      countryCode: 'AR',
+      isAvailable: true,
+    });
+  });
+
+  it('asks for a country when the geo lookup fails', async () => {
+    mockDetectGeo.mockResolvedValue(null);
+
+    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
     expect(mockCheckCardAccess).not.toHaveBeenCalled();
   });
 
-  it('asks for a country when the IP cannot be resolved', async () => {
-    mockGetClientIp.mockResolvedValue(null);
-
-    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
-    expect(mockGetCountryFromIp).not.toHaveBeenCalled();
-  });
-
-  it('proceeds when the detected country has card access, and caches it', async () => {
-    mockGetClientIp.mockResolvedValue('1.2.3.4');
-    mockGetCountryFromIp.mockResolvedValue({ countryCode: 'US', countryName: 'United States' });
+  it('proceeds when the detected country has card access, and stores it', async () => {
+    mockDetectGeo.mockResolvedValue({
+      ip: '1.2.3.4',
+      countryCode: 'US',
+      countryName: 'United States',
+      region: 'California',
+    });
     mockCheckCardAccess.mockResolvedValue({ hasAccess: true, countryCode: 'US' });
 
     await expect(resolveCardCountry()).resolves.toBe('supported');
     expect(useCountryStore.getState().countryInfo).toMatchObject({
       countryCode: 'US',
       isAvailable: true,
+      state: 'California',
       source: 'ip',
     });
-
-    // Second run is served from the store — no repeat lookups.
-    await expect(resolveCardCountry()).resolves.toBe('supported');
-    expect(mockCheckCardAccess).toHaveBeenCalledTimes(1);
   });
 
   it('asks for a country when the detected country has no card access', async () => {
-    mockGetClientIp.mockResolvedValue('1.2.3.4');
-    mockGetCountryFromIp.mockResolvedValue({ countryCode: 'RU', countryName: 'Russia' });
+    mockDetectGeo.mockResolvedValue({
+      countryCode: 'RU',
+      countryName: 'Russia',
+    });
     mockCheckCardAccess.mockResolvedValue({ hasAccess: false, countryCode: 'RU' });
 
     await expect(resolveCardCountry()).resolves.toBe('needs_selection');
+    // Stored so the pop-up can name the country and log it as a lead.
     expect(useCountryStore.getState().countryInfo).toMatchObject({
       countryCode: 'RU',
+      countryName: 'Russia',
       isAvailable: false,
     });
-
-    // The cached "not available" answer is reused rather than re-checked.
-    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
-    expect(mockCheckCardAccess).toHaveBeenCalledTimes(1);
-  });
-
-  it('asks for a country when country detection fails, and does not retry it', async () => {
-    mockGetClientIp.mockResolvedValue('1.2.3.4');
-    mockGetCountryFromIp.mockResolvedValue(null);
-
-    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
-    expect(useCountryStore.getState().countryDetectionFailed).toBe(true);
-
-    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
-    expect(mockGetCountryFromIp).toHaveBeenCalledTimes(1);
   });
 
   it('asks for a country when the access check throws', async () => {
-    mockGetClientIp.mockResolvedValue('1.2.3.4');
-    mockGetCountryFromIp.mockResolvedValue({ countryCode: 'US', countryName: 'United States' });
+    mockDetectGeo.mockResolvedValue({ countryCode: 'US', countryName: 'United States' });
     mockCheckCardAccess.mockRejectedValue(new Error('boom'));
 
     await expect(resolveCardCountry()).resolves.toBe('needs_selection');
-    expect(useCountryStore.getState().countryDetectionFailed).toBe(true);
   });
 });

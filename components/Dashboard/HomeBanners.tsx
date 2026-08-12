@@ -1,22 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Linking, Platform, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 
 import PointsBanner from '@/components/Points/PointsBanner';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { fetchPromotionsBanner } from '@/lib/api';
+import { usePromotionsBannerPress, usePromotionsBanners } from '@/hooks/usePromotionsBanners';
 import { hasCard } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
@@ -25,9 +20,6 @@ import { PanGestureProvider, usePanGesture } from './PanGestureContext';
 
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
-
-const PLATFORM_KEY: 'web' | 'android' | 'ios' =
-  Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
 
 type BannerData = React.ReactElement[];
 
@@ -78,28 +70,6 @@ interface HomeBannersContentProps {
   data?: React.ReactElement[];
 }
 
-function getPromoBannerOnPress(
-  item: { link?: string; slug: string },
-  setModal: (m: (typeof DEPOSIT_MODAL)[keyof typeof DEPOSIT_MODAL]) => void,
-): () => void {
-  if (item.link?.trim()) {
-    const link = item.link.trim();
-    if (link.startsWith('http://') || link.startsWith('https://')) {
-      return () => Linking.openURL(link);
-    }
-    return () => router.push(link as any);
-  }
-  switch (item.slug) {
-    case 'deposit-from-your-bank-or-debit-card':
-      return () => {
-        useSavingStore.getState().selectVaultForDeposit(0);
-        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
-      };
-    default:
-      return () => {};
-  }
-}
-
 const PromoImageBanner = ({
   imageURL,
   onPress,
@@ -121,14 +91,13 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const [containerWidth, setContainerWidth] = useState(0);
   const gapPadding = useSharedValue(0);
   const isPanning = usePanGesture();
-  const setModal = useDepositStore(s => s.setModal);
+  const getBannerPress = usePromotionsBannerPress();
   const { data: cardStatus, isLoading } = useCardStatus();
-  const { data: promotionsBanner, isLoading: isPromotionsBannerLoading } = useQuery({
-    queryKey: ['promotions-banner'],
-    queryFn: fetchPromotionsBanner,
-    staleTime: 5 * 60 * 1000,
-    enabled: !propData,
-  });
+  const { banners: promotionsBanners, isLoading: isPromotionsBannerLoading } = usePromotionsBanners(
+    {
+      enabled: !propData,
+    },
+  );
 
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
@@ -137,16 +106,12 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
 
   const defaultData = useMemo(() => {
-    const platformBanners = promotionsBanner?.filter(
-      item => !item.platforms || item.platforms[PLATFORM_KEY] !== false,
-    );
-    if (platformBanners?.length) {
-      const sorted = [...platformBanners].sort((a, b) => a.sort - b.sort);
-      return sorted.map((item, i) => (
+    if (promotionsBanners.length) {
+      return promotionsBanners.map((item, i) => (
         <PromoImageBanner
           key={`promo-${item.slug}-${i}`}
           imageURL={!isScreenMedium && item.mobileImageURL ? item.mobileImageURL : item.imageURL}
-          onPress={getPromoBannerOnPress(item, setModal)}
+          onPress={getBannerPress(item)}
           height={BANNER_HEIGHT}
         />
       ));
@@ -159,7 +124,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;
-  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT, isScreenMedium]);
+  }, [cardStatus, isLoading, promotionsBanners, getBannerPress, BANNER_HEIGHT, isScreenMedium]);
 
   const data = propData ?? defaultData;
   const IS_PAGINATION = data.length > VIEW_COUNT;

@@ -12,14 +12,15 @@ import {
 } from '@/components/kyc';
 
 /**
- * Native Sumsub KYC screen (Wirex / EU flow). Uses the native Sumsub mobile SDK
+ * Native Sumsub KYC screen. Uses the native Sumsub mobile SDK
  * (@sumsub/react-native-mobilesdk-module) — a full-screen native flow, launched
  * with the backend access token. Requires a custom dev client (this app already
  * ships native modules via EAS, e.g. the Didit SDK); the Android Maven repo and
  * iOS permissions are wired in app.config.ts.
  *
- * The backend kycStatus (polled by useSumsubSession) is the source of truth —
- * it reflects the Sumsub review AND the downstream Wirex hand-off — so the SDK
+ * Serves both Sumsub products (Wirex card, TransFi buy-crypto); useSumsubSession
+ * handles the difference. The backend status it polls is the source of truth —
+ * it reflects the Sumsub review AND the downstream partner hand-off — so the SDK
  * status events here are best-effort accelerators.
  */
 export default function SumsubKycNative() {

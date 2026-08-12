@@ -8,6 +8,13 @@ import Trash from '@/assets/images/trash';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
+import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
+import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
+import { TransfiKycConsent } from '@/components/BuyCrypto/Transfi/TransfiKycConsent';
+import { TransfiKycPending } from '@/components/BuyCrypto/Transfi/TransfiKycPending';
+import { TransfiOrderStatus } from '@/components/BuyCrypto/Transfi/TransfiOrderStatus';
+import { TransfiPayment } from '@/components/BuyCrypto/Transfi/TransfiPayment';
+import { TransfiPaymentMethodSelector } from '@/components/BuyCrypto/Transfi/TransfiPaymentMethodSelector';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
@@ -129,6 +136,16 @@ const useDepositOption = ({
   const isExternalWalletOptions =
     currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
   const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isBuyCryptoKycConsent =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_CONSENT.name;
+  const isBuyCryptoKycPending =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING.name;
+  const isBuyCryptoAmount = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT.name;
+  const isBuyCryptoCurrency = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY.name;
+  const isBuyCryptoPaymentMethod =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD.name;
+  const isBuyCryptoPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT.name;
+  const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -256,6 +273,34 @@ const useDepositOption = ({
       return <DepositBuyCryptoOptions />;
     }
 
+    if (isBuyCryptoKycConsent) {
+      return <TransfiKycConsent />;
+    }
+
+    if (isBuyCryptoKycPending) {
+      return <TransfiKycPending />;
+    }
+
+    if (isBuyCryptoAmount) {
+      return <TransfiAmount />;
+    }
+
+    if (isBuyCryptoCurrency) {
+      return <TransfiCurrencySelector />;
+    }
+
+    if (isBuyCryptoPaymentMethod) {
+      return <TransfiPaymentMethodSelector />;
+    }
+
+    if (isBuyCryptoPayment) {
+      return <TransfiPayment />;
+    }
+
+    if (isBuyCryptoStatus) {
+      return <TransfiOrderStatus />;
+    }
+
     if (isPublicAddress) {
       return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
@@ -323,6 +368,13 @@ const useDepositOption = ({
     if (isBankTransferPreview) return 'bank-transfer-preview';
     if (isExternalWalletOptions) return 'external-wallet-options';
     if (isBuyCryptoOptions) return 'buy-crypto-options';
+    if (isBuyCryptoKycConsent) return 'buy-crypto-kyc-consent';
+    if (isBuyCryptoKycPending) return 'buy-crypto-kyc-pending';
+    if (isBuyCryptoAmount) return 'buy-crypto-amount';
+    if (isBuyCryptoCurrency) return 'buy-crypto-currency';
+    if (isBuyCryptoPaymentMethod) return 'buy-crypto-payment-method';
+    if (isBuyCryptoPayment) return 'buy-crypto-payment';
+    if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -353,6 +405,13 @@ const useDepositOption = ({
     if (isBankTransferPreview) return 'Transfer Details';
     if (isExternalWalletOptions) return 'Deposit from external wallet';
     if (isBuyCryptoOptions) return 'Buy crypto';
+    if (isBuyCryptoKycConsent) return 'Verify to continue';
+    if (isBuyCryptoKycPending) return 'Verifying';
+    if (isBuyCryptoAmount) return 'Buy crypto';
+    if (isBuyCryptoCurrency) return 'Select currency';
+    if (isBuyCryptoPaymentMethod) return 'Payment method';
+    if (isBuyCryptoPayment) return 'Complete payment';
+    if (isBuyCryptoStatus) return 'Order status';
     if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -368,10 +427,24 @@ const useDepositOption = ({
 
   const getContentClassName = () => {
     if (isVirtualAccountApply) {
-      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-[419px] md:max-w-[419px] md:px-0 md:pt-0';
+      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:px-0 md:pt-0';
     }
+
     if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
+    }
+    // The TransFi payment page opens in its own tab, so this step is now a
+    // short hand-off screen rather than an embedded frame.
+    if (
+      isBuyCryptoAmount ||
+      isBuyCryptoCurrency ||
+      isBuyCryptoPaymentMethod ||
+      isBuyCryptoKycConsent ||
+      isBuyCryptoKycPending ||
+      isBuyCryptoPayment ||
+      isBuyCryptoStatus
+    ) {
+      return 'w-[470px] max-h-[90vh]';
     }
     if (isBankTransferKycFrame) {
       return 'w-[800px] h-[85vh] max-w-[95vw]';
@@ -400,6 +473,12 @@ const useDepositOption = ({
     // Details renders its own title, so it only needs the header buttons' own gap.
     if (isVirtualAccountDetails) {
       return 'gap-3';
+    }
+
+    // The deposit type picker is a short, self-contained choice screen. Let it
+    // size to its content instead of inheriting the legacy deposit flow height.
+    if (isDepositTypeSelection) {
+      return '';
     }
 
     // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
@@ -611,6 +690,17 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBuyCryptoOptions) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+    } else if (isBuyCryptoPayment) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+    } else if (isBuyCryptoStatus) {
+      // Payment already initiated — closing is the only sensible back action.
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isPublicAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isSavingsFundAddress) {

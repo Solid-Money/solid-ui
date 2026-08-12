@@ -14,7 +14,7 @@ import { useDimension } from '@/hooks/useDimension';
 
 import Loading from './Loading';
 import Navbar from './Navbar';
-import NavbarMobile from './Navbar/NavbarMobile';
+import NavbarMobile, { MOBILE_NAVBAR_CONTENT_HEIGHT } from './Navbar/NavbarMobile';
 import { SIDEBAR_BODY_TOP_GUTTER, SIDEBAR_BODY_WIDTH, useIsSidebarShell } from './Navbar/Sidebar';
 import { useRegisterTabBarBlurTarget } from './tabBar/TabBarBlurContext';
 
@@ -202,7 +202,12 @@ export default function PageLayout({
   const shouldWrapBlurTarget = shouldOverlayMobileNavbar || !!blurTargetRef;
   const resolvedBlurTargetRef = blurTargetRef ?? mobileBlurTargetRef;
   const safeAreaEdges = shouldOverlayMobileNavbar ? edges.filter(edge => edge !== 'top') : edges;
-  const mobileContentOffset = shouldOverlayMobileNavbar ? mobileNavbarOffset : 0;
+  // `onLayout` reports the exact header height after the first paint. Seed the
+  // content with the known header height until then, otherwise loading content
+  // flashes underneath the overlaid profile/activity buttons and jumps down.
+  const mobileContentOffset = shouldOverlayMobileNavbar
+    ? mobileNavbarOffset || insets.top + MOBILE_NAVBAR_CONTENT_HEIGHT
+    : 0;
   // Headerless pages in the sidebar shell get the design's top gutter here, so the
   // content clears the top of the window the way the mobile navbar's offset does.
   const contentTopOffset =

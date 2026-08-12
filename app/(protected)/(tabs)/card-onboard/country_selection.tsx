@@ -1,40 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
-import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import PageLayout from '@/components/PageLayout';
+import { RegionUnavailableView } from '@/components/RegionUnavailable';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
-import useUser from '@/hooks/useUser';
-import {
-  addToCardWaitlist,
-  addToCardWaitlistToNotify,
-  checkCardAccess,
-  checkCardWaitlistToNotifyStatus,
-  getClientIp,
-  getCountryFromIp,
-} from '@/lib/api';
-import { withRefreshToken } from '@/lib/utils';
+import { useCardStatus } from '@/hooks/useCardStatus';
+import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
-  const { user } = useUser();
 
   // Return to wherever the flow started — the redesigned home reaches this
   // screen from its card CTAs. `/card` is a redirect shim now, and it would send
@@ -47,176 +31,78 @@ export default function CountrySelection() {
     }
   };
 
-  const [loading, setLoading] = useState(true);
-  const [notifyClicked, setNotifyClicked] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [showCountrySelector, setShowCountrySelector] = useState(false);
+  // The selector renders immediately: it needs no network to be usable, and
+  // gating it on the geo lookup meant a blank loading screen for as long as the
+  // lookup took. Detection swaps in the pop-up if the card isn't issued where
+  // the user is, and otherwise just preselects their country.
+  const [showCountrySelector, setShowCountrySelector] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [confirmedAvailableCountry, setConfirmedAvailableCountry] = useState(false);
-  const [processingWaitlist, setProcessingWaitlist] = useState(false);
-  const [isInNotifyWaitlist, setIsInNotifyWaitlist] = useState(false);
-  const [checkingWaitlist, setCheckingWaitlist] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  // Set as soon as the user touches the selector. Detection lands
+  // asynchronously, and yanking someone out of a country they're part-way
+  // through picking would be worse than not showing the pop-up at all.
+  const interacted = useRef(false);
 
-  // Use useShallow for object selection to prevent unnecessary re-renders
-  const { countryInfo, setCountryInfo, setCountryDetectionFailed } = useCountryStore(
+  // `isLoading`, not `isPending`: a disabled query (no selected user yet) stays
+  // pending forever, which would stall detection instead of merely delaying it.
+  const { data: cardStatus, isLoading: cardStatusLoading } = useCardStatus();
+  // Same escape hatch as `useActivateCard`: someone holding a card or part-way
+  // through a Rain application cleared the gate once. Their IP saying otherwise
+  // (travel, VPN) must not present them with a "no card in your region" wall.
+  const clearedGate = hasCard(cardStatus) || hasCardStatusWithRainApplication(cardStatus);
+
+  const { countryInfo, setCountryInfo } = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
       setCountryInfo: state.setCountryInfo,
-      setCountryDetectionFailed: state.setCountryDetectionFailed,
     })),
   );
 
-  // Function to get country from IP and check card access
-  const getCountryFromIpAndCheckAccess = async (): Promise<{
-    countryCode: string;
-    countryName: string;
-    isAvailable: boolean;
-  } | null> => {
-    try {
-      const countryData = await getCountryFromIp();
-
-      if (!countryData) return null;
-
-      const { countryCode, countryName } = countryData;
-
-      // Check card access via backend
-      const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
-      if (!accessCheck) throw new Error('Failed to check card access');
-      return {
-        countryCode,
-        countryName,
-        isAvailable: accessCheck.hasAccess,
-      };
-    } catch (error) {
-      console.error('Error fetching country from IP:', error);
-      return null;
-    }
-  };
-
+  // Where is the user, and is the card issued there? Answering by IP is the
+  // default so an unserved user reaches the pop-up without having to name their
+  // own country first — the same way the virtual account flow works. Picking by
+  // hand stays one tap away behind "Change country", because an IP is only a
+  // guess at residence and travellers will be guessed wrong.
+  //
+  // Never blocks the screen: the selector is already on screen, and a failed
+  // lookup simply leaves it there with an empty field.
   useEffect(() => {
-    const fetchCountry = async () => {
-      // Get current store state directly to avoid dependency issues
-      const store = useCountryStore.getState();
+    // Wait for card status, or a card holder abroad would see the pop-up flash
+    // up before `clearedGate` resolves.
+    if (cardStatusLoading) return;
 
+    let cancelled = false;
+
+    const detect = async () => {
       try {
-        // First, check if we have a cached IP address
-        let ip = store.getCachedIp();
+        const access = await resolveCountryAccess('card', 'card_country_selection');
 
-        // If no cached IP or cache expired, fetch a new one
-        if (!ip) {
-          ip = await getClientIp();
+        if (cancelled || !access) return;
 
-          if (ip) {
-            store.setCachedIp(ip);
-          } else {
-            // If IP detection fails, show country selector instead of error
-            setShowCountrySelector(true);
-            setLoading(false);
-            return;
-          }
+        const country = COUNTRIES.find(c => c.code === access.countryCode);
+
+        // Don't stomp a country the user picked while detection was in flight.
+        if (country) {
+          setSelectedCountry(current => current ?? country);
+          setSearchQuery(current => current || country.name);
         }
 
-        // Check if we have a valid cached country info for this IP
-        const cachedInfo = store.getIpDetectedCountry(ip);
-
-        if (cachedInfo) {
-          // Update countryInfo to match the IP-detected country
-          store.setCountryInfo(cachedInfo);
-
-          const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
-          if (country) {
-            setSelectedCountry(country);
-            setSearchQuery(country.name);
-          }
-          // TODO: Temporarily always show country selector to allow manual selection.
-          // This will be removed later - originally: setShowCountrySelector(cachedInfo.isAvailable)
-          setShowCountrySelector(true);
-          setLoading(false);
-          return;
+        if (!access.isAvailable && !interacted.current && !clearedGate) {
+          setShowCountrySelector(false);
         }
-
-        // If country detection already failed (e.g., from ReserveCardButton),
-        // skip retry and go straight to manual selection.
-        if (store.countryDetectionFailed) {
-          setShowCountrySelector(true);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch new country info if cache is invalid or missing
-        const countryInfo = await getCountryFromIpAndCheckAccess();
-
-        if (countryInfo) {
-          store.setIpDetectedCountry(ip, countryInfo);
-          // Clear failure flag on successful detection
-          store.setCountryDetectionFailed(false);
-
-          const country = COUNTRIES.find(c => c.code === countryInfo.countryCode);
-
-          if (country) {
-            setSelectedCountry(country);
-            setSearchQuery(country.name);
-          }
-          // TODO: Temporarily always show country selector to allow manual selection.
-          // This will be removed later - originally: setShowCountrySelector(countryInfo.isAvailable)
-          setShowCountrySelector(true);
-        } else {
-          // If country detection fails, show country selector instead of error
-          setShowCountrySelector(true);
-        }
-      } catch (err) {
-        console.error('Error fetching country:', err);
-        // If any error occurs, show country selector instead of error
-        setShowCountrySelector(true);
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error('Error detecting country:', error);
       }
     };
 
-    fetchCountry();
-  }, []);
+    void detect();
 
-  // Check if user is already in notify waitlist
-  useEffect(() => {
-    const checkNotifyWaitlistStatus = async () => {
-      // Only check if country is loaded and unavailable
-      if (!countryInfo) {
-        return;
-      }
-
-      if (user?.email && !countryInfo.isAvailable) {
-        setCheckingWaitlist(true);
-        try {
-          const response = await checkCardWaitlistToNotifyStatus(user.email);
-          setIsInNotifyWaitlist(response.isInWaitlist);
-
-          if (response.isInWaitlist) {
-            setNotifyClicked(true);
-            setShowCountrySelector(false);
-          }
-        } catch (error) {
-          console.error('Error checking notify waitlist status:', error);
-          setIsInNotifyWaitlist(false);
-        } finally {
-          setCheckingWaitlist(false);
-        }
-      } else {
-        setCheckingWaitlist(false);
-        if (countryInfo.isAvailable) {
-          // Country is available (e.g. just became eligible). Make sure a stale
-          // "not available" state can't strand the user on the notify
-          // confirmation screen — show the selector so they can proceed to
-          // activate their card.
-          setNotifyClicked(false);
-          setShowCountrySelector(true);
-        }
-      }
+    return () => {
+      cancelled = true;
     };
-
-    checkNotifyWaitlistStatus();
-  }, [user?.email, countryInfo]);
+  }, [cardStatusLoading, clearedGate]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -225,125 +111,77 @@ export default function CountrySelection() {
     );
   }, [searchQuery]);
 
-  const handleNotifyByMail = async () => {
-    // Check if user has email
-    if (user && !user.email) {
-      setShowEmailModal(true);
-    } else {
-      // User already has email, add to notify waitlist directly
-      if (user?.email && countryInfo?.countryCode) {
-        try {
-          await withRefreshToken(() =>
-            addToCardWaitlistToNotify(user.email!, countryInfo.countryCode.toUpperCase()),
-          );
-        } catch (error) {
-          console.error('Error adding to card waitlist to notify:', error);
-        }
-      }
-      setNotifyClicked(true);
-    }
-  };
-
+  // "Change country" on the pop-up — the traveller's way back to picking by
+  // hand. Marks the screen as interacted so a late lookup can't bounce them
+  // straight back out to the pop-up.
   const handleChangeCountry = () => {
+    interacted.current = true;
     setShowCountrySelector(true);
-    setConfirmedAvailableCountry(false);
   };
 
   const handleOpenDropdown = () => {
+    interacted.current = true;
     setSearchQuery('');
     setShowDropdown(true);
-    setConfirmedAvailableCountry(false);
   };
 
   const handleCountrySelect = (country: Country) => {
+    interacted.current = true;
     setSelectedCountry(country);
     setSearchQuery(country.name);
     setShowDropdown(false);
   };
 
   const handleCountrySelectorOk = async () => {
-    if (selectedCountry) {
-      setProcessingWaitlist(true);
-      try {
-        // Step 2: Check card access via backend API
-        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+    if (!selectedCountry) return;
 
-        if (!accessCheck) throw new Error('Failed to check card access');
+    setProcessing(true);
+    try {
+      const hasAccess = await checkProductAccess('card', selectedCountry.code);
 
-        const updatedCountryInfo = {
-          countryCode: selectedCountry.code,
-          countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
-          source: 'manual' as const,
-        };
+      setCountryInfo({
+        countryCode: selectedCountry.code,
+        countryName: selectedCountry.name,
+        // A failed check is not a yes: fall through to the unavailable pop-up
+        // rather than sending the user into a flow the issuer will reject.
+        isAvailable: hasAccess === true,
+        source: 'manual',
+      });
 
-        setCountryInfo(updatedCountryInfo);
-        setCountryDetectionFailed(false);
-
-        if (accessCheck.hasAccess) {
-          router.push({
-            pathname: '/card/activate',
-            params: { countryConfirmed: 'true' },
-          });
-          return;
-        }
-
-        setShowCountrySelector(false);
-        setNotifyClicked(false);
-      } catch (error) {
-        console.error('Error checking card access:', error);
-        const unavailableCountryInfo = {
-          countryCode: selectedCountry.code,
-          countryName: selectedCountry.name,
-          isAvailable: false,
-          source: 'manual' as const,
-        };
-
-        setCountryInfo(unavailableCountryInfo);
-        setShowCountrySelector(false);
-        setNotifyClicked(false);
-      } finally {
-        setProcessingWaitlist(false);
+      if (hasAccess) {
+        router.push({ pathname: '/card/activate', params: { countryConfirmed: 'true' } });
+        return;
       }
+
+      setShowCountrySelector(false);
+    } finally {
+      setProcessing(false);
     }
   };
 
-  if (loading || checkingWaitlist) {
-    return <LoadingView />;
+  // Card isn't issued where they are — show what Solid still does for them
+  // instead of a dead end, and record the country as a lead.
+  if (!showCountrySelector && countryInfo && !countryInfo.isAvailable) {
+    return (
+      <RegionUnavailableView
+        product="card"
+        source="card_country_selection"
+        geo={{
+          countryCode: countryInfo.countryCode,
+          countryName: countryInfo.countryName,
+          state: countryInfo.state,
+          city: countryInfo.city,
+          detectionSource: countryInfo.source ?? 'ip',
+        }}
+        onBack={goBack}
+        onContinue={() => router.replace(path.HOME)}
+        onChangeCountry={handleChangeCountry}
+      />
+    );
   }
 
   return (
     <PageLayout desktopOnly>
-      {/* Email collection modal */}
-      <NotificationEmailModalDialog
-        open={showEmailModal}
-        onOpenChange={open => {
-          setShowEmailModal(open);
-        }}
-        onSuccess={async () => {
-          setShowEmailModal(false);
-          // Add user to waitlist or notify list based on country availability
-          if (user?.email && selectedCountry && countryInfo) {
-            try {
-              // If country is available, add to reserve waitlist
-              // Otherwise, add to notify waitlist
-              if (countryInfo.isAvailable) {
-                await withRefreshToken(() =>
-                  addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
-                );
-                setConfirmedAvailableCountry(true);
-              } else {
-                await withRefreshToken(() =>
-                  addToCardWaitlistToNotify(user.email!, selectedCountry.code.toUpperCase()),
-                );
-                setNotifyClicked(true);
-              }
-            } catch (error) {
-              console.error('Error adding to card waitlist:', error);
-            }
-          }
-        }}
-      />
       <View className="mx-auto w-full max-w-lg px-4 pt-12">
         <View className="mb-10 flex-row items-center justify-between">
           <BackButton onPress={goBack} />
@@ -353,46 +191,20 @@ export default function CountrySelection() {
           <View className="w-[50px]" />
         </View>
 
-        {showCountrySelector ? (
-          <>
-            <CountrySelector
-              selectedCountry={selectedCountry}
-              onOpenDropdown={handleOpenDropdown}
-              onOk={handleCountrySelectorOk}
-              confirmed={confirmedAvailableCountry}
-              processing={processingWaitlist}
-            />
-            <CountryDropdown
-              visible={showDropdown}
-              searchQuery={searchQuery}
-              filteredCountries={filteredCountries}
-              onClose={() => setShowDropdown(false)}
-              onSearchChange={setSearchQuery}
-              onCountrySelect={handleCountrySelect}
-            />
-          </>
-        ) : notifyClicked && countryInfo ? (
-          <View className="flex-1 justify-center">
-            <View className="w-full items-center rounded-[20px] bg-[#1C1C1C] px-10 py-8">
-              <NotifyConfirmationView
-                countryName={countryInfo.countryName}
-                countryCode={countryInfo.countryCode}
-              />
-            </View>
-          </View>
-        ) : countryInfo ? (
-          <View className="flex-1 justify-center">
-            <View className="w-full items-center rounded-[20px] bg-[#1C1C1C] px-10 py-8">
-              <CountryUnavailableView
-                countryName={countryInfo.countryName}
-                countryCode={countryInfo.countryCode}
-                onChangeCountry={handleChangeCountry}
-                onNotifyByMail={handleNotifyByMail}
-                isInNotifyWaitlist={isInNotifyWaitlist}
-              />
-            </View>
-          </View>
-        ) : null}
+        <CountrySelector
+          selectedCountry={selectedCountry}
+          onOpenDropdown={handleOpenDropdown}
+          onOk={handleCountrySelectorOk}
+          processing={processing}
+        />
+        <CountryDropdown
+          visible={showDropdown}
+          searchQuery={searchQuery}
+          filteredCountries={filteredCountries}
+          onClose={() => setShowDropdown(false)}
+          onSearchChange={setSearchQuery}
+          onCountrySelect={handleCountrySelect}
+        />
       </View>
     </PageLayout>
   );
@@ -459,7 +271,6 @@ interface CountrySelectorProps {
   selectedCountry: Country | null;
   onOpenDropdown: () => void;
   onOk: () => void;
-  confirmed?: boolean;
   processing?: boolean;
 }
 
@@ -467,7 +278,6 @@ function CountrySelector({
   selectedCountry,
   onOpenDropdown,
   onOk,
-  confirmed,
   processing,
 }: CountrySelectorProps) {
   return (
@@ -490,124 +300,29 @@ function CountrySelector({
             />
           </View>
         )}
-        {!confirmed ? (
-          <>
-            <Pressable onPress={onOpenDropdown}>
-              <View className="mb-6 mt-2 h-12 flex-row items-center justify-between rounded-xl border border-[#898989] bg-[#1A1A1A] px-4">
-                <Text className="text-white">
-                  {selectedCountry ? selectedCountry.name : 'Select country'}
-                </Text>
-                <ChevronDown color="white" size={20} />
-              </View>
-            </Pressable>
 
-            <Button
-              variant="brand"
-              className="mb-4 w-full"
-              onPress={onOk}
-              disabled={!selectedCountry || processing}
-            >
-              {processing ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text className="text-base font-bold text-black">Ok</Text>
-              )}
-            </Button>
-          </>
-        ) : (
-          <View className="items-center py-4">
-            <Text className="text-lg font-semibold text-[#94F27F]">✓ We will notify you</Text>
+        <Pressable onPress={onOpenDropdown}>
+          <View className="mb-6 mt-2 h-12 flex-row items-center justify-between rounded-xl border border-[#898989] bg-[#1A1A1A] px-4">
+            <Text className="text-white">
+              {selectedCountry ? selectedCountry.name : 'Select country'}
+            </Text>
+            <ChevronDown color="white" size={20} />
           </View>
-        )}
+        </Pressable>
+
+        <Button
+          variant="brand"
+          className="mb-4 w-full"
+          onPress={onOk}
+          disabled={!selectedCountry || processing}
+        >
+          {processing ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <Text className="text-base font-bold text-black">Ok</Text>
+          )}
+        </Button>
       </View>
     </View>
-  );
-}
-
-// Country Unavailable View
-interface CountryUnavailableViewProps {
-  countryName: string;
-  countryCode: string;
-  onChangeCountry: () => void;
-  onNotifyByMail: () => void;
-  isInNotifyWaitlist: boolean;
-}
-
-function CountryUnavailableView({
-  countryName,
-  countryCode,
-  onChangeCountry,
-  onNotifyByMail,
-  isInNotifyWaitlist,
-}: CountryUnavailableViewProps) {
-  return (
-    <>
-      <CountryFlagImage
-        isoCode={countryCode}
-        size={110}
-        className="mb-6 mt-4"
-        countryName={countryName}
-      />
-      <Text className="mb-4 text-center text-2xl font-bold text-white">
-        {`The new Solid Card is coming to you`}
-      </Text>
-      <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Click on the button below to get notified.\n`}
-        <Text
-          className="font-bold leading-6 text-white"
-          onPress={() =>
-            Linking.openURL(
-              'https://www.solid.xyz/post/solid-partners-with-rain-to-power-the-next-era-of-global-crypto-cards',
-            )
-          }
-          accessibilityRole="link"
-        >
-          Learn more
-        </Text>
-      </Text>
-      <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
-        <Text className="text-base font-bold text-white">Change country</Text>
-      </Pressable>
-      {!isInNotifyWaitlist && (
-        <Button variant="brand" className="mt-6 w-full" onPress={onNotifyByMail}>
-          <Text className="text-base font-bold text-black">Notify by mail</Text>
-        </Button>
-      )}
-    </>
-  );
-}
-
-// Notify Confirmation View
-interface NotifyConfirmationViewProps {
-  countryName: string;
-  countryCode: string;
-}
-
-function NotifyConfirmationView({ countryName, countryCode }: NotifyConfirmationViewProps) {
-  return (
-    <>
-      <CountryFlagImage
-        isoCode={countryCode}
-        size={110}
-        className="mb-6"
-        countryName={countryName}
-      />
-      <Text className="mb-4 text-center text-2xl font-semibold text-white">Thanks</Text>
-      <Text className="mb-8 text-center leading-6 text-[#ACACAC]">
-        {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}
-      </Text>
-    </>
-  );
-}
-
-// Loading View
-function LoadingView() {
-  return (
-    <PageLayout desktopOnly scrollable={false}>
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#94F27F" />
-        <Text className="mt-4 text-white/70">Loading...</Text>
-      </View>
-    </PageLayout>
   );
 }
