@@ -53,7 +53,7 @@ export const useBuyCryptoEntry = () => {
           break;
         case 'needs_kyc':
         default:
-          await routeToKyc(status?.kycProvider);
+          await routeToKyc();
           break;
       }
     } catch (err) {

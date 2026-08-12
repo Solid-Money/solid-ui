@@ -53,9 +53,9 @@ export const TransfiKycPending = () => {
   // again rather than wait on a decision that will never come.
   useEffect(() => {
     if (status?.status === 'needs_kyc') {
-      void routeToKyc(status.kycProvider);
+      void routeToKyc();
     }
-  }, [status?.status, status?.kycProvider, routeToKyc]);
+  }, [status?.status, routeToKyc]);
 
   const handleRetry = useCallback(() => {
     attemptsRef.current = 0;

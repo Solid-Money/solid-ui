@@ -41,7 +41,7 @@ export const TransfiKycConsent = () => {
           // TransFi found the shared verification incomplete — send the user
           // back through identity verification rather than to a pending screen
           // that will never resolve.
-          void routeToKyc(result.kycProvider);
+          void routeToKyc();
         } else {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
         }
