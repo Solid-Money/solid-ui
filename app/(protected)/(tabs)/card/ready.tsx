@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { CardStatusPage } from '@/components/Card/CardStatusPage';
@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
+import { path } from '@/constants/path';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { CardStatus } from '@/lib/types';
-import { getActiveCardRoute, withRefreshToken } from '@/lib/utils';
+import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -88,6 +89,17 @@ export default function CardReady() {
 
   const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
 
+  // This screen creates the card, and the backend allows exactly one per
+  // provider. Re-entering it with a card already in flight (browser back, a deep
+  // link, a stale tab) leaves the only button here guaranteed to fail with "card
+  // already exists", so route to where that card actually lives instead.
+  if (!activating && hasCard(cardStatusResponse)) {
+    return <Redirect href={getActiveCardRoute(cardStatusResponse)} />;
+  }
+  if (!activating && hasPendingCard(cardStatusResponse)) {
+    return <Redirect href={path.CARD_ACTIVATE} />;
+  }
+
   const handleActivateCard = async () => {
     if (!allAccepted) return;
 
@@ -107,19 +119,30 @@ export default function CardReady() {
 
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
+      // Show the welcome popup whenever the card lands, including when it opens a
+      // moment later on the issuance flow.
+      setShouldShowWelcomePopup(true);
+
       if (card.status !== CardStatus.PENDING) {
-        setShouldShowWelcomePopup(true);
         // BD users land on the issuance flow to complete the minimum-deposit
         // step before reaching card details; everyone else goes to details.
         router.replace(getActiveCardRoute(cardStatusResponse));
-      } else {
-        Toast.show({
-          type: 'success',
-          text1: 'Card activation in progress',
-          text2: 'Your card is being set up. Please wait.',
-          props: { badgeText: '' },
-        });
+        return;
       }
+
+      // The card exists but the issuer hasn't opened it yet. Leaving the user on
+      // this screen was a dead end: the consents are already submitted and the
+      // card is already created, so the only button here now fails with "card
+      // already exists", and nothing on the page ever notices the card going
+      // live. The issuance flow shows the "on its way" state, polls card status,
+      // and forwards to the card details page the moment it opens.
+      Toast.show({
+        type: 'success',
+        text1: 'Card creation in progress',
+        text2: "We're finishing up your card — this page will update itself.",
+        props: { badgeText: '' },
+      });
+      router.replace(path.CARD_ACTIVATE);
     } catch (error) {
       console.error('Error activating card:', error);
       Toast.show({

@@ -4,7 +4,12 @@ import { Redirect } from 'expo-router';
 import PageLayout from '@/components/PageLayout';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { getActiveCardRoute, hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import {
+  getActiveCardRoute,
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasPendingCard,
+} from '@/lib/utils';
 
 /**
  * `/card` is deprecated as a destination — it used to render the standalone card
@@ -26,6 +31,13 @@ export default function Card() {
   // to card details.
   if (hasCard(cardStatus)) {
     return <Redirect href={getActiveCardRoute(cardStatus)} />;
+  }
+
+  // A card is ordered but the issuer hasn't opened it yet. The issuance flow
+  // renders the "on its way" state and polls until it does; country selection
+  // would restart onboarding this user already completed.
+  if (hasPendingCard(cardStatus)) {
+    return <Redirect href={path.CARD_ACTIVATE} />;
   }
 
   // A Rain application is already in flight (KYC submitted, card pending) —
