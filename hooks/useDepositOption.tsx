@@ -402,7 +402,7 @@ const useDepositOption = ({
 
   const getContentClassName = () => {
     if (isVirtualAccountApply) {
-      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-[419px] md:max-w-[419px] md:px-0 md:pt-0';
+      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:px-0 md:pt-0';
     }
 
     if (isBuyCrypto) {
@@ -444,6 +444,12 @@ const useDepositOption = ({
     // Details renders its own title, so it only needs the header buttons' own gap.
     if (isVirtualAccountDetails) {
       return 'gap-3';
+    }
+
+    // The deposit type picker is a short, self-contained choice screen. Let it
+    // size to its content instead of inheriting the legacy deposit flow height.
+    if (isDepositTypeSelection) {
+      return '';
     }
 
     // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen

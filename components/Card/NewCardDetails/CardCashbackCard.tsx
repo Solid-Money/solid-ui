@@ -37,7 +37,7 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
         <CashbackDiamondIcon />
         <Text className="ml-[6px] text-[18px] font-medium text-white">
           Cashback earned:{' '}
-          <Text className="text-[18px] font-medium text-[#94F27F]">
+          <Text className="text-[18px] font-medium text-[#94F27F]" style={styles.earnedAmount}>
             ${formatNumber(earned, 0, 0)}
           </Text>{' '}
           / ${formatNumber(cap, 0, 0)}
@@ -60,6 +60,7 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
 };
 
 const styles = StyleSheet.create({
+  earnedAmount: { position: 'relative', top: -2 },
   // Figma: icon left edge at 21, title baseline block starting at y=23.
   titleRow: { alignItems: 'center', flexDirection: 'row', paddingLeft: 21, paddingTop: 21 },
   // 5pt rounded track, inset 21 on both sides, 16 below the title.

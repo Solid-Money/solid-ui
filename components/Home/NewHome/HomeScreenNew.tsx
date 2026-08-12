@@ -47,13 +47,15 @@ export default function HomeScreenNew() {
 
   const { user } = useUser();
   const queryClient = useQueryClient();
-  const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
-    user?.safeAddress as Address,
-  );
+  const {
+    data: balance,
+    isLoading: isBalanceLoading,
+    isError: isBalanceError,
+  } = useVaultBalance(user?.safeAddress as Address);
   const updateUser = useUserStore(state => state.updateUser);
   const intercom = useIntercom();
-  const { data: cardStatus } = useCardStatus();
-  const { data: cardDetails } = useCardDetails();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
+  const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
 
   const userHasCard = hasCard(cardStatus);
 
@@ -90,12 +92,29 @@ export default function HomeScreenNew() {
     hasTriggeredInitialRefresh.current = false;
   }, [user?.safeAddress]);
 
-  const { data: userDepositTransactions } = useUserTransactions(user?.safeAddress);
+  const {
+    data: userDepositTransactions,
+    isLoading: isDepositsLoading,
+    isError: isDepositsError,
+  } = useUserTransactions(user?.safeAddress);
   const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
   const isDeposited = !!userDepositTransactions?.deposits?.length;
   const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
   const depositCompleted = isDeposited || hasTokens || (balance ?? 0) > 0;
+  // `false` is not a meaningful answer until every source that can prove the
+  // account is funded has settled. Without this tri-state guard, the initial
+  // empty query values briefly render the "Fund your wallet" prompt for funded
+  // users. Errors stay unresolved too; a failed request must not look like a
+  // confirmed zero balance.
+  const isDepositStatusUnresolved =
+    !depositCompleted &&
+    (isDepositsLoading ||
+      isLoadingTokens ||
+      isBalanceLoading ||
+      isDepositsError ||
+      !!tokenError ||
+      isBalanceError);
 
   useEffect(() => {
     if (!user) return;
@@ -114,8 +133,13 @@ export default function HomeScreenNew() {
     });
   }, [user, intercom]);
 
+  const isCardBalanceLoading = isCardStatusLoading || (userHasCard && isCardDetailsLoading);
   const isBalanceSectionLoading =
-    isLoadingTokens || isBalanceLoading || isTotalSavingsLoading || totalSavingsUSD === undefined;
+    isLoadingTokens ||
+    isBalanceLoading ||
+    isTotalSavingsLoading ||
+    isCardBalanceLoading ||
+    totalSavingsUSD === undefined;
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
   // Headline = Wallet + Card. They're only combined for display; the breakdown
@@ -141,10 +165,21 @@ export default function HomeScreenNew() {
     >
       <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceSectionLoading ? (
-          <View className="items-center gap-6 pt-6">
-            <Skeleton className="h-16 w-48 rounded-xl" />
-            <Skeleton className="h-9 w-32 rounded-full" />
-            <Skeleton className="h-14 w-11/12 rounded-full" />
+          // Mirror the loaded wrappers and their heights so the wallet card does
+          // not jump when the headline, breakdown pill and actions replace these.
+          <View className="gap-5">
+            <View className="items-center gap-1 pt-2">
+              <Skeleton className="h-6 w-28 rounded-md" />
+              <Skeleton className="h-[54px] w-48 rounded-xl" />
+            </View>
+            <View className="items-center" style={{ transform: [{ translateY: -10 }] }}>
+              <Skeleton className="h-[35px] w-32 rounded-full" />
+            </View>
+            <View className="flex-row items-center gap-3 px-4">
+              <Skeleton className="h-14 flex-1 rounded-full" />
+              <Skeleton className="h-14 flex-1 rounded-full" />
+              <Skeleton className="h-14 flex-1 rounded-full" />
+            </View>
           </View>
         ) : (
           <View className="gap-5">
@@ -176,7 +211,7 @@ export default function HomeScreenNew() {
             last4={cardDetails?.card_details?.last_4}
             depositCompleted={depositCompleted}
           />
-          {promptKey && (
+          {!isCardStatusLoading && !isDepositStatusUnresolved && promptKey && (
             <HeroExit spec={HERO_EXIT.belowCard}>
               <HomePromptCard
                 promptKey={promptKey}

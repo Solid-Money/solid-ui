@@ -41,13 +41,13 @@ import RewardsSummaryCard from './RewardsSummaryCard';
  */
 export default function RewardsScreenNew() {
   const isFocused = useIsFocused();
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { data: referralSummary } = useReferralSummary();
-  const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
-  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
   );
@@ -175,14 +175,13 @@ export default function RewardsScreenNew() {
             </Pressable>
           </View>
 
-          {/* Spin & Win is an in-development feature: shown on qa/preview builds,
-              hidden in production. The flow is also a native-only modal
-              (SpinWinModalProvider force-closes on web). It is deliberately NOT
-              gated on `spinStatus.isAllowed`: the provider already closes itself
-              when the backend says the user isn't eligible, and gating here made
-              the button vanish silently whenever the status request hadn't
-              resolved or failed. */}
-          {isDevFeatureEnabled && Platform.OS !== 'web' && (
+          {/* The spin & win flow is a native-only modal — SpinWinModalProvider
+              force-closes itself on web — so the button stays native-only. It is
+              deliberately NOT gated on `spinStatus.isAllowed`: the provider
+              already closes itself when the backend says the user isn't
+              eligible, and gating here made the button vanish silently whenever
+              the status request hadn't resolved or failed. */}
+          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
             <View className="px-4">
               <Pressable
                 onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}

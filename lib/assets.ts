@@ -125,6 +125,10 @@ export const ASSETS = {
   },
   'images/avantis.png': { module: require('@/assets/images/avantis.png'), hash: '1aad6bc0' },
   'images/backspace.png': { module: require('@/assets/images/backspace.png'), hash: '46dc5885' },
+  'images/badge-apple-google-pay.png': {
+    module: require('@/assets/images/badge-apple-google-pay.png'),
+    hash: 'afacb38c',
+  },
   'images/badge-apple-pay.svg': {
     module: require('@/assets/images/badge-apple-pay.svg'),
     hash: '99352f93',

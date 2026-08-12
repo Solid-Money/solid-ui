@@ -95,7 +95,13 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
       {hasCard ? (
-        <AddFundsDestinationModal trigger={addFundsTrigger} />
+        // AddFundsDestinationModal also mounts two controlled dialog roots. On
+        // web those roots render as zero-width Views, which the row otherwise
+        // counts as extra children and inserts a gap around. Keep the whole flow
+        // in one flex item so only the three visible actions define this layout.
+        <View className={hasFunds ? 'h-14 flex-1' : 'w-full'}>
+          <AddFundsDestinationModal trigger={addFundsTrigger} />
+        </View>
       ) : (
         <DepositOptionModal trigger={addFundsTrigger} />
       )}

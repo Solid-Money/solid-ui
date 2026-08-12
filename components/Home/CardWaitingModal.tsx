@@ -26,6 +26,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useDimension } from '@/hooks/useDimension';
 import { HomeSetupStep } from '@/hooks/useHomeSetupSteps';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
@@ -48,8 +49,8 @@ interface Benefit {
   label: string;
 }
 
-// Wallet benefit follows the platform's own wallet — Apple Pay on iOS (Figma
-// node 22052:915/933), Google Pay everywhere else.
+// Mobile follows the platform's own wallet — Apple Pay on iOS, Google Pay
+// everywhere else.
 const WALLET_BENEFIT: Benefit =
   Platform.OS === 'ios'
     ? {
@@ -72,6 +73,19 @@ const WALLET_BENEFIT: Benefit =
         },
         label: 'Google Pay\nsupport',
       };
+
+// Web can support both wallet providers, so it uses the combined badge and copy
+// from Figma nodes 22052:933 and 22052:915 at every viewport width.
+const WEB_WALLET_BENEFIT: Benefit = {
+  badgeWidth: 134,
+  content: {
+    type: 'icon',
+    source: getAsset('images/badge-apple-google-pay.png'),
+    width: 134,
+    height: 49,
+  },
+  label: 'Apple Pay &\nGoogle Pay support',
+};
 
 // Benefits grid — 2 columns × 3 rows, matching Figma node 20964:2674.
 const BENEFITS: Benefit[] = [
@@ -123,6 +137,8 @@ const BENEFITS: Benefit[] = [
   },
 ];
 
+const WEB_BENEFITS = BENEFITS.map((benefit, index) => (index === 1 ? WEB_WALLET_BENEFIT : benefit));
+
 const BADGE_HEIGHT = 49;
 const ROW_HEIGHT = 143;
 const HAIRLINE = 'rgba(255,255,255,0.1)';
@@ -133,7 +149,7 @@ const MODAL_BACKGROUND = '#111111';
 const FADE_EXTENT = 120;
 const CTA_HEIGHT = 50;
 const CTA_PADDING_TOP = 16;
-const CTA_PADDING_BOTTOM = 65;
+const CTA_PADDING_BOTTOM = 55;
 
 const BenefitCell = ({
   benefit,
@@ -184,6 +200,7 @@ const BenefitCell = ({
 const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModalProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useDimension();
   const [checkingCountry, setCheckingCountry] = useState(false);
   const { data: cardStatus } = useCardStatus();
   // Same escape hatch as `skipCountryCheck` in useActivateCard: someone holding
@@ -195,6 +212,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
   // CTA sitting too close to the bottom edge. Floor it so the button always
   // clears the nav bar; iOS keeps its (correct) home-indicator inset.
   const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 0);
+  const benefits = Platform.OS === 'web' ? WEB_BENEFITS : BENEFITS;
 
   // Hero entrance — card spins/settles in from Figma node 20964:2589: fades in,
   // rises 18px, scales up from 0.55 and un-tilts 8deg, with a spring settle.
@@ -282,13 +300,17 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
       disableScroll
       fillViewportHeight
       containerClassName="gap-0"
-      contentClassName="overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:px-0 md:pt-0"
+      contentClassName={
+        isDesktop
+          ? 'overflow-hidden bg-[#111]'
+          : 'overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:px-0 md:pt-0'
+      }
     >
       <View className="flex-1">
         <ScrollView
           className="flex-1"
           contentContainerStyle={{
-            paddingTop: 80,
+            paddingTop: 50,
             paddingBottom: CTA_PADDING_TOP + CTA_HEIGHT + bottomInset + CTA_PADDING_BOTTOM + 24,
           }}
           showsVerticalScrollIndicator={false}
@@ -303,8 +325,8 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
           </Animated.View>
 
           <Text
-            className="mt-[27px] text-center text-[30px] font-medium -tracking-[1px] text-white"
-            style={{ lineHeight: 36 }}
+            className="text-center text-[30px] font-medium -tracking-[1px] text-white"
+            style={{ lineHeight: 36, marginTop: 17 }}
           >
             Your card is waiting
           </Text>
@@ -318,7 +340,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
           </View>
 
           {/* Benefits grid */}
-          <View className="mt-[51px] px-[18px]">
+          <View className={isDesktop ? 'mt-[51px]' : 'mt-[51px] px-[18px]'}>
             <View className="overflow-hidden rounded-[23px] bg-[#1C1C1C]">
               {[0, 2, 4].map((start, rowIndex) => (
                 <View
@@ -328,8 +350,8 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
                     rowIndex < 2 ? { borderBottomWidth: 1, borderBottomColor: HAIRLINE } : undefined
                   }
                 >
-                  <BenefitCell benefit={BENEFITS[start]} showRightBorder />
-                  <BenefitCell benefit={BENEFITS[start + 1]} showRightBorder={false} />
+                  <BenefitCell benefit={benefits[start]} showRightBorder />
+                  <BenefitCell benefit={benefits[start + 1]} showRightBorder={false} />
                 </View>
               ))}
             </View>
@@ -343,7 +365,7 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
           pointerEvents="box-none"
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60 + FADE_EXTENT }}
         >
-          <View className="px-[18px] pb-2 pt-2">
+          <View className={isDesktop ? 'pb-2 pt-2' : 'px-[18px] pb-2 pt-2'}>
             <Pressable
               onPress={onClose}
               className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
@@ -368,14 +390,15 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
         >
           <View
             style={{
-              paddingHorizontal: 18,
+              paddingHorizontal: isDesktop ? 0 : 18,
               paddingTop: CTA_PADDING_TOP,
               paddingBottom: bottomInset + CTA_PADDING_BOTTOM,
             }}
           >
             <Button
               variant="brand"
-              className="h-[50px] w-full rounded-full border-0 active:opacity-90"
+              className="w-full rounded-full border-0 active:opacity-90"
+              style={{ height: CTA_HEIGHT }}
               onPress={handleVerify}
               disabled={checkingCountry}
             >

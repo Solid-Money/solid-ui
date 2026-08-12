@@ -15,8 +15,8 @@ import { CardHeroRect } from '@/store/useCardHeroStore';
  * it ever disagrees (e.g. the screen was left scrolled from a previous visit).
  */
 
-/** `max-w-lg` on the screen's content container. */
-export const CONTENT_MAX_WIDTH = 512;
+/** `max-w-[40rem]` on the screen's content container, matching the desktop body. */
+export const CONTENT_MAX_WIDTH = 640;
 /** `px-4` on the content container. */
 export const CONTENT_PADDING = 16;
 /** Header: the back button sits 15pt below the safe area and is 50pt tall. */
@@ -60,24 +60,33 @@ interface DestinationArgs {
    * is a column beside it (see `usePageLeft`).
    */
   pageLeft?: number;
+  /**
+   * Optional window-space horizontal center to preserve. On desktop web the wallet
+   * ScrollView's scrollbar makes its usable body a few pixels narrower than the
+   * absolute details pane, so centring against the raw window would introduce a
+   * small sideways drift during the flight.
+   */
+  centerX?: number;
 }
 
 /**
  * Where the card's artwork box comes to rest on the card-details screen, in window
  * coordinates. The visible card spans the content column — the container capped by
- * `max-w-lg`, less its `px-4` — so the artwork box around it is wider still by the
+ * `max-w-[40rem]`, less its `px-4` — so the artwork box around it is wider still by the
  * shadow it bakes into each side, and centred on the same column.
  */
 export const getCardHeroDestination = ({
   windowWidth,
   topInset,
   pageLeft = 0,
+  centerX,
 }: DestinationArgs): CardHeroRect => {
   const pageWidth = windowWidth - pageLeft;
   const containerWidth = Math.min(pageWidth, CONTENT_MAX_WIDTH);
   const width = (containerWidth - CONTENT_PADDING * 2) / CARD_BODY_WIDTH_RATIO;
+  const resolvedCenterX = centerX ?? pageLeft + pageWidth / 2;
   return {
-    x: pageLeft + (pageWidth - width) / 2,
+    x: resolvedCenterX - width / 2,
     y: topInset + HEADER_HEIGHT + CARD_TOP_GAP - width * CARD_TOP_SHADOW_RATIO,
     width,
     height: width / NEW_CARD_ASPECT_RATIO,

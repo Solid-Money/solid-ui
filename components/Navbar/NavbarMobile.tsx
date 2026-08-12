@@ -29,6 +29,11 @@ const TITLE_TRANSITION = {
   easing: Easing.out(Easing.cubic),
 };
 
+// The 50px action buttons use -3px vertical margins inside a row with 16px
+// padding: 50 - 6 + 32 = 76. PageLayout uses this before onLayout fires so
+// scrolling content never renders underneath the overlaid header for one frame.
+export const MOBILE_NAVBAR_CONTENT_HEIGHT = 76;
+
 // A nested backdrop filter cannot sample through the opacity-animated parent on
 // web, so keep the web filter on that parent itself. Native continues to use
 // BlurView below, including the Android blur target.
