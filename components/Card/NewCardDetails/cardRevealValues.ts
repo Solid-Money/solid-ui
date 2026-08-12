@@ -12,16 +12,21 @@ export interface CardRevealValues {
 }
 
 /**
- * Stand-in values used when the reveal request fails, so the flip + slide-down
- * still play and the screen can be inspected. These are the literal placeholders
- * from the Figma reveal frame (21742:4077).
+ * Masks shown when a value is genuinely unavailable.
+ *
+ * These used to be the literal placeholders from the Figma reveal frame
+ * (6483 6483 6483 6483, 12/27, 234, JOHN DOE) so the flip still played on a
+ * failed reveal. That rendered a plausible-looking card the user could try to
+ * type into a checkout, and read as the feature working when it had not — the
+ * reveal must never invent card data. Masks are unmistakably not data, and a
+ * failed reveal now surfaces the error instead of flipping the card.
  */
-const DUMMY = {
-  number: '6483',
-  expiry: '12/27',
-  cvv: '234',
-  nameOnCard: 'JOHN DOE',
-  issuingCountry: 'Singapore',
+const MASK = {
+  numberGroup: '••••',
+  expiry: '••/••',
+  cvv: '•••',
+  nameOnCard: '',
+  issuingCountry: '',
 };
 
 /** Figma renders the number as four groups separated by three spaces. */
@@ -32,8 +37,13 @@ export const groupCardNumber = (cardNumber: string) =>
     .trim();
 
 const formatExpiry = (expiryDate: string) => {
-  // Rain returns MM/YY directly; Bridge returns YYYY-MM-DD.
+  // Rain returns MM/YY directly.
   if (/^\d{2}\/\d{2}$/.test(expiryDate)) return expiryDate;
+  // Wirex returns MM/YYYY. `new Date('12/2027')` is not reliably parseable, so
+  // truncate the century rather than routing it through Date.
+  const monthYear = /^(\d{2})\/\d{2}(\d{2})$/.exec(expiryDate);
+  if (monthYear) return `${monthYear[1]}/${monthYear[2]}`;
+  // Bridge returns YYYY-MM-DD.
   const date = new Date(expiryDate);
   if (Number.isNaN(date.getTime())) return expiryDate;
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -48,9 +58,11 @@ interface ResolveArgs {
 }
 
 /**
- * Builds the values shown on the revealed card and in the panel. Anything the
- * backend couldn't supply falls back to the design's placeholder, so a failed
- * reveal still renders the designed layout instead of a dead spinner.
+ * Builds the values shown on the revealed card and in the panel.
+ *
+ * Anything the issuer didn't supply renders as a mask, never as invented data —
+ * `numberPlain` stays empty in that case so a copy action cannot put a
+ * made-up card number on the clipboard.
  */
 export const resolveCardRevealValues = ({
   revealed,
@@ -63,11 +75,14 @@ export const resolveCardRevealValues = ({
     : '';
 
   return {
-    number: numberPlain ? groupCardNumber(numberPlain) : groupCardNumber(DUMMY.number.repeat(4)),
-    numberPlain: numberPlain || DUMMY.number.repeat(4),
-    expiry: revealed?.expiry_date ? formatExpiry(revealed.expiry_date) : DUMMY.expiry,
-    cvv: revealed?.card_security_code || DUMMY.cvv,
-    nameOnCard: name || DUMMY.nameOnCard,
-    issuingCountry: issuingCountry || DUMMY.issuingCountry,
+    number: numberPlain
+      ? groupCardNumber(numberPlain)
+      : Array(4).fill(MASK.numberGroup).join('   '),
+    // Deliberately empty rather than masked: this is what gets copied.
+    numberPlain,
+    expiry: revealed?.expiry_date ? formatExpiry(revealed.expiry_date) : MASK.expiry,
+    cvv: revealed?.card_security_code || MASK.cvv,
+    nameOnCard: name || MASK.nameOnCard,
+    issuingCountry: issuingCountry || MASK.issuingCountry,
   };
 };
