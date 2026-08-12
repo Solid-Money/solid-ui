@@ -703,6 +703,31 @@ export interface CardPinResponseDto {
   encryptedPin: CardSecretsEncryptedField;
 }
 
+// --- Wirex card reveal ---
+/**
+ * A short-lived, user-scoped Wirex session minted by our backend so this client
+ * can read its own card's PAN/CVV directly from Wirex.
+ *
+ * Wirex requires sensitive card data to be fetched client-side unless the
+ * proxying backend is PCI DSS compliant, so the card number travels from Wirex
+ * straight to the device and never through our servers. `accessToken` is a
+ * secret: keep it in memory for the duration of the reveal and never persist it.
+ */
+export interface WirexRevealSessionResponse {
+  accessToken: string;
+  expiresAt?: number;
+  /** Wirex API origin, supplied by the backend so envs can move without a release. */
+  apiBaseUrl: string;
+  chainId: string;
+  cardId: string;
+  /** The EOA that must sign the confirmation message. */
+  walletAddress: string;
+  /** Action the signature is scoped to (`GetCardDetails`). */
+  actionType: string;
+  /** Message to sign, containing a `{nonce}` placeholder to substitute. */
+  messageTemplate: string;
+}
+
 // --- Rain contracts (funding) ---
 export interface RainContractTokenDto {
   address: string;
