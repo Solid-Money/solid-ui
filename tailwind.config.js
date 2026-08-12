@@ -129,6 +129,9 @@ module.exports = {
         'referral-success': {
           DEFAULT: 'hsl(var(--referral-success))',
         },
+        'referral-unlocking': {
+          DEFAULT: 'hsl(var(--referral-unlocking))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),

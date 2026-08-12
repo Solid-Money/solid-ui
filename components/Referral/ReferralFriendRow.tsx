@@ -51,7 +51,7 @@ const CHIP_TONE: Record<ChipTone, { container: string; text: string }> = {
   neutral: { container: 'bg-white/[0.08]', text: 'text-white/60' },
   progress: { container: 'bg-referral-progress/[0.12]', text: 'text-referral-progress' },
   success: { container: 'bg-referral-success/[0.12]', text: 'text-referral-success' },
-  unlocking: { container: 'bg-pale-purple/[0.12]', text: 'text-pale-purple' },
+  unlocking: { container: 'bg-referral-unlocking/[0.12]', text: 'text-referral-unlocking' },
   warning: { container: 'bg-rewards/[0.12]', text: 'text-rewards' },
 };
 
@@ -246,9 +246,10 @@ export default function ReferralFriendRow({
       // Rows cascade in rather than all appearing at once — same easing family
       // as the hero avatars so the screen reads as one motion system.
       entering={FadeIn.delay(Math.min(index, 8) * 60).duration(320)}
-      // Three columns: numbering, details, status. `items-start` puts the
-      // status pill on the first row (level with the friend's name) rather than
-      // letting it drift to the row's vertical centre.
+      // Three columns: numbering, details, status. `items-center` matches the
+      // design, which centres the status pill against the row rather than
+      // aligning it to the name: the pill sits at y=38.5 with height 24 in a
+      // 100px row, so its centre lands on the row's centre.
       //
       // The divider is driven off `index` rather than a `first:` variant.
       // NativeWind only maps hover/active/focus/disabled/empty pseudo-classes;
@@ -260,7 +261,7 @@ export default function ReferralFriendRow({
       // tall), and the divider is full-bleed because the card itself carries no
       // horizontal padding.
       className={cn(
-        'flex-row items-start justify-between gap-2 px-4 py-3',
+        'flex-row items-center justify-between gap-2 px-4 py-3',
         index > 0 && 'border-t border-white/[0.06]',
       )}
     >
