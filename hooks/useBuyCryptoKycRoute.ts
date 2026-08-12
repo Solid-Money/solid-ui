@@ -32,7 +32,9 @@ export const useBuyCryptoKycRoute = () => {
     async (fallbackProvider?: KycProvider) => {
       setKycFlow('transfi');
 
-      const { kycProvider, countryCode } = await resolveKycProvider(fallbackProvider);
+      // 'onramp': this identity is for TransFi, which uses Sumsub independently of
+      // the Wirex card, so it must not be switched off with the card's gate.
+      const { kycProvider, countryCode } = await resolveKycProvider(fallbackProvider, 'onramp');
 
       setKycProvider(kycProvider);
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
