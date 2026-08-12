@@ -41,6 +41,8 @@
     /* Referral friend-status accents (Figma "Referral program — all invite states") */
     --referral-progress: 202.9 100% 71.18%;
     --referral-success: 142.96 61.5% 63.33%;
+    /* #b39bff — brighter than --pale-purple (#a194eb), so it needs its own token */
+    --referral-unlocking: 254.4 100% 80.4%;
   }
 
   /* Override Tailwind's default system stack on web */
