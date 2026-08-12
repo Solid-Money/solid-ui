@@ -42,18 +42,25 @@ const resolveRoutingCountry = async (): Promise<string | undefined> => {
  * backend keeps `fallbackProvider`, which defaults to Didit because Didit is
  * available everywhere.
  *
+ * The card answer is gated server-side on whether Wirex is enabled in that
+ * environment, so a Wirex country resolves to Didit in production. That gate is
+ * why the country alone is not enough to decide: the routing must be asked for.
+ *
  * @param fallbackProvider provider to keep when the country or routing is
  *   unavailable — the buy-crypto flow passes the backend's own suggestion here.
+ * @param flow which product is asking. `onramp` skips the Wirex card gate, since
+ *   TransFi's use of Sumsub is live independently of the card.
  */
 export const resolveKycProvider = async (
   fallbackProvider: KycProvider = KycProvider.DIDIT,
+  flow: 'card' | 'onramp' = 'card',
 ): Promise<ResolvedKycProvider> => {
   const countryCode = await resolveRoutingCountry();
 
   if (!countryCode) return { kycProvider: fallbackProvider };
 
   try {
-    const routing = await withRefreshToken(() => getProviderRouting(countryCode));
+    const routing = await withRefreshToken(() => getProviderRouting(countryCode, flow));
     return { kycProvider: routing?.kycProvider ?? fallbackProvider, countryCode };
   } catch {
     // backend unavailable → keep the fallback

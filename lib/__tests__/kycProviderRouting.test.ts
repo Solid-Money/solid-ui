@@ -48,7 +48,9 @@ describe('resolveKycProvider', () => {
       kycProvider: KycProvider.SUMSUB,
       countryCode: 'DE',
     });
-    expect(mockGetProviderRouting).toHaveBeenCalledWith('DE');
+    // 'card' is passed explicitly: the backend gates the card answer on whether
+    // Wirex is enabled in that environment.
+    expect(mockGetProviderRouting).toHaveBeenCalledWith('DE', 'card');
   });
 
   it('routes everywhere else to Didit', async () => {
@@ -93,7 +95,7 @@ describe('resolveKycProvider', () => {
       kycProvider: KycProvider.SUMSUB,
       countryCode: 'FR',
     });
-    expect(mockGetProviderRouting).toHaveBeenCalledWith('FR');
+    expect(mockGetProviderRouting).toHaveBeenCalledWith('FR', 'card');
   });
 
   it('prefers the stored country over an IP lookup, so a manual pick wins', async () => {
@@ -145,6 +147,49 @@ describe('resolveKycProvider', () => {
   it('keeps the fallback when the backend answers without a provider', async () => {
     storeCountry('DE');
     mockGetProviderRouting.mockResolvedValue({} as any);
+
+    await expect(resolveKycProvider()).resolves.toEqual({
+      kycProvider: KycProvider.DIDIT,
+      countryCode: 'DE',
+    });
+  });
+});
+
+/**
+ * The card answer is gated server-side on whether Wirex is enabled in the
+ * environment — Wirex is staging-only, and country→provider routing is a code
+ * constant that ships to production unchanged. The onramp must not be caught by
+ * that gate: TransFi's use of Sumsub for identity is live in its own right.
+ */
+describe('resolveKycProvider flow gating', () => {
+  it('asks for the card answer by default', async () => {
+    storeCountry('DE');
+    mockGetProviderRouting.mockResolvedValue(wirexRouting('DE'));
+
+    await resolveKycProvider();
+
+    expect(mockGetProviderRouting).toHaveBeenCalledWith('DE', 'card');
+  });
+
+  it('asks for the ungated onramp answer when the buy-crypto flow routes', async () => {
+    storeCountry('DE');
+    mockGetProviderRouting.mockResolvedValue(wirexRouting('DE'));
+
+    await resolveKycProvider(KycProvider.DIDIT, 'onramp');
+
+    expect(mockGetProviderRouting).toHaveBeenCalledWith('DE', 'onramp');
+  });
+
+  it('follows the backend when it gates a Wirex country down to Didit', async () => {
+    // What production now returns for a Wirex country: the geography says Wirex,
+    // the environment says no, so the user goes to Didit and is never routed into
+    // a staging-only issuer.
+    storeCountry('DE');
+    mockGetProviderRouting.mockResolvedValue({
+      countryCode: 'DE',
+      cardProvider: CardProvider.RAIN,
+      kycProvider: KycProvider.DIDIT,
+    });
 
     await expect(resolveKycProvider()).resolves.toEqual({
       kycProvider: KycProvider.DIDIT,
