@@ -7,6 +7,7 @@ import {
   getDepositStepDescription,
   getDepositStepIndex,
   isDepositWithSteps,
+  isSavingsDestination,
   normalizeDepositStep,
 } from '@/lib/utils/deposit-steps';
 
@@ -255,8 +256,10 @@ describe('getDepositStepDescription', () => {
     expect(getDepositStepDescription('depositing')).toBe('Depositing to vault...');
   });
 
-  it('returns "Minting soUSD..." for "minting"', () => {
-    expect(getDepositStepDescription('minting')).toBe('Minting soUSD...');
+  it('returns a vault-neutral minting message for "minting"', () => {
+    // Savings deposits mint soUSD, soETH or soFUSE depending on the token, so
+    // the copy no longer names one of them.
+    expect(getDepositStepDescription('minting')).toBe('Minting your savings position...');
   });
 
   it('returns null for "complete" (handled by SUCCESS status display)', () => {
@@ -283,7 +286,7 @@ describe('DEPOSIT_STEPS', () => {
 
   it('has the expected labels in order', () => {
     const labels = DEPOSIT_STEPS.map(s => s.label);
-    expect(labels).toEqual(['Received', 'Confirmed', 'Depositing', 'Minting soUSD', 'Complete']);
+    expect(labels).toEqual(['Received', 'Confirmed', 'Depositing', 'Minting', 'Complete']);
   });
 });
 
@@ -388,6 +391,79 @@ describe('getDepositProgressRows', () => {
     );
 
     expect(rows[2].label).toBe('Depositing USDC to your card');
+  });
+
+  it('reports the savings destination for a direct deposit denominated in the sent token', () => {
+    expect(
+      isSavingsDestination(
+        directDeposit({
+          symbol: 'USDC',
+          metadata: { description: 'Direct deposit', destinationType: 'PROTOCOL' },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('reports the savings destination for a share-token deposit', () => {
+    expect(
+      isSavingsDestination(
+        makeActivity({
+          type: TransactionType.DEPOSIT,
+          status: TransactionStatus.SUCCESS,
+          symbol: 'soETH',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not report savings for card or wallet deposits', () => {
+    expect(
+      isSavingsDestination(
+        directDeposit({ metadata: { description: 'Card deposit', destinationType: 'RAIN_CARD' } }),
+      ),
+    ).toBe(false);
+    expect(
+      isSavingsDestination(
+        makeActivity({
+          type: TransactionType.DEPOSIT,
+          status: TransactionStatus.SUCCESS,
+          symbol: 'USDC',
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('routes savings direct deposits to the savings destination', () => {
+    // The activity keeps the deposited token as its symbol (USDC here), so the
+    // destination comes from the destinationType the webhook recorded.
+    const rows = getDepositProgressRows(
+      directDeposit({
+        metadata: {
+          description: 'Direct deposit',
+          depositStep: 'depositing',
+          destinationType: 'PROTOCOL',
+          vaultShareSymbol: 'soUSD',
+        },
+      }),
+    );
+
+    expect(rows[2].label).toBe('Depositing USDC to your savings');
+  });
+
+  it('routes a native savings deposit to the savings destination', () => {
+    const rows = getDepositProgressRows(
+      directDeposit({
+        symbol: 'ETH',
+        metadata: {
+          description: 'Direct deposit',
+          depositStep: 'depositing',
+          destinationType: 'PROTOCOL',
+          vaultShareSymbol: 'soETH',
+        },
+      }),
+    );
+
+    expect(rows[2].label).toBe('Depositing ETH to your savings');
   });
 
   it('uses wallet-transfer wording for connect-wallet deposits', () => {

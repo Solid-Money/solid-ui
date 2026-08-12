@@ -21,11 +21,11 @@ const SavingDepositButton = () => {
 
   return (
     <DepositTrigger
-      modal={DEPOSIT_MODAL.OPEN_FORM}
+      modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
       preserveSelectedVault
       source="savings_empty_state"
       onBeforeOpen={() => {
-        useDepositStore.getState().setDepositFromSolid(true);
+        useDepositStore.getState().setDepositFromSolid(false);
       }}
       trigger={getTrigger()}
     />

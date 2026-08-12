@@ -24,6 +24,7 @@ import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAc
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
+import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScreen';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -139,6 +140,12 @@ const useDepositOption = ({
     currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS.name;
   const isVirtualAccountTos = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS.name;
   const isVirtualAccountApply = currentModal.name === DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY.name;
+  // Token picked in the savings direct-deposit flow; titles echo it.
+  const selectedSavingsToken = directDepositSession.selectedToken ?? 'USDC';
+  const isSavingsFund = currentModal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND.name;
+  const isSavingsFundNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS.name;
+  const isSavingsFundAddress = currentModal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS.name;
+  const isSavingsFundFlow = isSavingsFund || isSavingsFundNetworks || isSavingsFundAddress;
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -253,6 +260,18 @@ const useDepositOption = ({
       return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
 
+    if (isSavingsFund) {
+      return <SavingsFundScreen step="options" />;
+    }
+
+    if (isSavingsFundNetworks) {
+      return <SavingsFundScreen step="networks" />;
+    }
+
+    if (isSavingsFundAddress) {
+      return <SavingsFundScreen step="address" />;
+    }
+
     if (isDepositDirectly) {
       return <DepositDirectlyNetworks />;
     }
@@ -305,6 +324,9 @@ const useDepositOption = ({
     if (isExternalWalletOptions) return 'external-wallet-options';
     if (isBuyCryptoOptions) return 'buy-crypto-options';
     if (isPublicAddress) return 'public-address';
+    if (isSavingsFund) return 'savings-fund-options';
+    if (isSavingsFundNetworks) return 'savings-fund-networks';
+    if (isSavingsFundAddress) return 'savings-fund-address';
     if (isDepositDirectly) return 'deposit-directly-networks';
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
     if (isDepositDirectlyTokens) return 'deposit-directly-tokens';
@@ -321,6 +343,9 @@ const useDepositOption = ({
     // header keeps only the back/close buttons (Figma 21445:3186).
     if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress || isVirtualAccountDetails)
       return undefined;
+    if (isSavingsFund) return 'Deposit to savings';
+    if (isSavingsFundNetworks) return selectedSavingsToken;
+    if (isSavingsFundAddress) return `Deposit ${selectedSavingsToken}`;
     if (isBankTransferKycInfo) return 'Identity Verification';
     if (isBankTransferKycFrame) return 'Identity Verification';
     if (isBankTransferAmount) return 'Amount to buy';
@@ -360,6 +385,10 @@ const useDepositOption = ({
     if (isDepositDirectlyAddress) {
       return 'w-[450px] max-h-[95vh] md:pb-4';
     }
+    if (isSavingsFundFlow) {
+      // Designed at phone width; 450px keeps the desktop card in proportion.
+      return 'md:max-w-[450px]';
+    }
     return '';
   };
 
@@ -386,7 +415,8 @@ const useDepositOption = ({
       !isNetworks &&
       !isBankTransfer &&
       !isDepositDirectly &&
-      !isDepositDirectlyAddress
+      !isDepositDirectlyAddress &&
+      !isSavingsFundFlow
     ) {
       return 'min-h-[40rem]';
     }
@@ -513,6 +543,10 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (modal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND.name) {
+        // Explicit savings entry point: show the token list, never a form that a
+        // connected wallet or a stale chain selection would otherwise jump to.
+        setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND);
       } else if (depositFromSolid && user?.safeAddress) {
         // Savings deposit: open form directly — token selector is inline
         setModal(DEPOSIT_MODAL.OPEN_FORM);
@@ -579,6 +613,10 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isPublicAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isSavingsFundAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
+    } else if (isSavingsFundNetworks) {
+      setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND);
     } else if (isDepositDirectly) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectlyAddress) {
@@ -659,6 +697,7 @@ const useDepositOption = ({
       !isDepositDirectly &&
       !isDepositDirectlyAddress &&
       !isDepositDirectlyTokens &&
+      !isSavingsFundFlow &&
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
@@ -672,6 +711,7 @@ const useDepositOption = ({
     isDepositDirectly,
     isDepositDirectlyAddress,
     isDepositDirectlyTokens,
+    isSavingsFundFlow,
     isExternalWalletOptions,
     isBuyCryptoOptions,
     currentModal.name,
@@ -699,6 +739,8 @@ const useDepositOption = ({
     isExternalWalletOptions ||
     isBuyCryptoOptions ||
     isPublicAddress ||
+    isSavingsFundNetworks ||
+    isSavingsFundAddress ||
     isDepositDirectly ||
     isDepositDirectlyAddress ||
     isDepositDirectlyTokens ||
