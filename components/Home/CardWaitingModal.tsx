@@ -31,7 +31,7 @@ import { HomeSetupStep } from '@/hooks/useHomeSetupSteps';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { resolveCardCountry } from '@/lib/cardCountryGate';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
 
 interface CardWaitingModalProps {
   isOpen: boolean;
@@ -204,9 +204,13 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
   const [checkingCountry, setCheckingCountry] = useState(false);
   const { data: cardStatus } = useCardStatus();
   // Same escape hatch as `skipCountryCheck` in useActivateCard: someone holding
-  // a card, or already part-way through a Rain application, has cleared the
-  // country gate once and must not be bounced back out of the flow.
-  const skipCountryGate = hasCard(cardStatus) || hasCardStatusWithRainApplication(cardStatus);
+  // a card, waiting on one being issued, or already part-way through a Rain
+  // application has cleared the country gate once and must not be bounced back
+  // out of the flow.
+  const skipCountryGate =
+    hasCard(cardStatus) ||
+    hasPendingCard(cardStatus) ||
+    hasCardStatusWithRainApplication(cardStatus);
   // On Android (edge-to-edge) the safe-area bottom inset can come back smaller
   // than the actual system nav bar inside the dialog portal, leaving the pinned
   // CTA sitting too close to the bottom edge. Floor it so the button always

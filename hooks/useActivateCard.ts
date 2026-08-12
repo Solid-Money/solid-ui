@@ -9,7 +9,7 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -40,7 +40,15 @@ export function useActivateCard() {
   // has confirmed country, or has Rain application status (already in KYC flow).
   const userHasCard = hasCard(cardStatusResponse);
   const hasRainApplicationStatus = hasCardStatusWithRainApplication(cardStatusResponse);
-  const skipCountryCheck = countryConfirmed === 'true' || userHasCard || hasRainApplicationStatus;
+  // A card already ordered clears the gate too — this screen is where a pending
+  // card waits, and re-running an IP check on someone mid-issuance would bounce a
+  // traveller (or anyone behind a VPN) into country selection and restart the
+  // onboarding they just finished.
+  const skipCountryCheck =
+    countryConfirmed === 'true' ||
+    userHasCard ||
+    hasPendingCard(cardStatusResponse) ||
+    hasRainApplicationStatus;
   const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
   const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
