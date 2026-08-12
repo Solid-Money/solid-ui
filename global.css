@@ -38,6 +38,9 @@
     --rewards: 44 100% 66%;
     --indigo: 255.2 78.12% 62.35%;
     --warning: 44.14 100% 65.88%;
+    /* Referral friend-status accents (Figma "Referral program — all invite states") */
+    --referral-progress: 202.9 100% 71.18%;
+    --referral-success: 142.96 61.5% 63.33%;
   }
 
   /* Override Tailwind's default system stack on web */

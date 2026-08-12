@@ -2022,14 +2022,47 @@ export enum ReferralRewardStatus {
   UNDER_REVIEW = 'under_review',
 }
 
+/**
+ * Where an invited friend is in the journey. Unlike {@link ReferralRewardStatus}
+ * (the ledger state, which only exists once the cashback engine has seeded a
+ * record) this is always known, because the API derives it from the friend's
+ * live account state.
+ */
+export enum ReferralFriendStage {
+  REGISTERED = 'registered',
+  VERIFYING = 'verifying',
+  CARD_ORDERED = 'card_ordered',
+  SPENDING = 'spending',
+  REWARD_UNLOCKING = 'reward_unlocking',
+  PAID = 'paid',
+  EXPIRED = 'expired',
+  UNDER_REVIEW = 'under_review',
+  REVERSED = 'reversed',
+}
+
 export interface ReferralRewardListItem {
-  status: ReferralRewardStatus;
+  referredUserId: string;
+  username: string;
+  stage: ReferralFriendStage;
+  /** Null until the cashback engine has seeded a tracking record. */
+  status: ReferralRewardStatus | null;
   signupAt: string;
   qualifiedAt?: string;
+  /** When the dispute delay elapses. */
+  payoutDueAt?: string;
+  /**
+   * When the payout actually lands — the first daily sweep at or after
+   * `payoutDueAt`. Count down to this, never to `payoutDueAt`, or the timer
+   * hits zero hours before the money moves.
+   */
+  payoutEtaAt?: string;
   paidAt?: string;
   spendUsd: number;
   merchantCount: number;
+  hasActiveCard: boolean;
   rewardUsd: number;
+  /** Explorer link for the referrer's payout, once that leg is on chain. */
+  payoutTxUrl?: string;
 }
 
 export interface ReferralSummary {
@@ -2041,6 +2074,8 @@ export interface ReferralSummary {
     spendTargetUsd: number;
     merchantTarget: number;
     windowDays: number;
+    /** Days between qualifying and the payout — the dispute/chargeback cover. */
+    payoutDelayDays: number;
   };
   totalRewardedUsd: number;
   friendsInvited: number;
