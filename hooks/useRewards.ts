@@ -24,7 +24,15 @@ const REWARDS = 'rewards';
 const useSelectedUserId = () =>
   useUserStore(state => state.users.find(user => user.selected)?.userId);
 
-export const useReferralSummary = () => {
+/**
+ * Referral summary.
+ *
+ * `refetchInterval` lets the referral screen poll while a reward is settling —
+ * the countdown has run out but the payout sweep hasn't reported PAID yet — so
+ * the row flips to Completed on its own instead of leaving the user staring at
+ * an expired timer and opening a support ticket.
+ */
+export const useReferralSummary = (options?: { refetchInterval?: number | false }) => {
   const userId = useSelectedUserId();
   return useQuery({
     queryKey: [REWARDS, 'referralSummary', userId],
@@ -33,6 +41,7 @@ export const useReferralSummary = () => {
     },
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
+    refetchInterval: options?.refetchInterval ?? false,
   });
 };
 
