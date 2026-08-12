@@ -298,7 +298,10 @@ export default function ReferralProgramContentNew({
         <View className="gap-2">
           <Text className="px-1 text-base text-white/50">Invited friends ({referrals.length})</Text>
           {referrals.length > 0 ? (
-            <View className="rounded-twice bg-card px-4 py-2">
+            // No padding here: each row carries the design's 16px sides so the
+            // dividers run the full width of the card. `overflow-hidden` keeps
+            // them inside the rounded corners.
+            <View className="overflow-hidden rounded-twice bg-card">
               {referrals.map((item, index) => (
                 <ReferralFriendRow
                   key={item.referredUserId || `${item.signupAt}-${index}`}

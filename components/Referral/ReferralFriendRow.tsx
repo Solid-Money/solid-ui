@@ -241,23 +241,26 @@ export default function ReferralFriendRow({
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>
   ) : null;
 
-  // Stages with no detail chip (expired / reversed) show their status as the
-  // second-column pill instead, so the bottom pill always starts after the
-  // numbering column and hugs its label rather than spanning the row.
-  const statusInSecondColumn = !detailChip;
-
   return (
     <Animated.View
       // Rows cascade in rather than all appearing at once — same easing family
       // as the hero avatars so the screen reads as one motion system.
       entering={FadeIn.delay(Math.min(index, 8) * 60).duration(320)}
+      // Three columns: numbering, details, status. `items-start` puts the
+      // status pill on the first row (level with the friend's name) rather than
+      // letting it drift to the row's vertical centre.
+      //
       // The divider is driven off `index` rather than a `first:` variant.
       // NativeWind only maps hover/active/focus/disabled/empty pseudo-classes;
       // anything else — `:first-child` included — is discarded when the
       // stylesheet is converted for native, so `first:border-t-0` was silently
       // dead. An explicit index check works on both native and web.
+      //
+      // Padding matches the design's row box (16px sides, 12px ends → 100px
+      // tall), and the divider is full-bleed because the card itself carries no
+      // horizontal padding.
       className={cn(
-        'flex-row items-center justify-between gap-2 px-1 py-3',
+        'flex-row items-start justify-between gap-2 px-4 py-3',
         index > 0 && 'border-t border-white/[0.06]',
       )}
     >
@@ -284,10 +287,10 @@ export default function ReferralFriendRow({
             />
           ) : null}
 
-          {/* `items-start` keeps the pill hugging its label — without it the
-              chip would stretch to the column width. */}
+          {/* Bottom row of the details column — the wrapping flex-row keeps the
+              pill hugging its label instead of stretching to the column width. */}
           {detailChip ? (
-            <View className="mt-1 flex-row items-start">
+            <View className="flex-row items-start">
               {isPaidWithProof ? (
                 // Tapping the unlocked reward opens the on-chain payout, so
                 // "you were paid" is verifiable rather than just asserted.
@@ -307,20 +310,13 @@ export default function ReferralFriendRow({
               )}
             </View>
           ) : null}
-
-          {statusInSecondColumn ? (
-            <View className="mt-1 flex-row items-start">
-              <Chip tone={presentation.lifecycle.tone}>{presentation.lifecycle.label}</Chip>
-            </View>
-          ) : null}
         </View>
       </View>
 
-      {statusInSecondColumn ? null : (
-        <Chip tone={presentation.lifecycle.tone} className="shrink-0">
-          {presentation.lifecycle.label}
-        </Chip>
-      )}
+      {/* Third column — the lifecycle status, always top-right. */}
+      <Chip tone={presentation.lifecycle.tone} className="shrink-0">
+        {presentation.lifecycle.label}
+      </Chip>
     </Animated.View>
   );
 }
