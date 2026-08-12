@@ -9,8 +9,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
-import { getCustomerFromBridge, getKycLinkFromBridge, getProviderRouting } from '@/lib/api';
+import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
+import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import {
   CardProvider,
@@ -142,18 +143,14 @@ export function useCardSteps(
     // authoritative for whether this jurisdiction should instead use Sumsub
     // (Wirex). Defaulting to Didit — and staying there if the call fails — keeps
     // the widely-available flow as the safe fallback.
+    //
+    // The country is resolved inside `resolveKycProvider`, not read from this
+    // closure: entry points run the country gate and then call this action in
+    // the same tick, so a country captured at render time is still the pre-gate
+    // one and a Wirex user would be sent to Didit on their first press.
     if (cardIssuer !== CardProvider.BRIDGE) {
       setKycFlow('card');
-      const countryCode = countryStore.countryInfo?.countryCode;
-      let kycProvider = KycProvider.DIDIT;
-      if (countryCode) {
-        try {
-          const routing = await withRefreshToken(() => getProviderRouting(countryCode));
-          if (routing?.kycProvider) kycProvider = routing.kycProvider;
-        } catch {
-          // backend unavailable → stay on Didit (available to everyone)
-        }
-      }
+      const { kycProvider, countryCode } = await resolveKycProvider();
       setKycProvider(kycProvider);
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
         action: 'route',
