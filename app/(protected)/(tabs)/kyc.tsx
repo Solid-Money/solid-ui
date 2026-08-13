@@ -20,6 +20,7 @@ export default function KycWeb() {
     session,
     initSession,
     markStarted,
+    retryRedirect,
     onVerificationComplete,
     onVerificationPending,
     onVerificationDeclined,
@@ -171,7 +172,9 @@ export default function KycWeb() {
           />
         )}
 
-        {session.phase === 'completed' && <KycCompleted />}
+        {session.phase === 'completed' && (
+          <KycCompleted outcome={session.outcome} onContinue={retryRedirect} />
+        )}
       </View>
     </PageLayout>
   );

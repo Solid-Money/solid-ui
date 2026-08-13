@@ -13,13 +13,7 @@ import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import {
-  CardProvider,
-  CardStatusResponse,
-  KycProvider,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
 import { hasMetSavingsDeposit, withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -36,6 +30,7 @@ import {
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
 import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
+import { resolveRainKycAction } from './rainKycAction';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -67,9 +62,15 @@ export function useCardSteps(
       setKycProvider: state.setKycProvider,
     })),
   );
-  // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
+  // Consider Rain when the API returns rainApplicationStatus (provider may be
+  // omitted). An external verification link is Rain-only too, so treat it as
+  // the same evidence: if the response carries a resubmission link, the Rain
+  // step handler must be wired even when the status field is missing —
+  // otherwise the step falls back to restarting Didit and the link is
+  // unreachable.
   const cardIssuer =
-    cardStatusResponse?.rainApplicationStatus != null
+    cardStatusResponse?.rainApplicationStatus != null ||
+    cardStatusResponse?.applicationExternalVerificationLink != null
       ? CardProvider.RAIN
       : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
   const countryStore = useCountryStore(useShallow(state => ({ countryInfo: state.countryInfo })));
@@ -238,42 +239,53 @@ export function useCardSteps(
   const handleRainKYCPress = useCallback(() => {
     const status = cardStatusResponse?.rainApplicationStatus;
     const link = cardStatusResponse?.applicationExternalVerificationLink;
+    // Rain signs the link's params, so a link without them is not openable.
+    const usableLink = link?.url && Object.keys(link.params ?? {}).length > 0 ? link : null;
 
-    // DENIED is a final decision with no action — it renders no button, so it is not
-    // handled here. LOCKED/CANCELED still offer a "Contact support" button.
-    if (status === RainApplicationStatus.LOCKED || status === RainApplicationStatus.CANCELED) {
-      openSupportDrawer();
-      return;
-    }
-    if (
-      status === RainApplicationStatus.NEEDS_VERIFICATION ||
-      status === RainApplicationStatus.NEEDS_INFORMATION
-    ) {
-      if (link?.url && Object.keys(link.params ?? {}).length > 0) {
-        redirectToRainVerification(link);
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Verification link unavailable',
-          text2: 'Unable to open verification. Please try again later or contact support.',
-          props: { badgeText: '' },
-        });
-        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-          action: 'verification_link_missing',
-          rainApplicationStatus: status,
-          hasLink: Boolean(link),
-          hasUrl: Boolean(link?.url),
-          hasParams: Boolean(link?.params && Object.keys(link.params).length > 0),
-        });
-      }
-      return;
-    }
-    if (status === RainApplicationStatus.NOT_STARTED || !status) {
-      handleProceedToKyc();
+    const reportUnavailableLink = () => {
+      Toast.show({
+        type: 'error',
+        text1: 'Verification link unavailable',
+        text2: 'Unable to open verification. Please try again later or contact support.',
+        props: { badgeText: '' },
+      });
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'verification_link_missing',
+        rainApplicationStatus: status,
+        kycApplicationEstablished: cardStatusResponse?.kycApplicationEstablished,
+        hasLink: Boolean(link),
+        hasUrl: Boolean(link?.url),
+        hasParams: Boolean(link?.params && Object.keys(link.params).length > 0),
+      });
+    };
+
+    const action = resolveRainKycAction({
+      rainApplicationStatus: status,
+      hasUsableLink: Boolean(usableLink),
+      kycApplicationEstablished: cardStatusResponse?.kycApplicationEstablished,
+    });
+
+    switch (action.type) {
+      case 'support':
+        openSupportDrawer();
+        return;
+      case 'external-link':
+        // resolveRainKycAction only returns this when hasUsableLink was true.
+        if (usableLink) redirectToRainVerification(usableLink);
+        return;
+      case 'start-kyc':
+        handleProceedToKyc();
+        return;
+      case 'link-unavailable':
+        reportUnavailableLink();
+        return;
+      case 'none':
+        return;
     }
   }, [
     cardStatusResponse?.rainApplicationStatus,
     cardStatusResponse?.applicationExternalVerificationLink,
+    cardStatusResponse?.kycApplicationEstablished,
     handleProceedToKyc,
   ]);
 

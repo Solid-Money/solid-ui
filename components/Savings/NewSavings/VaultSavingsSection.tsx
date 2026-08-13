@@ -5,6 +5,7 @@ import { fuse, mainnet } from 'viem/chains';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
+import { useActualDeposited } from '@/hooks/useActualDeposited';
 import {
   useAPYs,
   useLatestTokenTransfer,
@@ -82,7 +83,8 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
   const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.name === 'ETH');
   const priceUsd = vault.name === 'USDC' ? 1 : vault.name === 'FUSE' ? fusePriceUsd : ethPriceUsd;
 
-  // Live interest (USD for USDC/FUSE; ETH-native × price for ETH).
+  // Live interest in the vault's display unit (USD for soUSD, FUSE for soFUSE,
+  // ETH for soETH) — same unit as `balance x exchangeRate`.
   const interestRaw = useSavingsYield({
     balance: balance ?? 0,
     apy: vaultAPY,
@@ -97,10 +99,29 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
     vault: vault.name,
   });
 
+  // Net deposited, same display unit as the interest above. soUSD/soETH read it
+  // from the deposit history (the figure `calculateYield` subtracts from the
+  // redeemable value); soFUSE has no usable transfer history, so the backend
+  // summary supplies it.
+  const depositedFromHistory = useActualDeposited({
+    vault,
+    safeAddress: user?.safeAddress,
+    balance,
+    exchangeRate,
+    userDepositTransactions,
+    enabled: vault.name !== 'FUSE',
+  });
+  const depositedFromSummary = savingsSummary ? Number(savingsSummary.actualDepositedUSD) || 0 : 0;
+  const depositedNative = vault.name === 'FUSE' ? depositedFromSummary : depositedFromHistory;
+
   const redeemableNative = (balance ?? 0) * (exchangeRate ?? 1);
-  const availableUsd = vault.name === 'USDC' ? redeemableNative : redeemableNative * priceUsd;
-  const interestUsd = vault.name === 'ETH' ? interestRaw * priceUsd : interestRaw;
-  const depositedUsd = Math.max(availableUsd - interestUsd, 0);
+  // Every figure is shown in USD; priceUsd is 1 for soUSD and the live native
+  // price for soFUSE/soETH. Interest and deposited are vault-denominated (the
+  // backend's `*USD` field names notwithstanding), so both need converting.
+  const availableUsd = redeemableNative * priceUsd;
+  const interestUsd = interestRaw * priceUsd;
+  const depositedUsd =
+    depositedNative > 0 ? depositedNative * priceUsd : Math.max(availableUsd - interestUsd, 0);
 
   // No exact historical "this month" breakdown exists, so approximate from APY:
   // month-to-date and forward 30-day earnings on the current balance.

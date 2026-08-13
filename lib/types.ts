@@ -70,6 +70,19 @@ export interface DirectDepositSessionResponse {
   clientTxId?: string;
 }
 
+/** Poll response for a deposit landing on the user's direct deposit address. */
+export interface DetectedDirectDepositResponse {
+  detected: boolean;
+  clientTxId?: string;
+  status?: string;
+  depositStep?: string;
+  amount?: string;
+  symbol?: string;
+  chainId?: number;
+  transactionHash?: string;
+  detectedAt?: string;
+}
+
 export interface CardDepositBonusConfig {
   isEnabled: boolean;
   percentage: number;
@@ -516,6 +529,13 @@ export interface CardStatusResponse {
   kycWarnings?: KycWarning[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
+  /**
+   * True once a provider (Rain) consumer exists for this user. Creating a new
+   * Didit/Sumsub session in that state is refused with 409 KYC_ALREADY_EXISTS,
+   * so never offer a "start KYC" action when this is set — a resubmission has
+   * to go through `applicationExternalVerificationLink` instead.
+   */
+  kycApplicationEstablished?: boolean;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**
@@ -1335,9 +1355,14 @@ export interface PointsEarningConfig {
   cardSpendEnabled: boolean;
   swapEnabled: boolean;
   holdingFundsEnabled: boolean;
+  /** Whether points accrue on the balance held on the card. */
+  cardBalanceEnabled?: boolean;
   cardSpendPointsPerDollar: number;
   swapPointsPerDollar: number;
+  /** Points per $1 of deposited funds, per HOUR. */
   holdingFundsMultiplier: number;
+  /** Points per $1 of card balance held, per HOUR. */
+  cardBalancePointsPerDollarPerHour?: number;
 }
 
 export interface FullRewardsConfig {

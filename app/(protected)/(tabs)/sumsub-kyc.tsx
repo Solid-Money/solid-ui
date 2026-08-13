@@ -30,6 +30,7 @@ export default function SumsubKycWeb() {
     session,
     initSession,
     markStarted,
+    retryRedirect,
     fetchAccessToken,
     onVerificationComplete,
     onVerificationDeclined,
@@ -124,7 +125,9 @@ export default function SumsubKycWeb() {
           />
         )}
 
-        {session.phase === 'completed' && <KycCompleted />}
+        {session.phase === 'completed' && (
+          <KycCompleted outcome={session.outcome} onContinue={retryRedirect} />
+        )}
       </View>
     </PageLayout>
   );

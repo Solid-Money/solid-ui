@@ -91,6 +91,23 @@ export const DEPOSIT_MODAL = {
     name: 'open_virtual_account_apply',
     number: 20,
   },
+  /**
+   * Savings direct deposit ("Deposit to savings"): pick a token, then the network
+   * it is sent from, then show the address that funds it. Mirrors the card's
+   * funding flow — deposits are detected automatically and tracked as activities.
+   */
+  OPEN_SAVINGS_FUND: {
+    name: 'open_savings_fund',
+    number: 1.6,
+  },
+  OPEN_SAVINGS_FUND_NETWORKS: {
+    name: 'open_savings_fund_networks',
+    number: 21,
+  },
+  OPEN_SAVINGS_FUND_ADDRESS: {
+    name: 'open_savings_fund_address',
+    number: 22,
+  },
   // TransFi buy-crypto onramp steps
   OPEN_BUY_CRYPTO_KYC_CONSENT: {
     name: 'open_buy_crypto_kyc_consent',

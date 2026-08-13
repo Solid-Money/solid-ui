@@ -46,7 +46,11 @@ import {
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import { formatCardAmount, getCashbackAmount } from '@/lib/utils/cardHelpers';
-import { getDepositProgressRows, isDepositWithSteps } from '@/lib/utils/deposit-steps';
+import {
+  getDepositProgressRows,
+  isDepositWithSteps,
+  isSavingsDestination,
+} from '@/lib/utils/deposit-steps';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
@@ -513,7 +517,10 @@ export default function ActivityDetail() {
   const isDetected = finalActivity?.status === TransactionStatus.DETECTED;
   const isProcessing = finalActivity?.status === TransactionStatus.PROCESSING;
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
-  const isSavingsDeposit = isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse');
+  // Deposits denominated in a share token, i.e. a mint into savings. soETH was
+  // missing here, so soETH deposits rendered as outgoing wallet deposits.
+  const isSavingsDeposit =
+    isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse' || symbolLower === 'soeth');
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
@@ -658,8 +665,14 @@ export default function ActivityDetail() {
     if (finalActivity.metadata?.destinationType === 'RAIN_CARD') {
       return { label: 'Card', isCard: true };
     }
-    return { label: isSavingsDeposit ? 'Savings' : 'Wallet', isCard: false };
-  }, [finalActivity, isSavingsDeposit]);
+    // Not `isSavingsDeposit`: that is symbol-based (it also gates hiding the
+    // amount until a mint lands), and a savings direct deposit is denominated in
+    // the token that was sent, not in the share token it mints.
+    return {
+      label: isSavingsDestination(finalActivity) ? 'Savings' : 'Wallet',
+      isCard: false,
+    };
+  }, [finalActivity]);
 
   const depositStatus = useMemo(() => {
     if (isFailed) return { label: 'Failed', className: 'text-red-400' };

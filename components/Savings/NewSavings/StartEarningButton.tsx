@@ -47,7 +47,7 @@ const StartEarningButton = ({
   return (
     <View className={cn('px-4', className)}>
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_FORM}
+        modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
         preserveSelectedVault
         source={source}
         onBeforeOpen={() => {
@@ -55,7 +55,7 @@ const StartEarningButton = ({
           if (index >= 0) {
             useSavingStore.getState().selectVaultForDeposit(index);
           }
-          useDepositStore.getState().setDepositFromSolid(true);
+          useDepositStore.getState().setDepositFromSolid(false);
         }}
         trigger={<DepositTriggerButton label={label} />}
       />

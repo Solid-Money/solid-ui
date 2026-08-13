@@ -415,6 +415,14 @@ export const ASSETS = {
     module: require('@/assets/images/fund-dollar.tsx'),
     hash: '7f4fcddb',
   },
+  'images/fund-external-wallet.tsx': {
+    module: require('@/assets/images/fund-external-wallet.tsx'),
+    hash: '2c12db7f',
+  },
+  'images/fund-move-savings.tsx': {
+    module: require('@/assets/images/fund-move-savings.tsx'),
+    hash: 'cea5f9b9',
+  },
   'images/fund-wallet-tokens.png': {
     module: require('@/assets/images/fund-wallet-tokens.png'),
     hash: 'd7de7d8e',

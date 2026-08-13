@@ -43,6 +43,8 @@ export interface ResponsiveModalProps {
   // Content
   trigger: ReactNode;
   title?: string;
+  /** Rendered inline, left of the title (e.g. the token being deposited). */
+  titleIcon?: ReactNode;
   children: ReactNode;
 
   // Styling
@@ -78,6 +80,7 @@ const ResponsiveModal = ({
   onOpenChange,
   trigger,
   title,
+  titleIcon,
   children,
   contentClassName,
   containerClassName,
@@ -203,7 +206,15 @@ const ResponsiveModal = ({
                   <View className="w-[50px]" />
                 )}
                 {title ? (
-                  <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
+                  <Animated.View
+                    key={contentKey}
+                    entering={titleEntering}
+                    exiting={titleExiting}
+                    style={
+                      titleIcon ? { flexDirection: 'row', alignItems: 'center', gap: 8 } : undefined
+                    }
+                  >
+                    {titleIcon}
                     <DialogTitle className="native:text-2xl text-xl font-semibold">
                       {title}
                     </DialogTitle>
