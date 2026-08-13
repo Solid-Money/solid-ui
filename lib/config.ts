@@ -79,6 +79,17 @@ export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 // In-development features: visible on qa/preview builds, hidden in production.
 export const isDevFeatureEnabled = !isProduction;
 
+/**
+ * Marketing site that hosts the referral landing page.
+ *
+ * Distinct from {@link EXPO_PUBLIC_BASE_URL}, which is the app's own origin.
+ * Staging points at the Webflow preview so a referral link shared from a QA
+ * build lands on the QA site instead of sending testers into production.
+ */
+export const SOLID_WEBSITE_URL = isProduction
+  ? 'https://www.solid.xyz'
+  : 'https://solid-qa.webflow.io';
+
 type Addresses = {
   ethereum: {
     teller: Address;

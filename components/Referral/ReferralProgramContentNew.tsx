@@ -10,6 +10,7 @@ import { ChevronRight, X } from 'lucide-react-native';
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 import { useReferralSummary } from '@/hooks/useRewards';
+import { SOLID_WEBSITE_URL } from '@/lib/config';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ReferralFriendStage } from '@/lib/types';
@@ -17,7 +18,8 @@ import { ReferralFriendStage } from '@/lib/types';
 import ReferralFriendRow, { formatUsdWhole, REFERRAL_SUCCESS_COLOR } from './ReferralFriendRow';
 import ReferralHeroAnimation from './ReferralHeroAnimation';
 
-const REFERRAL_BASE_URL = 'https://www.solid.xyz/refer?ref=';
+/** Environment-aware, so a QA build never shares a production referral link. */
+const REFERRAL_BASE_URL = `${SOLID_WEBSITE_URL}/refer?ref=`;
 
 // Matches the app's `--background` token (see global.css) — used for the top/bottom
 // scroll fades so they blend seamlessly into the modal's background.
