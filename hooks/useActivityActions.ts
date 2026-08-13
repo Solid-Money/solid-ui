@@ -55,7 +55,12 @@ function getSelectedUser(): User | undefined {
 export function useActivityActions() {
   const TERMINAL_STATUSES = useMemo(
     () =>
-      new Set([TransactionStatus.SUCCESS, TransactionStatus.FAILED, TransactionStatus.REFUNDED]),
+      new Set([
+        TransactionStatus.SUCCESS,
+        TransactionStatus.FAILED,
+        TransactionStatus.REFUNDED,
+        TransactionStatus.TRANSFERRED_TO_SAFE,
+      ]),
     [],
   );
 

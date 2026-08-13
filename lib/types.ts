@@ -912,6 +912,7 @@ export enum TransactionStatus {
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
   REFUNDED = 'refunded',
+  TRANSFERRED_TO_SAFE = 'transferred_to_safe',
 }
 
 /**

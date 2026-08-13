@@ -662,6 +662,11 @@ export default function ActivityDetail() {
 
   const depositDestination = useMemo(() => {
     if (!finalActivity) return { label: 'Wallet', isCard: false };
+    // Diverted below the sponsor minimum: the deposit never reached the
+    // originally-intended destination, so say where it actually landed.
+    if (finalActivity.status === TransactionStatus.TRANSFERRED_TO_SAFE) {
+      return { label: 'Safe', isCard: false };
+    }
     if (finalActivity.metadata?.destinationType === 'RAIN_CARD') {
       return { label: 'Card', isCard: true };
     }
@@ -680,6 +685,9 @@ export default function ActivityDetail() {
     if (isSuccess) return { label: 'Completed', className: 'text-brand' };
     if (isPending || isDetected || isProcessing) {
       return { label: 'Processing', className: 'text-[#ECDC76]' };
+    }
+    if (finalActivity?.status === TransactionStatus.TRANSFERRED_TO_SAFE) {
+      return { label: 'Sent to Safe', className: 'text-brand' };
     }
     // REFUNDED / EXPIRED and anything added later keep their own wording
     return {
@@ -839,6 +847,7 @@ export default function ActivityDetail() {
     const showStepper =
       !isCancelled &&
       finalActivity.status !== TransactionStatus.REFUNDED &&
+      finalActivity.status !== TransactionStatus.TRANSFERRED_TO_SAFE &&
       finalActivity.status !== TransactionStatus.EXPIRED;
     const depositSign = isFailed
       ? TransactionDirection.FAILED
