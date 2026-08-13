@@ -24,7 +24,6 @@ import {
   AuthTokens,
   CardProvider,
   CardResponse,
-  CardStatus,
   CardStatusResponse,
   RainContractResponseDto,
   User,
@@ -412,18 +411,14 @@ export function getCardFundingAddress(
   return cardDetails ? getArbitrumFundingAddress(cardDetails) : undefined;
 }
 
-/** Rain-first: only Rain cards count as "has card". Bridge-only users are treated as no card. */
-export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
-  if (!cardStatus?.status) return false;
-  const isActiveOrFrozen =
-    cardStatus.status === CardStatus.ACTIVE || cardStatus.status === CardStatus.FROZEN;
-  if (!isActiveOrFrozen) return false;
-  return cardStatus.provider !== CardProvider.BRIDGE;
-};
-
-export const hasCardStatusWithRainApplication = (
-  cardStatus: CardStatusResponse | null | undefined,
-): boolean => Boolean(cardStatus?.rainApplicationStatus);
+// Card-flow routing predicates live in their own leaf module so they are unit
+// testable (this file's import graph does not load under jest-expo). Re-exported
+// here so `@/lib/utils` stays the single import path for consumers.
+export {
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasPendingCard,
+} from '@/lib/utils/cardStatusRouting';
 
 /**
  * Whether the user's residence country requires a minimum deposit before they

@@ -123,6 +123,15 @@ module.exports = {
         warning: {
           DEFAULT: 'hsl(var(--warning))',
         },
+        'referral-progress': {
+          DEFAULT: 'hsl(var(--referral-progress))',
+        },
+        'referral-success': {
+          DEFAULT: 'hsl(var(--referral-success))',
+        },
+        'referral-unlocking': {
+          DEFAULT: 'hsl(var(--referral-unlocking))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),

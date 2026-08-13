@@ -723,6 +723,31 @@ export interface CardPinResponseDto {
   encryptedPin: CardSecretsEncryptedField;
 }
 
+// --- Wirex card reveal ---
+/**
+ * A short-lived, user-scoped Wirex session minted by our backend so this client
+ * can read its own card's PAN/CVV directly from Wirex.
+ *
+ * Wirex requires sensitive card data to be fetched client-side unless the
+ * proxying backend is PCI DSS compliant, so the card number travels from Wirex
+ * straight to the device and never through our servers. `accessToken` is a
+ * secret: keep it in memory for the duration of the reveal and never persist it.
+ */
+export interface WirexRevealSessionResponse {
+  accessToken: string;
+  expiresAt?: number;
+  /** Wirex API origin, supplied by the backend so envs can move without a release. */
+  apiBaseUrl: string;
+  chainId: string;
+  cardId: string;
+  /** The EOA that must sign the confirmation message. */
+  walletAddress: string;
+  /** Action the signature is scoped to (`GetCardDetails`). */
+  actionType: string;
+  /** Message to sign, containing a `{nonce}` placeholder to substitute. */
+  messageTemplate: string;
+}
+
 // --- Rain contracts (funding) ---
 export interface RainContractTokenDto {
   address: string;
@@ -2048,14 +2073,47 @@ export enum ReferralRewardStatus {
   UNDER_REVIEW = 'under_review',
 }
 
+/**
+ * Where an invited friend is in the journey. Unlike {@link ReferralRewardStatus}
+ * (the ledger state, which only exists once the cashback engine has seeded a
+ * record) this is always known, because the API derives it from the friend's
+ * live account state.
+ */
+export enum ReferralFriendStage {
+  REGISTERED = 'registered',
+  VERIFYING = 'verifying',
+  CARD_ORDERED = 'card_ordered',
+  SPENDING = 'spending',
+  REWARD_UNLOCKING = 'reward_unlocking',
+  PAID = 'paid',
+  EXPIRED = 'expired',
+  UNDER_REVIEW = 'under_review',
+  REVERSED = 'reversed',
+}
+
 export interface ReferralRewardListItem {
-  status: ReferralRewardStatus;
+  referredUserId: string;
+  username: string;
+  stage: ReferralFriendStage;
+  /** Null until the cashback engine has seeded a tracking record. */
+  status: ReferralRewardStatus | null;
   signupAt: string;
   qualifiedAt?: string;
+  /** When the dispute delay elapses. */
+  payoutDueAt?: string;
+  /**
+   * When the payout actually lands — the first daily sweep at or after
+   * `payoutDueAt`. Count down to this, never to `payoutDueAt`, or the timer
+   * hits zero hours before the money moves.
+   */
+  payoutEtaAt?: string;
   paidAt?: string;
   spendUsd: number;
   merchantCount: number;
+  hasActiveCard: boolean;
   rewardUsd: number;
+  /** Explorer link for the referrer's payout, once that leg is on chain. */
+  payoutTxUrl?: string;
 }
 
 export interface ReferralSummary {
@@ -2067,6 +2125,8 @@ export interface ReferralSummary {
     spendTargetUsd: number;
     merchantTarget: number;
     windowDays: number;
+    /** Days between qualifying and the payout — the dispute/chargeback cover. */
+    payoutDelayDays: number;
   };
   totalRewardedUsd: number;
   friendsInvited: number;

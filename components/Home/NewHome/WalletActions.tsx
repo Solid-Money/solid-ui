@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -23,6 +23,18 @@ type TriggerProps = React.ComponentProps<typeof Pressable>;
 // grow taller/narrower than its neighbours.
 const COMPACT_WIDTH = 400;
 
+// Keep the modal/trigger implementation out of flex sizing. Each visible action
+// gets an identical zero-basis slot, then its pill fills that slot. This is
+// explicit instead of relying on flex styles surviving through trigger clones.
+const styles = StyleSheet.create({
+  equalActionSlot: {
+    flexBasis: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+});
+
 const AddFundsTrigger = ({
   fullWidth,
   compact,
@@ -35,7 +47,7 @@ const AddFundsTrigger = ({
       compact ? 'px-2' : 'px-4',
       // On its own it stops at 24rem and centres, rather than stretching the full
       // width of a desktop column.
-      fullWidth ? 'mx-auto w-full max-w-[24rem]' : 'flex-1',
+      fullWidth ? 'mx-auto w-full max-w-[24rem]' : 'w-full',
     )}
   >
     <Text
@@ -48,13 +60,12 @@ const AddFundsTrigger = ({
   </Pressable>
 );
 
-// flex-1 like "Add Funds", so the row always splits evenly between however many
-// pills it has — two halves on iOS (no Swap there), three thirds elsewhere.
+// The equal-width parent slot controls sizing; the pill just fills it.
 const ActionPill = ({ children, compact, ...props }: TriggerProps & { compact?: boolean }) => (
   <Pressable
     {...props}
     className={cn(
-      'h-14 flex-1 flex-row items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80',
+      'h-14 w-full flex-row items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80',
       compact ? 'gap-1.5 px-2' : 'gap-2 px-4',
     )}
   >
@@ -91,24 +102,27 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const { width } = useWindowDimensions();
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
+  const showSwap = hasFunds && Platform.OS !== 'ios';
   const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
-      {hasCard ? (
-        // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
-        // own trigger prop - that goes through ResponsiveModal's rn-primitives
-        // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.
-        <>
-          <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
-          <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
-        </>
-      ) : (
-        <DepositOptionModal trigger={addFundsTrigger} />
-      )}
-      {hasFunds && (
-        <>
+      <View className={hasFunds ? 'h-14' : 'w-full'} style={hasFunds && styles.equalActionSlot}>
+        {hasCard ? (
+          // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
+          // own trigger prop - that goes through ResponsiveModal's rn-primitives
+          // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.
+          <>
+            <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
+            <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
+          </>
+        ) : (
+          <DepositOptionModal trigger={addFundsTrigger} />
+        )}
+      </View>
+      {showSwap && (
+        <View className="h-14" style={styles.equalActionSlot}>
           <SwapModal
             trigger={
               <ActionPill compact={compact}>
@@ -122,6 +136,10 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
               </ActionPill>
             }
           />
+        </View>
+      )}
+      {hasFunds && (
+        <View className="h-14" style={styles.equalActionSlot}>
           <SendModal
             trigger={
               <ActionPill compact={compact}>
@@ -135,7 +153,7 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
               </ActionPill>
             }
           />
-        </>
+        </View>
       )}
     </View>
   );

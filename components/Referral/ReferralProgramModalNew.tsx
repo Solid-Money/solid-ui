@@ -1,5 +1,6 @@
 import ReferralProgramContentNew from '@/components/Referral/ReferralProgramContentNew';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import { useDimension } from '@/hooks/useDimension';
 
 interface ReferralProgramModalNewProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
  * page of content rather than a compact popup.
  */
 export default function ReferralProgramModalNew({ isOpen, onClose }: ReferralProgramModalNewProps) {
+  const { isDesktop } = useDimension();
+
   return (
     <ResponsiveModal
       currentModal={MODAL_STATE}
@@ -26,7 +29,11 @@ export default function ReferralProgramModalNew({ isOpen, onClose }: ReferralPro
       }}
       trigger={null}
       contentKey="referral-program-new"
-      contentClassName="overflow-hidden bg-background px-0 pb-0 pt-0 md:max-w-xl md:px-0 md:pt-0"
+      contentClassName={
+        isDesktop
+          ? 'overflow-hidden bg-background md:max-w-xl'
+          : 'overflow-hidden bg-background px-0 pb-0 pt-0 md:max-w-xl md:px-0 md:pt-0'
+      }
       shouldAnimate={false}
       hideHeader
       disableScroll

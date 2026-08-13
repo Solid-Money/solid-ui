@@ -12,10 +12,12 @@ import { path } from '@/constants/path';
 import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { SOLID_WEBSITE_URL } from '@/lib/config';
 import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const REFERRAL_BASE_URL = 'https://www.solid.xyz/refer?ref=';
+/** Environment-aware, so a QA build never shares a production referral link. */
+const REFERRAL_BASE_URL = `${SOLID_WEBSITE_URL}/refer?ref=`;
 
 const STATUS_LABEL: Record<ReferralRewardStatus, string> = {
   [ReferralRewardStatus.PENDING]: 'In progress',
@@ -51,9 +53,7 @@ function InfoRow({
         style={{ width: 34, height: 34 }}
         contentFit="contain"
       />
-      <Text className={cn('flex-1 text-base leading-5 text-white')}>
-        {children}
-      </Text>
+      <Text className={cn('flex-1 text-base leading-5 text-white')}>{children}</Text>
     </View>
   );
 }
@@ -87,7 +87,11 @@ function ReferralListItem({ item }: { item: ReferralRewardListItem }) {
   return (
     <View className="flex-row items-center justify-between border-t border-white/5 py-3">
       <View>
-        <Text className="text-sm font-medium text-white">{STATUS_LABEL[item.status]}</Text>
+        <Text className="text-sm font-medium text-white">
+          {/* `status` is null until the cashback engine seeds a tracking
+              record; the friend is still in progress at that point. */}
+          {item.status ? STATUS_LABEL[item.status] : 'In progress'}
+        </Text>
         <Text className="text-xs text-white/50">
           {formatUsd(item.spendUsd)} spent · {item.merchantCount} merchant
           {item.merchantCount === 1 ? '' : 's'}
@@ -194,8 +198,8 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
           Share your referral link.
         </InfoRow>
         <InfoRow icon="images/wallet-yellow-background.png">
-          Earn {formatUsdWhole(referrerUsd)} for you and {formatUsdWhole(newUserUsd)} for them
-          when they order a card and spend {formatUsdWhole(spendTarget)} across {merchantTarget}+
+          Earn {formatUsdWhole(referrerUsd)} for you and {formatUsdWhole(newUserUsd)} for them when
+          they order a card and spend {formatUsdWhole(spendTarget)} across {merchantTarget}+
           payments at different merchants within {windowDays} days.
         </InfoRow>
         <Text className="text-xs leading-4 text-white/50">
@@ -266,8 +270,8 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
             • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants.
           </Text>
           <Text className="text-sm text-white/70">
-            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about
-            40 days after they qualify. One reward per friend, no cap.
+            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about 40
+            days after they qualify. One reward per friend, no cap.
           </Text>
         </View>
       )}

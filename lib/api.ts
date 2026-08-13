@@ -123,12 +123,14 @@ import {
   WebhookStatus,
   WebProvisioningTokenResponse,
   WhatsNew,
+  WirexRevealSessionResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
+import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
@@ -762,12 +764,23 @@ export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationS
  * Ask the backend which KYC + card providers a country routes to. Server-driven
  * so the Wirex/Sumsub geography can change without an app release.
  */
-export const getProviderRouting = async (countryCode: string): Promise<ProviderRoutingResponse> => {
+/**
+ * Which providers a country routes to.
+ *
+ * `flow` matters: the backend gates the `card` answer on whether Wirex is enabled
+ * in that environment (it is staging-only), while `onramp` gets the ungated
+ * geographic answer because TransFi's use of Sumsub is live independently. The
+ * backend defaults to the gated `card` answer, so omitting it is the safe choice.
+ */
+export const getProviderRouting = async (
+  countryCode: string,
+  flow: 'card' | 'onramp' = 'card',
+): Promise<ProviderRoutingResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/provider-routing?countryCode=${encodeURIComponent(
       countryCode,
-    )}`,
+    )}&flow=${flow}`,
     {
       credentials: 'include',
       headers: {
@@ -2612,12 +2625,66 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
 };
 
 /**
- * Complete card details reveal flow. Rain is the only supported provider;
- * Bridge is deprecated and no longer dispatched, even if the caller passes it.
+ * Mint a Wirex reveal session on our backend (JWT-authenticated). The backend
+ * resolves which card and wallet from its own records, so nothing about the card
+ * is client-supplied.
+ */
+export const getWirexRevealSession = async (): Promise<WirexRevealSessionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/reveal-session`,
+    {
+      method: 'POST',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Wirex card reveal: confirm with a wallet signature, then read the PAN/CVV
+ * DIRECTLY from Wirex.
+ *
+ * Only the session comes from our backend. The card data itself is fetched by the
+ * device, because Wirex permits proxying cardholder data only through a PCI DSS
+ * compliant backend — the same principle as Rain, where the backend only ever
+ * handles ciphertext. The protocol lives in `lib/utils/wirexCardReveal`.
+ *
+ * @param signMessage Signs a message with the card's wallet (passkey-gated), so
+ *   the prompt the user sees is the confirmation Wirex requires.
+ */
+export const revealCardDetailsCompleteWirex = async (
+  signMessage: (message: string) => Promise<string>,
+): Promise<CardDetailsRevealResponse> => {
+  const session = await getWirexRevealSession();
+  return revealWirexCardWithSession(session, signMessage);
+};
+
+/**
+ * Complete card details reveal flow, dispatched by issuer. Bridge is deprecated
+ * and never dispatched.
+ *
+ * Wirex needs a wallet signature from the user, so callers on that path must
+ * supply a signer; without one there is nothing to confirm the reveal with.
  */
 export const revealCardDetailsComplete = async (
-  _provider?: CardProvider,
+  provider?: CardProvider,
+  signMessage?: (message: string) => Promise<string>,
 ): Promise<CardDetailsRevealResponse> => {
+  if (provider === CardProvider.WIREX) {
+    if (!signMessage) {
+      throw new Error('A wallet signature is required to show Wirex card details');
+    }
+    return revealCardDetailsCompleteWirex(signMessage);
+  }
   return revealCardDetailsCompleteRain();
 };
 

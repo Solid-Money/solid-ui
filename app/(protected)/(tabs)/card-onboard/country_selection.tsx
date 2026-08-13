@@ -14,7 +14,7 @@ import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
@@ -48,10 +48,14 @@ export default function CountrySelection() {
   // `isLoading`, not `isPending`: a disabled query (no selected user yet) stays
   // pending forever, which would stall detection instead of merely delaying it.
   const { data: cardStatus, isLoading: cardStatusLoading } = useCardStatus();
-  // Same escape hatch as `useActivateCard`: someone holding a card or part-way
-  // through a Rain application cleared the gate once. Their IP saying otherwise
-  // (travel, VPN) must not present them with a "no card in your region" wall.
-  const clearedGate = hasCard(cardStatus) || hasCardStatusWithRainApplication(cardStatus);
+  // Same escape hatch as `useActivateCard`: someone holding a card, waiting on one
+  // being issued, or part-way through a Rain application cleared the gate once.
+  // Their IP saying otherwise (travel, VPN) must not present them with a "no card
+  // in your region" wall.
+  const clearedGate =
+    hasCard(cardStatus) ||
+    hasPendingCard(cardStatus) ||
+    hasCardStatusWithRainApplication(cardStatus);
 
   const { countryInfo, setCountryInfo } = useCountryStore(
     useShallow(state => ({

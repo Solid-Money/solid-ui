@@ -1,20 +1,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Share, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Link } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 
+import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
-import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
+import { SOLID_WEBSITE_URL } from '@/lib/config';
+import { ReferralFriendStage } from '@/lib/types';
 
+import ReferralFriendRow, { formatUsdWhole, REFERRAL_SUCCESS_COLOR } from './ReferralFriendRow';
 import ReferralHeroAnimation from './ReferralHeroAnimation';
 
-const REFERRAL_BASE_URL = 'https://www.solid.xyz/refer?ref=';
+/** Environment-aware, so a QA build never shares a production referral link. */
+const REFERRAL_BASE_URL = `${SOLID_WEBSITE_URL}/refer?ref=`;
 
 // Matches the app's `--background` token (see global.css) — used for the top/bottom
 // scroll fades so they blend seamlessly into the modal's background.
@@ -23,23 +31,8 @@ const MODAL_BACKGROUND_TRANSPARENT = 'hsla(240, 3.23%, 6.08%, 0)';
 const TOP_FADE_HEIGHT = 96;
 const BOTTOM_FADE_HEIGHT = 64;
 
-const STATUS_LABEL: Record<ReferralRewardStatus, string> = {
-  [ReferralRewardStatus.PENDING]: 'In progress',
-  [ReferralRewardStatus.QUALIFIED]: 'Qualified',
-  [ReferralRewardStatus.PAID]: 'Rewarded',
-  [ReferralRewardStatus.EXPIRED]: 'Expired',
-  [ReferralRewardStatus.REVERSED]: 'Reversed',
-  [ReferralRewardStatus.UNDER_REVIEW]: 'In review',
-};
-
-const formatUsd = (value: number) =>
-  `$${(value || 0).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-/** Whole-dollar formatting (no decimals) for the program copy, e.g. "$15". */
-const formatUsdWhole = (value: number) => `$${Math.round(value || 0).toLocaleString('en-US')}`;
+/** Poll cadence while a reward is past its ETA but not yet reported paid. */
+const SETTLING_POLL_MS = 60_000;
 
 function ChecklistRow({
   icon,
@@ -89,24 +82,6 @@ function ShareAction({
   );
 }
 
-function ReferralListItem({ item }: { item: ReferralRewardListItem }) {
-  const rewarded = item.status === ReferralRewardStatus.PAID;
-  return (
-    <View className="flex-row items-center justify-between border-t border-white/5 py-3 first:border-t-0">
-      <View>
-        <Text className="text-sm font-medium text-white">{STATUS_LABEL[item.status]}</Text>
-        <Text className="text-xs text-white/50">
-          {formatUsd(item.spendUsd)} spent · {item.merchantCount} merchant
-          {item.merchantCount === 1 ? '' : 's'}
-        </Text>
-      </View>
-      {rewarded ? (
-        <Text className="text-sm font-semibold text-rewards">+{formatUsd(item.rewardUsd)}</Text>
-      ) : null}
-    </View>
-  );
-}
-
 interface ReferralProgramContentNewProps {
   isActive: boolean;
   onClose: () => void;
@@ -117,8 +92,12 @@ export default function ReferralProgramContentNew({
   onClose,
 }: ReferralProgramContentNewProps) {
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useDimension();
   const { user } = useUser();
-  const { data: summary } = useReferralSummary();
+  const [isSettling, setIsSettling] = useState(false);
+  const { data: summary, refetch } = useReferralSummary({
+    refetchInterval: isSettling ? SETTLING_POLL_MS : false,
+  });
   const [showLearnMore, setShowLearnMore] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -131,7 +110,9 @@ export default function ReferralProgramContentNew({
   const spendTarget = summary?.qualification.spendTargetUsd ?? 75;
   const merchantTarget = summary?.qualification.merchantTarget ?? 3;
   const windowDays = summary?.qualification.windowDays ?? 30;
+  const payoutDelayDays = summary?.qualification.payoutDelayDays ?? 30;
   const referrals = summary?.referrals ?? [];
+  const totalRewardedUsd = summary?.totalRewardedUsd ?? 0;
 
   const handleWhatsApp = useCallback(async () => {
     const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
@@ -195,6 +176,25 @@ export default function ReferralProgramContentNew({
     return () => clearTimeout(timeout);
   }, [linkCopied]);
 
+  // A friend whose payout ETA has passed but who the API still reports as
+  // unlocking is "settling": the sweep is due but hasn't confirmed. Poll until
+  // it does, then stop — this is what keeps the row flipping to Completed on
+  // its own rather than stranding the user on a finished countdown.
+  const hasSettlingReward = referrals.some(
+    item =>
+      item.stage === ReferralFriendStage.REWARD_UNLOCKING &&
+      !!item.payoutEtaAt &&
+      Date.parse(item.payoutEtaAt) <= Date.now(),
+  );
+  useEffect(() => {
+    setIsSettling(hasSettlingReward);
+  }, [hasSettlingReward]);
+
+  const handlePayoutDue = useCallback(() => {
+    setIsSettling(true);
+    void refetch();
+  }, [refetch]);
+
   return (
     <View className="flex-1">
       <ScrollView
@@ -202,7 +202,7 @@ export default function ReferralProgramContentNew({
         contentContainerStyle={{
           paddingTop: 72,
           paddingBottom: insets.bottom + 48,
-          paddingHorizontal: 16,
+          paddingHorizontal: isDesktop ? 0 : 16,
           gap: 24,
         }}
         showsVerticalScrollIndicator={false}
@@ -231,6 +231,30 @@ export default function ReferralProgramContentNew({
             </Text>
           </View>
         </View>
+
+        {/* Earned so far — only once there is something to celebrate. */}
+        {totalRewardedUsd > 0 ? (
+          // className is inert on Reanimated components (NativeWind's JSX
+          // transform only interops React Native's own components), so the
+          // animation wrapper stays bare and the styling lives on the View.
+          <Animated.View entering={FadeInDown.duration(400)}>
+            <View className="-mt-3 flex-row items-center justify-center gap-2 rounded-twice bg-referral-success/[0.12] px-5 py-3">
+              <Text className="text-sm text-referral-success">Earned from referrals</Text>
+              <CountUp
+                count={totalRewardedUsd}
+                decimalPlaces={0}
+                prefix="$"
+                styles={{
+                  wholeText: {
+                    color: REFERRAL_SUCCESS_COLOR,
+                    fontSize: 18,
+                    fontWeight: '600',
+                  },
+                }}
+              />
+            </View>
+          </Animated.View>
+        ) : null}
 
         {/* Checklist */}
         <View className="gap-2">
@@ -282,9 +306,19 @@ export default function ReferralProgramContentNew({
         <View className="gap-2">
           <Text className="px-1 text-base text-white/50">Invited friends ({referrals.length})</Text>
           {referrals.length > 0 ? (
-            <View className="rounded-twice bg-card px-5 py-2">
+            // No padding here: each row carries the design's 16px sides so the
+            // dividers run the full width of the card. `overflow-hidden` keeps
+            // them inside the rounded corners.
+            <View className="overflow-hidden rounded-twice bg-card">
               {referrals.map((item, index) => (
-                <ReferralListItem key={`${item.signupAt}-${index}`} item={item} />
+                <ReferralFriendRow
+                  key={item.referredUserId || `${item.signupAt}-${index}`}
+                  item={item}
+                  index={index}
+                  spendTargetUsd={spendTarget}
+                  merchantTarget={merchantTarget}
+                  onPayoutDue={handlePayoutDue}
+                />
               ))}
             </View>
           ) : (
@@ -320,14 +354,24 @@ export default function ReferralProgramContentNew({
               • Deposit to their account via bank deposit or crypto.
             </Text>
             <Text className="text-sm text-white/70">
-              • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants.
+              • Spend {formatUsdWhole(spendTarget)} across {merchantTarget}+ different merchants.
             </Text>
             <Text className="text-sm text-white/70">
-              You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about
-              40 days after they qualify. One reward per friend, no cap.
+              You get {formatUsdWhole(referrerUsd)} and they get {formatUsdWhole(newUserUsd)},
+              credited {payoutDelayDays} days after they qualify — that window covers refunds and
+              disputes. You&apos;ll see the exact unlock date on each friend above. One reward per
+              friend, no cap.
             </Text>
           </View>
         )}
+
+        {/* Add referrer */}
+        <Link href={path.ADD_REFERRER} onPress={onClose} asChild>
+          <Pressable className="flex-row items-center justify-between px-1 py-2">
+            <Text className="flex-1 pr-2 text-base font-medium text-white/70">Add a referrer</Text>
+            <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+        </Link>
       </ScrollView>
 
       <LinearGradient
@@ -343,8 +387,8 @@ export default function ReferralProgramContentNew({
       >
         <Pressable
           onPress={onClose}
-          className="absolute right-4 h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
-          style={{ top: 12 }}
+          className="absolute h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+          style={{ top: 12, right: isDesktop ? 0 : 16 }}
         >
           <X size={18} color="rgba(255,255,255,0.7)" />
         </Pressable>

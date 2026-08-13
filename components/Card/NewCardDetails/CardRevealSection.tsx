@@ -15,10 +15,12 @@ import {
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardHeroTarget from '@/components/Card/NewCardDetails/CardHeroTarget';
 import CardRevealFace from '@/components/Card/NewCardDetails/CardRevealFace';
-import { resolveCardRevealValues } from '@/components/Card/NewCardDetails/cardRevealValues';
+import {
+  resolveCardRevealValues,
+  resolveIssuingCountryName,
+} from '@/components/Card/NewCardDetails/cardRevealValues';
 import { EASE_OUT_EXPO, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
-import { COUNTRIES } from '@/constants/countries';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { CardHolderName, CardProvider } from '@/lib/types';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -41,8 +43,9 @@ interface CardRevealSectionProps {
  * expose the name and issuing country — the two halves of the same gesture, so
  * they share one duration and easing.
  *
- * If the reveal request fails, the design's placeholder values are shown instead of
- * leaving the toggle spinning, so the state is still reachable.
+ * If the reveal request fails the card stays on its front face and the reason is
+ * surfaced as a toast, so the toggle can be tried again. It must never flip onto
+ * stand-in digits: that reads as a working card the user might try to spend.
  */
 const CardRevealSection = ({
   last4,
@@ -74,16 +77,29 @@ const CardRevealSection = ({
     };
   }, []);
 
-  // Flip once the request settles — on success with the real values, on failure with
-  // the placeholders. Held back by a frame on purpose: the values swap from
-  // placeholders to real ones in the render that the request triggers, and starting
-  // the flip and the panel in that same frame is what made the first reveal stutter
-  // on Android. A frame is enough for that render to commit first.
+  // Flip only once real values arrived. Held back by a frame on purpose: the values
+  // swap in on the render that the request triggers, and starting the flip and the
+  // panel in that same frame is what made the first reveal stutter on Android. A
+  // frame is enough for that render to commit first.
   useEffect(() => {
-    if (!hasRequested || isLoading || !(cardDetails || error)) return;
+    if (!hasRequested || isLoading || !cardDetails) return;
     const frame = requestAnimationFrame(() => setIsRevealed(true));
     return () => cancelAnimationFrame(frame);
-  }, [hasRequested, isLoading, cardDetails, error]);
+  }, [hasRequested, isLoading, cardDetails]);
+
+  // A failed reveal used to flip the card onto Figma's placeholder digits, which
+  // looked exactly like a working card. Report it and stay on the front face so the
+  // toggle can be tried again.
+  useEffect(() => {
+    if (!hasRequested || isLoading || !error || cardDetails) return;
+    setHasRequested(false);
+    Toast.show({
+      type: 'error',
+      text1: 'Could not show card details',
+      text2: error,
+      props: { badgeText: '' },
+    });
+  }, [hasRequested, isLoading, error, cardDetails]);
 
   // Build the revealed face while the pane sits idle, so the first tap doesn't pay
   // for three pieces of pill artwork decoding and the copy icons rasterising. Runs
@@ -96,7 +112,7 @@ const CardRevealSection = ({
   }, [isPaneOpen, isRevealFaceWarm]);
 
   const issuingCountry = useMemo(
-    () => COUNTRIES.find(country => country.code === issuingCountryCode)?.name,
+    () => resolveIssuingCountryName(issuingCountryCode),
     [issuingCountryCode],
   );
 
@@ -115,8 +131,8 @@ const CardRevealSection = ({
     }
     setHasRequested(true);
     void revealDetails().catch(() => {
-      // Swallowed: the hook surfaces the failure through `error`, which flips the
-      // card onto the placeholder values.
+      // Swallowed: the hook surfaces the failure through `error`, which the effect
+      // above turns into a toast.
     });
   }, [isRevealed, revealDetails, clearCardDetails]);
 
