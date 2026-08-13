@@ -4,28 +4,22 @@ import { router } from 'expo-router';
 import Transaction from '@/components/Transaction';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTransactionCategory } from '@/constants/transaction';
+import { isSavingsVaultActivity } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
-import { ActivityEvent, TransactionCategory } from '@/lib/types';
 
-// soUSD / soFUSE / soETH — the three savings vault tokens.
-const SAVINGS_SYMBOLS = new Set(['sousd', 'sofuse', 'soeth']);
 const MAX_ITEMS = 4;
 
-/** Keep only savings-related activity (by category or by vault-token symbol). */
-const isSavingsActivity = (activity: ActivityEvent) =>
-  getTransactionCategory(activity.type, activity.title) === TransactionCategory.SAVINGS_ACCOUNT ||
-  SAVINGS_SYMBOLS.has((activity.symbol ?? '').toLowerCase());
-
 /**
- * "Recent activity" for the funded savings screen — the most recent
- * savings-related transactions, with a "See all activity" link to the full
- * Activity screen. Renders nothing when there are no savings activities.
+ * "Recent activity" for the funded savings screen — the most recent deposits
+ * into and withdrawals out of the savings vault, with a "See all activity" link
+ * to the full Activity screen. Card funding, wallet transfers and everything
+ * else stay on their own surfaces. Renders nothing when there is no savings
+ * activity.
  */
 const RecentSavingsActivity = () => {
   const { activities, isLoading } = useActivity();
 
-  const savings = (activities ?? []).filter(isSavingsActivity).slice(0, MAX_ITEMS);
+  const savings = (activities ?? []).filter(isSavingsVaultActivity).slice(0, MAX_ITEMS);
 
   if (isLoading || savings.length === 0) return null;
 
