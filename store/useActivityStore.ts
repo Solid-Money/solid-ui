@@ -41,6 +41,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   [TransactionStatus.PROCESSING]: 1,
   [TransactionStatus.FAILED]: 2,
   [TransactionStatus.REFUNDED]: 2,
+  [TransactionStatus.TRANSFERRED_TO_SAFE]: 2,
   [TransactionStatus.CANCELLED]: 2,
   [TransactionStatus.EXPIRED]: 2,
   [TransactionStatus.SUCCESS]: 3,

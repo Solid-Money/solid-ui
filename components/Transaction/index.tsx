@@ -72,6 +72,7 @@ const Transaction = ({
   const isProcessing = status === TransactionStatus.PROCESSING;
   const isExpired = status === TransactionStatus.EXPIRED;
   const isRefunded = status === TransactionStatus.REFUNDED;
+  const isTransferredToSafe = status === TransactionStatus.TRANSFERRED_TO_SAFE;
   const transactionDetails = TRANSACTION_DETAILS[type];
 
   // Only show badge for failed status
@@ -94,7 +95,13 @@ const Transaction = ({
             bgColor: 'bg-purple-500/20',
             textColor: 'text-purple-400',
           }
-        : null;
+        : isTransferredToSafe
+          ? {
+              text: 'Sent to Safe',
+              bgColor: 'bg-blue-500/20',
+              textColor: 'text-blue-400',
+            }
+          : null;
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
@@ -107,6 +114,7 @@ const Transaction = ({
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
+    if (isTransferredToSafe) return 'Sent to Safe';
     if (isDetected) return 'Transfer detected';
     if (isProcessing || (isPending && isCardDeposit)) return 'Processing deposit...';
     return null;
@@ -179,11 +187,13 @@ const Transaction = ({
       ? 'text-orange-400'
       : isRefunded
         ? 'text-purple-400'
-        : isCancelled
-          ? ''
-          : isIncoming || isSavingsDeposit
-            ? 'text-brand'
-            : '';
+        : isTransferredToSafe
+          ? 'text-blue-400'
+          : isCancelled
+            ? ''
+            : isIncoming || isSavingsDeposit
+              ? 'text-brand'
+              : '';
 
   const statusColorStyle = isFailed
     ? { color: '#f87171' }
@@ -191,15 +201,17 @@ const Transaction = ({
       ? { color: '#fb923c' }
       : isRefunded
         ? { color: '#c084fc' }
-        : isCancelled
-          ? undefined
-          : isIncoming || isSavingsDeposit
-            ? { color: 'hsl(109, 82%, 72%)' }
-            : undefined;
+        : isTransferredToSafe
+          ? { color: '#60a5fa' }
+          : isCancelled
+            ? undefined
+            : isIncoming || isSavingsDeposit
+              ? { color: 'hsl(109, 82%, 72%)' }
+              : undefined;
 
   const statusSign = isFailed
     ? TransactionDirection.FAILED
-    : isExpired || isRefunded
+    : isExpired || isRefunded || isTransferredToSafe
       ? TransactionDirection.CANCELLED
       : isCancelled
         ? TransactionDirection.CANCELLED
@@ -222,6 +234,7 @@ const Transaction = ({
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
+    if (isTransferredToSafe) return 'Sent to Safe';
     if (isCancelled) return 'Cancelled';
     if (isSuccess && isDeposit) return 'Complete';
     return getTransactionCategory(type, title) ?? 'Unknown';
@@ -280,7 +293,7 @@ const Transaction = ({
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>
-        {(isFailed || isExpired || isRefunded) && statusBadge && (
+        {(isFailed || isExpired || isRefunded || isTransferredToSafe) && statusBadge && (
           <View className={cn(statusBadge.bgColor, 'shrink-0 rounded-full px-2 py-1')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
@@ -308,7 +321,9 @@ const Transaction = ({
                   ? 'text-orange-400'
                   : isRefunded
                     ? 'text-purple-400'
-                    : 'text-muted-foreground',
+                    : isTransferredToSafe
+                      ? 'text-blue-400'
+                      : 'text-muted-foreground',
             )}
           >
             {directDepositStatusMessage ??
