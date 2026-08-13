@@ -338,7 +338,11 @@ const useDepositOption = ({
     }
 
     if (isVirtualAccountDetails) {
-      return <VirtualAccountDetailsModal />;
+      return (
+        <VirtualAccountDetailsModal
+          onRetry={() => setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS)}
+        />
+      );
     }
 
     if (isTokenSelector) {

@@ -17,11 +17,9 @@ import { RowChevronIcon, SupportRowIcon } from '@/components/Card/NewCardDetails
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDimension } from '@/hooks/useDimension';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { getAsset } from '@/lib/assets';
-import { useDepositStore } from '@/store/useDepositStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 import { CopyFieldIcon, InfoRowIcon } from './icons';
@@ -89,13 +87,22 @@ const LinkRow = ({
   </Pressable>
 );
 
-export const VirtualAccountDetailsModal = () => {
-  const setModal = useDepositStore(state => state.setModal);
+interface VirtualAccountDetailsModalProps {
+  /**
+   * Called when the user taps "Try again" after failing to load details.
+   * Defaults to a plain refetch of the existing automation; pass this to
+   * route through account creation/ToS instead when embedded somewhere that
+   * a user may not have an automation yet (e.g. the wallet deposit flow).
+   */
+  onRetry?: () => void;
+}
+
+export const VirtualAccountDetailsModal = ({ onRetry }: VirtualAccountDetailsModalProps = {}) => {
   const insets = useSafeAreaInsets();
   const { isScreenMedium } = useDimension();
   const { height: windowHeight } = useWindowDimensions();
   const [isScrolled, setIsScrolled] = useState(false);
-  const { data: automation, isLoading } = useOnrampAutomation();
+  const { data: automation, isLoading, refetch } = useOnrampAutomation();
 
   // The modal only hands us a flex-bounded height on web and on small native screens;
   // on a native tablet it sizes to content, so the ScrollView needs its own cap there.
@@ -113,10 +120,7 @@ export const VirtualAccountDetailsModal = () => {
     return (
       <View className="flex-1 items-center justify-center gap-4 py-12">
         <Text className="text-base text-white">Could not load your bank details.</Text>
-        <Button
-          className="h-12 rounded-2xl px-6"
-          onPress={() => setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS)}
-        >
+        <Button className="h-12 rounded-2xl px-6" onPress={() => (onRetry ? onRetry() : refetch())}>
           <Text className="text-base font-bold text-black">Try again</Text>
         </Button>
       </View>
