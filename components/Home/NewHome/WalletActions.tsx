@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
-import AddFundsDestinationModal from '@/components/Home/NewHome/AddFundsDestinationModal';
 import SendModal from '@/components/Send/SendModal';
+import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -73,7 +75,7 @@ const PillLabel = ({ compact, children }: { compact?: boolean; children: string 
 interface WalletActionsProps {
   /** When false, only "Add Funds" is shown full-width; when true, Swap/Send appear. */
   hasFunds: boolean;
-  /** Card holders first pick where the money goes (card or wallet). */
+  /** Card holders' "Add Funds" goes to the card; others go to the wallet. */
   hasCard?: boolean;
 }
 
@@ -82,26 +84,26 @@ interface WalletActionsProps {
  * plus "Swap" and "Send". Reuses the global Deposit/Swap/Send modals. Note
  * SwapModal renders null on iOS, so Swap self-hides there (same as the legacy row).
  *
- * With a card, "Add Funds" opens a destination picker first (card vs wallet) and
- * routes to the matching deposit flow; without one it goes straight to the
- * wallet deposit modal.
+ * "Add Funds" routes straight to the card deposit flow for card holders, or the
+ * wallet deposit flow otherwise — no destination picker in between.
  */
 const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const { width } = useWindowDimensions();
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
   const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
       {hasCard ? (
-        // AddFundsDestinationModal also mounts two controlled dialog roots. On
-        // web those roots render as zero-width Views, which the row otherwise
-        // counts as extra children and inserts a gap around. Keep the whole flow
-        // in one flex item so only the three visible actions define this layout.
-        <View className={hasFunds ? 'h-14 flex-1' : 'w-full'}>
-          <AddFundsDestinationModal trigger={addFundsTrigger} />
-        </View>
+        // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
+        // own trigger prop - that goes through ResponsiveModal's rn-primitives
+        // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.
+        <>
+          <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
+          <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
+        </>
       ) : (
         <DepositOptionModal trigger={addFundsTrigger} />
       )}
