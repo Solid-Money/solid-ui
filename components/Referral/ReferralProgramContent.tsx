@@ -12,10 +12,12 @@ import { path } from '@/constants/path';
 import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { SOLID_WEBSITE_URL } from '@/lib/config';
 import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const REFERRAL_BASE_URL = 'https://www.solid.xyz/refer?ref=';
+/** Environment-aware, so a QA build never shares a production referral link. */
+const REFERRAL_BASE_URL = `${SOLID_WEBSITE_URL}/refer?ref=`;
 
 const STATUS_LABEL: Record<ReferralRewardStatus, string> = {
   [ReferralRewardStatus.PENDING]: 'In progress',
