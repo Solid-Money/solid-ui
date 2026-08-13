@@ -8,7 +8,7 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
   CARD_FUND_TOKENS,
-  // CARD_FUND_USD_ICON — restore with the "Cash deposit" section below.
+  CARD_FUND_USD_ICON,
   getCardFundNetworkChips,
 } from '@/components/Card/CardFund/constants';
 import NeedHelp from '@/components/NeedHelp';
@@ -30,6 +30,7 @@ const CardFundOptions = ({
   onTokenPress,
   onMoveFromSavingsPress,
   onExternalWalletPress,
+  onUsdPress,
   isExternalWalletLoading,
 }: CardFundOptionsProps) => (
   <View className="gap-y-8">
@@ -45,7 +46,6 @@ const CardFundOptions = ({
       ))}
     </CardFundGroup>
 
-    {/* Hidden until USD (ACH / Wire) card funding is wired up.
     <CardFundGroup label="Cash deposit">
       <CardFundRow
         icon={<Image source={CARD_FUND_USD_ICON} style={TOKEN_ICON_STYLE} contentFit="cover" />}
@@ -54,7 +54,6 @@ const CardFundOptions = ({
         onPress={onUsdPress}
       />
     </CardFundGroup>
-    */}
 
     <CardFundGroup label="Other">
       <CardFundRow

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -10,12 +10,16 @@ import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
 import { getCardFundTokenIcon } from '@/components/Card/CardFund/constants';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { CARD_DEPOSIT_MODAL, DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
+import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
+import { RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
+import { useDepositStore } from '@/store/useDepositStore';
 
 type Step = 'options' | 'networks' | 'address' | 'externalAddress';
 
@@ -27,6 +31,14 @@ const MODAL_STATES: Record<Step, ModalState> = {
   externalAddress: { name: 'external-address', number: 1 },
   address: { name: 'address', number: 2 },
 };
+
+/**
+ * Wait out this modal's exit animation before opening the global wallet
+ * deposit modal for "Cash" - mounting the next dialog in the same commit as
+ * this one unmounts leaves the closing sheet's view on top of the new one,
+ * swallowing its taps.
+ */
+const HANDOFF_DELAY_MS = 260;
 
 const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
 
@@ -58,6 +70,15 @@ export default function CardDirectDepositModalMobile({
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
 
   const setDepositModal = useCardDepositStore(state => state.setModal);
+  const setWalletModal = useDepositStore(state => state.setModal);
+  const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Same existing-automation check the wallet "Add funds" -> Cash flow uses
+  // (DepositTypeSelection.handleCashPress) - reused here so "USD" opens the
+  // exact same virtual-account details/apply screen, not a separate copy.
+  const { data: cardStatus } = useCardStatus();
+  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
@@ -83,6 +104,29 @@ export default function CardDirectDepositModalMobile({
     },
     [isControlled, onOpenChange],
   );
+
+  useEffect(
+    () => () => {
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+    },
+    [],
+  );
+
+  // "Cash" (USD/ACH/Wire) hands off to the same global virtual-account flow
+  // the wallet "Add funds" screen uses, rather than a separate copy embedded
+  // in this modal's own step machine.
+  const handleUsdPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
+    handleOpenChange(false);
+    if (handoffTimer.current) clearTimeout(handoffTimer.current);
+    handoffTimer.current = setTimeout(() => {
+      setWalletModal(
+        existingAutomation
+          ? DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS
+          : DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY,
+      );
+    }, HANDOFF_DELAY_MS);
+  }, [handleOpenChange, existingAutomation, setWalletModal]);
 
   const handleTransferFromWallet = useCallback(() => {
     handleOpenChange(false);
@@ -164,6 +208,7 @@ export default function CardDirectDepositModalMobile({
           onTokenPress={handleTokenPress}
           onMoveFromSavingsPress={handleTransferFromWallet}
           onExternalWalletPress={handleExternalWallet}
+          onUsdPress={handleUsdPress}
         />
       );
     }
