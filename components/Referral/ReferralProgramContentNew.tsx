@@ -5,14 +5,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Link } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import { useReferralSummary } from '@/hooks/useRewards';
-import { SOLID_WEBSITE_URL } from '@/lib/config';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { SOLID_WEBSITE_URL } from '@/lib/config';
 import { ReferralFriendStage } from '@/lib/types';
 
 import ReferralFriendRow, { formatUsdWhole, REFERRAL_SUCCESS_COLOR } from './ReferralFriendRow';
@@ -89,6 +92,7 @@ export default function ReferralProgramContentNew({
   onClose,
 }: ReferralProgramContentNewProps) {
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useDimension();
   const { user } = useUser();
   const [isSettling, setIsSettling] = useState(false);
   const { data: summary, refetch } = useReferralSummary({
@@ -198,7 +202,7 @@ export default function ReferralProgramContentNew({
         contentContainerStyle={{
           paddingTop: 72,
           paddingBottom: insets.bottom + 48,
-          paddingHorizontal: 16,
+          paddingHorizontal: isDesktop ? 0 : 16,
           gap: 24,
         }}
         showsVerticalScrollIndicator={false}
@@ -360,6 +364,14 @@ export default function ReferralProgramContentNew({
             </Text>
           </View>
         )}
+
+        {/* Add referrer */}
+        <Link href={path.ADD_REFERRER} onPress={onClose} asChild>
+          <Pressable className="flex-row items-center justify-between px-1 py-2">
+            <Text className="flex-1 pr-2 text-base font-medium text-white/70">Add a referrer</Text>
+            <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+        </Link>
       </ScrollView>
 
       <LinearGradient
@@ -375,8 +387,8 @@ export default function ReferralProgramContentNew({
       >
         <Pressable
           onPress={onClose}
-          className="absolute right-4 h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
-          style={{ top: 12 }}
+          className="absolute h-[50px] w-[50px] items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+          style={{ top: 12, right: isDesktop ? 0 : 16 }}
         >
           <X size={18} color="rgba(255,255,255,0.7)" />
         </Pressable>
