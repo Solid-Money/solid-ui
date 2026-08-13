@@ -42,7 +42,7 @@ const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
   return (
     <View className="flex-row items-center gap-3 px-4">
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_FORM}
+        modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
         preserveSelectedVault
         source="savings_add_funds"
         onBeforeOpen={() => {
@@ -50,7 +50,7 @@ const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
           if (index >= 0) {
             useSavingStore.getState().selectVaultForDeposit(index);
           }
-          useDepositStore.getState().setDepositFromSolid(true);
+          useDepositStore.getState().setDepositFromSolid(false);
         }}
         trigger={<DepositTriggerButton />}
       />

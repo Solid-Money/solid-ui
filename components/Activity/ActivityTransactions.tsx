@@ -328,36 +328,11 @@ export default function ActivityTransactions({
   // Memoized transaction press handler - takes transaction as param to avoid per-item closures
   const handleTransactionPress = useCallback(
     (transaction: ActivityEvent) => {
-      const clientTxId = transaction.clientTxId;
-      const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
-      const isPending = transaction.status === TransactionStatus.PENDING;
-      const isDetected = transaction.status === TransactionStatus.DETECTED;
-      const isProcessing = transaction.status === TransactionStatus.PROCESSING;
-      const isPendingOrProcessing = isPending || isDetected || isProcessing;
-
-      const isCardDeposit = transaction.metadata?.destinationType === 'RAIN_CARD';
-
-      if (isDirectDeposit && isPendingOrProcessing && !isCardDeposit) {
-        // Extract token symbol from clientTxId format: direct_deposit_{userId}_{chainId}_{tokenSymbol}_{timestamp}
-        // The token symbol is the 4th part (index 3) when split by underscore after removing prefix
-        const clientTxIdParts = clientTxId.replace('direct_deposit_', '').split('_');
-        // Token symbol is at index 2 (after userId and chainId)
-        const tokenSymbol = clientTxIdParts[2] as 'USDC' | 'USDT' | undefined;
-
-        // Get walletAddress from activity metadata (added by backend IMPL-BE-DD)
-        const walletAddress = transaction.metadata?.walletAddress as string | undefined;
-
-        // Seed the store for the address screen and mark it as coming from activity
-        setDirectDepositSession({
-          chainId: transaction.chainId,
-          walletAddress,
-          selectedToken: tokenSymbol || 'USDC',
-          status: 'pending',
-          fromActivity: true,
-        });
-        // Open global modal
-        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
-      } else if (transaction.type === TransactionType.BANK_TRANSFER) {
+      // Every direct deposit — savings and card alike — has a real transfer
+      // behind it by the time it appears here (the webhook creates the activity
+      // only once funds are seen), so a tap opens its progress screen rather
+      // than re-opening a deposit-address sheet.
+      if (transaction.type === TransactionType.BANK_TRANSFER) {
         setBankTransferData({
           instructions: transaction.metadata?.sourceDepositInstructions,
           fromActivity: true,

@@ -4,7 +4,7 @@ export const DEPOSIT_STEPS = [
   { key: 'received' as const, label: 'Received' },
   { key: 'confirmed' as const, label: 'Confirmed' },
   { key: 'depositing' as const, label: 'Depositing' },
-  { key: 'minting' as const, label: 'Minting soUSD' },
+  { key: 'minting' as const, label: 'Minting' },
   { key: 'complete' as const, label: 'Complete' },
 ] as const;
 
@@ -81,7 +81,7 @@ export function getDepositStepDescription(step: DepositStep | undefined): string
     case 'depositing':
       return 'Depositing to vault...';
     case 'minting':
-      return 'Minting soUSD...';
+      return 'Minting your savings position...';
     case 'complete':
       return null; // Handled by SUCCESS status display
     default:
@@ -106,10 +106,30 @@ function isDirectDeposit(activity: ActivityEvent): boolean {
   return description === 'Direct deposit' || description === 'Card deposit';
 }
 
+/** Vault share tokens — a deposit denominated in one of these mints savings. */
+const VAULT_SHARE_SYMBOLS = ['sousd', 'sofuse', 'soeth'];
+
+/**
+ * True when a deposit ends up in the user's savings.
+ *
+ * Two shapes reach this: connect-wallet deposits, which are denominated in the
+ * share token they mint (soUSD / soETH / soFUSE), and direct deposits, which keep
+ * the deposited token as their symbol (USDC, ETH, ...) and record the
+ * destination the webhook routed them to. Both have to be recognised, or a
+ * savings deposit reads as one into the wallet.
+ */
+export function isSavingsDestination(activity: ActivityEvent): boolean {
+  if (activity.metadata?.destinationType === 'RAIN_CARD') return false;
+  if (activity.metadata?.destinationType === 'PROTOCOL') return true;
+  if (activity.metadata?.vaultShareSymbol) return true;
+
+  const symbol = activity.symbol?.toLowerCase();
+  return !!symbol && VAULT_SHARE_SYMBOLS.includes(symbol);
+}
+
 function destinationLabel(activity: ActivityEvent): string {
   if (activity.metadata?.destinationType === 'RAIN_CARD') return 'card';
-  const symbol = activity.symbol?.toLowerCase();
-  if (symbol === 'sousd' || symbol === 'sofuse' || symbol === 'soeth') return 'savings';
+  if (isSavingsDestination(activity)) return 'savings';
   return 'balance';
 }
 
