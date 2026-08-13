@@ -324,8 +324,6 @@ const styles = StyleSheet.create({
     top: 0,
     borderRadius: 46,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   pillTint: {
     ...StyleSheet.absoluteFillObject,
