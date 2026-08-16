@@ -35,6 +35,7 @@ import {
   BridgeTransactionRequest,
   CardAccessResponse,
   CardBalanceResponseDto,
+  CardCollateralAvailableDto,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -1089,6 +1090,31 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Rain only: how much collateral can actually be withdrawn to the wallet, read
+ * from the collateral proxy on-chain. Use this for the withdraw screen's max —
+ * `getCardBalance` reports credit-side spending power, which can be higher than
+ * the collateral backing it. Returns 400 for Bridge.
+ */
+export const getCardCollateralAvailable = async (): Promise<CardCollateralAvailableDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/collateral/available`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (!response.ok) throw response;
 

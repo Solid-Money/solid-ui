@@ -783,6 +783,46 @@ export interface RainContractResponseDto {
   onramp?: RainContractOnrampDto;
 }
 
+/** On-chain collateral held by one Rain collateral proxy, for one token. */
+export interface CardCollateralContractBalanceDto {
+  rainCollateralContractId: string;
+  chainId: number;
+  collateralProxy: string;
+  tokenAddress: string;
+  decimals: number;
+  /** Proxy's token balance in smallest units. */
+  rawBalance: string;
+  /** Same balance in dollars, floored to the cent. */
+  balanceUsd: number;
+  /** Set when the balance could not be read (RPC failure, unsupported chain). */
+  unavailableReason?: string;
+}
+
+/**
+ * GET /cards/collateral/available — what can actually be withdrawn from the
+ * card to the wallet right now. Distinct from `CardBalanceResponseDto`, which
+ * carries Rain's credit-side spending power: that figure can exceed the
+ * collateral on-chain, and a withdrawal above this one is rejected.
+ */
+export interface CardCollateralAvailableDto {
+  /** Withdrawable amount in dollars — the binding cap, floored to the cent. */
+  availableUsd: number;
+  /** `availableUsd` in the selected token's smallest units. */
+  availableRaw: string;
+  /** On-chain collateral of the selected contract, in dollars. */
+  onChainCollateralUsd: number;
+  /** Rain's credit-side spending power, in dollars, when known. */
+  spendingPowerUsd?: number;
+  /** Which of the two caps is currently binding. */
+  limitedBy: 'collateral' | 'spendingPower' | 'none';
+  /** Contract a withdrawal would draw from; absent when the user has none. */
+  chainId?: number;
+  collateralProxy?: string;
+  tokenAddress?: string;
+  decimals?: number;
+  contracts: CardCollateralContractBalanceDto[];
+}
+
 export type OnrampAutomationRail = 'ach' | 'wire';
 
 export interface OnrampAutomationDepositAddressDto {
