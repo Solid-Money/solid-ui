@@ -95,6 +95,21 @@ function normalizeCardAmount(amount: string, provider?: CardProvider | null): nu
 }
 
 /**
+ * A balance turned into a plain numeric string an amount input can hold,
+ * floored to the cent.
+ *
+ * `formatNumber` is for display only — it groups thousands ("1,234.56"), and
+ * feeding that back into the field makes `Number()` NaN, so a "Max" press on a
+ * balance over $1,000 failed validation. Flooring rather than rounding keeps
+ * Max at or below the real balance: a maximum rounded a fraction of a cent
+ * upwards is a withdrawal the provider rejects.
+ */
+export const toAmountInputValue = (amount: number): string => {
+  if (!Number.isFinite(amount) || amount <= 0) return '0';
+  return (Math.floor(amount * 100) / 100).toFixed(2);
+};
+
+/**
  * Format card transaction amount with proper sign and currency symbol.
  */
 export const formatCardAmount = (amount: string, provider?: CardProvider | null): string => {
