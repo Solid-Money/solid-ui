@@ -34,7 +34,8 @@ import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isProduction } from '@/lib/config';
-import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
+import { CardHolderName, CardProvider, CardStatus, KycStatus } from '@/lib/types';
+import { canToggleCardFreeze } from '@/lib/utils/cardHelpers';
 import { cn } from '@/lib/utils/utils';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -73,8 +74,7 @@ export default function CardDetails() {
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
-  const canUnfreeze =
-    isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
+  const canToggleFreeze = canToggleCardFreeze(cardDetails);
 
   const isCustomerPausedOrOffboarded =
     customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
@@ -135,7 +135,7 @@ export default function CardDetails() {
     <View className="mx-auto w-full max-w-7xl px-4 pt-12">
       <DesktopHeader
         isCardFrozen={isCardFrozen}
-        canUnfreeze={!!canUnfreeze}
+        canToggleFreeze={canToggleFreeze}
         isFreezing={isFreezing}
         isCardFlipped={isCardFlipped}
         isLoadingCardDetails={isLoadingCardDetails}
@@ -229,8 +229,10 @@ function CardDetailsRedirect() {
 }
 
 interface DesktopHeaderProps {
+  /** Drives the label only — whether to offer the toggle is `canToggleFreeze`. */
   isCardFrozen: boolean;
-  canUnfreeze: boolean;
+  /** Shared with the mobile card pane via `canToggleCardFreeze`. */
+  canToggleFreeze: boolean;
   isFreezing: boolean;
   isCardFlipped: boolean;
   isLoadingCardDetails: boolean;
@@ -242,7 +244,7 @@ interface DesktopHeaderProps {
 
 function DesktopHeader({
   isCardFrozen,
-  canUnfreeze,
+  canToggleFreeze,
   isFreezing,
   isCardFlipped,
   isLoadingCardDetails,
@@ -260,7 +262,7 @@ function DesktopHeader({
     right: 12,
   };
 
-  const showManageDropdown = isRain || !isCardFrozen || canUnfreeze;
+  const showManageDropdown = isRain || canToggleFreeze;
 
   return (
     <View className="flex-row justify-between">
@@ -315,7 +317,7 @@ function DesktopHeader({
                   }
                 />
               )}
-              {(!isCardFrozen || canUnfreeze) && (
+              {canToggleFreeze && (
                 <DropdownMenuItem
                   className="flex-row items-center gap-3 rounded-none px-5 py-3 web:cursor-pointer web:hover:bg-[#404040]"
                   onPress={onFreezeToggle}

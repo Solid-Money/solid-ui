@@ -44,8 +44,14 @@ const CircleAction = ({
 );
 
 interface CardActionsRowProps {
+  /** Drives the label only — whether to offer the toggle is `canToggleFreeze`. */
   isCardFrozen: boolean;
-  canUnfreeze: boolean;
+  /**
+   * Whether to show the freeze toggle at all. Derived by the parent from
+   * `canToggleCardFreeze`, so this row and the desktop header can't drift into
+   * offering different actions for the same card.
+   */
+  canToggleFreeze: boolean;
   isFreezing: boolean;
   onFreezeToggle: () => void;
   onMorePress: () => void;
@@ -58,15 +64,13 @@ interface CardActionsRowProps {
 /** The Add funds / Withdraw / Freeze / More row on the redesigned card screen. */
 const CardActionsRow = ({
   isCardFrozen,
-  canUnfreeze,
+  canToggleFreeze,
   isFreezing,
   onFreezeToggle,
   onMorePress,
   canAddFunds,
   canWithdraw,
 }: CardActionsRowProps) => {
-  const showFreeze = !isCardFrozen || canUnfreeze;
-
   return (
     <View className="flex-row items-start justify-center">
       {canAddFunds && (
@@ -99,7 +103,7 @@ const CardActionsRow = ({
           />
         </View>
       )}
-      {showFreeze && (
+      {canToggleFreeze && (
         <View style={styles.item}>
           <CircleAction
             label={isCardFrozen ? 'Unfreeze' : 'Freeze'}

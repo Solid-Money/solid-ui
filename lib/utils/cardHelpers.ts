@@ -1,4 +1,44 @@
-import { CardProvider, Cashback, CashbackInfo, CashbackStatus } from '@/lib/types';
+import {
+  CardProvider,
+  CardResponse,
+  CardStatus,
+  Cashback,
+  CashbackInfo,
+  CashbackStatus,
+  FreezeInitiator,
+} from '@/lib/types';
+
+/** The freeze fields every card surface reads, so callers can pass a partial. */
+type FreezeState = Pick<CardResponse, 'status' | 'freezes'> | undefined | null;
+
+/**
+ * Whether the cardholder may lift the freeze that's currently on their card.
+ *
+ * `freezes` is the only signal for this, and it doesn't mean the same thing on
+ * every issuer: Bridge returns the provider's own records, while Rain and Wirex
+ * return none and the backend synthesises an entry from our card row. Both
+ * converge on one rule — a frozen card carries an entry naming who froze it, and
+ * only the customer's own freeze may be lifted from the app. A provider freeze
+ * (compliance, suspected fraud) has to go through support.
+ *
+ * An empty list on a frozen card is not permission: it means nothing is on file,
+ * so treat it as somebody else's freeze.
+ */
+const canCustomerUnfreezeCard = (cardDetails: FreezeState): boolean => {
+  if (cardDetails?.status !== CardStatus.FROZEN) return false;
+  return !!cardDetails.freezes?.some(freeze => freeze.initiator === FreezeInitiator.CUSTOMER);
+};
+
+/**
+ * Whether to offer the freeze toggle at all. Freezing is always available on a
+ * live card; unfreezing only when the customer's own freeze is what's in place.
+ *
+ * Shared by the card pane and the desktop header — when the two derived it
+ * separately, a fix to one silently left the other showing a different set of
+ * actions for the same card.
+ */
+export const canToggleCardFreeze = (cardDetails: FreezeState): boolean =>
+  cardDetails?.status !== CardStatus.FROZEN || canCustomerUnfreezeCard(cardDetails);
 
 /**
  * Get initials from merchant/person name for avatar display
@@ -29,9 +69,7 @@ export const getAvatarColor = (name: string): string => {
  * Get a consistent color palette for transaction merchant icons
  * Returns background and text colors based on merchant name hash
  */
-export const getColorForTransaction = (
-  merchantName: string,
-): { bg: string; text: string } => {
+export const getColorForTransaction = (merchantName: string): { bg: string; text: string } => {
   const colors = [
     { bg: 'rgba(127,230,242,0.25)', text: '#7fe6f2' }, // cyan
     { bg: 'rgba(242,127,129,0.25)', text: '#f27f81' }, // red
@@ -59,10 +97,7 @@ function normalizeCardAmount(amount: string, provider?: CardProvider | null): nu
 /**
  * Format card transaction amount with proper sign and currency symbol.
  */
-export const formatCardAmount = (
-  amount: string,
-  provider?: CardProvider | null,
-): string => {
+export const formatCardAmount = (amount: string, provider?: CardProvider | null): string => {
   const numAmount = normalizeCardAmount(amount, provider);
   const sign = numAmount >= 0 ? '' : '-';
   return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
