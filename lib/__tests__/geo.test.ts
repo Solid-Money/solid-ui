@@ -6,6 +6,21 @@ const okJson = (body: unknown) => ({ ok: true, json: () => Promise.resolve(body)
 
 const mockFetch = jest.fn();
 
+// Mutable so a test can hand the chain a token; the default (no token) is what
+// the key-less expectations below assume. Read through a getter because
+// `jest.mock` is hoisted above this declaration.
+const mockConfig = { EXPO_PUBLIC_IPINFO_TOKEN: '' };
+jest.mock('@/lib/config', () => ({
+  __esModule: true,
+  get EXPO_PUBLIC_IPINFO_TOKEN() {
+    return mockConfig.EXPO_PUBLIC_IPINFO_TOKEN;
+  },
+}));
+
+beforeEach(() => {
+  mockConfig.EXPO_PUBLIC_IPINFO_TOKEN = '';
+});
+
 describe('detectGeo', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -104,6 +119,66 @@ describe('detectGeo', () => {
 
     await expect(detectGeo()).resolves.toMatchObject({ countryCode: 'GB' });
     expect(mockFetch.mock.calls.length).toBeGreaterThan(callsAfterFailure);
+  });
+});
+
+describe('IPinfo', () => {
+  const LITE_URL = 'https://api.ipinfo.io/lite/me';
+  const liteResponse = {
+    ip: '8.8.8.8',
+    asn: 'AS15169',
+    as_name: 'Google LLC',
+    country_code: 'US',
+    country: 'United States',
+    continent_code: 'NA',
+    continent: 'North America',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    clearGeoCache();
+    global.fetch = mockFetch as unknown as typeof fetch;
+  });
+
+  it('is asked first, with the token, and settles the lookup on its own', async () => {
+    mockConfig.EXPO_PUBLIC_IPINFO_TOKEN = 'tok_123';
+    mockFetch.mockResolvedValueOnce(okJson(liteResponse));
+
+    // Lite is country-level only — no region or city, which the gate doesn't need.
+    await expect(detectGeo()).resolves.toEqual({
+      ip: '8.8.8.8',
+      countryCode: 'US',
+      countryName: 'United States',
+      region: undefined,
+      city: undefined,
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe(LITE_URL);
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer tok_123' });
+  });
+
+  it('is skipped without a token rather than spending a hop on a 403', async () => {
+    mockFetch.mockResolvedValueOnce(okJson({ country_code: 'NG', country: 'Nigeria' }));
+
+    await expect(detectGeo()).resolves.toMatchObject({ countryCode: 'NG' });
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).not.toContain('api.ipinfo.io');
+    expect(init.headers).not.toHaveProperty('Authorization');
+  });
+
+  it('falls through to the key-less providers when the token is rejected', async () => {
+    mockConfig.EXPO_PUBLIC_IPINFO_TOKEN = 'revoked';
+    mockFetch
+      // 403 "Unknown token".
+      .mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce(okJson({ country_code: 'GB', country: 'United Kingdom' }));
+
+    await expect(detectGeo()).resolves.toMatchObject({ countryCode: 'GB' });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[0][0]).toBe(LITE_URL);
   });
 });
 

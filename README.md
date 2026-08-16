@@ -200,6 +200,7 @@ Key environment variables (see `.env.example`):
 - `EXPO_PUBLIC_INFO_GRAPH`: The Graph endpoint for project data
 - `EXPO_PUBLIC_ALGEBRA_INFO_GRAPH`: The Graph endpoint for DEX data
 - `EXPO_PUBLIC_COINGECKO_API_KEY`: CoinGecko Pro API key for price data (sent as `x-cg-pro-api-key`; the Pro endpoints 401 without it)
+- `EXPO_PUBLIC_IPINFO_TOKEN`: [IPinfo](https://ipinfo.io/account/token) token for the IP geolocation behind the region availability gate. Optional — `lib/geo.ts` falls back to key-less providers without it — but IPinfo's key-less endpoint shares a 1,000 lookups/day cap across everyone on the same source IP, which a carrier NAT can exhaust on its own. A free account is unlimited (country-level)
 - `EXPO_PUBLIC_THIRDWEB_CLIENT_ID`: ThirdWeb client configuration
 - `EXPO_PUBLIC_TURNKEY_API_BASE_URL`: Turnkey API endpoint
 - `EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID`: Turnkey organization ID

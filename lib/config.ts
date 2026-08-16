@@ -75,6 +75,13 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
+/**
+ * IPinfo access token (https://ipinfo.io/account/token). Optional: without it
+ * IP geolocation still works off the key-less providers in `lib/geo.ts`, but
+ * IPinfo's key-less endpoint caps everyone sharing a source IP at 1,000 lookups
+ * a day, where a signed-up free plan is unlimited.
+ */
+export const EXPO_PUBLIC_IPINFO_TOKEN = process.env.EXPO_PUBLIC_IPINFO_TOKEN ?? '';
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 // In-development features: visible on qa/preview builds, hidden in production.
 export const isDevFeatureEnabled = !isProduction;

@@ -1,16 +1,20 @@
 /**
  * IP geolocation.
  *
- * One request to a free, key-less lookup service returns the caller's IP and
- * where it is. Providers are tried in order until one answers with a usable
- * ISO country code, so a single service being down, rate-limiting us or
- * blocked on a network doesn't strand the user.
+ * One request to a lookup service returns the caller's IP and where it is.
+ * Providers are tried in order until one answers with a usable ISO country
+ * code, so a single service being down, rate-limiting us or blocked on a
+ * network doesn't strand the user. IPinfo goes first when a token is
+ * configured — see {@link ipinfoLite} — and the rest of the chain is free and
+ * key-less, so detection keeps working on a build that has no token.
  *
  * The result is memoised for {@link CACHE_TTL_MS}: concurrent callers share
  * one in-flight request, and later callers are served from memory. Nothing is
  * persisted — a stale country outlives a flight or a VPN toggle, and the
  * lookup is cheap enough to redo per session.
  */
+
+import { EXPO_PUBLIC_IPINFO_TOKEN } from '@/lib/config';
 
 export interface GeoLocation {
   /** Caller's public IP, when the provider returned one. */
@@ -26,6 +30,8 @@ export interface GeoLocation {
 interface GeoProvider {
   name: string;
   url: string;
+  /** Merged over the default `Accept`, for providers that authenticate. */
+  headers?: Record<string, string>;
   parse: (data: Record<string, any>) => GeoLocation | null;
 }
 
@@ -41,6 +47,35 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 
 const isAlpha2 = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z]{2}$/.test(value);
+
+/**
+ * IPinfo, tried ahead of everything else whenever a token is configured.
+ *
+ * Its key-less endpoint — still in {@link PROVIDERS} below, for builds without
+ * a token — allows 1,000 lookups a day *shared by every caller on the same
+ * source IP*, so a carrier NAT or an office network can exhaust it without us
+ * sending a single request. A signed-up free plan removes the cap entirely.
+ *
+ * That free plan serves IPinfo Lite, which resolves the country and the ASN but
+ * no city or region. The availability gate gets what it needs (the country);
+ * the region-interest lead loses the finer detail a key-less provider would
+ * have guessed at, and the backend stamps the request IP on that record anyway.
+ */
+const ipinfoLite = (token: string): GeoProvider => ({
+  name: 'ipinfo.io (lite)',
+  url: 'https://api.ipinfo.io/lite/me',
+  // Bearer over `?token=`, so the token stays out of URLs and proxy logs. The
+  // endpoint allows the header cross-origin, so the web build preflights fine.
+  headers: { Authorization: `Bearer ${token}` },
+  parse: data =>
+    isAlpha2(data.country_code)
+      ? {
+          ip: data.ip,
+          countryCode: data.country_code,
+          countryName: data.country ?? data.country_code,
+        }
+      : null,
+});
 
 /**
  * Free, no-API-key lookups. Ordered by how much of {@link GeoLocation} they
@@ -106,7 +141,9 @@ const PROVIDERS: GeoProvider[] = [
         : null,
   },
   {
-    name: 'ipinfo.io',
+    // Key-less, and rate-limited as described on `ipinfoLite`, but it knows the
+    // city and region that Lite doesn't. Worth keeping for builds with no token.
+    name: 'ipinfo.io (keyless)',
     url: 'https://ipinfo.io/json',
     parse: data =>
       isAlpha2(data.country)
@@ -129,13 +166,17 @@ const PROVIDERS: GeoProvider[] = [
   },
 ];
 
-const fetchJson = async (url: string, timeoutMs: number): Promise<Record<string, any> | null> => {
+const fetchJson = async (
+  url: string,
+  timeoutMs: number,
+  headers?: Record<string, string>,
+): Promise<Record<string, any> | null> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...headers },
       signal: controller.signal,
     });
 
@@ -150,10 +191,21 @@ const fetchJson = async (url: string, timeoutMs: number): Promise<Record<string,
 let cached: { value: GeoLocation; at: number } | null = null;
 let inFlight: Promise<GeoLocation | null> | null = null;
 
+/**
+ * The chain to try, in order: IPinfo leads when a token is configured, and the
+ * key-less providers stand on their own when it isn't.
+ */
+const providerChain = (): GeoProvider[] => {
+  const token = EXPO_PUBLIC_IPINFO_TOKEN.trim();
+
+  // Without a token the endpoint answers 403, so don't spend a hop on it.
+  return token ? [ipinfoLite(token), ...PROVIDERS] : PROVIDERS;
+};
+
 const lookup = async (): Promise<GeoLocation | null> => {
   const deadline = Date.now() + TOTAL_BUDGET_MS;
 
-  for (const provider of PROVIDERS) {
+  for (const provider of providerChain()) {
     const remaining = deadline - Date.now();
 
     if (remaining <= 0) {
@@ -161,7 +213,11 @@ const lookup = async (): Promise<GeoLocation | null> => {
       return null;
     }
 
-    const data = await fetchJson(provider.url, Math.min(REQUEST_TIMEOUT_MS, remaining));
+    const data = await fetchJson(
+      provider.url,
+      Math.min(REQUEST_TIMEOUT_MS, remaining),
+      provider.headers,
+    );
     if (!data) continue;
 
     try {
