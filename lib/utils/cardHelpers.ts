@@ -69,9 +69,7 @@ export const getAvatarColor = (name: string): string => {
  * Get a consistent color palette for transaction merchant icons
  * Returns background and text colors based on merchant name hash
  */
-export const getColorForTransaction = (
-  merchantName: string,
-): { bg: string; text: string } => {
+export const getColorForTransaction = (merchantName: string): { bg: string; text: string } => {
   const colors = [
     { bg: 'rgba(127,230,242,0.25)', text: '#7fe6f2' }, // cyan
     { bg: 'rgba(242,127,129,0.25)', text: '#f27f81' }, // red
@@ -99,10 +97,7 @@ function normalizeCardAmount(amount: string, provider?: CardProvider | null): nu
 /**
  * Format card transaction amount with proper sign and currency symbol.
  */
-export const formatCardAmount = (
-  amount: string,
-  provider?: CardProvider | null,
-): string => {
+export const formatCardAmount = (amount: string, provider?: CardProvider | null): string => {
   const numAmount = normalizeCardAmount(amount, provider);
   const sign = numAmount >= 0 ? '' : '-';
   return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
