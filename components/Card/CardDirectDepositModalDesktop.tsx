@@ -12,6 +12,7 @@ import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
 import { getCardFundTokenIcon } from '@/components/Card/CardFund/constants';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
+import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -22,7 +23,7 @@ import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
-import { RainApplicationStatus } from '@/lib/types';
+import { DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -66,6 +67,7 @@ export default function CardDirectDepositModal({
   const isControlled = isOpenProp !== undefined;
   const [isOpenState, setIsOpenState] = useState(false);
   const isOpen = isControlled ? isOpenProp : isOpenState;
+  const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
   const [stepState, setStepState] = useState<{ current: Step; previous: ModalState }>({
     current: 'options',
     previous: CLOSE_STATE,
@@ -119,6 +121,7 @@ export default function CardDirectDepositModal({
       if (!isControlled) setIsOpenState(open);
       onOpenChange?.(open);
       if (!open) {
+        setIsVirtualAccountApplyOpen(false);
         setStepState({ current: 'options', previous: CLOSE_STATE });
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
@@ -134,21 +137,31 @@ export default function CardDirectDepositModal({
     [],
   );
 
-  // "Cash" (USD/ACH/Wire) hands off to the same global virtual-account flow
-  // the wallet "Add funds" screen uses, rather than a separate copy embedded
-  // in this modal's own step machine.
+  // First-time setup stacks above this funding dialog so closing it returns to
+  // "Fund your card". Existing accounts still hand off to the global details flow.
   const handleUsdPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
+    if (!existingAutomation) {
+      setIsVirtualAccountApplyOpen(true);
+      return;
+    }
+
     handleOpenChange(false);
     if (handoffTimer.current) clearTimeout(handoffTimer.current);
     handoffTimer.current = setTimeout(() => {
-      setWalletModal(
-        existingAutomation
-          ? DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS
-          : DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY,
-      );
+      setWalletModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
     }, HANDOFF_DELAY_MS);
   }, [handleOpenChange, existingAutomation, setWalletModal]);
+
+  const handleVirtualAccountTransition = useCallback(
+    (modal: DepositModal) => {
+      setIsVirtualAccountApplyOpen(false);
+      handleOpenChange(false);
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+      handoffTimer.current = setTimeout(() => setWalletModal(modal), HANDOFF_DELAY_MS);
+    },
+    [handleOpenChange, setWalletModal],
+  );
 
   // "Deposit from an external wallet" — connect a crypto wallet, then send.
   const handleConnectWallet = useCallback(async () => {
@@ -349,24 +362,32 @@ export default function CardDirectDepositModal({
   })();
 
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={isOpen}
-      onOpenChange={handleOpenChange}
-      trigger={trigger}
-      title={title}
-      titleIcon={titleIcon}
-      // The funding flow is designed at phone width; 420px keeps the desktop
-      // card at the same proportions instead of stretching to max-w-lg.
-      contentClassName="md:max-w-[450px]"
-      showBackButton={canGoBack}
-      onBackPress={handleBack}
-      shouldAnimate={previousModal.name !== 'close'}
-      isForward={currentModal.number > previousModal.number}
-      contentKey={step}
-    >
-      {content}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        currentModal={currentModal}
+        previousModal={previousModal}
+        isOpen={isOpen}
+        onOpenChange={handleOpenChange}
+        trigger={trigger}
+        title={title}
+        titleIcon={titleIcon}
+        // The funding flow is designed at phone width; 420px keeps the desktop
+        // card at the same proportions instead of stretching to max-w-lg.
+        contentClassName="md:max-w-[450px]"
+        showBackButton={canGoBack}
+        onBackPress={handleBack}
+        shouldAnimate={previousModal.name !== 'close'}
+        isForward={currentModal.number > previousModal.number}
+        contentKey={step}
+      >
+        {content}
+      </ResponsiveModal>
+
+      <VirtualAccountApplyDialog
+        isOpen={isVirtualAccountApplyOpen}
+        onClose={() => setIsVirtualAccountApplyOpen(false)}
+        onRequestDepositModal={handleVirtualAccountTransition}
+      />
+    </>
   );
 }

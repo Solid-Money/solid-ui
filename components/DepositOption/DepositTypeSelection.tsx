@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -12,6 +12,8 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+
+import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 40;
 const ICON_OVERLAP = 4;
@@ -46,6 +48,7 @@ const CircleIcon = ({ source, index }: { source: ReturnType<typeof getAsset>; in
 
 const DepositTypeSelection = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
@@ -55,7 +58,7 @@ const DepositTypeSelection = () => {
     if (existingAutomation) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
     } else {
-      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+      setIsVirtualAccountApplyOpen(true);
     }
   };
 
@@ -65,43 +68,50 @@ const DepositTypeSelection = () => {
   };
 
   return (
-    <View className="gap-y-2.5">
-      <Pressable
-        className="rounded-2xl bg-card px-5 py-5 web:hover:bg-card-hover"
-        onPress={handleCashPress}
-      >
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1">
-            <View className="mb-3 flex-row items-center">
-              {CASH_ICONS.map(({ key, source }, index) => (
-                <CircleIcon key={key} source={source} index={index} />
-              ))}
+    <>
+      <View className="gap-y-2.5">
+        <Pressable
+          className="rounded-2xl bg-card px-5 py-5 web:hover:bg-card-hover"
+          onPress={handleCashPress}
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <View className="mb-3 flex-row items-center">
+                {CASH_ICONS.map(({ key, source }, index) => (
+                  <CircleIcon key={key} source={source} index={index} />
+                ))}
+              </View>
+              <Text className="text-lg font-semibold text-primary">Cash</Text>
+              <Text className="mt-0.5 text-sm text-muted-foreground">Bank transfers · No fees</Text>
             </View>
-            <Text className="text-lg font-semibold text-primary">Cash</Text>
-            <Text className="mt-0.5 text-sm text-muted-foreground">Bank transfers · No fees</Text>
+            <ChevronRight color="white" size={20} />
           </View>
-          <ChevronRight color="white" size={20} />
-        </View>
-      </Pressable>
+        </Pressable>
 
-      <Pressable
-        className="rounded-2xl bg-card px-5 py-5 web:hover:bg-card-hover"
-        onPress={handleCryptoPress}
-      >
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1">
-            <View className="mb-3 flex-row items-center">
-              {CRYPTO_ICONS.map(({ key, source }, index) => (
-                <CircleIcon key={key} source={source} index={index} />
-              ))}
+        <Pressable
+          className="rounded-2xl bg-card px-5 py-5 web:hover:bg-card-hover"
+          onPress={handleCryptoPress}
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <View className="mb-3 flex-row items-center">
+                {CRYPTO_ICONS.map(({ key, source }, index) => (
+                  <CircleIcon key={key} source={source} index={index} />
+                ))}
+              </View>
+              <Text className="text-lg font-semibold text-primary">Crypto</Text>
+              <Text className="mt-0.5 text-sm text-muted-foreground">Linked wallets, DEXs</Text>
             </View>
-            <Text className="text-lg font-semibold text-primary">Crypto</Text>
-            <Text className="mt-0.5 text-sm text-muted-foreground">Linked wallets, DEXs</Text>
+            <ChevronRight color="white" size={20} />
           </View>
-          <ChevronRight color="white" size={20} />
-        </View>
-      </Pressable>
-    </View>
+        </Pressable>
+      </View>
+
+      <VirtualAccountApplyDialog
+        isOpen={isVirtualAccountApplyOpen}
+        onClose={() => setIsVirtualAccountApplyOpen(false)}
+      />
+    </>
   );
 };
 

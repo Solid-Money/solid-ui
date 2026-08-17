@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 
+import PinnedActionModalLayout from '@/components/PinnedActionModalLayout';
 import { RegionUnavailableGeo, RegionUnavailableView } from '@/components/RegionUnavailable';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -12,15 +12,17 @@ import { COUNTRIES } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
-import { RainApplicationStatus } from '@/lib/types';
+import { DepositModal, RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 const BENEFITS_HEIGHT = 328;
 const FIRST_ROW_HEIGHT = 177;
 const HAIRLINE = 'rgba(255,255,255,0.1)';
+const CTA_HEIGHT = 50;
 
 interface Benefit {
   icon?: ReturnType<typeof getAsset>;
@@ -74,8 +76,11 @@ const BenefitCell = ({ benefit }: { benefit: Benefit }) => (
   </View>
 );
 
-const BenefitsGrid = () => (
-  <View style={styles.benefitsCard} className="mx-[18px] overflow-hidden bg-[#1C1C1C]">
+const BenefitsGrid = ({ horizontalMargin }: { horizontalMargin: number }) => (
+  <View
+    style={[styles.benefitsCard, { marginHorizontal: horizontalMargin }]}
+    className="overflow-hidden bg-[#1C1C1C]"
+  >
     <View style={styles.firstBenefitRow} className="flex-row">
       <BenefitCell benefit={BENEFITS[0]} />
       <BenefitCell benefit={BENEFITS[1]} />
@@ -89,9 +94,18 @@ const BenefitsGrid = () => (
   </View>
 );
 
-export const VirtualAccountApplyModal = () => {
+interface VirtualAccountApplyModalProps {
+  onClose: () => void;
+  onRequestDepositModal?: (modal: DepositModal) => void;
+}
+
+export const VirtualAccountApplyModal = ({
+  onClose,
+  onRequestDepositModal,
+}: VirtualAccountApplyModalProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useDimension();
   const setModal = useDepositStore(state => state.setModal);
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
@@ -105,20 +119,28 @@ export const VirtualAccountApplyModal = () => {
   // safe-area plus 7pt places the hero and back button at y=59 on the Figma frame.
   const heroTop = insets.top + 7;
 
-  const handleBack = useCallback(() => {
-    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
-  }, [setModal]);
+  const requestDepositModal = useCallback(
+    (modal: DepositModal) => {
+      if (onRequestDepositModal) {
+        onRequestDepositModal(modal);
+        return;
+      }
+
+      setModal(modal);
+    },
+    [onRequestDepositModal, setModal],
+  );
 
   const proceed = useCallback(() => {
     const rainStatus = cardStatus?.rainApplicationStatus;
 
     if (rainStatus === RainApplicationStatus.APPROVED) {
-      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
+      requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
       return;
     }
 
     setKycFlow('va');
-    setModal(DEPOSIT_MODAL.CLOSE);
+    requestDepositModal(DEPOSIT_MODAL.CLOSE);
 
     if (
       rainStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
@@ -129,7 +151,7 @@ export const VirtualAccountApplyModal = () => {
     }
 
     router.push(path.KYC);
-  }, [cardStatus, router, setKycFlow, setModal]);
+  }, [cardStatus, requestDepositModal, router, setKycFlow]);
 
   /**
    * Where the user is, for the virtual account gate.
@@ -204,8 +226,8 @@ export const VirtualAccountApplyModal = () => {
         product="virtual_account"
         source="virtual_account_apply"
         geo={unsupportedRegion}
-        onBack={handleBack}
-        onContinue={() => setModal(DEPOSIT_MODAL.CLOSE)}
+        onBack={onClose}
+        onContinue={() => requestDepositModal(DEPOSIT_MODAL.CLOSE)}
         // The dialog already sits inside the overlay's 8pt inset, so the
         // pop-up only needs the remaining 7pt to hit y=59 on the Figma frame.
         topOffset={7}
@@ -214,45 +236,18 @@ export const VirtualAccountApplyModal = () => {
   }
 
   return (
-    <View className="flex-1 bg-[#111]">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 56 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ paddingTop: heroTop }}>
-          <View style={styles.heroImage} className="w-full overflow-hidden">
-            <Image
-              source={getAsset('images/virtual-account-hero-v2.png')}
-              style={StyleSheet.absoluteFill}
-              contentFit="fill"
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              onPress={handleBack}
-              className="absolute left-[18px] top-0 z-10 h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
-            >
-              <ArrowLeft size={22} color="#fff" />
-            </Pressable>
-          </View>
-        </View>
-
-        <Text className="mt-[7px] self-center text-center text-[30px] font-medium leading-[30px] -tracking-[1px] text-white">
-          USD Virtual{`\n`}bank account
-        </Text>
-
-        <Text className="mt-[6px] w-[315px] max-w-[85%] self-center text-center text-[16px] leading-5 text-white/70">
-          Get a US bank account in your name so you can deposit USD straight into soUSD.
-        </Text>
-
-        <View className="mt-14">
-          <BenefitsGrid />
-        </View>
-
+    <PinnedActionModalLayout
+      onBack={onClose}
+      topControl="close"
+      backTopOffset={heroTop}
+      actionFadeExtent={60}
+      actionHorizontalPadding={isDesktop ? 40 : 18}
+      actionPaddingBottom={isDesktop ? 55 : 0}
+      action={
         <Button
           variant="brand"
-          className="mx-[18px] mt-[35px] h-[51px] rounded-full border-0"
+          className="w-full rounded-full border-0 active:opacity-90"
+          style={{ height: CTA_HEIGHT }}
           onPress={handleApply}
           disabled={isChecking}
         >
@@ -262,8 +257,30 @@ export const VirtualAccountApplyModal = () => {
             <Text className="text-[16px] font-semibold text-black">Verify now</Text>
           )}
         </Button>
-      </ScrollView>
-    </View>
+      }
+    >
+      <View style={{ paddingTop: heroTop }}>
+        <View style={styles.heroImage} className="w-full overflow-hidden">
+          <Image
+            source={getAsset('images/virtual-account-hero-v2.png')}
+            style={StyleSheet.absoluteFill}
+            contentFit="fill"
+          />
+        </View>
+      </View>
+
+      <Text className="mt-[7px] self-center text-center text-[30px] font-medium leading-[30px] -tracking-[1px] text-white">
+        USD Virtual{`\n`}bank account
+      </Text>
+
+      <Text className="mt-[6px] w-[315px] max-w-[85%] self-center text-center text-[16px] leading-5 text-white/70">
+        Get a US bank account in your name so you can deposit USD straight into soUSD.
+      </Text>
+
+      <View className="mt-14">
+        <BenefitsGrid horizontalMargin={isDesktop ? 40 : 18} />
+      </View>
+    </PinnedActionModalLayout>
   );
 };
 

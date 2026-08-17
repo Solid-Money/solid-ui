@@ -1,12 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ImageSourcePropType,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ImageSourcePropType, Platform, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -14,12 +7,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 
+import PinnedActionModalLayout from '@/components/PinnedActionModalLayout';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -142,14 +133,7 @@ const WEB_BENEFITS = BENEFITS.map((benefit, index) => (index === 1 ? WEB_WALLET_
 const BADGE_HEIGHT = 49;
 const ROW_HEIGHT = 143;
 const HAIRLINE = 'rgba(255,255,255,0.1)';
-const MODAL_BACKGROUND = '#111111';
-// Extra height the top/bottom gradients fade over, beyond their bar's own
-// content — so scrolled content dims out smoothly instead of getting a hard
-// clip (Figma node 20172:8367).
-const FADE_EXTENT = 120;
 const CTA_HEIGHT = 50;
-const CTA_PADDING_TOP = 16;
-const CTA_PADDING_BOTTOM = 55;
 
 const BenefitCell = ({
   benefit,
@@ -199,7 +183,6 @@ const BenefitCell = ({
  */
 const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModalProps) => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { isDesktop } = useDimension();
   const [checkingCountry, setCheckingCountry] = useState(false);
   const { data: cardStatus } = useCardStatus();
@@ -211,11 +194,6 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
     hasCard(cardStatus) ||
     hasPendingCard(cardStatus) ||
     hasCardStatusWithRainApplication(cardStatus);
-  // On Android (edge-to-edge) the safe-area bottom inset can come back smaller
-  // than the actual system nav bar inside the dialog portal, leaving the pinned
-  // CTA sitting too close to the bottom edge. Floor it so the button always
-  // clears the nav bar; iOS keeps its (correct) home-indicator inset.
-  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 0);
   const benefits = Platform.OS === 'web' ? WEB_BENEFITS : BENEFITS;
 
   // Hero entrance — card spins/settles in from Figma node 20964:2589: fades in,
@@ -310,111 +288,69 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
           : 'overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:px-0 md:pt-0'
       }
     >
-      <View className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{
-            paddingTop: 50,
-            paddingBottom: CTA_PADDING_TOP + CTA_HEIGHT + bottomInset + CTA_PADDING_BOTTOM + 24,
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Card hero — already faded into #111 in the asset */}
-          <Animated.View style={heroAnimatedStyle}>
-            <Image
-              source={getAsset('images/card-waiting-hero.png')}
-              style={{ width: '100%', aspectRatio: 402 / 300 }}
-              contentFit="contain"
-            />
-          </Animated.View>
+      <PinnedActionModalLayout
+        onBack={onClose}
+        actionFadeExtent={60}
+        horizontalPadding={isDesktop ? 0 : 18}
+        contentContainerStyle={{ paddingTop: 50 }}
+        action={
+          <Button
+            variant="brand"
+            className="w-full rounded-full border-0 active:opacity-90"
+            style={{ height: CTA_HEIGHT }}
+            onPress={handleVerify}
+            disabled={checkingCountry}
+          >
+            {checkingCountry ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text className="text-[16px] font-semibold text-black">Verify now</Text>
+            )}
+          </Button>
+        }
+      >
+        {/* Card hero — already faded into #111 in the asset */}
+        <Animated.View style={heroAnimatedStyle}>
+          <Image
+            source={getAsset('images/card-waiting-hero.png')}
+            style={{ width: '100%', aspectRatio: 402 / 300 }}
+            contentFit="contain"
+          />
+        </Animated.View>
 
+        <Text
+          className="text-center text-[30px] font-medium -tracking-[1px] text-white"
+          style={{ lineHeight: 36, marginTop: 17 }}
+        >
+          Your card is waiting
+        </Text>
+        <View className="mt-[6px] items-center">
           <Text
-            className="text-center text-[30px] font-medium -tracking-[1px] text-white"
-            style={{ lineHeight: 36, marginTop: 17 }}
+            className="max-w-[315px] text-center text-[16px] text-white/70"
+            style={{ lineHeight: 20 }}
           >
-            Your card is waiting
+            One quick step to activate your card. Most people finish in under 3 minutes.
           </Text>
-          <View className="mt-[6px] items-center">
-            <Text
-              className="max-w-[315px] text-center text-[16px] text-white/70"
-              style={{ lineHeight: 20 }}
-            >
-              One quick step to activate your card. Most people finish in under 3 minutes.
-            </Text>
-          </View>
+        </View>
 
-          {/* Benefits grid */}
-          <View className={isDesktop ? 'mt-[51px]' : 'mt-[51px] px-[18px]'}>
-            <View className="overflow-hidden rounded-[23px] bg-[#1C1C1C]">
-              {[0, 2, 4].map((start, rowIndex) => (
-                <View
-                  key={start}
-                  className="flex-row"
-                  style={
-                    rowIndex < 2 ? { borderBottomWidth: 1, borderBottomColor: HAIRLINE } : undefined
-                  }
-                >
-                  <BenefitCell benefit={benefits[start]} showRightBorder />
-                  <BenefitCell benefit={benefits[start + 1]} showRightBorder={false} />
-                </View>
-              ))}
-            </View>
+        {/* Benefits grid */}
+        <View className={isDesktop ? 'mt-[51px]' : 'mt-[51px] px-[18px]'}>
+          <View className="overflow-hidden rounded-[23px] bg-[#1C1C1C]">
+            {[0, 2, 4].map((start, rowIndex) => (
+              <View
+                key={start}
+                className="flex-row"
+                style={
+                  rowIndex < 2 ? { borderBottomWidth: 1, borderBottomColor: HAIRLINE } : undefined
+                }
+              >
+                <BenefitCell benefit={benefits[start]} showRightBorder />
+                <BenefitCell benefit={benefits[start + 1]} showRightBorder={false} />
+              </View>
+            ))}
           </View>
-        </ScrollView>
-
-        {/* Back arrow — overlaid on the scrollable content so it fades in rather
-            than clipping it (Figma node 20172:8367's tab-bar gradient) */}
-        <LinearGradient
-          colors={[MODAL_BACKGROUND, `${MODAL_BACKGROUND}00`]}
-          pointerEvents="box-none"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60 + FADE_EXTENT }}
-        >
-          <View className={isDesktop ? 'pb-2 pt-2' : 'px-[18px] pb-2 pt-2'}>
-            <Pressable
-              onPress={onClose}
-              className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10 web:hover:bg-white/15"
-            >
-              <ArrowLeft color="#ffffff" size={22} />
-            </Pressable>
-          </View>
-        </LinearGradient>
-
-        {/* Pinned CTA — same overlay treatment on the bottom edge */}
-        <LinearGradient
-          colors={[`${MODAL_BACKGROUND}00`, MODAL_BACKGROUND]}
-          pointerEvents="box-none"
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: CTA_PADDING_TOP + CTA_HEIGHT + bottomInset + CTA_PADDING_BOTTOM + FADE_EXTENT,
-            justifyContent: 'flex-end',
-          }}
-        >
-          <View
-            style={{
-              paddingHorizontal: isDesktop ? 0 : 18,
-              paddingTop: CTA_PADDING_TOP,
-              paddingBottom: bottomInset + CTA_PADDING_BOTTOM,
-            }}
-          >
-            <Button
-              variant="brand"
-              className="w-full rounded-full border-0 active:opacity-90"
-              style={{ height: CTA_HEIGHT }}
-              onPress={handleVerify}
-              disabled={checkingCountry}
-            >
-              {checkingCountry ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text className="text-[16px] font-semibold text-black">Verify now</Text>
-              )}
-            </Button>
-          </View>
-        </LinearGradient>
-      </View>
+        </View>
+      </PinnedActionModalLayout>
     </ResponsiveModal>
   );
 };

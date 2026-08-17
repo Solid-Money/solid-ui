@@ -330,7 +330,7 @@ const useDepositOption = ({
     }
 
     if (isVirtualAccountApply) {
-      return <VirtualAccountApplyModal />;
+      return <VirtualAccountApplyModal onClose={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
 
     if (isVirtualAccountTos) {
@@ -431,7 +431,7 @@ const useDepositOption = ({
 
   const getContentClassName = () => {
     if (isVirtualAccountApply) {
-      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:px-0 md:pt-0';
+      return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:!px-0 md:!pt-0';
     }
 
     if (isBuyCrypto) {

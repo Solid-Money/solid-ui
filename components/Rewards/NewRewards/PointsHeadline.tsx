@@ -33,6 +33,7 @@ interface PointsHeadlineProps {
 const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
   const formattedPoints = compactNumberFormat(points ?? 0);
   const numberParts = formattedPoints.match(/^([\d,]+)(\.\d+)?(.*)$/);
+  const fadedNumberPart = numberParts ? `${numberParts[2] ?? ''}${numberParts[3] ?? ''}` : '';
 
   return (
     <View className="items-center gap-1 pt-2">
@@ -51,19 +52,8 @@ const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
         </Text>
       </View>
       <View className="flex-row items-baseline">
-        <Text style={NUMBER_STYLE}>
-          {numberParts ? (
-            <>
-              {numberParts[1]}
-              <Text style={DECIMAL_STYLE}>
-                {numberParts[2]}
-                {numberParts[3]}
-              </Text>
-            </>
-          ) : (
-            formattedPoints
-          )}
-        </Text>
+        <Text style={NUMBER_STYLE}>{numberParts ? numberParts[1] : formattedPoints}</Text>
+        {fadedNumberPart ? <Text style={DECIMAL_STYLE}>{fadedNumberPart}</Text> : null}
         <Text style={[SUFFIX_STYLE, { marginLeft: 6 }]}>Points</Text>
       </View>
     </View>

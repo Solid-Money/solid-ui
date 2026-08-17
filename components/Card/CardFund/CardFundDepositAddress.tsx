@@ -12,6 +12,7 @@ import {
   CARD_FUND_LEARN_URL,
   getCardFundNetworks,
 } from '@/components/Card/CardFund/constants';
+import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -108,8 +109,8 @@ const CardFundDepositAddress = ({
               color="white"
               backgroundColor="#1C1C1C"
               logo={network?.icon as ImageSourcePropType}
-              logoSize={Math.round(qrSize * 0.22)}
-              logoBorderRadius={Math.round(qrSize * 0.11)}
+              logoSize={Math.round(qrSize * 0.154)}
+              logoBorderRadius={Math.round(qrSize * 0.077)}
               logoBackgroundColor="transparent"
             />
           ) : (
@@ -121,7 +122,7 @@ const CardFundDepositAddress = ({
           <Text className="text-sm leading-4 text-white">
             {isDetected ? 'Deposit detected' : 'Scanning for deposits'}
           </Text>
-          <ActivityIndicator color="white" size="small" />
+          <DepositScanningIndicator />
         </View>
       </View>
 
