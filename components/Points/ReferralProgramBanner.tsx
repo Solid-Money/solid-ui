@@ -7,15 +7,28 @@ import ReferralProgramModal from '@/components/Referral/ReferralProgramModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { useReferralSummary } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
+
+/** Whole-dollar formatting for the program copy, e.g. "$15". */
+const formatUsdWhole = (value: number) => `$${Math.round(value || 0).toLocaleString('en-US')}`;
 
 /**
  * Referral program banner, shown to all users. Tapping (the banner or the
  * "Refer friends" button) opens the referral program popup.
+ *
+ * The amounts come from the referral summary (admin-managed on the rewards
+ * config dashboard) so the banner never advertises a stale offer. The same
+ * query backs the popup this opens, so it is served from cache there.
  */
 const ReferralProgramBanner = () => {
   const { isScreenMedium } = useDimension();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data: summary } = useReferralSummary();
+
+  // Fallbacks mirror the backend's shipped defaults.
+  const referrerUsd = summary?.rewards.referrerUsd ?? 15;
+  const newUserUsd = summary?.rewards.newUserUsd ?? 15;
 
   const openModal = () => setIsModalOpen(true);
 
@@ -27,7 +40,8 @@ const ReferralProgramBanner = () => {
             <Text className="text-lg font-medium leading-5 text-brand/70">Invite friends</Text>
             <Text className="text-3xl font-semibold">Refer & Earn</Text>
             <Text className="text-base font-semibold opacity-70">
-              Earn $15 for you and $10 for friends for using the card
+              Earn {formatUsdWhole(referrerUsd)} for you and {formatUsdWhole(newUserUsd)} for
+              friends for using the card
             </Text>
             <Button
               variant="secondary"

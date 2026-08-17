@@ -122,8 +122,10 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const referralCode = user?.referralCode ?? '';
   const referralLink = `${REFERRAL_BASE_URL}${referralCode}`;
 
+  // Fallbacks mirror the backend's shipped defaults; the live figures are
+  // admin-managed and always arrive with the summary.
   const referrerUsd = summary?.rewards.referrerUsd ?? 15;
-  const newUserUsd = summary?.rewards.newUserUsd ?? 10;
+  const newUserUsd = summary?.rewards.newUserUsd ?? 15;
   const spendTarget = summary?.qualification.spendTargetUsd ?? 75;
   const merchantTarget = summary?.qualification.merchantTarget ?? 3;
   const windowDays = summary?.qualification.windowDays ?? 30;
