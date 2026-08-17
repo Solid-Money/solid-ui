@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 
 import CountUp from '@/components/CountUp';
@@ -197,6 +197,11 @@ export default function ReferralProgramContentNew({
     void refetch();
   }, [refetch]);
 
+  const handleAddReferrer = useCallback(() => {
+    onClose();
+    router.push(path.ADD_REFERRER);
+  }, [onClose]);
+
   return (
     <View className="flex-1">
       <ScrollView
@@ -368,12 +373,13 @@ export default function ReferralProgramContentNew({
         )}
 
         {/* Add referrer */}
-        <Link href={path.ADD_REFERRER} onPress={onClose} asChild>
-          <Pressable className="flex-row items-center justify-between px-1 py-2">
-            <Text className="flex-1 pr-2 text-base font-medium text-white/70">Add a referrer</Text>
-            <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
-          </Pressable>
-        </Link>
+        <Pressable
+          onPress={handleAddReferrer}
+          className="flex-row items-center justify-between px-1 py-2"
+        >
+          <Text className="flex-1 pr-2 text-base font-medium text-white/70">Add a referrer</Text>
+          <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
+        </Pressable>
       </ScrollView>
 
       <LinearGradient

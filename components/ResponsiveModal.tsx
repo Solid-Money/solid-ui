@@ -119,13 +119,17 @@ const ResponsiveModal = ({
     ? (isForward ? FadeInRight : FadeInLeft).duration(10).springify()
     : undefined;
 
-  const titleExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(10);
+  const titleExiting = shouldAnimate
+    ? (isForward ? FadeOutLeft : FadeOutRight).duration(10)
+    : undefined;
 
   const contentEntering = shouldAnimate
     ? (isForward ? FadeInRight : FadeInLeft).duration(250)
     : undefined;
 
-  const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
+  const contentExiting = shouldAnimate
+    ? (isForward ? FadeOutLeft : FadeOutRight).duration(250)
+    : undefined;
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
     if (useNativeFlexLayout) {

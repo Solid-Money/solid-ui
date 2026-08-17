@@ -596,6 +596,7 @@ const PremiumFeesCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA
 const HEADER_ROW_HEIGHT = 56;
 /** Figma leaves 20px above the tier tabs. */
 const HEADER_TOP_SPACING = 20;
+const DESKTOP_HERO_TOP_REDUCTION = 30;
 const SLIDE_DURATION = 260;
 const SLIDE_EASING = Easing.out(Easing.cubic);
 const SWIPE_DISTANCE_THRESHOLD = 50;
@@ -604,6 +605,7 @@ const SWIPE_VELOCITY_THRESHOLD = 400;
 const RUBBER_BAND_FACTOR = 0.3;
 // bg-background (--background), used as the solid end of the top/bottom fades.
 const BACKGROUND = '#0F0F10';
+const PAGE_BOTTOM_SPACING = 48;
 // Extra height the fades extend beyond their bar's own content, so scrolled
 // content dims out smoothly under the header / off the bottom edge instead of
 // getting a hard clip (mirrors CardWaitingModal's FADE_EXTENT).
@@ -612,6 +614,7 @@ const FADE_EXTENT = 120;
 interface TierPageProps {
   tier: RewardsTier;
   isCurrentTier: boolean;
+  isDesktopLayout: boolean;
   /** Width of the page column — the window on mobile, the body column on desktop. */
   pageWidth: number;
 }
@@ -622,18 +625,20 @@ interface TierPageProps {
  * between real, already-rendered pages instead of faking it with a fade/slide
  * of a single swapped-out content block.
  */
-const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
+const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageProps) => {
   const insets = useSafeAreaInsets();
   const content = TIER_CONTENT[tier];
   const subtitle = isCurrentTier ? 'Your current tier' : content.unlockCopy;
+  const pageTopSpacing =
+    insets.top + HEADER_ROW_HEIGHT - (isDesktopLayout ? DESKTOP_HERO_TOP_REDUCTION : 0);
 
   if (tier === RewardsTier.CORE) {
     return (
       <View
         style={{
           width: pageWidth,
-          paddingTop: insets.top + HEADER_ROW_HEIGHT,
-          paddingBottom: insets.bottom,
+          paddingTop: pageTopSpacing,
+          paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING,
         }}
       >
         <View className="items-center pt-4">
@@ -688,8 +693,8 @@ const TierPage = ({ tier, isCurrentTier, pageWidth }: TierPageProps) => {
     <View
       style={{
         width: pageWidth,
-        paddingTop: insets.top + HEADER_ROW_HEIGHT,
-        paddingBottom: insets.bottom,
+        paddingTop: pageTopSpacing,
+        paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING,
       }}
     >
       <View className="items-center pt-4">
@@ -907,6 +912,7 @@ export default function RewardsBenefitsScreenNew() {
                 key={tier}
                 tier={tier}
                 isCurrentTier={rewardsData?.currentTier === tier}
+                isDesktopLayout={isSidebarShell}
                 pageWidth={pageWidth}
               />
             ))}
