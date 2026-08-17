@@ -27,6 +27,7 @@ import {
   AddressBookResponse,
   AgentApiKeySummary,
   AgentSummary,
+  AppOpenResponse,
   APYsByAsset,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -98,6 +99,7 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
+  StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
   SumsubSessionResponse,
@@ -3310,6 +3312,57 @@ export const trackUserPlatform = async (platform: typeof Platform.OS) => {
     body: JSON.stringify({ platform }),
   });
   if (!response.ok) throw response;
+};
+
+/**
+ * Record that the user opened the app (launch or return to the foreground) and
+ * read back whether this open should surface the native in-app review sheet.
+ * The eligibility rules — card deposits, cooldown — live on the backend so they
+ * survive a reinstall and can be tuned without shipping an app update.
+ */
+export const recordAppOpen = async (
+  platform: typeof Platform.OS,
+  deviceId?: string,
+): Promise<AppOpenResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-opens`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      platform,
+      appVersion: Application.nativeApplicationVersion ?? undefined,
+      deviceId,
+    }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Confirm the native review sheet was actually invoked, starting its cooldown. */
+export const markStoreReviewPrompted = async (
+  platform: typeof Platform.OS,
+): Promise<StoreReviewPromptedResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-opens/review-prompted`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ platform }),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
 };
 
 export const fetchSavingsSummary = async (
