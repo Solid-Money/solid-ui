@@ -2175,3 +2175,34 @@ export interface ReferralSummary {
   hasActiveCard: boolean;
   referrals: ReferralRewardListItem[];
 }
+
+/**
+ * Why the backend did — or did not — ask the app to show the native in-app
+ * review sheet on this app open. Mirrors the accounts-service decision enum.
+ */
+export enum StoreReviewDecisionReason {
+  ELIGIBLE = 'eligible',
+  UNSUPPORTED_PLATFORM = 'unsupported_platform',
+  NOT_ENOUGH_DEPOSITS = 'not_enough_deposits',
+  NOT_ENOUGH_OPENS = 'not_enough_opens',
+  COOLDOWN = 'cooldown',
+  NO_NEW_DEPOSITS = 'no_new_deposits',
+}
+
+/** Response to recording an app open (`POST /accounts/v1/app-opens`). */
+export interface AppOpenResponse {
+  /** Opens recorded for this user on this platform, including the current one. */
+  openCount: number;
+  lastOpenedAt: string;
+  /** Deposits the user has made to their card, per the backend. */
+  cardDepositCount: number;
+  /** True when the app should show the native review sheet now. */
+  shouldRequestReview: boolean;
+  reason: StoreReviewDecisionReason;
+}
+
+/** Response to confirming the review sheet was shown. */
+export interface StoreReviewPromptedResponse {
+  reviewPromptCount: number;
+  lastReviewPromptedAt: string;
+}

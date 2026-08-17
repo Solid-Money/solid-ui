@@ -40,6 +40,7 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
+import CardDepositStoreReviewTrigger from '@/components/StoreReview/CardDepositStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
 import { toastProps } from '@/components/Toast';
@@ -447,7 +448,12 @@ function RootLayout() {
                       {hasSelectedUser && params.notificationPermission !== 'open' && (
                         <WhatsNewWrapper />
                       )}
-                      {hasSelectedUser && Platform.OS !== 'web' && <CashbackStoreReviewTrigger />}
+                      {hasSelectedUser && Platform.OS !== 'web' && (
+                        <>
+                          <CashbackStoreReviewTrigger />
+                          <CardDepositStoreReviewTrigger />
+                        </>
+                      )}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>
