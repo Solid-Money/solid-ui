@@ -783,12 +783,20 @@ export interface RainContractResponseDto {
   onramp?: RainContractOnrampDto;
 }
 
-/** On-chain collateral held by one Rain collateral proxy, for one token. */
-export interface CardCollateralContractBalanceDto {
+/**
+ * On-chain collateral held by one Rain collateral proxy, for ONE token.
+ *
+ * A proxy can hold several assets at once. Rain credits card spending power
+ * against all of them, but a withdrawal moves a single named token, so each is
+ * offered and capped separately.
+ */
+export interface CardCollateralTokenBalanceDto {
   rainCollateralContractId: string;
   chainId: number;
   collateralProxy: string;
   tokenAddress: string;
+  /** ERC-20 symbol read on-chain, e.g. "USDC"/"USDT". Empty when unreadable. */
+  symbol: string;
   decimals: number;
   /** Proxy's token balance in smallest units. */
   rawBalance: string;
@@ -805,22 +813,26 @@ export interface CardCollateralContractBalanceDto {
  * collateral on-chain, and a withdrawal above this one is rejected.
  */
 export interface CardCollateralAvailableDto {
-  /** Withdrawable amount in dollars — the binding cap, floored to the cent. */
+  /** Withdrawable dollars for the default asset, floored to the cent. */
   availableUsd: number;
-  /** `availableUsd` in the selected token's smallest units. */
+  /** `availableUsd` in the default token's smallest units. */
   availableRaw: string;
-  /** On-chain collateral of the selected contract, in dollars. */
+  /** On-chain collateral of the default asset, in dollars. */
   onChainCollateralUsd: number;
+  /** On-chain collateral summed across every asset and contract, in dollars. */
+  totalCollateralUsd: number;
   /** Rain's credit-side spending power, in dollars, when known. */
   spendingPowerUsd?: number;
-  /** Which of the two caps is currently binding. */
+  /** Which of the two caps is currently binding for the default asset. */
   limitedBy: 'collateral' | 'spendingPower' | 'none';
-  /** Contract a withdrawal would draw from; absent when the user has none. */
+  /** Default asset a withdrawal draws from; absent when the user has none. */
   chainId?: number;
   collateralProxy?: string;
   tokenAddress?: string;
+  symbol?: string;
   decimals?: number;
-  contracts: CardCollateralContractBalanceDto[];
+  /** Every collateral asset, richest first — the source for the asset picker. */
+  tokens: CardCollateralTokenBalanceDto[];
 }
 
 export type OnrampAutomationRail = 'ach' | 'wire';

@@ -1102,11 +1102,16 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
  * `getCardBalance` reports credit-side spending power, which can be higher than
  * the collateral backing it. Returns 400 for Bridge.
  */
-export const getCardCollateralAvailable = async (): Promise<CardCollateralAvailableDto> => {
+export const getCardCollateralAvailable = async (
+  params: { tokenAddress?: string } = {},
+): Promise<CardCollateralAvailableDto> => {
   const jwt = getJWTToken();
+  const query = params.tokenAddress
+    ? `?tokenAddress=${encodeURIComponent(params.tokenAddress)}`
+    : '';
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/collateral/available`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/collateral/available${query}`,
     {
       credentials: 'include',
       headers: {
