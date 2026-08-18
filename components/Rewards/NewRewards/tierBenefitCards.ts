@@ -24,12 +24,69 @@ export const resolveTierBenefitKeys = ({
   yieldBoostPercentage,
   subscriptionDiscountRate,
 }: TierBenefitAvailability): TierBenefitKey[] => {
-  const unlocked = (rate: number) => Number.isFinite(rate) && rate > 0;
-
   const keys: TierBenefitKey[] = ['cashback', 'referrals'];
-  if (unlocked(yieldBoostPercentage)) keys.push('yield-boost');
-  if (unlocked(subscriptionDiscountRate)) keys.push('subscription');
+  if (isUnlocked(yieldBoostPercentage)) keys.push('yield-boost');
+  if (isUnlocked(subscriptionDiscountRate)) keys.push('subscription');
   return keys;
+};
+
+const isUnlocked = (rate: number) => Number.isFinite(rate) && rate > 0;
+
+export interface TierBenefitRates extends TierBenefitAvailability {
+  /** Ceiling on yield boost payouts for the tier, in USD. */
+  yieldBoostCap: number;
+  /** Yield boost payouts the user has actually received, in USD. */
+  yieldBoostEarned: number;
+}
+
+/**
+ * Stand-in rates for a perk the current tier hasn't unlocked, matching the
+ * stock Prime configuration.
+ *
+ * Only ever reached on non-production builds (see {@link resolveTierBenefitRates}).
+ * They are deliberately constants rather than a lookup against the live tier
+ * config: qa and preview builds routinely run against a backend that predates
+ * the yield-boost/subscription fields entirely, and a preview that only works
+ * once the backend catches up is no use for reviewing the screen today. Real
+ * numbers always win when the backend sends them.
+ */
+export const PREVIEW_BENEFIT_RATES = {
+  yieldBoostPercentage: 2,
+  yieldBoostCap: 50,
+  subscriptionDiscountRate: 25,
+} as const;
+
+/**
+ * The rates the benefit cards render with.
+ *
+ * In production this is exactly what the user's tier grants, so a locked perk
+ * reports 0 and {@link resolveTierBenefitKeys} drops its card.
+ *
+ * When `previewLockedBenefits` is set — non-production builds only — a locked
+ * perk borrows {@link PREVIEW_BENEFIT_RATES} instead, which lifts its rate above
+ * zero and brings the card back. That lets design QA review the yield boost and
+ * subscription cards on qa/staging/preview without holding a Prime or Ultra test
+ * account. `yieldBoostEarned` is never substituted: a preview account really has
+ * earned nothing, and $0 is the honest number to show.
+ */
+export const resolveTierBenefitRates = (
+  rates: TierBenefitRates,
+  previewLockedBenefits: boolean,
+): TierBenefitRates => {
+  if (!previewLockedBenefits) return rates;
+
+  const hasBoost = isUnlocked(rates.yieldBoostPercentage);
+
+  return {
+    yieldBoostEarned: rates.yieldBoostEarned,
+    yieldBoostPercentage: hasBoost
+      ? rates.yieldBoostPercentage
+      : PREVIEW_BENEFIT_RATES.yieldBoostPercentage,
+    yieldBoostCap: hasBoost ? rates.yieldBoostCap : PREVIEW_BENEFIT_RATES.yieldBoostCap,
+    subscriptionDiscountRate: isUnlocked(rates.subscriptionDiscountRate)
+      ? rates.subscriptionDiscountRate
+      : PREVIEW_BENEFIT_RATES.subscriptionDiscountRate,
+  };
 };
 
 /**

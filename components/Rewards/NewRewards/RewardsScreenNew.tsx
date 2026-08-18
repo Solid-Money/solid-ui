@@ -26,6 +26,7 @@ import { useUserStore } from '@/store/useUserStore';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
+import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
 
 /**
@@ -141,6 +142,19 @@ export default function RewardsScreenNew() {
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
 
+  // Core grants neither the yield boost nor subscription cashback, so on a
+  // Core test account both cards correctly disappear — which leaves nothing to
+  // review. Off production, preview them at stock Prime rates instead.
+  const benefitRates = resolveTierBenefitRates(
+    {
+      yieldBoostPercentage: rewardsData?.yieldBoostPercentage ?? 0,
+      yieldBoostCap: rewardsData?.yieldBoostCap ?? 0,
+      yieldBoostEarned: rewardsData?.yieldBoostEarned ?? 0,
+      subscriptionDiscountRate: rewardsData?.subscriptionDiscountRate ?? 0,
+    },
+    isDevFeatureEnabled,
+  );
+
   return (
     <PageLayout
       mobileTitle={null}
@@ -203,10 +217,7 @@ export default function RewardsScreenNew() {
             cashbackThisMonth={cashback}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}
-            yieldBoostPercentage={rewardsData?.yieldBoostPercentage ?? 0}
-            yieldBoostCap={rewardsData?.yieldBoostCap ?? 0}
-            yieldBoostEarned={rewardsData?.yieldBoostEarned ?? 0}
-            subscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
+            {...benefitRates}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
             onReferralsPress={() => setIsReferralModalOpen(true)}
           />

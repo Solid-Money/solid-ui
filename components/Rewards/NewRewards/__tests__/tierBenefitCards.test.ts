@@ -1,7 +1,9 @@
 /// <reference types="jest" />
 import {
   chunkIntoRows,
+  PREVIEW_BENEFIT_RATES,
   resolveTierBenefitKeys,
+  resolveTierBenefitRates,
 } from '@/components/Rewards/NewRewards/tierBenefitCards';
 
 /**
@@ -45,6 +47,77 @@ describe('resolveTierBenefitKeys', () => {
         resolveTierBenefitKeys({ yieldBoostPercentage: rate, subscriptionDiscountRate: rate }),
       ).toEqual(['cashback', 'referrals']);
     }
+  });
+});
+
+/**
+ * Off production, a locked perk is previewed at stock Prime rates so design QA
+ * can review the yield boost and subscription cards from an ordinary Core test
+ * account. Production must keep showing only what the tier really grants.
+ */
+describe('resolveTierBenefitRates', () => {
+  const core = {
+    yieldBoostPercentage: 0,
+    yieldBoostCap: 0,
+    yieldBoostEarned: 0,
+    subscriptionDiscountRate: 0,
+  };
+  const ultra = {
+    yieldBoostPercentage: 5,
+    yieldBoostCap: 100,
+    yieldBoostEarned: 420.65,
+    subscriptionDiscountRate: 50,
+  };
+
+  it('passes rates straight through when preview is off', () => {
+    expect(resolveTierBenefitRates(core, false)).toEqual(core);
+    expect(resolveTierBenefitRates(ultra, false)).toEqual(ultra);
+  });
+
+  it('leaves a Core tier with no cards in production', () => {
+    expect(resolveTierBenefitKeys(resolveTierBenefitRates(core, false))).toEqual([
+      'cashback',
+      'referrals',
+    ]);
+  });
+
+  it('substitutes preview rates for locked perks so all four cards render', () => {
+    const previewed = resolveTierBenefitRates(core, true);
+
+    expect(previewed).toEqual({
+      ...PREVIEW_BENEFIT_RATES,
+      yieldBoostEarned: 0,
+    });
+    expect(resolveTierBenefitKeys(previewed)).toEqual([
+      'cashback',
+      'referrals',
+      'yield-boost',
+      'subscription',
+    ]);
+  });
+
+  it('never overwrites rates the tier really grants', () => {
+    expect(resolveTierBenefitRates(ultra, true)).toEqual(ultra);
+  });
+
+  it('substitutes each locked perk independently', () => {
+    const boostOnly = { ...core, yieldBoostPercentage: 3, yieldBoostCap: 75 };
+
+    expect(resolveTierBenefitRates(boostOnly, true)).toEqual({
+      yieldBoostPercentage: 3,
+      yieldBoostCap: 75,
+      yieldBoostEarned: 0,
+      subscriptionDiscountRate: PREVIEW_BENEFIT_RATES.subscriptionDiscountRate,
+    });
+  });
+
+  it('reports real earnings rather than inventing them', () => {
+    // A Core account previewing the boost has genuinely earned nothing, and the
+    // sheet and savings strip should say so.
+    expect(
+      resolveTierBenefitRates({ ...core, yieldBoostEarned: 12.5 }, true).yieldBoostEarned,
+    ).toBe(12.5);
+    expect(resolveTierBenefitRates(core, true).yieldBoostEarned).toBe(0);
   });
 });
 

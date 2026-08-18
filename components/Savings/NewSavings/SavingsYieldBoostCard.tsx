@@ -1,7 +1,9 @@
 import { View } from 'react-native';
 
+import { resolveTierBenefitRates } from '@/components/Rewards/NewRewards/tierBenefitCards';
 import { Text } from '@/components/ui/text';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { formatBalanceUSD, formatNumber } from '@/lib/utils';
 
 /**
@@ -9,12 +11,23 @@ import { formatBalanceUSD, formatNumber } from '@/lib/utils';
  * savings yield, and what it has paid out so far.
  *
  * Renders nothing for tiers that grant no boost, so Core users don't see an
- * empty box for a perk they haven't unlocked.
+ * empty box for a perk they haven't unlocked. Off production the boost is
+ * previewed at stock Prime rates instead, matching the rewards screen so the
+ * strip is reviewable from a Core test account.
  */
 const SavingsYieldBoostCard = () => {
   const { data: rewardsData } = useRewardsUserData();
 
-  const boostPercentage = rewardsData?.yieldBoostPercentage ?? 0;
+  const { yieldBoostPercentage: boostPercentage, yieldBoostEarned } = resolveTierBenefitRates(
+    {
+      yieldBoostPercentage: rewardsData?.yieldBoostPercentage ?? 0,
+      yieldBoostCap: rewardsData?.yieldBoostCap ?? 0,
+      yieldBoostEarned: rewardsData?.yieldBoostEarned ?? 0,
+      subscriptionDiscountRate: rewardsData?.subscriptionDiscountRate ?? 0,
+    },
+    isDevFeatureEnabled,
+  );
+
   if (boostPercentage <= 0) return null;
 
   return (
@@ -39,7 +52,7 @@ const SavingsYieldBoostCard = () => {
             className="mt-[7px] text-[22px] text-white"
             style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 24 }}
           >
-            {formatBalanceUSD(rewardsData?.yieldBoostEarned ?? 0)}
+            {formatBalanceUSD(yieldBoostEarned)}
           </Text>
         </View>
       </View>
