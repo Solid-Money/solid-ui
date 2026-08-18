@@ -13,6 +13,7 @@ import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccount
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { CARD_DEPOSIT_MODAL, DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
@@ -21,6 +22,7 @@ import { DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useTransfiStore } from '@/store/useTransfiStore';
 
 type Step = 'options' | 'networks' | 'address' | 'externalAddress';
 
@@ -74,6 +76,10 @@ export default function CardDirectDepositModalMobile({
   const setDepositModal = useCardDepositStore(state => state.setModal);
   const setWalletModal = useDepositStore(state => state.setModal);
   const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { handleBuyCryptoPress } = useBuyCryptoEntry();
+  const resetTransfi = useTransfiStore(state => state.reset);
+  const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
 
   // Same existing-automation check the wallet "Add funds" -> Cash flow uses
   // (DepositTypeSelection.handleCashPress) - reused here so "USD" opens the
@@ -139,6 +145,29 @@ export default function CardDirectDepositModalMobile({
       handoffTimer.current = setTimeout(() => setWalletModal(modal), HANDOFF_DELAY_MS);
     },
     [handleOpenChange, setWalletModal],
+  );
+
+  // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
+  // buy-crypto steps live in the global deposit modal, so hand off the same way
+  // the USD row does and let useBuyCryptoEntry route to KYC or the amount screen.
+  // The bought USDC is delivered to the card funding address, so it arrives as
+  // card balance — which is why this belongs in the card funding flow at all.
+  const handleLocalCurrencyPress = useCallback(
+    (code: string) => {
+      track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+        deposit_method: 'buy_crypto',
+        currency: code,
+      });
+      resetTransfi();
+      setTransfiCurrency(code);
+
+      handleOpenChange(false);
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+      handoffTimer.current = setTimeout(() => {
+        void handleBuyCryptoPress();
+      }, HANDOFF_DELAY_MS);
+    },
+    [handleBuyCryptoPress, handleOpenChange, resetTransfi, setTransfiCurrency],
   );
 
   const handleTransferFromWallet = useCallback(() => {
@@ -222,6 +251,7 @@ export default function CardDirectDepositModalMobile({
           onMoveFromSavingsPress={handleTransferFromWallet}
           onExternalWalletPress={handleExternalWallet}
           onUsdPress={handleUsdPress}
+          onLocalCurrencyPress={handleLocalCurrencyPress}
         />
       );
     }

@@ -7,7 +7,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -112,12 +111,12 @@ const useDepositExternalWalletOptions = () => {
       },
     ];
 
-    // The TransFi buy-crypto onramp is still in development: shown on qa/preview
-    // builds, hidden in production. This option is the only entry point into the
-    // flow — its steps are modal-only (no route to deep-link to) and
-    // `kycFlow = 'transfi'` is set nowhere but its press handler — so gating it
-    // here keeps the whole onramp out of production.
-    if (isBuyCryptoAvailable && isDevFeatureEnabled) {
+    // This option is the only entry point into the TransFi onramp — its steps are
+    // modal-only (no route to deep-link to) and `kycFlow = 'transfi'` is set
+    // nowhere but its press handler — so what gates it here gates the whole
+    // flow. Only the geo/platform check remains (see useGeoCompliance); the
+    // onramp itself now runs in production.
+    if (isBuyCryptoAvailable) {
       base.push({
         text: 'Buy crypto',
         subtitle: 'Buy USDC with your card or bank',
