@@ -1678,7 +1678,6 @@ export interface OnramperSession {
  * JWT is refreshed and retried rather than surfacing as a checkout failure.
  */
 export const fetchOnramperSession = async (): Promise<OnramperSession> => {
-  console.log('fetchOnramperSession');
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -1694,12 +1693,10 @@ export const fetchOnramperSession = async (): Promise<OnramperSession> => {
     },
   );
 
-  console.log({ response });
-
   if (!response.ok) throw response;
 
   const data = await response.json();
-  console.log(data);
+
   return data;
 };
 

@@ -42,7 +42,6 @@ export async function initOnramper(): Promise<OnramperClient> {
   });
 
   const { sessionId, sessionToken } = await fetchOnramperSession();
-  console.log('Onramper session:', { sessionId, sessionToken });
 
   await client.initialize({ sessionId, sessionToken });
 

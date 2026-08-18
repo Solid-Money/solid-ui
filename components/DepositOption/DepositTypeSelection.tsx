@@ -9,6 +9,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import useOnramperClient from '@/hooks/useOnramperClient';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
@@ -54,6 +55,7 @@ const DepositTypeSelection = () => {
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
   const { client: onramperClient } = useOnramperClient();
+  const { user } = useUser();
   const [button, setButton] = React.useState<React.ReactNode | null>(null);
   const [, setQuote] = React.useState<any>(null);
 
@@ -72,15 +74,15 @@ const DepositTypeSelection = () => {
   };
 
   useEffect(() => {
-    if (onramperClient) {
+    if (onramperClient && user) {
       onramperClient
         .getCheckoutRequirements({
           source: 'usd',
-          destination: 'sol',
-          amount: 100,
+          destination: 'eth',
+          amount: 1,
           type: 'buy',
           paymentMethod: 'applepay',
-          wallet: { network: 'ethereum', address: '0x7FA96603d18f5708AFDC0d9E3C53ae4E0Cb877a4' },
+          wallet: { network: 'ethereum', address: user.safeAddress },
         })
         .then(({ button, quote }) => {
           if (button) {
@@ -91,7 +93,7 @@ const DepositTypeSelection = () => {
           }
         });
     }
-  }, [onramperClient]);
+  }, [onramperClient, user]);
 
   return (
     <>
