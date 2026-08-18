@@ -27,6 +27,7 @@ import {
   AddressBookResponse,
   AgentApiKeySummary,
   AgentSummary,
+  AppOpenResponse,
   APYsByAsset,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -35,6 +36,7 @@ import {
   BridgeTransactionRequest,
   CardAccessResponse,
   CardBalanceResponseDto,
+  CardCollateralAvailableDto,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -97,6 +99,7 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
+  StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
   SumsubSessionResponse,
@@ -1089,6 +1092,36 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Rain only: how much collateral can actually be withdrawn to the wallet, read
+ * from the collateral proxy on-chain. Use this for the withdraw screen's max —
+ * `getCardBalance` reports credit-side spending power, which can be higher than
+ * the collateral backing it. Returns 400 for Bridge.
+ */
+export const getCardCollateralAvailable = async (
+  params: { tokenAddress?: string } = {},
+): Promise<CardCollateralAvailableDto> => {
+  const jwt = getJWTToken();
+  const query = params.tokenAddress
+    ? `?tokenAddress=${encodeURIComponent(params.tokenAddress)}`
+    : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/collateral/available${query}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (!response.ok) throw response;
 
@@ -3319,6 +3352,57 @@ export const trackUserPlatform = async (platform: typeof Platform.OS) => {
     body: JSON.stringify({ platform }),
   });
   if (!response.ok) throw response;
+};
+
+/**
+ * Record that the user opened the app (launch or return to the foreground) and
+ * read back whether this open should surface the native in-app review sheet.
+ * The eligibility rules — card deposits, cooldown — live on the backend so they
+ * survive a reinstall and can be tuned without shipping an app update.
+ */
+export const recordAppOpen = async (
+  platform: typeof Platform.OS,
+  deviceId?: string,
+): Promise<AppOpenResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-opens`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      platform,
+      appVersion: Application.nativeApplicationVersion ?? undefined,
+      deviceId,
+    }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Confirm the native review sheet was actually invoked, starting its cooldown. */
+export const markStoreReviewPrompted = async (
+  platform: typeof Platform.OS,
+): Promise<StoreReviewPromptedResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-opens/review-prompted`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ platform }),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
 };
 
 export const fetchSavingsSummary = async (

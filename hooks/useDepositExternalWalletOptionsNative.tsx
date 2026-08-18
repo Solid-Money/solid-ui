@@ -6,7 +6,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -46,10 +45,9 @@ const useDepositExternalWalletOptionsNative = () => {
       },
     ];
 
-    // The TransFi buy-crypto onramp is still in development: shown on qa/preview
-    // builds, hidden in production. Mirrors the web list in
-    // useDepositExternalWalletOptions — this option is the flow's only entry point.
-    if (isBuyCryptoAvailable && isDevFeatureEnabled) {
+    // Mirrors the web list in useDepositExternalWalletOptions — this option is the
+    // onramp's only entry point, and only the geo/platform check gates it.
+    if (isBuyCryptoAvailable) {
       base.push({
         text: 'Buy crypto',
         subtitle: 'Buy USDC with your card or bank',

@@ -783,6 +783,58 @@ export interface RainContractResponseDto {
   onramp?: RainContractOnrampDto;
 }
 
+/**
+ * On-chain collateral held by one Rain collateral proxy, for ONE token.
+ *
+ * A proxy can hold several assets at once. Rain credits card spending power
+ * against all of them, but a withdrawal moves a single named token, so each is
+ * offered and capped separately.
+ */
+export interface CardCollateralTokenBalanceDto {
+  rainCollateralContractId: string;
+  chainId: number;
+  collateralProxy: string;
+  tokenAddress: string;
+  /** ERC-20 symbol read on-chain, e.g. "USDC"/"USDT". Empty when unreadable. */
+  symbol: string;
+  decimals: number;
+  /** Proxy's token balance in smallest units. */
+  rawBalance: string;
+  /** Same balance in dollars, floored to the cent. */
+  balanceUsd: number;
+  /** Set when the balance could not be read (RPC failure, unsupported chain). */
+  unavailableReason?: string;
+}
+
+/**
+ * GET /cards/collateral/available — what can actually be withdrawn from the
+ * card to the wallet right now. Distinct from `CardBalanceResponseDto`, which
+ * carries Rain's credit-side spending power: that figure can exceed the
+ * collateral on-chain, and a withdrawal above this one is rejected.
+ */
+export interface CardCollateralAvailableDto {
+  /** Withdrawable dollars for the default asset, floored to the cent. */
+  availableUsd: number;
+  /** `availableUsd` in the default token's smallest units. */
+  availableRaw: string;
+  /** On-chain collateral of the default asset, in dollars. */
+  onChainCollateralUsd: number;
+  /** On-chain collateral summed across every asset and contract, in dollars. */
+  totalCollateralUsd: number;
+  /** Rain's credit-side spending power, in dollars, when known. */
+  spendingPowerUsd?: number;
+  /** Which of the two caps is currently binding for the default asset. */
+  limitedBy: 'collateral' | 'spendingPower' | 'none';
+  /** Default asset a withdrawal draws from; absent when the user has none. */
+  chainId?: number;
+  collateralProxy?: string;
+  tokenAddress?: string;
+  symbol?: string;
+  decimals?: number;
+  /** Every collateral asset, richest first — the source for the asset picker. */
+  tokens: CardCollateralTokenBalanceDto[];
+}
+
 export type OnrampAutomationRail = 'ach' | 'wire';
 
 export interface OnrampAutomationDepositAddressDto {
@@ -1990,6 +2042,10 @@ export interface TransfiPaymentConfig {
   defaultCurrency: string;
   tokenSymbol: string;
   tokenLogo?: string;
+  /** Chain the bought USDC is delivered on, e.g. 'Base'. */
+  tokenNetwork?: string;
+  /** 'card_funding' when it tops up the card, 'safe' when it lands in the wallet. */
+  destinationType?: 'card_funding' | 'safe';
 }
 
 export interface TransfiQuote {
@@ -2155,4 +2211,35 @@ export interface ReferralSummary {
   friendsPending: number;
   hasActiveCard: boolean;
   referrals: ReferralRewardListItem[];
+}
+
+/**
+ * Why the backend did — or did not — ask the app to show the native in-app
+ * review sheet on this app open. Mirrors the accounts-service decision enum.
+ */
+export enum StoreReviewDecisionReason {
+  ELIGIBLE = 'eligible',
+  UNSUPPORTED_PLATFORM = 'unsupported_platform',
+  NOT_ENOUGH_DEPOSITS = 'not_enough_deposits',
+  NOT_ENOUGH_OPENS = 'not_enough_opens',
+  COOLDOWN = 'cooldown',
+  NO_NEW_DEPOSITS = 'no_new_deposits',
+}
+
+/** Response to recording an app open (`POST /accounts/v1/app-opens`). */
+export interface AppOpenResponse {
+  /** Opens recorded for this user on this platform, including the current one. */
+  openCount: number;
+  lastOpenedAt: string;
+  /** Deposits the user has made to their card, per the backend. */
+  cardDepositCount: number;
+  /** True when the app should show the native review sheet now. */
+  shouldRequestReview: boolean;
+  reason: StoreReviewDecisionReason;
+}
+
+/** Response to confirming the review sheet was shown. */
+export interface StoreReviewPromptedResponse {
+  reviewPromptCount: number;
+  lastReviewPromptedAt: string;
 }

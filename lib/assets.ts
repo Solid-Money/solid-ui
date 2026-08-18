@@ -310,6 +310,10 @@ export const ASSETS = {
     module: require('@/assets/images/deposit-purple.png'),
     hash: '5d2c441b',
   },
+  'images/deposit-scanner-indicator.png': {
+    module: require('@/assets/images/deposit-scanner-indicator.png'),
+    hash: 'f63bf78f',
+  },
   'images/deposit.png': { module: require('@/assets/images/deposit.png'), hash: '69b1f817' },
   'images/deposit.tsx': { module: require('@/assets/images/deposit.tsx'), hash: '69c67c52' },
   'images/deposit_banner.png': {
@@ -399,6 +403,9 @@ export const ASSETS = {
     module: require('@/assets/images/fingetprint.tsx'),
     hash: '0b09bf2a',
   },
+  'images/flag-bdt.png': { module: require('@/assets/images/flag-bdt.png'), hash: '4adb7493' },
+  'images/flag-brl.png': { module: require('@/assets/images/flag-brl.png'), hash: '86c844b7' },
+  'images/flag-php.png': { module: require('@/assets/images/flag-php.png'), hash: '3ef02e29' },
   'images/flash-lavender-background.png': {
     module: require('@/assets/images/flash-lavender-background.png'),
     hash: '343e70d3',

@@ -6,13 +6,13 @@ import { Wallet as WalletIcon } from 'lucide-react-native';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
-import ToDestinationSelector from '@/components/Card/ToDestinationSelector';
+import ToDestinationSelector, { assetLabel } from '@/components/Card/ToDestinationSelector';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
-import { useCardContracts } from '@/hooks/useCardContracts';
+import { useCardCollateralAvailable } from '@/hooks/useCardCollateralAvailable';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
 import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
@@ -20,6 +20,7 @@ import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
+import { toAmountInputValue } from '@/lib/utils/cardHelpers';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
@@ -32,7 +33,14 @@ function getExplorerTxUrl(_chainId: number | undefined, txHash: string): string 
 export default function CardWithdrawForm() {
   const { user } = useUser();
   const { data: cardDetails, refetch, isLoading: isCardDetailsLoading } = useCardDetails();
-  const { data: contracts } = useCardContracts();
+  // Undefined until the user picks: the backend then opens on the richest
+  // asset, which is the one worth withdrawing.
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState<string | undefined>();
+  const {
+    data: collateral,
+    refetch: refetchCollateral,
+    isLoading: isCollateralLoading,
+  } = useCardCollateralAvailable(selectedTokenAddress);
   const { setModal, setTransaction } = useCardWithdrawStore(
     useShallow(state => ({ setModal: state.setModal, setTransaction: state.setTransaction })),
   );
@@ -41,22 +49,25 @@ export default function CardWithdrawForm() {
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
   const { withdrawCollateral } = useWithdrawRainCollateral();
-  // Prefer a contract that currently holds collateral (non-zero token balance).
-  // Fall back to the configured funding chain, then the first contract.
-  const fundingContract =
-    contracts?.find(c => c.tokens?.some(t => Number(t.balance ?? '0') > 0)) ||
-    contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID) ||
-    contracts?.[0];
 
-  const fundingTokenAddress =
-    fundingContract?.tokens?.find(t => Number(t.balance ?? '0') > 0)?.address ||
-    fundingContract?.tokens?.[0]?.address;
+  // The asset the withdrawal will actually move. The backend priced
+  // `availableUsd` against exactly this token, so taking chain + address from
+  // the same response keeps the validated amount and the signed withdrawal on
+  // the same asset.
+  const withdrawChainId = collateral?.chainId ?? EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID;
+  const fundingTokenAddress = collateral?.tokenAddress;
 
   const depositTokenSymbol = getCardDepositTokenSymbol(CardProvider.RAIN);
+  const assetSymbol = collateral?.symbol || depositTokenSymbol;
 
-  // Use card spending balance for withdraw (same as card details). Collateral API may differ.
-  const collateralAvailable = spendableAmount;
-  const collateralFormatted = formattedBalance;
+  // A collateral withdrawal moves real tokens out of the Rain collateral proxy,
+  // so it is capped by that proxy's on-chain balance of THIS asset — not by the
+  // card's spending balance, which is Rain's credit-side spending power and is
+  // credited against every asset at once. A $100.60 spending balance can sit on
+  // $100.53 of USDT and $0.42 of USDC; only one of those is withdrawable per
+  // transaction, and neither equals the balance.
+  const collateralAvailable = collateral?.availableUsd ?? 0;
+  const collateralFormatted = formatNumber(collateralAvailable, 2, 2);
 
   const { control, handleSubmit, formState, watch, setValue, setError, clearErrors, trigger } =
     useForm<FormData>({
@@ -95,15 +106,23 @@ export default function CardWithdrawForm() {
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= collateralAvailable, {
-            message: `Amount exceeds available (${collateralFormatted} available)`,
+            // Name the asset: "$0.42 available" is baffling next to a $100.60
+            // card balance unless it says which asset that $0.42 is.
+            message:
+              collateralAvailable > 0
+                ? `Amount exceeds available ($${collateralFormatted} of ${assetSymbol} available to withdraw)`
+                : `No ${assetSymbol} is available to withdraw right now`,
           }),
       }),
-    [collateralAvailable, collateralFormatted],
+    [collateralAvailable, collateralFormatted, assetSymbol],
   );
 
   const validationError = useMemo(() => {
     if (isCollateral) {
       if (!watchedAmount) return null;
+      // The available figure starts at 0 until the on-chain read lands; don't
+      // accuse the user of over-withdrawing before we know the balance.
+      if (isCollateralLoading) return null;
       const parsed = collateralSchema.safeParse({ amount: watchedAmount });
       if (parsed.success) return null;
       return parsed.error.issues[0]?.message ?? null;
@@ -116,7 +135,7 @@ export default function CardWithdrawForm() {
       const err = error as { issues?: { message?: string }[] };
       return err.issues?.[0]?.message ?? null;
     }
-  }, [watchedAmount, isCollateral, schema, collateralSchema]);
+  }, [watchedAmount, isCollateral, isCollateralLoading, schema, collateralSchema]);
 
   const onSubmit = useCallback(
     async (data: FormData) => {
@@ -168,7 +187,7 @@ export default function CardWithdrawForm() {
           const res = await withdrawCollateral({
             amount: data.amount,
             recipientAddress: user!.safeAddress!,
-            ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
+            ...(withdrawChainId != null && { chainId: withdrawChainId }),
             ...(fundingTokenAddress && { tokenAddress: fundingTokenAddress }),
           });
           const txHash = res.transactionHash;
@@ -177,15 +196,15 @@ export default function CardWithdrawForm() {
             clientTxId: txHash,
             to: data.to,
             transactionHash: txHash,
-            chainId: fundingContract?.chainId,
+            chainId: withdrawChainId,
           });
           setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
-          await refetch();
-          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, txHash);
+          await Promise.all([refetch(), refetchCollateral()]);
+          const explorerUrl = getExplorerTxUrl(withdrawChainId, txHash);
           Toast.show({
             type: 'success',
             text1: 'Withdrawal started',
-            text2: `$${data.amount} collateral withdrawal.`,
+            text2: `$${data.amount} ${assetSymbol} collateral withdrawal.`,
             onPress: () => Linking.openURL(explorerUrl),
             props: { badgeText: 'Onchain' },
           });
@@ -225,6 +244,9 @@ export default function CardWithdrawForm() {
         } else if (err instanceof Error) {
           message = err.message;
         }
+        // Collateral can move between the read and the submit (a charge settles,
+        // a deposit lands), so re-read it before the user retries.
+        if (toCollateral) void refetchCollateral();
         Toast.show({ type: 'error', text1: 'Withdrawal failed', text2: message });
       } finally {
         setIsSubmitting(false);
@@ -235,16 +257,60 @@ export default function CardWithdrawForm() {
       setModal,
       setTransaction,
       refetch,
+      refetchCollateral,
       schema,
       collateralSchema,
       setError,
-      fundingContract?.chainId,
+      withdrawChainId,
+      fundingTokenAddress,
+      assetSymbol,
       withdrawCollateral,
     ],
   );
 
+  const isAvailableLoading = isCollateral ? isCollateralLoading : isCardDetailsLoading;
   const disabled = isSubmitting;
   const availableFormatted = isCollateral ? collateralFormatted : formattedBalance;
+
+  /** Assets other than the selected one that still hold a balance. */
+  const otherFundedAssets = useMemo(
+    () =>
+      (collateral?.tokens ?? []).filter(
+        t =>
+          !t.unavailableReason &&
+          t.balanceUsd > 0 &&
+          t.tokenAddress.toLowerCase() !== collateral?.tokenAddress?.toLowerCase(),
+      ),
+    [collateral],
+  );
+
+  // The card's spending balance and its withdrawable collateral are different
+  // numbers; say so when they diverge, rather than letting the user discover it
+  // through a rejected withdrawal. When the shortfall is only because the rest
+  // sits in another asset, say that instead — the money is not missing, it just
+  // has to be withdrawn one asset at a time.
+  const collateralShortfallHint = useMemo(() => {
+    if (!isCollateral || isCollateralLoading || !collateral) return null;
+    if (collateralAvailable >= spendableAmount) return null;
+
+    if (otherFundedAssets.length) {
+      const others = otherFundedAssets
+        .map(t => `$${formatNumber(t.balanceUsd, 2, 2)} of ${assetLabel(t)}`)
+        .join(', ');
+      return `You can withdraw $${collateralFormatted} of ${assetSymbol} now. The rest of your $${formattedBalance} balance is held as ${others} — switch asset above to withdraw it.`;
+    }
+    return `Your card balance is $${formattedBalance}, but only $${collateralFormatted} of ${assetSymbol} is currently available to withdraw.`;
+  }, [
+    isCollateral,
+    isCollateralLoading,
+    collateral,
+    collateralAvailable,
+    spendableAmount,
+    otherFundedAssets,
+    collateralFormatted,
+    formattedBalance,
+    assetSymbol,
+  ]);
 
   return (
     <View className="gap-3">
@@ -256,7 +322,7 @@ export default function CardWithdrawForm() {
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center gap-1">
               <WalletIcon color="#A1A1A1" size={16} />
-              {isCardDetailsLoading ? (
+              {isAvailableLoading ? (
                 <Skeleton className="h-5 w-14 rounded-md" />
               ) : (
                 <Text className="font-medium opacity-50">${availableFormatted}</Text>
@@ -264,11 +330,13 @@ export default function CardWithdrawForm() {
             </View>
             <Max
               onPress={() => {
-                const value = isCollateral ? collateralFormatted : formattedBalance;
-                setValue('amount', value);
+                setValue(
+                  'amount',
+                  toAmountInputValue(isCollateral ? collateralAvailable : spendableAmount),
+                );
                 trigger('amount');
               }}
-              disabled={isCardDetailsLoading}
+              disabled={isAvailableLoading || (isCollateral && collateralAvailable <= 0)}
             />
           </View>
         </View>
@@ -309,7 +377,19 @@ export default function CardWithdrawForm() {
           control={control}
           name="to"
           render={({ field: { onChange } }) => (
-            <ToDestinationSelector onChange={onChange} tokenSymbol={depositTokenSymbol} />
+            <ToDestinationSelector
+              onChange={onChange}
+              tokenSymbol={depositTokenSymbol}
+              assets={collateral?.tokens}
+              selectedTokenAddress={collateral?.tokenAddress}
+              onSelectAsset={asset => {
+                setSelectedTokenAddress(asset.tokenAddress);
+                // The cap belongs to the old asset; clear it rather than
+                // validate the typed amount against a balance it never had.
+                setValue('amount', '');
+                clearErrors('amount');
+              }}
+            />
           )}
         />
       </View>
@@ -318,6 +398,8 @@ export default function CardWithdrawForm() {
         <Text className="text-sm text-red-500">
           {validationError ?? formState.errors.amount?.message}
         </Text>
+      ) : collateralShortfallHint ? (
+        <Text className="text-sm opacity-50">{collateralShortfallHint}</Text>
       ) : null}
 
       <Button

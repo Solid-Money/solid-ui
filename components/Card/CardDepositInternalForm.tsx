@@ -37,7 +37,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { USDC_STARGATE } from '@/constants/addresses';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -563,7 +563,12 @@ export default function CardDepositInternalForm() {
     chainId: mainnet.id,
   });
 
-  const usdcBalanceAmount = walletUsdcBalance ? Number(walletUsdcBalance) / 1e6 : 0;
+  // BNB Chain USDC is 18-decimal, everywhere else it is 6, so the balance must
+  // be scaled by the source token's real decimals rather than a hardcoded 1e6.
+  const walletTokenDecimals = getBridgeTokenDecimals(walletBalanceChainId, 'USDC');
+  const usdcBalanceAmount = walletUsdcBalance
+    ? Number(formatUnits(walletUsdcBalance, walletTokenDecimals))
+    : 0;
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
@@ -636,11 +641,17 @@ export default function CardDepositInternalForm() {
       contractName: 'USD Coin',
       contractAddress: selectedWalletUsdcAddress,
       balance: '0',
-      contractDecimals: 6,
+      contractDecimals: walletTokenDecimals,
       type: TokenType.ERC20,
       chainId: cardDepositSrcChainId,
     };
-  }, [hasSelectedWalletToken, selectedWalletUsdcAddress, walletTokenSymbol, cardDepositSrcChainId]);
+  }, [
+    hasSelectedWalletToken,
+    selectedWalletUsdcAddress,
+    walletTokenSymbol,
+    walletTokenDecimals,
+    cardDepositSrcChainId,
+  ]);
   const {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,

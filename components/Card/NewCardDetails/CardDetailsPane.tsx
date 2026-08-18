@@ -30,7 +30,8 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
+import { CardStatus, KycStatus } from '@/lib/types';
+import { canToggleCardFreeze } from '@/lib/utils/cardHelpers';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -116,8 +117,7 @@ const CardDetailsPane = () => {
   const isVisible = isOpen || isSettling;
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
-  const canUnfreeze =
-    isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
+  const canToggleFreeze = canToggleCardFreeze(cardDetails);
   const isCustomerPausedOrOffboarded =
     customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
   const canMoveCardFunds = !isCardFrozen && !isCustomerPausedOrOffboarded;
@@ -220,7 +220,7 @@ const CardDetailsPane = () => {
           <HeroEnter spec={HERO_ENTER.actions} style={styles.actionsRow}>
             <CardActionsRow
               isCardFrozen={isCardFrozen}
-              canUnfreeze={!!canUnfreeze}
+              canToggleFreeze={canToggleFreeze}
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
               onMorePress={() => setIsAddToWalletOpen(true)}

@@ -11,6 +11,7 @@ import {
   CARD_FUND_USD_ICON,
   getCardFundNetworkChips,
 } from '@/components/Card/CardFund/constants';
+import { CARD_FUND_LOCAL_CURRENCIES } from '@/components/Card/CardFund/localCurrencies';
 import NeedHelp from '@/components/NeedHelp';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
@@ -20,8 +21,13 @@ type CardFundOptionsProps = {
   onTokenPress: (symbol: string) => void;
   onMoveFromSavingsPress: () => void;
   onExternalWalletPress: () => void;
-  /** USD (ACH / Wire) — kept for when the hidden "Cash deposit" section returns. */
+  /** USD (ACH / Wire) — opens the virtual-account flow. */
   onUsdPress?: () => void;
+  /**
+   * A local currency (BRL, BDT…) — opens the buy-crypto onramp for it. Omit to
+   * hide the local-currency rows entirely.
+   */
+  onLocalCurrencyPress?: (code: string) => void;
   isExternalWalletLoading?: boolean;
 };
 
@@ -31,6 +37,7 @@ const CardFundOptions = ({
   onMoveFromSavingsPress,
   onExternalWalletPress,
   onUsdPress,
+  onLocalCurrencyPress,
   isExternalWalletLoading,
 }: CardFundOptionsProps) => (
   <View className="gap-y-8">
@@ -53,6 +60,16 @@ const CardFundOptions = ({
         chips={['ACH', 'Wire']}
         onPress={onUsdPress}
       />
+      {onLocalCurrencyPress
+        ? CARD_FUND_LOCAL_CURRENCIES.map(currency => (
+            <CardFundRow
+              key={currency.code}
+              icon={currency.icon}
+              title={currency.code}
+              onPress={() => onLocalCurrencyPress(currency.code)}
+            />
+          ))
+        : null}
     </CardFundGroup>
 
     <CardFundGroup label="Other">
