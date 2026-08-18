@@ -209,7 +209,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-build-properties',
       {
         ios: {
-          deploymentTarget: '15.1',
+          // 16.0 is the floor declared by OnramperReactNative.podspec
+          // (@onramper/onramper-react-native). CocoaPods fails resolution if the
+          // app target is lower, so this cannot go back below 16.0 while that
+          // dependency is installed.
+          deploymentTarget: '16.0',
           useFrameworks: 'static',
           // Static frameworks with precompiled RN core have been flaky in EAS iOS builds.
           // Build RN from source to avoid missing React-use-frameworks.modulemap artifacts.
@@ -301,6 +305,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // vision DEPENDENCIES meta-data; merge them so the Android manifest merger
     // does not fail. See plugins/withMlkitVisionDependencies.js.
     './plugins/withMlkitVisionDependencies.js',
+    // Sets SWIFT_ENABLE_EXPLICIT_MODULES=NO so the Swift pods (NitroModules,
+    // OnramperReactNative) don't fail the app target's "Emit Swift module" phase
+    // on Xcode 16+. Referenced by file path, not as '@onramper/onramper-react-native':
+    // the package ships app.plugin.js but omits it from its package.json "exports"
+    // map, so resolving it as a package subpath fails with
+    // ERR_PACKAGE_PATH_NOT_EXPORTED. Switch to the bare package name once
+    // onramper fixes that upstream.
+    './node_modules/@onramper/onramper-react-native/app.plugin.js',
   ],
   experiments: {
     typedRoutes: true,

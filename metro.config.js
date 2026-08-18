@@ -24,6 +24,18 @@ config.resolver = {
     events: 'events',
   },
   resolveRequest: (context, moduleName, platform) => {
+    // @onramper/onramper-react-native is an iOS-only Nitro module. Its
+    // OnramperCheckoutButtonView calls getHostComponent() at import time, which
+    // deep-imports react-native/Libraries/NativeComponent/NativeComponentRegistry
+    // — RN internals that don't exist in a react-native-web bundle. Stub it on
+    // web so merely importing it can't break the web build.
+    // Android is left alone on purpose: the import is lazy there (RN registers
+    // the view config without resolving it), and the package throws its own
+    // clear "iOS-only in this release" error if you actually call it.
+    if (platform === 'web' && moduleName.startsWith('@onramper/onramper-react-native')) {
+      return { type: 'empty' };
+    }
+
     // Block browser-specific modules when building for native platforms
     if (
       platform !== 'web' &&

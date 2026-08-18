@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import useOnramperClient from '@/hooks/useOnramperClient';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
@@ -52,6 +53,9 @@ const DepositTypeSelection = () => {
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
+  const { client: onramperClient } = useOnramperClient();
+  const [button, setButton] = React.useState<React.ReactNode | null>(null);
+  const [, setQuote] = React.useState<any>(null);
 
   const handleCashPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
@@ -66,6 +70,28 @@ const DepositTypeSelection = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'crypto' });
     setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
   };
+
+  useEffect(() => {
+    if (onramperClient) {
+      onramperClient
+        .getCheckoutRequirements({
+          source: 'usd',
+          destination: 'sol',
+          amount: 100,
+          type: 'buy',
+          paymentMethod: 'applepay',
+          wallet: { network: 'ethereum', address: '0x7FA96603d18f5708AFDC0d9E3C53ae4E0Cb877a4' },
+        })
+        .then(({ button, quote }) => {
+          if (button) {
+            setButton(button);
+          }
+          if (quote) {
+            setQuote(quote);
+          }
+        });
+    }
+  }, [onramperClient]);
 
   return (
     <>
@@ -106,6 +132,8 @@ const DepositTypeSelection = () => {
           </View>
         </Pressable>
       </View>
+
+      <View>{button}</View>
 
       <VirtualAccountApplyDialog
         isOpen={isVirtualAccountApplyOpen}
