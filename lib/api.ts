@@ -771,9 +771,13 @@ export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationS
  * Which providers a country routes to.
  *
  * `flow` matters: the backend gates the `card` answer on whether Wirex is enabled
- * in that environment (it is staging-only), while `onramp` gets the ungated
- * geographic answer because TransFi's use of Sumsub is live independently. The
- * backend defaults to the gated `card` answer, so omitting it is the safe choice.
+ * in that environment and on who is asking (production serves Wirex to an
+ * internal team cohort only), while `onramp` gets the ungated geographic answer
+ * because TransFi's use of Sumsub is live independently. The backend defaults to
+ * the gated `card` answer, so omitting it is the safe choice.
+ *
+ * The card answer is per-user — the backend reads the caller from the JWT below,
+ * never from a parameter — so it must not be cached across accounts.
  */
 export const getProviderRouting = async (
   countryCode: string,
