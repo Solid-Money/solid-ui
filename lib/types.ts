@@ -2021,6 +2021,10 @@ export interface TransfiPaymentConfig {
   defaultCurrency: string;
   tokenSymbol: string;
   tokenLogo?: string;
+  /** Chain the bought USDC is delivered on, e.g. 'Base'. */
+  tokenNetwork?: string;
+  /** 'card_funding' when it tops up the card, 'safe' when it lands in the wallet. */
+  destinationType?: 'card_funding' | 'safe';
 }
 
 export interface TransfiQuote {

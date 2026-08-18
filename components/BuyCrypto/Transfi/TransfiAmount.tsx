@@ -15,11 +15,14 @@ import {
   useTransfiQuote,
 } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /** Wait for typing to settle before quoting — each amount is a TransFi call. */
 const QUOTE_DEBOUNCE_MS = 500;
+
+const TOKEN_PILL_ICON_STYLE = { width: 20, height: 20 };
 
 const formatFiat = (value: number | undefined, currency: string) =>
   value == null
@@ -135,23 +138,29 @@ export const TransfiAmount = () => {
             keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor="#6B7280"
-            className="flex-1 text-4xl font-bold text-primary"
+            // w-0/min-w-0 so the input yields to the token pill instead of
+            // pushing it out of the row (a web <input> won't shrink past its
+            // intrinsic width on flex-1 alone); no focus ring on web.
+            className="w-0 min-w-0 flex-1 bg-transparent text-4xl font-bold text-primary web:outline-none"
           />
-          <View className="flex-row items-center gap-2 rounded-full border border-border px-3 py-2">
-            {config?.tokenLogo ? (
-              <Image
-                source={{ uri: config.tokenLogo }}
-                style={{ width: 20, height: 20 }}
-                contentFit="contain"
-              />
-            ) : null}
+          <View className="shrink-0 flex-row items-center gap-2 rounded-full border border-border px-3 py-2">
+            {/* Our own USDC mark, not TransFi's: theirs badges the delivery
+                network onto the coin, so the pill read USDC-on-Ethereum. The
+                network belongs in the line below, once, not on the icon. */}
+            <Image
+              source={getAsset('images/usdc-4x.png')}
+              style={TOKEN_PILL_ICON_STYLE}
+              contentFit="contain"
+            />
             <Text className="text-base font-semibold text-primary">
               {config?.tokenSymbol ?? 'USDC'}
             </Text>
           </View>
         </View>
         <Text className="mt-2 text-sm text-muted-foreground">
-          You&apos;ll receive USDC on Ethereum
+          {`You'll receive USDC on ${config?.tokenNetwork ?? 'Base'}${
+            config?.destinationType === 'card_funding' ? ' in your card balance' : ' in your wallet'
+          }`}
         </Text>
       </View>
 
