@@ -1267,6 +1267,23 @@ export interface RewardsUserData {
   legacyCarryoverPoints?: number;
   /** Tier the user starts in after carryover is applied (Core or Prime). */
   startingTier?: RewardsTier;
+  /**
+   * Extra APY the current tier adds on top of the base savings yield, in
+   * percentage points. 0 (or absent) means the tier grants no boost, which is
+   * what hides the yield boost benefit card and the savings boost strip.
+   */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for the current tier, in USD. */
+  yieldBoostCap?: number;
+  /** Yield boost payouts the user has already received, in USD. */
+  yieldBoostEarned?: number;
+  /**
+   * Cashback % the current tier earns back on eligible subscriptions. 0 (or
+   * absent) means the tier grants none, which hides the subscription card.
+   */
+  subscriptionDiscountRate?: number;
+  /** Subscription categories the current tier earns the discount on per month. */
+  subscriptionCategoryLimit?: number;
 }
 
 export interface TierBenefit {
@@ -1278,6 +1295,10 @@ export interface TierBenefit {
 export interface TierBenefits {
   tier: RewardsTier;
   depositBoost: TierBenefit;
+  /** `depositBoost` as APY percentage points (0 when the tier has no boost). */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for this tier, in USD. */
+  yieldBoostCap?: number;
   cardCashback: TierBenefit;
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;

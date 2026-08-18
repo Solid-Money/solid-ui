@@ -16,6 +16,7 @@ import RecentSavingsActivity from './RecentSavingsActivity';
 import SavingsBalanceHeadline from './SavingsBalanceHeadline';
 import SavingsFundedActions from './SavingsFundedActions';
 import SavingsHelpModal from './SavingsHelpModal';
+import SavingsYieldBoostCard from './SavingsYieldBoostCard';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
 import VaultSavingsSection from './VaultSavingsSection';
@@ -103,6 +104,7 @@ export default function SavingsScreenNew() {
             {isFunded ? (
               <>
                 <VaultSavingsSection vaultType={selectedVaultType} />
+                <SavingsYieldBoostCard />
                 <RecentSavingsActivity />
               </>
             ) : (
