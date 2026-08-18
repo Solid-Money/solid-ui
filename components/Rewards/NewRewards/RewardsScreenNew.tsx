@@ -21,13 +21,12 @@ import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
+import TierBenefitsGrid from './TierBenefitsGrid';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -199,14 +198,17 @@ export default function RewardsScreenNew() {
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
         <View className="mt-8">
-          <DailyBenefits
+          <TierBenefitsGrid
             cashbackRate={rewardsData?.cashbackRate ?? 0}
             cashbackThisMonth={cashback}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}
+            yieldBoostPercentage={rewardsData?.yieldBoostPercentage ?? 0}
+            yieldBoostCap={rewardsData?.yieldBoostCap ?? 0}
+            yieldBoostEarned={rewardsData?.yieldBoostEarned ?? 0}
+            subscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
             onReferralsPress={() => setIsReferralModalOpen(true)}
-            onSupportPress={openSupportDrawer}
           />
         </View>
       </View>
