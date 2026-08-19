@@ -152,6 +152,38 @@ export const TRACKING_EVENTS = {
   DEPOSIT_BANK_AMOUNT_ABANDONED: 'deposit_bank_amount_abandoned',
   DEPOSIT_BANK_INSTRUCTIONS_ABANDONED: 'deposit_bank_instructions_abandoned',
 
+  // Deposit Method: Virtual Account (Rain USD bank account)
+  VIRTUAL_ACCOUNT_PITCH_VIEWED: 'virtual_account_pitch_viewed',
+  VIRTUAL_ACCOUNT_APPLY_PRESSED: 'virtual_account_apply_pressed',
+  VIRTUAL_ACCOUNT_REGION_BLOCKED: 'virtual_account_region_blocked',
+  VIRTUAL_ACCOUNT_KYC_REQUIRED: 'virtual_account_kyc_required',
+  VIRTUAL_ACCOUNT_TOS_VIEWED: 'virtual_account_tos_viewed',
+  VIRTUAL_ACCOUNT_TOS_ACCEPTED: 'virtual_account_tos_accepted',
+  VIRTUAL_ACCOUNT_CREATED: 'virtual_account_created',
+  VIRTUAL_ACCOUNT_CREATION_FAILED: 'virtual_account_creation_failed',
+  VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
+  VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
+  VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
+
+  // Deposit Method: Buy Crypto (TransFi onramp)
+  BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
+  BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
+  BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',
+  BUY_CRYPTO_KYC_SHARE_FAILED: 'buy_crypto_kyc_share_failed',
+  BUY_CRYPTO_KYC_PENDING_VIEWED: 'buy_crypto_kyc_pending_viewed',
+  BUY_CRYPTO_KYC_REJECTED: 'buy_crypto_kyc_rejected',
+  BUY_CRYPTO_KYC_RETRY_PRESSED: 'buy_crypto_kyc_retry_pressed',
+  BUY_CRYPTO_AMOUNT_VIEWED: 'buy_crypto_amount_viewed',
+  BUY_CRYPTO_CURRENCY_SELECTED: 'buy_crypto_currency_selected',
+  BUY_CRYPTO_PAYMENT_METHOD_SELECTED: 'buy_crypto_payment_method_selected',
+  BUY_CRYPTO_ORDER_CREATED: 'buy_crypto_order_created',
+  BUY_CRYPTO_ORDER_CREATION_FAILED: 'buy_crypto_order_creation_failed',
+  BUY_CRYPTO_PAYMENT_PAGE_OPENED: 'buy_crypto_payment_page_opened',
+  BUY_CRYPTO_PAYMENT_PAGE_BLOCKED: 'buy_crypto_payment_page_blocked',
+  BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER: 'buy_crypto_payment_confirmed_by_user',
+  BUY_CRYPTO_ORDER_COMPLETED: 'buy_crypto_order_completed',
+  BUY_CRYPTO_ORDER_FAILED: 'buy_crypto_order_failed',
+
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
   DEPOSIT_BONUS_BANNER_INFLUENCED: 'deposit_bonus_banner_influenced',
