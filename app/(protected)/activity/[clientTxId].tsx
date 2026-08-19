@@ -17,6 +17,7 @@ import { mainnet } from 'viem/chains';
 import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
+import MerchantAvatar from '@/components/Activity/MerchantAvatar';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
@@ -45,7 +46,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { formatCardAmount, getCashbackAmount } from '@/lib/utils/cardHelpers';
+import { formatCardAmount, getCashbackAmount, getMerchantDisplay } from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -222,14 +223,16 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   transaction,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName =
-    transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
-  const merchantLocation =
-    [transaction.merchant_city, transaction.merchant_country]
-      .filter(Boolean)
-      .join(', ')
-      .toUpperCase() || undefined;
-  const merchantCategory = getMerchantCategory(transaction.merchant_category_code);
+  const merchant = getMerchantDisplay(transaction, {
+    locationSeparator: ', ',
+    uppercaseLocation: true,
+  });
+  const merchantName = merchant.name;
+  const merchantLocation = merchant.location;
+  // The issuer's own category beats our MCC table when it sent one — it names the
+  // merchant, where an MCC only names the bucket the acquirer filed it under.
+  const merchantCategory =
+    merchant.category ?? getMerchantCategory(transaction.merchant_category_code);
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
   const { data: cardDetails } = useCardDetails();
@@ -379,11 +382,18 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         <Back title="Transaction details" className="text-xl md:text-2xl" />
 
         <View className="items-center gap-4">
-          {/* Avatar with merchant initial or token icon */}
+          {/* Merchant logo, else the merchant initial, else the token icon */}
           {isPurchase ? (
-            <View className="h-[75px] w-[75px] items-center justify-center rounded-full bg-[#2A2A2A]">
-              <Text className="text-3xl text-[#A0A0A0]">{initial}</Text>
-            </View>
+            <MerchantAvatar
+              name={merchantName}
+              iconUrl={merchant.iconUrl}
+              size={75}
+              fallback={
+                <View className="h-[75px] w-[75px] items-center justify-center rounded-full bg-[#2A2A2A]">
+                  <Text className="text-3xl text-[#A0A0A0]">{initial}</Text>
+                </View>
+              }
+            />
           ) : (
             <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
           )}

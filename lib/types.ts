@@ -1587,6 +1587,17 @@ export interface CardTransaction {
   merchant_location?: string;
   merchant_city?: string;
   merchant_country?: string;
+  /** The issuer's own human-readable category for the raw descriptor. */
+  merchant_category?: string;
+  /**
+   * Merchant enrichment: the clean brand name ("Google Play" rather than
+   * "GOOGLE *Play Books"), its category, and a logo URL. Any of them may be
+   * absent — the issuer enriches opportunistically and never before settlement —
+   * so read them through `getMerchantDisplay` rather than directly.
+   */
+  enriched_merchant_name?: string;
+  enriched_merchant_category?: string;
+  enriched_merchant_icon?: string;
   local_transaction_details?: LocalTransactionDetails;
   declined_reason?: string;
 }

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 
 import Diamond from '@/assets/images/diamond';
+import MerchantAvatar from '@/components/Activity/MerchantAvatar';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
@@ -20,12 +21,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import {
-  formatCardAmount,
-  getCashbackAmount,
-  getColorForTransaction,
-  getInitials,
-} from '@/lib/utils/cardHelpers';
+import { formatCardAmount, getCashbackAmount, getMerchantDisplay } from '@/lib/utils/cardHelpers';
 import { groupByTime, TimeGroup } from '@/lib/utils/timeGrouping';
 
 type CardTransactionWithTimestamp = CardTransaction & { timestamp: number; source: 'card' };
@@ -155,14 +151,9 @@ export default function CardTransactions() {
       }
 
       const transaction = row as CardTransactionWithTimestamp;
-      const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
-      const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
-        .filter(Boolean)
-        .join(' ') || undefined;
-      const initials = getInitials(merchantName);
+      const merchant = getMerchantDisplay(transaction);
       const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
       const isDeclined = transaction.status === 'declined';
-      const color = getColorForTransaction(merchantName);
       const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
       return (
@@ -178,14 +169,7 @@ export default function CardTransactions() {
         >
           <View className="mr-4 flex-1 flex-row items-center gap-3">
             {isPurchase ? (
-              <View
-                className="h-[44px] w-[44px] items-center justify-center rounded-full"
-                style={{ backgroundColor: color.bg }}
-              >
-                <Text className="text-lg font-semibold" style={{ color: color.text }}>
-                  {initials}
-                </Text>
-              </View>
+              <MerchantAvatar name={merchant.name} iconUrl={merchant.iconUrl} size={44} />
             ) : (
               <RenderTokenIcon
                 tokenIcon={getTokenIcon({
@@ -197,11 +181,11 @@ export default function CardTransactions() {
             )}
             <View className="flex-1">
               <Text className="text-lg font-medium text-white" numberOfLines={1}>
-                {merchantName}
+                {merchant.name}
               </Text>
-              {merchantLocation && (
+              {merchant.location && (
                 <Text className="text-sm text-[#8E8E93]" numberOfLines={1}>
-                  {merchantLocation}
+                  {merchant.location}
                 </Text>
               )}
               {cashbackInfo && (
@@ -220,10 +204,7 @@ export default function CardTransactions() {
           </View>
           <View className="items-end">
             <Text
-              className={cn(
-                'text-xl font-semibold',
-                isDeclined ? 'text-red-400' : 'text-white',
-              )}
+              className={cn('text-xl font-semibold', isDeclined ? 'text-red-400' : 'text-white')}
             >
               {formatCardAmount(transaction.amount, provider)}
             </Text>
