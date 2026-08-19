@@ -127,6 +127,7 @@ import {
   WebProvisioningTokenResponse,
   WhatsNew,
   WirexRevealSessionResponse,
+  WirexSpendAuthorizationResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
@@ -2724,6 +2725,65 @@ export const revealCardDetailsComplete = async (
   }
   return revealCardDetailsCompleteRain();
 };
+
+// --- Wirex card spending (soUSD allowance to the Card Deposit Manager) ---
+
+/**
+ * The user's current card-spend authorization.
+ *
+ * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it
+ * straight after an `approve` transaction lands so the Authorize control flips on
+ * the same interaction rather than up to a cache TTL later.
+ */
+export const getWirexSpendAuthorization = async (
+  refresh = false,
+): Promise<WirexSpendAuthorizationResponse> => {
+  const jwt = getJWTToken();
+  const query = refresh ? '?refresh=true' : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization${query}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Tell the backend the user's `approve` transaction has landed, and get the
+ * re-read authorization back.
+ *
+ * This grants nothing on its own — the allowance was granted on-chain by the
+ * user's own signature — it only saves the UI from waiting out the snapshot TTL.
+ */
+export const confirmWirexSpendAuthorization =
+  async (): Promise<WirexSpendAuthorizationResponse> => {
+    const jwt = getJWTToken();
+
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization/confirm`,
+      {
+        method: 'POST',
+        headers: {
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(

@@ -265,6 +265,14 @@ export const TRACKING_EVENTS = {
   CARD_DEPOSIT_TRANSACTION_STATUS_VIEWED: 'card_deposit_transaction_status_viewed',
   CARD_DEPOSIT_TRANSACTION_STATUS_PRESSED: 'card_deposit_transaction_status_pressed',
 
+  // Wirex card spending. Wirex cardholders authorize a soUSD allowance instead of
+  // depositing onto the card, so these are the Wirex counterpart of the deposit
+  // funnel above — the same step in the journey, a different mechanism.
+  CARD_SPEND_AUTHORIZE_PRESSED: 'card_spend_authorize_pressed',
+  CARD_SPEND_AUTHORIZE_COMPLETED: 'card_spend_authorize_completed',
+  CARD_SPEND_AUTHORIZE_FAILED: 'card_spend_authorize_failed',
+  CARD_SPEND_AUTHORIZE_CANCELLED: 'card_spend_authorize_cancelled',
+
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',
   FAST_WITHDRAW_TRANSACTION_SENT: 'fast_withdraw_transaction_sent',

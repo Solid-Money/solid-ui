@@ -3,6 +3,8 @@ import { View } from 'react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
 import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
 
@@ -20,6 +22,9 @@ const OtherBalancesDropdown = ({
 }: OtherBalances) => {
   const [open, setOpen] = useState(false);
   const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
+  // A Wirex card has no balance to deposit into — see `canDepositToCard`.
+  const { provider } = useCardProvider();
+  const canAddToCard = canDepositToCard(provider);
   const dismiss = () => setOpen(false);
   const openCardDeposit = () => {
     dismiss();
@@ -46,6 +51,7 @@ const OtherBalancesDropdown = ({
             isLoading={isLoading}
             onDismiss={dismiss}
             onCardAdd={openCardDeposit}
+            canAddToCard={canAddToCard}
           />
         </DialogContent>
       </Dialog>

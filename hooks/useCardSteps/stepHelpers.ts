@@ -192,7 +192,7 @@ export function useCardActivation(router: Router) {
   }, []);
 
   const pushCardDetails = useCallback(() => {
-    router.push(path.CARD_DETAILS);
+    router.navigate(path.CARD_INFO);
   }, [router]);
 
   const pushCardReady = useCallback(() => {

@@ -45,7 +45,7 @@ const CardBanner = () => {
           title: 'Your card is on the way!',
           description: 'Your Solid Card has been ordered and is being prepared for delivery.',
           ctaText: 'Track status',
-          action: () => router.push(path.CARD_DETAILS),
+          action: () => router.navigate(path.CARD_INFO),
           showPromo: false,
         };
 
@@ -54,7 +54,7 @@ const CardBanner = () => {
           title: 'Your Solid Card',
           description: 'Manage your card, view transactions, and add funds.',
           ctaText: 'View card',
-          action: () => router.push(path.CARD_DETAILS),
+          action: () => router.navigate(path.CARD_INFO),
           showPromo: false,
         };
 
@@ -63,7 +63,7 @@ const CardBanner = () => {
           title: 'Your card is frozen',
           description: 'Your card is temporarily frozen. Tap to manage.',
           ctaText: 'Manage card',
-          action: () => router.push(path.CARD_DETAILS),
+          action: () => router.navigate(path.CARD_INFO),
           showPromo: false,
         };
 
@@ -81,7 +81,7 @@ const CardBanner = () => {
           title: 'Solid Card',
           description: 'Manage your Solid Card.',
           ctaText: 'View card',
-          action: () => router.push(path.CARD_DETAILS),
+          action: () => router.navigate(path.CARD_INFO),
           showPromo: false,
         };
     }

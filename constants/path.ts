@@ -1,5 +1,12 @@
 import { Href, Route } from 'expo-router';
 
+/**
+ * Value of the wallet screen's `screen` query param that opens the card details
+ * pane — i.e. `/?screen=card-info`. Exported so the wallet screen matches on the
+ * same constant the links are built from.
+ */
+export const CARD_INFO_SCREEN = 'card-info';
+
 type Path = {
   ONBOARDING: Href;
   WELCOME: Href;
@@ -27,7 +34,19 @@ type Path = {
   SUMSUB_KYC: Href;
   BRIDGE_KYC: Href;
   CARD_TERMS_OF_SERVICE: Route;
+  /**
+   * @deprecated Not a user-reachable page any more — `/card/details` is a
+   * redirect shim onto `CARD_INFO` so old deep links, push payloads and
+   * bookmarks keep working. Navigate to `CARD_INFO` instead.
+   */
   CARD_DETAILS: Route;
+  /**
+   * The card details surface: the wallet screen with its card pane open. The
+   * pane is a layer on the wallet rather than a route of its own (that's what
+   * lets the card fly into place without a screen mounting underneath it), so
+   * the "page" is addressed by a query param the wallet reads on mount.
+   */
+  CARD_INFO: Href;
   CARD_DEPOSIT: Route;
   CARD_TRANSACTIONS: Route;
   CARD_READY: Href;
@@ -87,6 +106,7 @@ export const path: Path = {
   BANK_TRANSFER: '/bank-transfer',
   CARD_TERMS_OF_SERVICE: '/card/bridge_terms_of_service',
   CARD_DETAILS: '/card/details',
+  CARD_INFO: { pathname: '/', params: { screen: CARD_INFO_SCREEN } } as Href,
   CARD_DEPOSIT: '/card/deposit',
   CARD_TRANSACTIONS: '/card/details/transactions',
   CARD_READY: '/card/ready' as Href,

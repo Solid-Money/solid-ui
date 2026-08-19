@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
@@ -18,6 +19,7 @@ import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
+import { CARD_INFO_SCREEN } from '@/constants/path';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -29,6 +31,7 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
@@ -58,6 +61,23 @@ export default function HomeScreenNew() {
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
 
   const userHasCard = hasCard(cardStatus);
+
+  // `/?screen=card-info` opens the card pane — the addressable form of the card
+  // details "page", now that `/card/details` is only a redirect onto this. The
+  // param is cleared straight away for the same reason the rewards screen clears
+  // `referral`: it is a one-shot instruction, and leaving it in the URL would
+  // re-open the pane every time this screen remounts, including right after the
+  // user closed it.
+  const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
+  const openCardPane = useCardPaneStore(state => state.open);
+
+  useEffect(() => {
+    if (screenParam !== CARD_INFO_SCREEN) return;
+    // No origin rect: there was no card tap to fly back to, so dismissing just
+    // closes (see `CardDetailsPane.close`).
+    openCardPane();
+    router.setParams({ screen: undefined });
+  }, [screenParam, openCardPane]);
 
   const {
     isLoading: isLoadingTokens,

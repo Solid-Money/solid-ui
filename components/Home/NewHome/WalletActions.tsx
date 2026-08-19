@@ -9,7 +9,9 @@ import SendModal from '@/components/Send/SendModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
+import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
 // IMPORTANT: these trigger components MUST forward props (…props) to their root
 // Pressable. The Deposit/Swap/Send modals inject their open handler via
@@ -97,9 +99,16 @@ interface WalletActionsProps {
  *
  * "Add Funds" routes straight to the card deposit flow for card holders, or the
  * wallet deposit flow otherwise — no destination picker in between.
+ *
+ * A Wirex cardholder takes the wallet route despite holding a card: their card has
+ * no balance to deposit into (Wirex pays the merchant and we take the soUSD from
+ * their Safe on settlement), so funding their savings IS funding their card. See
+ * `canDepositToCard`.
  */
 const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const { width } = useWindowDimensions();
+  const { provider } = useCardProvider();
+  const fundsGoToCard = Boolean(hasCard) && canDepositToCard(provider);
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
   const showSwap = hasFunds && Platform.OS !== 'ios';
@@ -109,7 +118,7 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
       <View className={hasFunds ? 'h-14' : 'w-full'} style={hasFunds && styles.equalActionSlot}>
-        {hasCard ? (
+        {fundsGoToCard ? (
           // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
           // own trigger prop - that goes through ResponsiveModal's rn-primitives
           // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.

@@ -748,6 +748,47 @@ export interface WirexRevealSessionResponse {
   messageTemplate: string;
 }
 
+/**
+ * Wirex card-spend authorization: the soUSD allowance the cardholder grants the
+ * Card Deposit Manager, and everything needed to build the `approve` call.
+ *
+ * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its
+ * own Master Account and our backend reimburses itself by pulling soUSD from the
+ * user's Safe on each settlement — so there is no card balance to top up, and the
+ * user's savings balance *is* their card balance. What they grant instead is
+ * standing permission to take it, which is what this describes.
+ *
+ * Token, spender and chain all come from the backend rather than app config: the
+ * Card Deposit Manager address is environment-specific, and a stale client-side
+ * copy would have users approving an allowance nobody can spend.
+ */
+export interface WirexSpendAuthorizationResponse {
+  /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
+  authorized: boolean;
+  /** Remaining allowance, in decimal soUSD. */
+  allowanceRemaining: string;
+  /** What a fresh Authorize would approve, in decimal soUSD. */
+  allowanceLimit: string;
+  /** The Safe's soUSD balance, in decimal soUSD. */
+  balance: string;
+  /** soUSD the card can reach right now (allowance ∧ balance, less unsettled holds). */
+  spendable: string;
+  /** USD value of `spendable`. */
+  spendableUsd: number;
+  /** soUSD committed to transactions Wirex has authorized but not settled. */
+  held: string;
+  /** soUSD ERC-20 address to call `approve` on. */
+  tokenAddress: string;
+  /** The `spender` argument — the Card Deposit Manager. */
+  spenderAddress: string;
+  /** Chain the approval must be sent on. Always Fuse (122). */
+  chainId: number;
+  /** soUSD decimals, so the client scales without assuming 18. */
+  decimals: number;
+  /** False when this environment has no Card Deposit Manager — hide the control. */
+  available: boolean;
+}
+
 // --- Rain contracts (funding) ---
 export interface RainContractTokenDto {
   address: string;

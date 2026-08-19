@@ -41,6 +41,25 @@ export const canToggleCardFreeze = (cardDetails: FreezeState): boolean =>
   cardDetails?.status !== CardStatus.FROZEN || canCustomerUnfreezeCard(cardDetails);
 
 /**
+ * Whether this card can be funded by depositing onto it.
+ *
+ * Rain cards are prefunded — the user moves soUSD onto the card and spends the
+ * balance sitting there. Wirex cards under External Authorization have no balance
+ * of their own: Wirex pays the merchant from its own Master Account and our backend
+ * takes the soUSD from the user's Safe on settlement. So a deposit to a Wirex card
+ * has no destination, and every "Add funds" entry point (the card action row, the
+ * wallet's balance breakdown, the wallet action bar) has to agree about that.
+ *
+ * A Wirex cardholder authorizes a soUSD allowance instead — see
+ * `useCardSpendAuthorization`. Their savings balance IS their card balance.
+ *
+ * `null`/`undefined` means the issuer is not resolved yet; deposits are offered by
+ * default so a Rain cardholder never loses the action to a slow query.
+ */
+export const canDepositToCard = (provider: CardProvider | null | undefined): boolean =>
+  provider !== CardProvider.WIREX;
+
+/**
  * Get initials from merchant/person name for avatar display
  */
 export const getInitials = (name: string): string => {

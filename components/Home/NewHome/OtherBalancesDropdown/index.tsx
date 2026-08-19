@@ -156,19 +156,27 @@ export const WalletBalanceRow = ({
   </BalanceRow>
 );
 
-/** Card balance row (green). "Add" opens the "Fund your card" popup (share
- *  deposit address / transfer from wallet) — same modal as the card screen. */
+/**
+ * Card balance row (green). "Add" opens the "Fund your card" popup (share deposit
+ * address / transfer from wallet) — same modal as the card screen.
+ *
+ * No "Add" for a Wirex card: it holds no balance to deposit into, and the figure in
+ * this row is already how much of the user's savings the card can reach. They
+ * authorize spending on the card screen instead (`canDepositToCard`).
+ */
 export const CardBalanceRow = ({
   cardBalance,
   isLoading,
   onAdd,
+  canAdd = true,
 }: {
   cardBalance: number;
   isLoading?: boolean;
   onAdd?: () => void;
+  canAdd?: boolean;
 }) => (
   <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
-    <AddButton onPress={onAdd} />
+    {canAdd ? <AddButton onPress={onAdd} /> : null}
   </BalanceRow>
 );
 
@@ -205,11 +213,22 @@ export const BalanceBreakdownRows = ({
   isLoading,
   onDismiss,
   onCardAdd,
-}: OtherBalances & { onDismiss?: () => void; onCardAdd?: () => void }) => (
+  canAddToCard = true,
+}: OtherBalances & {
+  onDismiss?: () => void;
+  onCardAdd?: () => void;
+  /** False for an issuer whose card cannot be deposited into (Wirex). */
+  canAddToCard?: boolean;
+}) => (
   <>
     <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
     {shouldShowCard(cardBalance, userHasCard) && (
-      <CardBalanceRow cardBalance={cardBalance} isLoading={isLoading} onAdd={onCardAdd} />
+      <CardBalanceRow
+        cardBalance={cardBalance}
+        isLoading={isLoading}
+        onAdd={onCardAdd}
+        canAdd={canAddToCard}
+      />
     )}
     <SavingsBalanceRow
       savingsBalance={savingsBalance}
