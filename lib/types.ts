@@ -1336,6 +1336,42 @@ export interface RewardsUserData {
   subscriptionDiscountRate?: number;
   /** Subscription categories the current tier earns the discount on per month. */
   subscriptionCategoryLimit?: number;
+  /**
+   * FUSE-in-savings tier unlock ("skip the line"). Absent on older backends,
+   * which is what hides the section.
+   */
+  fuseSkipLine?: FuseSkipLine;
+}
+
+/** One "skip the line" rung: what a tier costs in FUSE and how close the user is. */
+export interface FuseSkipLineTier {
+  tier: RewardsTier;
+  /** FUSE that must sit in the soFUSE vault to hold this tier. */
+  requiredFuse: number;
+  /** Whether the user's current FUSE balance meets the threshold. */
+  unlocked: boolean;
+  /** FUSE still needed to reach the threshold (0 once unlocked). */
+  remainingFuse: number;
+  /** Progress toward this tier's threshold, 0-100. */
+  progressPct: number;
+}
+
+/**
+ * "Skip the line": FUSE held in savings unlocks a membership tier outright,
+ * bypassing the points ladder. The tier is held only while the balance stays
+ * above the threshold.
+ */
+export interface FuseSkipLine {
+  /** Whether the mechanic is switched on. False hides the section. */
+  enabled: boolean;
+  /** The user's soFUSE position, denominated in FUSE. */
+  balanceFuse: number;
+  /** That same position in USD, for the secondary label. */
+  balanceUsd: number;
+  /** Highest tier the FUSE balance unlocks on its own (core when none). */
+  unlockedTier: RewardsTier;
+  /** The purchasable rungs, cheapest first. */
+  tiers: FuseSkipLineTier[];
 }
 
 export interface TierBenefit {
@@ -1414,7 +1450,11 @@ export interface SubscriptionDiscountConfig {
 }
 
 export interface FuseStakingConfig {
+  /** Master switch for the "skip the line" FUSE tier unlock. */
+  enabled: boolean;
+  /** FUSE that must sit in the soFUSE vault to hold Prime. */
   tier2Amount: number;
+  /** FUSE that must sit in the soFUSE vault to hold Ultra. */
   tier3Amount: number;
 }
 
