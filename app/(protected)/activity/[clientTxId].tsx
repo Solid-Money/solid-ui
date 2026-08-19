@@ -125,7 +125,7 @@ const Back = memo(function Back({ title, className }: BackProps) {
 
   const handleBackPress = useCallback(() => {
     if (params.from === 'card') {
-      router.replace(path.CARD_DETAILS);
+      router.replace(path.CARD_INFO);
       return;
     }
     const tabParam = params.tab ? `?tab=${params.tab}` : '';

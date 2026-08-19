@@ -1,3 +1,6 @@
+import { Href } from 'expo-router';
+
+import { path } from '@/constants/path';
 import {
   type CardDetailsResponseDto,
   CardProvider,
@@ -80,3 +83,12 @@ export const resolveCardIssuer = ({
   // Legacy rows predate the provider field; those cards are all Rain.
   return reported && reported !== CardProvider.BRIDGE ? reported : CardProvider.RAIN;
 };
+
+/**
+ * Where an active-card user should land: always the card details surface (the
+ * wallet with its card pane open, `/?screen=card-info`). Bangladesh's
+ * minimum-deposit gate now runs BEFORE card issuance (into savings), so anyone
+ * who already holds a card has cleared it — there's no reason to bounce them
+ * back to the issuance flow.
+ */
+export const getActiveCardRoute = (_cardStatus?: CardStatusResponse | null): Href => path.CARD_INFO;

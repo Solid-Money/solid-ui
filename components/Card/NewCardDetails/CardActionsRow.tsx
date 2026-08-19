@@ -3,9 +3,13 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import AuthorizeSpendAction from '@/components/Card/NewCardDetails/AuthorizeSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardSpendAuthorization } from '@/hooks/useCardSpendAuthorization';
 import { getAsset } from '@/lib/assets';
+import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
 interface CircleActionProps {
   label: string;
@@ -55,13 +59,29 @@ interface CardActionsRowProps {
   isFreezing: boolean;
   onFreezeToggle: () => void;
   onMorePress: () => void;
-  /** Add funds is hidden while the card can't take deposits (frozen / paused KYC). */
+  /**
+   * Whether funds can move to/from the card at all (not frozen, KYC not paused).
+   * Gates Add funds and Withdraw together — the parent derives it once so the row
+   * and the desktop header cannot offer different actions for the same card.
+   */
   canAddFunds: boolean;
   /** Withdraw is hidden while funds can't be moved off the card (frozen / paused KYC). */
   canWithdraw: boolean;
 }
 
-/** The Add funds / Withdraw / Freeze / More row on the redesigned card screen. */
+/**
+ * The funding / Withdraw / Freeze / More row on the card screen.
+ *
+ * The first action differs by issuer, because the two cards work differently:
+ *
+ *  - **Rain** cards are prefunded, so it is "Add funds" — move soUSD onto the card.
+ *  - **Wirex** cards hold no balance (Wirex pays the merchant and we take the soUSD
+ *    from the user's Safe afterwards), so there is nothing to fund. It is
+ *    "Authorize" instead: one-time permission for the card to spend from savings.
+ *
+ * Offering "Add funds" on a Wirex card would be offering a transfer with no
+ * destination.
+ */
 const CardActionsRow = ({
   isCardFrozen,
   canToggleFreeze,
@@ -71,9 +91,34 @@ const CardActionsRow = ({
   canAddFunds,
   canWithdraw,
 }: CardActionsRowProps) => {
+  const { provider } = useCardProvider();
+  const { isAvailable: canAuthorizeSpend, isAuthorized } = useCardSpendAuthorization();
+  // Two independent questions, deliberately not one flag. `canDepositToCard` is
+  // false for a Wirex card whatever else is true — depositing has no destination.
+  // `canAuthorizeSpend` additionally requires the backend to have a Card Deposit
+  // Manager, so an environment without one shows neither action rather than a
+  // circle that opens nothing.
+  const showDeposit = canAddFunds && canDepositToCard(provider);
+  const showAuthorize = canAddFunds && canAuthorizeSpend;
+
   return (
     <View className="flex-row items-start justify-center">
-      {canAddFunds && (
+      {showAuthorize && (
+        <View style={styles.item}>
+          <AuthorizeSpendAction
+            trigger={
+              <CircleAction label={isAuthorized ? 'Authorized' : 'Authorize'}>
+                <Image
+                  source={getAsset('images/card-action-add-funds.png')}
+                  style={styles.actionIcon}
+                  contentFit="contain"
+                />
+              </CircleAction>
+            }
+          />
+        </View>
+      )}
+      {showDeposit && (
         <View style={styles.item}>
           <CardDirectDepositModal
             trigger={
@@ -88,7 +133,11 @@ const CardActionsRow = ({
           />
         </View>
       )}
-      {canWithdraw && (
+      {/* Withdraw moves tokens back out of the Rain collateral proxy. A Wirex card
+          has no collateral to withdraw — the user's soUSD never left their Safe —
+          so the flow has nothing to act on and is hidden rather than offered and
+          then failed. */}
+      {canWithdraw && canDepositToCard(provider) && (
         <View style={styles.item}>
           <WithdrawToCardModal
             trigger={

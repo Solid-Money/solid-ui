@@ -39,7 +39,7 @@ const HomeVirtualCard = ({
   }
 
   return (
-    <Pressable onPress={() => router.push(path.CARD_DETAILS)} className={className}>
+    <Pressable onPress={() => router.navigate(path.CARD_INFO)} className={className}>
       <View className="relative overflow-hidden rounded-twice bg-card" style={{ height: 141 }}>
         <Text
           className="absolute font-medium text-muted-foreground"

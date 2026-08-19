@@ -5,6 +5,8 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
 import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
 
@@ -24,6 +26,9 @@ const OtherBalancesDropdown = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const shouldOpenCardDepositRef = useRef(false);
   const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
+  // A Wirex card has no balance to deposit into — see `canDepositToCard`.
+  const { provider } = useCardProvider();
+  const canAddToCard = canDepositToCard(provider);
 
   const present = useCallback(() => bottomSheetModalRef.current?.present(), []);
   const dismiss = useCallback(() => bottomSheetModalRef.current?.dismiss(), []);
@@ -71,6 +76,7 @@ const OtherBalancesDropdown = ({
             isLoading={isLoading}
             onDismiss={dismiss}
             onCardAdd={openCardDeposit}
+            canAddToCard={canAddToCard}
           />
         </BottomSheetView>
       </BottomSheetModal>

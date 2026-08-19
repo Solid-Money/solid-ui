@@ -2,11 +2,12 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Card Creation Flow', () => {
   // /card and /card-onboard both used to render the standalone card waitlist
-  // page. Both are redirect shims now, so neither should ever paint it — getting
-  // a card starts at country selection, and the card itself lives on the wallet
-  // page. The country-selection → activate hand-off is covered by the
-  // "traveling user" test below.
-  for (const deprecatedRoute of ['/card', '/card-onboard']) {
+  // page, and /card/details rendered the card screen. All three are redirect shims
+  // now, so none should ever paint their old page — getting a card starts at
+  // country selection, and the card itself lives on the wallet page. The
+  // country-selection → activate hand-off is covered by the "traveling user" test
+  // below.
+  for (const deprecatedRoute of ['/card', '/card-onboard', '/card/details']) {
     test(`should redirect away from the deprecated ${deprecatedRoute} page`, async ({ page }) => {
       await page.goto(deprecatedRoute);
 
@@ -43,8 +44,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for the page to process the mocked response
     await page.waitForLoadState('networkidle');
 
-    // The page should redirect to card/details since user has an active card
-    await expect(page).toHaveURL(/card\/details/, { timeout: 15000 });
+    // An active-card user lands on the card details surface, which is the wallet
+    // page with its card pane open (`/?screen=card-info`). `/card/details` is only
+    // a redirect onto that now, so asserting on it would pass on the shim rather
+    // than on where the user actually ends up.
+    await expect(page).toHaveURL(/screen=card-info/, { timeout: 15000 });
   });
 
   test('should show KYC steps when user is from supported country', async ({ page }) => {

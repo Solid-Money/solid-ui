@@ -93,7 +93,7 @@ export function useActivateCard() {
       cardStatus === CardStatus.FROZEN ||
       cardStatus === CardStatus.INACTIVE
     ) {
-      router.replace(path.CARD_DETAILS);
+      router.replace(path.CARD_INFO);
     }
   }, [userHasCard, cardStatus, router]);
 
