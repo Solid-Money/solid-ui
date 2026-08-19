@@ -5,7 +5,9 @@ import { Check, Search } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiPaymentConfig } from '@/hooks/useTransfi';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -26,6 +28,11 @@ export const TransfiCurrencySelector = () => {
   }, [config?.currencies, query]);
 
   const handleSelect = (next: string) => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_CURRENCY_SELECTED, {
+      currency: next,
+      previous_currency: currency ?? undefined,
+      searched: query.trim().length > 0,
+    });
     setFiatCurrency(next);
     setPaymentCode(''); // methods differ per currency — reset the selection
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);

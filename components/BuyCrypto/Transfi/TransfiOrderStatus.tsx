@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, CircleDot, XCircle } from 'lucide-react-native';
@@ -6,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiOrder } from '@/hooks/useTransfi';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -34,6 +37,25 @@ export const TransfiOrderStatus = () => {
   const activeIndex = PHASE_ORDER[phase] ?? 0;
   const isFailed = phase === 'failed';
   const isCompleted = phase === 'completed';
+
+  // The order is polled, so the terminal event is fired once per screen rather
+  // than on every poll that comes back in the same phase.
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (reportedRef.current || (!isCompleted && !isFailed)) return;
+    reportedRef.current = true;
+    track(
+      isCompleted
+        ? TRACKING_EVENTS.BUY_CRYPTO_ORDER_COMPLETED
+        : TRACKING_EVENTS.BUY_CRYPTO_ORDER_FAILED,
+      {
+        order_id: orderId ?? undefined,
+        usdc_amount: order?.usdcAmount ? Number(order.usdcAmount) : undefined,
+        currency: order?.fiatCurrency,
+        status: order?.status,
+      },
+    );
+  }, [isCompleted, isFailed, order, orderId]);
 
   const close = () => {
     reset();

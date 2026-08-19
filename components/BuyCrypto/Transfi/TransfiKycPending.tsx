@@ -5,8 +5,10 @@ import { XCircle } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useShareTransfiKyc, useTransfiStatus } from '@/hooks/useTransfi';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
@@ -30,6 +32,10 @@ export const TransfiKycPending = () => {
   const attemptsRef = useRef(0);
   const [exhausted, setExhausted] = useState(false);
 
+  useEffect(() => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_PENDING_VIEWED);
+  }, []);
+
   // If we can share but haven't succeeded yet (e.g. just returned from the
   // identity flow), fire it. Self-limiting: the effect only re-runs while the
   // status is still can_share, and we stop after MAX_SHARE_ATTEMPTS.
@@ -49,6 +55,15 @@ export const TransfiKycPending = () => {
     }
   }, [status?.status, setModal]);
 
+  // The status is polled, so this fires on the transition rather than on every
+  // poll that comes back rejected.
+  useEffect(() => {
+    if (status?.status !== 'rejected') return;
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_REJECTED, {
+      reasons: status.reasons?.join(', '),
+    });
+  }, [status?.status, status?.reasons]);
+
   // TransFi couldn't use the verification we shared — the user has to verify
   // again rather than wait on a decision that will never come.
   useEffect(() => {
@@ -58,6 +73,7 @@ export const TransfiKycPending = () => {
   }, [status?.status, status?.kycProvider, routeToKyc]);
 
   const handleRetry = useCallback(() => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_RETRY_PRESSED);
     attemptsRef.current = 0;
     setExhausted(false);
     share();

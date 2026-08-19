@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -17,8 +17,10 @@ import { RowChevronIcon, SupportRowIcon } from '@/components/Card/NewCardDetails
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
@@ -58,7 +60,15 @@ const DetailRow = ({
         </Text>
       </View>
       {value ? (
-        <CopyToClipboard text={value} icon={<CopyFieldIcon />} className="opacity-50" size={18} />
+        <CopyToClipboard
+          text={value}
+          icon={<CopyFieldIcon />}
+          className="opacity-50"
+          size={18}
+          // Which field was copied says whether the user is wiring or setting
+          // up an ACH pull — the value itself is never sent.
+          onCopy={() => track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAIL_COPIED, { field: label })}
+        />
       ) : null}
     </View>
     {withDivider && <View style={styles.divider} />}
@@ -103,6 +113,17 @@ export const VirtualAccountDetailsModal = ({ onRetry }: VirtualAccountDetailsMod
   const { height: windowHeight } = useWindowDimensions();
   const [isScrolled, setIsScrolled] = useState(false);
   const { data: automation, isLoading, refetch } = useOnrampAutomation();
+
+  // The user reaching their bank details is what "the virtual account works"
+  // means; a load failure here is a dead end with an account already issued.
+  useEffect(() => {
+    if (isLoading) return;
+    track(
+      automation
+        ? TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_VIEWED
+        : TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED,
+    );
+  }, [automation, isLoading]);
 
   // The modal only hands us a flex-bounded height on web and on small native screens;
   // on a native tablet it sizes to content, so the ScrollView needs its own cap there.
