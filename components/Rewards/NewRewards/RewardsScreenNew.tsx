@@ -26,6 +26,8 @@ import { useUserStore } from '@/store/useUserStore';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
+import { hasSkipTheLine } from './skipTheLine';
+import SkipTheLineSection from './SkipTheLineSection';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
 
@@ -222,6 +224,17 @@ export default function RewardsScreenNew() {
             onReferralsPress={() => setIsReferralModalOpen(true)}
           />
         </View>
+
+        {/* Sits below the earned benefits: this is the shortcut past them.
+            Renders nothing unless the backend says the mechanic is live. */}
+        {hasSkipTheLine(rewardsData?.fuseSkipLine) && (
+          <View className="mt-8">
+            <SkipTheLineSection
+              skipLine={rewardsData?.fuseSkipLine}
+              onAddFuse={() => router.push(path.SAVINGS_FUSE)}
+            />
+          </View>
+        )}
       </View>
 
       <ReferralProgramModalNew
