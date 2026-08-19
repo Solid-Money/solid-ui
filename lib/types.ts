@@ -750,7 +750,7 @@ export interface WirexRevealSessionResponse {
 
 /**
  * Wirex card-spend authorization: the soUSD allowance the cardholder grants the
- * Card Deposit Manager, and everything needed to build the `approve` call.
+ * card-spend wallet, and everything needed to build the `approve` call.
  *
  * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its
  * own Master Account and our backend reimburses itself by pulling soUSD from the
@@ -759,8 +759,8 @@ export interface WirexRevealSessionResponse {
  * standing permission to take it, which is what this describes.
  *
  * Token, spender and chain all come from the backend rather than app config: the
- * Card Deposit Manager address is environment-specific, and a stale client-side
- * copy would have users approving an allowance nobody can spend.
+ * spender address is environment-specific, and a stale client-side copy would have
+ * users approving an allowance nobody can spend.
  */
 export interface WirexSpendAuthorizationResponse {
   /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
@@ -779,13 +779,13 @@ export interface WirexSpendAuthorizationResponse {
   held: string;
   /** soUSD ERC-20 address to call `approve` on. */
   tokenAddress: string;
-  /** The `spender` argument — the Card Deposit Manager. */
+  /** The `spender` argument — our card-spend wallet. */
   spenderAddress: string;
   /** Chain the approval must be sent on. Always Fuse (122). */
   chainId: number;
   /** soUSD decimals, so the client scales without assuming 18. */
   decimals: number;
-  /** False when this environment has no Card Deposit Manager — hide the control. */
+  /** False when this environment has no card-spend wallet — hide the control. */
   available: boolean;
 }
 

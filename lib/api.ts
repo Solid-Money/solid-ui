@@ -2726,7 +2726,7 @@ export const revealCardDetailsComplete = async (
   return revealCardDetailsCompleteRain();
 };
 
-// --- Wirex card spending (soUSD allowance to the Card Deposit Manager) ---
+// --- Wirex card spending (soUSD allowance to our card-spend wallet) ---
 
 /**
  * The user's current card-spend authorization.

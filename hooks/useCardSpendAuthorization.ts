@@ -28,7 +28,7 @@ export const CARD_SPEND_AUTHORIZATION_QUERY_KEY = 'cardSpendAuthorization';
  * the card balance are the same money.
  *
  * What the user grants instead is standing permission: an ERC-20 `approve` on
- * soUSD (Fuse) naming the Card Deposit Manager as spender. That is the one on-chain
+ * soUSD (Fuse) naming our card-spend wallet as spender. That is the one on-chain
  * action, and it is signed from their Safe like every other transaction in the app.
  *
  * ## Why the button turns itself back on
