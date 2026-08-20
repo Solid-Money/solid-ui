@@ -293,3 +293,15 @@ html, body {
     0 0 0 4px rgba(255,255,255,.028),
     0 0 70px rgba(148,242,127,.13),
     0 46px 100px rgba(0,0,0,.72); }
+
+/* Counting numbers: tabular figures keep every digit the same width, so a
+   changing value never reflows the text after it. Without this, motion-blur
+   subsampling averages two different layouts and ghosts the trailing copy. */
+#tierNum, #tierNeed, #savBal, #savEarn, #savApy, #pct,
+.tierCard .sb, #scSav .kv, #scSav .bal {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+#tierNum { display: inline-block; min-width: 7.2ch; }
+#tierNeed { display: inline-block; min-width: 7.2ch; text-align: right; }
+#pct { font-variant-numeric: tabular-nums; }

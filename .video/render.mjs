@@ -19,6 +19,7 @@ const CFG = {
   // Motion-blur subsampling: render sub x fps, average `sub` frames -> 180deg shutter.
   sub: Number(args.sub || 1),
   duration: Number(args.duration || 27),
+  start: Number(args.start || 0),
   out: args.out || 'out/solid-rewards.mp4',
   crf: Number(args.crf || 16),
   scale: Number(args.scale || 1),
@@ -128,7 +129,7 @@ async function main() {
   const total = Math.round(CFG.duration * srcFps);
   const t0 = Date.now();
   for (let i = 0; i < total; i++) {
-    const t = i / srcFps;
+    const t = CFG.start + i / srcFps;
     await page.evaluate((tt) => window.__seek(tt), t);
     const buf = await page.__grab();
     if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once('drain', r));

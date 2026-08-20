@@ -254,6 +254,14 @@ function showScreen(which, scrollY = 0) {
 function seek(t) {
   t = clamp(t, 0, DUR);
 
+  /* Text counters must advance on the OUTPUT frame grid, not the subsampled
+     render grid: with motion-blur subsampling two subframes carrying different
+     digits average into unreadable ghosting. Moving elements still use `t` and
+     blur normally. */
+  /* +0.5 phase so the groups line up with tmix's (i-1, i) pairing at 2x
+     subsampling — otherwise every averaged pair straddles a value change. */
+  const tq = Math.floor(t * 60 + 0.5 + 1e-6) / 60;
+
   /* ---------- ambient ---------- */
   const drift = t * 0.35;
   st(N.blobA, { transform: `translate3d(${Math.sin(drift) * 70}px, ${Math.cos(drift * 0.8) * 50}px, 0)`, opacity: '1' });
@@ -380,7 +388,7 @@ function seek(t) {
 
     /* ---- the 25% hero overlay ---- */
     const pOn = env(t, a + 2.55, a + 3.15, a + 4.15, a + 4.6, eOutQuint, eInCubic);
-    const cU = clamp(inv(t, a + 2.55, a + 3.9));
+    const cU = clamp(inv(tq, a + 2.55, a + 3.9));
     const val = Math.round(lerp(0, 25, eOutExpo(cU)));
     if (pOn > 0.001) {
       N.pct.textContent = val + '%';
@@ -457,7 +465,7 @@ function seek(t) {
     }
 
     /* progress fill + counter */
-    const gU = eInOutQuint(inv(t, a + 2.15, a + 3.85));
+    const gU = eInOutQuint(inv(tq, a + 2.15, a + 3.85));
     const cur = lerp(128000, 400000, gU);
     if (N.tierFill) st(N.tierFill, { width: `${lerp(32, 100, gU)}%` });
     if (N.tierNum) N.tierNum.textContent = intfmt(cur);
@@ -490,13 +498,13 @@ function seek(t) {
     showScreen('sav', scroll);
 
     /* balance counts up */
-    const cU = eOutExpo(inv(t, a + 0.35, a + 1.7));
+    const cU = eOutExpo(inv(tq, a + 0.35, a + 1.7));
     N.savBal.textContent = money(lerp(8000, 8420.65, cU));
     N.savEarn.textContent = money(lerp(0, 420.65, cU));
 
     /* APY ticks up as the boost lands */
     const apU = inv(t, a + 2.35, a + 3.0);
-    N.savApy.textContent = (lerp(4.5, 6.5, eOutExpo(apU))).toFixed(1) + '% APY';
+    N.savApy.textContent = (lerp(4.5, 6.5, eOutExpo(inv(tq, a + 2.35, a + 3.0)))).toFixed(1) + '% APY';
     st(N.savApy, { transform: `scale(${1 + Math.sin(clamp(apU) * Math.PI) * 0.16})` });
 
     /* the yield-boost card highlights */
