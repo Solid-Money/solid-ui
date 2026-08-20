@@ -1,0 +1,11 @@
+node_modules/
+
+# working / diagnostic artefacts — not deliverables
+out/stills/
+out/frames/
+out/preview*.mp4
+out/timing*.mp4
+out/grid*.png
+out/diag*.png
+out/crop_*.png
+out/wave.png

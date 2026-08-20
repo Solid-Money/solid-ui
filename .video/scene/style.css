@@ -1,0 +1,295 @@
+/* ============================================================
+   SOLID — Rewards launch film
+   Design tokens lifted from the app's global.css / tailwind.config.js
+   ============================================================ */
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_200ExtraLight.ttf); font-weight: 200 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_300Light.ttf); font-weight: 300 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_400Regular.ttf); font-weight: 400 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_500Medium.ttf); font-weight: 500 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_600SemiBold.ttf); font-weight: 600 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_700Bold.ttf); font-weight: 700 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_800ExtraBold.ttf); font-weight: 800 }
+@font-face { font-family: Mona; src: url(assets/fonts/MonaSans_900Black.ttf); font-weight: 900 }
+
+:root {
+  --bg: #0f0f10;
+  --card: #1c1c1c;
+  --card2: #212121;
+  --line: #272727;
+  --brand: #94f27f;          /* hsl(109.04 81.56% 72.35%) */
+  --brand-deep: #1d5e13;
+  --muted: #a1a1a1;
+  --dim: #6f6f6f;
+  --chip: #2b2b2b;
+  --points: #d79cfd;         /* hsl(285 98% 80%) */
+  --gold: #ffcf52;           /* hsl(44 100% 66%) */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #000;
+  overflow: hidden;
+  font-family: Mona, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* everything is driven frame-accurately from JS — never from CSS timing */
+*, *::before, *::after { animation: none !important; transition: none !important; }
+
+#root {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  transform-origin: 0 0;
+}
+
+/* ---------------- background environment ---------------- */
+#bg { position: absolute; inset: 0; background: radial-gradient(130% 95% at 50% 40%, #191b1d 0%, #0c0d0e 48%, #030303 100%); }
+.blob { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+#blobA { width: 1100px; height: 1100px; left: -280px; top: 20px;
+  background: radial-gradient(closest-side, rgba(148,242,127,.13), rgba(148,242,127,.05) 55%, rgba(148,242,127,0) 100%); }
+#blobB { width: 950px; height: 950px; right: -290px; top: 390px;
+  background: radial-gradient(closest-side, rgba(126,190,255,.09), rgba(126,190,255,.03) 55%, rgba(126,190,255,0) 100%); }
+#blobC { width: 840px; height: 840px; left: 200px; bottom: -320px;
+  background: radial-gradient(closest-side, rgba(215,156,253,.09), rgba(215,156,253,.03) 55%, rgba(215,156,253,0) 100%); }
+
+#floorGlow {
+  position: absolute; left: 50%; bottom: 8%;
+  width: 1200px; height: 320px; transform: translateX(-50%);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(148,242,127,.26), rgba(148,242,127,.07) 46%, rgba(148,242,127,0) 76%);
+}
+
+/* subtle scanning light sweep used on transitions */
+#sweep {
+  position: absolute; top: -20%; left: 0; width: 55%; height: 140%;
+  background: linear-gradient(100deg, rgba(148,242,127,0) 0%, rgba(148,242,127,.5) 45%, rgba(255,255,255,.85) 50%, rgba(148,242,127,.5) 55%, rgba(148,242,127,0) 100%);
+  filter: blur(14px); opacity: 0; mix-blend-mode: screen;
+}
+
+#grain { position: absolute; inset: 0; opacity: .055; mix-blend-mode: overlay; pointer-events: none; }
+#vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(86% 70% at 50% 46%, rgba(0,0,0,0) 45%, rgba(0,0,0,.30) 80%, rgba(0,0,0,.62) 100%); }
+#flash { position: absolute; inset: 0; background: #dfffd4; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
+#fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+
+/* ---------------- 3D stage ---------------- */
+#stage { position: absolute; inset: 0; perspective: 1700px; perspective-origin: 50% 46%; }
+#camera { position: absolute; inset: 0; transform-style: preserve-3d; }
+#phoneWrap { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; will-change: transform; }
+#phone { position: relative; transform-style: preserve-3d; will-change: transform; }
+
+/* phone geometry */
+#phone { --pw: 447px; --ph: 936px; --r: 60px; }
+.slab {
+  position: absolute; left: 0; top: 0;
+  width: var(--pw); height: var(--ph); border-radius: var(--r);
+  background: #0a0a0b;
+  backface-visibility: hidden;
+}
+/* extruded rim — stack of thin slabs gives true rounded-corner thickness */
+#rim { position: absolute; transform-style: preserve-3d; }
+
+#face {
+  position: absolute; left: 0; top: 0;
+  width: var(--pw); height: var(--ph); border-radius: var(--r);
+  /* MUST stay flat: with preserve-3d the face's own background plane and the
+     #viewport child are coplanar and z-fight, tearing a wedge across the screen */
+  transform-style: flat;
+  background: linear-gradient(155deg, #6e7478 0%, #2b2f31 18%, #17191b 48%, #383d40 82%, #7b8286 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.30), inset 0 2px 4px rgba(255,255,255,.34),
+              0 0 70px rgba(148,242,127,.13);
+  padding: 14px;
+}
+#viewport {
+  position: relative; width: 419px; height: 908px;
+  border-radius: 47px; overflow: hidden; background: #131315;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.9);
+  filter: brightness(1.16) saturate(1.06) contrast(1.03);
+}
+.screen { position: absolute; left: 0; top: 0; width: 419px; will-change: transform, opacity; }
+
+/* dynamic island */
+#island { position: absolute; left: 50%; top: 12px; width: 106px; height: 31px; margin-left: -53px;
+  background: #000; border-radius: 18px; z-index: 40; }
+
+/* glass sheen over the screen */
+#sheen { position: absolute; inset: 14px; border-radius: 47px; pointer-events: none; z-index: 50;
+  background: linear-gradient(118deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.015) 22%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 66%, rgba(255,255,255,.015) 88%, rgba(255,255,255,.045) 100%);
+  mix-blend-mode: screen; }
+#glare { position: absolute; inset: 14px; border-radius: 47px; pointer-events: none; z-index: 51; overflow: hidden;
+  background: linear-gradient(74deg, rgba(255,255,255,0) 24%, rgba(255,255,255,.035) 44%, rgba(255,255,255,.075) 50%, rgba(255,255,255,.028) 56%, rgba(255,255,255,0) 76%);
+  mix-blend-mode: screen; opacity: .16; }
+
+#shadow { position: absolute; left: 50%; top: 50%; width: 520px; height: 120px;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.85), rgba(0,0,0,0) 72%);
+  filter: blur(18px); }
+
+/* ---------------- app UI primitives (from the Figma screens) ---------------- */
+.sc { position: relative; width: 419px; background: var(--bg); color: #fff; }
+.statusbar { position: relative; height: 44px; }
+.statusbar .time { position: absolute; left: 24px; top: 12px; font-size: 15px; font-weight: 600; letter-spacing: .1px; }
+.statusbar .ind { position: absolute; right: 24px; top: 15px; display: flex; gap: 5px; align-items: center; }
+.bars { display: flex; gap: 2px; align-items: flex-end; height: 11px; }
+.bars i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+.batt { width: 25px; height: 12px; border: 1.4px solid rgba(255,255,255,.75); border-radius: 3.5px; position: relative; }
+.batt::after { content: ''; position: absolute; inset: 1.6px; background: #fff; border-radius: 1.6px; }
+
+.card { background: var(--card); border-radius: 20px; }
+.divider { height: 1px; background: var(--line); }
+.pill { background: var(--chip); border-radius: 18px; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 600; color: #fff; }
+.row { display: flex; align-items: center; height: 30px; }
+.row .lg { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.row .lg img { width: 30px; height: 30px; display: block; object-fit: contain; }
+.row .nm { margin-left: 8px; font-size: 16px; font-weight: 500; color: #fff; }
+.sect { font-size: 15px; font-weight: 500; color: var(--muted); }
+
+.btn-brand { background: var(--brand); color: #0a1408; border-radius: 24px; display: flex; align-items: center;
+  justify-content: center; font-size: 16px; font-weight: 700; }
+
+/* ---------- screen: cashback ---------- */
+#scCash { height: 1396px; }
+#scCash .handle { position: absolute; left: 173px; top: 18px; width: 73px; height: 5px; border-radius: 3px; background: #3c3c3c; }
+#scCash .gem { position: absolute; left: 168px; top: 66px; width: 83px; height: 70px; }
+#scCash h1 { position: absolute; left: 0; right: 0; top: 182px; text-align: center; font-size: 33px; font-weight: 700;
+  line-height: 1.18; letter-spacing: -.6px; }
+#scCash h1 em { font-style: normal; color: var(--brand); }
+#scCash .sub { position: absolute; left: 0; right: 0; top: 262px; text-align: center; font-size: 16px; color: var(--muted); }
+#scCash .grp { position: absolute; left: 35px; width: 352px; }
+#scCash .grp .hd { position: absolute; left: 19px; top: 19px; }
+#scCash .grp .divider { position: absolute; left: 0; top: 58px; width: 352px; }
+#scCash .grp .row { position: absolute; left: 20px; width: 314px; }
+#scCash .grp .row .pill { position: absolute; right: 0; top: -3px; width: 59px; height: 36px; }
+#scCash .foot { position: absolute; left: 37px; top: 1216px; width: 330px; font-size: 13px; line-height: 1.5; color: var(--dim); }
+#scCash .foot u { color: #cfcfcf; }
+#scCash .cta { position: absolute; left: 34px; top: 1308px; width: 352px; height: 48px; }
+
+/* ---------- screen: savings ---------- */
+#scSav { height: 1225px; }
+#scSav .circ { position: absolute; width: 44px; height: 44px; border-radius: 50%; background: var(--card);
+  display: flex; align-items: center; justify-content: center; color: #cfcfcf; }
+#scSav .balLabel { position: absolute; left: 0; right: 0; top: 132px; text-align: center; font-size: 15px; color: var(--muted); }
+#scSav .bal { position: absolute; left: 0; right: 0; top: 152px; text-align: center; font-size: 50px; font-weight: 700; letter-spacing: -1.4px; }
+#scSav .rates { position: absolute; left: 0; right: 0; top: 225px; display: flex; justify-content: center; gap: 8px; }
+#scSav .rate { height: 35px; border-radius: 18px; background: var(--card); display: flex; align-items: center; gap: 7px; padding: 0 13px 0 8px; font-size: 15px; font-weight: 500; }
+#scSav .rate i { width: 24px; height: 24px; border-radius: 50%; display: block; }
+#scSav .act { position: absolute; top: 315px; width: 184px; height: 50px; border-radius: 25px; display: flex;
+  align-items: center; justify-content: center; font-size: 17px; font-weight: 600; }
+#scSav .kl { font-size: 14px; color: var(--muted); }
+#scSav .kv { font-size: 22px; font-weight: 600; margin-top: 5px; }
+#scSav .tabbar { position: absolute; left: 0; top: 1130px; width: 419px; height: 86px; display: flex; }
+#scSav .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; padding-top: 12px;
+  font-size: 13px; color: var(--dim); }
+#scSav .tab.on { color: #fff; }
+#scSav .tab .ic { width: 56px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
+#scSav .tab.on .ic { background: var(--card); }
+
+/* ---------- skip-the-line card (also used standalone in 3D) ---------- */
+.tierCard { width: 387px; background: var(--card); border-radius: 20px; overflow: hidden; color: #fff; }
+.tierCard .hdr { position: relative; height: 84px; }
+.tierCard .hdr .ic { position: absolute; left: 20px; top: 26px; width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(148,242,127,.18); display: flex; align-items: center; justify-content: center; }
+.tierCard .hdr .t1 { position: absolute; left: 64px; top: 19px; font-size: 18px; font-weight: 700; }
+.tierCard .hdr .t2 { position: absolute; left: 64px; top: 45px; font-size: 14px; color: var(--muted); }
+.tierCard .hdr .new { position: absolute; right: 18px; top: 28px; height: 27px; padding: 0 11px; border-radius: 14px;
+  background: rgba(148,242,127,.16); color: var(--brand); font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; }
+.tierCard .tier { position: relative; }
+.tierCard .tier .nm { position: absolute; left: 20px; top: 16px; font-size: 18px; font-weight: 700; }
+.tierCard .tier .sb { position: absolute; left: 20px; top: 42px; font-size: 14px; color: var(--muted); }
+.tierCard .tier .sb b { color: #fff; font-weight: 700; }
+.tierCard .badge { position: absolute; right: 20px; top: 23px; height: 29px; padding: 0 12px; border-radius: 15px;
+  background: rgba(148,242,127,.16); color: var(--brand); font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 7px; }
+.tierCard .track { position: absolute; left: 20px; width: 347px; height: 6px; border-radius: 3px; background: #303030; overflow: hidden; }
+.tierCard .fill { height: 6px; border-radius: 3px; background: var(--brand); width: 0; }
+
+/* ---------------- typography layers ---------------- */
+.type { position: absolute; left: 0; width: 100%; text-align: center; color: #fff; will-change: transform, opacity; }
+.kicker { font-size: 22px; font-weight: 600; letter-spacing: 6px; text-transform: uppercase; color: var(--muted); }
+.head { font-size: 92px; font-weight: 800; letter-spacing: -3px; line-height: .96; }
+.head em { font-style: normal; color: var(--brand); }
+.sub2 { font-size: 27px; font-weight: 400; color: var(--muted); letter-spacing: -.2px; }
+.word { display: inline-block; will-change: transform, opacity; }
+
+/* floating 3D chips */
+.chip3d {
+  position: absolute; left: 50%; top: 50%; display: flex; align-items: center; gap: 12px;
+  height: 68px; padding: 0 24px 0 12px; border-radius: 34px;
+  background: rgba(28,28,28,.82); backdrop-filter: blur(12px);
+  box-shadow: 0 24px 60px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.10);
+  font-size: 22px; font-weight: 600; color: #fff; white-space: nowrap;
+  will-change: transform, opacity;
+}
+.chip3d img { width: 44px; height: 44px; border-radius: 12px; display: block; }
+.chip3d .pc { margin-left: 6px; color: var(--brand); font-weight: 700; }
+
+/* big overlay percentage */
+#pctWrap { position: absolute; left: 0; width: 100%; text-align: center; will-change: transform, opacity; }
+#pct { font-size: 300px; font-weight: 800; letter-spacing: -14px; line-height: .84;
+  color: var(--brand); text-shadow: 0 0 90px rgba(148,242,127,.55); }
+#pctSub { font-size: 30px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+
+/* lower third caption */
+#capWrap { position: absolute; left: 0; width: 100%; text-align: center; will-change: transform, opacity; }
+#capTitle { font-size: 52px; font-weight: 800; letter-spacing: -1.6px; color: #fff; }
+#capTitle em { font-style: normal; color: var(--brand); }
+#capSub { font-size: 25px; font-weight: 400; color: var(--muted); margin-top: 12px; }
+
+/* coming-soon stamp */
+#stamp { position: absolute; left: 50%; top: 50%; padding: 18px 38px; border-radius: 18px;
+  border: 3px solid var(--gold); color: var(--gold); font-size: 42px; font-weight: 800; letter-spacing: 5px;
+  text-transform: uppercase; white-space: nowrap; will-change: transform, opacity;
+  background: rgba(14,12,6,.93); box-shadow: 0 30px 70px rgba(0,0,0,.75), 0 0 60px rgba(255,207,82,.20); }
+
+/* outro */
+#outro { position: absolute; inset: 0; }
+#lockup { position: absolute; left: 50%; top: 50%; text-align: center; will-change: transform, opacity; }
+#lockup .mark { width: 132px; height: 132px; margin: 0 auto 30px; }
+#lockup img.wm { width: 300px; display: block; margin: 0 auto; }
+#lockup .tag { margin-top: 28px; font-size: 30px; font-weight: 500; color: var(--muted); letter-spacing: -.2px; }
+#feats { position: absolute; left: 50%; top: 50%; width: 700px; margin-left: -350px; }
+.feat { position: relative; height: 96px; border-radius: 24px; background: rgba(28,28,28,.9);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.09); display: flex; align-items: center; padding: 0 30px;
+  margin-bottom: 18px; will-change: transform, opacity; }
+.feat .fi { width: 56px; height: 56px; border-radius: 16px; background: rgba(148,242,127,.14);
+  display: flex; align-items: center; justify-content: center; margin-right: 22px; }
+.feat .ft { font-size: 30px; font-weight: 700; color: #fff; }
+.feat .fs { font-size: 19px; color: var(--muted); margin-top: 3px; }
+.feat .soon { position: absolute; right: 28px; top: 50%; margin-top: -15px; height: 30px; padding: 0 14px;
+  border-radius: 15px; background: rgba(255,207,82,.16); color: var(--gold); font-size: 16px; font-weight: 600;
+  display: flex; align-items: center; }
+
+/* ---------------- layout fixes for the animation rig ---------------- */
+#typeLayer { position: absolute; inset: 0; pointer-events: none; }
+#float3d { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+#screens { position: absolute; inset: 0; }
+#outro { pointer-events: none; }
+.chip3d { backdrop-filter: none; }   /* costly per-frame; solid fill reads the same */
+#scCash h1, #scCash .sub, #scCash .gem, #scCash .grp, #scCash .row,
+#scCash .cta, #scCash .foot { will-change: transform, opacity; }
+
+/* screens must stack on top of each other inside the viewport —
+   .sc's position:relative was winning over .screen's absolute */
+#screens .screen { position: absolute !important; left: 0; top: 0; }
+
+/* ---------------- design canvas (fixed 1080x1350, scaled per output) ---------------- */
+#canvas {
+  position: absolute; left: 50%; top: 50%;
+  width: 1080px; height: 1350px;
+  margin-left: -540px; margin-top: -675px;
+  transform-origin: 50% 50%;
+}
+#floorGlow { bottom: 8%; }
+
+/* device body: dark back plate + chamfered edge highlight on the face */
+#face { box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.30),
+    inset 0 2px 4px rgba(255,255,255,.34),
+    0 0 0 1.5px rgba(255,255,255,.07),
+    0 0 0 4px rgba(255,255,255,.028),
+    0 0 70px rgba(148,242,127,.13),
+    0 46px 100px rgba(0,0,0,.72); }

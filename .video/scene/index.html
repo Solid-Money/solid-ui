@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Solid — Rewards launch film</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="root">
+  <div id="bg">
+    <div class="blob" id="blobA"></div>
+    <div class="blob" id="blobB"></div>
+    <div class="blob" id="blobC"></div>
+  </div>
+
+  <!-- fixed 1080x1350 design canvas, scaled to fit whatever frame we render -->
+  <div id="canvas">
+    <div id="floorGlow"></div>
+
+    <div id="stage">
+      <div id="camera">
+        <div id="shadow"></div>
+        <div id="phoneWrap">
+          <div id="phone">
+            <div id="rim"></div>
+            <div id="face">
+              <div id="viewport">
+                <div id="screens"></div>
+                <div id="island"></div>
+              </div>
+              <div id="sheen"></div>
+              <div id="glare"></div>
+            </div>
+          </div>
+        </div>
+        <div id="float3d"></div>
+      </div>
+    </div>
+
+    <div id="typeLayer"></div>
+
+    <div id="pctWrap"><div id="pct">25%</div><div id="pctSub">cashback</div></div>
+    <div id="capWrap"><div id="capTitle"></div><div id="capSub"></div></div>
+    <div id="stamp">Coming soon</div>
+
+    <div id="outro">
+      <div id="feats"></div>
+      <div id="lockup">
+        <div class="mark" id="lockMark"></div>
+        <img class="wm" src="assets/logos/solid-4x.png" alt="solid">
+        <div class="tag"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sweep"></div>
+  <canvas id="grain"></canvas>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
