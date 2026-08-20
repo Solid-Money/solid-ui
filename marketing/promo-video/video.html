@@ -1,0 +1,795 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Solid — App Promo</title>
+<style>
+@font-face{font-family:Mona;src:url('fonts/MonaSans_400Regular.ttf');font-weight:400;font-display:block}
+@font-face{font-family:Mona;src:url('fonts/MonaSans_500Medium.ttf');font-weight:500;font-display:block}
+@font-face{font-family:Mona;src:url('fonts/MonaSans_600SemiBold.ttf');font-weight:600;font-display:block}
+@font-face{font-family:Mona;src:url('fonts/MonaSans_700Bold.ttf');font-weight:700;font-display:block}
+@font-face{font-family:Mona;src:url('fonts/MonaSans_800ExtraBold.ttf');font-weight:800;font-display:block}
+
+:root{
+  --bg:#0B0B0C;
+  --surface:#1C1C1C;
+  --surface2:#242424;
+  --brand:#94EC7F;
+  --brand-dk:#196B07;
+  --points:#D89EFD;
+  --gold:#FFD152;
+  --muted:#A1A1A1;
+  --line:rgba(255,255,255,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+body{font-family:Mona,sans-serif;color:#fff}
+
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+
+/* ---------- background atmosphere ---------- */
+#bg{position:absolute;inset:0;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform,opacity}
+#blobA{width:900px;height:900px;background:radial-gradient(circle,rgba(148,236,127,.30),transparent 66%);left:-220px;top:-180px}
+#blobB{width:1000px;height:1000px;background:radial-gradient(circle,rgba(148,236,127,.16),transparent 68%);right:-320px;bottom:-260px}
+#blobC{width:760px;height:760px;background:radial-gradient(circle,rgba(216,158,253,.20),transparent 68%);left:420px;top:900px}
+#grid{position:absolute;inset:-10%;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:90px 90px;will-change:transform,opacity}
+#vig{position:absolute;inset:0;background:radial-gradient(120% 85% at 50% 45%,transparent 30%,rgba(0,0,0,.55) 78%,rgba(0,0,0,.88) 100%)}
+#grain{position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>")}
+
+/* ---------- layers ---------- */
+.layer{position:absolute;inset:0}
+#phonelayer{perspective:2400px}
+#cardlayer{perspective:2000px}
+
+/* ---------- phone mockup ---------- */
+#phone{position:absolute;left:50%;top:50%;width:451px;height:1164px;margin-left:-225.5px;margin-top:-582px;
+  border-radius:62px;background:#000;padding:16px;
+  box-shadow:0 0 0 2px #2b2d2b,0 0 0 3px #0a0a0a,0 60px 120px -30px rgba(0,0,0,.9),0 0 130px -20px rgba(148,236,127,.20);
+  will-change:transform,opacity;transform-style:preserve-3d}
+#screenwrap{position:relative;width:419px;height:1132px;border-radius:48px;overflow:hidden;background:#0D0D0E}
+.screen{position:absolute;inset:0;width:419px;height:1132px;background:#0D0D0E;will-change:opacity,transform}
+#notch{position:absolute;left:50%;top:26px;margin-left:-41px;width:82px;height:24px;border-radius:14px;background:#000;z-index:60}
+#glare{position:absolute;inset:0;border-radius:48px;z-index:55;pointer-events:none;
+  background:linear-gradient(112deg,transparent 30%,rgba(255,255,255,.028) 44%,rgba(255,255,255,.052) 50%,transparent 62%);will-change:transform,opacity}
+
+/* ---------- generic screen chrome ---------- */
+.sb{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:16px 26px 0;font-size:14px;font-weight:600;z-index:20}
+.sb .ic{display:flex;gap:5px;align-items:center}
+.body{position:absolute;top:52px;left:0;right:0;bottom:0}
+.pad{padding:0 18px}
+.tabbar{position:absolute;left:18px;right:18px;bottom:22px;height:70px;border-radius:36px;background:rgba(24,24,24,.94);
+  display:flex;align-items:center;justify-content:space-around;z-index:30;border:1px solid rgba(255,255,255,.06)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#6E6E6E;padding:8px 20px;border-radius:24px}
+.tab.on{color:#fff;background:rgba(255,255,255,.07)}
+.tab svg{width:19px;height:19px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 0}
+.circbtn{width:34px;height:34px;border-radius:50%;background:#1E1E1E;display:flex;align-items:center;justify-content:center}
+.circbtn svg{width:17px;height:17px}
+.lbl{font-size:13px;color:var(--muted);font-weight:500;text-align:center}
+.bal{font-size:40px;font-weight:700;letter-spacing:-.025em;text-align:center;line-height:1.1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:20px;background:#1E1E1E;font-size:13px;font-weight:600}
+.rowc{display:flex;justify-content:center}
+.pill{height:44px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600;padding:0 20px}
+.pill.w{background:#fff;color:#111}
+.pill.d{background:#1E1E1E;color:#fff}
+.pill.g{background:var(--brand);color:#0E2E08}
+.card{background:var(--surface);border-radius:22px}
+.mut{color:var(--muted)}
+.grn{color:var(--brand)}
+.sm{font-size:12px}
+.xs{font-size:11px}
+
+/* ---------- solid card art ---------- */
+.cardart{position:relative;border-radius:22px;overflow:hidden;
+  background:radial-gradient(125% 130% at 70% 42%,#33553049 0%,#2a4726 0%,#223d1e 42%,#182c15 78%,#122009 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 24px 50px -18px rgba(0,0,0,.85)}
+.cardart .rings{position:absolute;inset:-30%;
+  background:repeating-radial-gradient(circle at 62% 46%,rgba(255,255,255,.075) 0 1px,transparent 1px 10px)}
+.cardart .swoosh{position:absolute;inset:0;
+  background:linear-gradient(118deg,rgba(255,255,255,.075) 0 22%,transparent 42%),
+             radial-gradient(70% 120% at 8% 100%,rgba(0,0,0,.34),transparent 60%)}
+.cardart .gr{position:absolute;inset:0;opacity:.30;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>")}
+.cardart .shine{position:absolute;top:-60%;bottom:-60%;width:34%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.20),transparent);transform:rotate(14deg);will-change:transform,opacity;opacity:0}
+.cardart .num{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:18px;background:rgba(255,255,255,.10);
+  font-size:13px;font-weight:600;letter-spacing:.10em;backdrop-filter:blur(2px)}
+.cardart .visa{position:absolute;right:16px;bottom:16px;text-align:right;line-height:1}
+.cardart .visa b{font-size:29px;font-weight:800;font-style:italic;letter-spacing:-.02em;color:#8FE07C;display:block}
+.cardart .visa i{font-size:10px;font-weight:500;font-style:normal;color:#8FE07C;letter-spacing:.02em}
+.cardart .wm{position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:7px;opacity:.92}
+.cardart .wm img{height:19px}
+.cardart .wm span{font-size:20px;font-weight:700;letter-spacing:-.02em;color:#9BEE86}
+
+/* ---------- text overlays ---------- */
+.tl{position:absolute;left:0;right:0;text-align:center;z-index:40;padding:0 76px}
+.kicker{font-size:20px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--brand);will-change:transform,opacity}
+#t-hook h1{font-size:84px}
+h1{font-size:96px;font-weight:800;letter-spacing:-.035em;line-height:.96}
+h2{font-size:76px;font-weight:800;letter-spacing:-.032em;line-height:1.0}
+.sub{font-size:29px;font-weight:500;color:#B9B9B9;line-height:1.35;letter-spacing:-.008em}
+.ln{display:block;will-change:transform,opacity}
+.wrapln{display:block;overflow:hidden;padding-bottom:.17em;margin-bottom:-.17em}
+.big{font-size:150px;font-weight:800;letter-spacing:-.045em;line-height:.9;color:var(--brand)}
+
+/* chips ticker */
+.tick{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.tick div{padding:14px 26px;border-radius:40px;border:1.5px solid rgba(148,236,127,.34);background:rgba(148,236,127,.08);
+  font-size:25px;font-weight:600;color:#DFFBD6;will-change:transform,opacity}
+
+/* intro / outro */
+#introlayer,#outrolayer{display:none;align-items:center;justify-content:center;flex-direction:column}
+.mark{width:150px;will-change:transform,opacity;filter:drop-shadow(0 0 40px rgba(148,236,127,.5))}
+.wordmark{height:82px;will-change:transform,opacity}
+#introglow{position:absolute;left:50%;top:50%;width:1300px;height:1300px;margin:-650px 0 0 -650px;border-radius:50%;
+  background:radial-gradient(circle,rgba(148,236,127,.38),transparent 60%);will-change:transform,opacity}
+#sweep{position:absolute;top:0;bottom:0;width:170%;left:-35%;
+  background:linear-gradient(100deg,transparent 42%,rgba(148,236,127,.95) 49%,rgba(255,255,255,.98) 50.5%,rgba(148,236,127,.95) 52%,transparent 59%);
+  will-change:transform,opacity;z-index:90;opacity:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:95}
+#fadeout{position:absolute;inset:0;background:#000;opacity:0;z-index:99}
+
+
+/* ---------- 16:9 override (?wide) ---------- */
+html.w,html.w body{width:1920px;height:1080px}
+html.w #stage{width:1920px;height:1080px}
+html.w #vig{background:radial-gradient(115% 95% at 50% 45%,transparent 32%,rgba(0,0,0,.55) 76%,rgba(0,0,0,.88) 100%)}
+html.w #grid{background-size:110px 110px}
+html.w #blobA{width:1000px;height:1000px;left:-260px;top:-320px}
+html.w #blobB{width:1100px;height:1100px;right:-380px;bottom:-420px}
+html.w #blobC{width:820px;height:820px;left:900px;top:340px}
+html.w .tl{text-align:left;padding:0;left:132px;right:auto;width:840px;top:300px!important}
+html.w h1{font-size:80px}
+html.w #t-hook h1{font-size:74px}
+html.w h2{font-size:66px}
+html.w .sub{font-size:26px}
+html.w .kicker{font-size:18px}
+html.w .tick{justify-content:flex-start;gap:12px}
+html.w .tick div{font-size:21px;padding:11px 21px;border-width:1.3px}
+html.w #t-cardhero{top:322px!important}
+html.w #bigcard{left:auto;right:168px;margin-left:0;top:540px;margin-top:-186px;width:592px;height:373px;border-radius:34px}
+html.w #bigcard .wm{left:28px;top:24px}html.w #bigcard .wm img{height:29px}html.w #bigcard .wm span{font-size:32px}
+html.w #bigcard .num{left:28px;bottom:26px;font-size:20px;padding:10px 20px}
+html.w #bigcard .visa b{font-size:48px}html.w #bigcard .visa i{font-size:15px}
+html.w .mark{width:130px}
+html.w #i-word{height:78px}html.w #o-word{height:68px}
+html.w #i-tag{font-size:25px;margin-top:26px}
+html.w #o-tag{font-size:46px;margin-top:32px}
+html.w #o-badges{margin-top:38px}
+html.w #o-url{margin-top:34px;font-size:27px}
+
+/* avatars for referral */
+.av{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:700;color:#0E2E08;will-change:transform,opacity;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+</style></head>
+<body><div id="stage">
+
+<div id="bg">
+  <div class="blob" id="blobA"></div>
+  <div class="blob" id="blobB"></div>
+  <div class="blob" id="blobC"></div>
+  <div id="grid"></div>
+  <div id="vig"></div>
+  <div id="grain"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 10.6 12 3.2l9 7.4V21h-6.4v-5.6H9.4V21H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13.4 2 4.6 13.6h5.6L9.4 22l9.2-11.9h-5.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 1.6c.7 5.6 4.8 9.7 10.4 10.4C16.8 12.7 12.7 16.8 12 22.4 11.3 16.8 7.2 12.7 1.6 12 7.2 11.3 11.3 7.2 12 1.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.8 20.5c1.1-3.9 3.9-5.9 7.2-5.9s6.1 2 7.2 5.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="ic-bell" viewBox="0 0 24 24"><path d="M6.5 17V10a5.5 5.5 0 0 1 11 0v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.6 17h14.8M10 20h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="ic-q" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.4 9.3c.2-1.6 1.3-2.5 2.7-2.5 1.5 0 2.6 1 2.6 2.4 0 1.2-.7 1.8-1.7 2.5-.8.6-1.1 1.1-1.1 2.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="11.9" cy="17.3" r="1.05" fill="currentColor"/></symbol>
+<symbol id="ic-chev" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="ic-cdn" viewBox="0 0 24 24"><path d="M6 9.5 12 15.5l6-6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></symbol>
+<symbol id="ic-swap" viewBox="0 0 24 24"><path d="M4 8.5h13l-3.3-3.3M20 15.5H7l3.3 3.3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="ic-send" viewBox="0 0 24 24"><path d="M4.5 12 20 5l-7 15-2.4-6.1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="ic-snow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"/><path d="M9.4 4.8 12 7.2l2.6-2.4M9.4 19.2 12 16.8l2.6 2.4"/></g></symbol>
+<symbol id="ic-dots" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="5.4" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="18.6" r="1.75"/></g></symbol>
+<symbol id="ic-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6.2 12 6.2 21.5 12 21.5 12 18 17.8 12 17.8 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.9" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="ic-doc" viewBox="0 0 24 24"><rect x="4.6" y="3.4" width="14.8" height="17.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.4 9h7.2M8.4 13h7.2M8.4 17h4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="ic-chat" viewBox="0 0 24 24"><path d="M3.6 6.4a2.8 2.8 0 0 1 2.8-2.8h11.2a2.8 2.8 0 0 1 2.8 2.8v7.6a2.8 2.8 0 0 1-2.8 2.8H9.2L4.4 21v-4.2a2.8 2.8 0 0 1-.8-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.8 12h18.4M12 2.8c2.6 2.6 3.9 5.9 3.9 9.2s-1.3 6.6-3.9 9.2c-2.6-2.6-3.9-5.9-3.9-9.2S9.4 5.4 12 2.8z" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="ic-rocket" viewBox="0 0 24 24"><path d="M14.4 3.2c3.4 0 6.4 3 6.4 6.4 0 4.6-5.2 8.2-8.8 11.4-3.2-3.6-6.8-7.2-6.8-11.4 0-3.4 3-6.4 6.4-6.4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="9.6" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="ic-card" viewBox="0 0 24 24"><rect x="2.6" y="5.4" width="18.8" height="13.2" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.6 10.2h18.8" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="ic-pct" viewBox="0 0 24 24"><path d="M6.5 17.5 17.5 6.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+<symbol id="ic-fee" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14.8 9.1c-.5-1-1.6-1.6-2.9-1.6-1.7 0-2.9.9-2.9 2.2 0 1.2 1 1.9 3 2.3 2 .4 3 1.1 3 2.3 0 1.3-1.2 2.2-3 2.2-1.4 0-2.5-.6-3-1.7M12 5.6v12.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" stroke-width="1.7"/><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.4v2.8M12 18.8v2.8M2.4 12h2.8M18.8 12h2.8M5.2 5.2l2 2M16.8 16.8l2 2M18.8 5.2l-2 2M7.2 16.8l-2 2"/></g></symbol>
+<symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 2.6 20 5.6v6c0 4.6-3.3 8.1-8 9.8-4.7-1.7-8-5.2-8-9.8v-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="ic-back" viewBox="0 0 24 24"><path d="M13.5 5.5 7 12l6.5 6.5M7 12h11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="ic-ppl" viewBox="0 0 24 24"><circle cx="9" cy="8.4" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.9 19.6c.9-3.2 3.2-4.9 6.1-4.9s5.2 1.7 6.1 4.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16.2 6.2a3 3 0 0 1 0 5.9M18 19.6c-.4-1.6-1-2.9-1.8-3.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="ic-cyc" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-13.6 5.7M4 12a8 8 0 0 1 13.6-5.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17.3 3.2v3.4h-3.4M6.7 20.8v-3.4h3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="ic-gift" viewBox="0 0 24 24"><rect x="3.4" y="8.6" width="17.2" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.4 13.4h17.2M12 8.6v12" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 8.6C10.6 5.2 9.2 4 7.8 4a2.1 2.1 0 0 0 0 4.6zM12 8.6c1.4-3.4 2.8-4.6 4.2-4.6a2.1 2.1 0 0 1 0 4.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+<symbol id="sb-ic" viewBox="0 0 62 14"><g fill="#fff"><rect x="0" y="7" width="2.6" height="5" rx="1"/><rect x="4.4" y="5" width="2.6" height="7" rx="1"/><rect x="8.8" y="2.8" width="2.6" height="9.2" rx="1"/><rect x="13.2" y="1" width="2.6" height="11" rx="1"/><path d="M21.8 4.2c2.6-2.2 6.6-2.2 9.2 0l-1.5 1.6c-1.8-1.5-4.4-1.5-6.2 0zm2.2 2.5c1.4-1.2 3.4-1.2 4.8 0l-2.4 2.6z"/><rect x="38" y="2.4" width="19" height="9.4" rx="2.6" fill="none" stroke="#fff" stroke-width="1.2"/><rect x="39.6" y="4" width="15" height="6.2" rx="1.4"/><rect x="58.4" y="5.4" width="1.8" height="3.4" rx=".9"/></g></symbol>
+</defs></svg>
+
+<div class="layer" id="phonelayer"><div id="phone">
+<div id="screenwrap">
+
+<!-- ============ 1. WALLET ============ -->
+<div class="screen" id="scr-wallet">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div class="hdr"><div class="circbtn"><svg><use href="#ic-user"/></svg></div><div class="circbtn"><svg><use href="#ic-bell"/></svg></div></div>
+    <div style="margin-top:36px"><div class="lbl">Wallet Balance</div>
+      <div class="bal" id="w-bal">$0.00</div></div>
+    <div class="rowc" style="margin-top:14px"><span class="chip"><span style="width:15px;height:15px;border-radius:50%;border:2.5px solid #7E5BEF;display:inline-block"></span>$55.00 <svg style="width:12px;height:12px;opacity:.7"><use href="#ic-cdn"/></svg></span></div>
+    <div style="display:flex;gap:9px;justify-content:center;margin-top:20px">
+      <div class="pill w">Add Funds</div>
+      <div class="pill d"><svg style="width:15px;height:15px"><use href="#ic-swap"/></svg>Swap</div>
+      <div class="pill d"><svg style="width:15px;height:15px"><use href="#ic-send"/></svg>Send</div>
+    </div>
+    <div class="pad" style="margin-top:22px">
+      <div class="cardart" id="w-card" style="height:226px">
+        <div class="rings"></div><div class="swoosh"></div><div class="gr"></div><div class="shine" id="w-shine" style="left:-40%"></div>
+        <div class="num">•••• 6483</div><div class="visa"><b>VISA</b><i>Platinum</i></div>
+      </div>
+    </div>
+    <div class="pad" style="margin-top:16px"><div class="card" id="w-ap" style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:16px;font-weight:700">Add to Apple Pay</div>
+        <div class="sm mut" style="margin-top:2px">To pay with your phone</div>
+        <div class="pill g" style="height:34px;font-size:13px;margin-top:11px;display:inline-flex;padding:0 15px">Add to Apple Pay</div></div>
+      <div style="width:40px;height:40px;border-radius:50%;background:#2A2A2A;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M16.5 12.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.8-.4 6.9 1.1 9.2.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.8 3-.8s1.8.8 3 .7c1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.9-1.1-2.9-3.8zM14.3 5.9c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3z" fill="currentColor"/></svg></div>
+    </div></div>
+    <div class="pad" style="margin-top:16px"><div class="sm mut" style="font-weight:600">Balances</div>
+      <div class="card" style="padding:15px 16px;margin-top:9px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#2775CA;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700">$</div>
+          <span style="font-size:16px;font-weight:600">soUSD</span></div>
+        <span style="font-size:16px;font-weight:600">$50</span></div></div>
+  </div>
+  <div class="tabbar"><div class="tab on"><svg><use href="#ic-home"/></svg>Wallet</div><div class="tab"><svg><use href="#ic-bolt"/></svg>Savings</div><div class="tab"><svg><use href="#ic-star"/></svg>Rewards</div></div>
+</div>
+
+<!-- ============ 2. SAVINGS / VAULT ============ -->
+<div class="screen" id="scr-save" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div class="hdr"><div class="circbtn"><svg><use href="#ic-user"/></svg></div><div class="circbtn"><svg><use href="#ic-q"/></svg></div></div>
+    <div style="margin-top:36px"><div class="lbl">Savings Balance</div>
+      <div class="bal" id="s-bal">$0.00</div></div>
+    <div class="rowc" style="margin-top:14px"><span class="chip" id="s-apy" style="background:rgba(148,236,127,.13);color:var(--brand)">
+      <span style="width:15px;height:15px;border-radius:50%;background:#2775CA;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700">$</span>
+      <b id="s-apyv">4.5% APY</b> <svg style="width:12px;height:12px;opacity:.7"><use href="#ic-cdn"/></svg></span></div>
+    <div class="pad" style="margin-top:20px"><div class="pill w" style="width:100%;height:52px;font-size:16px">Start earning</div></div>
+    <div class="pad" style="margin-top:20px"><div class="card" style="padding:16px 17px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:13px;border-bottom:1px solid var(--line)">
+        <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600"><svg style="width:16px;height:16px;color:var(--brand)"><use href="#ic-bolt"/></svg>Simulate your savings</span>
+        <span class="sm mut" style="display:flex;align-items:center;gap:5px;font-weight:600">$10,000 <svg style="width:11px;height:11px"><use href="#ic-cdn"/></svg></span></div>
+      <div style="padding-top:12px"><div class="sm mut">Future Balance</div>
+        <div style="font-size:25px;font-weight:700;letter-spacing:-.02em;margin-top:2px" id="s-future">$1,115,112</div>
+        <div class="sm" style="margin-top:2px"><b class="grn" id="s-earned">$745,112 Earned</b> <span class="mut">in 10 years</span></div>
+        <div style="position:relative;height:104px;margin-top:8px">
+          <svg viewBox="0 0 340 104" width="100%" height="104" style="overflow:visible">
+            <defs><linearGradient id="fillg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#94EC7F" stop-opacity=".32"/><stop offset="1" stop-color="#94EC7F" stop-opacity="0"/></linearGradient>
+              <clipPath id="revclip"><rect id="revrect" x="0" y="-14" width="0" height="130"/></clipPath></defs>
+            <g clip-path="url(#revclip)">
+              <path d="M2 100 C70 96 150 84 210 60 C258 41 300 20 338 4 L338 104 L2 104 Z" fill="url(#fillg)"/>
+              <path id="s-curve" d="M2 100 C70 96 150 84 210 60 C258 41 300 20 338 4" fill="none" stroke="#94EC7F" stroke-width="2.6" stroke-linecap="round"/>
+            </g>
+            <g id="s-knob" opacity="0"><line x1="255" y1="30" x2="255" y2="104" stroke="#94EC7F" stroke-width="1.2" opacity=".45"/>
+              <circle cx="255" cy="30" r="13" fill="#94EC7F"/>
+              <path d="M250 30h10M252.5 26.5 249 30l3.5 3.5M257.5 26.5 261 30l-3.5 3.5" stroke="#14330C" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+          </svg>
+        </div></div></div></div>
+    <div class="pad" style="margin-top:16px"><div class="sm mut" style="font-weight:600">More savings options</div>
+      <div class="card" style="margin-top:9px;padding:4px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)">
+          <span style="display:flex;align-items:center;gap:11px;font-size:15px;font-weight:600">
+            <span style="width:31px;height:31px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><span style="color:#343434;font-size:17px">&#9830;</span></span>Ethereum</span>
+          <b class="sm">6.5% APY</b></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0">
+          <span style="display:flex;align-items:center;gap:11px;font-size:15px;font-weight:600">
+            <span style="width:31px;height:31px;border-radius:50%;background:#7EE07A;display:flex;align-items:center;justify-content:center"><span style="color:#0E2E08;font-size:15px">&#9654;</span></span>Fuse</span>
+          <b class="sm">6.5% APY</b></div></div></div>
+  </div>
+  <div class="tabbar"><div class="tab"><svg><use href="#ic-home"/></svg>Wallet</div><div class="tab on"><svg><use href="#ic-bolt"/></svg>Savings</div><div class="tab"><svg><use href="#ic-star"/></svg>Rewards</div></div>
+</div>
+
+<!-- ============ 3. CARD ============ -->
+<div class="screen" id="scr-card" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div style="display:flex;align-items:center;padding:6px 20px 0">
+      <div class="circbtn"><svg><use href="#ic-back"/></svg></div>
+      <div style="flex:1;text-align:center;font-size:18px;font-weight:700;margin-right:34px">Solid card</div></div>
+    <div class="pad" style="margin-top:22px">
+      <div class="cardart" id="c-card" style="height:226px">
+        <div class="rings"></div><div class="swoosh"></div><div class="gr"></div><div class="shine" id="c-shine" style="left:-40%"></div>
+        <div class="num">•••• 6483</div><div class="visa"><b>VISA</b><i>Platinum</i></div></div></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;font-size:15px;font-weight:600">
+      <svg style="width:17px;height:17px"><use href="#ic-eye"/></svg>Show details</div>
+    <div style="display:flex;justify-content:center;gap:26px;margin-top:26px">
+      <div style="text-align:center"><div style="width:52px;height:52px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:#111"><svg style="width:23px;height:23px"><use href="#ic-plus"/></svg></div><div class="xs mut" style="margin-top:7px;font-weight:600">Add funds</div></div>
+      <div style="text-align:center"><div style="width:52px;height:52px;border-radius:50%;background:#1E1E1E;display:flex;align-items:center;justify-content:center"><svg style="width:21px;height:21px"><use href="#ic-swap"/></svg></div><div class="xs mut" style="margin-top:7px;font-weight:600">Withdraw</div></div>
+      <div style="text-align:center"><div style="width:52px;height:52px;border-radius:50%;background:#1E1E1E;display:flex;align-items:center;justify-content:center"><svg style="width:21px;height:21px"><use href="#ic-snow"/></svg></div><div class="xs mut" style="margin-top:7px;font-weight:600">Freeze</div></div>
+      <div style="text-align:center"><div style="width:52px;height:52px;border-radius:50%;background:#1E1E1E;display:flex;align-items:center;justify-content:center"><svg style="width:21px;height:21px"><use href="#ic-dots"/></svg></div><div class="xs mut" style="margin-top:7px;font-weight:600">More</div></div>
+    </div>
+    <div class="pad" style="margin-top:26px"><div class="card" id="c-cbcard" style="padding:16px 17px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+        <svg style="width:17px;height:17px;color:var(--brand)"><use href="#ic-shield"/></svg>
+        Cashback earned: <b class="grn" id="c-cash">$0</b> <span class="mut">/ $150</span></div>
+      <div style="height:6px;border-radius:4px;background:#333;margin-top:13px;overflow:hidden">
+        <div id="c-bar" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#6FD95C,#B6F79F)"></div></div>
+      <div class="sm mut" style="margin-top:11px">Spend $745 more for max cashback this month</div></div></div>
+    <div class="pad" style="margin-top:16px"><div class="card" style="padding:2px 17px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--line)">
+        <span style="display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600"><svg style="width:18px;height:18px"><use href="#ic-doc"/></svg>View transactions</span><svg style="width:15px;height:15px;color:#666"><use href="#ic-chev"/></svg></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--line)">
+        <span style="display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600"><svg style="width:18px;height:18px"><use href="#ic-star"/></svg>Rewards &amp; details</span><svg style="width:15px;height:15px;color:#666"><use href="#ic-chev"/></svg></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:15px 0">
+        <span style="display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600"><svg style="width:18px;height:18px"><use href="#ic-chat"/></svg>Contact support</span><svg style="width:15px;height:15px;color:#666"><use href="#ic-chev"/></svg></div></div></div>
+  </div>
+  <div class="tabbar"><div class="tab on"><svg><use href="#ic-home"/></svg>Wallet</div><div class="tab"><svg><use href="#ic-bolt"/></svg>Savings</div><div class="tab"><svg><use href="#ic-star"/></svg>Rewards</div></div>
+</div>
+
+<!-- ============ 4. CARD BENEFITS ============ -->
+<div class="screen" id="scr-ben" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div style="padding:6px 20px 0"><div class="circbtn"><svg><use href="#ic-back"/></svg></div></div>
+    <div class="pad" style="margin-top:18px;padding-left:20px">
+      <div style="font-size:27px;font-weight:700;letter-spacing:-.02em">Solid card</div>
+      <div class="sm mut" style="margin-top:3px">Free virtual Visa card</div></div>
+    <div style="display:flex;justify-content:center;margin-top:20px">
+      <div class="cardart" id="b-card" style="width:246px;height:214px;border-radius:20px">
+        <div class="rings"></div><div class="swoosh"></div><div class="gr"></div><div class="shine" id="b-shine" style="left:-40%"></div>
+        <div class="wm"><img src="../../assets/images/solid-logo-4x.png" style="height:17px;filter:brightness(0) saturate(100%) invert(78%) sepia(30%) saturate(700%) hue-rotate(63deg) brightness(105%)"><span>solid</span></div></div></div>
+    <div class="pad" style="margin-top:26px;padding-left:20px;padding-right:20px" id="b-rows">
+      <div class="brow" style="display:flex;gap:14px;margin-bottom:19px"><div style="flex:none;width:40px;height:40px;border-radius:50%;background:rgba(148,236,127,.13);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--brand)">5%</div>
+        <div><div style="font-size:16px;font-weight:700">Up to 5% cashback</div><div class="sm mut" style="margin-top:2px;line-height:1.35">Earn up to 5% cashback in USD on every purchase</div></div></div>
+      <div class="brow" style="display:flex;gap:14px;margin-bottom:19px"><div style="flex:none;width:40px;height:40px;border-radius:50%;background:rgba(148,236,127,.13);display:flex;align-items:center;justify-content:center;color:var(--brand)"><svg style="width:20px;height:20px"><use href="#ic-fee"/></svg></div>
+        <div><div style="font-size:16px;font-weight:700">No hidden fees</div><div class="sm mut" style="margin-top:2px;line-height:1.35">FX fee of just 1% on non-USD transactions. No cross-border fees.</div></div></div>
+      <div class="brow" style="display:flex;gap:14px;margin-bottom:19px"><div style="flex:none;width:40px;height:40px;border-radius:50%;background:rgba(148,236,127,.13);display:flex;align-items:center;justify-content:center;color:var(--brand)"><svg style="width:20px;height:20px"><use href="#ic-globe"/></svg></div>
+        <div><div style="font-size:16px;font-weight:700">Global acceptance</div><div class="sm mut" style="margin-top:2px;line-height:1.35">Spend anywhere Visa is accepted</div></div></div>
+      <div class="brow" style="display:flex;gap:14px;margin-bottom:19px"><div style="flex:none;width:40px;height:40px;border-radius:50%;background:rgba(148,236,127,.13);display:flex;align-items:center;justify-content:center;color:var(--brand)"><svg style="width:20px;height:20px"><use href="#ic-rocket"/></svg></div>
+        <div><div style="font-size:16px;font-weight:700">Effortless setup</div><div class="sm mut" style="margin-top:2px;line-height:1.35">Start using instantly. Apple Pay &amp; Google Pay support</div></div></div>
+      <div class="brow" style="display:flex;gap:14px"><div style="flex:none;width:40px;height:40px;border-radius:50%;background:rgba(148,236,127,.13);display:flex;align-items:center;justify-content:center;color:var(--brand)"><svg style="width:20px;height:20px"><use href="#ic-sun"/></svg></div>
+        <div><div style="font-size:16px;font-weight:700">Borrow against savings</div><div class="sm mut" style="margin-top:2px;line-height:1.35">Keep earning on your savings while spending</div></div></div>
+    </div>
+    <div class="pad" style="position:absolute;left:0;right:0;bottom:26px;padding:0 20px"><div class="pill g" style="width:100%;height:52px;font-size:17px;font-weight:700">Get the card</div></div>
+  </div>
+</div>
+
+<!-- ============ 5. REWARDS ============ -->
+<div class="screen" id="scr-rew" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div class="hdr"><div class="circbtn"><svg><use href="#ic-user"/></svg></div><div></div></div>
+    <div style="margin-top:34px;text-align:center">
+      <div style="display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600;color:#D8D8D8">
+        <svg style="width:15px;height:15px;color:var(--gold)"><use href="#ic-star"/></svg>Prime</div>
+      <div style="margin-top:4px;display:flex;align-items:baseline;justify-content:center;gap:8px">
+        <span style="font-size:44px;font-weight:700;letter-spacing:-.03em" id="r-points">0</span>
+        <span class="sm mut" style="font-weight:600">Points</span></div></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">
+      <div class="pill" id="r-inv" style="background:#2A2A2A;font-weight:700">Invite friends</div>
+      <div class="pill d" style="background:#1A1A1A;color:#B9B9B9">Explore tiers</div></div>
+    <div class="pad" style="margin-top:22px"><div class="card" style="padding:15px 17px;display:flex;align-items:center;justify-content:space-between">
+      <span class="mut" style="font-size:15px;font-weight:600">Rewards</span><b style="font-size:17px" id="r-tot">$0.00</b></div></div>
+    <div class="pad" style="margin-top:12px;display:flex;gap:12px">
+      <div class="card" id="r-cb" style="flex:1;padding:16px 15px">
+        <div style="display:flex;align-items:center;gap:7px"><svg style="width:14px;height:14px;color:var(--brand)"><use href="#ic-pct"/></svg><span class="sm mut" style="font-weight:600">Cashback</span></div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:6px" id="r-cbv">$0.00</div></div>
+      <div class="card" id="r-rf" style="flex:1;padding:16px 15px">
+        <div style="display:flex;align-items:center;gap:7px"><svg style="width:14px;height:14px;color:var(--points)"><use href="#ic-ppl"/></svg><span class="sm mut" style="font-weight:600">Referrals</span></div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:6px" id="r-rfv">$0.00</div></div></div>
+    <div class="pad" style="margin-top:22px"><div class="sm mut" style="font-weight:600">Your tier benefits</div>
+      <div style="display:flex;gap:11px;margin-top:11px" id="r-tiers">
+        <div class="card tiercard" style="flex:1;padding:14px 12px;text-align:center">
+          <div style="width:32px;height:32px;border-radius:50%;background:#252525;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:16px;height:16px;color:#9A9A9A"><use href="#ic-star"/></svg></div>
+          <div class="xs" style="margin-top:8px;font-weight:700">Core</div><div class="xs mut" style="margin-top:2px">2% cashback</div></div>
+        <div class="card tiercard" style="flex:1;padding:14px 12px;text-align:center">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,209,82,.16);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:16px;height:16px;color:var(--gold)"><use href="#ic-star"/></svg></div>
+          <div class="xs" style="margin-top:8px;font-weight:700">Prime</div><div class="xs mut" style="margin-top:2px">3% cashback</div></div>
+        <div class="card tiercard" style="flex:1;padding:14px 12px;text-align:center">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(216,158,253,.16);display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:16px;height:16px;color:var(--points)"><use href="#ic-star"/></svg></div>
+          <div class="xs" style="margin-top:8px;font-weight:700">Ultra</div><div class="xs mut" style="margin-top:2px">5% cashback</div></div></div></div>
+  </div>
+  <div class="tabbar"><div class="tab"><svg><use href="#ic-home"/></svg>Wallet</div><div class="tab"><svg><use href="#ic-bolt"/></svg>Savings</div><div class="tab on"><svg><use href="#ic-star"/></svg>Rewards</div></div>
+</div>
+
+<!-- ============ 6. POINTS SHEET ============ -->
+<div class="screen" id="scr-pts" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body" style="opacity:.30">
+    <div class="hdr"><div class="circbtn"><svg><use href="#ic-user"/></svg></div><div></div></div>
+    <div style="margin-top:34px;text-align:center">
+      <div style="display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600;color:#D8D8D8"><svg style="width:15px;height:15px;color:var(--gold)"><use href="#ic-star"/></svg>Prime</div>
+      <div style="margin-top:4px;display:flex;align-items:baseline;justify-content:center;gap:8px"><span style="font-size:44px;font-weight:700;letter-spacing:-.03em">10.5M</span><span class="sm mut" style="font-weight:600">Points</span></div></div>
+  </div>
+  <div id="pts-sheet" style="position:absolute;left:0;right:0;bottom:0;height:830px;background:#191919;border-radius:34px 34px 0 0;padding:0 20px;will-change:transform">
+    <div style="width:44px;height:4px;border-radius:3px;background:#4A4A4A;margin:14px auto 0"></div>
+    <div style="text-align:center;margin-top:34px"><svg style="width:82px;height:82px;color:#fff" id="pts-star"><use href="#ic-star"/></svg></div>
+    <div style="text-align:center;margin-top:16px;font-size:31px;font-weight:700;letter-spacing:-.025em;line-height:1.12">How do you<br>earn points?</div>
+    <div class="sm mut" style="text-align:center;margin-top:9px;line-height:1.4">Earn points for every action you take<br>with Solid and unlock rewards</div>
+    <div style="margin-top:22px;background:#212121;border-radius:22px;overflow:hidden" id="pts-grid">
+      <div style="display:flex"><div class="pcell" style="flex:1;padding:20px 14px;text-align:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line)">
+          <div style="width:38px;height:38px;border-radius:50%;background:#2C2C2C;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:19px;height:19px"><use href="#ic-bolt"/></svg></div>
+          <div style="font-size:15px;font-weight:700;margin-top:9px">Save</div><div class="xs mut" style="margin-top:4px;line-height:1.35">1 point/hour for every $1 held in the Solid vault</div></div>
+        <div class="pcell" style="flex:1;padding:20px 14px;text-align:center;border-bottom:1px solid var(--line)">
+          <div style="width:38px;height:38px;border-radius:50%;background:#2C2C2C;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:19px;height:19px"><use href="#ic-card"/></svg></div>
+          <div style="font-size:15px;font-weight:700;margin-top:9px">Spend</div><div class="xs mut" style="margin-top:4px;line-height:1.35">1 point per $1 spent</div></div></div>
+      <div style="display:flex"><div class="pcell" style="flex:1;padding:20px 14px;text-align:center;border-right:1px solid var(--line)">
+          <div style="width:38px;height:38px;border-radius:50%;background:#2C2C2C;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:19px;height:19px"><use href="#ic-ppl"/></svg></div>
+          <div style="font-size:15px;font-weight:700;margin-top:9px">Card</div><div class="xs mut" style="margin-top:4px;line-height:1.35">1 point/day per $1 held in the card</div></div>
+        <div class="pcell" style="flex:1;padding:20px 14px;text-align:center">
+          <div style="width:38px;height:38px;border-radius:50%;background:#2C2C2C;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:19px;height:19px"><use href="#ic-cyc"/></svg></div>
+          <div style="font-size:15px;font-weight:700;margin-top:9px">Swap</div><div class="xs mut" style="margin-top:4px;line-height:1.35">1 point per $1 swapped</div></div></div></div>
+    <div style="margin-top:26px"><div class="pill g" style="width:100%;height:52px;font-size:17px;font-weight:700">Close</div></div>
+  </div>
+</div>
+
+<!-- ============ 7. REFERRAL ============ -->
+<div class="screen" id="scr-ref" style="opacity:0">
+  <div class="sb"><span>9:41</span><span class="ic"><svg width="62" height="14"><use href="#sb-ic"/></svg></span></div>
+  <div class="body">
+    <div style="display:flex;align-items:center;padding:6px 20px 0">
+      <div class="circbtn"><svg><use href="#ic-back"/></svg></div>
+      <div style="flex:1;text-align:center;font-size:18px;font-weight:700;margin-right:34px">Invite friends</div></div>
+    <div style="position:relative;height:200px;margin-top:12px" id="ref-orbit">
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;background:linear-gradient(150deg,#B6F79F,#6FD95C);display:flex;align-items:center;justify-content:center">
+        <svg style="width:34px;height:34px;color:#123C09"><use href="#ic-gift"/></svg></div>
+    </div>
+    <div style="text-align:center;padding:0 30px">
+      <div style="font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.18">Invite your friends and get<br>1% cashback on their purchases</div>
+      <div class="sm mut" style="margin-top:10px;line-height:1.4">They earn too. Every purchase they make pays you, forever.</div></div>
+    <div class="pad" style="margin-top:24px"><div class="card" style="padding:16px 17px">
+      <div class="sm mut" style="font-weight:600">Your referral link</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px">
+        <span style="font-size:16px;font-weight:700;letter-spacing:.01em">solid.xyz/r/<span class="grn">ALEX24</span></span>
+        <div class="pill g" style="height:34px;font-size:13px;padding:0 16px">Copy</div></div></div></div>
+    <div class="pad" style="margin-top:14px;display:flex;gap:12px">
+      <div class="card" style="flex:1;padding:16px 15px"><div class="sm mut" style="font-weight:600">Friends joined</div>
+        <div style="font-size:26px;font-weight:700;margin-top:5px" id="ref-n">0</div></div>
+      <div class="card" style="flex:1;padding:16px 15px"><div class="sm mut" style="font-weight:600">You earned</div>
+        <div style="font-size:26px;font-weight:700;margin-top:5px;color:var(--brand)" id="ref-e">$0</div></div></div>
+    <div class="pad" style="margin-top:14px"><div class="card" style="padding:4px 17px" id="ref-list"></div></div>
+  </div>
+  <div class="tabbar"><div class="tab"><svg><use href="#ic-home"/></svg>Wallet</div><div class="tab"><svg><use href="#ic-bolt"/></svg>Savings</div><div class="tab on"><svg><use href="#ic-star"/></svg>Rewards</div></div>
+</div>
+
+<div id="notch"></div><div id="glare"></div>
+</div></div></div>
+
+<!-- ============ BIG CARD HERO ============ -->
+<div class="layer" id="cardlayer" style="display:none">
+  <div id="bigcard" class="cardart" style="position:absolute;left:50%;top:760px;width:660px;height:416px;margin-left:-330px;margin-top:-208px;border-radius:38px;transform-style:preserve-3d">
+    <div class="rings"></div><div class="swoosh"></div><div class="gr"></div>
+    <div class="shine" id="big-shine" style="left:-40%;width:30%"></div>
+    <div class="wm" style="left:34px;top:30px;gap:12px">
+      <img src="../../assets/images/solid-logo-4x.png" style="height:33px;filter:brightness(0) saturate(100%) invert(78%) sepia(30%) saturate(700%) hue-rotate(63deg) brightness(105%)">
+      <span style="font-size:36px">solid</span></div>
+    <div class="num" style="left:34px;bottom:32px;font-size:23px;padding:12px 24px;border-radius:30px;letter-spacing:.14em">•••• 6483</div>
+    <div class="visa" style="right:34px;bottom:30px"><b style="font-size:54px">VISA</b><i style="font-size:17px">Platinum</i></div>
+  </div>
+</div>
+
+<!-- ============ TEXT BLOCKS ============ -->
+<div class="tl" id="t-hook" style="top:110px;display:none">
+  <div class="kicker ln" style="margin-bottom:26px">Meet Solid</div>
+  <h1><span class="wrapln"><span class="ln" style="display:block">Your money</span></span>
+      <span class="wrapln"><span class="ln" style="display:block">should be</span></span>
+      <span class="wrapln"><span class="ln" style="display:block;color:var(--brand)">doing more.</span></span></h1>
+  <div class="sub ln" style="margin-top:30px">Save, spend and earn — in one app.</div>
+</div>
+
+<div class="tl" id="t-vault" style="top:110px;display:none">
+  <div class="kicker ln" style="margin-bottom:24px">The Savings Vault</div>
+  <h2><span class="wrapln"><span class="ln" style="display:block">Earn while</span></span>
+      <span class="wrapln"><span class="ln" style="display:block">you <span style="color:var(--brand)">sleep.</span></span></span></h2>
+  <div class="tick ln" style="margin-top:34px"><div>4.5% APY on USDC</div><div>6.5% on ETH</div><div>No lock-ups</div></div>
+</div>
+
+<div class="tl" id="t-cardhero" style="top:1140px;display:none">
+  <div class="kicker ln" style="margin-bottom:26px">The Solid Card</div>
+  <h1><span class="wrapln"><span class="ln" style="display:block">Spend it</span></span>
+      <span class="wrapln"><span class="ln" style="display:block;color:var(--brand)">anywhere.</span></span></h1>
+  <div class="sub ln" style="margin-top:28px">A free virtual Visa, ready in minutes.</div>
+</div>
+
+<div class="tl" id="t-card" style="top:110px;display:none">
+  <div class="kicker ln" style="margin-bottom:24px">Cashback</div>
+  <h2><span class="wrapln"><span class="ln" style="display:block">Up to <span style="color:var(--brand)">5%</span> back</span></span>
+      <span class="wrapln"><span class="ln" style="display:block">on every swipe.</span></span></h2>
+  <div class="tick ln" style="margin-top:34px"><div>1% FX fee</div><div>No hidden fees</div><div>Apple &amp; Google Pay</div></div>
+</div>
+
+<div class="tl" id="t-rew" style="top:110px;display:none">
+  <div class="kicker ln" style="margin-bottom:24px">Rewards &amp; Points</div>
+  <h2><span class="wrapln"><span class="ln" style="display:block">Get paid to</span></span>
+      <span class="wrapln"><span class="ln" style="display:block">use <span style="color:var(--brand)">your money.</span></span></span></h2>
+  <div class="tick ln" style="margin-top:34px"><div>Core 2%</div><div>Prime 3%</div><div>Ultra 5%</div></div>
+</div>
+
+<div class="tl" id="t-ref" style="top:110px;display:none">
+  <div class="kicker ln" style="margin-bottom:24px">Referrals</div>
+  <h2><span class="wrapln"><span class="ln" style="display:block">Invite friends.</span></span>
+      <span class="wrapln"><span class="ln" style="display:block">Earn <span style="color:var(--brand)">1% forever.</span></span></span></h2>
+  <div class="sub ln" style="margin-top:30px">1% cashback on everything they buy.</div>
+</div>
+
+<!-- ============ INTRO ============ -->
+<div class="layer" id="introlayer" style="display:none">
+  <div id="introglow"></div>
+  <div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center">
+    <img class="mark" id="i-mark" src="../../assets/images/solid-logo-4x.png" style="width:172px">
+    <div style="height:44px"></div>
+    <img class="wordmark" id="i-word" src="../../assets/images/solid-4x.png" style="height:92px">
+    <div id="i-tag" style="margin-top:34px;font-size:30px;font-weight:600;letter-spacing:.30em;text-transform:uppercase;color:#9C9C9C;will-change:transform,opacity">Save · Spend · Earn</div>
+  </div>
+</div>
+
+<!-- ============ OUTRO ============ -->
+<div class="layer" id="outrolayer" style="display:none">
+  <div id="outroglow" style="position:absolute;left:50%;top:50%;width:1500px;height:1500px;margin:-750px 0 0 -750px;border-radius:50%;background:radial-gradient(circle,rgba(148,236,127,.30),transparent 62%);will-change:transform,opacity"></div>
+  <div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center">
+    <img class="mark" id="o-mark" src="../../assets/images/solid-logo-4x.png" style="width:140px">
+    <div style="height:38px"></div>
+    <img class="wordmark" id="o-word" src="../../assets/images/solid-4x.png" style="height:80px">
+    <div id="o-tag" style="margin-top:44px;font-size:56px;font-weight:800;letter-spacing:-.03em;will-change:transform,opacity">Save. Spend. Earn.</div>
+    <div id="o-badges" style="margin-top:58px;display:flex;gap:20px;justify-content:center;will-change:transform,opacity">
+      <div style="display:flex;align-items:center;gap:14px;padding:20px 34px;border-radius:20px;border:1.5px solid rgba(255,255,255,.20);background:rgba(255,255,255,.05)">
+        <span style="line-height:0;display:block"><svg viewBox="0 0 24 24" style="width:36px;height:36px"><path d="M16.5 12.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.8-.4 6.9 1.1 9.2.8 1.1 1.7 2.3 2.9 2.3 1.2 0 1.6-.8 3-.8s1.8.8 3 .7c1.2 0 2-1.1 2.8-2.2.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.9-1.1-2.9-3.8zM14.3 5.9c.6-.8 1.1-1.9 1-3-.9.1-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3z" fill="currentColor"/></svg></span>
+        <span style="text-align:left;line-height:1.15"><span style="font-size:15px;color:#9C9C9C;display:block">Download on the</span><b style="font-size:26px">App Store</b></span></div>
+      <div style="display:flex;align-items:center;gap:14px;padding:20px 34px;border-radius:20px;border:1.5px solid rgba(255,255,255,.20);background:rgba(255,255,255,.05)">
+        <svg viewBox="0 0 24 24" style="width:34px;height:34px"><path d="M3.6 2.3 14 12 3.6 21.7c-.3-.2-.5-.6-.5-1.1V3.4c0-.5.2-.9.5-1.1z" fill="#94EC7F"/><path d="M17.3 8.6 14 12l3.3 3.4 3.6-2.1c.7-.4.7-1.2 0-1.6z" fill="#FFD152"/><path d="M3.6 2.3 14 12l3.3-3.4-11.4-6.5c-.8-.5-1.6-.4-2.3.2z" fill="#fff"/><path d="M3.6 21.7 14 12l3.3 3.4-11.4 6.5c-.8.5-1.6.4-2.3-.2z" fill="#7EC8FF"/></svg>
+        <span style="text-align:left;line-height:1.15"><span style="font-size:15px;color:#9C9C9C;display:block">Get it on</span><b style="font-size:26px">Google Play</b></span></div></div>
+    <div id="o-url" style="margin-top:52px;font-size:32px;font-weight:600;color:var(--brand);letter-spacing:.04em;will-change:transform,opacity">solid.xyz</div>
+  </div>
+</div>
+
+<div id="sweep"></div><div id="flash"></div><div id="fadeout"></div>
+</div>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const clamp=(x,a,b)=>x<a?a:(x>b?b:x);
+const inv=(t,a,b)=>b===a?(t>=b?1:0):clamp((t-a)/(b-a),0,1);
+const lerp=(a,b,p)=>a+(b-a)*p;
+const eOut=p=>1-Math.pow(1-p,3);
+const eOut4=p=>1-Math.pow(1-p,4);
+const eInOut=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const eBack=p=>{const c=1.55;return 1+(c+1)*Math.pow(p-1,3)+c*Math.pow(p-1,2)};
+const bell=p=>Math.sin(clamp(p,0,1)*Math.PI);
+const money=(v,d)=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const DUR=37.6;
+const WIDE=location.search.indexOf('wide')>=0;
+if(WIDE) document.documentElement.classList.add('w');
+const PX=WIDE?480:0, PSC=WIDE?0.68:1, HERO=WIDE?20:252;
+
+/* ---------- build dynamic content once ---------- */
+const REF=[['MS','Maya S.','+$42.10','#94EC7F'],['TL','Tomer L.','+$31.60','#B6F79F'],['DK','Dana K.','+$18.40','#7EE07A']];
+const list=$('#ref-list');
+REF.forEach((r,i)=>{
+  const d=document.createElement('div');
+  d.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:13px 0;'+(i<REF.length-1?'border-bottom:1px solid var(--line)':'');
+  d.innerHTML='<span style="display:flex;align-items:center;gap:11px">'+
+    '<span style="width:31px;height:31px;border-radius:50%;background:'+r[3]+';color:#123C09;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">'+r[0]+'</span>'+
+    '<span><span style="font-size:15px;font-weight:600;display:block">'+r[1]+'</span><span class="xs mut">Joined · earning</span></span></span>'+
+    '<b class="sm grn">'+r[2]+'</b>';
+  list.appendChild(d);
+});
+const AVC=['#94EC7F','#D89EFD','#FFD152','#7EC8FF','#B6F79F'];
+const AVI=['JL','SR','AK','MP','TC'];
+const orbit=$('#ref-orbit'); const AVS=[];
+for(let i=0;i<5;i++){
+  const a=document.createElement('div'); a.className='av';
+  a.style.cssText='left:50%;top:50%;width:52px;height:52px;background:'+AVC[i];
+  a.textContent=AVI[i]; a.style.fontSize='17px';
+  orbit.appendChild(a); AVS.push(a);
+}
+
+/* ---------- cached refs ---------- */
+const PH=$('#phone'), IL=$('#introlayer'), OL=$('#outrolayer'), CL=$('#cardlayer'),
+      BC=$('#bigcard'), SW=$('#sweep'), FL=$('#flash'), FO=$('#fadeout'),
+      A=$('#blobA'), B=$('#blobB'), C=$('#blobC'), G=$('#grid'), GL=$('#glare');
+const SC=[['scr-wallet',3.2,7.8],['scr-save',7.8,13.4],['scr-card',16.4,21.3],
+          ['scr-ben',21.3,24.2],['scr-rew',24.2,27.5],['scr-pts',27.5,29.4],['scr-ref',29.4,34.0]];
+const SCE=SC.map(s=>[document.getElementById(s[0]),s[1],s[2]]);
+const TXT={};
+function tgt(sel){
+  if(TXT[sel]) return TXT[sel];
+  const el=$(sel), out=[];
+  el.querySelectorAll('.ln').forEach(n=>{
+    if(n.classList.contains('tick')){ n.style.opacity=1; n.style.transform='none'; [].forEach.call(n.children,c=>out.push(c)); }
+    else out.push(n);
+  });
+  return TXT[sel]=[el,out];
+}
+const cache={};
+function setTxt(sel,v){ const e=cache[sel]||(cache[sel]=$(sel)); if(e.textContent!==v) e.textContent=v; }
+
+/* ---------- text block reveal ---------- */
+function tb(sel,t,tin,tout,o){
+  o=o||{}; const [el,els]=tgt(sel);
+  const live = t>=tin-0.5 && t<=tout+0.6;
+  el.style.display=live?'block':'none'; if(!live) return;
+  const stag=o.stag||0.10, dur=o.dur||0.66, dy=o.dy||88;
+  const out=eInOut(inv(t,tout,tout+0.5));
+  for(let i=0;i<els.length;i++){
+    const p=eOut(inv(t,tin+i*stag,tin+i*stag+dur));
+    els[i].style.opacity=(p*(1-out)).toFixed(3);
+    els[i].style.transform='translateY('+((1-p)*dy - out*52).toFixed(1)+'px)';
+  }
+}
+
+/* ---------- main ---------- */
+function render(t){
+  /* background */
+  A.style.transform='translate('+(Math.sin(t*0.21)*70).toFixed(1)+'px,'+(Math.cos(t*0.17)*52).toFixed(1)+'px) scale('+(1+Math.sin(t*0.30)*0.06).toFixed(3)+')';
+  B.style.transform='translate('+(Math.cos(t*0.19)*80).toFixed(1)+'px,'+(Math.sin(t*0.23)*60).toFixed(1)+'px) scale('+(1+Math.cos(t*0.26)*0.07).toFixed(3)+')';
+  C.style.transform='translate('+(Math.sin(t*0.15+1)*90).toFixed(1)+'px,'+(Math.cos(t*0.21+2)*70).toFixed(1)+'px)';
+  C.style.opacity=(lerp(0.30,1,inv(t,23.8,25.4))*(1-inv(t,33.5,34.4))).toFixed(3);
+  G.style.transform='translateY('+(-t*9).toFixed(1)+'px)';
+  G.style.opacity=(0.5*(1-inv(t,33.6,34.5))*inv(t,2.9,3.7)).toFixed(3);
+
+  /* intro */
+  const iOn = t<3.5;
+  IL.style.display=iOn?'flex':'none';
+  if(iOn){
+    const gp=inv(t,0.15,1.15);
+    const ig=$('#introglow');
+    ig.style.opacity=(gp*(1-inv(t,2.25,3.2))*0.95).toFixed(3);
+    ig.style.transform='scale('+lerp(0.40,1.18,eOut(gp)).toFixed(3)+')';
+    const mp=eBack(inv(t,0.28,1.42));
+    const im=$('#i-mark');
+    im.style.opacity=inv(t,0.28,0.82).toFixed(3);
+    im.style.transform='scale('+lerp(0.52,1,mp).toFixed(3)+') rotate('+lerp(-20,0,eOut(inv(t,0.28,1.6))).toFixed(2)+'deg)';
+    const wp=eOut(inv(t,1.00,1.80)), iw=$('#i-word');
+    iw.style.opacity=wp.toFixed(3); iw.style.transform='translateY('+((1-wp)*44).toFixed(1)+'px)';
+    const tp=eOut(inv(t,1.45,2.25)), it=$('#i-tag');
+    it.style.opacity=(tp*(1-inv(t,2.70,3.15))).toFixed(3); it.style.transform='translateY('+((1-tp)*26).toFixed(1)+'px)';
+    const ex=eInOut(inv(t,2.68,3.30));
+    IL.style.opacity=(1-ex).toFixed(3);
+    IL.style.transform='scale('+(1+ex*0.30).toFixed(3)+')';
+  }
+
+  /* phone */
+  let op=0,y=1600,s=1.22,ry=0,rx=0;
+  if(t>=3.20 && t<13.99){
+    const e=eOut(inv(t,3.38,4.62));
+    y=lerp(WIDE?920:1560,HERO,e); op=inv(t,3.30,3.74); ry=lerp(-17,0,e); s=lerp(1.07,1.20,e);
+    const x=eInOut(inv(t,13.38,13.98));
+    y=lerp(y,WIDE?960:1600,x); op*=(1-x); ry=lerp(ry,15,x); s=lerp(s,1.05,x);
+  } else if(t>=16.02 && t<34.40){
+    const e=eOut(inv(t,16.05,17.05));
+    y=lerp(WIDE?960:1600,HERO,e); op=inv(t,16.05,16.48); ry=lerp(15,0,e); s=lerp(1.04,1.20,e);
+    const x=eInOut(inv(t,33.86,34.38));
+    y=lerp(y,WIDE?980:1620,x); op*=(1-x); s=lerp(s,1.04,x);
+  }
+  if(op>0.001){ y+=Math.sin(t*0.85)*8; rx=Math.sin(t*0.60)*1.1; ry+=Math.cos(t*0.50)*1.4; }
+  PH.style.opacity=op.toFixed(3);
+  PH.style.transform='translate('+PX+'px,'+y.toFixed(1)+'px) rotateX('+rx.toFixed(2)+'deg) rotateY('+ry.toFixed(2)+'deg) scale('+(s*PSC).toFixed(4)+')';
+  const gsw=(t*0.155)%1;
+  GL.style.opacity=(op*bell(gsw)*0.55).toFixed(3);
+  GL.style.transform='translateX('+lerp(-470,470,gsw).toFixed(1)+'px)';
+
+  /* screens */
+  for(let i=0;i<SCE.length;i++){
+    const el=SCE[i][0], a=SCE[i][1], b=SCE[i][2];
+    const fi=eOut(inv(t,a-0.18,a+0.32)), fo=eOut(inv(t,b-0.18,b+0.32));
+    const o=clamp(fi-fo,0,1);
+    el.style.display=o<=0.003?'none':'block';
+    if(o>0.003){ el.style.opacity=o.toFixed(3); el.style.transform='translateX('+((1-fi)*44-fo*44).toFixed(1)+'px)'; }
+  }
+
+  /* card hero */
+  const cOn = t>=13.62 && t<=16.60;
+  CL.style.display=cOn?'block':'none';
+  if(cOn){
+    const e=eOut(inv(t,13.78,15.02));
+    const out=eInOut(inv(t,15.98,16.55));
+    const wob=Math.sin((t-15.0)*1.15);
+    const rxx=lerp(-56,0,e)+ (e>0.98?wob*2.4:0);
+    const ryy=lerp(48,0,e)+ (e>0.98?wob*5.5:0);
+    BC.style.opacity=(inv(t,13.70,14.12)*(1-out)).toFixed(3);
+    BC.style.transform='translateY('+(lerp(230,0,e)-out*190).toFixed(1)+'px) rotateX('+lerp(rxx,20,out).toFixed(2)+'deg) rotateY('+lerp(ryy,-28,out).toFixed(2)+'deg) scale('+(lerp(0.60,1,e)*(1-out*0.20)).toFixed(3)+')';
+    const sh=inv(t,14.95,15.95), bs=$('#big-shine');
+    bs.style.opacity=bell(sh).toFixed(3);
+    bs.style.transform='translateX('+lerp(0,1020,sh).toFixed(1)+'px) rotate(14deg)';
+  }
+
+  /* in-screen card shines */
+  const ws=inv(t,4.9,5.9), wsh=$('#w-shine');
+  wsh.style.opacity=bell(ws).toFixed(3); wsh.style.transform='translateX('+lerp(0,640,ws).toFixed(1)+'px) rotate(14deg)';
+  const cs=inv(t,17.1,18.1), csh=$('#c-shine');
+  csh.style.opacity=bell(cs).toFixed(3); csh.style.transform='translateX('+lerp(0,640,cs).toFixed(1)+'px) rotate(14deg)';
+  const bsx=inv(t,22.1,23.1), bsh=$('#b-shine');
+  bsh.style.opacity=bell(bsx).toFixed(3); bsh.style.transform='translateX('+lerp(0,420,bsx).toFixed(1)+'px) rotate(14deg)';
+
+  /* text */
+  tb('#t-hook',t,3.58,7.42,{stag:0.11,dy:96});
+  tb('#t-vault',t,8.08,13.02,{stag:0.10});
+  tb('#t-cardhero',t,14.18,16.02,{stag:0.10,dy:80});
+  tb('#t-card',t,16.78,23.82,{stag:0.10});
+  tb('#t-rew',t,24.58,29.02,{stag:0.10});
+  tb('#t-ref',t,29.78,33.62,{stag:0.10});
+
+  /* numbers */
+  setTxt('#w-bal',money(lerp(0,12840,eOut4(inv(t,3.95,5.90))),2));
+  setTxt('#s-bal',money(lerp(0,24318.42,eOut4(inv(t,8.45,10.30))),2));
+  const cp=eOut(inv(t,9.70,11.95));
+  $('#revrect').setAttribute('width',(cp*352).toFixed(1));
+  setTxt('#s-future',money(lerp(10000,1115112,cp),0));
+  setTxt('#s-earned',money(lerp(0,745112,cp),0)+' Earned');
+  $('#s-knob').setAttribute('opacity',inv(t,11.50,12.05).toFixed(3));
+  const cb=eOut(inv(t,17.75,19.60));
+  setTxt('#c-cash',money(lerp(0,38,cb),0));
+  $('#c-bar').style.width=(cb*25.3).toFixed(2)+'%';
+  const cbp=bell(inv(t,17.55,18.35));
+  $('#c-cbcard').style.transform='scale('+(1+cbp*0.022).toFixed(4)+')';
+  const rp=eOut4(inv(t,24.75,26.90));
+  setTxt('#r-points',lerp(0,10.5,rp).toFixed(1)+'M');
+  const rr=eOut(inv(t,26.10,27.45));
+  setTxt('#r-tot',money(lerp(0,412.80,rr),2));
+  setTxt('#r-cbv',money(lerp(0,284.10,rr),2));
+  setTxt('#r-rfv',money(lerp(0,128.70,rr),2));
+  $('#r-cb').style.transform='scale('+(1+bell(inv(t,26.05,26.75))*0.03).toFixed(4)+')';
+  $('#r-rf').style.transform='scale('+(1+bell(inv(t,26.30,27.00))*0.03).toFixed(4)+')';
+  const inv2=bell(inv(t,25.10,25.90));
+  $('#r-inv').style.transform='scale('+(1+inv2*0.05).toFixed(4)+')';
+  $('#r-inv').style.boxShadow=inv2>0.02?'0 0 0 2px rgba(148,236,127,'+(inv2*0.7).toFixed(2)+')':'none';
+  const tc=document.querySelectorAll('#r-tiers .tiercard');
+  for(let i=0;i<tc.length;i++){
+    const p=bell(inv(t,25.95+i*0.42,26.65+i*0.42));
+    tc[i].style.transform='translateY('+(-p*9).toFixed(1)+'px) scale('+(1+p*0.045).toFixed(4)+')';
+    tc[i].style.boxShadow=p>0.02?'0 0 0 1.5px rgba(148,236,127,'+(p*0.55).toFixed(2)+')':'none';
+  }
+  const ps=eOut(inv(t,27.55,28.30));
+  $('#pts-sheet').style.transform='translateY('+((1-ps)*840).toFixed(1)+'px)';
+  $('#pts-star').style.transform='scale('+(1+bell(inv(t,28.15,28.95))*0.10).toFixed(4)+') rotate('+(bell(inv(t,28.15,29.10))*10).toFixed(2)+'deg)';
+  const rf=eOut(inv(t,30.15,31.80));
+  setTxt('#ref-n',String(Math.round(lerp(0,12,rf))));
+  setTxt('#ref-e',money(lerp(0,128.70,rf),0));
+  for(let i=0;i<AVS.length;i++){
+    const st=29.95+i*0.13, p=eBack(inv(t,st,st+0.80));
+    const ang=(i/AVS.length)*Math.PI*2 + t*0.30;
+    const R=124*clamp(p,0,1.2);
+    AVS[i].style.opacity=inv(t,st,st+0.32).toFixed(3);
+    AVS[i].style.transform='translate(-50%,-50%) translate('+(Math.cos(ang)*R).toFixed(1)+'px,'+(Math.sin(ang)*R*0.60).toFixed(1)+'px) scale('+(0.5+0.5*clamp(p,0,1)).toFixed(3)+')';
+  }
+
+  /* outro */
+  const oOn = t>=33.72;
+  OL.style.display=oOn?'flex':'none';
+  if(oOn){
+    const gp=inv(t,33.90,35.30), og=$('#outroglow');
+    og.style.opacity=(gp*0.95).toFixed(3);
+    og.style.transform='scale('+lerp(0.45,1.12,eOut(gp)).toFixed(3)+')';
+    const mp=eBack(inv(t,34.05,35.00)), om=$('#o-mark');
+    om.style.opacity=inv(t,34.05,34.50).toFixed(3);
+    om.style.transform='scale('+lerp(0.62,1,mp).toFixed(3)+')';
+    const w=eOut(inv(t,34.32,35.10)), ow=$('#o-word');
+    ow.style.opacity=w.toFixed(3); ow.style.transform='translateY('+((1-w)*38).toFixed(1)+'px)';
+    const g2=eOut(inv(t,34.62,35.42)), ot=$('#o-tag');
+    ot.style.opacity=g2.toFixed(3); ot.style.transform='translateY('+((1-g2)*30).toFixed(1)+'px)';
+    const g3=eOut(inv(t,34.92,35.78)), ob=$('#o-badges');
+    ob.style.opacity=g3.toFixed(3); ob.style.transform='translateY('+((1-g3)*34).toFixed(1)+'px)';
+    const g4=eOut(inv(t,35.22,36.05)), ou=$('#o-url');
+    ou.style.opacity=g4.toFixed(3); ou.style.transform='translateY('+((1-g4)*26).toFixed(1)+'px)';
+  }
+
+  /* sweeps, flash, fades */
+  let sv=0, sx=0;
+  [[3.05,3.70],[33.72,34.32]].forEach(function(w){
+    const p=inv(t,w[0],w[1]);
+    if(p>0&&p<1){ sv=bell(p); sx=lerp(-1600,1600,p); }
+  });
+  SW.style.opacity=sv.toFixed(3);
+  SW.style.transform='translateX('+sx.toFixed(1)+'px)';
+  let fl=0;
+  [13.58,16.28,21.32,24.26,27.56,29.46].forEach(function(c){ fl=Math.max(fl,bell(inv(t,c-0.07,c+0.15))*0.085); });
+  FL.style.opacity=fl.toFixed(3);
+  FO.style.opacity=Math.max(1-inv(t,0,0.40), inv(t,37.00,37.55)).toFixed(3);
+}
+
+window.__render=function(t){ render(t); };
+window.__dur=DUR;
+render(0);
+document.fonts.ready.then(function(){ window.__ready=true; });
+})();
+</script>
+</body></html>
