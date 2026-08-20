@@ -13,9 +13,13 @@ animated individually.
 
 | File | Format | Use |
 | --- | --- | --- |
-| `out/solid-rewards-4x5.mp4` | 1080×1350, 60fps | X / Instagram feed (master) |
-| `out/solid-rewards-9x16.mp4` | 1080×1920, 60fps | Stories, Reels, TikTok |
+| `out/solid-rewards-4x5-final.mp4` | 1080×1350, 60fps, 11.2MB | X / Instagram feed (master) |
+| `out/solid-rewards-9x16-final.mp4` | 1080×1920, 60fps, 13.8MB | Stories, Reels, TikTok |
 | `out/sound.wav` | 48kHz stereo | Sound-design stem |
+| `out/storyboard.png` | contact sheet | Six beats, for review without playback |
+
+Build both with `./build.sh` (~30 min: picture is the slow part at ~0.18s/frame,
+and each cut is 3240 subsampled frames).
 
 ## How it works
 
