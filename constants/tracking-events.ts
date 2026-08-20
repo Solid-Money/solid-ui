@@ -173,6 +173,16 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_KYC_PENDING_VIEWED: 'buy_crypto_kyc_pending_viewed',
   BUY_CRYPTO_KYC_REJECTED: 'buy_crypto_kyc_rejected',
   BUY_CRYPTO_KYC_RETRY_PRESSED: 'buy_crypto_kyc_retry_pressed',
+  /**
+   * Hosted-KYC retry, offered when TransFi couldn't read the documents we
+   * shared: _PRESSED when the user asks for it, _PAGE_OPENED when the hosted
+   * page is handed to them, _UNAVAILABLE when TransFi refuses a new attempt and
+   * _FAILED when the request errors.
+   */
+  BUY_CRYPTO_KYC_HOSTED_RETRY_PRESSED: 'buy_crypto_kyc_hosted_retry_pressed',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_PAGE_OPENED: 'buy_crypto_kyc_hosted_retry_page_opened',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_UNAVAILABLE: 'buy_crypto_kyc_hosted_retry_unavailable',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_FAILED: 'buy_crypto_kyc_hosted_retry_failed',
   BUY_CRYPTO_AMOUNT_VIEWED: 'buy_crypto_amount_viewed',
   BUY_CRYPTO_CURRENCY_SELECTED: 'buy_crypto_currency_selected',
   BUY_CRYPTO_PAYMENT_METHOD_SELECTED: 'buy_crypto_payment_method_selected',

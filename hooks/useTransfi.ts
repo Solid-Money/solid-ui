@@ -7,6 +7,7 @@ import {
   getTransfiPaymentMethods,
   getTransfiQuote,
   getTransfiStatus,
+  retryTransfiKyc,
   shareTransfiKyc,
 } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
@@ -41,6 +42,27 @@ export function useShareTransfiKyc() {
     },
     onSuccess: data => {
       queryClient.setQueryData([TRANSFI_STATUS_KEY], data);
+    },
+  });
+}
+
+/**
+ * Ask TransFi for a hosted KYC link after a rejected share.
+ *
+ * The response is also a gating status, so it is written straight into the
+ * status cache: when TransFi refuses the retry (already submitted, terminally
+ * rejected) the screen re-renders from that instead of the stale `rejected`.
+ */
+export function useRetryTransfiKyc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const data = await withRefreshToken(() => retryTransfiKyc());
+      if (!data) throw new Error('Failed to start the TransFi verification');
+      return data;
+    },
+    onSuccess: ({ kycUrl: _kycUrl, ...status }) => {
+      queryClient.setQueryData([TRANSFI_STATUS_KEY], status);
     },
   });
 }

@@ -113,6 +113,7 @@ import {
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
+  TransfiKycRetryResponse,
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
@@ -1205,6 +1206,22 @@ export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
 /** Forward the user's approved Didit KYC to TransFi (after consent). */
 export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/share`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Ask TransFi for a hosted KYC link after it couldn't verify the documents we
+ * shared. Resolves with `kycUrl` when there is a flow to open, or with the
+ * refreshed gating status when TransFi refuses one (already submitted,
+ * terminally rejected).
+ */
+export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/retry`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },

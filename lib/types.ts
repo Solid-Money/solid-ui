@@ -2036,11 +2036,25 @@ export interface TransfiStatusResponse {
   transfiKycStatus?: string;
   reasons?: string[];
   /**
+   * On `rejected`, whether TransFi will let the user resubmit through its hosted
+   * KYC. False for compliance rejections, where retrying is pointless — the
+   * screen offers a retry only when this is true.
+   */
+  canRetryKyc?: boolean;
+  /**
    * On `needs_kyc`, the identity provider this user's jurisdiction routes to.
    * Resolved from the backend's country rules; the client's own country signal
    * (from the geo store) takes precedence when it has one.
    */
   kycProvider?: KycProvider;
+}
+
+/**
+ * Result of POST /transfi/kyc/retry: the gating status, plus the hosted KYC page
+ * to open when TransFi granted one.
+ */
+export interface TransfiKycRetryResponse extends TransfiStatusResponse {
+  kycUrl?: string;
 }
 
 export interface TransfiPaymentMethodOption {

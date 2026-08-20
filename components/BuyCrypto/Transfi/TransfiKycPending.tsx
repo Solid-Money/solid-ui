@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { XCircle } from 'lucide-react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import { openBrowserAsync } from 'expo-web-browser';
+import { ExternalLink, XCircle } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
-import { useShareTransfiKyc, useTransfiStatus } from '@/hooks/useTransfi';
+import { useRetryTransfiKyc, useShareTransfiKyc, useTransfiStatus } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -29,8 +30,13 @@ export const TransfiKycPending = () => {
   const routeToKyc = useBuyCryptoKycRoute();
   const { data: status } = useTransfiStatus({ poll: true });
   const { mutate: share, isPending: isSharing } = useShareTransfiKyc();
+  const { mutateAsync: retryKyc, isPending: isRetrying } = useRetryTransfiKyc();
   const attemptsRef = useRef(0);
   const [exhausted, setExhausted] = useState(false);
+  /** TransFi's hosted KYC page, once we've been given one to open. */
+  const [hostedKycUrl, setHostedKycUrl] = useState<string>();
+  const [hostedKycBlocked, setHostedKycBlocked] = useState(false);
+  const [retryError, setRetryError] = useState<string>();
 
   useEffect(() => {
     track(TRACKING_EVENTS.BUY_CRYPTO_KYC_PENDING_VIEWED);
@@ -79,7 +85,115 @@ export const TransfiKycPending = () => {
     share();
   }, [share]);
 
+  /**
+   * Open TransFi's hosted KYC. As with the payment page, it is handed off rather
+   * than framed — the flow uses the camera and its own redirects, which an
+   * iframe/WebView breaks, and a real browser shows the user a trusted URL.
+   */
+  const openHostedKyc = useCallback(async (url: string) => {
+    if (Platform.OS === 'web') {
+      const win = window.open(url, '_blank', 'noopener,noreferrer');
+      // A null handle means a popup blocker stopped it; the user has to trigger
+      // the open themselves, so the screen leads with the button instead.
+      setHostedKycBlocked(!win);
+      if (win) track(TRACKING_EVENTS.BUY_CRYPTO_KYC_HOSTED_RETRY_PAGE_OPENED);
+      return;
+    }
+    try {
+      await openBrowserAsync(url);
+      track(TRACKING_EVENTS.BUY_CRYPTO_KYC_HOSTED_RETRY_PAGE_OPENED);
+    } catch (error) {
+      // Leave the user on this screen so the button can be tried again.
+      console.error('Failed to open the TransFi verification page:', error);
+      setHostedKycBlocked(true);
+    }
+  }, []);
+
+  /**
+   * Ask for a fresh verification. TransFi decides whether one is possible: a
+   * link means "resubmit here", no link means it refused (a decision is already
+   * in flight, or the rejection is terminal) and the status it returned — now in
+   * the query cache — renders the right screen instead.
+   */
+  const handleHostedRetry = useCallback(async () => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_HOSTED_RETRY_PRESSED);
+    setRetryError(undefined);
+    try {
+      const result = await retryKyc();
+      if (!result.kycUrl) {
+        track(TRACKING_EVENTS.BUY_CRYPTO_KYC_HOSTED_RETRY_UNAVAILABLE, {
+          status: result.status,
+        });
+        return;
+      }
+      setHostedKycUrl(result.kycUrl);
+      await openHostedKyc(result.kycUrl);
+    } catch (error) {
+      track(TRACKING_EVENTS.BUY_CRYPTO_KYC_HOSTED_RETRY_FAILED);
+      console.error('Failed to start the TransFi verification:', error);
+      setRetryError('We couldn’t start the verification. Please try again in a moment.');
+    }
+  }, [retryKyc, openHostedKyc]);
+
+  // The hosted flow has been handed to the user and is being completed outside
+  // this modal. Nothing to do here but let them reopen it — the polled status
+  // moves on by itself once TransFi receives the new submission.
+  if (hostedKycUrl && status?.status === 'rejected') {
+    return (
+      <View className="flex-1 gap-6">
+        <View className="items-center gap-4 pt-2">
+          <View className="items-center justify-center rounded-full bg-card p-5">
+            <ExternalLink size={40} color="#94F27F" />
+          </View>
+          <View className="items-center gap-2 px-4">
+            <Text className="text-center text-2xl font-bold text-primary">
+              {hostedKycBlocked ? 'Open the verification page' : 'Finish verifying'}
+            </Text>
+            <Text className="text-center text-base text-muted-foreground">
+              {hostedKycBlocked
+                ? 'Your browser blocked the verification window. Open it to retake your photos.'
+                : 'We’ve opened our payment partner’s verification page. Retake your photos there, then come back to this screen.'}
+            </Text>
+          </View>
+        </View>
+
+        <Text className="px-1 text-center text-xs text-muted-foreground">
+          Keep this open — we’ll pick up the result automatically.
+        </Text>
+
+        <View className="mt-auto w-full gap-3">
+          <Button
+            className="h-14 rounded-2xl"
+            variant={hostedKycBlocked ? 'brand' : 'secondary'}
+            onPress={() => void openHostedKyc(hostedKycUrl)}
+          >
+            <Text
+              className={
+                hostedKycBlocked
+                  ? 'text-base font-bold text-primary-foreground'
+                  : 'text-base font-semibold text-primary'
+              }
+            >
+              {hostedKycBlocked ? 'Open verification page' : 'Reopen verification page'}
+            </Text>
+          </Button>
+          <Button
+            className="h-12 rounded-2xl"
+            variant="ghost"
+            onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+          >
+            <Text className="text-base font-semibold text-muted-foreground">Close</Text>
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   if (status?.status === 'rejected') {
+    // Two very different rejections share this status: documents TransFi
+    // couldn't read (fixable — offer the hosted flow) and a compliance decision
+    // (nothing a second attempt changes). `canRetryKyc` is the server's answer.
+    const canRetry = Boolean(status.canRetryKyc);
     return (
       <View className="flex-1 items-center justify-center gap-6 px-4">
         <View className="items-center justify-center rounded-full bg-card p-6">
@@ -90,18 +204,50 @@ export const TransfiKycPending = () => {
             Verification unsuccessful
           </Text>
           <Text className="text-center text-base text-muted-foreground">
-            {status.reasons?.length
-              ? status.reasons.join(', ')
+            {canRetry
+              ? 'Our payment partner couldn’t verify the documents we shared — usually a photo that’s blurry, cropped or out of date. You can verify again with them directly.'
               : 'We couldn’t verify your identity with our payment partner. Please try again later.'}
           </Text>
+          {status.reasons?.length ? (
+            <Text className="text-center text-sm text-muted-foreground">
+              {status.reasons.join(', ')}
+            </Text>
+          ) : null}
+          {retryError ? (
+            <Text className="text-center text-sm text-red-500">{retryError}</Text>
+          ) : null}
         </View>
-        <Button
-          className="mt-auto h-14 w-full rounded-2xl"
-          variant="secondary"
-          onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
-        >
-          <Text className="text-base font-bold text-primary">Close</Text>
-        </Button>
+        {canRetry ? (
+          <View className="mt-auto w-full gap-3">
+            <Button
+              className="h-14 rounded-2xl"
+              variant="brand"
+              disabled={isRetrying}
+              onPress={() => void handleHostedRetry()}
+            >
+              {isRetrying ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <Text className="text-base font-bold text-primary-foreground">Verify again</Text>
+              )}
+            </Button>
+            <Button
+              className="h-12 rounded-2xl"
+              variant="ghost"
+              onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+            >
+              <Text className="text-base font-semibold text-muted-foreground">Close</Text>
+            </Button>
+          </View>
+        ) : (
+          <Button
+            className="mt-auto h-14 w-full rounded-2xl"
+            variant="secondary"
+            onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+          >
+            <Text className="text-base font-bold text-primary">Close</Text>
+          </Button>
+        )}
       </View>
     );
   }
