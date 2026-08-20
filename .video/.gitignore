@@ -10,3 +10,7 @@ out/diag*.png
 out/crop_*.png
 out/wave.png
 out/build.log
+
+# silent picture-only intermediates; only the muxed *-final.mp4 are deliverables
+out/solid-rewards-4x5.mp4
+out/solid-rewards-9x16.mp4
