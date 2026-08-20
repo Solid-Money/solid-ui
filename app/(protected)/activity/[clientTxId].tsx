@@ -45,7 +45,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { formatCardAmount, getCashbackAmount } from '@/lib/utils/cardHelpers';
+import { formatCardAmount, getCardFeeInfo, getCashbackAmount } from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -259,6 +259,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   }, [txHash]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+  const feeInfo = getCardFeeInfo(transaction);
+  const localDetails = transaction.local_transaction_details;
 
   const statusLabel = isApproved
     ? 'Pending'
@@ -341,6 +343,36 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           label: <Label>Releases in</Label>,
           value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
         },
+      // What the merchant actually charged, shown right above the FX fee so the
+      // fee has a visible cause rather than looking like an unexplained charge.
+      localDetails?.amount &&
+        localDetails.currency && {
+          key: 'local-amount',
+          label: <Label>Charged in</Label>,
+          value: (
+            <Value>
+              {localDetails.amount} {localDetails.currency.toUpperCase()}
+            </Value>
+          ),
+        },
+      feeInfo && {
+        key: 'card-fee',
+        label: (
+          <Label>
+            {feeInfo.label}
+            {feeInfo.rate ? ` (${feeInfo.rate})` : ''}
+          </Label>
+        ),
+        value: (
+          <Value className={feeInfo.isWaived ? 'text-brand' : ''}>
+            {feeInfo.isWaived
+              ? feeInfo.waivedNote || 'Free'
+              : feeInfo.isPending
+                ? `${feeInfo.amount} (Pending)`
+                : feeInfo.amount}
+          </Value>
+        ),
+      },
       txHash && {
         key: 'explorer',
         label: <Label>Explorer</Label>,
@@ -360,6 +392,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return allRows;
   }, [
     cashbackInfo,
+    feeInfo,
+    localDetails,
     txHash,
     handleExplorerPress,
     statusLabel,
