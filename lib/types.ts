@@ -1360,6 +1360,59 @@ export interface RewardsUserData {
   legacyCarryoverPoints?: number;
   /** Tier the user starts in after carryover is applied (Core or Prime). */
   startingTier?: RewardsTier;
+  /**
+   * Extra APY the current tier adds on top of the base savings yield, in
+   * percentage points. 0 (or absent) means the tier grants no boost, which is
+   * what hides the yield boost benefit card and the savings boost strip.
+   */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for the current tier, in USD. */
+  yieldBoostCap?: number;
+  /** Yield boost payouts the user has already received, in USD. */
+  yieldBoostEarned?: number;
+  /**
+   * Cashback % the current tier earns back on eligible subscriptions. 0 (or
+   * absent) means the tier grants none, which hides the subscription card.
+   */
+  subscriptionDiscountRate?: number;
+  /** Subscription categories the current tier earns the discount on per month. */
+  subscriptionCategoryLimit?: number;
+  /**
+   * FUSE-in-savings tier unlock ("skip the line"). Absent on older backends,
+   * which is what hides the section.
+   */
+  fuseSkipLine?: FuseSkipLine;
+}
+
+/** One "skip the line" rung: what a tier costs in FUSE and how close the user is. */
+export interface FuseSkipLineTier {
+  tier: RewardsTier;
+  /** FUSE that must sit in the soFUSE vault to hold this tier. */
+  requiredFuse: number;
+  /** Whether the user's current FUSE balance meets the threshold. */
+  unlocked: boolean;
+  /** FUSE still needed to reach the threshold (0 once unlocked). */
+  remainingFuse: number;
+  /** Progress toward this tier's threshold, 0-100. */
+  progressPct: number;
+}
+
+/**
+ * "Skip the line": FUSE held in savings unlocks a membership tier outright,
+ * bypassing the points ladder. The tier is held only while the balance stays
+ * above the threshold.
+ */
+export interface FuseSkipLine {
+  /** Whether the mechanic is switched on. False hides the section. */
+  enabled: boolean;
+  /** The user's soFUSE position, denominated in FUSE. */
+  balanceFuse: number;
+  /** That same position in USD, for the secondary label. */
+  balanceUsd: number;
+  /** Highest tier the FUSE balance unlocks on its own (core when none). */
+  unlockedTier: RewardsTier;
+  /** The purchasable rungs, cheapest first. */
+  tiers: FuseSkipLineTier[];
 }
 
 export interface TierBenefit {
@@ -1371,6 +1424,10 @@ export interface TierBenefit {
 export interface TierBenefits {
   tier: RewardsTier;
   depositBoost: TierBenefit;
+  /** `depositBoost` as APY percentage points (0 when the tier has no boost). */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for this tier, in USD. */
+  yieldBoostCap?: number;
   cardCashback: TierBenefit;
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;
@@ -1434,7 +1491,11 @@ export interface SubscriptionDiscountConfig {
 }
 
 export interface FuseStakingConfig {
+  /** Master switch for the "skip the line" FUSE tier unlock. */
+  enabled: boolean;
+  /** FUSE that must sit in the soFUSE vault to hold Prime. */
   tier2Amount: number;
+  /** FUSE that must sit in the soFUSE vault to hold Ultra. */
   tier3Amount: number;
 }
 

@@ -17,6 +17,8 @@ type Path = {
   SIGNUP_CREATING: Href;
   SIGNUP_PASSKEY: Href;
   SAVINGS: Href;
+  /** Savings with the FUSE vault preselected (rewards "skip the line" CTA). */
+  SAVINGS_FUSE: Href;
   SAVINGS_OLD: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
@@ -95,6 +97,7 @@ export const path: Path = {
   SIGNUP_CREATING: '/signup/creating',
   SIGNUP_PASSKEY: '/signup/passkey',
   SAVINGS: '/savings',
+  SAVINGS_FUSE: { pathname: '/savings', params: { vault: 'fuse' } } as Href,
   SAVINGS_OLD: '/savings-old',
   ACTIVITY: '/activity',
   DEPOSIT: '/deposit',

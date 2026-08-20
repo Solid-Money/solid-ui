@@ -92,6 +92,14 @@ export function formatNumber(number: number, maximumFractionDigits = 6, minimumF
   }).format(num);
 }
 
+/**
+ * Format a USD amount with no cents (e.g. "$450") — the rewards sheets quote
+ * caps and totals in whole dollars.
+ */
+export function formatWholeDollars(value: number): string {
+  return `$${formatNumber(value || 0, 0, 0)}`;
+}
+
 /** Format cents to dollars string (e.g. for Rain card balance) */
 export function formatCentsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);

@@ -21,13 +21,15 @@ import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import DailyBenefits from './DailyBenefits';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
+import { hasSkipTheLine } from './skipTheLine';
+import SkipTheLineSection from './SkipTheLineSection';
+import { resolveTierBenefitRates } from './tierBenefitCards';
+import TierBenefitsGrid from './TierBenefitsGrid';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -142,6 +144,19 @@ export default function RewardsScreenNew() {
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
 
+  // Core grants neither the yield boost nor subscription cashback, so on a
+  // Core test account both cards correctly disappear — which leaves nothing to
+  // review. Off production, preview them at stock Prime rates instead.
+  const benefitRates = resolveTierBenefitRates(
+    {
+      yieldBoostPercentage: rewardsData?.yieldBoostPercentage ?? 0,
+      yieldBoostCap: rewardsData?.yieldBoostCap ?? 0,
+      yieldBoostEarned: rewardsData?.yieldBoostEarned ?? 0,
+      subscriptionDiscountRate: rewardsData?.subscriptionDiscountRate ?? 0,
+    },
+    isDevFeatureEnabled,
+  );
+
   return (
     <PageLayout
       mobileTitle={null}
@@ -199,16 +214,27 @@ export default function RewardsScreenNew() {
         <RewardsSummaryCard cashback={cashback} referrals={referrals} />
 
         <View className="mt-8">
-          <DailyBenefits
+          <TierBenefitsGrid
             cashbackRate={rewardsData?.cashbackRate ?? 0}
             cashbackThisMonth={cashback}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}
+            {...benefitRates}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
             onReferralsPress={() => setIsReferralModalOpen(true)}
-            onSupportPress={openSupportDrawer}
           />
         </View>
+
+        {/* Sits below the earned benefits: this is the shortcut past them.
+            Renders nothing unless the backend says the mechanic is live. */}
+        {hasSkipTheLine(rewardsData?.fuseSkipLine) && (
+          <View className="mt-8">
+            <SkipTheLineSection
+              skipLine={rewardsData?.fuseSkipLine}
+              onAddFuse={() => router.push(path.SAVINGS_FUSE)}
+            />
+          </View>
+        )}
       </View>
 
       <ReferralProgramModalNew
