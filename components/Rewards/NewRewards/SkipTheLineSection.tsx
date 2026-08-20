@@ -86,12 +86,22 @@ const SkipLineTierRow = ({
     <View className="gap-[13px] px-5 py-[18px]">
       <View className="gap-[3px]">
         <Text className="text-base font-semibold text-white">{tierName}</Text>
-        {/* Reads "$2,000 128,000 / 400,000 FUSE · 272,000 needed to upgrade" —
-            the ratio carries the weight because it's the number that moves. */}
+        {/* Reads "128,000 ($2,000) / 400,000 FUSE · 272,000 needed to upgrade".
+            The ratio is bold because it's the number that moves. The USD sits
+            in brackets straight after the balance — it annotates what the user
+            holds, not the target — and a step dimmer, so it reads as an aside
+            rather than running into the figures on either side. */}
         <Text className="text-xs font-medium text-white/[0.45]">
-          {formatWholeDollars(balanceUsd)}{' '}
+          <Text className="text-xs font-bold text-white/[0.45]">{formatFuse(balanceFuse)}</Text>
+          {balanceUsd > 0 ? (
+            <Text className="text-xs font-medium text-white/30">
+              {' '}
+              ({formatWholeDollars(balanceUsd)})
+            </Text>
+          ) : null}
           <Text className="text-xs font-bold text-white/[0.45]">
-            {formatFuse(balanceFuse)} / {formatFuse(rung.requiredFuse)} FUSE
+            {' '}
+            / {formatFuse(rung.requiredFuse)} FUSE
           </Text>{' '}
           · {formatFuse(rung.remainingFuse)} needed to upgrade
         </Text>
