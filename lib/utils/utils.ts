@@ -353,8 +353,21 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
   return bytes;
 };
 
-export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
-  return JSON.parse(stampHeaderValue).credentialId;
+/**
+ * Pull the WebAuthn credential id out of a Turnkey passkey stamp header. The
+ * stamp is a JSON envelope (`{ authenticatorData, clientDataJson,
+ * credentialId, signature }`) — API-key stamps carry no credentialId, so
+ * anything unparseable or missing is simply "not a passkey stamp".
+ */
+export const parseStampHeaderValueCredentialId = (stampHeaderValue: string): string | undefined => {
+  try {
+    const parsed = JSON.parse(stampHeaderValue) as { credentialId?: unknown };
+    return typeof parsed.credentialId === 'string' && parsed.credentialId
+      ? parsed.credentialId
+      : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
