@@ -22,6 +22,7 @@ import {
   logout as apiLogout,
   removePushToken,
   updateSafeAddress,
+  updateUserCredentialId,
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
@@ -29,7 +30,13 @@ import { useIntercom } from '@/lib/intercom';
 import { destroyOnramper } from '@/lib/onramper';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, setGlobalLogoutHandler, setIsLoggingOut, withRefreshToken } from '@/lib/utils';
+import {
+  getNonce,
+  parseStampHeaderValueCredentialId,
+  setGlobalLogoutHandler,
+  setIsLoggingOut,
+  withRefreshToken,
+} from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -236,6 +243,15 @@ const useUser = (): UseUserReturn => {
         StamperType.Passkey,
       );
 
+      // The credential the authenticator actually used. This is the only
+      // trustworthy source for the user's live credentialId: after a passkey
+      // recovery the account row still points at the passkey the user lost,
+      // and that stored value is what pins `allowCredentials` for every
+      // in-app passkey prompt.
+      const stampedCredentialId = stamp?.stamp?.stampHeaderValue
+        ? parseStampHeaderValueCredentialId(stamp.stamp.stampHeaderValue)
+        : undefined;
+
       // Step 3: Authenticate with our backend using the signed request
       const user = await login(stamp);
 
@@ -281,10 +297,24 @@ const useUser = (): UseUserReturn => {
         email: user.email,
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
-        credentialId: user.credentialId,
+        credentialId: stampedCredentialId ?? user.credentialId,
         hasPasskey: user.hasPasskey ?? true,
       };
       storeUser(selectedUser);
+
+      // Persist the recovered credential server-side. Fired after `storeUser`
+      // because on native the request's JWT is read from the selected user in
+      // the store. The backend heals this on login too; this keeps older
+      // backends in sync and is best-effort either way.
+      if (stampedCredentialId && user.credentialId !== stampedCredentialId) {
+        withRefreshToken(() => updateUserCredentialId(stampedCredentialId)).catch(error => {
+          console.warn('[useUser] failed to persist recovered credentialId', error);
+          Sentry.captureException(error, {
+            tags: { type: 'credential_id_sync_error' },
+          });
+        });
+      }
+
       await checkBalance(selectedUser);
 
       // Identify user in analytics with full attribution context
@@ -551,6 +581,15 @@ const useUser = (): UseUserReturn => {
         StamperType.Passkey,
       );
 
+      // The credential the authenticator actually used. After a passkey
+      // recovery this differs from the one stored on the user row, and the
+      // stored value is what pins `allowCredentials` for every subsequent
+      // in-app passkey prompt — so carrying the old one forward here lets the
+      // user log in and then fail on the next action that needs a passkey.
+      const stampedCredentialId = result?.stamp?.stampHeaderValue
+        ? parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue)
+        : undefined;
+
       const authedUser = await login(result);
 
       // Update the stored user with fresh tokens and keep them selected
@@ -559,9 +598,23 @@ const useUser = (): UseUserReturn => {
           ...selectedUser,
           selected: true,
           tokens: authedUser.tokens || undefined,
+          credentialId: stampedCredentialId ?? authedUser.credentialId ?? selectedUser.credentialId,
         });
       } else {
         selectUserById(authedUser?._id ?? userId);
+      }
+
+      // Persist the recovered credential server-side. Fired after the store
+      // update because on native the request's JWT is read from the selected
+      // user in the store. The backend heals this on login too; this keeps
+      // older backends in sync and is best-effort either way.
+      if (stampedCredentialId && authedUser?.credentialId !== stampedCredentialId) {
+        withRefreshToken(() => updateUserCredentialId(stampedCredentialId)).catch(error => {
+          console.warn('[useUser] failed to persist recovered credentialId', error);
+          Sentry.captureException(error, {
+            tags: { type: 'credential_id_sync_error' },
+          });
+        });
       }
 
       // Reset logout flag so future session expiries show the toast
