@@ -16,6 +16,12 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
+// Wirex spend-module test mode. Turns on the SolidCashModule registration flow
+// (Safe.enableModule + registerSafe with on-chain spending limits) *alongside* the
+// shipped ERC-20 allowance flow, so both can be exercised on the same card without
+// the older path being removed. Off in production: the allowance flow is what
+// ships today, and the module's own owner/guardian keys are still on an EOA.
+export const IS_WIREX_TEST = process.env.EXPO_PUBLIC_IS_WIREX_TEST === 'true';
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined
 // into the JS bundle, so only ever put a publishable key here, never a secret.
@@ -123,6 +129,10 @@ type Addresses = {
     bridgePaymasterAddress: Address;
     merklDistributor: Address;
     cardDepositManager: Address;
+    /** SolidCashModule — the Safe module the card backend debits through. IS_WIREX_TEST only. */
+    cashModule: Address;
+    /** SolidCashLens — one-call read of a Safe's spending power. IS_WIREX_TEST only. */
+    cashLens: Address;
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
@@ -193,6 +203,11 @@ export const ADDRESSES: Addresses = {
     bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
     cardDepositManager: '0x22BBc13D022735f2586d4eb04a93f0F4E0173E50',
+    // Deployed 2026-08-21. Non-upgradeable by design: a new module cannot be swapped
+    // in for a user, it has to be enabled by their own Safe owner signature. Changing
+    // this address therefore means every registered Safe must re-consent.
+    cashModule: '0x379831B28995f0AfbCD336Aaa1aCf7Af0ABc1e5d',
+    cashLens: '0x1Dc165730dfd0F0e2C6565bBab697126F16644dF',
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',

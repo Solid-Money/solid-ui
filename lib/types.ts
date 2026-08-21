@@ -762,6 +762,59 @@ export interface WirexRevealSessionResponse {
  * spender address is environment-specific, and a stale client-side copy would have
  * users approving an allowance nobody can spend.
  */
+/**
+ * A Wirex cardholder's `SolidCashModule` registration, as the backend records it.
+ *
+ * The chain is the source of truth — `SolidCashModule.isRegistered` and the Safe's own
+ * module list decide whether spending works, not this record. The backend stores it so
+ * the app, the sweep engine and support all see the same answer without each doing its
+ * own multicall, and so a registration can be reconciled after the fact.
+ *
+ * Limits are decimal USD strings rather than numbers: they are 6-decimal on-chain
+ * values and float rounding on a spending cap is not worth the convenience.
+ */
+export interface WirexCardRegistrationResponse {
+  /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
+  registered: boolean;
+  /** Whether the module is enabled on the Safe. False once a user revokes consent. */
+  moduleEnabled: boolean;
+  /** Whether registration is offered at all in this environment. */
+  available: boolean;
+  /** The Safe's own daily cap, decimal USD. Null before registration. */
+  dailyLimitUsd: string | null;
+  /** The Safe's own monthly cap, decimal USD. Null before registration. */
+  monthlyLimitUsd: string | null;
+  /** Live org ceiling a Safe's daily cap is clamped to on every read. */
+  maxDailyLimitUsd: string;
+  /** Live org ceiling a Safe's monthly cap is clamped to on every read. */
+  maxMonthlyLimitUsd: string;
+  /** Applied when a Safe registers passing 0. */
+  defaultDailyLimitUsd: string;
+  defaultMonthlyLimitUsd: string;
+  /** Hard cap on a single card transaction, independent of the rolling windows. */
+  maxPerTxUsd: string;
+  /** Headroom left under the tighter of the two windows right now. */
+  limitRemainingUsd: string | null;
+  /** Global guardian pause. Spending is off for everyone while true. */
+  modulePaused: boolean;
+  /** Per-Safe guardian pause — arrears or a fraud hold. */
+  safePaused: boolean;
+  /** `SolidCashModule` address the app must enable and register against. */
+  moduleAddress: string;
+  /** Chain the module lives on. Always Fuse (122). */
+  chainId: number;
+  /** Seconds from UTC the Safe's rolling windows reset at. Null before registration. */
+  timezoneOffset: number | null;
+}
+
+/** What the app tells the backend after a `registerSafe` user operation lands. */
+export interface WirexCardRegistrationConfirmRequest {
+  transactionHash: string;
+  dailyLimitUsd: string;
+  monthlyLimitUsd: string;
+  timezoneOffset: number;
+}
+
 export interface WirexSpendAuthorizationResponse {
   /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
   authorized: boolean;
