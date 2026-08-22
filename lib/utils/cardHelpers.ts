@@ -2,6 +2,7 @@ import {
   CardProvider,
   CardResponse,
   CardStatus,
+  CardTransaction,
   Cashback,
   CashbackInfo,
   CashbackStatus,
@@ -58,6 +59,68 @@ export const canToggleCardFreeze = (cardDetails: FreezeState): boolean =>
  */
 export const canDepositToCard = (provider: CardProvider | null | undefined): boolean =>
   provider !== CardProvider.WIREX;
+
+/** A trimmed non-empty string, or undefined. */
+const nonEmpty = (value: string | undefined | null): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+/** How a card transaction's merchant should be shown. */
+export type MerchantDisplay = {
+  /** Brand name when the issuer enriched one, else the raw descriptor. */
+  name: string;
+  /** Merchant logo, when the issuer has one. Falls back to an initials avatar. */
+  iconUrl?: string;
+  /** Merchant category, enriched name first, then the issuer's own. */
+  category?: string;
+  /** "SEATTLE, US", when the transaction carries a place. */
+  location?: string;
+};
+
+/**
+ * Resolve what to show for a transaction's merchant.
+ *
+ * The card network sends the descriptor a terminal typed ("GOOGLE *Play Books"),
+ * which is what a user sees unless the issuer has enriched it into a brand name,
+ * a category and a logo. Enrichment is optional and never arrives before the
+ * transaction settles, so every field falls back: brand name → raw descriptor →
+ * transaction description → "Unknown". Shared by the activity list, the card
+ * transaction list and the transaction detail screen so all three name the same
+ * merchant the same way.
+ */
+export const getMerchantDisplay = (
+  transaction: Pick<
+    CardTransaction,
+    | 'merchant_name'
+    | 'merchant_city'
+    | 'merchant_country'
+    | 'merchant_category'
+    | 'enriched_merchant_name'
+    | 'enriched_merchant_category'
+    | 'enriched_merchant_icon'
+    | 'description'
+  >,
+  options: { locationSeparator?: string; uppercaseLocation?: boolean } = {},
+): MerchantDisplay => {
+  const { locationSeparator = ' ', uppercaseLocation = false } = options;
+
+  const location = [nonEmpty(transaction.merchant_city), nonEmpty(transaction.merchant_country)]
+    .filter(Boolean)
+    .join(locationSeparator);
+
+  return {
+    name:
+      nonEmpty(transaction.enriched_merchant_name) ??
+      nonEmpty(transaction.merchant_name) ??
+      nonEmpty(transaction.description) ??
+      'Unknown',
+    iconUrl: nonEmpty(transaction.enriched_merchant_icon),
+    category:
+      nonEmpty(transaction.enriched_merchant_category) ?? nonEmpty(transaction.merchant_category),
+    location: location ? (uppercaseLocation ? location.toUpperCase() : location) : undefined,
+  };
+};
 
 /**
  * Get initials from merchant/person name for avatar display
