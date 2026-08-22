@@ -84,11 +84,13 @@ interface CardActionsRowProps {
  * Offering "Add funds" on a Wirex card would be offering a transfer with no
  * destination.
  *
- * Under `IS_WIREX_TEST` a second Wirex action appears alongside Authorize: "Spending",
- * the `SolidCashModule` registration flow. Both are shown deliberately rather than one
- * replacing the other, so the two mechanisms can be exercised on the same card and
- * compared. The allowance flow is what ships today and is left exactly as it was; the
- * module flow is additive and disappears entirely when the flag is off.
+ * Which Wirex action that is depends on `IS_WIREX_TEST`, and only ever one of them
+ * appears: with the flag off (the default) it is "Set up"/"Spending", the
+ * `SolidCashModule` registration flow, whose limits live on-chain; with it on it is
+ * "Authorize", the older ERC-20 allowance flow. Both grant the same permission by
+ * different mechanisms, so showing them together would ask the user to grant it twice
+ * for one card. The choice is made in the two hooks — `isAvailable` is false on
+ * whichever flow the flag did not select — not here.
  */
 const CardActionsRow = ({
   isCardFrozen,
@@ -100,9 +102,10 @@ const CardActionsRow = ({
   canWithdraw,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
+  // Each hook's `isAvailable` already accounts for IS_WIREX_TEST and the card's issuer,
+  // so no flag check is needed here — the hooks are the single place that decision lives,
+  // and at most one of these two is ever true.
   const { isAvailable: canAuthorizeSpend, isAuthorized } = useCardSpendAuthorization();
-  // `isAvailable` is already false unless IS_WIREX_TEST is on and this is a Wirex card,
-  // so no flag check is needed here — the hook is the single place that decision lives.
   const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
   // false for a Wirex card whatever else is true — depositing has no destination.

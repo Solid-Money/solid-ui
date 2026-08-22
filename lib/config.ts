@@ -16,11 +16,12 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
-// Wirex spend-module test mode. Turns on the SolidCashModule registration flow
-// (Safe.enableModule + registerSafe with on-chain spending limits) *alongside* the
-// shipped ERC-20 allowance flow, so both can be exercised on the same card without
-// the older path being removed. Off in production: the allowance flow is what
-// ships today, and the module's own owner/guardian keys are still on an EOA.
+// Which Wirex card-spend mechanism the app offers. Off (the default): the
+// SolidCashModule registration flow — Safe.enableModule + registerSafe, with the
+// spending limits enforced on-chain. On: the older ERC-20 allowance flow, kept for
+// testing against environments whose card-spend wallet still pulls via an allowance.
+// The two are mutually exclusive — they are two ways to grant the same permission, so
+// only the selected one is shown.
 export const IS_WIREX_TEST = process.env.EXPO_PUBLIC_IS_WIREX_TEST === 'true';
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined

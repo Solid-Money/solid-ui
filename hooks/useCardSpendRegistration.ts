@@ -59,9 +59,10 @@ export interface CardSpendRegistration {
  *
  * ## What registration is, and why it replaces the allowance
  *
- * The shipped flow (`useCardSpendAuthorization`) grants an ERC-20 allowance on soUSD to
- * our card-spend wallet. That works, but the only bound it carries is the allowance
- * amount: one number, spendable in one transaction, with no per-transaction ceiling, no
+ * This is the default flow for a Wirex card. `IS_WIREX_TEST` switches back to the older
+ * allowance flow (`useCardSpendAuthorization`), which grants an ERC-20 allowance on
+ * soUSD to our card-spend wallet. That works, but the only bound it carries is the
+ * allowance amount: one number, spendable in one transaction, with no per-transaction ceiling, no
  * rolling window, and no way for the user to see or shape what the card may take over
  * time.
  *
@@ -98,10 +99,12 @@ export function useCardSpendRegistration() {
   const [error, setError] = useState<string | null>(null);
 
   const safeAddress = user?.safeAddress as Address | undefined;
-  // Wirex only, and only in test mode: a Rain cardholder prefunds their card and has
-  // nothing to register, and the module's owner/guardian keys are not yet split for
-  // production use.
-  const isEnabled = IS_WIREX_TEST && provider === CardProvider.WIREX && Boolean(safeAddress);
+  // Wirex only, and only when the test flag is *off*: a Rain cardholder prefunds their
+  // card and has nothing to register. `IS_WIREX_TEST` selects the older allowance flow
+  // (`useCardSpendAuthorization`) instead, so exactly one of the two is ever offered —
+  // showing both would ask the user to grant spending permission twice, by two
+  // mechanisms, for one card.
+  const isEnabled = !IS_WIREX_TEST && provider === CardProvider.WIREX && Boolean(safeAddress);
 
   const query = useQuery<CardSpendRegistration>({
     queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, selectedUserId, safeAddress],
