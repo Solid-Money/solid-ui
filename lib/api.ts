@@ -127,6 +127,8 @@ import {
   WebhookStatus,
   WebProvisioningTokenResponse,
   WhatsNew,
+  WirexCardRegistrationConfirmRequest,
+  WirexCardRegistrationResponse,
   WirexRevealSessionResponse,
   WirexSpendAuthorizationResponse,
   WithdrawCollateralRequest,
@@ -2781,6 +2783,77 @@ export const revealCardDetailsComplete = async (
     return revealCardDetailsCompleteWirex(signMessage);
   }
   return revealCardDetailsCompleteRain();
+};
+
+// --- Wirex card spending via SolidCashModule (IS_WIREX_TEST) ---
+
+/**
+ * The user's `SolidCashModule` registration status and the limits around it.
+ *
+ * Distinct from {@link getWirexSpendAuthorization}, which describes the ERC-20
+ * allowance flow. The two are different mechanisms for the same job and only one is
+ * live per environment: an allowance is a token-level grant to a wallet, whereas the
+ * module is a Safe module with its own on-chain per-transaction, daily and monthly
+ * caps. Registration replaces the allowance rather than supplementing it.
+ *
+ * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it right
+ * after a `registerSafe` transaction lands so the UI flips on the same interaction.
+ */
+export const getWirexCardRegistration = async (
+  refresh = false,
+): Promise<WirexCardRegistrationResponse> => {
+  const jwt = getJWTToken();
+  const query = refresh ? '?refresh=true' : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/card-registration${query}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Record a completed registration and get the re-read status back.
+ *
+ * This grants nothing — the Safe registered itself with its own owner signature — it
+ * persists the outcome so the sweep engine and support see the same limits the user
+ * chose without re-deriving them, and saves the UI from waiting out the snapshot TTL.
+ *
+ * The limits are sent even though the backend can read them from the chain: if the
+ * two ever disagree, that is worth knowing about, and a mismatch is invisible if only
+ * one side is ever recorded.
+ */
+export const confirmWirexCardRegistration = async (
+  body: WirexCardRegistrationConfirmRequest,
+): Promise<WirexCardRegistrationResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/card-registration/confirm`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
 
 // --- Wirex card spending (soUSD allowance to our card-spend wallet) ---

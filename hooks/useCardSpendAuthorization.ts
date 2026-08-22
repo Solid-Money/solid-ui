@@ -8,6 +8,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { confirmWirexSpendAuthorization, getWirexSpendAuthorization } from '@/lib/api';
+import { IS_WIREX_TEST } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, WirexSpendAuthorizationResponse } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -17,6 +18,14 @@ export const CARD_SPEND_AUTHORIZATION_QUERY_KEY = 'cardSpendAuthorization';
 
 /**
  * A Wirex cardholder's soUSD spending authorization, and the action that grants it.
+ *
+ * ## Which flow a card gets
+ *
+ * This is the allowance flow, selected by `IS_WIREX_TEST`. With the flag off — the
+ * default — a Wirex card uses `useCardSpendRegistration` instead, which puts the
+ * spending bounds in `SolidCashModule` on-chain. The two are mutually exclusive: they
+ * are two mechanisms for the same permission, and offering both would ask the user to
+ * grant it twice for one card.
  *
  * ## Why there is no "Add funds" here
  *
@@ -46,14 +55,18 @@ export function useCardSpendAuthorization() {
   const selectedUserId = useUserStore(state => state.users.find(u => u.selected)?.userId);
   const [error, setError] = useState<string | null>(null);
 
-  const isWirexCard = provider === CardProvider.WIREX;
+  // Wirex only, and only under `IS_WIREX_TEST`: the flag selects the allowance flow
+  // over the `SolidCashModule` registration flow (`useCardSpendRegistration`), which is
+  // what runs with the flag off. Exactly one of the two is offered for a given card.
+  const isAllowanceFlow = IS_WIREX_TEST && provider === CardProvider.WIREX;
 
   const query = useQuery<WirexSpendAuthorizationResponse | null>({
     queryKey: [CARD_SPEND_AUTHORIZATION_QUERY_KEY, selectedUserId],
     queryFn: () => withRefreshToken(() => getWirexSpendAuthorization()),
     // Only Wirex cardholders have an allowance to report; a Rain cardholder funds
-    // their card instead and this endpoint has nothing to say about them.
-    enabled: Boolean(selectedUserId) && isWirexCard,
+    // their card instead and this endpoint has nothing to say about them. Skipped
+    // entirely on the module flow, where the allowance is not what governs spending.
+    enabled: Boolean(selectedUserId) && isAllowanceFlow,
     retry: false,
     staleTime: 15_000,
   });
@@ -160,7 +173,7 @@ export function useCardSpendAuthorization() {
     /** Null until loaded, or when the user is not a Wirex cardholder. */
     authorization,
     /** Whether to offer the control at all. */
-    isAvailable: isWirexCard && authorization?.available === true,
+    isAvailable: isAllowanceFlow && authorization?.available === true,
     /** True while an allowance remains — the control shows as done and disabled. */
     isAuthorized: authorization?.authorized === true,
     isLoading: query.isLoading,

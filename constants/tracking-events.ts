@@ -314,6 +314,12 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_AUTHORIZE_COMPLETED: 'card_spend_authorize_completed',
   CARD_SPEND_AUTHORIZE_FAILED: 'card_spend_authorize_failed',
   CARD_SPEND_AUTHORIZE_CANCELLED: 'card_spend_authorize_cancelled',
+  // SolidCashModule registration (IS_WIREX_TEST). Separate from the allowance events
+  // above so the two mechanisms can be compared rather than blended into one funnel.
+  CARD_SPEND_REGISTER_PRESSED: 'card_spend_register_pressed',
+  CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
+  CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',
+  CARD_SPEND_REGISTER_CANCELLED: 'card_spend_register_cancelled',
 
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',

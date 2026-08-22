@@ -4,10 +4,12 @@ import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import AuthorizeSpendAction from '@/components/Card/NewCardDetails/AuthorizeSpendAction';
+import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendAuthorization } from '@/hooks/useCardSpendAuthorization';
+import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
@@ -81,6 +83,14 @@ interface CardActionsRowProps {
  *
  * Offering "Add funds" on a Wirex card would be offering a transfer with no
  * destination.
+ *
+ * Which Wirex action that is depends on `IS_WIREX_TEST`, and only ever one of them
+ * appears: with the flag off (the default) it is "Set up"/"Spending", the
+ * `SolidCashModule` registration flow, whose limits live on-chain; with it on it is
+ * "Authorize", the older ERC-20 allowance flow. Both grant the same permission by
+ * different mechanisms, so showing them together would ask the user to grant it twice
+ * for one card. The choice is made in the two hooks — `isAvailable` is false on
+ * whichever flow the flag did not select — not here.
  */
 const CardActionsRow = ({
   isCardFrozen,
@@ -92,7 +102,11 @@ const CardActionsRow = ({
   canWithdraw,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
+  // Each hook's `isAvailable` already accounts for IS_WIREX_TEST and the card's issuer,
+  // so no flag check is needed here — the hooks are the single place that decision lives,
+  // and at most one of these two is ever true.
   const { isAvailable: canAuthorizeSpend, isAuthorized } = useCardSpendAuthorization();
+  const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
   // false for a Wirex card whatever else is true — depositing has no destination.
   // `canAuthorizeSpend` additionally requires the backend to have a Card Deposit
@@ -100,6 +114,7 @@ const CardActionsRow = ({
   // circle that opens nothing.
   const showDeposit = canAddFunds && canDepositToCard(provider);
   const showAuthorize = canAddFunds && canAuthorizeSpend;
+  const showRegister = canAddFunds && canRegisterSpend;
 
   return (
     <View className="flex-row items-start justify-center">
@@ -108,6 +123,21 @@ const CardActionsRow = ({
           <AuthorizeSpendAction
             trigger={
               <CircleAction label={isAuthorized ? 'Authorized' : 'Authorize'}>
+                <Image
+                  source={getAsset('images/card-action-add-funds.png')}
+                  style={styles.actionIcon}
+                  contentFit="contain"
+                />
+              </CircleAction>
+            }
+          />
+        </View>
+      )}
+      {showRegister && (
+        <View style={styles.item}>
+          <RegisterSpendAction
+            trigger={
+              <CircleAction label={isRevoked ? 'Paused' : isRegistered ? 'Spending' : 'Set up'}>
                 <Image
                   source={getAsset('images/card-action-add-funds.png')}
                   style={styles.actionIcon}
