@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { track } from '@/lib/analytics';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -37,6 +39,10 @@ export const VirtualAccountTosModal = () => {
   const [agreed, setAgreed] = useState(false);
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
 
+  useEffect(() => {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_TOS_VIEWED);
+  }, []);
+
   // Defensive: if an automation already exists, skip ToS straight to details.
   useEffect(() => {
     if (existingAutomation) {
@@ -45,9 +51,20 @@ export const VirtualAccountTosModal = () => {
   }, [existingAutomation, setModal]);
 
   const handleAccept = useCallback(() => {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_TOS_ACCEPTED, { rail: 'ach' });
     createMutation.mutate('ach', {
-      onSuccess: () => {
+      onSuccess: automation => {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATED, {
+          rail: 'ach',
+          rain_automation_id: automation.rainAutomationId,
+        });
         setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+      },
+      onError: error => {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATION_FAILED, {
+          rail: 'ach',
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+        });
       },
     });
   }, [createMutation, setModal]);

@@ -4,7 +4,9 @@ import { Check } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -18,6 +20,10 @@ export const TransfiPaymentMethodSelector = () => {
   const { data: methods, isLoading } = useTransfiPaymentMethods(currency ?? undefined);
 
   const handleSelect = (code: string) => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_PAYMENT_METHOD_SELECTED, {
+      payment_code: code,
+      currency: currency ?? undefined,
+    });
     setPaymentCode(code);
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
   };

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -11,8 +11,10 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
 import { DepositModal, RainApplicationStatus } from '@/lib/types';
@@ -115,6 +117,12 @@ export const VirtualAccountApplyModal = ({
   // "everything else is live" pop-up.
   const [unsupportedRegion, setUnsupportedRegion] = useState<RegionUnavailableGeo | null>(null);
 
+  // Funnel entry for the virtual account: everything downstream is measured
+  // against how many people saw this pitch.
+  useEffect(() => {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_PITCH_VIEWED);
+  }, []);
+
   // The dialog itself sits inside the overlay's 8pt inset. Adding the device's
   // safe-area plus 7pt places the hero and back button at y=59 on the Figma frame.
   const heroTop = insets.top + 7;
@@ -138,6 +146,12 @@ export const VirtualAccountApplyModal = ({
       requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
       return;
     }
+
+    // Everyone else is sent through identity verification first — the single
+    // biggest drop-off in this flow, so it gets its own event.
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+      rain_application_status: rainStatus ?? 'not_started',
+    });
 
     setKycFlow('va');
     requestDepositModal(DEPOSIT_MODAL.CLOSE);
@@ -198,6 +212,7 @@ export const VirtualAccountApplyModal = ({
   }, [cardStatus]);
 
   const handleApply = useCallback(async () => {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED);
     setIsChecking(true);
     try {
       const region = await resolveRegion();
@@ -210,6 +225,10 @@ export const VirtualAccountApplyModal = ({
       }
 
       if (!region.isAvailable) {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_REGION_BLOCKED, {
+          country_code: region.geo.countryCode,
+          detection_source: region.geo.detectionSource,
+        });
         setUnsupportedRegion(region.geo);
         return;
       }

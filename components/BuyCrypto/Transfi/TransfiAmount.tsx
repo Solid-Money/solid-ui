@@ -38,6 +38,10 @@ const formatFiat = (value: number | undefined, currency: string) =>
 export const TransfiAmount = () => {
   const setModal = useDepositStore(state => state.setModal);
 
+  useEffect(() => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_AMOUNT_VIEWED);
+  }, []);
+
   const amount = useTransfiStore(state => state.usdcAmount);
   const currency = useTransfiStore(state => state.fiatCurrency);
   const paymentCode = useTransfiStore(state => state.paymentCode);
@@ -111,8 +115,25 @@ export const TransfiAmount = () => {
       { usdcAmount: amount, paymentCode: activePaymentCode, currency },
       {
         onSuccess: order => {
+          track(TRACKING_EVENTS.BUY_CRYPTO_ORDER_CREATED, {
+            order_id: order.orderId,
+            usdc_amount: Number(amount),
+            currency,
+            payment_code: activePaymentCode,
+            fiat_amount: liveQuote?.fiatAmount,
+            total_fee: liveQuote?.totalFee,
+            has_pay_url: Boolean(order.payUrl),
+          });
           setOrder({ orderId: order.orderId, payUrl: order.payUrl });
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT);
+        },
+        onError: error => {
+          track(TRACKING_EVENTS.BUY_CRYPTO_ORDER_CREATION_FAILED, {
+            usdc_amount: Number(amount),
+            currency,
+            payment_code: activePaymentCode,
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+          });
         },
       },
     );

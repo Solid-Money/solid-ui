@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -24,6 +27,17 @@ export const TransfiPaymentHandoff = ({
   const setModal = useDepositStore(state => state.setModal);
   const amount = useTransfiStore(state => state.usdcAmount);
   const currency = useTransfiStore(state => state.fiatCurrency);
+
+  // A blocked hand-off is a hard stop that looks like a normal screen, so it
+  // is tracked as its own state rather than as a variant of "page opened".
+  useEffect(() => {
+    track(
+      blocked
+        ? TRACKING_EVENTS.BUY_CRYPTO_PAYMENT_PAGE_BLOCKED
+        : TRACKING_EVENTS.BUY_CRYPTO_PAYMENT_PAGE_OPENED,
+      { usdc_amount: Number(amount) || undefined, currency: currency ?? undefined },
+    );
+  }, [blocked, amount, currency]);
 
   return (
     <View className="flex-1 gap-6">
@@ -75,7 +89,13 @@ export const TransfiPaymentHandoff = ({
         <Button
           className="h-14 rounded-2xl"
           variant={blocked ? 'secondary' : 'brand'}
-          onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS)}
+          onPress={() => {
+            track(TRACKING_EVENTS.BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER, {
+              usdc_amount: Number(amount) || undefined,
+              currency: currency ?? undefined,
+            });
+            setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS);
+          }}
         >
           <Text
             className={

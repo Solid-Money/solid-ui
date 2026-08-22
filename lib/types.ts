@@ -748,6 +748,100 @@ export interface WirexRevealSessionResponse {
   messageTemplate: string;
 }
 
+/**
+ * Wirex card-spend authorization: the soUSD allowance the cardholder grants the
+ * card-spend wallet, and everything needed to build the `approve` call.
+ *
+ * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its
+ * own Master Account and our backend reimburses itself by pulling soUSD from the
+ * user's Safe on each settlement — so there is no card balance to top up, and the
+ * user's savings balance *is* their card balance. What they grant instead is
+ * standing permission to take it, which is what this describes.
+ *
+ * Token, spender and chain all come from the backend rather than app config: the
+ * spender address is environment-specific, and a stale client-side copy would have
+ * users approving an allowance nobody can spend.
+ */
+/**
+ * A Wirex cardholder's `SolidCashModule` registration, as the backend records it.
+ *
+ * The chain is the source of truth — `SolidCashModule.isRegistered` and the Safe's own
+ * module list decide whether spending works, not this record. The backend stores it so
+ * the app, the sweep engine and support all see the same answer without each doing its
+ * own multicall, and so a registration can be reconciled after the fact.
+ *
+ * Limits are decimal USD strings rather than numbers: they are 6-decimal on-chain
+ * values and float rounding on a spending cap is not worth the convenience.
+ */
+export interface WirexCardRegistrationResponse {
+  /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
+  registered: boolean;
+  /** Whether the module is enabled on the Safe. False once a user revokes consent. */
+  moduleEnabled: boolean;
+  /** Whether registration is offered at all in this environment. */
+  available: boolean;
+  /** The Safe's own daily cap, decimal USD. Null before registration. */
+  dailyLimitUsd: string | null;
+  /** The Safe's own monthly cap, decimal USD. Null before registration. */
+  monthlyLimitUsd: string | null;
+  /** Live org ceiling a Safe's daily cap is clamped to on every read. */
+  maxDailyLimitUsd: string;
+  /** Live org ceiling a Safe's monthly cap is clamped to on every read. */
+  maxMonthlyLimitUsd: string;
+  /** Applied when a Safe registers passing 0. */
+  defaultDailyLimitUsd: string;
+  defaultMonthlyLimitUsd: string;
+  /** Hard cap on a single card transaction, independent of the rolling windows. */
+  maxPerTxUsd: string;
+  /** Headroom left under the tighter of the two windows right now. */
+  limitRemainingUsd: string | null;
+  /** Global guardian pause. Spending is off for everyone while true. */
+  modulePaused: boolean;
+  /** Per-Safe guardian pause — arrears or a fraud hold. */
+  safePaused: boolean;
+  /** `SolidCashModule` address the app must enable and register against. */
+  moduleAddress: string;
+  /** Chain the module lives on. Always Fuse (122). */
+  chainId: number;
+  /** Seconds from UTC the Safe's rolling windows reset at. Null before registration. */
+  timezoneOffset: number | null;
+}
+
+/** What the app tells the backend after a `registerSafe` user operation lands. */
+export interface WirexCardRegistrationConfirmRequest {
+  transactionHash: string;
+  dailyLimitUsd: string;
+  monthlyLimitUsd: string;
+  timezoneOffset: number;
+}
+
+export interface WirexSpendAuthorizationResponse {
+  /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
+  authorized: boolean;
+  /** Remaining allowance, in decimal soUSD. */
+  allowanceRemaining: string;
+  /** What a fresh Authorize would approve, in decimal soUSD. */
+  allowanceLimit: string;
+  /** The Safe's soUSD balance, in decimal soUSD. */
+  balance: string;
+  /** soUSD the card can reach right now (allowance ∧ balance, less unsettled holds). */
+  spendable: string;
+  /** USD value of `spendable`. */
+  spendableUsd: number;
+  /** soUSD committed to transactions Wirex has authorized but not settled. */
+  held: string;
+  /** soUSD ERC-20 address to call `approve` on. */
+  tokenAddress: string;
+  /** The `spender` argument — our card-spend wallet. */
+  spenderAddress: string;
+  /** Chain the approval must be sent on. Always Fuse (122). */
+  chainId: number;
+  /** soUSD decimals, so the client scales without assuming 18. */
+  decimals: number;
+  /** False when this environment has no card-spend wallet — hide the control. */
+  available: boolean;
+}
+
 // --- Rain contracts (funding) ---
 export interface RainContractTokenDto {
   address: string;
@@ -2056,11 +2150,25 @@ export interface TransfiStatusResponse {
   transfiKycStatus?: string;
   reasons?: string[];
   /**
+   * On `rejected`, whether TransFi will let the user resubmit through its hosted
+   * KYC. False for compliance rejections, where retrying is pointless — the
+   * screen offers a retry only when this is true.
+   */
+  canRetryKyc?: boolean;
+  /**
    * On `needs_kyc`, the identity provider this user's jurisdiction routes to.
    * Resolved from the backend's country rules; the client's own country signal
    * (from the geo store) takes precedence when it has one.
    */
   kycProvider?: KycProvider;
+}
+
+/**
+ * Result of POST /transfi/kyc/retry: the gating status, plus the hosted KYC page
+ * to open when TransFi granted one.
+ */
+export interface TransfiKycRetryResponse extends TransfiStatusResponse {
+  kycUrl?: string;
 }
 
 export interface TransfiPaymentMethodOption {

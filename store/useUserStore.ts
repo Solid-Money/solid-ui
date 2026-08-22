@@ -25,6 +25,7 @@ interface UserState {
   selectUserById: (userId: string) => void;
   unselectUser: () => void;
   clearUserCredentialId: (userId: string) => void;
+  clearCredentialIdForIdentity: (identity: { turnkeyUserId?: string; email?: string }) => void;
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
@@ -127,6 +128,34 @@ export const useUserStore = create<UserState>()(
           produce(state => {
             const user = state.users.find((u: User) => u.userId === userId);
             if (user) user.credentialId = undefined;
+          }),
+        );
+      },
+
+      /**
+       * Forget the credentialId of the account that just recovered its passkey.
+       * The recovered device no longer holds the old credential, and that value
+       * feeds TurnkeyProvider's `allowCredentials` — left in place it pins the
+       * next login prompt to a passkey that can never be presented again.
+       * Clearing it lets the authenticator offer the recovered passkey, and
+       * login then stores the credentialId that actually signed.
+       *
+       * Matched on the Turnkey user id (what the recovery flow knows) with the
+       * recovery email as a fallback, since the local row predates recovery and
+       * may only carry the email.
+       */
+      clearCredentialIdForIdentity: ({ turnkeyUserId, email }) => {
+        const normalizedEmail = email?.trim().toLowerCase();
+        set(
+          produce(state => {
+            state.users.forEach((user: User) => {
+              const matchesTurnkeyUser = !!turnkeyUserId && user.turnkeyUserId === turnkeyUserId;
+              const matchesEmail =
+                !!normalizedEmail && user.email?.trim().toLowerCase() === normalizedEmail;
+              if (matchesTurnkeyUser || matchesEmail) {
+                user.credentialId = undefined;
+              }
+            });
           }),
         );
       },

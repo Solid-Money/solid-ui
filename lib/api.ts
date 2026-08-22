@@ -113,6 +113,7 @@ import {
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
+  TransfiKycRetryResponse,
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
@@ -126,7 +127,10 @@ import {
   WebhookStatus,
   WebProvisioningTokenResponse,
   WhatsNew,
+  WirexCardRegistrationConfirmRequest,
+  WirexCardRegistrationResponse,
   WirexRevealSessionResponse,
+  WirexSpendAuthorizationResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
@@ -771,9 +775,13 @@ export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationS
  * Which providers a country routes to.
  *
  * `flow` matters: the backend gates the `card` answer on whether Wirex is enabled
- * in that environment (it is staging-only), while `onramp` gets the ungated
- * geographic answer because TransFi's use of Sumsub is live independently. The
- * backend defaults to the gated `card` answer, so omitting it is the safe choice.
+ * in that environment and on who is asking (production serves Wirex to an
+ * internal team cohort only), while `onramp` gets the ungated geographic answer
+ * because TransFi's use of Sumsub is live independently. The backend defaults to
+ * the gated `card` answer, so omitting it is the safe choice.
+ *
+ * The card answer is per-user — the backend reads the caller from the JWT below,
+ * never from a parameter — so it must not be cached across accounts.
  */
 export const getProviderRouting = async (
   countryCode: string,
@@ -1200,6 +1208,22 @@ export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
 /** Forward the user's approved Didit KYC to TransFi (after consent). */
 export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/share`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Ask TransFi for a hosted KYC link after it couldn't verify the documents we
+ * shared. Resolves with `kycUrl` when there is a flow to open, or with the
+ * refreshed gating status when TransFi refuses one (already submitted,
+ * terminally rejected).
+ */
+export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/retry`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
@@ -2760,6 +2784,136 @@ export const revealCardDetailsComplete = async (
   }
   return revealCardDetailsCompleteRain();
 };
+
+// --- Wirex card spending via SolidCashModule (IS_WIREX_TEST) ---
+
+/**
+ * The user's `SolidCashModule` registration status and the limits around it.
+ *
+ * Distinct from {@link getWirexSpendAuthorization}, which describes the ERC-20
+ * allowance flow. The two are different mechanisms for the same job and only one is
+ * live per environment: an allowance is a token-level grant to a wallet, whereas the
+ * module is a Safe module with its own on-chain per-transaction, daily and monthly
+ * caps. Registration replaces the allowance rather than supplementing it.
+ *
+ * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it right
+ * after a `registerSafe` transaction lands so the UI flips on the same interaction.
+ */
+export const getWirexCardRegistration = async (
+  refresh = false,
+): Promise<WirexCardRegistrationResponse> => {
+  const jwt = getJWTToken();
+  const query = refresh ? '?refresh=true' : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/card-registration${query}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Record a completed registration and get the re-read status back.
+ *
+ * This grants nothing — the Safe registered itself with its own owner signature — it
+ * persists the outcome so the sweep engine and support see the same limits the user
+ * chose without re-deriving them, and saves the UI from waiting out the snapshot TTL.
+ *
+ * The limits are sent even though the backend can read them from the chain: if the
+ * two ever disagree, that is worth knowing about, and a mismatch is invisible if only
+ * one side is ever recorded.
+ */
+export const confirmWirexCardRegistration = async (
+  body: WirexCardRegistrationConfirmRequest,
+): Promise<WirexCardRegistrationResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/card-registration/confirm`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// --- Wirex card spending (soUSD allowance to our card-spend wallet) ---
+
+/**
+ * The user's current card-spend authorization.
+ *
+ * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it
+ * straight after an `approve` transaction lands so the Authorize control flips on
+ * the same interaction rather than up to a cache TTL later.
+ */
+export const getWirexSpendAuthorization = async (
+  refresh = false,
+): Promise<WirexSpendAuthorizationResponse> => {
+  const jwt = getJWTToken();
+  const query = refresh ? '?refresh=true' : '';
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization${query}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Tell the backend the user's `approve` transaction has landed, and get the
+ * re-read authorization back.
+ *
+ * This grants nothing on its own — the allowance was granted on-chain by the
+ * user's own signature — it only saves the UI from waiting out the snapshot TTL.
+ */
+export const confirmWirexSpendAuthorization =
+  async (): Promise<WirexSpendAuthorizationResponse> => {
+    const jwt = getJWTToken();
+
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization/confirm`,
+      {
+        method: 'POST',
+        headers: {
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(

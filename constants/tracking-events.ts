@@ -152,6 +152,48 @@ export const TRACKING_EVENTS = {
   DEPOSIT_BANK_AMOUNT_ABANDONED: 'deposit_bank_amount_abandoned',
   DEPOSIT_BANK_INSTRUCTIONS_ABANDONED: 'deposit_bank_instructions_abandoned',
 
+  // Deposit Method: Virtual Account (Rain USD bank account)
+  VIRTUAL_ACCOUNT_PITCH_VIEWED: 'virtual_account_pitch_viewed',
+  VIRTUAL_ACCOUNT_APPLY_PRESSED: 'virtual_account_apply_pressed',
+  VIRTUAL_ACCOUNT_REGION_BLOCKED: 'virtual_account_region_blocked',
+  VIRTUAL_ACCOUNT_KYC_REQUIRED: 'virtual_account_kyc_required',
+  VIRTUAL_ACCOUNT_TOS_VIEWED: 'virtual_account_tos_viewed',
+  VIRTUAL_ACCOUNT_TOS_ACCEPTED: 'virtual_account_tos_accepted',
+  VIRTUAL_ACCOUNT_CREATED: 'virtual_account_created',
+  VIRTUAL_ACCOUNT_CREATION_FAILED: 'virtual_account_creation_failed',
+  VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
+  VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
+  VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
+
+  // Deposit Method: Buy Crypto (TransFi onramp)
+  BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
+  BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
+  BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',
+  BUY_CRYPTO_KYC_SHARE_FAILED: 'buy_crypto_kyc_share_failed',
+  BUY_CRYPTO_KYC_PENDING_VIEWED: 'buy_crypto_kyc_pending_viewed',
+  BUY_CRYPTO_KYC_REJECTED: 'buy_crypto_kyc_rejected',
+  BUY_CRYPTO_KYC_RETRY_PRESSED: 'buy_crypto_kyc_retry_pressed',
+  /**
+   * Hosted-KYC retry, offered when TransFi couldn't read the documents we
+   * shared: _PRESSED when the user asks for it, _PAGE_OPENED when the hosted
+   * page is handed to them, _UNAVAILABLE when TransFi refuses a new attempt and
+   * _FAILED when the request errors.
+   */
+  BUY_CRYPTO_KYC_HOSTED_RETRY_PRESSED: 'buy_crypto_kyc_hosted_retry_pressed',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_PAGE_OPENED: 'buy_crypto_kyc_hosted_retry_page_opened',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_UNAVAILABLE: 'buy_crypto_kyc_hosted_retry_unavailable',
+  BUY_CRYPTO_KYC_HOSTED_RETRY_FAILED: 'buy_crypto_kyc_hosted_retry_failed',
+  BUY_CRYPTO_AMOUNT_VIEWED: 'buy_crypto_amount_viewed',
+  BUY_CRYPTO_CURRENCY_SELECTED: 'buy_crypto_currency_selected',
+  BUY_CRYPTO_PAYMENT_METHOD_SELECTED: 'buy_crypto_payment_method_selected',
+  BUY_CRYPTO_ORDER_CREATED: 'buy_crypto_order_created',
+  BUY_CRYPTO_ORDER_CREATION_FAILED: 'buy_crypto_order_creation_failed',
+  BUY_CRYPTO_PAYMENT_PAGE_OPENED: 'buy_crypto_payment_page_opened',
+  BUY_CRYPTO_PAYMENT_PAGE_BLOCKED: 'buy_crypto_payment_page_blocked',
+  BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER: 'buy_crypto_payment_confirmed_by_user',
+  BUY_CRYPTO_ORDER_COMPLETED: 'buy_crypto_order_completed',
+  BUY_CRYPTO_ORDER_FAILED: 'buy_crypto_order_failed',
+
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
   DEPOSIT_BONUS_BANNER_INFLUENCED: 'deposit_bonus_banner_influenced',
@@ -264,6 +306,20 @@ export const TRACKING_EVENTS = {
   // Transaction Status
   CARD_DEPOSIT_TRANSACTION_STATUS_VIEWED: 'card_deposit_transaction_status_viewed',
   CARD_DEPOSIT_TRANSACTION_STATUS_PRESSED: 'card_deposit_transaction_status_pressed',
+
+  // Wirex card spending. Wirex cardholders authorize a soUSD allowance instead of
+  // depositing onto the card, so these are the Wirex counterpart of the deposit
+  // funnel above — the same step in the journey, a different mechanism.
+  CARD_SPEND_AUTHORIZE_PRESSED: 'card_spend_authorize_pressed',
+  CARD_SPEND_AUTHORIZE_COMPLETED: 'card_spend_authorize_completed',
+  CARD_SPEND_AUTHORIZE_FAILED: 'card_spend_authorize_failed',
+  CARD_SPEND_AUTHORIZE_CANCELLED: 'card_spend_authorize_cancelled',
+  // SolidCashModule registration (IS_WIREX_TEST). Separate from the allowance events
+  // above so the two mechanisms can be compared rather than blended into one funnel.
+  CARD_SPEND_REGISTER_PRESSED: 'card_spend_register_pressed',
+  CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
+  CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',
+  CARD_SPEND_REGISTER_CANCELLED: 'card_spend_register_cancelled',
 
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',

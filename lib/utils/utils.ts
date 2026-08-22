@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import { Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type ClassValue, clsx } from 'clsx';
 import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
@@ -12,7 +11,6 @@ import {
   MINIMUM_CARD_DEPOSIT_CENTS,
   MINIMUM_CARD_DEPOSIT_USD,
 } from '@/constants/card';
-import { path } from '@/constants/path';
 import { refreshToken } from '@/lib/api';
 import {
   ADDRESSES,
@@ -20,14 +18,7 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
 } from '@/lib/config';
-import {
-  AuthTokens,
-  CardProvider,
-  CardResponse,
-  CardStatusResponse,
-  RainContractResponseDto,
-  User,
-} from '@/lib/types';
+import { AuthTokens, CardProvider, CardResponse, RainContractResponseDto, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
 export const IS_SERVER = typeof window === 'undefined';
@@ -362,8 +353,21 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
   return bytes;
 };
 
-export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
-  return JSON.parse(stampHeaderValue).credentialId;
+/**
+ * Pull the WebAuthn credential id out of a Turnkey passkey stamp header. The
+ * stamp is a JSON envelope (`{ authenticatorData, clientDataJson,
+ * credentialId, signature }`) — API-key stamps carry no credentialId, so
+ * anything unparseable or missing is simply "not a passkey stamp".
+ */
+export const parseStampHeaderValueCredentialId = (stampHeaderValue: string): string | undefined => {
+  try {
+    const parsed = JSON.parse(stampHeaderValue) as { credentialId?: unknown };
+    return typeof parsed.credentialId === 'string' && parsed.credentialId
+      ? parsed.credentialId
+      : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
@@ -423,6 +427,7 @@ export function getCardFundingAddress(
 // testable (this file's import graph does not load under jest-expo). Re-exported
 // here so `@/lib/utils` stays the single import path for consumers.
 export {
+  getActiveCardRoute,
   hasCard,
   hasCardStatusWithRainApplication,
   hasPendingCard,
@@ -450,13 +455,3 @@ export const hasMetCardDeposit = (depositedCents: number | null | undefined): bo
  */
 export const hasMetSavingsDeposit = (savingsUsd: number | null | undefined): boolean =>
   (savingsUsd ?? 0) >= MINIMUM_CARD_DEPOSIT_USD - 0.8;
-
-/**
- * Where an active-card user should land: always card details. Bangladesh's
- * minimum-deposit gate now runs BEFORE card issuance (into savings), so anyone
- * who already holds a card has cleared it — there's no reason to bounce them
- * back to the issuance flow. Moving savings onto the card stays available on the
- * details page via "Deposit to card".
- */
-export const getActiveCardRoute = (_cardStatus?: CardStatusResponse | null): Href =>
-  path.CARD_DETAILS;

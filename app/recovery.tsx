@@ -19,6 +19,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { useUserStore } from '@/store/useUserStore';
 
 // Validation schemas
 const emailSchema = z.object({
@@ -48,6 +49,7 @@ export default function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession } = useTurnkey();
+  const clearCredentialIdForIdentity = useUserStore(state => state.clearCredentialIdForIdentity);
 
   const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
   const [apiError, setApiError] = useState('');
@@ -137,6 +139,13 @@ export default function RecoveryPasskey() {
         organizationId: recoveryData.organizationId,
       });
 
+      // Any locally remembered credentialId for this account belongs to the
+      // passkey the user just recovered from losing. It feeds
+      // TurnkeyProvider's `allowCredentials`, so leaving it behind pins the
+      // next passkey prompt to a credential the authenticator no longer holds.
+      // Login re-stores the recovered credentialId from the stamp it signs.
+      clearCredentialIdForIdentity({ turnkeyUserId: recoveryData.userId, email });
+
       setStep(STEPS.SUCCESS);
     } catch (err: any) {
       console.error('Failed to add passkey:', err);
@@ -144,7 +153,7 @@ export default function RecoveryPasskey() {
     } finally {
       setLoading(false);
     }
-  }, [addPasskey, recoveryData]);
+  }, [addPasskey, recoveryData, clearCredentialIdForIdentity, email]);
 
   // Resend OTP
   const handleResendOtp = useCallback(async () => {

@@ -1,12 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { Check, ShieldCheck } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useShareTransfiKyc } from '@/hooks/useTransfi';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
@@ -32,9 +34,19 @@ export const TransfiKycConsent = () => {
   const routeToKyc = useBuyCryptoKycRoute();
   const { mutate: share, isPending } = useShareTransfiKyc();
 
+  useEffect(() => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_CONSENT_VIEWED);
+  }, []);
+
   const handleAgree = useCallback(() => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_KYC_CONSENT_ACCEPTED);
     share(undefined, {
       onSuccess: result => {
+        // The share landed; `status` is TransFi's verdict on it — ready,
+        // pending, or a bounce back into identity verification.
+        track(TRACKING_EVENTS.BUY_CRYPTO_KYC_SHARE_RESULT, {
+          status: result.status,
+        });
         if (result.status === 'ready') {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
         } else if (result.status === 'needs_kyc') {
@@ -46,7 +58,10 @@ export const TransfiKycConsent = () => {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
         }
       },
-      onError: () => {
+      onError: error => {
+        track(TRACKING_EVENTS.BUY_CRYPTO_KYC_SHARE_FAILED, {
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+        });
         setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
       },
     });
