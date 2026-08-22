@@ -1,7 +1,12 @@
 import {
+  CardFeeInfo,
+  CardFeeStatus,
+  CardFeeWaiveReason,
   CardProvider,
   CardResponse,
   CardStatus,
+  CardTransaction,
+  CardTransactionFee,
   Cashback,
   CashbackInfo,
   CashbackStatus,
@@ -220,3 +225,74 @@ export const getCashbackAmount = (
     payoutAt: cashback.payoutAt,
   };
 };
+
+/** Tier key → the name the user sees on the tier screen. */
+const TIER_LABELS: Record<string, string> = {
+  core: 'Core',
+  prime: 'Prime',
+  ultra: 'Ultra',
+};
+
+/** Fee statuses where the charge has not landed yet but is still owed. */
+const PENDING_FEE_STATUSES: string[] = [CardFeeStatus.Pending, CardFeeStatus.Failed];
+
+/**
+ * A fee fraction as display copy: 0.0099 → "0.99%", 0.005 → "0.5%".
+ * Trailing zeros are trimmed so a round rate doesn't read as "0.50%".
+ */
+export const formatCardFeeRate = (percentage: number): string => {
+  if (!Number.isFinite(percentage) || percentage <= 0) return '';
+  return `${Number((percentage * 100).toFixed(2))}%`;
+};
+
+/**
+ * The fee to show on a card transaction, or null when there's nothing to say.
+ *
+ * A transaction carries at most one fee today (FX on a converted purchase), but
+ * the API returns a list, so the largest charged fee wins and a waived one is
+ * only shown when nothing was actually charged. That ordering matters: a user
+ * looking at a receipt wants to see what they paid first, and what they didn't
+ * pay second.
+ *
+ * A fee that failed still shows: the retry will move their balance, so the
+ * receipt should already say the fee is owed rather than appear to change later.
+ * A fee waived because the program is switched off shows nothing at all — that
+ * is our configuration, not a benefit the user earned.
+ */
+export const getCardFeeInfo = (transaction: Pick<CardTransaction, 'fees'>): CardFeeInfo | null => {
+  const fees = transaction.fees;
+  if (!fees?.length) return null;
+
+  const charged = fees
+    .filter(fee => !isWaivedFee(fee) && parseFloat(fee.amount) > 0)
+    .sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+
+  if (charged.length > 0) {
+    const fee = charged[0];
+    return {
+      amount: `-$${parseFloat(fee.amount).toFixed(2)}`,
+      label: fee.label,
+      isWaived: false,
+      isPending: PENDING_FEE_STATUSES.includes(fee.status),
+      rate: formatCardFeeRate(fee.percentage),
+    };
+  }
+
+  // Nothing charged: surface the tier benefit, but only when the tier is what
+  // earned it. "Disabled" means we haven't launched the fee, which is not news.
+  const earned = fees.find(fee => fee.waive_reason === CardFeeWaiveReason.TierFree);
+  if (!earned) return null;
+
+  const tierLabel = TIER_LABELS[earned.tier];
+
+  return {
+    amount: 'Free',
+    label: earned.label,
+    isWaived: true,
+    isPending: false,
+    rate: '',
+    waivedNote: tierLabel ? `Waived on ${tierLabel}` : 'Waived',
+  };
+};
+
+const isWaivedFee = (fee: CardTransactionFee): boolean => fee.status === CardFeeStatus.Waived;

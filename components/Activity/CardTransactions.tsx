@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   formatCardAmount,
+  getCardFeeInfo,
   getCashbackAmount,
   getColorForTransaction,
   getInitials,
@@ -164,6 +165,7 @@ export default function CardTransactions() {
       const isDeclined = transaction.status === 'declined';
       const color = getColorForTransaction(merchantName);
       const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+      const feeInfo = getCardFeeInfo(transaction);
 
       return (
         <Pressable
@@ -216,6 +218,15 @@ export default function CardTransactions() {
                   </Text>
                 </View>
               )}
+              {feeInfo && (
+                <Text className="mt-0.5 text-sm text-[#8E8E93]" numberOfLines={1}>
+                  {feeInfo.isWaived
+                    ? `${feeInfo.label} · ${feeInfo.waivedNote}`
+                    : feeInfo.isPending
+                      ? `${feeInfo.label} (Pending)`
+                      : `${feeInfo.label} · ${feeInfo.rate}`}
+                </Text>
+              )}
             </View>
           </View>
           <View className="items-end">
@@ -230,6 +241,16 @@ export default function CardTransactions() {
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
               <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
                 {cashbackInfo.amount}
+              </Text>
+            )}
+            {feeInfo && (
+              <Text
+                className={cn(
+                  'mt-0.5 text-sm font-medium',
+                  feeInfo.isWaived ? 'text-[#34C759]' : 'text-[#8E8E93]',
+                )}
+              >
+                {feeInfo.amount}
               </Text>
             )}
           </View>
