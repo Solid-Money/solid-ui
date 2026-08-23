@@ -32,6 +32,7 @@ import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { describeWithdrawError } from '@/lib/utils/withdrawErrors';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -210,7 +211,7 @@ const RegularWithdrawForm = () => {
   const watchedAmount = watch('amount');
   const { bridge, bridgeStatus } = useBridgeToMainnet();
   const { bridgeSoEth, bridgeSoEthStatus } = useBridgeToMainnetSoEth();
-  const { withdraw, withdrawStatus } = useWithdraw();
+  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw();
   const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth();
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
@@ -312,6 +313,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        text2: describeWithdrawError(_error),
         props: { badgeText: 'Onchain' },
       });
     }
@@ -341,6 +343,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        text2: describeWithdrawError(_error),
         props: { badgeText: 'Onchain' },
       });
     }
@@ -388,6 +391,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing soETH',
+        text2: describeWithdrawError(_error),
         props: { badgeText: 'Onchain' },
       });
     }
@@ -649,6 +653,9 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawLoading ||
+                    // Submitting before the approval check settles is what
+                    // skipped the approve leg and reverted the withdrawal.
+                    isAllowanceLoading ||
                     (isOnEthereum && !hasPendingSession && !isBridgeValid)
                   }
                 >
