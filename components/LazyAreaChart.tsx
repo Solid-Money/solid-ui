@@ -2,22 +2,10 @@ import React, { Component, Suspense } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { ChartPayload } from '@/lib/types';
 
 import type { StyleProp, ViewStyle } from 'react-native';
-
-function lazyWithRetry(importFn: () => Promise<{ default: React.ComponentType<any> }>) {
-  return React.lazy(() => {
-    const attempt = (retries: number): ReturnType<typeof importFn> =>
-      importFn().catch((error: unknown) => {
-        if (retries <= 0) throw error;
-        return new Promise<{ default: React.ComponentType<any> }>(resolve =>
-          setTimeout(() => resolve(attempt(retries - 1)), 1000),
-        );
-      });
-    return attempt(3);
-  });
-}
 
 const AreaChart = lazyWithRetry(() => import('@/components/AreaChart'));
 
