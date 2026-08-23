@@ -1,4 +1,5 @@
 import {
+  CardCollateralTokenBalanceDto,
   CardProvider,
   CardResponse,
   CardStatus,
@@ -127,6 +128,22 @@ export const toAmountInputValue = (amount: number): string => {
   if (!Number.isFinite(amount) || amount <= 0) return '0';
   return (Math.floor(amount * 100) / 100).toFixed(2);
 };
+
+/**
+ * How a collateral asset is named in the UI: "USDC" when the chain answered
+ * `symbol()`, else a short address.
+ *
+ * This lives here, platform-neutral, rather than beside the selector that first
+ * needed it. It used to be exported from `ToDestinationSelector.web.tsx`, which
+ * the native selector imported but never re-exported — so on iOS/Android
+ * `import { assetLabel } from '.../ToDestinationSelector'` resolved to the
+ * `.native` file and produced `undefined`. Calling it then threw "undefined is
+ * not a function" from inside a render, taking the whole app to the error
+ * boundary. A helper every platform shares has no business hanging off a
+ * platform-specific module.
+ */
+export const assetLabel = (asset: CardCollateralTokenBalanceDto): string =>
+  asset.symbol || `${asset.tokenAddress.slice(0, 6)}…${asset.tokenAddress.slice(-4)}`;
 
 /**
  * Format card transaction amount with proper sign and currency symbol.
