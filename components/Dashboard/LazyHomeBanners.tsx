@@ -8,11 +8,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
+
 // Lazy load HomeBanners - this is promotional content at the bottom of the home page
 // and doesn't need to be part of the initial bundle for FCP optimization
 // This component includes heavy dependencies: react-native-reanimated-carousel,
 // PointsBanner, CardBanner, DepositBanner - all deferred for better FCP
-const HomeBannersLazy = React.lazy(() => import('./HomeBanners'));
+const HomeBannersLazy = lazyWithRetry(() => import('./HomeBanners'));
 
 /**
  * Animated skeleton box with pulsing opacity

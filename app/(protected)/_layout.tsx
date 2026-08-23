@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, InteractionManager, Platform, StyleSheet, View } from 'react-native';
 import {
   Redirect,
@@ -32,13 +32,14 @@ import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
 // Lazy load Loading component - only used during hydration
-const Loading = lazy(() => import('@/components/Loading'));
+const Loading = lazyWithRetry(() => import('@/components/Loading'));
 
 export default function ProtectedLayout() {
   const { user } = useUser();
