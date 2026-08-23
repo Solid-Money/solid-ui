@@ -44,6 +44,7 @@ import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
+import { showTextInputFromStart } from '@/lib/utils/textInput';
 import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -389,26 +390,10 @@ function DepositToVaultForm() {
 
   const amountInputRef = useRef<TextInput>(null);
 
-  // "Max" fills the field with the full-precision balance (up to 18 decimals),
-  // which is far wider than the input on small screens. Left alone the field
-  // keeps its caret at the end and shows only the trailing decimals, so the
-  // amount reads as gibberish. Pull the caret/scroll back to the start so the
-  // leading digits — the ones the user cares about — stay visible.
+  // "Max" fills the field with the full-precision balance, which overflows the
+  // input on small screens; keep the leading digits in view.
   const showAmountFromStart = useCallback(() => {
-    requestAnimationFrame(() => {
-      const input = amountInputRef.current as any;
-      if (!input) return;
-      // Native: TextInput's imperative command. Web (RN-web): the DOM input.
-      if (typeof input.setSelection === 'function') input.setSelection(0, 0);
-      if (typeof input.setSelectionRange === 'function') {
-        try {
-          input.setSelectionRange(0, 0);
-        } catch {
-          // Some browsers throw on number-ish inputs; the scroll reset below still applies.
-        }
-      }
-      if ('scrollLeft' in input) input.scrollLeft = 0;
-    });
+    requestAnimationFrame(() => showTextInputFromStart(amountInputRef.current));
   }, []);
 
   // Track form viewed (once per mount)
