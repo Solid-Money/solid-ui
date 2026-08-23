@@ -6,7 +6,7 @@ import { Wallet as WalletIcon } from 'lucide-react-native';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
-import ToDestinationSelector, { assetLabel } from '@/components/Card/ToDestinationSelector';
+import ToDestinationSelector from '@/components/Card/ToDestinationSelector';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
@@ -20,7 +20,7 @@ import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
-import { toAmountInputValue } from '@/lib/utils/cardHelpers';
+import { assetLabel, toAmountInputValue } from '@/lib/utils/cardHelpers';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 

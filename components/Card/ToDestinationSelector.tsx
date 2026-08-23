@@ -1,3 +1,3 @@
-export type { ToDestinationProps } from './ToDestinationSelector.web';
-export { assetLabel } from './ToDestinationSelector.web';
+export type { ToDestinationProps } from './ToDestinationSelector.types';
 export { default } from './ToDestinationSelector.web';
+export { assetLabel } from '@/lib/utils/cardHelpers';
