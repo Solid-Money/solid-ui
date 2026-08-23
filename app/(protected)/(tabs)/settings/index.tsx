@@ -193,7 +193,7 @@ const MobileSettings = () => {
       {
         title: 'Help & Support',
         icon: <IconImage source={HelpSupportIcon} width={24} height={24} />,
-        onPress: openSupportDrawer,
+        onPress: () => openSupportDrawer(),
       },
     ],
     [
@@ -332,7 +332,7 @@ const DesktopSettings = () => {
           <SettingsCard
             title="Help & Support"
             icon={<IconImage source={HelpSupportIcon} width={24} height={24} />}
-            onPress={openSupportDrawer}
+            onPress={() => openSupportDrawer()}
             isDesktop={isDesktop}
             hideIconBackground
           />
