@@ -5,6 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { RotateCw } from 'lucide-react-native';
 
+import MerchantAvatar from '@/components/Activity/MerchantAvatar';
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -18,11 +19,7 @@ import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTr
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction, CardTransactionCategory } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import {
-  formatCardAmountWithCurrency,
-  getColorForTransaction,
-  getInitials,
-} from '@/lib/utils/cardHelpers';
+import { formatCardAmountWithCurrency, getMerchantDisplay } from '@/lib/utils/cardHelpers';
 
 export default function CardTransactions() {
   const router = useRouter();
@@ -66,11 +63,7 @@ export default function CardTransactions() {
 
   const renderTransaction = ({ item, index }: { item: CardTransaction; index: number }) => {
     const isPurchase = item.category === CardTransactionCategory.PURCHASE;
-    const merchantName = item.merchant_name || item.description;
-    const merchantLocation = [item.merchant_city, item.merchant_country]
-      .filter(Boolean)
-      .join(' ') || undefined;
-    const color = getColorForTransaction(merchantName);
+    const merchant = getMerchantDisplay(item);
 
     const transactionUrl = item.crypto_transaction_details?.tx_hash
       ? `https://etherscan.io/tx/${item.crypto_transaction_details.tx_hash}`
@@ -86,14 +79,12 @@ export default function CardTransactions() {
       >
         <View className="mr-2 flex-1 flex-row items-center gap-2 md:gap-4">
           {isPurchase ? (
-            <View
-              className="items-center justify-center overflow-hidden rounded-full"
-              style={{ width: 34, height: 34, backgroundColor: color.bg }}
-            >
-              <Text className="text-base font-semibold" style={{ color: color.text }}>
-                {getInitials(merchantName)}
-              </Text>
-            </View>
+            <MerchantAvatar
+              name={merchant.name}
+              iconUrl={merchant.iconUrl}
+              size={34}
+              textClassName="text-base font-semibold"
+            />
           ) : (
             <RenderTokenIcon
               tokenIcon={getTokenIcon({
@@ -105,11 +96,11 @@ export default function CardTransactions() {
           )}
           <View className="flex-1">
             <Text className="text-lg font-medium" numberOfLines={1}>
-              {merchantName}
+              {merchant.name}
             </Text>
-            {merchantLocation && (
+            {merchant.location && (
               <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-                {merchantLocation}
+                {merchant.location}
               </Text>
             )}
             <Text className="text-sm text-muted-foreground" numberOfLines={1}>
