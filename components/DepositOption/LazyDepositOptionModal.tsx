@@ -1,8 +1,10 @@
 import React, { Suspense } from 'react';
 
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
+
 // Lazy load DepositOptionModal - this modal is hidden by default and only
 // shown when user clicks on certain activity items
-const DepositOptionModal = React.lazy(() => import('./DepositOptionModal'));
+const DepositOptionModal = lazyWithRetry(() => import('./DepositOptionModal'));
 
 /**
  * Props for LazyDepositOptionModal

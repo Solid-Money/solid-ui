@@ -25,9 +25,10 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import { type AssetPath, getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
 
+import SubscriptionBrandBadge from './SubscriptionBrandBadge';
+import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
 import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
 import TierStatsBand from './TierStatsBand';
@@ -65,84 +66,19 @@ const BADGE_OVERLAP = -3;
 // treatment the design gives the row's label and "Prime and up" text.
 const LOCKED_OPACITY = 0.4;
 
-/**
- * One brand logo in a cashback row. Assets are named after the file they were
- * exported as, which doesn't always match the brand they draw, so each entry
- * below is commented with the brand it actually is.
- *
- * Entries without a `background` were exported with their own circle and
- * card-colored ring already baked in, so they drop straight into the 22px slot.
- * The rest are bare glyphs that BrandBadge wraps in the circle itself, at the
- * glyph size the design specifies.
- */
-interface BrandLogo {
-  asset: AssetPath;
-  width: number;
-  height: number;
-  background?: string;
-  /** Second glyph stacked on top — the design draws Disney+ as two assets. */
-  overlay?: { asset: AssetPath; width: number; height: number };
-}
-
-interface CashbackCategory {
-  label: string;
-  value: string | null;
-  logos: BrandLogo[];
-}
-
 interface TierContent {
   headline: string;
   unlockCopy: string;
   stats: TierStat[];
   perks: TierPerk[];
-  cashback: { everyPurchase: string; categories: CashbackCategory[] };
+  /**
+   * `subscriptionRate` is the cashback this tier earns back on every
+   * subscription category, or null when the tier hasn't unlocked them. The
+   * categories themselves come from SUBSCRIPTION_CATEGORIES.
+   */
+  cashback: { everyPurchase: string; subscriptionRate: string | null };
   fees: { cardFees: string; bankDeposit: string; swaps: string; cashbackCap: string };
 }
-
-const AI_LOGOS: BrandLogo[] = [
-  // ChatGPT
-  { asset: 'images/rewards-tiers/logo-generic-3.svg', width: BADGE_SIZE, height: BADGE_SIZE },
-  // Claude
-  { asset: 'images/rewards-tiers/logo-claude.svg', width: 15, height: 15, background: '#d97757' },
-  // Gemini
-  { asset: 'images/rewards-tiers/logo-gemini.svg', width: 18, height: 18, background: '#ffffff' },
-];
-const STREAMING_LOGOS: BrandLogo[] = [
-  // Netflix
-  { asset: 'images/rewards-tiers/logo-netflix.svg', width: 8, height: 15, background: '#000000' },
-  // Disney+
-  {
-    asset: 'images/rewards-tiers/logo-disney-1.svg',
-    width: 16,
-    height: 16,
-    background: '#ffffff',
-    overlay: { asset: 'images/rewards-tiers/logo-disney-2.svg', width: 17, height: 17 },
-  },
-  // Max
-  { asset: 'images/rewards-tiers/logo-generic-4.svg', width: BADGE_SIZE, height: BADGE_SIZE },
-  // Prime Video
-  {
-    asset: 'images/rewards-tiers/logo-generic-1.svg',
-    width: 14,
-    height: 14,
-    background: '#ffffff',
-  },
-  // Apple TV+
-  { asset: 'images/rewards-tiers/logo-generic-5.svg', width: BADGE_SIZE, height: BADGE_SIZE },
-];
-const MUSIC_LOGOS: BrandLogo[] = [
-  // Spotify (exported as logo-openai.svg, but it draws the Spotify mark)
-  { asset: 'images/rewards-tiers/logo-openai.svg', width: BADGE_SIZE, height: BADGE_SIZE },
-  // Apple Music
-  { asset: 'images/rewards-tiers/logo-generic-5.svg', width: BADGE_SIZE, height: BADGE_SIZE },
-  // YouTube Music
-  {
-    asset: 'images/rewards-tiers/logo-generic-2.svg',
-    width: 16,
-    height: 11.2,
-    background: '#ffffff',
-  },
-];
 
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
   [RewardsTier.CORE]: {
@@ -159,11 +95,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     ],
     cashback: {
       everyPurchase: '3%',
-      categories: [
-        { label: 'AI', value: null, logos: AI_LOGOS },
-        { label: 'Streaming', value: null, logos: STREAMING_LOGOS },
-        { label: 'Music', value: null, logos: MUSIC_LOGOS },
-      ],
+      subscriptionRate: null,
     },
     fees: {
       cardFees: 'Free',
@@ -190,11 +122,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     ],
     cashback: {
       everyPurchase: '4%',
-      categories: [
-        { label: 'AI', value: '25%', logos: AI_LOGOS },
-        { label: 'Streaming', value: '25%', logos: STREAMING_LOGOS },
-        { label: 'Music', value: '25%', logos: MUSIC_LOGOS },
-      ],
+      subscriptionRate: '25%',
     },
     fees: {
       cardFees: 'Free',
@@ -221,11 +149,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     ],
     cashback: {
       everyPurchase: '5%',
-      categories: [
-        { label: 'AI', value: '50%', logos: AI_LOGOS },
-        { label: 'Streaming', value: '50%', logos: STREAMING_LOGOS },
-        { label: 'Music', value: '50%', logos: MUSIC_LOGOS },
-      ],
+      subscriptionRate: '50%',
     },
     fees: {
       cardFees: 'Free',
@@ -234,50 +158,6 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       cashbackCap: 'Up to 200$ monthly',
     },
   },
-};
-
-interface BrandBadgeProps {
-  logo: BrandLogo;
-  overlap?: boolean;
-}
-
-const BrandBadge = ({ logo, overlap }: BrandBadgeProps) => {
-  const offset = overlap ? { marginLeft: BADGE_OVERLAP } : undefined;
-
-  // Already a complete badge — wrapping it would double up on its baked-in ring.
-  if (!logo.background) {
-    return (
-      <Image
-        source={getAsset(logo.asset)}
-        style={[{ width: BADGE_SIZE, height: BADGE_SIZE }, offset]}
-        contentFit="contain"
-      />
-    );
-  }
-
-  return (
-    <View
-      className="items-center justify-center overflow-hidden rounded-full border-2 border-card"
-      style={[{ width: BADGE_SIZE, height: BADGE_SIZE, backgroundColor: logo.background }, offset]}
-    >
-      <Image
-        source={getAsset(logo.asset)}
-        style={{ width: logo.width, height: logo.height }}
-        contentFit="contain"
-      />
-      {logo.overlay ? (
-        <Image
-          source={getAsset(logo.overlay.asset)}
-          style={{
-            position: 'absolute',
-            width: logo.overlay.width,
-            height: logo.overlay.height,
-          }}
-          contentFit="contain"
-        />
-      ) : null}
-    </View>
-  );
 };
 
 const CoreDivider = () => <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />;
@@ -354,9 +234,9 @@ const CoreCashbackCard = () => {
           {cashback.everyPurchase}
         </Text>
       </View>
-      {cashback.categories.map((category, index) => (
+      {SUBSCRIPTION_CATEGORIES.map((category, index) => (
         <View
-          key={category.label}
+          key={category.key}
           className="absolute left-[19px] right-4 h-[22px] flex-row items-center"
           style={{ top: [138, 195, 248][index] }}
         >
@@ -364,8 +244,14 @@ const CoreCashbackCard = () => {
             {category.label}
           </Text>
           <View className="ml-3 flex-1 flex-row items-center" style={{ opacity: LOCKED_OPACITY }}>
-            {category.logos.map((logo, logoIndex) => (
-              <BrandBadge key={logo.asset} logo={logo} overlap={logoIndex > 0} />
+            {category.brands.map((brand, brandIndex) => (
+              <SubscriptionBrandBadge
+                key={brand.name}
+                brand={brand}
+                size={BADGE_SIZE}
+                overlap={brandIndex > 0 ? BADGE_OVERLAP : undefined}
+                ring
+              />
             ))}
           </View>
           <Text className="text-white/40" style={CORE_MEDIUM_16}>
@@ -508,9 +394,9 @@ const PremiumCashbackCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.U
         </Text>
       </View>
 
-      {cashback.categories.map((category, index) => (
+      {SUBSCRIPTION_CATEGORIES.map((category, index) => (
         <View
-          key={category.label}
+          key={category.key}
           className="absolute left-[19px] right-4 h-9 flex-row items-center"
           style={{ top: [131, 188, 241][index] }}
         >
@@ -518,13 +404,19 @@ const PremiumCashbackCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.U
             {category.label}
           </Text>
           <View className="ml-3 flex-1 flex-row items-center">
-            {category.logos.map((logo, logoIndex) => (
-              <BrandBadge key={logo.asset} logo={logo} overlap={logoIndex > 0} />
+            {category.brands.map((brand, brandIndex) => (
+              <SubscriptionBrandBadge
+                key={brand.name}
+                brand={brand}
+                size={BADGE_SIZE}
+                overlap={brandIndex > 0 ? BADGE_OVERLAP : undefined}
+                ring
+              />
             ))}
           </View>
           <View className="h-9 min-w-[59px] items-center justify-center rounded-full bg-white/10 px-3">
             <Text className="text-white" style={CORE_MEDIUM_16}>
-              {category.value}
+              {cashback.subscriptionRate}
             </Text>
           </View>
         </View>

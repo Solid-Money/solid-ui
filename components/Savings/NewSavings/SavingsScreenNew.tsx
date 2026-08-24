@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
@@ -16,8 +17,10 @@ import RecentSavingsActivity from './RecentSavingsActivity';
 import SavingsBalanceHeadline from './SavingsBalanceHeadline';
 import SavingsFundedActions from './SavingsFundedActions';
 import SavingsHelpModal from './SavingsHelpModal';
+import SavingsYieldBoostCard from './SavingsYieldBoostCard';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
+import { isVaultType } from './vaultDeepLink';
 import VaultSavingsSection from './VaultSavingsSection';
 
 import type { ApyByType } from './savingsVaultData';
@@ -39,7 +42,13 @@ import type { ApyByType } from './savingsVaultData';
 export default function SavingsScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
 
-  const [selectedVaultType, setSelectedVaultType] = useState<VaultType>(VaultType.USDC);
+  // `/savings?vault=fuse` deep-links straight to a vault — used by the rewards
+  // "Add FUSE to your savings" CTA. Seeds initial state only, so the user can
+  // still switch vaults from here afterwards.
+  const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
+  const [selectedVaultType, setSelectedVaultType] = useState<VaultType>(
+    isVaultType(vaultParam) ? vaultParam : VaultType.USDC,
+  );
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { data: totalSavingsUSD, isLoading: isSavingsLoading } = useTotalSavingsUSD();
@@ -103,6 +112,7 @@ export default function SavingsScreenNew() {
             {isFunded ? (
               <>
                 <VaultSavingsSection vaultType={selectedVaultType} />
+                <SavingsYieldBoostCard />
                 <RecentSavingsActivity />
               </>
             ) : (

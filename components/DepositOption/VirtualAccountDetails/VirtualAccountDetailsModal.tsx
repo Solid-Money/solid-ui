@@ -205,7 +205,11 @@ export const VirtualAccountDetailsModal = ({ onRetry }: VirtualAccountDetailsMod
             label="More information"
             onPress={() => Linking.openURL(MORE_INFORMATION_URL)}
           />
-          <LinkRow icon={<SupportRowIcon />} label="Contact support" onPress={openSupportDrawer} />
+          <LinkRow
+            icon={<SupportRowIcon />}
+            label="Contact support"
+            onPress={() => openSupportDrawer()}
+          />
         </View>
       </ScrollView>
 

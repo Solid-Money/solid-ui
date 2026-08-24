@@ -762,6 +762,59 @@ export interface WirexRevealSessionResponse {
  * spender address is environment-specific, and a stale client-side copy would have
  * users approving an allowance nobody can spend.
  */
+/**
+ * A Wirex cardholder's `SolidCashModule` registration, as the backend records it.
+ *
+ * The chain is the source of truth — `SolidCashModule.isRegistered` and the Safe's own
+ * module list decide whether spending works, not this record. The backend stores it so
+ * the app, the sweep engine and support all see the same answer without each doing its
+ * own multicall, and so a registration can be reconciled after the fact.
+ *
+ * Limits are decimal USD strings rather than numbers: they are 6-decimal on-chain
+ * values and float rounding on a spending cap is not worth the convenience.
+ */
+export interface WirexCardRegistrationResponse {
+  /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
+  registered: boolean;
+  /** Whether the module is enabled on the Safe. False once a user revokes consent. */
+  moduleEnabled: boolean;
+  /** Whether registration is offered at all in this environment. */
+  available: boolean;
+  /** The Safe's own daily cap, decimal USD. Null before registration. */
+  dailyLimitUsd: string | null;
+  /** The Safe's own monthly cap, decimal USD. Null before registration. */
+  monthlyLimitUsd: string | null;
+  /** Live org ceiling a Safe's daily cap is clamped to on every read. */
+  maxDailyLimitUsd: string;
+  /** Live org ceiling a Safe's monthly cap is clamped to on every read. */
+  maxMonthlyLimitUsd: string;
+  /** Applied when a Safe registers passing 0. */
+  defaultDailyLimitUsd: string;
+  defaultMonthlyLimitUsd: string;
+  /** Hard cap on a single card transaction, independent of the rolling windows. */
+  maxPerTxUsd: string;
+  /** Headroom left under the tighter of the two windows right now. */
+  limitRemainingUsd: string | null;
+  /** Global guardian pause. Spending is off for everyone while true. */
+  modulePaused: boolean;
+  /** Per-Safe guardian pause — arrears or a fraud hold. */
+  safePaused: boolean;
+  /** `SolidCashModule` address the app must enable and register against. */
+  moduleAddress: string;
+  /** Chain the module lives on. Always Fuse (122). */
+  chainId: number;
+  /** Seconds from UTC the Safe's rolling windows reset at. Null before registration. */
+  timezoneOffset: number | null;
+}
+
+/** What the app tells the backend after a `registerSafe` user operation lands. */
+export interface WirexCardRegistrationConfirmRequest {
+  transactionHash: string;
+  dailyLimitUsd: string;
+  monthlyLimitUsd: string;
+  timezoneOffset: number;
+}
+
 export interface WirexSpendAuthorizationResponse {
   /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
   authorized: boolean;
@@ -1360,6 +1413,59 @@ export interface RewardsUserData {
   legacyCarryoverPoints?: number;
   /** Tier the user starts in after carryover is applied (Core or Prime). */
   startingTier?: RewardsTier;
+  /**
+   * Extra APY the current tier adds on top of the base savings yield, in
+   * percentage points. 0 (or absent) means the tier grants no boost, which is
+   * what hides the yield boost benefit card and the savings boost strip.
+   */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for the current tier, in USD. */
+  yieldBoostCap?: number;
+  /** Yield boost payouts the user has already received, in USD. */
+  yieldBoostEarned?: number;
+  /**
+   * Cashback % the current tier earns back on eligible subscriptions. 0 (or
+   * absent) means the tier grants none, which hides the subscription card.
+   */
+  subscriptionDiscountRate?: number;
+  /** Subscription categories the current tier earns the discount on per month. */
+  subscriptionCategoryLimit?: number;
+  /**
+   * FUSE-in-savings tier unlock ("skip the line"). Absent on older backends,
+   * which is what hides the section.
+   */
+  fuseSkipLine?: FuseSkipLine;
+}
+
+/** One "skip the line" rung: what a tier costs in FUSE and how close the user is. */
+export interface FuseSkipLineTier {
+  tier: RewardsTier;
+  /** FUSE that must sit in the soFUSE vault to hold this tier. */
+  requiredFuse: number;
+  /** Whether the user's current FUSE balance meets the threshold. */
+  unlocked: boolean;
+  /** FUSE still needed to reach the threshold (0 once unlocked). */
+  remainingFuse: number;
+  /** Progress toward this tier's threshold, 0-100. */
+  progressPct: number;
+}
+
+/**
+ * "Skip the line": FUSE held in savings unlocks a membership tier outright,
+ * bypassing the points ladder. The tier is held only while the balance stays
+ * above the threshold.
+ */
+export interface FuseSkipLine {
+  /** Whether the mechanic is switched on. False hides the section. */
+  enabled: boolean;
+  /** The user's soFUSE position, denominated in FUSE. */
+  balanceFuse: number;
+  /** That same position in USD, for the secondary label. */
+  balanceUsd: number;
+  /** Highest tier the FUSE balance unlocks on its own (core when none). */
+  unlockedTier: RewardsTier;
+  /** The purchasable rungs, cheapest first. */
+  tiers: FuseSkipLineTier[];
 }
 
 export interface TierBenefit {
@@ -1371,6 +1477,10 @@ export interface TierBenefit {
 export interface TierBenefits {
   tier: RewardsTier;
   depositBoost: TierBenefit;
+  /** `depositBoost` as APY percentage points (0 when the tier has no boost). */
+  yieldBoostPercentage?: number;
+  /** Ceiling on yield boost payouts for this tier, in USD. */
+  yieldBoostCap?: number;
   cardCashback: TierBenefit;
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;
@@ -1434,7 +1544,11 @@ export interface SubscriptionDiscountConfig {
 }
 
 export interface FuseStakingConfig {
+  /** Master switch for the "skip the line" FUSE tier unlock. */
+  enabled: boolean;
+  /** FUSE that must sit in the soFUSE vault to hold Prime. */
   tier2Amount: number;
+  /** FUSE that must sit in the soFUSE vault to hold Ultra. */
   tier3Amount: number;
 }
 

@@ -1,9 +1,13 @@
-import React, { lazy, ReactNode, Suspense } from 'react';
+import React, { ReactNode, Suspense } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
+
 // Lazy load the ThirdwebProvider - this defers loading the thirdweb bundle
-// until it's actually needed (when wallet/deposit features are used)
-const ThirdwebProvider = lazy(() =>
+// until it's actually needed (when wallet/deposit features are used).
+// This boundary wraps nearly the whole app, so a single failed chunk fetch used
+// to crash all of it; retry the import before surfacing that.
+const ThirdwebProvider = lazyWithRetry(() =>
   import('thirdweb/react').then(module => ({
     default: module.ThirdwebProvider,
   })),

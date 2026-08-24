@@ -52,7 +52,11 @@ const CardLinksList = () => {
         onPress={() => router.push(path.REWARDS_BENEFITS)}
       />
       <View style={styles.divider} />
-      <LinkRow icon={<SupportRowIcon />} label="Contact support" onPress={openSupportDrawer} />
+      <LinkRow
+        icon={<SupportRowIcon />}
+        label="Contact support"
+        onPress={() => openSupportDrawer()}
+      />
     </View>
   );
 };

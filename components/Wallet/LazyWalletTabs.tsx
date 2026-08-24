@@ -1,10 +1,12 @@
 import React, { Suspense } from 'react';
 
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
+
 import TokenListSkeleton from './WalletTokenTab/TokenListSkeleton';
 
 // Lazy load WalletTabs - this shows the token list and is below the fold
 // Deferring it improves FCP while maintaining perceived performance with skeleton
-const WalletTabs = React.lazy(() => import('./WalletTabs'));
+const WalletTabs = lazyWithRetry(() => import('./WalletTabs'));
 
 /**
  * Lazy-loaded wrapper for WalletTabs component
