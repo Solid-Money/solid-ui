@@ -30,6 +30,10 @@ type SavingsFundDepositAddressProps = {
   address?: string;
   symbol: string;
   chainId: number;
+  /** The address request failed — the screen offers a retry instead of a spinner. */
+  hasError?: boolean;
+  /** Re-runs the address request for the network already chosen. */
+  onRetry?: () => void;
   /** Returns to network selection — the chevron on the network summary row. */
   onChangeNetwork: () => void;
   /**
@@ -48,6 +52,8 @@ const SavingsFundDepositAddress = ({
   address,
   symbol,
   chainId,
+  hasError,
+  onRetry,
   onChangeNetwork,
   onDepositDetected,
 }: SavingsFundDepositAddressProps) => {
@@ -61,8 +67,13 @@ const SavingsFundDepositAddress = ({
     [onDepositDetected],
   );
 
+  // Polling only runs once there is an address to watch, so the status chip
+  // below has to follow the same condition - it used to claim it was scanning
+  // while no address existed and nothing was being polled.
+  const isScanning = !!address;
+
   const { isDetected } = useDetectedDirectDeposit({
-    enabled: !!address,
+    enabled: isScanning,
     destinationType: 'PROTOCOL',
     onDetected: handleDetected,
   });
@@ -119,17 +130,33 @@ const SavingsFundDepositAddress = ({
               logoBorderRadius={Math.round(qrSize * 0.11)}
               logoBackgroundColor="transparent"
             />
+          ) : hasError ? (
+            <View className="items-center gap-y-3 px-6">
+              <Text className="text-center text-sm text-white/70">
+                Could not load the deposit address.
+              </Text>
+              <Button
+                variant="secondary"
+                className="h-10 rounded-full px-6"
+                onPress={onRetry}
+                disabled={!onRetry}
+              >
+                <Text className="text-sm font-semibold">Try again</Text>
+              </Button>
+            </View>
           ) : (
             <ActivityIndicator color="white" />
           )}
         </View>
 
-        <View className="flex-row items-center gap-x-2 rounded-[18px] bg-[#333333] px-4 py-2">
-          <Text className="text-sm leading-4 text-white">
-            {isDetected ? 'Deposit detected' : 'Scanning for deposits'}
-          </Text>
-          <ActivityIndicator color="white" size="small" />
-        </View>
+        {isScanning ? (
+          <View className="flex-row items-center gap-x-2 rounded-[18px] bg-[#333333] px-4 py-2">
+            <Text className="text-sm leading-4 text-white">
+              {isDetected ? 'Deposit detected' : 'Scanning for deposits'}
+            </Text>
+            <ActivityIndicator color="white" size="small" />
+          </View>
+        ) : null}
       </View>
 
       <Text className="text-center text-sm text-white/70">

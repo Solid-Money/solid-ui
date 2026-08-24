@@ -6,6 +6,7 @@ import { fuse } from 'viem/chains';
 
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -2981,6 +2982,15 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 };
 
 // Direct Deposit Session API
+
+/**
+ * Deposit-address requests block a screen that can show nothing until they
+ * answer, so they fail rather than hang: the backend derives the address over
+ * an RPC call and registers it with webhook providers, and a stalled provider
+ * used to leave the client on an endless spinner.
+ */
+const DIRECT_DEPOSIT_SESSION_TIMEOUT_MS = 30000;
+
 export const createDirectDepositSession = async (
   chainId: number,
   tokenSymbol: string,
@@ -2988,7 +2998,7 @@ export const createDirectDepositSession = async (
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session`,
     {
       method: 'POST',
@@ -3004,6 +3014,7 @@ export const createDirectDepositSession = async (
         ...(destinationType ? { destinationType } : {}),
       }),
     },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
   );
 
   if (!response.ok) throw response;

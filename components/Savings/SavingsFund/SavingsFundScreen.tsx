@@ -22,8 +22,10 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
     selectedChainId,
     depositAddress,
     isPreparingSession,
+    hasSessionError,
     selectToken,
     selectNetwork,
+    retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
     openDetectedDeposit,
@@ -45,6 +47,8 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
         address={depositAddress}
         symbol={selectedToken}
         chainId={selectedChainId ?? 0}
+        hasError={hasSessionError}
+        onRetry={retryPrepareSession}
         onChangeNetwork={() => setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS)}
         onDepositDetected={openDetectedDeposit}
       />
