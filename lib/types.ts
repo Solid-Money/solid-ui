@@ -1673,6 +1673,54 @@ export interface CryptoTransactionDetails {
   chain: string;
 }
 
+/** Fee categories the card can charge. Swaps are not one: they happen off-card. */
+export enum CardFeeCategory {
+  /** Purchase that settled in a currency other than the card's own. */
+  FX = 'fx',
+  /** Funds moved off the card. */
+  OFF_RAMP = 'offramp',
+}
+
+export enum CardFeeStatus {
+  Pending = 'Pending',
+  Charged = 'Charged',
+  Failed = 'Failed',
+  PermanentlyFailed = 'PermanentlyFailed',
+  /** Nothing was owed — see `waive_reason`. */
+  Waived = 'Waived',
+}
+
+export enum CardFeeWaiveReason {
+  /** The user's tier pays 0% here (Ultra, or a zeroed rate). */
+  TierFree = 'TierFree',
+  /** The fee rounded below the minimum worth charging. */
+  BelowMinimum = 'BelowMinimum',
+  /** The fee program, or this category, is switched off. */
+  Disabled = 'Disabled',
+}
+
+/**
+ * A fee applied to a card transaction.
+ *
+ * Waived fees are returned too: "FX fee — waived on Ultra" is where the tier
+ * pays for itself, and hiding the $0 line would make the fee look like it
+ * appeared out of nowhere if the user ever drops a tier.
+ */
+export interface CardTransactionFee {
+  category: CardFeeCategory | string;
+  /** Ready-to-show label from the backend, e.g. "FX fee". */
+  label: string;
+  /** USD, 2dp. "0.00" when waived. */
+  amount: string;
+  currency: string;
+  /** Rate applied as a fraction (0.0099 = 0.99%). */
+  percentage: number;
+  status: CardFeeStatus | string;
+  waive_reason?: CardFeeWaiveReason | string;
+  /** Tier the fee was rated at: 'core' | 'prime' | 'ultra'. */
+  tier: string;
+}
+
 export enum CardTransactionCategory {
   ADJUSTMENT = 'adjustment',
   PURCHASE = 'purchase',
@@ -1703,6 +1751,24 @@ export interface CardTransaction {
   merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
   declined_reason?: string;
+  /** Fees applied to this transaction. Absent when none were evaluated. */
+  fees?: CardTransactionFee[];
+}
+
+/** What the activity surfaces need to render a fee, derived from `fees`. */
+export interface CardFeeInfo {
+  /** Signed display amount, e.g. "-$0.99". "Free" when waived. */
+  amount: string;
+  /** Row label, e.g. "FX fee". */
+  label: string;
+  /** True when nothing was charged. */
+  isWaived: boolean;
+  /** True while the charge is still owed (pending or being retried). */
+  isPending: boolean;
+  /** "0.99%" — the rate the fee was charged at. Empty when waived. */
+  rate: string;
+  /** Explains a waived fee, e.g. "Waived on Ultra". */
+  waivedNote?: string;
 }
 
 export interface CardTransactionsResponse {
