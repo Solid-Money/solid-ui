@@ -207,8 +207,8 @@ export const ADDRESSES: Addresses = {
     // Deployed 2026-08-21. Non-upgradeable by design: a new module cannot be swapped
     // in for a user, it has to be enabled by their own Safe owner signature. Changing
     // this address therefore means every registered Safe must re-consent.
-    cashModule: '0x379831B28995f0AfbCD336Aaa1aCf7Af0ABc1e5d',
-    cashLens: '0x1Dc165730dfd0F0e2C6565bBab697126F16644dF',
+    cashModule: '0x31F7f64769C6B2D4d3edd053421a0465FB371061',
+    cashLens: '0x2036512E45BF7c61814050fF9B1b5403353854a6',
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',
