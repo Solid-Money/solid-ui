@@ -320,6 +320,13 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
   CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',
   CARD_SPEND_REGISTER_CANCELLED: 'card_spend_register_cancelled',
+  // Turning card spending back off: `Safe.disableModule`. Its own events rather than a
+  // property on the register ones, because this is the funnel leaving — a user who
+  // disables is a different signal from one who never set up.
+  CARD_SPEND_DISABLE_PRESSED: 'card_spend_disable_pressed',
+  CARD_SPEND_DISABLE_COMPLETED: 'card_spend_disable_completed',
+  CARD_SPEND_DISABLE_FAILED: 'card_spend_disable_failed',
+  CARD_SPEND_DISABLE_CANCELLED: 'card_spend_disable_cancelled',
 
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',
