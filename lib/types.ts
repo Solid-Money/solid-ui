@@ -1105,6 +1105,15 @@ export type StakeModal = (typeof STAKE_MODAL)[keyof typeof STAKE_MODAL];
 export type DepositFromSafeAccountModal =
   (typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL)[keyof typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL];
 
+/**
+ * Why the savings direct-deposit flow was opened.
+ *
+ * `card_deposit` is the Bangladesh card gate ("Deposit at least $5"), which
+ * completes off the soUSD balance alone — so that entry point only offers the
+ * stablecoins that mint soUSD.
+ */
+export type SavingsFundIntent = 'savings' | 'card_deposit';
+
 export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
