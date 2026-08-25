@@ -12,6 +12,7 @@ import {
   CashbackInfo,
   CashbackStatus,
   FreezeInitiator,
+  KycStatus,
 } from '@/lib/types';
 
 /** The freeze fields every card surface reads, so callers can pass a partial. */
@@ -45,6 +46,60 @@ const canCustomerUnfreezeCard = (cardDetails: FreezeState): boolean => {
  */
 export const canToggleCardFreeze = (cardDetails: FreezeState): boolean =>
   cardDetails?.status !== CardStatus.FROZEN || canCustomerUnfreezeCard(cardDetails);
+
+/**
+ * KYC states where we move no money for the customer in either direction.
+ *
+ * Paused and offboarded are holds on the person rather than on the card, so they
+ * are the one thing that stops a withdrawal too — a card-level problem doesn't.
+ * Anything else, an unresolved status included, leaves both actions offered.
+ *
+ * Takes a bare string because that is what `/bridge-customer` is typed as: the
+ * endpoint passes Bridge's status through unmodelled, and only the two values
+ * named here are acted on, so an unrecognised one restricts nothing.
+ */
+export const isCustomerFundsRestricted = (status: string | undefined | null): boolean =>
+  status === KycStatus.PAUSED || status === KycStatus.OFFBOARDED;
+
+/** What the card action row needs to know before offering to move money. */
+export interface CardFundsAccess {
+  /** The card is frozen — by the cardholder or by the provider. */
+  isCardFrozen: boolean;
+  /** KYC is paused or the customer is offboarded — see `isCustomerFundsRestricted`. */
+  isCustomerRestricted: boolean;
+}
+
+/**
+ * Whether to offer Add funds.
+ *
+ * A frozen card cannot spend, so a deposit onto one only moves the user's
+ * balance somewhere it does less for them. The action waits for the unfreeze.
+ */
+export const canAddFundsToCard = ({
+  isCardFrozen,
+  isCustomerRestricted,
+}: CardFundsAccess): boolean => !isCardFrozen && !isCustomerRestricted;
+
+/**
+ * Whether to offer Withdraw. Deliberately does **not** read `isCardFrozen`.
+ *
+ * Withdrawing used to be gated with Add funds on one `canMoveCardFunds` flag,
+ * which read as symmetric and isn't. A freeze stops the card spending; it does
+ * not touch the collateral, and a Rain withdrawal doesn't go through the card at
+ * all — it moves tokens out of the collateral proxy, which Rain signs for a
+ * frozen card exactly as it does for a live one. Our own withdraw endpoints
+ * carry no card-status check either. So hiding the button withheld an action
+ * that was available the whole time, from the users most likely to want it: a
+ * card frozen for suspected fraud, or one the cardholder froze precisely because
+ * they were done with it and wanted their money back.
+ *
+ * A provider freeze is treated the same as the customer's own here. Unlike
+ * unfreezing — which would undo a compliance hold and so has to go through
+ * support — taking collateral out is not a way around the freeze, and the API
+ * permits it either way; hiding the button would only hide it from the app.
+ */
+export const canWithdrawFromCard = ({ isCustomerRestricted }: CardFundsAccess): boolean =>
+  !isCustomerRestricted;
 
 /**
  * Whether this card can be funded by depositing onto it.
