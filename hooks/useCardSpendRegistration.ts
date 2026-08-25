@@ -26,6 +26,16 @@ export const CARD_SPEND_REGISTRATION_QUERY_KEY = 'cardSpendRegistration';
 
 const MODULE = ADDRESSES.fuse.cashModule;
 
+/**
+ * Head of a Safe's module linked list. `disableModule(prevModule, module)` needs the
+ * entry pointing at the one being removed, and for the most recently enabled module
+ * that pointer is the sentinel itself rather than another module's address.
+ */
+const SENTINEL_MODULES = '0x0000000000000000000000000000000000000001' as Address;
+
+/** Enough to cover any real Safe's module list in one read. */
+const MODULE_PAGE_SIZE = 50n;
+
 /** What the setup sheet needs to render, all read from the chain in one multicall. */
 export interface CardSpendRegistration {
   /** Both halves done — module enabled on the Safe *and* the Safe registered. */
@@ -280,6 +290,89 @@ export function useCardSpendRegistration() {
   });
 
   /**
+   * Withdraw module consent: `Safe.disableModule`, leaving the Safe registered but unable
+   * to be debited.
+   *
+   * This is as far back as the chain lets us go, and it is the whole of what matters.
+   * `registerSafe` has no counterpart — registration and the limits it wrote are
+   * permanent — but the module re-checks `isModuleEnabled` on every debit, so a disabled
+   * module declines immediately. The user lands in the `isRevoked` state, from which the
+   * existing setup action re-enables with the same limits rather than asking for them
+   * again.
+   */
+  const disableMutation = useMutation({
+    mutationFn: async () => {
+      if (!registration?.moduleEnabled) throw new Error('Card spending is already off.');
+      if (!user?.suborgId || !user?.signWith || !safeAddress) {
+        throw new Error('Your wallet is still setting up. Please try again shortly.');
+      }
+
+      // `disableModule` takes the list entry that points at the module, so the list has to
+      // be read first — it cannot be derived, and passing the wrong predecessor reverts
+      // GS103. Read at press time rather than cached with the rest of the registration:
+      // enabling any other module rewrites these pointers, and a stale predecessor is a
+      // failed user operation.
+      const client = publicClient(fuse.id);
+      const [modules] = await client.readContract({
+        address: safeAddress,
+        abi: Safe_ABI,
+        functionName: 'getModulesPaginated',
+        args: [SENTINEL_MODULES, MODULE_PAGE_SIZE],
+      });
+
+      const index = modules.findIndex(
+        module => module.toLowerCase() === (MODULE as string).toLowerCase(),
+      );
+      // Not on the list at all: the chain disagrees with what we read a moment ago (another
+      // client disabled it). Nothing to do, and sending the transaction would only revert.
+      if (index === -1) throw new Error('Card spending is already off.');
+
+      // `getModulesPaginated` walks from the sentinel outwards, so the entry before the
+      // module in this array is exactly the one pointing at it — and for the first entry
+      // that is the sentinel.
+      const prevModule = index === 0 ? SENTINEL_MODULES : modules[index - 1];
+
+      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+      const result = await executeTransactions(
+        smartAccountClient,
+        [
+          {
+            to: safeAddress,
+            data: encodeFunctionData({
+              abi: Safe_ABI,
+              functionName: 'disableModule',
+              args: [prevModule, MODULE as Address],
+            }),
+          },
+        ],
+        'Failed to turn off card spending',
+        fuse,
+      );
+
+      if (result === USER_CANCELLED_TRANSACTION) {
+        track(TRACKING_EVENTS.CARD_SPEND_DISABLE_CANCELLED);
+        return null;
+      }
+
+      return { transactionHash: result.transactionHash };
+    },
+    onSuccess: result => {
+      if (!result) return;
+      queryClient.invalidateQueries({ queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY] });
+      // Anything showing what the card can spend is now wrong: it can spend nothing.
+      queryClient.invalidateQueries({ queryKey: ['cardDetails'] });
+      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_COMPLETED, {
+        transaction_hash: result.transactionHash,
+      });
+    },
+    onError: (mutationError: Error) => {
+      const message = mutationError?.message || 'Failed to turn off card spending';
+      setError(message);
+      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_FAILED, { error: message });
+    },
+  });
+
+  /**
    * Enable the module and register, with the chosen daily limit.
    *
    * Resolves `true` once registered, `false` when the user dismissed the signature
@@ -297,6 +390,19 @@ export function useCardSpendRegistration() {
     [mutation],
   );
 
+  /**
+   * Turn card spending off again. Resolves `true` once the module is disabled, `false`
+   * when the user dismissed the signature prompt, and rejects on a real failure — the
+   * same three outcomes as {@link register}, for the same reason: telling someone their
+   * card is off while it still spends would be the worst of the three to get wrong.
+   */
+  const disable = useCallback(async (): Promise<boolean> => {
+    setError(null);
+    track(TRACKING_EVENTS.CARD_SPEND_DISABLE_PRESSED);
+    const result = await disableMutation.mutateAsync();
+    return result !== null;
+  }, [disableMutation]);
+
   return {
     registration,
     /** Whether to offer the control at all. */
@@ -311,10 +417,17 @@ export function useCardSpendRegistration() {
     isRevoked: registration?.registeredOnChain === true && registration.moduleEnabled === false,
     /** Guardian pause, global or per-Safe. Setup is pointless until it lifts. */
     isPaused: registration?.modulePaused === true || registration?.safePaused === true,
+    /**
+     * Whether to offer the off switch: the module is live on this Safe, so there is
+     * consent to withdraw. False in the revoked state, where it is already off.
+     */
+    canDisable: registration?.moduleEnabled === true,
     isLoading: query.isLoading,
     isRegistering: mutation.isPending,
+    isDisabling: disableMutation.isPending,
     error,
     register,
+    disable,
     refetch: query.refetch,
   };
 }
