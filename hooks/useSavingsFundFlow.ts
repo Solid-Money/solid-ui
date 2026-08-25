@@ -12,6 +12,17 @@ import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
+ * Failures here arrive as a rejected `Response` as often as an `Error`, and the
+ * status is the part worth having: it separates a backend fault from a gateway
+ * timeout when this shows up in analytics.
+ */
+const describeSessionError = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  const status = (error as { status?: number } | null)?.status;
+  return status ? `HTTP ${status}` : 'Unknown error';
+};
+
+/**
  * Drives the savings direct-deposit screens ("Deposit to savings"): token →
  * network → deposit address, with the address prepared as soon as a network is
  * picked and the deposit polled for so the user lands on its activity the moment
@@ -38,16 +49,33 @@ export const useSavingsFundFlow = () => {
   const selectedChainId = session.chainId;
   const depositAddress = session.walletAddress;
 
-  const { mutate: prepareSession, isPending: isPreparingSession } = useMutation({
-    mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
-      withRefreshToken(() => createDirectDepositSession(chainId, token, 'PROTOCOL')),
+  const {
+    mutate: prepareSession,
+    isPending: isPreparingSession,
+    isError: hasSessionError,
+  } = useMutation({
+    mutationFn: async ({ chainId, token }: { chainId: number; token: string }) => {
+      const data = await withRefreshToken(() =>
+        createDirectDepositSession(chainId, token, 'PROTOCOL'),
+      );
+      // A response without an address leaves the screen with nothing to show,
+      // so it is a failure here rather than a success the UI cannot render.
+      if (!data?.walletAddress) throw new Error('No deposit address returned');
+      return data;
+    },
     onSuccess: data => {
-      if (data?.walletAddress) {
-        setDirectDepositSession({
-          walletAddress: data.walletAddress,
-          clientTxId: data.clientTxId,
-        });
-      }
+      setDirectDepositSession({
+        walletAddress: data.walletAddress,
+        clientTxId: data.clientTxId,
+      });
+    },
+    onError: (error, { chainId, token }) => {
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_CREATION_FAILED, {
+        deposit_method: 'savings_direct_deposit',
+        chain_id: chainId,
+        selected_token: token,
+        error: describeSessionError(error),
+      });
     },
   });
 
@@ -92,6 +120,12 @@ export const useSavingsFundFlow = () => {
     [selectNetwork, setDirectDepositSession, setModal],
   );
 
+  /** Re-runs the address request for the network already chosen. */
+  const retryPrepareSession = useCallback(() => {
+    if (!selectedChainId) return;
+    prepareSession({ chainId: selectedChainId, token: selectedToken });
+  }, [prepareSession, selectedChainId, selectedToken]);
+
   /** "Move from wallet or savings" — the existing deposit-from-Solid form. */
   const moveFromWallet = useCallback(() => {
     setDepositFromSolid(true);
@@ -118,8 +152,10 @@ export const useSavingsFundFlow = () => {
     selectedChainId,
     depositAddress,
     isPreparingSession,
+    hasSessionError,
     selectToken,
     selectNetwork,
+    retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
     openDetectedDeposit,
