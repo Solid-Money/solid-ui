@@ -17,6 +17,7 @@ type SavingsFundStep = 'options' | 'networks' | 'address';
  */
 const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
   const setModal = useDepositStore(state => state.setModal);
+  const savingsFundIntent = useDepositStore(state => state.savingsFundIntent);
   const {
     selectedToken,
     selectedChainId,
@@ -56,6 +57,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
       onTokenPress={selectToken}
       onMoveFromWalletPress={moveFromWallet}
       onExternalWalletPress={depositFromExternalWallet}
+      intent={savingsFundIntent}
     />
   );
 };
