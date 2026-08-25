@@ -62,12 +62,17 @@ interface CardActionsRowProps {
   onFreezeToggle: () => void;
   onMorePress: () => void;
   /**
-   * Whether funds can move to/from the card at all (not frozen, KYC not paused).
-   * Gates Add funds and Withdraw together — the parent derives it once so the row
-   * and the desktop header cannot offer different actions for the same card.
+   * Whether funds can move onto the card: not frozen, and KYC not paused or
+   * offboarded. Derived by the parent (`canAddFundsToCard`) rather than here, so
+   * this row and the freeze state it renders come from one reading of the card.
    */
   canAddFunds: boolean;
-  /** Withdraw is hidden while funds can't be moved off the card (frozen / paused KYC). */
+  /**
+   * Whether funds can move off the card (`canWithdrawFromCard`). Not the mirror of
+   * `canAddFunds`: a freeze stops the card spending but leaves the collateral
+   * withdrawable, so this stays true on a frozen card and only a paused or
+   * offboarded customer turns it off.
+   */
   canWithdraw: boolean;
 }
 
