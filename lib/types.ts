@@ -216,6 +216,14 @@ export interface User {
   leaderboardPosition?: number;
   points?: number;
   credentialId?: string;
+  /**
+   * Every WebAuthn credential Turnkey holds for this account. Recovery *adds* a
+   * passkey rather than replacing the lost one, so a single value cannot
+   * describe the account — these feed `allowCredentials` on every passkey
+   * prompt, and pinning to one credential the authenticator no longer holds
+   * breaks every in-app action while login (unfiltered) keeps working.
+   */
+  credentialIds?: string[];
   externalWalletAddress?: string;
 }
 
