@@ -5,12 +5,14 @@ import {
   CardFeeWaiveReason,
   CardProvider,
   CardResponse,
+  CardSpendDetails,
   CardStatus,
   CardTransaction,
   CardTransactionFee,
   Cashback,
   CashbackInfo,
   CashbackStatus,
+  CryptoTransactionDetails,
   FreezeInitiator,
   KycStatus,
 } from '@/lib/types';
@@ -206,12 +208,98 @@ export const assetLabel = (asset: CardCollateralTokenBalanceDto): string =>
   asset.symbol || `${asset.tokenAddress.slice(0, 6)}…${asset.tokenAddress.slice(-4)}`;
 
 /**
- * Format card transaction amount with proper sign and currency symbol.
+ * Block explorer for the chain a card transaction settled on.
+ *
+ * Rain settles on Arbitrum and Wirex on Base, so the explorer has to follow the
+ * transaction rather than being fixed — an Arbiscan link for a Base hash opens a
+ * page saying the transaction does not exist, which reads as lost money.
+ * Arbitrum stays the fallback: it is where every card transaction that predates
+ * the `chain` field came from.
  */
-export const formatCardAmount = (amount: string, provider?: CardProvider | null): string => {
+export const cardTransactionExplorerUrl = (
+  details: CryptoTransactionDetails | undefined,
+): string | undefined => {
+  const hash = details?.tx_hash;
+  if (!hash) return undefined;
+
+  switch (details?.chain?.toLowerCase()) {
+    case 'base':
+      return `https://basescan.org/tx/${hash}`;
+    case 'base-sepolia':
+    case 'basesepolia':
+      return `https://sepolia.basescan.org/tx/${hash}`;
+    default:
+      return `https://arbiscan.io/tx/${hash}`;
+  }
+};
+
+/** Fuse — the only chain the soUSD sweep runs on. */
+const FUSE_CHAIN_ID = 122;
+
+/**
+ * Explorer link for the soUSD sweep that funded a card transaction.
+ *
+ * Kept apart from {@link cardTransactionExplorerUrl}: that one links the issuer's
+ * own on-chain leg, this one links ours, and for the same purchase they are on
+ * different chains. An unrecognised chain returns nothing rather than guessing —
+ * a link to the wrong explorer is worse than no link, because it renders as a
+ * transaction that does not exist.
+ */
+export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): string | undefined => {
+  const hash = details?.sweep_tx_hash;
+  if (!hash) return undefined;
+  // The backend sends the chain alongside the hash; tolerate its absence rather
+  // than dropping the link, since Fuse is the only chain that produces one.
+  const chainId = details?.chain_id ?? FUSE_CHAIN_ID;
+  if (chainId !== FUSE_CHAIN_ID) return undefined;
+  return `https://explorer.fuse.io/tx/${hash}`;
+};
+
+/**
+ * Currencies that read better as a leading symbol. Deliberately short: anything
+ * missing falls back to a trailing ISO code, which is how CHF and PLN are
+ * written anyway, and is honest rather than wrong — Rain cards are USD, but a
+ * Wirex card settles in whatever the merchant charged.
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  AUD: 'A$',
+  CAD: 'C$',
+  NZD: 'NZ$',
+};
+
+/**
+ * Format card transaction amount with proper sign and currency symbol.
+ *
+ * `currency` is optional and defaults to dollars, because that is what every
+ * Rain and Bridge card is denominated in and what every existing caller assumed.
+ * Pass the transaction's own currency for issuers that are not USD-only:
+ * a €50 Wirex purchase rendered as "$50.00" is not a formatting nit, it is the
+ * wrong number.
+ */
+export const formatCardAmount = (
+  amount: string,
+  provider?: CardProvider | null,
+  currency?: string,
+): string => {
   const numAmount = normalizeCardAmount(amount, provider);
   const sign = numAmount >= 0 ? '' : '-';
-  return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
+  const value = Math.abs(numAmount).toFixed(2);
+  const code = currency?.trim().toUpperCase();
+
+  // Only a three-letter ISO code is treated as a currency. The same field also
+  // carries token symbols on crypto funding rows ("usdc"), and those are already
+  // dollar-denominated 1:1 — rendering them as "50.00 USDC" would change how
+  // every existing Rain and Bridge row reads for no gain.
+  if (!code || !/^[A-Z]{3}$/.test(code)) return `${sign}$${value}`;
+
+  const symbol = CURRENCY_SYMBOLS[code];
+  // Unknown code goes after the number ("-12.34 SEK"): an unfamiliar symbol
+  // glued to the front reads as part of the figure.
+  return symbol ? `${sign}${symbol}${value}` : `${sign}${value} ${code}`;
 };
 
 /**

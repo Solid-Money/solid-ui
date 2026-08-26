@@ -1739,6 +1739,34 @@ export enum CardTransactionCategory {
   CRYPTO_WITHDRAWAL = 'crypto_withdrawal',
 }
 
+/**
+ * What our backend's own ledger knows about a card transaction, beyond what the
+ * issuer reports.
+ *
+ * Only present for cards that spend against savings rather than a prefunded
+ * balance (Wirex): the issuer settles from its Master Account and we reimburse it
+ * by pulling soUSD from the user's Safe on Fuse. That pull is the transaction the
+ * user's own money actually went through, and the issuer has no record of it.
+ */
+export interface CardSpendDetails {
+  /** Hash of the soUSD pull (a debit) or refund (a credit), on Fuse. */
+  sweep_tx_hash?: string;
+  /** Chain the sweep settled on. Fuse (122) — NOT the issuer's chain. */
+  chain_id?: number;
+  /** soUSD moved, as a decimal string. */
+  so_usd_amount?: string;
+  /** USD per soUSD share used to size the claim. */
+  so_usd_rate?: number;
+  /** The transaction converted to USD. */
+  usd_amount?: number;
+  /** USD per unit of the transaction currency (1 for USD). */
+  usd_rate?: number;
+  /** `held` | `settled` | `released` | `failed` — where the claim stands. */
+  state?: string;
+  settled_at?: string;
+  decline_reason?: string;
+}
+
 export interface CardTransaction {
   id: string;
   card_account_id: string;
@@ -1760,8 +1788,26 @@ export interface CardTransaction {
   merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
   declined_reason?: string;
+  /**
+   * A merchant category already written as a label ("Online Shopping"), for
+   * issuers that name the category instead of sending a numeric MCC. Wirex does;
+   * `getMerchantCategory` has nothing to resolve there, so this is shown instead.
+   */
+  merchant_category_label?: string;
+  /**
+   * How much of this transaction has been refunded, when the issuer models a
+   * refund as a credit on the original transaction rather than a separate one
+   * (Wirex does). `amount` is already net of it — this exists to explain why the
+   * figure is lower than what the merchant charged.
+   */
+  refunded_amount?: string;
   /** Fees applied to this transaction. Absent when none were evaluated. */
   fees?: CardTransactionFee[];
+  /**
+   * Our ledger's view of the same transaction. Returned by the single-transaction
+   * read only, so it is available on the detail screen and not in the list.
+   */
+  spend_details?: CardSpendDetails;
 }
 
 /** What the activity surfaces need to render a fee, derived from `fees`. */
