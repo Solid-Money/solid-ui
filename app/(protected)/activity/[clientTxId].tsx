@@ -134,12 +134,19 @@ const Back = memo(function Back({ title, className }: BackProps) {
       router.replace(path.CARD_INFO);
       return;
     }
+    // Just pop this detail off. A detail is opened from wherever the tapped row
+    // lives — the Activity list, but also a coin page's recent activity — and
+    // `dismissTo(ACTIVITY)` sent every one of those back to the Activity list
+    // instead. That mounted the whole unfiltered list (every transaction, both
+    // card tabs) on top of the screen the user was actually on, which is what
+    // made backing out of a coin page's transaction slow enough to hang.
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    // Deep link / notification: there is no screen underneath, so land on the
+    // Activity list rather than leaving the user on a dead end.
     const tabParam = params.tab ? `?tab=${params.tab}` : '';
-    // Pop back to the existing Activity list instead of replacing this detail
-    // with a second copy of it. A duplicated list route makes the next system
-    // back gesture appear to do nothing because it reveals the same screen.
-    // `dismissTo` still replaces the detail when it was opened from a deep link
-    // and no Activity list exists in the protected Activity stack.
     router.dismissTo(`${path.ACTIVITY}${tabParam}` as any);
   }, [params.from, params.tab, router]);
 

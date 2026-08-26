@@ -610,6 +610,28 @@ const fetchTokenBalances = async (safeAddress: string) => {
   };
 };
 
+// Module-level so the empty arrays keep one identity for the whole session.
+// Built inline per render, every consumer memoised on `tokens` (coin breakdown,
+// unique-token lists, the activity list's derived chain) was invalidated on each
+// render for as long as the query had no data — first load, and again after any
+// failure.
+const EMPTY_BALANCE_DATA = {
+  totalUSD: 0,
+  totalSoUSD: 0,
+  totalUSDExcludingVaultTokens: 0,
+  soUSDEthereum: 0,
+  soUSDFuse: 0,
+  soUSDBase: 0,
+  ethereumTokens: [] as TokenBalance[],
+  fuseTokens: [] as TokenBalance[],
+  polygonTokens: [] as TokenBalance[],
+  baseTokens: [] as TokenBalance[],
+  arbitrumTokens: [] as TokenBalance[],
+  bscTokens: [] as TokenBalance[],
+  tokens: [] as TokenBalance[],
+  unifiedTokens: [] as UnifiedTokenBalance[],
+};
+
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
@@ -629,25 +651,8 @@ export const useBalances = (): BalanceData => {
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
-  const defaultData = {
-    totalUSD: 0,
-    totalSoUSD: 0,
-    totalUSDExcludingVaultTokens: 0,
-    soUSDEthereum: 0,
-    soUSDFuse: 0,
-    soUSDBase: 0,
-    ethereumTokens: [],
-    fuseTokens: [],
-    polygonTokens: [],
-    baseTokens: [],
-    arbitrumTokens: [],
-    bscTokens: [],
-    tokens: [],
-    unifiedTokens: [],
-  };
-
   return {
-    ...defaultData,
+    ...EMPTY_BALANCE_DATA,
     ...data,
     isLoading,
     isRefreshing: isRefetching,

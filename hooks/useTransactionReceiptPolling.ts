@@ -83,7 +83,10 @@ export const useProcessingActivitiesPolling = (activities: ActivityEvent[]) => {
     [activities],
   );
 
-  const results = useQueries({
+  // `combine` (rather than reading the raw results array) keeps this
+  // referentially stable: `useQueries` hands back a new array on every render,
+  // which made the effect below re-run on each render of the activity list.
+  const confirmedReceipts = useQueries({
     queries: processingActivities.map(activity => ({
       queryKey: ['tx-receipt-poll', activity.clientTxId, activity.hash],
       queryFn: async () => {
@@ -107,16 +110,18 @@ export const useProcessingActivitiesPolling = (activities: ActivityEvent[]) => {
       staleTime: 0,
       gcTime: 0,
     })),
+    combine: results =>
+      results.flatMap(({ data }) =>
+        data?.confirmed ? [{ clientTxId: data.clientTxId, status: data.status }] : [],
+      ),
   });
 
   // Update activities when receipts are confirmed
   useEffect(() => {
-    for (const result of results) {
-      const data = result.data;
-      if (data?.confirmed && !confirmedRef.current.has(data.clientTxId)) {
-        confirmedRef.current.add(data.clientTxId);
-        updateActivity(data.clientTxId, { status: data.status });
-      }
+    for (const { clientTxId, status } of confirmedReceipts) {
+      if (confirmedRef.current.has(clientTxId)) continue;
+      confirmedRef.current.add(clientTxId);
+      updateActivity(clientTxId, { status });
     }
-  }, [results, updateActivity]);
+  }, [confirmedReceipts, updateActivity]);
 };
