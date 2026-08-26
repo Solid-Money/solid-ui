@@ -157,9 +157,13 @@ export default function CardTransactions() {
 
       const transaction = row as CardTransactionWithTimestamp;
       const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
-      const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
-        .filter(Boolean)
-        .join(' ') || undefined;
+      // City/country when the issuer breaks the address up (Rain), else the
+      // single address line Wirex sends — without the fallback a Wirex row loses
+      // its location entirely.
+      const merchantLocation =
+        [transaction.merchant_city, transaction.merchant_country].filter(Boolean).join(' ') ||
+        transaction.merchant_location ||
+        undefined;
       const initials = getInitials(merchantName);
       const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
       const isDeclined = transaction.status === 'declined';
@@ -231,12 +235,9 @@ export default function CardTransactions() {
           </View>
           <View className="items-end">
             <Text
-              className={cn(
-                'text-xl font-semibold',
-                isDeclined ? 'text-red-400' : 'text-white',
-              )}
+              className={cn('text-xl font-semibold', isDeclined ? 'text-red-400' : 'text-white')}
             >
-              {formatCardAmount(transaction.amount, provider)}
+              {formatCardAmount(transaction.amount, provider, transaction.currency)}
             </Text>
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
               <Text className="mt-0.5 text-sm font-medium text-[#34C759]">

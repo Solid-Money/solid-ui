@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
+import { cardTransactionsQueryKey } from '@/hooks/useCardTransactions';
 import { useSyncActivities } from '@/hooks/useSyncActivities';
 import useUser from '@/hooks/useUser';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -14,6 +16,7 @@ import { useActivityStore } from '@/store/useActivityStore';
  */
 export function useActivityRefresh() {
   const { user } = useUser();
+  const queryClient = useQueryClient();
 
   // Memoize options to ensure stable reference
   // (useSyncActivities extracts primitives, but this is good defensive coding)
@@ -38,11 +41,18 @@ export function useActivityRefresh() {
     (force = false) => {
       if (!user?.userId || isSyncing) return;
 
+      // Card history is a separate query from the wallet activity store, so
+      // without this the refresh button on the Card tab appears to work and
+      // refreshes nothing. It matters most for cards whose transactions settle
+      // out-of-band (Wirex), where a pending purchase only turns into a
+      // confirmed one on a refetch.
+      queryClient.invalidateQueries({ queryKey: cardTransactionsQueryKey });
+
       syncFromBackend(undefined, force).catch((error: any) => {
         console.error('Background sync failed:', error);
       });
     },
-    [user?.userId, isSyncing, syncFromBackend],
+    [user?.userId, isSyncing, syncFromBackend, queryClient],
   );
 
   return {

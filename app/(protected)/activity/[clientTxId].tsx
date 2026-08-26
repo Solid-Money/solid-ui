@@ -45,7 +45,13 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { formatCardAmount, getCardFeeInfo, getCashbackAmount } from '@/lib/utils/cardHelpers';
+import {
+  cardSweepExplorerUrl,
+  cardTransactionExplorerUrl,
+  formatCardAmount,
+  getCardFeeInfo,
+  getCashbackAmount,
+} from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -228,14 +234,25 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     [transaction.merchant_city, transaction.merchant_country]
       .filter(Boolean)
       .join(', ')
-      .toUpperCase() || undefined;
-  const merchantCategory = getMerchantCategory(transaction.merchant_category_code);
+      .toUpperCase() ||
+    transaction.merchant_location?.toUpperCase() ||
+    undefined;
+  // Numeric MCC first; issuers that name the category instead (Wirex) send the
+  // label ready to show, and there is no code for the lookup to resolve.
+  const merchantCategory =
+    getMerchantCategory(transaction.merchant_category_code) ?? transaction.merchant_category_label;
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
   const { data: cardDetails } = useCardDetails();
   const last4 = cardDetails?.card_details?.last_4;
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
+  const explorerUrl = cardTransactionExplorerUrl(transaction.crypto_transaction_details);
+  // Our own settlement of the purchase: the soUSD that left the user's Safe on
+  // Fuse to reimburse the issuer. Only cards that spend against savings have one.
+  const spend = transaction.spend_details;
+  const sweepHash = spend?.sweep_tx_hash;
+  const sweepUrl = cardSweepExplorerUrl(spend);
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -248,15 +265,40 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const initial = useMemo(() => merchantName.charAt(0).toUpperCase(), [merchantName]);
 
+  // Support needs the ledger side to trace a purchase whose sweep is stuck or
+  // failed; none of it is worth a row on screen, but all of it belongs in the
+  // message the user sends.
+  const spendContext = useMemo(() => {
+    if (!spend) return '';
+    const lines = [
+      spend.so_usd_amount && `soUSD: ${spend.so_usd_amount}`,
+      spend.state && `Settlement: ${spend.state}`,
+      sweepHash && `Sweep: ${sweepHash}`,
+    ].filter(Boolean);
+    return lines.length ? `\n${lines.join('\n')}` : '';
+  }, [spend, sweepHash]);
+
   const transactionContext = useMemo(
     () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount, cardProvider)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}\n\nMy question: `,
-    [merchantName, transaction.amount, transaction.id, postedDate, cardProvider],
+      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+    [
+      merchantName,
+      transaction.amount,
+      transaction.currency,
+      transaction.id,
+      postedDate,
+      cardProvider,
+      spendContext,
+    ],
   );
 
   const handleExplorerPress = useCallback(() => {
-    if (txHash) Linking.openURL(`https://arbiscan.io/tx/${txHash}`);
-  }, [txHash]);
+    if (explorerUrl) Linking.openURL(explorerUrl);
+  }, [explorerUrl]);
+
+  const handleSweepPress = useCallback(() => {
+    if (sweepUrl) Linking.openURL(sweepUrl);
+  }, [sweepUrl]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
   const feeInfo = getCardFeeInfo(transaction);
@@ -343,6 +385,18 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           label: <Label>Releases in</Label>,
           value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
         },
+      // A refund the issuer folded into this transaction rather than sending as
+      // its own (Wirex). The amount above is already net of it, so without this
+      // row the figure silently disagrees with the receipt in the user's hand.
+      transaction.refunded_amount && {
+        key: 'refunded',
+        label: <Label>Refunded</Label>,
+        value: (
+          <Value className="text-brand">
+            {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
+          </Value>
+        ),
+      },
       // What the merchant actually charged, shown right above the FX fee so the
       // fee has a visible cause rather than looking like an unexplained charge.
       localDetails?.amount &&
@@ -373,6 +427,34 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Value>
         ),
       },
+      // What the purchase actually cost the user in their own asset. The figure
+      // above is what the merchant charged; this is what left the wallet to
+      // cover it, and the two are in different units.
+      spend?.so_usd_amount && {
+        key: 'sousd-paid',
+        label: <Label>Paid with</Label>,
+        value: <Value>{formatNumber(Number(spend.so_usd_amount), 4)} soUSD</Value>,
+      },
+      spend?.so_usd_rate !== undefined && {
+        key: 'sousd-rate',
+        label: <Label>soUSD price</Label>,
+        value: <Value>${formatNumber(spend.so_usd_rate, 4)}</Value>,
+      },
+      sweepUrl &&
+        sweepHash && {
+          key: 'sweep',
+          label: <Label>Sweep</Label>,
+          value: (
+            <Pressable onPress={handleSweepPress} className="hover:opacity-70">
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(sweepHash)}
+                </Underline>
+                <ArrowUpRight color="white" size={16} />
+              </View>
+            </Pressable>
+          ),
+        },
       txHash && {
         key: 'explorer',
         label: <Label>Explorer</Label>,
@@ -399,7 +481,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     statusLabel,
     statusColor,
     isDeclined,
+    cardProvider,
+    spend,
+    sweepUrl,
+    sweepHash,
+    handleSweepPress,
+    transaction.currency,
     transaction.declined_reason,
+    transaction.refunded_amount,
   ]);
 
   const tokenIcon = useMemo(
@@ -424,7 +513,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
           <View className="items-center gap-1">
             <Text className="text-2xl font-bold text-white">
-              {formatCardAmount(transaction.amount, cardProvider)}
+              {formatCardAmount(transaction.amount, cardProvider, transaction.currency)}
             </Text>
             <Text className="text-base text-white/70">{merchantName}</Text>
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
