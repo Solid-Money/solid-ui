@@ -20,7 +20,6 @@ import {
   ActivityGroup,
   ActivityTab,
   CardProvider,
-  LayerZeroTransactionStatus,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
@@ -127,18 +126,13 @@ export default function ActivityTransactions({
       .filter(Boolean) as string[];
   }, [activities, isBridgeCardProvider]);
 
-  const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
+  // Keyed by bridge tx hash, and referentially stable until a delivery status
+  // actually moves — the whole override/filter/dedup/grouping chain below hangs
+  // off this, so an unstable identity here re-ran all of it on every render.
+  const lzDeliveries = useLayerZeroStatuses(bridgeDepositHashes);
 
   // Poll blockchain receipts for activities stuck at PROCESSING (e.g. wallet transfers)
   useProcessingActivitiesPolling(activities);
-
-  const lzStatusMap = useMemo(() => {
-    const map = new Map();
-    bridgeDepositHashes.forEach((hash, i) => {
-      map.set(hash, lzStatuses[i]);
-    });
-    return map;
-  }, [bridgeDepositHashes, lzStatuses]);
 
   useCardDepositPoller();
 
@@ -150,17 +144,12 @@ export default function ActivityTransactions({
         transaction.type === TransactionType.BRIDGE_DEPOSIT &&
         transaction.status === TransactionStatus.SUCCESS &&
         transaction.hash &&
-        !completedBridgeTxHashesRef.current.has(transaction.hash) &&
-        lzStatusMap.has(transaction.hash)
+        !completedBridgeTxHashesRef.current.has(transaction.hash)
       ) {
-        const query = lzStatusMap.get(transaction.hash);
-        if (!query.data) continue;
+        const delivery = lzDeliveries[transaction.hash];
+        if (!delivery?.isDelivered) continue;
 
-        const lzData = query.data.data?.[0];
-        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
-        if (!isDelivered) continue;
-
-        const dstTxHash = lzData?.destination?.tx?.txHash;
+        const dstTxHash = delivery.destinationTxHash;
         if (!dstTxHash) continue;
 
         const foundInCard = cardTransactions.some(
@@ -172,50 +161,53 @@ export default function ActivityTransactions({
         }
       }
     }
-  }, [activities, lzStatusMap, cardTransactions]);
+  }, [activities, lzDeliveries, cardTransactions]);
 
   // Step 1: Override statuses for bridge deposits based on LayerZero status
-  // Only recomputes when activities, lzStatusMap, or cardTransactions change
+  // Only recomputes when activities, lzDeliveries, or cardTransactions change
   const updatedActivities = useMemo(() => {
-    return activities.map(transaction => {
+    let hasOverride = false;
+
+    const overridden = activities.map(transaction => {
       if (
         transaction.type === TransactionType.BRIDGE_DEPOSIT &&
         transaction.status === TransactionStatus.SUCCESS &&
         transaction.hash &&
-        lzStatusMap.has(transaction.hash)
+        transaction.hash in lzDeliveries
       ) {
         // If already marked as completed, keep as SUCCESS
         if (completedBridgeTxHashesRef.current.has(transaction.hash)) {
           return transaction;
         }
 
-        const query = lzStatusMap.get(transaction.hash);
-        // Default to pending if loading status
-        if (!query.data) return { ...transaction, status: TransactionStatus.PENDING };
-
-        const lzData = query.data.data?.[0];
-        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
-
-        if (!isDelivered) {
+        const delivery = lzDeliveries[transaction.hash];
+        const pending = () => {
+          hasOverride = true;
           return { ...transaction, status: TransactionStatus.PENDING };
-        }
+        };
+
+        // Default to pending if loading status
+        if (!delivery.isLoaded) return pending();
+        if (!delivery.isDelivered) return pending();
 
         // If delivered, check if it appears in card transactions
-        const dstTxHash = lzData?.destination?.tx?.txHash;
-        if (!dstTxHash) return { ...transaction, status: TransactionStatus.PENDING };
+        const dstTxHash = delivery.destinationTxHash;
+        if (!dstTxHash) return pending();
 
         const foundInCard = cardTransactions.some(
           ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
         );
 
-        if (!foundInCard) {
-          return { ...transaction, status: TransactionStatus.PENDING };
-        }
+        if (!foundInCard) return pending();
         // Transaction is delivered and found in card - will be marked completed by effect
       }
       return transaction;
     });
-  }, [activities, lzStatusMap, cardTransactions]);
+
+    // Nothing was overridden (the common case — no in-flight bridge deposits),
+    // so hand back the same array and let every memo downstream keep its result.
+    return hasOverride ? overridden : activities;
+  }, [activities, lzDeliveries, cardTransactions]);
 
   // Step 2: Filter by tab and symbol
   // Only recomputes when updatedActivities, tab, or symbol change
