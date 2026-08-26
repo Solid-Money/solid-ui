@@ -170,6 +170,13 @@ export default function CardTransactions() {
       const color = getColorForTransaction(merchantName);
       const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
       const feeInfo = getCardFeeInfo(transaction);
+      // Dollar equivalent of a foreign charge, so a row reads without mental
+      // arithmetic. Nothing to add when the card was charged in dollars.
+      const currencyCode = transaction.currency?.trim().toUpperCase();
+      const usdEquivalent =
+        transaction.usd_amount && currencyCode && currencyCode !== 'USD'
+          ? formatCardAmount(transaction.usd_amount, provider)
+          : undefined;
 
       return (
         <Pressable
@@ -239,6 +246,9 @@ export default function CardTransactions() {
             >
               {formatCardAmount(transaction.amount, provider, transaction.currency)}
             </Text>
+            {usdEquivalent && (
+              <Text className="mt-0.5 text-sm text-[#8E8E93]">≈ {usdEquivalent}</Text>
+            )}
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
               <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
                 {cashbackInfo.amount}

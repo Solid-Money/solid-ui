@@ -250,6 +250,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const explorerUrl = cardTransactionExplorerUrl(transaction.crypto_transaction_details);
   // Our own settlement of the purchase: the soUSD that left the user's Safe on
   // Fuse to reimburse the issuer. Only cards that spend against savings have one.
+  // The dollar equivalent of a foreign charge. Suppressed when the card was
+  // charged in dollars already, where it would just repeat the line above it.
+  const usdEquivalent = useMemo(() => {
+    const code = transaction.currency?.trim().toUpperCase();
+    if (!transaction.usd_amount || !code || code === 'USD') return undefined;
+    return formatCardAmount(transaction.usd_amount, cardProvider);
+  }, [transaction.usd_amount, transaction.currency, cardProvider]);
+
   const spend = transaction.spend_details;
   const sweepHash = spend?.sweep_tx_hash;
   const sweepUrl = cardSweepExplorerUrl(spend);
@@ -271,12 +279,13 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const spendContext = useMemo(() => {
     if (!spend) return '';
     const lines = [
+      transaction.usd_amount && `USD value: ${transaction.usd_amount}`,
       spend.so_usd_amount && `soUSD: ${spend.so_usd_amount}`,
       spend.state && `Settlement: ${spend.state}`,
       sweepHash && `Sweep: ${sweepHash}`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
-  }, [spend, sweepHash]);
+  }, [spend, sweepHash, transaction.usd_amount]);
 
   const transactionContext = useMemo(
     () =>
@@ -515,6 +524,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             <Text className="text-2xl font-bold text-white">
               {formatCardAmount(transaction.amount, cardProvider, transaction.currency)}
             </Text>
+            {usdEquivalent && <Text className="text-base text-white/50">≈ {usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{merchantName}</Text>
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
           </View>
