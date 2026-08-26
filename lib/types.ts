@@ -1795,6 +1795,12 @@ export interface CardTransaction {
   merchant_city?: string;
   merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
+  /**
+   * What the transaction was worth in USD, when `currency` is not already a
+   * dollar. The opposite of `local_transaction_details`: that is a USD card
+   * reporting a foreign charge, this is a foreign charge reported in USD.
+   */
+  usd_amount?: string;
   declined_reason?: string;
   /**
    * A merchant category already written as a label ("Online Shopping"), for
