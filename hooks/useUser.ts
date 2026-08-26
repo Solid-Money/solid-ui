@@ -32,6 +32,8 @@ import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
   getNonce,
+  isPasskeyPromptError,
+  mergeCredentialIds,
   parseStampHeaderValueCredentialId,
   setGlobalLogoutHandler,
   setIsLoggingOut,
@@ -127,6 +129,41 @@ const useUser = (): UseUserReturn => {
           return originalSign({ hash });
         };
       }
+
+      // A signing prompt that fails may be pinned to credentials this device
+      // does not hold — the state a passkey recovery leaves behind on a client
+      // that has not logged in since. Dropping the filter costs nothing (the
+      // authenticator still only offers passkeys for this relying party, and
+      // the next login re-pins from the credential that signs), and turns a
+      // dead end into a prompt that works on the retry.
+      const unpinOnPasskeyFailure = <T extends (...args: any[]) => Promise<any>>(sign: T): T =>
+        (async (...args: any[]) => {
+          try {
+            return await sign(...args);
+          } catch (error) {
+            const pinnedUserId = useUserStore.getState().users.find(u => u.selected)?.userId;
+            if (pinnedUserId && isPasskeyPromptError(error)) {
+              useUserStore.getState().clearUserCredentialId(pinnedUserId);
+            }
+            throw error;
+          }
+        }) as unknown as T;
+
+      // Every entry point the Safe owner can be asked to sign through. Applied
+      // after the signTypedData workaround above so the guard wraps the
+      // replacement, not the SDK's broken original.
+      if (turnkeyAccount.sign) {
+        turnkeyAccount.sign = unpinOnPasskeyFailure(turnkeyAccount.sign.bind(turnkeyAccount));
+      }
+      turnkeyAccount.signMessage = unpinOnPasskeyFailure(
+        turnkeyAccount.signMessage.bind(turnkeyAccount),
+      );
+      turnkeyAccount.signTypedData = unpinOnPasskeyFailure(
+        turnkeyAccount.signTypedData.bind(turnkeyAccount),
+      );
+      turnkeyAccount.signTransaction = unpinOnPasskeyFailure(
+        turnkeyAccount.signTransaction.bind(turnkeyAccount),
+      );
 
       // Create a wallet client from the turnkeyAccount
       // const smartAccountOwner = createWalletClient({
@@ -298,6 +335,13 @@ const useUser = (): UseUserReturn => {
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
         credentialId: stampedCredentialId ?? user.credentialId,
+        // The backend heals this list from Turnkey, so it is the better source;
+        // union with the stamp so an older backend still yields a usable pin.
+        credentialIds: mergeCredentialIds(
+          user.credentialIds,
+          user.credentialId,
+          stampedCredentialId,
+        ),
         hasPasskey: user.hasPasskey ?? true,
       };
       storeUser(selectedUser);
@@ -599,6 +643,13 @@ const useUser = (): UseUserReturn => {
           selected: true,
           tokens: authedUser.tokens || undefined,
           credentialId: stampedCredentialId ?? authedUser.credentialId ?? selectedUser.credentialId,
+          // Prefer the backend's list (healed from Turnkey) over the local one,
+          // which is exactly what goes stale when a passkey is recovered.
+          credentialIds: mergeCredentialIds(
+            authedUser.credentialIds ?? selectedUser.credentialIds,
+            authedUser.credentialId ?? selectedUser.credentialId,
+            stampedCredentialId,
+          ),
         });
       } else {
         selectUserById(authedUser?._id ?? userId);

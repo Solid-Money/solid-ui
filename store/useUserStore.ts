@@ -25,7 +25,10 @@ interface UserState {
   selectUserById: (userId: string) => void;
   unselectUser: () => void;
   clearUserCredentialId: (userId: string) => void;
-  clearCredentialIdForIdentity: (identity: { turnkeyUserId?: string; email?: string }) => void;
+  setCredentialIdsForIdentity: (
+    identity: { turnkeyUserId?: string; email?: string },
+    credentialIds: string[],
+  ) => void;
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
@@ -43,9 +46,19 @@ interface UserState {
 export const selectSelectedUser = ({ users }: UserState): User | undefined =>
   users.find(u => u.selected);
 
-/** Get the credentialId of the selected user (for passkey filtering) */
-export const selectSelectedCredentialId = (state: UserState): string | undefined => {
-  return selectSelectedUser(state)?.credentialId;
+/**
+ * Every credential the selected user can present, for passkey filtering.
+ *
+ * Passkey recovery adds an authenticator rather than replacing the lost one, so
+ * an account can hold several. Offering all of them keeps the prompt a single
+ * tap — the authenticator silently picks the one it actually has — while
+ * offering just one strands the user whenever that one is not the one on this
+ * device. Falls back to the scalar for rows stored before the list existed.
+ */
+export const selectSelectedCredentialIds = (state: UserState): string[] => {
+  const user = selectSelectedUser(state);
+  if (user?.credentialIds?.length) return user.credentialIds;
+  return user?.credentialId ? [user.credentialId] : [];
 };
 
 export const useUserStore = create<UserState>()(
@@ -118,33 +131,42 @@ export const useUserStore = create<UserState>()(
       },
 
       /**
-       * Drop a stored credentialId that Turnkey has rejected as unknown. It feeds
-       * TurnkeyProvider's `allowCredentials`, so leaving it in place pins every
-       * retry to the same unusable passkey — clearing it lets the authenticator
-       * offer all of the user's passkeys for the relying party instead.
+       * Drop the stored credentials of a user Turnkey has rejected as unknown.
+       * They feed TurnkeyProvider's `allowCredentials`, so leaving them in place
+       * pins every retry to the same unusable passkeys — clearing them lets the
+       * authenticator offer all of the user's passkeys for the relying party
+       * instead.
        */
       clearUserCredentialId: (userId: string) => {
         set(
           produce(state => {
             const user = state.users.find((u: User) => u.userId === userId);
-            if (user) user.credentialId = undefined;
+            if (user) {
+              user.credentialId = undefined;
+              user.credentialIds = undefined;
+            }
           }),
         );
       },
 
       /**
-       * Forget the credentialId of the account that just recovered its passkey.
-       * The recovered device no longer holds the old credential, and that value
-       * feeds TurnkeyProvider's `allowCredentials` — left in place it pins the
-       * next login prompt to a passkey that can never be presented again.
-       * Clearing it lets the authenticator offer the recovered passkey, and
-       * login then stores the credentialId that actually signed.
+       * Replace the remembered credentials of the account that just recovered
+       * its passkey with the set Turnkey now holds for it.
+       *
+       * The stored values feed TurnkeyProvider's `allowCredentials`. Left
+       * pointing at the passkey the user lost, they pin every subsequent prompt
+       * to a credential that can never be presented again — which is why
+       * recovery must overwrite them rather than wait for the next login.
+       *
+       * Passing an empty list clears the pin, which makes the next prompt
+       * unfiltered: correct, but a fallback rather than the goal, since the
+       * authenticator then offers every passkey it holds for the relying party.
        *
        * Matched on the Turnkey user id (what the recovery flow knows) with the
        * recovery email as a fallback, since the local row predates recovery and
        * may only carry the email.
        */
-      clearCredentialIdForIdentity: ({ turnkeyUserId, email }) => {
+      setCredentialIdsForIdentity: ({ turnkeyUserId, email }, credentialIds) => {
         const normalizedEmail = email?.trim().toLowerCase();
         set(
           produce(state => {
@@ -152,9 +174,13 @@ export const useUserStore = create<UserState>()(
               const matchesTurnkeyUser = !!turnkeyUserId && user.turnkeyUserId === turnkeyUserId;
               const matchesEmail =
                 !!normalizedEmail && user.email?.trim().toLowerCase() === normalizedEmail;
-              if (matchesTurnkeyUser || matchesEmail) {
-                user.credentialId = undefined;
-              }
+              if (!matchesTurnkeyUser && !matchesEmail) return;
+
+              user.credentialIds = credentialIds.length ? credentialIds : undefined;
+              // Keep the scalar inside the set so the two can never disagree.
+              user.credentialId = credentialIds.includes(user.credentialId ?? '')
+                ? user.credentialId
+                : credentialIds[0];
             });
           }),
         );
