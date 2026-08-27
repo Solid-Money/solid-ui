@@ -7,7 +7,10 @@ import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardSpendableBalanceUSD } from '@/hooks/useCardSpendableBalance';
 import { formatBalanceUSD } from '@/lib/utils';
+import { canDepositToCard, cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import OtherBalancesPie from './OtherBalancesPie';
@@ -21,38 +24,91 @@ export type OtherBalances = {
   isLoading?: boolean;
 };
 
+/** What the Card / Spendable half of the breakdown depends on the issuer for. */
+export type CardBalanceDisplay = {
+  /** False for a card with no balance of its own — see `cardHoldsBalance`. */
+  cardHoldsOwnBalance: boolean;
+  /**
+   * Whether the Card row offers "Add". Redundant with `cardHoldsOwnBalance` while
+   * the two derive from the same rule — a card that holds no balance has no Card
+   * row to put a button on — and kept separate so an issuer that holds a balance
+   * the app cannot top up needs no new plumbing.
+   */
+  canAddToCard: boolean;
+  /** USD of the user's holdings such a card can spend (`CARD_SPENDABLE_ASSETS`). */
+  spendableBalance: number;
+};
+
 const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 
 /**
+ * The issuer-dependent half of the breakdown, resolved once for whichever sheet
+ * is mounted.
+ *
+ * The native and web sheets need exactly this and nothing else from the issuer, so
+ * it lives here rather than being derived twice: three predicates duplicated across
+ * two files is three chances for the row shown and the action offered on it to fall
+ * out of step.
+ */
+export const useCardBalanceDisplay = (): CardBalanceDisplay => {
+  const { provider } = useCardProvider();
+  const { data: spendableBalance } = useCardSpendableBalanceUSD();
+
+  return {
+    cardHoldsOwnBalance: cardHoldsBalance(provider),
+    canAddToCard: canDepositToCard(provider),
+    spendableBalance,
+  };
+};
+
+/**
  * Whether the Card belongs in the breakdown. Shown when the user has an active
  * card OR when there's a card balance to surface — so the balance isn't dropped
  * for testers whose card status isn't ACTIVE yet.
+ *
+ * A card with no balance of its own is never shown as a Card row: there is no
+ * balance on it to report. That user gets the Spendable row instead.
  */
-export const shouldShowCard = (cardBalance: number, userHasCard: boolean) =>
-  userHasCard || (cardBalance || 0) > 0;
-
-/**
- * The headline figure: Wallet + Card. They're combined in the UI only — the two
- * balances stay separate under the hood (funds must be moved from the wallet to
- * the card before they can be spent), which the breakdown sheet lays out.
- */
-export const getSpendableTotal = ({
-  walletBalance,
+export const shouldShowCard = ({
   cardBalance,
   userHasCard,
-}: Pick<OtherBalances, 'walletBalance' | 'cardBalance' | 'userHasCard'>) =>
-  (walletBalance || 0) + (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0);
+  cardHoldsOwnBalance = true,
+}: Pick<OtherBalances, 'cardBalance' | 'userHasCard'> &
+  Partial<Pick<CardBalanceDisplay, 'cardHoldsOwnBalance'>>) =>
+  cardHoldsOwnBalance && (userHasCard || (cardBalance || 0) > 0);
 
-/** Everything the user holds: Wallet + Card + Savings (the pill's figure). */
+/**
+ * Whether the Spendable row belongs in the breakdown: the user holds a card that
+ * carries no balance of its own (Wirex), so what matters is how much of their own
+ * money the card can reach.
+ */
+export const shouldShowSpendable = ({
+  userHasCard,
+  cardHoldsOwnBalance = true,
+}: Pick<OtherBalances, 'userHasCard'> & Partial<Pick<CardBalanceDisplay, 'cardHoldsOwnBalance'>>) =>
+  userHasCard && !cardHoldsOwnBalance;
+
+/**
+ * Everything the user holds, and the home headline: Wallet + Card + Savings.
+ *
+ * Card is only added when it is a pot of its own. For a Wirex card the reported
+ * balance is spendable soUSD — savings seen from the card's side — and adding it
+ * would count the same money twice, inflating the headline by however much the
+ * card could reach. Spendable is a view onto savings for the same reason and never
+ * enters a total.
+ */
 export const getTotalBalance = ({
   walletBalance,
   cardBalance,
   savingsBalance,
   userHasCard,
-}: OtherBalances) =>
-  getSpendableTotal({ walletBalance, cardBalance, userHasCard }) + (savingsBalance || 0);
+  cardHoldsOwnBalance = true,
+}: Omit<OtherBalances, 'isLoading'> & Partial<Pick<CardBalanceDisplay, 'cardHoldsOwnBalance'>>) =>
+  (walletBalance || 0) +
+  (shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) ? cardBalance || 0 : 0) +
+  (savingsBalance || 0);
 
 type PillProps = {
   walletValue: number;
@@ -61,44 +117,44 @@ type PillProps = {
 } & React.ComponentProps<typeof Pressable>;
 
 /**
- * The dropdown pill trigger: a proportional Wallet/Card/Savings donut + the
- * total across all three + chevron. Tapping opens the full breakdown.
+ * The dropdown pill trigger: a proportional Wallet/Card/Savings donut, the word
+ * "Balances" and a chevron. Tapping opens the full breakdown.
+ *
+ * It used to carry the total too. The headline above it is that same total now, so
+ * the pill said the number twice; naming what it opens is the part the headline
+ * cannot say, and the donut still shows the composition at a glance.
  */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ walletValue, cardValue, savingsValue, ...props }, ref) => {
-    const total = (walletValue || 0) + (cardValue || 0) + (savingsValue || 0);
-
-    return (
-      <Pressable
-        ref={ref}
-        accessibilityRole="button"
-        accessibilityLabel="Show balance breakdown"
-        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
-        {...props}
+  ({ walletValue, cardValue, savingsValue, ...props }, ref) => (
+    <Pressable
+      ref={ref}
+      accessibilityRole="button"
+      accessibilityLabel="Show balance breakdown"
+      className="h-[35px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
+      {...props}
+    >
+      <OtherBalancesPie
+        walletValue={walletValue}
+        cardValue={cardValue}
+        savingsValue={savingsValue}
+        walletColor={WALLET_COLOR}
+        cardColor={CARD_COLOR}
+        savingsColor={SAVINGS_COLOR}
+      />
+      <Text
+        className="font-semibold text-white"
+        style={{
+          fontFamily: 'MonaSans_600SemiBold',
+          fontSize: 16,
+          fontWeight: '600',
+          lineHeight: 18,
+        }}
       >
-        <OtherBalancesPie
-          walletValue={walletValue}
-          cardValue={cardValue}
-          savingsValue={savingsValue}
-          walletColor={WALLET_COLOR}
-          cardColor={CARD_COLOR}
-          savingsColor={SAVINGS_COLOR}
-        />
-        <Text
-          className="font-semibold text-white"
-          style={{
-            fontFamily: 'MonaSans_600SemiBold',
-            fontSize: 16,
-            fontWeight: '600',
-            lineHeight: 18,
-          }}
-        >
-          {formatBalanceUSD(total)}
-        </Text>
-        <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
-      </Pressable>
-    );
-  },
+        Balances
+      </Text>
+      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+    </Pressable>
+  ),
 );
 OtherBalancesPill.displayName = 'OtherBalancesPill';
 
@@ -116,12 +172,15 @@ const BalanceRow = ({
   color,
   label,
   value,
+  caption,
   isLoading,
   children,
 }: {
   color: string;
   label: string;
   value: number;
+  /** Optional line under the figure, for a row whose meaning isn't self-evident. */
+  caption?: string;
   isLoading?: boolean;
   children?: React.ReactNode;
 }) => (
@@ -135,6 +194,9 @@ const BalanceRow = ({
         <Skeleton className="h-7 w-24 rounded-lg" />
       ) : (
         <Text className="text-2xl font-semibold text-white">{formatBalanceUSD(value)}</Text>
+      )}
+      {!isLoading && !!caption && (
+        <Text className="text-xs font-medium text-muted-foreground">{caption}</Text>
       )}
     </View>
     {children}
@@ -160,9 +222,8 @@ export const WalletBalanceRow = ({
  * Card balance row (green). "Add" opens the "Fund your card" popup (share deposit
  * address / transfer from wallet) — same modal as the card screen.
  *
- * No "Add" for a Wirex card: it holds no balance to deposit into, and the figure in
- * this row is already how much of the user's savings the card can reach. They
- * authorize spending on the card screen instead (`canDepositToCard`).
+ * Only for a card that holds a balance. A Wirex cardholder gets
+ * {@link SpendableBalanceRow} in this slot instead.
  */
 export const CardBalanceRow = ({
   cardBalance,
@@ -178,6 +239,30 @@ export const CardBalanceRow = ({
   <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
     {canAdd ? <AddButton onPress={onAdd} /> : null}
   </BalanceRow>
+);
+
+/**
+ * Spendable row (green — it stands where the Card row would): how much of what the
+ * user already holds their card can spend.
+ *
+ * No "Add", and not by omission. This is not a pot that can be topped up: it is a
+ * slice of the balances above it, so the money arrives through Wallet or Savings
+ * and shows up here on its own. An "Add" here would imply a third destination.
+ */
+export const SpendableBalanceRow = ({
+  spendableBalance,
+  isLoading,
+}: {
+  spendableBalance: number;
+  isLoading?: boolean;
+}) => (
+  <BalanceRow
+    color={CARD_COLOR}
+    label="Spendable"
+    value={spendableBalance}
+    caption="Of your savings, available to your card"
+    isLoading={isLoading}
+  />
 );
 
 /** Savings balance row (purple). "Add" opens the savings deposit modal (global). */
@@ -204,7 +289,14 @@ export const SavingsBalanceRow = ({
   </BalanceRow>
 );
 
-/** The three balances, in order: Wallet, Card (when relevant), Savings. */
+/**
+ * The breakdown, in order: Wallet, then Card **or** Spendable depending on whether
+ * the card holds money of its own, then Savings.
+ *
+ * Card and Spendable are alternatives, never both: they answer the same question
+ * for two kinds of card, and showing a $0 Card row beside a Spendable one would
+ * read as money the user had lost.
+ */
 export const BalanceBreakdownRows = ({
   walletBalance,
   cardBalance,
@@ -213,22 +305,26 @@ export const BalanceBreakdownRows = ({
   isLoading,
   onDismiss,
   onCardAdd,
+  cardHoldsOwnBalance = true,
   canAddToCard = true,
-}: OtherBalances & {
-  onDismiss?: () => void;
-  onCardAdd?: () => void;
-  /** False for an issuer whose card cannot be deposited into (Wirex). */
-  canAddToCard?: boolean;
-}) => (
+  spendableBalance = 0,
+}: OtherBalances &
+  Partial<CardBalanceDisplay> & {
+    onDismiss?: () => void;
+    onCardAdd?: () => void;
+  }) => (
   <>
     <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
-    {shouldShowCard(cardBalance, userHasCard) && (
+    {shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) && (
       <CardBalanceRow
         cardBalance={cardBalance}
         isLoading={isLoading}
         onAdd={onCardAdd}
         canAdd={canAddToCard}
       />
+    )}
+    {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
+      <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
     )}
     <SavingsBalanceRow
       savingsBalance={savingsBalance}

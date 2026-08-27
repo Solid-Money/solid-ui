@@ -123,6 +123,23 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
   provider !== CardProvider.WIREX;
 
 /**
+ * Whether the card carries a balance of its own, i.e. one that belongs in a total
+ * of what the user holds.
+ *
+ * Delegates to {@link canDepositToCard} rather than repeating the rule, because it
+ * is the same rule: a card you can deposit into is a prefunded card, and a
+ * prefunded card is the only kind with money of its own. It gets its own name
+ * because the callers ask different questions — one whether to offer a deposit,
+ * this one whether the figure is a separate pot or a view onto savings.
+ *
+ * That distinction is what keeps the home total honest. A Wirex card's reported
+ * "balance" is spendable soUSD, which is savings seen from the card's side, so
+ * adding it to savings counts the same money twice.
+ */
+export const cardHoldsBalance = (provider: CardProvider | null | undefined): boolean =>
+  canDepositToCard(provider);
+
+/**
  * Get initials from merchant/person name for avatar display
  */
 export const getInitials = (name: string): string => {

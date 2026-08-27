@@ -3,10 +3,13 @@ import { View } from 'react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useCardProvider } from '@/hooks/useCardProvider';
-import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
-import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
+import {
+  BalanceBreakdownRows,
+  type OtherBalances,
+  OtherBalancesPill,
+  useCardBalanceDisplay,
+} from '.';
 
 /**
  * Default / web-mobile balances control. Gorhom bottom sheets are native-only in
@@ -22,9 +25,9 @@ const OtherBalancesDropdown = ({
 }: OtherBalances) => {
   const [open, setOpen] = useState(false);
   const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
-  // A Wirex card has no balance to deposit into — see `canDepositToCard`.
-  const { provider } = useCardProvider();
-  const canAddToCard = canDepositToCard(provider);
+  // A Wirex card has no balance of its own, so it gets a Spendable row and no
+  // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
+  const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
   const dismiss = () => setOpen(false);
   const openCardDeposit = () => {
     dismiss();
@@ -37,7 +40,9 @@ const OtherBalancesDropdown = ({
         <DialogTrigger asChild>
           <OtherBalancesPill
             walletValue={walletBalance}
-            cardValue={cardBalance}
+            // Zero for a card with no balance of its own: its reported figure is a
+            // slice of savings, so a segment for it would draw the same money twice.
+            cardValue={cardHoldsOwnBalance ? cardBalance : 0}
             savingsValue={savingsBalance}
           />
         </DialogTrigger>
@@ -51,7 +56,9 @@ const OtherBalancesDropdown = ({
             isLoading={isLoading}
             onDismiss={dismiss}
             onCardAdd={openCardDeposit}
+            cardHoldsOwnBalance={cardHoldsOwnBalance}
             canAddToCard={canAddToCard}
+            spendableBalance={spendableBalance}
           />
         </DialogContent>
       </Dialog>
