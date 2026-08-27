@@ -242,12 +242,16 @@ export const CardBalanceRow = ({
 );
 
 /**
- * Spendable row (green — it stands where the Card row would): how much of what the
- * user already holds their card can spend.
+ * Spendable row (green — the colour the Card row would have used): how much of
+ * what the user already holds their card can spend.
  *
- * No "Add", and not by omission. This is not a pot that can be topped up: it is a
- * slice of the balances above it, so the money arrives through Wallet or Savings
- * and shows up here on its own. An "Add" here would imply a third destination.
+ * Sits last, under Savings, because it is a reading of the rows above rather than
+ * another pot beside them — and it is the row that only makes sense once you have
+ * seen the savings it is a share of.
+ *
+ * No "Add", and not by omission. This is not a pot that can be topped up: the
+ * money arrives through Wallet or Savings and shows up here on its own. An "Add"
+ * here would imply a third destination.
  */
 export const SpendableBalanceRow = ({
   spendableBalance,
@@ -260,7 +264,7 @@ export const SpendableBalanceRow = ({
     color={CARD_COLOR}
     label="Spendable"
     value={spendableBalance}
-    caption="Of your savings, available to your card"
+    caption="80% of your deposited savings are spendable"
     isLoading={isLoading}
   />
 );
@@ -290,12 +294,13 @@ export const SavingsBalanceRow = ({
 );
 
 /**
- * The breakdown, in order: Wallet, then Card **or** Spendable depending on whether
- * the card holds money of its own, then Savings.
+ * The breakdown, in order: Wallet, Card (only when the card holds money of its
+ * own), Savings, then Spendable.
  *
- * Card and Spendable are alternatives, never both: they answer the same question
- * for two kinds of card, and showing a $0 Card row beside a Spendable one would
- * read as money the user had lost.
+ * The first three are pots; Spendable closes the list because it is a share of
+ * the savings above it rather than a balance of its own. It also replaces Card
+ * for an issuer whose card holds nothing — the two are alternatives, never both,
+ * since a $0 Card row beside a funded Spendable one would read as money lost.
  */
 export const BalanceBreakdownRows = ({
   walletBalance,
@@ -323,13 +328,13 @@ export const BalanceBreakdownRows = ({
         canAdd={canAddToCard}
       />
     )}
-    {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
-      <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
-    )}
     <SavingsBalanceRow
       savingsBalance={savingsBalance}
       isLoading={isLoading}
       onDismiss={onDismiss}
     />
+    {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
+      <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
+    )}
   </>
 );
