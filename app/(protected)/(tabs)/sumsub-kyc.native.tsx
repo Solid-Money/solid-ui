@@ -47,6 +47,18 @@ export default function SumsubKycNative() {
     };
   }, []);
 
+  /**
+   * Release the launch guard whenever a new session starts. The guard stops one
+   * access token opening the SDK twice, but it is a ref on a screen that is
+   * frozen rather than unmounted on exit — so left latched it also blocked the
+   * relaunch after `useSumsubSession` re-inits on re-entry, which is how a user
+   * asked to re-upload a document ended up with a screen that did nothing.
+   * Every re-init passes through 'loading' before minting the next token.
+   */
+  useEffect(() => {
+    if (session.phase === 'loading') launchedRef.current = false;
+  }, [session.phase]);
+
   useEffect(() => {
     if (!accessToken || launchedRef.current) return;
     launchedRef.current = true;

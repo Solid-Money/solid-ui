@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { useReinitOnRefocus } from '@/components/kyc/useReinitOnRefocus';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -321,6 +322,11 @@ export function useSumsubSession() {
   useEffect(() => {
     initSession();
   }, [initSession]);
+
+  // ...and again when the screen is re-entered on a spent session. This is a
+  // tab route that is frozen rather than unmounted, so without this the mount
+  // effect above never runs a second time.
+  useReinitOnRefocus(session.phase, initSession);
 
   return {
     session,

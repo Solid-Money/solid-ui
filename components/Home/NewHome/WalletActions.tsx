@@ -5,13 +5,16 @@ import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import SendModal from '@/components/Send/SendModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
+import { useDepositStore } from '@/store/useDepositStore';
 
 // IMPORTANT: these trigger components MUST forward props (…props) to their root
 // Pressable. The Deposit/Swap/Send modals inject their open handler via
@@ -88,7 +91,10 @@ const PillLabel = ({ compact, children }: { compact?: boolean; children: string 
 interface WalletActionsProps {
   /** When false, only "Add Funds" is shown full-width; when true, Swap/Send appear. */
   hasFunds: boolean;
-  /** Card holders' "Add Funds" goes to the card; others go to the wallet. */
+  /**
+   * Whether the user holds a card. Routes "Add Funds": to the card for a prefunded
+   * (Rain) card, to savings for a Wirex one, to the wallet with no card at all.
+   */
   hasCard?: boolean;
 }
 
@@ -97,18 +103,25 @@ interface WalletActionsProps {
  * plus "Swap" and "Send". Reuses the global Deposit/Swap/Send modals. Note
  * SwapModal renders null on iOS, so Swap self-hides there (same as the legacy row).
  *
- * "Add Funds" routes straight to the card deposit flow for card holders, or the
- * wallet deposit flow otherwise — no destination picker in between.
+ * "Add Funds" has three destinations, and none of them is a destination picker:
  *
- * A Wirex cardholder takes the wallet route despite holding a card: their card has
- * no balance to deposit into (Wirex pays the merchant and we take the soUSD from
- * their Safe on settlement), so funding their savings IS funding their card. See
- * `canDepositToCard`.
+ * - Rain cardholder → the card's direct-deposit address. The card is prefunded, so
+ *   money has to land on the card itself before it can be spent.
+ * - Wirex cardholder → "Deposit to savings". Their card holds no balance to deposit
+ *   into (Wirex pays the merchant and we take the soUSD from their Safe on
+ *   settlement), so funding savings IS funding the card — and unlike the wallet's
+ *   deposit-type picker, this flow also lets them fund with a yield token (soETH /
+ *   soFUSE) and spend it. See `canDepositToCard`.
+ * - No card → the wallet deposit flow, unchanged.
  */
 const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const { width } = useWindowDimensions();
   const { provider } = useCardProvider();
   const fundsGoToCard = Boolean(hasCard) && canDepositToCard(provider);
+  // Only a cardholder whose card cannot be deposited into, i.e. Wirex. A user with
+  // no card keeps the wallet route: savings is one of the places their money can
+  // go, not the only one.
+  const fundsGoToSavings = Boolean(hasCard) && !fundsGoToCard;
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
   const showSwap = hasFunds && Platform.OS !== 'ios';
@@ -126,6 +139,22 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
             <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
             <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
           </>
+        ) : fundsGoToSavings ? (
+          <DepositTrigger
+            modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
+            source="home_add_funds_savings"
+            onBeforeOpen={() => {
+              const { setDepositFromSolid, setSavingsFundIntent } = useDepositStore.getState();
+              // New money in, so the flow opens on the token list rather than the
+              // move-from-Solid form.
+              setDepositFromSolid(false);
+              // Full token list. A `card_deposit` intent left over from the card
+              // activation step would hide ETH and WFUSE, which is the opposite of
+              // why this route exists.
+              setSavingsFundIntent('savings');
+            }}
+            trigger={addFundsTrigger}
+          />
         ) : (
           <DepositOptionModal trigger={addFundsTrigger} />
         )}
