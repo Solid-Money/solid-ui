@@ -8,6 +8,7 @@ import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
+import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
 import { getTotalBalance } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
@@ -46,7 +47,8 @@ import { useUserStore } from '@/store/useUserStore';
  * apart. A card with no balance of its own (Wirex) is left out of the sum and
  * shows up in the breakdown as "Spendable" instead — its balance is a slice of
  * savings, so adding it would count the same money twice. The green card is merged
- * in here; Activity moved to the header bell.
+ * in here; Activity is reached from "Recent activity → See all" at the bottom of
+ * this screen, and the header's right-hand button opens support.
  */
 export default function HomeScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
@@ -280,6 +282,10 @@ export default function HomeScreenNew() {
             </View>
           </HeroExit>
         )}
+
+        <HeroExit spec={HERO_EXIT.belowCard}>
+          <HomeRecentActivity />
+        </HeroExit>
       </View>
     </PageLayout>
   );

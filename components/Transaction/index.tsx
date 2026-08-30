@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
 
 import Trash from '@/assets/images/trash';
+import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { formatActivityTimestamp } from '@/lib/utils/activity';
 
 type TransactionClassNames = {
   container?: string;
@@ -228,9 +230,25 @@ const Transaction = ({
   });
   const activityBadge = getActivityBadge(type);
 
+  // Pending and processing get a chip of their own (Figma 24781:7724) rather
+  // than a line of description, so the description stays free to say what the
+  // transaction actually was — "Send" beats "Pending" for a row the user is
+  // scanning to recognise.
+  //
+  // A direct deposit that has no amount yet is the exception: its whole right
+  // column is already the status message, and a chip saying the same thing twice
+  // on one row is noise.
+  const pendingPill = directDepositStatusMessage
+    ? null
+    : isPending
+      ? isCardDeposit && isDirectDeposit
+        ? 'Processing'
+        : 'Pending'
+      : isDetected || isProcessing
+        ? 'Processing'
+        : null;
+
   const getDescription = () => {
-    if (isPending) return isCardDeposit && isDirectDeposit ? 'Processing' : 'Pending';
-    if (isDetected || isProcessing) return 'Processing';
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
@@ -240,26 +258,7 @@ const Transaction = ({
     return getTransactionCategory(type, title) ?? 'Unknown';
   };
 
-  const formatTimestamp = () => {
-    if (!timestamp) return null;
-    try {
-      const date = new Date(Number(timestamp) * 1000);
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })
-        .format(date)
-        .replace(',', ' at');
-    } catch {
-      return null;
-    }
-  };
-
-  const formattedTimestamp = formatTimestamp();
+  const formattedTimestamp = timestamp ? formatActivityTimestamp(timestamp) : null;
 
   return (
     <Pressable
@@ -274,7 +273,7 @@ const Transaction = ({
     >
       <View className="min-w-0 flex-[1.5] flex-row items-center gap-2 md:gap-4">
         <ActivityTokenIcon tokenIcon={tokenIcon} size={44} badge={activityBadge} variant="list" />
-        <View className="min-w-0 flex-shrink">
+        <View className="min-w-0 flex-shrink gap-0.5">
           <Text className="text-base font-medium web:text-lg" numberOfLines={1}>
             {title}
           </Text>
@@ -287,11 +286,9 @@ const Transaction = ({
                 alt="Reward indicator"
               />
             )}
-            {(isPending || isDetected || isProcessing) && (
-              <ActivityIndicator color="gray" size={14} />
-            )}
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
+          {pendingPill && <ActivityStatusPill label={pendingPill} />}
         </View>
         {(isFailed || isExpired || isRefunded || isTransferredToSafe) && statusBadge && (
           <View className={cn(statusBadge.bgColor, 'shrink-0 rounded-full px-2 py-1')}>

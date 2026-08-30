@@ -186,6 +186,29 @@ export const getColorForTransaction = (merchantName: string): { bg: string; text
 };
 
 /**
+ * What to call a card transaction in a list. The merchant is the name the user
+ * recognises; the issuer's own description stands in for the rows that have no
+ * merchant (funding, adjustments).
+ */
+export const getCardMerchantName = (
+  transaction: Pick<CardTransaction, 'merchant_name' | 'description'>,
+): string => transaction.merchant_name || transaction.description || 'Unknown';
+
+/**
+ * Where the card was used, as one line.
+ *
+ * City/country when the issuer breaks the address up (Rain), else the single
+ * address line Wirex sends — without the fallback a Wirex row loses its location
+ * entirely.
+ */
+export const getCardMerchantLocation = (
+  transaction: Pick<CardTransaction, 'merchant_city' | 'merchant_country' | 'merchant_location'>,
+): string | undefined =>
+  [transaction.merchant_city, transaction.merchant_country].filter(Boolean).join(' ') ||
+  transaction.merchant_location ||
+  undefined;
+
+/**
  * Normalize amount for display.
  * Both Rain and Bridge amounts are returned as dollars from the backend.
  */

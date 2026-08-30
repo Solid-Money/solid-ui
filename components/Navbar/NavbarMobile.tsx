@@ -14,9 +14,9 @@ import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
-import HeaderBellButton from './HeaderBellButton';
 import HeaderHelpButton from './HeaderHelpButton';
 import HeaderProfileButton from './HeaderProfileButton';
+import HeaderSupportButton from './HeaderSupportButton';
 import RegisterButtons from './RegisterButtons';
 
 const GLASS_TRANSITION = {
@@ -55,7 +55,7 @@ type NavbarMobileProps = {
   topInset?: number;
   /** Left-side action shown for signed-in users. */
   leftAction?: 'profile' | 'back';
-  /** Right-side action shown for signed-in users. 'help' replaces the bell with a single "?" button. */
+  /** Right-side action shown for signed-in users. 'help' replaces support with a single "?" button. */
   rightAction?: 'default' | 'help' | 'none';
   onHelpPress?: () => void;
   /**
@@ -84,7 +84,7 @@ const NavbarMobile = ({
   // otherwise sit behind (and collide with) the pane's own header and title.
   const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
   const isHeroExiting = animateCardHeroExit && isCardPaneOpen;
-  // Redesigned "glass" header: profile stays on the left, Activity stays on the
+  // Redesigned "glass" header: profile stays on the left, support stays on the
   // right, and transient content such as What's-new scrolls beneath this layer.
   const hasBlurTarget = !!blurTarget;
   const isGlassVisible = hasBlurTarget && !!showDivider && !isHeroExiting;
@@ -133,7 +133,7 @@ const NavbarMobile = ({
     rightAction === 'none' ? null : rightAction === 'help' ? (
       <HeaderHelpButton onPress={() => onHelpPress?.()} />
     ) : (
-      <HeaderBellButton />
+      <HeaderSupportButton />
     );
   const leftActionButton =
     leftAction === 'back' ? <BackButton variant="header" /> : <HeaderProfileButton />;
