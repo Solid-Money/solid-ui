@@ -75,3 +75,31 @@ export function getVisibleActivitiesFromRecord(
   const allEvents = Object.values(eventsRecord).flat();
   return getVisibleActivities(allEvents);
 }
+
+/**
+ * When a row happened, as the wide activity list shows it on desktop:
+ * "Mar 4, 2026 at 9:41 AM".
+ *
+ * Takes seconds, the unit both an activity's `timestamp` and a card
+ * transaction's derived one are in, so wallet and card rows in the same list
+ * cannot end up reading their dates differently.
+ */
+export function formatActivityTimestamp(timestampSeconds: number | string): string | null {
+  const seconds = Number(timestampSeconds);
+  if (!seconds || Number.isNaN(seconds)) return null;
+
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+      .format(new Date(seconds * 1000))
+      .replace(',', ' at');
+  } catch {
+    return null;
+  }
+}

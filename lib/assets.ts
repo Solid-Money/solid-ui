@@ -478,13 +478,13 @@ export const ASSETS = {
     module: require('@/assets/images/green_onboarding_bg.png'),
     hash: 'c358e28f',
   },
-  'images/header-bell.tsx': {
-    module: require('@/assets/images/header-bell.tsx'),
-    hash: '519ad50d',
-  },
   'images/header-help.tsx': {
     module: require('@/assets/images/header-help.tsx'),
     hash: 'dafee275',
+  },
+  'images/header-support.tsx': {
+    module: require('@/assets/images/header-support.tsx'),
+    hash: 'fd52b27e',
   },
   'images/home-card.tsx': { module: require('@/assets/images/home-card.tsx'), hash: '08bd1dde' },
   'images/home-cashback-promo-10.png': {

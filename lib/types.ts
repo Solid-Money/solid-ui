@@ -1277,6 +1277,8 @@ export interface BridgeTransaction {
 }
 
 export enum ActivityTab {
+  /** Wallet and card activity in one feed — the Activity screen's default. */
+  ALL = 'all',
   WALLET = 'wallet',
   PROGRESS = 'progress',
   CARD = 'card',

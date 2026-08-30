@@ -1,5 +1,7 @@
-import { ActivityEvent, ActivityGroup, TransactionStatus } from '@/lib/types';
 import { format, isToday, isYesterday } from 'date-fns';
+
+import { ActivityEvent, ActivityGroup, TransactionStatus } from '@/lib/types';
+
 import { isTransactionStuck } from './utils';
 
 export type TimeGroupHeaderData = {
@@ -25,8 +27,9 @@ export const TITLE_GROUPS = {
   pending: 'Pending activity',
   today: 'Today',
   yesterday: 'Yesterday',
-  date: 'dd MMM yyyy',
-}
+  // Figma 24781:7679 — "14th Jul 2025".
+  date: 'do MMM yyyy',
+};
 
 export const formatTimeGroup = (timestamp: string): string => {
   if (!timestamp) return '';
