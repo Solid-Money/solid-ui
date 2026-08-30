@@ -2,6 +2,8 @@ import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
+  getCardMerchantMapsUrl,
+  getCardMerchantPlace,
 } from '@/lib/utils/cardHelpers';
 
 describe('formatCardAmount', () => {
@@ -89,5 +91,58 @@ describe('cardSweepExplorerUrl', () => {
   it('has no link without a sweep', () => {
     expect(cardSweepExplorerUrl(undefined)).toBeUndefined();
     expect(cardSweepExplorerUrl({ state: 'held' })).toBeUndefined();
+  });
+});
+
+describe('getCardMerchantPlace', () => {
+  it('shows the city and country alone, and keeps the address for the map', () => {
+    // Rain breaks the address up; the detail row wants only the short form.
+    expect(
+      getCardMerchantPlace({
+        merchant_city: 'Tel Aviv',
+        merchant_country: 'IL',
+        merchant_location: '50 Dizengoff St, Tel Aviv, Israel',
+      }),
+    ).toEqual({ label: 'TEL AVIV, IL', address: '50 Dizengoff St, Tel Aviv, Israel' });
+  });
+
+  it('maps by the short form when that is all the issuer sent', () => {
+    expect(getCardMerchantPlace({ merchant_city: 'Tel Aviv', merchant_country: 'IL' })).toEqual({
+      label: 'TEL AVIV, IL',
+      address: 'Tel Aviv, IL',
+    });
+  });
+
+  it('falls back to the address line when no city was resolved', () => {
+    // A blank row would be worse: the address still tells the user where they were.
+    expect(getCardMerchantPlace({ merchant_location: '123 Main St Tel Aviv' })).toEqual({
+      label: '123 MAIN ST TEL AVIV',
+      address: '123 Main St Tel Aviv',
+    });
+  });
+
+  it('drops the row entirely when there is no location at all', () => {
+    expect(getCardMerchantPlace({})).toBeUndefined();
+    expect(getCardMerchantPlace({ merchant_city: '  ', merchant_location: '' })).toBeUndefined();
+  });
+
+  it('shows a country on its own rather than nothing', () => {
+    expect(getCardMerchantPlace({ merchant_country: 'IL' })?.label).toBe('IL');
+  });
+});
+
+describe('getCardMerchantMapsUrl', () => {
+  const place = { label: 'TEL AVIV, IL', address: 'Tel Aviv, IL' };
+
+  it('leads with the merchant, so the map finds the shop and not the city centre', () => {
+    expect(getCardMerchantMapsUrl(place, 'mb burger')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=mb%20burger%2C%20Tel%20Aviv%2C%20IL',
+    );
+  });
+
+  it('searches the address alone when the merchant has no name', () => {
+    expect(getCardMerchantMapsUrl(place)).toBe(
+      'https://www.google.com/maps/search/?api=1&query=Tel%20Aviv%2C%20IL',
+    );
   });
 });

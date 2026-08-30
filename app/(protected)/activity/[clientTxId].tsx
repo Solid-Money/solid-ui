@@ -14,9 +14,9 @@ import {
 } from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
-import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
+import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
@@ -50,6 +50,8 @@ import {
   cardTransactionExplorerUrl,
   formatCardAmount,
   getCardFeeInfo,
+  getCardMerchantMapsUrl,
+  getCardMerchantPlace,
   getCashbackAmount,
 } from '@/lib/utils/cardHelpers';
 import {
@@ -102,12 +104,20 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
   );
 });
 
+// Figma 21287:5858 puts both sides of a detail row at 16px. Written as an exact
+// pixel size rather than `text-base`/`text-lg`, because the Tailwind scale is
+// remapped on native (`text-base` is 20px there, `text-lg` 22px) and the design
+// asks for the same 16px on every platform.
+const ROW_TEXT = 'text-[16px]';
+/** The same size and weight as `Value`, for the rows that draw their own text. */
+const ROW_VALUE_TEXT = cn(ROW_TEXT, 'font-bold');
+
 const Label = memo(function Label({ children }: LabelProps) {
-  return <Text className="text-base font-medium text-[#ACACAC]">{children}</Text>;
+  return <Text className={cn(ROW_TEXT, 'font-medium text-[#ACACAC]')}>{children}</Text>;
 });
 
 const Value = memo(function Value({ children, className }: ValueProps) {
-  return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
+  return <Text className={cn(ROW_TEXT, 'font-bold', className)}>{children}</Text>;
 });
 
 const EscrowTimeLeft = memo(function EscrowTimeLeft({ payoutAt }: { payoutAt: string }) {
@@ -237,13 +247,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 }: CardTransactionDetailProps) {
   const merchantName =
     transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
-  const merchantLocation =
-    [transaction.merchant_city, transaction.merchant_country]
-      .filter(Boolean)
-      .join(', ')
-      .toUpperCase() ||
-    transaction.merchant_location?.toUpperCase() ||
-    undefined;
+  const merchantPlace = useMemo(() => getCardMerchantPlace(transaction), [transaction]);
   // Numeric MCC first; issuers that name the category instead (Wirex) send the
   // label ready to show, and there is no code for the lookup to resolve.
   const merchantCategory =
@@ -316,6 +320,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     if (sweepUrl) Linking.openURL(sweepUrl);
   }, [sweepUrl]);
 
+  const handleLocationPress = useCallback(() => {
+    if (!merchantPlace) return;
+    Linking.openURL(getCardMerchantMapsUrl(merchantPlace, transaction.merchant_name));
+  }, [merchantPlace, transaction.merchant_name]);
+
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
   const feeInfo = getCardFeeInfo(transaction);
   const localDetails = transaction.local_transaction_details;
@@ -342,10 +351,23 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </View>
           ),
         },
-        merchantLocation && {
+        merchantPlace && {
           key: 'location',
           label: <Label>Location</Label>,
-          value: <Value>{merchantLocation}</Value>,
+          // The design draws this like any other value, so the tap is left
+          // undecorated rather than turned into a link: nothing is lost if it
+          // goes unnoticed, and an underline here would read as the only
+          // navigable row in a card of plain facts.
+          value: (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Open ${merchantPlace.address} in Google Maps`}
+              onPress={handleLocationPress}
+              className="active:opacity-70 web:hover:opacity-80"
+            >
+              <Value>{merchantPlace.label}</Value>
+            </Pressable>
+          ),
         },
         merchantCategory && {
           key: 'category',
@@ -353,7 +375,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           value: <Value>{merchantCategory}</Value>,
         },
       ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
-    [last4, merchantLocation, merchantCategory],
+    [last4, merchantPlace, merchantCategory, handleLocationPress],
   );
 
   const rows = useMemo(() => {
@@ -367,18 +389,26 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         transaction.declined_reason && {
           key: 'reason',
           label: <Label>Reason</Label>,
+          // Wraps rather than truncates — a decline reason is the one value on
+          // this screen the user has to read in full. No size of its own: it
+          // used to step down from `text-lg` to `text-base`, and now every value
+          // on the card is already the 16px that step was reaching for.
           value: (
-            <Value className="max-w-[60%] text-right text-base">
+            <Value className="max-w-[60%] text-right">
               {toTitleCase(transaction.declined_reason)}
             </Value>
           ),
         },
       cashbackInfo && {
         key: 'cashback',
+        // The one row the design colours on both sides (Figma 21287:5858): what
+        // the user earned back reads as a gain, not as another fact about the
+        // charge. The value still takes the escrow/pending amber on its own, so
+        // green here says "cashback" rather than "already paid".
         label: (
           <View className="flex-row items-center gap-1.5">
-            <Diamond />
-            <Label>Cashback</Label>
+            <CashbackDiamondIcon size={14} />
+            <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
           </View>
         ),
         value: (
@@ -463,7 +493,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           value: (
             <Pressable onPress={handleSweepPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                   {eclipseAddress(sweepHash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
@@ -477,7 +507,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         value: (
           <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
             <View className="flex-row items-center gap-1">
-              <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+              <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                 {eclipseAddress(txHash)}
               </Underline>
               <ArrowUpRight color="white" size={16} />
@@ -765,7 +795,7 @@ export default function ActivityDetail() {
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                   {eclipseAddress(hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
@@ -924,7 +954,7 @@ export default function ActivityDetail() {
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                   {eclipseAddress(hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
