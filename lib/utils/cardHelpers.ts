@@ -208,6 +208,57 @@ export const getCardMerchantLocation = (
   transaction.merchant_location ||
   undefined;
 
+/** Where a card was used, split into what the row shows and what a map needs. */
+export interface CardMerchantPlace {
+  /** "TEL AVIV, IL" — the city and country, and nothing else. */
+  label: string;
+  /** The fullest address on file, which is what the map is asked to find. */
+  address: string;
+}
+
+/**
+ * The Location row on a transaction's details: a short "TEL AVIV, IL" line that
+ * opens the full address in a map.
+ *
+ * The two are separate because the issuers send different things. Rain breaks the
+ * address into `merchant_city`/`merchant_country`; Wirex sends one address line
+ * plus the country, and the backend splits its city out of that line. The row
+ * shows city and country alone — a full street address wraps to three lines and
+ * tells the user nothing they didn't already know about their own purchase — but
+ * the street is exactly what makes the map land on the right place, so it is kept
+ * for the tap.
+ *
+ * Falls back to the address line when there is no city, rather than showing
+ * nothing: a row without a resolved city is still worth more than a blank.
+ */
+export const getCardMerchantPlace = (
+  transaction: Pick<CardTransaction, 'merchant_city' | 'merchant_country' | 'merchant_location'>,
+): CardMerchantPlace | undefined => {
+  const address = transaction.merchant_location?.trim();
+  const label =
+    [transaction.merchant_city?.trim(), transaction.merchant_country?.trim()]
+      .filter(Boolean)
+      .join(', ') || address;
+
+  if (!label) return undefined;
+
+  return { label: label.toUpperCase(), address: address || label };
+};
+
+/**
+ * A Google Maps search for where the card was used.
+ *
+ * The merchant's name leads the query. An address alone drops the user on a
+ * street rather than on the business they are looking at, and for the city-only
+ * addresses Rain sends it would drop them on the city centre — whereas
+ * "mb burger, TEL AVIV, IL" finds the shop. Maps' universal cross-platform URL is
+ * used so the same link opens the app on a phone and the site on the web.
+ */
+export const getCardMerchantMapsUrl = (place: CardMerchantPlace, merchantName?: string): string => {
+  const query = [merchantName?.trim(), place.address].filter(Boolean).join(', ');
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+};
+
 /**
  * Normalize amount for display.
  * Both Rain and Bridge amounts are returned as dollars from the backend.
