@@ -52,19 +52,22 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
   const hasFuseBalance = !!fuseVault && (balanceFuse ?? 0) > 0;
   const hasEthBalance = !!ethVault && (balanceEth ?? 0) > 0;
 
+  // Native token prices, used only to value a savings balance in USD. A minute
+  // of staleness is well inside the rounding of the figure being displayed; at
+  // 5s these were two more requests every five seconds from every session.
   const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useQuery({
     queryKey: ['fusePriceUsd'],
     queryFn: fetchFusePrice,
     enabled: hasFuseBalance,
-    staleTime: 5_000,
-    refetchInterval: 5_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
   const { data: ethPriceUsd, isLoading: isLoadingEthPrice } = useQuery({
     queryKey: ['ethPriceUsd'],
     queryFn: fetchEthPrice,
     enabled: hasEthBalance,
-    staleTime: 5_000,
-    refetchInterval: 5_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const isLoading =
