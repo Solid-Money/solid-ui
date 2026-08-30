@@ -16,7 +16,8 @@ import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
-import { isDevFeatureEnabled } from '@/lib/config';
+import { IS_TIER_CASHBACK_HARDCODED, isDevFeatureEnabled } from '@/lib/config';
+import { resolveTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -143,6 +144,13 @@ export default function RewardsScreenNew() {
   const cashback = rewardsData?.cashbackThisMonth ?? 0;
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
+  // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
+  // cashback rate" row read this, so they can't disagree with each other.
+  const cashbackRate = resolveTierCashbackRate(
+    currentTier,
+    rewardsData?.cashbackRate,
+    IS_TIER_CASHBACK_HARDCODED,
+  );
 
   // Core grants neither the yield boost nor subscription cashback, so on a
   // Core test account both cards correctly disappear — which leaves nothing to
@@ -215,7 +223,7 @@ export default function RewardsScreenNew() {
 
         <View className="mt-8">
           <TierBenefitsGrid
-            cashbackRate={rewardsData?.cashbackRate ?? 0}
+            cashbackRate={cashbackRate}
             cashbackThisMonth={cashback}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}

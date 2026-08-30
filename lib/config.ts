@@ -90,6 +90,17 @@ export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_A
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 // In-development features: visible on qa/preview builds, hidden in production.
 export const isDevFeatureEnabled = !isProduction;
+/**
+ * Quote the launch cashback rates baked into the app (Core 3%, Prime 4%, Ultra
+ * 5% — see `lib/tierCashback.ts`) rather than the rate the rewards API reports.
+ *
+ * On by default, because the API still serves the pre-launch rates and every
+ * build would otherwise contradict the tier comparison screen. Set
+ * EXPO_PUBLIC_HARDCODED_TIER_CASHBACK=false to hand the cashback surfaces back
+ * to the API once the admin-configured rates are live.
+ */
+export const IS_TIER_CASHBACK_HARDCODED =
+  process.env.EXPO_PUBLIC_HARDCODED_TIER_CASHBACK !== 'false';
 
 /**
  * Marketing site that hosts the referral landing page.
