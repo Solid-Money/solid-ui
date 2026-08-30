@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
+import { resolveTierCashbackRate } from '@/lib/tierCashback';
 import { formatNumber } from '@/lib/utils';
 
 /**
@@ -19,7 +21,13 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
 
   const earned = rewardsData?.cashbackThisMonth ?? 0;
   const cap = rewardsData?.maxCashbackMonthly ?? 0;
-  const rate = rewardsData?.cashbackRate ?? 0;
+  // The rate this card's own sheet quotes, so "spend $X more" is the spend that
+  // actually reaches the cap at the advertised rate.
+  const rate = resolveTierCashbackRate(
+    rewardsData?.currentTier,
+    rewardsData?.cashbackRate,
+    IS_TIER_CASHBACK_HARDCODED,
+  );
 
   const progress = cap > 0 ? Math.min(100, Math.max(0, (earned / cap) * 100)) : 0;
   // Spend needed to reach the monthly cap: (cap - earned) * 100 / rate%.
