@@ -140,19 +140,24 @@ const hasCardTitle = (title?: string): boolean => !!title?.toLowerCase().include
 /**
  * Resolve the user-facing transaction category.
  *
- * BRIDGE_DEPOSIT is dual-use: the same type backs both real cross-chain
- * bridges (→ "External wallet transfer") and "Deposit … to Card" deposits
- * where soUSD/USDC is bridged from Fuse to the card funding address. The
- * static map can't tell them apart, so a savings→card deposit was showing as
- * "External wallet transfer". Relabel the card variant (title contains
- * "Card", matching the backend's title convention for card deposits) as
- * "Card deposit".
+ * BRIDGE_DEPOSIT and DEPOSIT are both dual-use: the same types back real
+ * cross-chain bridges and savings deposits (→ "External wallet transfer" /
+ * "Savings account") as well as card funding — "Deposit … to Card" when soUSD
+ * is bridged from Fuse, and the plain "Card deposit" row a direct crypto
+ * deposit to the card's own deposit address writes. The static map can't tell
+ * them apart, so a savings→card deposit read "External wallet transfer" and a
+ * direct card deposit read "Savings account" — the one thing it is not.
+ * Relabel both card variants (title contains "Card", matching the backend's
+ * title convention) as "Card deposit".
  */
 export const getTransactionCategory = (
   type: TransactionType,
   title?: string,
 ): TransactionCategory | undefined => {
-  if (type === TransactionType.BRIDGE_DEPOSIT && hasCardTitle(title)) {
+  if (
+    (type === TransactionType.BRIDGE_DEPOSIT || type === TransactionType.DEPOSIT) &&
+    hasCardTitle(title)
+  ) {
     return TransactionCategory.CARD_DEPOSIT;
   }
   return TRANSACTION_DETAILS[type]?.category;
