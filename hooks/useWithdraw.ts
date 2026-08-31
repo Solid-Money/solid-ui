@@ -8,6 +8,7 @@ import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { WITHDRAW_SECONDS_TO_DEADLINE } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { VAULT } from '@/hooks/useVault';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
@@ -109,7 +110,7 @@ const useWithdraw = (): WithdrawResult => {
         data: encodeFunctionData({
           abi: BoringQueue_ABI,
           functionName: 'requestOnChainWithdraw',
-          args: [ADDRESSES.ethereum.usdc, amountWei, 1, 260000],
+          args: [ADDRESSES.ethereum.usdc, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
         }),
         value: 0n,
       });
