@@ -94,10 +94,14 @@ export const shouldShowSpendable = ({
  * Everything the user holds, and the home headline: Wallet + Card + Savings.
  *
  * Card is only added when it is a pot of its own. For a Wirex card the reported
- * balance is spendable soUSD — savings seen from the card's side — and adding it
- * would count the same money twice, inflating the headline by however much the
- * card could reach. Spendable is a view onto savings for the same reason and never
- * enters a total.
+ * balance is spending power — the wallet and savings the card can reach, seen from
+ * the card's side — and adding it would count the same money twice, inflating the
+ * headline by however much the card could spend. Spendable never enters a total for
+ * the same reason.
+ *
+ * Note that it now straddles two rows above it rather than one: the card settles
+ * from USDC and USDT (Wallet) as well as soUSD (Savings), so it is a reading of both
+ * pots, not a share of Savings alone.
  */
 export const getTotalBalance = ({
   walletBalance,
@@ -245,9 +249,10 @@ export const CardBalanceRow = ({
  * Spendable row (green — the colour the Card row would have used): how much of
  * what the user already holds their card can spend.
  *
- * Sits last, under Savings, because it is a reading of the rows above rather than
- * another pot beside them — and it is the row that only makes sense once you have
- * seen the savings it is a share of.
+ * Sits last because it is a reading of the rows above rather than another pot beside
+ * them, and it only makes sense once you have seen the pots it draws on: the card
+ * settles from USDC and USDT in Wallet and from soUSD in Savings, in that order, so
+ * this figure spans both.
  *
  * No "Add", and not by omission. This is not a pot that can be topped up: the
  * money arrives through Wallet or Savings and shows up here on its own. An "Add"
@@ -264,7 +269,7 @@ export const SpendableBalanceRow = ({
     color={CARD_COLOR}
     label="Spendable"
     value={spendableBalance}
-    caption="80% of your deposited savings are spendable"
+    caption="Stablecoins and savings your card can spend"
     isLoading={isLoading}
   />
 );
@@ -297,10 +302,10 @@ export const SavingsBalanceRow = ({
  * The breakdown, in order: Wallet, Card (only when the card holds money of its
  * own), Savings, then Spendable.
  *
- * The first three are pots; Spendable closes the list because it is a share of
- * the savings above it rather than a balance of its own. It also replaces Card
- * for an issuer whose card holds nothing — the two are alternatives, never both,
- * since a $0 Card row beside a funded Spendable one would read as money lost.
+ * The first three are pots; Spendable closes the list because it is a reading of the
+ * ones above it rather than a balance of its own. It also replaces Card for an issuer
+ * whose card holds nothing — the two are alternatives, never both, since a $0 Card row
+ * beside a funded Spendable one would read as money lost.
  */
 export const BalanceBreakdownRows = ({
   walletBalance,

@@ -307,15 +307,14 @@ export const TRACKING_EVENTS = {
   CARD_DEPOSIT_TRANSACTION_STATUS_VIEWED: 'card_deposit_transaction_status_viewed',
   CARD_DEPOSIT_TRANSACTION_STATUS_PRESSED: 'card_deposit_transaction_status_pressed',
 
-  // Wirex card spending. Wirex cardholders authorize a soUSD allowance instead of
-  // depositing onto the card, so these are the Wirex counterpart of the deposit
-  // funnel above — the same step in the journey, a different mechanism.
-  CARD_SPEND_AUTHORIZE_PRESSED: 'card_spend_authorize_pressed',
-  CARD_SPEND_AUTHORIZE_COMPLETED: 'card_spend_authorize_completed',
-  CARD_SPEND_AUTHORIZE_FAILED: 'card_spend_authorize_failed',
-  CARD_SPEND_AUTHORIZE_CANCELLED: 'card_spend_authorize_cancelled',
-  // SolidCashModule registration (IS_WIREX_TEST). Separate from the allowance events
-  // above so the two mechanisms can be compared rather than blended into one funnel.
+  // Wirex card spending: `SolidCashModule` registration. Wirex cardholders register
+  // their Safe instead of depositing onto the card, so this is the Wirex counterpart
+  // of the deposit funnel above — the same step in the journey, a different mechanism.
+  //
+  // A `card_spend_authorize_*` funnel sat alongside this for the ERC-20 allowance flow
+  // that registration replaced. Those events are retired rather than merged into these:
+  // blending two mechanisms into one funnel would make the switchover invisible in the
+  // historical data.
   CARD_SPEND_REGISTER_PRESSED: 'card_spend_register_pressed',
   CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
   CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',

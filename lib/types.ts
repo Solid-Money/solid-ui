@@ -757,21 +757,13 @@ export interface WirexRevealSessionResponse {
 }
 
 /**
- * Wirex card-spend authorization: the soUSD allowance the cardholder grants the
- * card-spend wallet, and everything needed to build the `approve` call.
+ * A Wirex cardholder's `SolidCashModule` registration, as the backend reads it.
  *
- * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its
- * own Master Account and our backend reimburses itself by pulling soUSD from the
- * user's Safe on each settlement — so there is no card balance to top up, and the
- * user's savings balance *is* their card balance. What they grant instead is
- * standing permission to take it, which is what this describes.
- *
- * Token, spender and chain all come from the backend rather than app config: the
- * spender address is environment-specific, and a stale client-side copy would have
- * users approving an allowance nobody can spend.
- */
-/**
- * A Wirex cardholder's `SolidCashModule` registration, as the backend records it.
+ * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its own
+ * Master Account and our backend reimburses itself by debiting the user's Safe on each
+ * settlement — so there is no card balance to top up, and the user's savings balance
+ * *is* their card balance. What they grant instead is standing permission to take it,
+ * bounded by the on-chain caps this describes.
  *
  * The chain is the source of truth — `SolidCashModule.isRegistered` and the Safe's own
  * module list decide whether spending works, not this record. The backend stores it so
@@ -784,6 +776,16 @@ export interface WirexRevealSessionResponse {
 export interface WirexCardRegistrationResponse {
   /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
   registered: boolean;
+  /**
+   * The raw `isRegistered` flag, kept apart from {@link registered}.
+   *
+   * The two come apart in a state the UI has to handle differently: registration is
+   * permanent (`registerSafe` reverts `AlreadyRegistered`, and there is no deregister)
+   * but module consent can be withdrawn at any time. A Safe that registered and then
+   * disabled the module is `registeredOnChain` yet not `registered`, and the fix is to
+   * re-enable the module — not to register again, which cannot succeed.
+   */
+  registeredOnChain: boolean;
   /** Whether the module is enabled on the Safe. False once a user revokes consent. */
   moduleEnabled: boolean;
   /** Whether registration is offered at all in this environment. */
@@ -813,41 +815,46 @@ export interface WirexCardRegistrationResponse {
   chainId: number;
   /** Seconds from UTC the Safe's rolling windows reset at. Null before registration. */
   timezoneOffset: number | null;
+  /**
+   * What the card can spend right now, in decimal USD: the live on-chain figure less
+   * anything already committed to a transaction Wirex has authorized but not settled.
+   *
+   * Null when the chain could not be read — a zero would read as "no money" rather
+   * than "we do not know".
+   */
+  spendableUsd: string | null;
+  /**
+   * USD committed to authorizations Wirex has not settled yet, in decimal USD.
+   *
+   * The honest explanation for a spendable figure below the user's visible balance:
+   * the money is still in the Safe, but it is already promised.
+   */
+  heldUsd: string;
+  /**
+   * Addresses the card may draw from, in the order settlements draw from them
+   * (USDC, then USDT, then soUSD).
+   *
+   * From the backend rather than app config: the allowlist is on-chain state an admin
+   * changes without a deploy, and the draw order is backend policy. A client-side copy
+   * of either would go stale silently and mis-describe which of the user's assets gets
+   * spent.
+   */
+  spendableTokens: string[];
 }
 
-/** What the app tells the backend after a `registerSafe` user operation lands. */
+/**
+ * What the app tells the backend after a `registerSafe` user operation lands.
+ *
+ * None of it is trusted: the backend verifies the registration against the chain before
+ * recording anything, and stores the chain's limits rather than these. They are sent so
+ * a disagreement between what the app asked for and what the module holds is visible in
+ * the logs, which it would not be if only one side were ever recorded.
+ */
 export interface WirexCardRegistrationConfirmRequest {
   transactionHash: string;
   dailyLimitUsd: string;
   monthlyLimitUsd: string;
   timezoneOffset: number;
-}
-
-export interface WirexSpendAuthorizationResponse {
-  /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
-  authorized: boolean;
-  /** Remaining allowance, in decimal soUSD. */
-  allowanceRemaining: string;
-  /** What a fresh Authorize would approve, in decimal soUSD. */
-  allowanceLimit: string;
-  /** The Safe's soUSD balance, in decimal soUSD. */
-  balance: string;
-  /** soUSD the card can reach right now (allowance ∧ balance, less unsettled holds). */
-  spendable: string;
-  /** USD value of `spendable`. */
-  spendableUsd: number;
-  /** soUSD committed to transactions Wirex has authorized but not settled. */
-  held: string;
-  /** soUSD ERC-20 address to call `approve` on. */
-  tokenAddress: string;
-  /** The `spender` argument — our card-spend wallet. */
-  spenderAddress: string;
-  /** Chain the approval must be sent on. Always Fuse (122). */
-  chainId: number;
-  /** soUSD decimals, so the client scales without assuming 18. */
-  decimals: number;
-  /** False when this environment has no card-spend wallet — hide the control. */
-  available: boolean;
 }
 
 // --- Rain contracts (funding) ---

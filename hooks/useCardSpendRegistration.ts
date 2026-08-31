@@ -16,7 +16,7 @@ import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModule_ABI } from '@/lib/abis/SolidCashModule';
 import { track } from '@/lib/analytics';
 import { confirmWirexCardRegistration } from '@/lib/api';
-import { ADDRESSES, IS_WIREX_TEST } from '@/lib/config';
+import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
@@ -67,21 +67,19 @@ export interface CardSpendRegistration {
 /**
  * A Wirex cardholder's `SolidCashModule` registration, and the action that creates it.
  *
- * ## What registration is, and why it replaces the allowance
+ * ## What registration is, and why it replaced the allowance
  *
- * This is the default flow for a Wirex card. `IS_WIREX_TEST` switches back to the older
- * allowance flow (`useCardSpendAuthorization`), which grants an ERC-20 allowance on
- * soUSD to our card-spend wallet. That works, but the only bound it carries is the
- * allowance amount: one number, spendable in one transaction, with no per-transaction ceiling, no
- * rolling window, and no way for the user to see or shape what the card may take over
- * time.
+ * This is the only Wirex card-spend flow. It replaced an ERC-20 allowance on soUSD
+ * granted to our card-spend wallet, whose single bound was the approved amount: one
+ * number, spendable in one transaction, with no per-transaction ceiling, no rolling
+ * window, and no way for the user to see or shape what the card may take over time.
  *
  * `SolidCashModule` moves those bounds on-chain. Registering sets a daily and a monthly
  * cap for this Safe specifically, on top of the module's own per-transaction cap and the
  * live org ceilings. The backend's spender key can only ever send to an immutable
- * treasury address, only in allowlisted tokens, only inside those caps, and only once
- * per settlement id. None of that is enforced by our backend — it is enforced by the
- * contract, which is the point.
+ * treasury address, only in allowlisted tokens (USDC, USDT and soUSD, drawn in that
+ * order), only inside those caps, and only once per settlement id. None of that is
+ * enforced by our backend — it is enforced by the contract, which is the point.
  *
  * ## Why the chain is read directly rather than trusted from the backend
  *
@@ -109,12 +107,8 @@ export function useCardSpendRegistration() {
   const [error, setError] = useState<string | null>(null);
 
   const safeAddress = user?.safeAddress as Address | undefined;
-  // Wirex only, and only when the test flag is *off*: a Rain cardholder prefunds their
-  // card and has nothing to register. `IS_WIREX_TEST` selects the older allowance flow
-  // (`useCardSpendAuthorization`) instead, so exactly one of the two is ever offered —
-  // showing both would ask the user to grant spending permission twice, by two
-  // mechanisms, for one card.
-  const isEnabled = !IS_WIREX_TEST && provider === CardProvider.WIREX && Boolean(safeAddress);
+  // Wirex only: a Rain cardholder prefunds their card and has nothing to register.
+  const isEnabled = provider === CardProvider.WIREX && Boolean(safeAddress);
 
   const query = useQuery<CardSpendRegistration>({
     queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, selectedUserId, safeAddress],

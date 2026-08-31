@@ -16,13 +16,6 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
-// Which Wirex card-spend mechanism the app offers. Off (the default): the
-// SolidCashModule registration flow — Safe.enableModule + registerSafe, with the
-// spending limits enforced on-chain. On: the older ERC-20 allowance flow, kept for
-// testing against environments whose card-spend wallet still pulls via an allowance.
-// The two are mutually exclusive — they are two ways to grant the same permission, so
-// only the selected one is shown.
-export const IS_WIREX_TEST = process.env.EXPO_PUBLIC_IS_WIREX_TEST === 'true';
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined
 // into the JS bundle, so only ever put a publishable key here, never a secret.
@@ -141,9 +134,9 @@ type Addresses = {
     bridgePaymasterAddress: Address;
     merklDistributor: Address;
     cardDepositManager: Address;
-    /** SolidCashModule — the Safe module the card backend debits through. IS_WIREX_TEST only. */
+    /** SolidCashModule — the Safe module the card backend debits through. */
     cashModule: Address;
-    /** SolidCashLens — one-call read of a Safe's spending power. IS_WIREX_TEST only. */
+    /** SolidCashLens — one-call read of a Safe's spending power across its allowlisted assets. */
     cashLens: Address;
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
