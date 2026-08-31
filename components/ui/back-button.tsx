@@ -8,7 +8,7 @@ interface BackButtonProps {
   fallbackHref?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
-  variant?: 'default' | 'header';
+  variant?: 'default' | 'header' | 'hero';
 }
 
 export function BackButton({
@@ -18,6 +18,7 @@ export function BackButton({
   variant = 'default',
 }: BackButtonProps) {
   const router = useRouter();
+  const isCompactHeaderButton = variant === 'header' || variant === 'hero';
 
   const handlePress =
     onPress ?? (() => (router.canGoBack() ? router.back() : router.replace(fallbackHref as any)));
@@ -27,14 +28,17 @@ export function BackButton({
       onPress={handlePress}
       className={cn(
         'flex h-[50px] w-[50px] items-center justify-center rounded-full border-0',
-        variant === 'header'
-          ? '-my-[3px] bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover'
+        isCompactHeaderButton
+          ? cn(
+              '-my-[3px] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover',
+              variant === 'hero' ? 'bg-[#111111]' : 'bg-[#2A2A2A]',
+            )
           : 'bg-popover web:transition-colors web:hover:bg-muted',
       )}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
     >
-      <ArrowLeft size={variant === 'header' ? 22 : 24} color="#FFFFFF" />
+      <ArrowLeft size={isCompactHeaderButton ? 22 : 24} color="#FFFFFF" />
     </Pressable>
   );
 }

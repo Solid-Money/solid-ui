@@ -5,13 +5,18 @@ import HeaderHelpIcon from '@/assets/images/header-help';
 interface HeaderHelpButtonProps {
   onPress: () => void;
   accessibilityLabel?: string;
+  variant?: 'default' | 'hero';
 }
 
 /**
  * Circular "?" button shown in the top-right of the redesigned mobile header,
  * opening the contextual help carousel for the current screen.
  */
-const HeaderHelpButton = ({ onPress, accessibilityLabel = 'Open help' }: HeaderHelpButtonProps) => {
+const HeaderHelpButton = ({
+  onPress,
+  accessibilityLabel = 'Open help',
+  variant = 'default',
+}: HeaderHelpButtonProps) => {
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -19,7 +24,7 @@ const HeaderHelpButton = ({ onPress, accessibilityLabel = 'Open help' }: HeaderH
       onPress={onPress}
       className="-my-[3px] h-[50px] w-[50px] items-center justify-center rounded-full transition-all active:scale-95 active:opacity-80"
     >
-      <HeaderHelpIcon />
+      <HeaderHelpIcon backgroundColor={variant === 'hero' ? '#111111' : undefined} />
     </Pressable>
   );
 };

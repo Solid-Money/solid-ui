@@ -1,5 +1,5 @@
-/** Token symbols that can be withdrawn from vaults (soUSD, soFUSE, fusdc). */
-export const SOLID_TOKEN_SYMBOLS = ['sousd', 'sofuse', 'fusdc', 'soeth'] as const;
+/** Token symbols that can be withdrawn from vaults (soUSD/soUSDC, soFUSE, fUSDC, soETH). */
+export const SOLID_TOKEN_SYMBOLS = ['sousd', 'sousdc', 'sofuse', 'fusdc', 'soeth'] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
 
@@ -58,7 +58,7 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
 export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (!symbol) return null;
   const s = symbol.toLowerCase();
-  if (s === 'sousd' || s === 'fusdc') return 'USD';
+  if (s === 'sousd' || s === 'sousdc' || s === 'fusdc') return 'USD';
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
   return null;

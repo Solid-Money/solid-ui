@@ -5,9 +5,6 @@ import Animated, {
   FadeOutUp,
   LayoutAnimationConfig,
   LinearTransition,
-  useAnimatedStyle,
-  useDerivedValue,
-  withTiming,
 } from 'react-native-reanimated';
 import * as AccordionPrimitive from '@rn-primitives/accordion';
 
@@ -66,19 +63,18 @@ const Trigger = Platform.OS === 'web' ? View : Pressable;
 function AccordionTrigger({
   className,
   children,
+  iconClassName,
+  iconSize = 18,
+  iconStrokeWidth,
   ...props
 }: AccordionPrimitive.TriggerProps & {
   children?: React.ReactNode;
+  iconClassName?: string;
+  iconSize?: number;
+  iconStrokeWidth?: number;
   ref?: React.RefObject<AccordionPrimitive.TriggerRef>;
 }) {
   const { isExpanded } = AccordionPrimitive.useItemContext();
-
-  const progress = useDerivedValue(() =>
-    isExpanded ? withTiming(1, { duration: 250 }) : withTiming(0, { duration: 200 }),
-  );
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${progress.value * 90}deg` }],
-  }));
 
   return (
     <TextClassContext.Provider value="native:text-lg font-medium web:group-hover:opacity-80">
@@ -90,13 +86,21 @@ function AccordionTrigger({
               className,
             )}
           >
-            <Animated.View style={iconStyle}>
+            <View>
               {isExpanded ? (
-                <Minus size={18} className={'shrink-0 text-foreground'} />
+                <Minus
+                  size={iconSize}
+                  strokeWidth={iconStrokeWidth}
+                  className={cn('shrink-0 text-foreground', iconClassName)}
+                />
               ) : (
-                <Plus size={18} className={'shrink-0 text-foreground'} />
+                <Plus
+                  size={iconSize}
+                  strokeWidth={iconStrokeWidth}
+                  className={cn('shrink-0 text-foreground', iconClassName)}
+                />
               )}
-            </Animated.View>
+            </View>
             {children}
           </Trigger>
         </AccordionPrimitive.Trigger>

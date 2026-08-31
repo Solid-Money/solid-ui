@@ -25,10 +25,10 @@ const tokenBalance = (token: TokenBalance) =>
  * to build the per-vault network dropdown.
  */
 export const useSavingsVaults = () => {
-  const { ethereumTokens, fuseTokens, baseTokens, isLoading } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens, isLoading } = useWalletTokens();
 
   const vaults = useMemo<SavingsVault[]>(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
     const grouped = new Map<VaultKey, TokenBalance[]>();
 
     for (const token of allTokens) {
@@ -48,7 +48,7 @@ export const useSavingsVaults = () => {
         balanceUSD: tokens.reduce((sum, t) => sum + tokenBalance(t) * (t.quoteRate || 0), 0),
       }))
       .sort((a, b) => b.balanceUSD - a.balanceUSD);
-  }, [ethereumTokens, fuseTokens, baseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
 
   return { vaults, isLoading };
 };

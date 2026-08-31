@@ -31,6 +31,7 @@ const MOBILE_NAVBAR_TITLES: Record<string, string> = {
   '/card-onboard': 'Card',
   '/card/details': 'Card',
   '/card/details/transactions': 'Transactions',
+  '/earn': 'Earn',
   '/overview': 'Overview',
   '/points': 'Points',
   '/points/leaderboard': 'Leaderboard',

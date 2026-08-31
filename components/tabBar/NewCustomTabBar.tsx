@@ -136,7 +136,9 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
 
   // Index within visibleRoutes of the currently focused tab.
   const activeVisibleIndex = visibleRoutes.findIndex(
-    route => state.routes.findIndex(r => r.key === route.key) === state.index,
+    route =>
+      state.routes.findIndex(r => r.key === route.key) === state.index ||
+      (currentRouteName === 'savings' && route.name === 'earn'),
   );
 
   const [layouts, setLayouts] = useState<Record<number, TabLayout>>({});
@@ -257,7 +259,9 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
           const originalIndex = state.routes.findIndex(r => r.key === route.key);
 
           const label = WHITELIST_TAB_LABELS[route.name] ?? options.title ?? route.name;
-          const isFocused = state.index === originalIndex;
+          const isFocused =
+            state.index === originalIndex ||
+            (currentRouteName === 'savings' && route.name === 'earn');
 
           const onPress = () => {
             const event = navigation.emit({
@@ -266,7 +270,7 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
+            if (state.index !== originalIndex && !event.defaultPrevented) {
               navigation.dispatch({
                 ...CommonActions.navigate(route),
                 target: state.key,
