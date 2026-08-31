@@ -16,6 +16,7 @@ import { mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
+import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
@@ -39,7 +40,6 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
   CardTransaction,
-  CardTransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -49,10 +49,12 @@ import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
+  formatCardTransactionAmount,
   getCardFeeInfo,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
   getCashbackAmount,
+  isOutgoingCardTransaction,
 } from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
@@ -165,7 +167,17 @@ const Back = memo(function Back({ title, className }: BackProps) {
       <View className="absolute left-0">
         <BackButton onPress={handleBackPress} />
       </View>
-      <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
+      {/* Inset past the back button, which is positioned on top of this row: the
+          title is now a merchant name on a card transaction, and those run long
+          enough to reach under it. Two lines rather than one so the longest title
+          here — "Transaction 0x1234…5678 not found" — still reads in full, and
+          only a pathological merchant name clips. */}
+      <Text
+        numberOfLines={2}
+        className={cn('mx-14 text-center text-lg font-semibold text-white', className)}
+      >
+        {title}
+      </Text>
     </View>
   );
 });
@@ -252,7 +264,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // label ready to show, and there is no code for the lookup to resolve.
   const merchantCategory =
     getMerchantCategory(transaction.merchant_category_code) ?? transaction.merchant_category_label;
-  const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
+  // A purchase takes money, so it reads with a minus — the stored sign is the
+  // ledger's and says the opposite. See `isOutgoingCardTransaction`.
+  const isOutgoing = isOutgoingCardTransaction(transaction);
   const { data: cashbacks } = useCashbacks();
   const { data: cardDetails } = useCardDetails();
   const last4 = cardDetails?.card_details?.last_4;
@@ -263,11 +277,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // Fuse to reimburse the issuer. Only cards that spend against savings have one.
   // The dollar equivalent of a foreign charge. Suppressed when the card was
   // charged in dollars already, where it would just repeat the line above it.
+  // Signed to follow the charge rather than itself: it is stored unsigned.
   const usdEquivalent = useMemo(() => {
     const code = transaction.currency?.trim().toUpperCase();
     if (!transaction.usd_amount || !code || code === 'USD') return undefined;
-    return formatCardAmount(transaction.usd_amount, cardProvider);
-  }, [transaction.usd_amount, transaction.currency, cardProvider]);
+    return formatCardTransactionAmount(transaction.usd_amount, isOutgoing, cardProvider);
+  }, [transaction.usd_amount, transaction.currency, cardProvider, isOutgoing]);
 
   const spend = transaction.spend_details;
   const sweepHash = spend?.sweep_tx_hash;
@@ -281,8 +296,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       : transaction.posted_at || transaction.authorized_at;
     return dateStr ? new Date(dateStr) : new Date();
   }, [isApproved, transaction.authorized_at, transaction.posted_at]);
-
-  const initial = useMemo(() => merchantName.charAt(0).toUpperCase(), [merchantName]);
 
   // Support needs the ledger side to trace a purchase whose sweep is stuck or
   // failed; none of it is worth a row on screen, but all of it belongs in the
@@ -300,13 +313,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const transactionContext = useMemo(
     () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
     [
       merchantName,
       transaction.amount,
       transaction.currency,
       transaction.id,
       postedDate,
+      isOutgoing,
       cardProvider,
       spendContext,
     ],
@@ -537,32 +551,33 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     transaction.refunded_amount,
   ]);
 
-  const tokenIcon = useMemo(
-    () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
-    [transaction.currency],
-  );
-
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
-        <Back title="Transaction details" className="text-xl md:text-2xl" />
+        {/* The merchant is the title (Figma 21287:5858) — on a card transaction
+            it is the one thing that identifies which purchase this is, and
+            "Transaction details" was a heading the whole screen already implied. */}
+        <Back title={merchantName} className="text-xl md:text-2xl" />
 
         <View className="items-center gap-4">
-          {/* Avatar with merchant initial or token icon */}
-          {isPurchase ? (
-            <View className="h-[75px] w-[75px] items-center justify-center rounded-full bg-[#2A2A2A]">
-              <Text className="text-3xl text-[#A0A0A0]">{initial}</Text>
-            </View>
-          ) : (
-            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
-          )}
+          {/* The card glyph, not the merchant's initial (Figma 21287:5884). The
+              same icon the activity row leads with, so a tapped row and the
+              screen it opens agree — and an initial said nothing the title above
+              does not already say in full. */}
+          <CardActivityIcon transaction={transaction} size={75} />
 
           <View className="items-center gap-1">
             <Text className="text-2xl font-bold text-white">
-              {formatCardAmount(transaction.amount, cardProvider, transaction.currency)}
+              {formatCardTransactionAmount(
+                transaction.amount,
+                isOutgoing,
+                cardProvider,
+                transaction.currency,
+              )}
             </Text>
-            {usdEquivalent && <Text className="text-base text-white/50">≈ {usdEquivalent}</Text>}
-            <Text className="text-base text-white/70">{merchantName}</Text>
+            {/* No "≈": the figure now carries a sign, and "≈ -$31.46" reads as
+                two operators. The activity row shows the conversion bare too. */}
+            {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
           </View>
         </View>

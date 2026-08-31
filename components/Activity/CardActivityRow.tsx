@@ -10,11 +10,12 @@ import { CardProvider, CardTransaction, Cashback } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
 import {
-  formatCardAmount,
+  formatCardTransactionAmount,
   getCardFeeInfo,
   getCardMerchantLocation,
   getCardMerchantName,
   getCashbackAmount,
+  isOutgoingCardTransaction,
 } from '@/lib/utils/cardHelpers';
 import { getCardTransactionTimestamp } from '@/lib/utils/unifiedActivity';
 
@@ -59,12 +60,17 @@ const CardActivityRow = ({
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
   const feeInfo = getCardFeeInfo(transaction);
 
+  // A purchase takes money, so it reads with a minus — the stored sign is the
+  // ledger's and says the opposite. See `isOutgoingCardTransaction`.
+  const isOutgoing = isOutgoingCardTransaction(transaction);
+
   // Dollar equivalent of a foreign charge, so a row reads without mental
-  // arithmetic. Nothing to add when the card was charged in dollars.
+  // arithmetic. Nothing to add when the card was charged in dollars. Signed to
+  // follow the charge rather than itself: it is stored unsigned.
   const currencyCode = transaction.currency?.trim().toUpperCase();
   const usdEquivalent =
     transaction.usd_amount && currencyCode && currencyCode !== 'USD'
-      ? formatCardAmount(transaction.usd_amount, provider)
+      ? formatCardTransactionAmount(transaction.usd_amount, isOutgoing, provider)
       : undefined;
 
   const formattedTimestamp = formatActivityTimestamp(getCardTransactionTimestamp(transaction));
@@ -131,7 +137,12 @@ const CardActivityRow = ({
 
       <View className="min-w-0 flex-[1] items-end gap-0.5">
         <Text className="text-base font-medium web:text-lg">
-          {formatCardAmount(transaction.amount, provider, transaction.currency)}
+          {formatCardTransactionAmount(
+            transaction.amount,
+            isOutgoing,
+            provider,
+            transaction.currency,
+          )}
         </Text>
         {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
         {cashbackInfo && cashbackInfo.amount !== 'Pending' && (

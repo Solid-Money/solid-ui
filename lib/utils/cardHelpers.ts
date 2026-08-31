@@ -394,6 +394,54 @@ export const formatCardAmount = (
 };
 
 /**
+ * Whether a card transaction took money from the cardholder.
+ *
+ * The stored sign is the ledger's, not the reader's: both issuers record a debit
+ * as positive and a credit as negative (see `mapWirexActivityToCardTransaction`,
+ * which says so explicitly and matches Rain). A statement reads the other way
+ * round — a purchase is money gone — so `transaction.amount` should never go
+ * through {@link formatCardAmount} and straight onto the screen.
+ *
+ * An unparseable amount counts as outgoing. Card rows are overwhelmingly
+ * purchases, and a purchase missing its minus reads as a credit the user never
+ * received, which is the worse of the two mistakes.
+ */
+export const isOutgoingCardTransaction = (transaction: Pick<CardTransaction, 'amount'>): boolean =>
+  !(parseFloat(transaction.amount) < 0);
+
+/**
+ * A figure belonging to a card transaction, signed the way the cardholder reads
+ * it: what the card spent carries a minus, what came back a plus.
+ *
+ * Direction comes in as a flag rather than being re-derived from `amount`,
+ * because the figure being formatted is not always the one carrying the sign —
+ * the dollar equivalent of a foreign charge is stored unsigned and has to follow
+ * the charge it converts.
+ *
+ * Zero gets no sign: "-$0.00" reads as a rounding bug rather than as a
+ * transaction that moved nothing.
+ */
+export const formatCardTransactionAmount = (
+  amount: string,
+  isOutgoing: boolean,
+  provider?: CardProvider | null,
+  currency?: string,
+): string => {
+  const magnitude = Math.abs(parseFloat(amount));
+  // Formatted from the magnitude, so `formatCardAmount`'s own leading "-" on a
+  // negative input cannot collide with the sign chosen here.
+  const formatted = formatCardAmount(
+    Number.isFinite(magnitude) ? magnitude.toString() : amount,
+    provider,
+    currency,
+  );
+
+  if (!magnitude) return formatted;
+
+  return `${isOutgoing ? '-' : '+'}${formatted}`;
+};
+
+/**
  * Format card transaction amount with currency code and +/- sign.
  */
 export const formatCardAmountWithCurrency = (

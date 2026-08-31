@@ -10,6 +10,13 @@ type CardActivityIconProps = {
   size?: number;
 };
 
+// The glyph's designed geometry inside the circle: 18 × 14.6 in a 44pt row icon
+// (Figma 24781:8033). Kept as ratios so the same component can draw the 75pt
+// avatar on a transaction's detail screen (Figma 21287:5884) without the glyph
+// shrinking to a quarter of the circle it sits in.
+const GLYPH_WIDTH_RATIO = 18 / 44;
+const GLYPH_ASPECT_RATIO = 14.6 / 18;
+
 /**
  * The leading icon on a card row (Figma 24781:8033).
  *
@@ -30,12 +37,14 @@ export default function CardActivityIcon({ transaction, size = 44 }: CardActivit
     );
   }
 
+  const glyphWidth = size * GLYPH_WIDTH_RATIO;
+
   return (
     <View
       className="items-center justify-center rounded-full bg-[#333333]"
       style={{ width: size, height: size }}
     >
-      <CardGlyph width={18} height={14.6} />
+      <CardGlyph width={glyphWidth} height={glyphWidth * GLYPH_ASPECT_RATIO} />
     </View>
   );
 }
