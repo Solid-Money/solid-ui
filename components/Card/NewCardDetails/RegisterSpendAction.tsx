@@ -31,16 +31,16 @@ interface RegisterSpendActionProps {
  *
  * ## What the user is actually agreeing to
  *
- * A Wirex card holds no balance. Wirex pays the merchant and our backend takes the soUSD
- * from the user's Safe afterwards, so their savings *are* their card balance. To make
- * that possible they enable a Safe module and register spending limits — one signature
- * covering both, because `registerSafe` and `Safe.enableModule` each require the Safe
- * itself as sender.
+ * A Wirex card holds no balance. Wirex pays the merchant and our backend debits the
+ * user's Safe afterwards — USDC first, then USDT, then soUSD — so what they hold *is*
+ * their card balance. To make that possible they enable a Safe module and register
+ * spending limits: one signature covering both, because `registerSafe` and
+ * `Safe.enableModule` each require the Safe itself as sender.
  *
- * This is a bigger grant than the allowance flow it replaces, so the sheet says so
- * plainly: the module can take soUSD without a further signature, bounded by the caps
- * chosen here, and the user can switch it off at any time. Describing it as "authorize
- * once" would understate it.
+ * This is a bigger grant than the ERC-20 allowance flow it replaced, so the sheet says
+ * so plainly: the module can take those assets without a further signature, bounded by
+ * the caps chosen here, and the user can switch it off at any time. Describing it as
+ * "authorize once" would understate it.
  *
  * ## Why limits are presets and the timezone is never asked
  *
@@ -220,9 +220,9 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
             <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#1F2419] p-3">
               <ShieldCheck size={18} color="#94F27F" style={styles.noticeIcon} />
               <Text className="flex-1 text-xs leading-snug text-[#ACACAC]">
-                Your card can take soUSD from your Safe up to these limits without asking again.
-                Nothing else can — payments only ever go to Solid&apos;s settlement account. Turn it
-                off any time and it stops immediately.
+                Your card can take stablecoins and savings from your Safe up to these limits without
+                asking again. Nothing else can — payments only ever go to Solid&apos;s settlement
+                account. Turn it off any time and it stops immediately.
               </Text>
             </View>
           ) : null}

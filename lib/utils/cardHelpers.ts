@@ -109,12 +109,12 @@ export const canWithdrawFromCard = ({ isCustomerRestricted }: CardFundsAccess): 
  * Rain cards are prefunded — the user moves soUSD onto the card and spends the
  * balance sitting there. Wirex cards under External Authorization have no balance
  * of their own: Wirex pays the merchant from its own Master Account and our backend
- * takes the soUSD from the user's Safe on settlement. So a deposit to a Wirex card
- * has no destination, and every "Add funds" entry point (the card action row, the
- * wallet's balance breakdown, the wallet action bar) has to agree about that.
+ * debits the user's Safe on settlement. So a deposit to a Wirex card has no
+ * destination, and every "Add funds" entry point (the card action row, the wallet's
+ * balance breakdown, the wallet action bar) has to agree about that.
  *
- * A Wirex cardholder authorizes a soUSD allowance instead — see
- * `useCardSpendAuthorization`. Their savings balance IS their card balance.
+ * A Wirex cardholder registers their Safe with `SolidCashModule` instead — see
+ * `useCardSpendRegistration`. Their savings balance IS their card balance.
  *
  * `null`/`undefined` means the issuer is not resolved yet; deposits are offered by
  * default so a Rain cardholder never loses the action to a slow query.

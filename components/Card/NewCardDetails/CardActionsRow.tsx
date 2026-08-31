@@ -3,12 +3,10 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import AuthorizeSpendAction from '@/components/Card/NewCardDetails/AuthorizeSpendAction';
 import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendAuthorization } from '@/hooks/useCardSpendAuthorization';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
@@ -82,20 +80,13 @@ interface CardActionsRowProps {
  * The first action differs by issuer, because the two cards work differently:
  *
  *  - **Rain** cards are prefunded, so it is "Add funds" — move soUSD onto the card.
- *  - **Wirex** cards hold no balance (Wirex pays the merchant and we take the soUSD
- *    from the user's Safe afterwards), so there is nothing to fund. It is
- *    "Authorize" instead: one-time permission for the card to spend from savings.
+ *  - **Wirex** cards hold no balance (Wirex pays the merchant and we debit the user's
+ *    Safe afterwards), so there is nothing to fund. It is "Set up"/"Spending"
+ *    instead: registering the Safe with `SolidCashModule`, which is what gives the
+ *    card permission to spend and sets the on-chain limits it may spend within.
  *
  * Offering "Add funds" on a Wirex card would be offering a transfer with no
  * destination.
- *
- * Which Wirex action that is depends on `IS_WIREX_TEST`, and only ever one of them
- * appears: with the flag off (the default) it is "Set up"/"Spending", the
- * `SolidCashModule` registration flow, whose limits live on-chain; with it on it is
- * "Authorize", the older ERC-20 allowance flow. Both grant the same permission by
- * different mechanisms, so showing them together would ask the user to grant it twice
- * for one card. The choice is made in the two hooks — `isAvailable` is false on
- * whichever flow the flag did not select — not here.
  */
 const CardActionsRow = ({
   isCardFrozen,
@@ -107,37 +98,17 @@ const CardActionsRow = ({
   canWithdraw,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
-  // Each hook's `isAvailable` already accounts for IS_WIREX_TEST and the card's issuer,
-  // so no flag check is needed here — the hooks are the single place that decision lives,
-  // and at most one of these two is ever true.
-  const { isAvailable: canAuthorizeSpend, isAuthorized } = useCardSpendAuthorization();
+  // The hook's `isAvailable` already accounts for the card's issuer, so no provider
+  // check is needed here — it is the single place that decision lives.
   const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
-  // false for a Wirex card whatever else is true — depositing has no destination.
-  // `canAuthorizeSpend` additionally requires the backend to have a Card Deposit
-  // Manager, so an environment without one shows neither action rather than a
-  // circle that opens nothing.
+  // false for a Wirex card whatever else is true — depositing has no destination —
+  // and `canRegisterSpend` is false for a Rain one, which has nothing to register.
   const showDeposit = canAddFunds && canDepositToCard(provider);
-  const showAuthorize = canAddFunds && canAuthorizeSpend;
   const showRegister = canAddFunds && canRegisterSpend;
 
   return (
     <View className="flex-row items-start justify-center">
-      {showAuthorize && (
-        <View style={styles.item}>
-          <AuthorizeSpendAction
-            trigger={
-              <CircleAction label={isAuthorized ? 'Authorized' : 'Authorize'}>
-                <Image
-                  source={getAsset('images/card-action-add-funds.png')}
-                  style={styles.actionIcon}
-                  contentFit="contain"
-                />
-              </CircleAction>
-            }
-          />
-        </View>
-      )}
       {showRegister && (
         <View style={styles.item}>
           <RegisterSpendAction
@@ -169,7 +140,7 @@ const CardActionsRow = ({
         </View>
       )}
       {/* Withdraw moves tokens back out of the Rain collateral proxy. A Wirex card
-          has no collateral to withdraw — the user's soUSD never left their Safe —
+          has no collateral to withdraw — the user's assets never left their Safe —
           so the flow has nothing to act on and is hidden rather than offered and
           then failed. */}
       {canWithdraw && canDepositToCard(provider) && (

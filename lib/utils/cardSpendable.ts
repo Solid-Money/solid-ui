@@ -10,9 +10,23 @@ const tokenValueUSD = (token: TokenBalance): number => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
-const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): boolean =>
-  token.contractTickerSymbol?.toLowerCase() === asset.symbol.toLowerCase() &&
-  (!asset.chainIds || asset.chainIds.includes(token.chainId));
+const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): boolean => {
+  if (asset.chainIds && !asset.chainIds.includes(token.chainId)) return false;
+
+  // Address wins outright where one is configured, and the ticker is not consulted at
+  // all: the on-chain allowlist is keyed on the address, and the ticker is whatever the
+  // balances indexer decided to call the token. Checking both would let an upstream
+  // rename silently drop a spendable asset from the total.
+  if (asset.addresses) {
+    return asset.addresses.includes(token.contractAddress?.toLowerCase());
+  }
+
+  // No address: the asset is spendable wherever it is held, matched by ticker.
+  return (
+    asset.symbol !== undefined &&
+    token.contractTickerSymbol?.toLowerCase() === asset.symbol.toLowerCase()
+  );
+};
 
 /**
  * USD across the Safe's holdings that the card can spend.
@@ -20,8 +34,8 @@ const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): boolean =
  * Filters the holdings by the configured assets rather than reading one named
  * balance, so the figure grows by editing `CARD_SPENDABLE_ASSETS` alone. Each
  * holding counts at most once however many entries match it, so an overlapping
- * config — say a bare "USDC" alongside a chain-scoped one — cannot double count
- * the same money.
+ * config — say a bare "USDC" alongside a chain- or address-scoped one — cannot
+ * double count the same money.
  */
 export const sumCardSpendableUSD = (
   tokens: TokenBalance[] | undefined,

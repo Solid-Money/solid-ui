@@ -131,7 +131,6 @@ import {
   WirexCardRegistrationConfirmRequest,
   WirexCardRegistrationResponse,
   WirexRevealSessionResponse,
-  WirexSpendAuthorizationResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
@@ -2786,19 +2785,19 @@ export const revealCardDetailsComplete = async (
   return revealCardDetailsCompleteRain();
 };
 
-// --- Wirex card spending via SolidCashModule (IS_WIREX_TEST) ---
+// --- Wirex card spending via SolidCashModule ---
 
 /**
  * The user's `SolidCashModule` registration status and the limits around it.
  *
- * Distinct from {@link getWirexSpendAuthorization}, which describes the ERC-20
- * allowance flow. The two are different mechanisms for the same job and only one is
- * live per environment: an allowance is a token-level grant to a wallet, whereas the
- * module is a Safe module with its own on-chain per-transaction, daily and monthly
- * caps. Registration replaces the allowance rather than supplementing it.
+ * This is the only card-spend permission mechanism. It replaced an ERC-20 allowance
+ * granted to our card-spend wallet, whose single bound was the approved amount — no
+ * per-transaction ceiling, no rolling window, and nothing the user could see or shape
+ * over time. The module puts all of that on-chain.
  *
- * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it right
- * after a `registerSafe` transaction lands so the UI flips on the same interaction.
+ * `refresh` is accepted but no longer meaningful: registration is on-chain state the
+ * backend reads live on every request, because module consent can be revoked from any
+ * Safe client with no call to us. It is kept so an older build's request still parses.
  */
 export const getWirexCardRegistration = async (
   refresh = false,
@@ -2856,65 +2855,6 @@ export const confirmWirexCardRegistration = async (
 
   return response.json();
 };
-
-// --- Wirex card spending (soUSD allowance to our card-spend wallet) ---
-
-/**
- * The user's current card-spend authorization.
- *
- * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it
- * straight after an `approve` transaction lands so the Authorize control flips on
- * the same interaction rather than up to a cache TTL later.
- */
-export const getWirexSpendAuthorization = async (
-  refresh = false,
-): Promise<WirexSpendAuthorizationResponse> => {
-  const jwt = getJWTToken();
-  const query = refresh ? '?refresh=true' : '';
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization${query}`,
-    {
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Tell the backend the user's `approve` transaction has landed, and get the
- * re-read authorization back.
- *
- * This grants nothing on its own — the allowance was granted on-chain by the
- * user's own signature — it only saves the UI from waiting out the snapshot TTL.
- */
-export const confirmWirexSpendAuthorization =
-  async (): Promise<WirexSpendAuthorizationResponse> => {
-    const jwt = getJWTToken();
-
-    const response = await fetch(
-      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization/confirm`,
-      {
-        method: 'POST',
-        headers: {
-          ...getPlatformHeaders(),
-          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-        },
-        credentials: 'include',
-      },
-    );
-
-    if (!response.ok) throw response;
-
-    return response.json();
-  };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(

@@ -12,12 +12,12 @@ import { sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
  * Reads the token balances the screen has already loaded (same query key as
  * `useWalletTokens`), so it costs no extra network work.
  *
- * This is spending *power*, not granted permission: it says what the card can
- * reach, and deliberately does not subtract an allowance the user has yet to
- * authorize or a purchase the issuer has authorized but not settled. Those belong
- * to the card screen, where the authorization is granted — showing them here would
- * make a fully funded account read as $0 spendable for the seconds before its
- * allowance query lands.
+ * This is spending *power*, not granted permission: it says what the card could
+ * reach, and deliberately does not subtract the on-chain caps a user has yet to
+ * register for, or a purchase the issuer has authorized but not settled. Those
+ * belong to the card screen, where the permission is granted — showing them here
+ * would make a fully funded account read as $0 spendable for the seconds before its
+ * registration query lands.
  */
 export const useCardSpendableBalanceUSD = (): { data: number; isLoading: boolean } => {
   const { tokens, isLoading } = useBalances();
