@@ -61,3 +61,60 @@ export const getCardFundNetworkChips = (symbol: string): string[] => {
 
   return remaining > 0 ? [...visible, `+${remaining}`] : visible;
 };
+
+/**
+ * The direct-deposit destination that selects the *card* deposit address.
+ *
+ * Named for Rain because Rain was the only issuer when the address was first
+ * derived, and its salt — and so every address already handed out — has to stay
+ * exactly as it was. A Wirex cardholder deposits to the same address; the
+ * backend resolves the issuer and delivers the funds to the Rain card on Base
+ * or to the cardholder's Safe on Fuse accordingly.
+ */
+export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
+
+/**
+ * Which groups the "Fund your card" step shows.
+ *
+ * Configuration rather than a prop per row, because what differs between the two
+ * issuers is only *which* methods are wired up, not how the screen works. Wirex
+ * cards launch with the stablecoin rows alone; the rest are switched on here as
+ * their backend legs land, so enabling one is a one-line change instead of a
+ * second copy of the options screen.
+ */
+export type CardFundSections = {
+  stablecoins: boolean;
+  /** USD (ACH / Wire) — the virtual-account flow. */
+  cashDeposit: boolean;
+  /** BRL, BDT, MXN, PHP — the buy-crypto onramp. */
+  localCurrencies: boolean;
+  /** "Move from wallet or savings". */
+  moveFromSolid: boolean;
+  /** "Deposit from an external wallet". */
+  externalWallet: boolean;
+};
+
+/** Rain cards offer every funding method. */
+export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
+  stablecoins: true,
+  cashDeposit: true,
+  localCurrencies: true,
+  moveFromSolid: true,
+  externalWallet: true,
+};
+
+/**
+ * Wirex cards launch with direct stablecoin deposits only.
+ *
+ * The other methods are not conceptually impossible for Wirex — they all end in
+ * the same place, spendable stablecoin in the cardholder's Safe on Fuse — but
+ * each needs its own backend leg pointed at Fuse first. They stay off here until
+ * that lands, rather than being offered and then failing with no destination.
+ */
+export const WIREX_CARD_FUND_SECTIONS: CardFundSections = {
+  stablecoins: true,
+  cashDeposit: false,
+  localCurrencies: false,
+  moveFromSolid: false,
+  externalWallet: false,
+};
