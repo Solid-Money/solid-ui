@@ -87,6 +87,21 @@ describe('getTransactionCategory', () => {
     );
   });
 
+  // A crypto deposit sent to the card's own deposit address is written as a
+  // plain `deposit` titled "Card deposit", so the static map read it as
+  // "Savings account" — the one place the money definitely did not go.
+  it('labels a direct card deposit as Card deposit', () => {
+    expect(getTransactionCategory(TransactionType.DEPOSIT, 'Card deposit')).toBe(
+      TransactionCategory.CARD_DEPOSIT,
+    );
+  });
+
+  it('leaves a savings-bound direct deposit as Savings account', () => {
+    expect(getTransactionCategory(TransactionType.DEPOSIT, 'Deposit USDC on BNB Chain')).toBe(
+      TransactionCategory.SAVINGS_ACCOUNT,
+    );
+  });
+
   it('falls back to the static category for other types', () => {
     expect(getTransactionCategory(TransactionType.CARD_TRANSACTION, 'Card Deposit')).toBe(
       TransactionCategory.CARD_DEPOSIT,
