@@ -2,7 +2,9 @@
  * `SolidCashModule` — the Safe module Solid's card backend debits soUSD through.
  *
  * Only the surface the app needs: opting a Safe in, reading whether it is opted in,
- * and reading the caps that bound what the module may take. The app never calls
+ * reading the caps that bound what the module may take, and changing those caps
+ * afterwards — lowering takes effect at once, raising is delayed and cancellable, which
+ * is why the raise has both a request and a cancel. The app never calls
  * `spend` — that is the backend's SPENDER_ROLE key, and the destination is immutable
  * in the contract, so the app has nothing to authorize about it.
  *
@@ -104,6 +106,40 @@ export const SolidCashModule_ABI = [
     type: 'function',
   },
   {
+    // The Safe's limit state with every matured transition already applied — window
+    // rollovers and a pending increase that has come due. The same reader the write
+    // path uses, so what the sheet shows is what `spend` will enforce.
+    //
+    // A pending increase is only visible here while it is still *pending*: once it
+    // matures the reader folds it into `dailyLimit`/`monthlyLimit` and zeroes the
+    // activation time, so a non-zero `dailyLimitActivationTime` always means "not
+    // effective yet".
+    inputs: [{ internalType: 'address', name: 'safe', type: 'address' }],
+    name: 'applicableSpendingLimit',
+    outputs: [
+      {
+        components: [
+          { internalType: 'uint256', name: 'dailyLimit', type: 'uint256' },
+          { internalType: 'uint256', name: 'monthlyLimit', type: 'uint256' },
+          { internalType: 'uint256', name: 'spentToday', type: 'uint256' },
+          { internalType: 'uint256', name: 'spentThisMonth', type: 'uint256' },
+          { internalType: 'uint256', name: 'pendingDailyLimit', type: 'uint256' },
+          { internalType: 'uint256', name: 'pendingMonthlyLimit', type: 'uint256' },
+          { internalType: 'uint64', name: 'dailyRenewalTimestamp', type: 'uint64' },
+          { internalType: 'uint64', name: 'monthlyRenewalTimestamp', type: 'uint64' },
+          { internalType: 'uint64', name: 'dailyLimitActivationTime', type: 'uint64' },
+          { internalType: 'uint64', name: 'monthlyLimitActivationTime', type: 'uint64' },
+          { internalType: 'int256', name: 'timezoneOffset', type: 'int256' },
+        ],
+        internalType: 'struct SpendingLimit',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       { internalType: 'uint256', name: 'dailyLimitUsd', type: 'uint256' },
       { internalType: 'uint256', name: 'monthlyLimitUsd', type: 'uint256' },
@@ -119,6 +155,15 @@ export const SolidCashModule_ABI = [
       { internalType: 'uint256', name: 'monthlyLimitUsd', type: 'uint256' },
     ],
     name: 'requestSpendingLimitIncrease',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    // Disarms a requested increase before it matures. The counterpart to the delay:
+    // the window only protects the user if they can act inside it.
+    inputs: [],
+    name: 'cancelPendingSpendingLimitIncrease',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
