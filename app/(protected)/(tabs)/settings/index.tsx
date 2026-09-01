@@ -34,6 +34,9 @@ type MobileSettingsRow = {
   icon: React.ReactNode;
   href?: Href;
   onPress?: () => void;
+  /** Right-aligned status text, e.g. the notification permission state. */
+  description?: string;
+  descriptionClassName?: string;
 };
 
 const mobileHeader = (
@@ -119,6 +122,8 @@ const SettingsRow = ({
   icon,
   href,
   onPress,
+  description,
+  descriptionClassName,
   showDivider = false,
 }: MobileSettingsRow & { showDivider?: boolean }) => {
   const handlePress = () => {
@@ -143,6 +148,11 @@ const SettingsRow = ({
         <View className="w-6 items-center justify-center">{icon}</View>
         <Text className="text-base font-bold text-white">{title}</Text>
       </View>
+      {description ? (
+        <Text className={cn('mr-2 text-sm', descriptionClassName ?? 'text-[#ACACAC]')}>
+          {description}
+        </Text>
+      ) : null}
       <RowChevron />
     </Pressable>
   );
@@ -163,6 +173,58 @@ const MobileSettings = () => {
   const { data: rewardsData } = useRewardsUserData();
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const displayName = getUserDisplayName(user, 18);
+  const { status: notificationStatus, request: requestNotificationPermission } =
+    useNotificationPermissionStatus();
+
+  /**
+   * The way back into push notifications.
+   *
+   * Onboarding asks once, over the wallet screen, and marks itself seen on any
+   * dismissal — including a swipe that never reached the OS prompt. After that
+   * the sheet is unreachable and nothing else in the app ever asks, so without a
+   * row here a cardholder who swiped it away has no route to notifications at
+   * all. That is not hypothetical: it is why card-payment pushes go missing, and
+   * it bites iOS hardest, since Android below 13 grants the permission at
+   * install and registers a token whether or not the sheet was ever seen.
+   */
+  const handleNotificationsPress = () => {
+    // Never asked: the OS prompt is the only thing that can change this, and
+    // iOS lists an app under Settings → Notifications only once it has asked,
+    // so sending them to Settings would show them a page with nothing on it.
+    if (notificationStatus === 'Undetermined') {
+      void requestNotificationPermission();
+      return;
+    }
+
+    // Already answered — only the OS can change that answer now.
+    if (Platform.OS === 'android') {
+      void IntentLauncher.startActivityAsync(
+        IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
+        { extra: { 'android.provider.extra.APP_PACKAGE': Application.applicationId } },
+      );
+      return;
+    }
+
+    void Linking.openSettings();
+  };
+
+  const notificationRows: MobileSettingsRow[] =
+    Platform.OS === 'web'
+      ? []
+      : [
+          {
+            title: 'Push Notifications',
+            icon: <Bell size={24} color="#ffffff" strokeWidth={1.6} />,
+            onPress: handleNotificationsPress,
+            description: notificationStatus,
+            descriptionClassName:
+              notificationStatus === 'Authorized'
+                ? 'text-[#94F27F]'
+                : notificationStatus === 'Denied'
+                  ? 'text-[#FFB347]'
+                  : 'text-[#ACACAC]',
+          },
+        ];
 
   const rowGroups: MobileSettingsRow[][] = [
     [
@@ -188,6 +250,7 @@ const MobileSettings = () => {
         icon: <IconImage source={SecurityIcon} width={24} height={24} />,
         href: '/settings/security' as Href,
       },
+      ...notificationRows,
     ],
     [
       {
@@ -243,7 +306,8 @@ const MobileSettings = () => {
 const DesktopSettings = () => {
   const { handleLogout } = useUser();
   const { isDesktop } = useDimension();
-  const { status: notificationStatus } = useNotificationPermissionStatus();
+  const { status: notificationStatus, request: requestNotificationPermission } =
+    useNotificationPermissionStatus();
 
   const notificationStatusColor =
     notificationStatus === 'Authorized'
@@ -313,6 +377,18 @@ const DesktopSettings = () => {
               descriptionStyle={notificationStatusColor}
               icon={<Bell size={22} color="#ffffff" />}
               onPress={() => {
+                // Nobody has asked this user yet, so there is nothing in the OS
+                // settings to turn on — iOS does not even list an app under
+                // Notifications until it has requested authorization once. The
+                // onboarding sheet is shown a single time and is not reachable
+                // again, so without this the only way out of `Undetermined` is
+                // to reinstall the app. Ask here instead.
+                if (notificationStatus === 'Undetermined') {
+                  void requestNotificationPermission();
+                  return;
+                }
+
+                // Already answered: only the OS can change that answer.
                 if (Platform.OS === 'android') {
                   IntentLauncher.startActivityAsync(
                     IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
