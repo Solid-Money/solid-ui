@@ -35,11 +35,13 @@ import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScree
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { WirexBankAccountPane } from '@/components/WirexBankAccount/WirexBankAccountPane';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
@@ -113,6 +115,7 @@ const useDepositOption = ({
   const { address, status } = externalWallet;
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
@@ -338,6 +341,13 @@ const useDepositOption = ({
     }
 
     if (isVirtualAccountDetails) {
+      // Which provider issued the account decides which screen shows it. The
+      // Wirex pane owns its own activation and send flows, so it needs no
+      // onRetry route back through the Rain ToS step.
+      if (virtualAccountProvider === 'wirex') {
+        return <WirexBankAccountPane />;
+      }
+
       return (
         <VirtualAccountDetailsModal
           onRetry={() => setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS)}

@@ -636,7 +636,14 @@ export interface DiditVerificationStatusResponse {
  * 'onramp' is buy-crypto (TransFi). The backend uses this to decide what it
  * records on the card customer — the SDK experience is identical.
  */
-export type SumsubSessionFlow = 'card' | 'onramp';
+/**
+ * Which product asked for a Sumsub session. Mirrors the backend enum.
+ *
+ * `virtual_account` is gated on Wirex's BANK availability rather than the card
+ * list and is not silenced by the card switch — routing is per feature, so a
+ * user can be a Wirex bank customer in a country whose card goes to Rain.
+ */
+export type SumsubSessionFlow = 'card' | 'onramp' | 'virtual_account';
 
 /** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
 export interface SumsubSessionResponse {
@@ -1062,6 +1069,16 @@ export enum TransactionType {
   CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
+  /**
+   * Wirex bank rails (EUR SEPA / USD ACH) on the user's own virtual account.
+   *
+   * Separate from BANK_TRANSFER, which is the Bridge rail: a tap on that type
+   * opens the Bridge transfer-preview modal (see ActivityTransactions), which
+   * has no Wirex equivalent, and it is hard-coded inbound so a payout under it
+   * would render with the wrong sign.
+   */
+  WIREX_BANK_DEPOSIT = 'wirex_bank_deposit',
+  WIREX_BANK_PAYOUT = 'wirex_bank_payout',
   CARD_TRANSACTION = 'card_transaction',
   CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',
@@ -1095,6 +1112,7 @@ export enum TransactionCategory {
   WALLET_TRANSFER = 'Wallet transfer',
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
+  BANK_WITHDRAWAL = 'Bank withdraw',
   CARD_DEPOSIT = 'Card deposit',
   CARD_WITHDRAWAL = 'Card withdraw',
   REWARD = 'Reward',
