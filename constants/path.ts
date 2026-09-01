@@ -53,6 +53,12 @@ type Path = {
   CARD_TRANSACTIONS: Route;
   CARD_READY: Href;
   CARD_PENDING: Href;
+  /**
+   * Pending 3D Secure challenges on a Wirex card. Reachable from the card screen
+   * as well as from the push, because Wirex never retries a webhook it failed to
+   * deliver and a challenge nobody was told about still has to be answerable.
+   */
+  CARD_3DS: Href;
   CARD_ACTIVATE: Href;
   CARD_KYC_MOBILE: Href;
   CARD_COUNTRY_SELECTION: Href;
@@ -114,6 +120,7 @@ export const path: Path = {
   CARD_TRANSACTIONS: '/card/details/transactions',
   CARD_READY: '/card/ready' as Href,
   CARD_PENDING: '/card/pending' as Href,
+  CARD_3DS: '/card/3ds' as Href,
   CARD_ACTIVATE: '/card/activate',
   CARD_KYC_MOBILE: '/card/kyc_mobile',
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
@@ -142,3 +149,35 @@ export const path: Path = {
   GOODDOLLAR: '/gooddollar' as Href,
   STOCKS: '/stocks' as Href,
 };
+
+/**
+ * The decision screen for one 3D Secure challenge.
+ *
+ * A function rather than a constant because the transaction id is the whole
+ * address: this is where a 3DS push lands, and it has to land on the challenge
+ * the merchant is holding, not on the list.
+ *
+ * `preview` carries what the push already knew — the amount and the merchant —
+ * so the screen has something to render while the authoritative pending list
+ * loads behind it. A 3DS challenge is on the merchant's clock; a spinner spends
+ * time the cardholder does not have. Undefined fields are dropped rather than
+ * passed, so they never reach the URL as the string "undefined".
+ */
+export const cardThreeDsRequestPath = (
+  transactionId: string,
+  preview?: {
+    amount?: string;
+    currency?: string;
+    merchantName?: string;
+    cardLast4?: string;
+  },
+): Href =>
+  ({
+    pathname: '/card/3ds/[transactionId]',
+    params: {
+      transactionId,
+      ...Object.fromEntries(Object.entries(preview ?? {}).filter(([, value]) => Boolean(value))),
+    },
+    // Expo Router's generated route types are rebuilt when the dev server
+    // starts, so a route added in the same change is not in them yet.
+  }) as unknown as Href;

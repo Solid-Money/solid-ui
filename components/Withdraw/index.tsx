@@ -22,6 +22,7 @@ import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { describeWithdrawError } from '@/lib/utils/withdrawErrors';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 
 const Withdraw = () => {
@@ -72,7 +73,7 @@ const Withdraw = () => {
 
   const watchedWithdrawAmount = watchWithdraw('amount');
 
-  const { withdraw, withdrawStatus } = useWithdraw();
+  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw();
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
 
   const getWithdrawText = () => {
@@ -81,6 +82,7 @@ const Withdraw = () => {
     if (withdrawStatus === Status.ERROR) return 'Error while Withdrawing';
     if (withdrawStatus === Status.SUCCESS) return 'Withdrawal Successful';
     if (!isWithdrawValid || !watchedWithdrawAmount) return 'Enter an amount';
+    if (isAllowanceLoading) return 'Checking approval';
     return 'Withdraw';
   };
 
@@ -123,13 +125,16 @@ const Withdraw = () => {
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',
+        text2: describeWithdrawError(_error),
         props: { badgeText: 'Onchain' },
       });
     }
   };
 
   const isWithdrawFormDisabled = () => {
-    return isWithdrawLoading || !isWithdrawValid || !watchedWithdrawAmount;
+    // Submitting before the approval check settles is what skipped the approve
+    // leg and left the withdrawal to revert on-chain.
+    return isWithdrawLoading || isAllowanceLoading || !isWithdrawValid || !watchedWithdrawAmount;
   };
 
   return (

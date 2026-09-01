@@ -1,15 +1,17 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { ShieldCheck } from 'lucide-react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import AuthorizeSpendAction from '@/components/Card/NewCardDetails/AuthorizeSpendAction';
 import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendAuthorization } from '@/hooks/useCardSpendAuthorization';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
@@ -20,6 +22,11 @@ interface CircleActionProps {
   circleBackground?: string;
   onPress?: () => void;
   disabled?: boolean;
+  /**
+   * Count to overlay on the circle. Rendered outside it, because the circle
+   * clips its own children so the Figma icons stay round.
+   */
+  badgeCount?: number;
 }
 
 /**
@@ -33,6 +40,7 @@ const CircleAction = ({
   circleBackground,
   onPress,
   disabled,
+  badgeCount,
 }: CircleActionProps) => (
   <Pressable
     accessibilityLabel={label}
@@ -42,8 +50,19 @@ const CircleAction = ({
     style={styles.action}
     className="items-center transition-all active:scale-95 active:opacity-80"
   >
-    <View style={[styles.circle, circleBackground ? { backgroundColor: circleBackground } : null]}>
-      {children}
+    <View style={styles.circleSlot}>
+      <View
+        style={[styles.circle, circleBackground ? { backgroundColor: circleBackground } : null]}
+      >
+        {children}
+      </View>
+      {badgeCount ? (
+        <View style={styles.badge} className="bg-brand">
+          <Text className="text-[11px] font-semibold text-black">
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </Text>
+        </View>
+      ) : null}
     </View>
     <Text className="mt-[8px] text-center text-[14px] font-medium text-[#BFBFBF]">{label}</Text>
   </Pressable>
@@ -62,12 +81,17 @@ interface CardActionsRowProps {
   onFreezeToggle: () => void;
   onMorePress: () => void;
   /**
-   * Whether funds can move to/from the card at all (not frozen, KYC not paused).
-   * Gates Add funds and Withdraw together — the parent derives it once so the row
-   * and the desktop header cannot offer different actions for the same card.
+   * Whether funds can move onto the card: not frozen, and KYC not paused or
+   * offboarded. Derived by the parent (`canAddFundsToCard`) rather than here, so
+   * this row and the freeze state it renders come from one reading of the card.
    */
   canAddFunds: boolean;
-  /** Withdraw is hidden while funds can't be moved off the card (frozen / paused KYC). */
+  /**
+   * Whether funds can move off the card (`canWithdrawFromCard`). Not the mirror of
+   * `canAddFunds`: a freeze stops the card spending but leaves the collateral
+   * withdrawable, so this stays true on a frozen card and only a paused or
+   * offboarded customer turns it off.
+   */
   canWithdraw: boolean;
 }
 
@@ -77,20 +101,13 @@ interface CardActionsRowProps {
  * The first action differs by issuer, because the two cards work differently:
  *
  *  - **Rain** cards are prefunded, so it is "Add funds" — move soUSD onto the card.
- *  - **Wirex** cards hold no balance (Wirex pays the merchant and we take the soUSD
- *    from the user's Safe afterwards), so there is nothing to fund. It is
- *    "Authorize" instead: one-time permission for the card to spend from savings.
+ *  - **Wirex** cards hold no balance (Wirex pays the merchant and we debit the user's
+ *    Safe afterwards), so there is nothing to fund. It is "Set up"/"Spending"
+ *    instead: registering the Safe with `SolidCashModule`, which is what gives the
+ *    card permission to spend and sets the on-chain limits it may spend within.
  *
  * Offering "Add funds" on a Wirex card would be offering a transfer with no
  * destination.
- *
- * Which Wirex action that is depends on `IS_WIREX_TEST`, and only ever one of them
- * appears: with the flag off (the default) it is "Set up"/"Spending", the
- * `SolidCashModule` registration flow, whose limits live on-chain; with it on it is
- * "Authorize", the older ERC-20 allowance flow. Both grant the same permission by
- * different mechanisms, so showing them together would ask the user to grant it twice
- * for one card. The choice is made in the two hooks — `isAvailable` is false on
- * whichever flow the flag did not select — not here.
  */
 const CardActionsRow = ({
   isCardFrozen,
@@ -102,37 +119,21 @@ const CardActionsRow = ({
   canWithdraw,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
-  // Each hook's `isAvailable` already accounts for IS_WIREX_TEST and the card's issuer,
-  // so no flag check is needed here — the hooks are the single place that decision lives,
-  // and at most one of these two is ever true.
-  const { isAvailable: canAuthorizeSpend, isAuthorized } = useCardSpendAuthorization();
+  // The hook's `isAvailable` already accounts for the card's issuer, so no provider
+  // check is needed here — it is the single place that decision lives.
   const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
+  // Wirex-only, and gated inside the hook on the issuer rather than here. The
+  // count is the point of reading it from this row: a challenge whose push never
+  // arrived is otherwise invisible until the user goes looking for it.
+  const { requests: threeDsRequests, isSupported: hasThreeDs } = useWirexThreeDs();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
-  // false for a Wirex card whatever else is true — depositing has no destination.
-  // `canAuthorizeSpend` additionally requires the backend to have a Card Deposit
-  // Manager, so an environment without one shows neither action rather than a
-  // circle that opens nothing.
+  // false for a Wirex card whatever else is true — depositing has no destination —
+  // and `canRegisterSpend` is false for a Rain one, which has nothing to register.
   const showDeposit = canAddFunds && canDepositToCard(provider);
-  const showAuthorize = canAddFunds && canAuthorizeSpend;
   const showRegister = canAddFunds && canRegisterSpend;
 
   return (
     <View className="flex-row items-start justify-center">
-      {showAuthorize && (
-        <View style={styles.item}>
-          <AuthorizeSpendAction
-            trigger={
-              <CircleAction label={isAuthorized ? 'Authorized' : 'Authorize'}>
-                <Image
-                  source={getAsset('images/card-action-add-funds.png')}
-                  style={styles.actionIcon}
-                  contentFit="contain"
-                />
-              </CircleAction>
-            }
-          />
-        </View>
-      )}
       {showRegister && (
         <View style={styles.item}>
           <RegisterSpendAction
@@ -164,7 +165,7 @@ const CardActionsRow = ({
         </View>
       )}
       {/* Withdraw moves tokens back out of the Rain collateral proxy. A Wirex card
-          has no collateral to withdraw — the user's soUSD never left their Safe —
+          has no collateral to withdraw — the user's assets never left their Safe —
           so the flow has nothing to act on and is hidden rather than offered and
           then failed. */}
       {canWithdraw && canDepositToCard(provider) && (
@@ -202,6 +203,20 @@ const CardActionsRow = ({
           </CircleAction>
         </View>
       )}
+      {/* Wirex only: Rain never asks the cardholder to answer a 3DS challenge, so
+          the action would open a screen that is empty by construction. */}
+      {hasThreeDs && (
+        <View style={styles.item}>
+          <CircleAction
+            label="Approvals"
+            circleBackground="#2A2A2A"
+            badgeCount={threeDsRequests.length}
+            onPress={() => router.push(path.CARD_3DS)}
+          >
+            <ShieldCheck color="white" size={24} />
+          </CircleAction>
+        </View>
+      )}
       <View style={styles.item}>
         <CircleAction label="More" onPress={onMorePress}>
           <Image
@@ -221,6 +236,20 @@ const styles = StyleSheet.create({
   item: { flex: 1, maxWidth: 109 },
   action: { width: '100%' },
   actionIcon: { height: 50, width: 50 },
+  // Anchors the badge to the circle's corner: the circle itself clips its
+  // children, so the badge has to live beside it rather than inside it.
+  circleSlot: { height: 50, position: 'relative', width: 50 },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 9,
+    height: 18,
+    justifyContent: 'center',
+    minWidth: 18,
+    paddingHorizontal: 4,
+    position: 'absolute',
+    right: -4,
+    top: -4,
+  },
   circle: {
     alignItems: 'center',
     borderRadius: 25,

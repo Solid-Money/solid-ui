@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -10,17 +10,13 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
+import { useBridgeDepositStatuses } from '@/hooks/useBridgeDepositStatuses';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
-import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardTransactions } from '@/hooks/useCardTransactions';
-import { useLayerZeroStatuses } from '@/hooks/useLayerZeroStatuses';
 import { useProcessingActivitiesPolling } from '@/hooks/useTransactionReceiptPolling';
 import {
   ActivityEvent,
   ActivityGroup,
   ActivityTab,
-  CardProvider,
-  LayerZeroTransactionStatus,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
@@ -88,136 +84,17 @@ export default function ActivityTransactions({
   // React state (isFetchingNextPage) updates async, so multiple clicks could fire
   // before state reflects the pending fetch. This ref updates synchronously.
   const isFetchingRef = useRef(false);
-  // Track completed bridge tx hashes using ref to avoid re-render cycles
-  // Using useRef instead of useState eliminates the dependency cycle:
-  // - useState would cause: useMemo depends on state -> effect updates state -> re-render -> useMemo runs again
-  // - useRef breaks this cycle: updates don't trigger re-renders, so no infinite loop possible
-  const completedBridgeTxHashesRef = useRef<Set<string>>(new Set());
 
-  const { data: cardData } = useCardTransactions();
-  const cardTransactions = useMemo(() => cardData?.pages.flatMap(p => p.data) || [], [cardData]);
-  const { provider } = useCardProvider();
-
-  // The LayerZero → card-transaction cross-check below matches the LZ
-  // destination tx hash against crypto_transaction_details.tx_hash, which only
-  // the deprecated Bridge card API returns. Rain card transactions carry no
-  // crypto tx details, so under Rain the check could never pass and would pin
-  // every successful BRIDGE_DEPOSIT at "Pending" forever — Rain rows trust the
-  // activity status instead (completed server-side from Rain collateral
-  // webhooks).
-  const isBridgeCardProvider = provider === CardProvider.BRIDGE;
-
-  // Identify recent successful bridge deposits to check status for
-  // Only check transactions from the last 24 hours to avoid checking history forever
-  // Note: completedBridgeTxHashesRef is read here but not in deps array since refs don't trigger re-renders
-  // The filtering happens on each render, which is fine since activities changes trigger the re-render anyway
-  const bridgeDepositHashes = useMemo(() => {
-    if (!isBridgeCardProvider) return [];
-    const now = Date.now() / 1000;
-    return activities
-      .filter(
-        a =>
-          a.type === TransactionType.BRIDGE_DEPOSIT &&
-          a.status === TransactionStatus.SUCCESS &&
-          a.hash &&
-          !completedBridgeTxHashesRef.current.has(a.hash) &&
-          now - parseInt(a.timestamp) < 86400,
-      )
-      .map(a => a.hash)
-      .filter(Boolean) as string[];
-  }, [activities, isBridgeCardProvider]);
-
-  const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
+  // A bridge deposit stays PENDING until LayerZero delivers it and the issuer
+  // reports it — see the hook for why that cross-check is Bridge-only.
+  const updatedActivities = useBridgeDepositStatuses(activities);
 
   // Poll blockchain receipts for activities stuck at PROCESSING (e.g. wallet transfers)
   useProcessingActivitiesPolling(activities);
 
-  const lzStatusMap = useMemo(() => {
-    const map = new Map();
-    bridgeDepositHashes.forEach((hash, i) => {
-      map.set(hash, lzStatuses[i]);
-    });
-    return map;
-  }, [bridgeDepositHashes, lzStatuses]);
-
   useCardDepositPoller();
 
-  // Mark bridge deposits as completed when they are delivered and found in card transactions
-  // This effect updates the ref directly - no re-render cycle possible since refs don't trigger renders
-  useEffect(() => {
-    for (const transaction of activities) {
-      if (
-        transaction.type === TransactionType.BRIDGE_DEPOSIT &&
-        transaction.status === TransactionStatus.SUCCESS &&
-        transaction.hash &&
-        !completedBridgeTxHashesRef.current.has(transaction.hash) &&
-        lzStatusMap.has(transaction.hash)
-      ) {
-        const query = lzStatusMap.get(transaction.hash);
-        if (!query.data) continue;
-
-        const lzData = query.data.data?.[0];
-        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
-        if (!isDelivered) continue;
-
-        const dstTxHash = lzData?.destination?.tx?.txHash;
-        if (!dstTxHash) continue;
-
-        const foundInCard = cardTransactions.some(
-          ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
-        );
-        if (foundInCard) {
-          // Mark as completed - this is a ref mutation, no re-render triggered
-          completedBridgeTxHashesRef.current.add(transaction.hash);
-        }
-      }
-    }
-  }, [activities, lzStatusMap, cardTransactions]);
-
-  // Step 1: Override statuses for bridge deposits based on LayerZero status
-  // Only recomputes when activities, lzStatusMap, or cardTransactions change
-  const updatedActivities = useMemo(() => {
-    return activities.map(transaction => {
-      if (
-        transaction.type === TransactionType.BRIDGE_DEPOSIT &&
-        transaction.status === TransactionStatus.SUCCESS &&
-        transaction.hash &&
-        lzStatusMap.has(transaction.hash)
-      ) {
-        // If already marked as completed, keep as SUCCESS
-        if (completedBridgeTxHashesRef.current.has(transaction.hash)) {
-          return transaction;
-        }
-
-        const query = lzStatusMap.get(transaction.hash);
-        // Default to pending if loading status
-        if (!query.data) return { ...transaction, status: TransactionStatus.PENDING };
-
-        const lzData = query.data.data?.[0];
-        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
-
-        if (!isDelivered) {
-          return { ...transaction, status: TransactionStatus.PENDING };
-        }
-
-        // If delivered, check if it appears in card transactions
-        const dstTxHash = lzData?.destination?.tx?.txHash;
-        if (!dstTxHash) return { ...transaction, status: TransactionStatus.PENDING };
-
-        const foundInCard = cardTransactions.some(
-          ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
-        );
-
-        if (!foundInCard) {
-          return { ...transaction, status: TransactionStatus.PENDING };
-        }
-        // Transaction is delivered and found in card - will be marked completed by effect
-      }
-      return transaction;
-    });
-  }, [activities, lzStatusMap, cardTransactions]);
-
-  // Step 2: Filter by tab and symbol
+  // Filter by tab and symbol.
   // Only recomputes when updatedActivities, tab, or symbol change
   const tabFilteredActivities = useMemo(() => {
     return updatedActivities.filter(transaction => {
@@ -235,14 +112,14 @@ export default function ActivityTransactions({
     });
   }, [updatedActivities, tab, symbol]);
 
-  // Step 3: Deduplicate and group by time
+  // Deduplicate and group by time.
   // Only recomputes when tabFilteredActivities change
   const groupedTransactions = useMemo(() => {
     const deduplicated = deduplicateTransactions(tabFilteredActivities);
     return groupTransactionsByTime(deduplicated);
   }, [tabFilteredActivities]);
 
-  // Step 4: Filter out stuck/cancelled transactions if not showing them
+  // Filter out stuck/cancelled transactions if not showing them.
   // Only recomputes when groupedTransactions or showStuckTransactions change
   const filteredTransactions = useMemo(() => {
     if (!showStuckTransactions) {

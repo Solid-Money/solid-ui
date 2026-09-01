@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
@@ -48,8 +48,8 @@ type Step = (typeof STEPS)[keyof typeof STEPS];
 export default function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
-  const { createApiKeyPair, addPasskey, storeSession } = useTurnkey();
-  const clearCredentialIdForIdentity = useUserStore(state => state.clearCredentialIdForIdentity);
+  const { createApiKeyPair, addPasskey, storeSession, httpClient } = useTurnkey();
+  const setCredentialIdsForIdentity = useUserStore(state => state.setCredentialIdsForIdentity);
 
   const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
   const [apiError, setApiError] = useState('');
@@ -123,6 +123,30 @@ export default function RecoveryPasskey() {
     [otpId, email, createApiKeyPair, storeSession],
   );
 
+  // Every credential Turnkey holds for the recovered account, read with the
+  // session the OTP step just established (an API key — no passkey prompt).
+  //
+  // Best effort: an empty list clears the pin instead of pinning the account to
+  // a stale credential. That leaves the next prompt unfiltered, which still
+  // works, and the next login re-pins from the credential that signs.
+  const readCredentialIds = useCallback(
+    async (data: { userId: string; organizationId: string }): Promise<string[]> => {
+      try {
+        const result = await httpClient?.getAuthenticators(
+          { organizationId: data.organizationId, userId: data.userId },
+          StamperType.ApiKey,
+        );
+        return (result?.authenticators ?? [])
+          .map(authenticator => authenticator?.credentialId)
+          .filter((credentialId): credentialId is string => !!credentialId);
+      } catch (err) {
+        console.warn('Failed to read recovered credentials:', err);
+        return [];
+      }
+    },
+    [httpClient],
+  );
+
   // Step 3: Add new passkey
   const handleAddPasskey = useCallback(async () => {
     setLoading(true);
@@ -139,12 +163,15 @@ export default function RecoveryPasskey() {
         organizationId: recoveryData.organizationId,
       });
 
-      // Any locally remembered credentialId for this account belongs to the
-      // passkey the user just recovered from losing. It feeds
-      // TurnkeyProvider's `allowCredentials`, so leaving it behind pins the
-      // next passkey prompt to a credential the authenticator no longer holds.
-      // Login re-stores the recovered credentialId from the stamp it signs.
-      clearCredentialIdForIdentity({ turnkeyUserId: recoveryData.userId, email });
+      // Any credential this device remembers for the account belongs to the
+      // passkey the user just recovered from losing. Those feed
+      // TurnkeyProvider's `allowCredentials`, so leaving them behind pins every
+      // later prompt to credentials the authenticator no longer holds — which
+      // is what let a recovered account log in and then fail every action that
+      // re-prompts. Replace them with what Turnkey holds now, including the
+      // passkey just added.
+      const credentialIds = await readCredentialIds(recoveryData);
+      setCredentialIdsForIdentity({ turnkeyUserId: recoveryData.userId, email }, credentialIds);
 
       setStep(STEPS.SUCCESS);
     } catch (err: any) {
@@ -153,7 +180,7 @@ export default function RecoveryPasskey() {
     } finally {
       setLoading(false);
     }
-  }, [addPasskey, recoveryData, clearCredentialIdForIdentity, email]);
+  }, [addPasskey, recoveryData, readCredentialIds, setCredentialIdsForIdentity, email]);
 
   // Resend OTP
   const handleResendOtp = useCallback(async () => {

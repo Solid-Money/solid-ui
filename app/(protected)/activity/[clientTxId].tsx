@@ -14,9 +14,10 @@ import {
 } from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
-import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
+import CardActivityIcon from '@/components/Activity/CardActivityIcon';
+import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
@@ -39,13 +40,22 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
   CardTransaction,
-  CardTransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { formatCardAmount, getCashbackAmount } from '@/lib/utils/cardHelpers';
+import {
+  cardSweepExplorerUrl,
+  cardTransactionExplorerUrl,
+  formatCardAmount,
+  formatCardTransactionAmount,
+  getCardFeeInfo,
+  getCardMerchantMapsUrl,
+  getCardMerchantPlace,
+  getCashbackAmount,
+  isOutgoingCardTransaction,
+} from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -96,12 +106,20 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
   );
 });
 
+// Figma 21287:5858 puts both sides of a detail row at 16px. Written as an exact
+// pixel size rather than `text-base`/`text-lg`, because the Tailwind scale is
+// remapped on native (`text-base` is 20px there, `text-lg` 22px) and the design
+// asks for the same 16px on every platform.
+const ROW_TEXT = 'text-[16px]';
+/** The same size and weight as `Value`, for the rows that draw their own text. */
+const ROW_VALUE_TEXT = cn(ROW_TEXT, 'font-bold');
+
 const Label = memo(function Label({ children }: LabelProps) {
-  return <Text className="text-base font-medium text-[#ACACAC]">{children}</Text>;
+  return <Text className={cn(ROW_TEXT, 'font-medium text-[#ACACAC]')}>{children}</Text>;
 });
 
 const Value = memo(function Value({ children, className }: ValueProps) {
-  return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
+  return <Text className={cn(ROW_TEXT, 'font-bold', className)}>{children}</Text>;
 });
 
 const EscrowTimeLeft = memo(function EscrowTimeLeft({ payoutAt }: { payoutAt: string }) {
@@ -128,12 +146,19 @@ const Back = memo(function Back({ title, className }: BackProps) {
       router.replace(path.CARD_INFO);
       return;
     }
+    // Just pop this detail off. A detail is opened from wherever the tapped row
+    // lives — the Activity list, but also a coin page's recent activity — and
+    // `dismissTo(ACTIVITY)` sent every one of those back to the Activity list
+    // instead. That mounted the whole unfiltered list (every transaction, both
+    // card tabs) on top of the screen the user was actually on, which is what
+    // made backing out of a coin page's transaction slow enough to hang.
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    // Deep link / notification: there is no screen underneath, so land on the
+    // Activity list rather than leaving the user on a dead end.
     const tabParam = params.tab ? `?tab=${params.tab}` : '';
-    // Pop back to the existing Activity list instead of replacing this detail
-    // with a second copy of it. A duplicated list route makes the next system
-    // back gesture appear to do nothing because it reveals the same screen.
-    // `dismissTo` still replaces the detail when it was opened from a deep link
-    // and no Activity list exists in the protected Activity stack.
     router.dismissTo(`${path.ACTIVITY}${tabParam}` as any);
   }, [params.from, params.tab, router]);
 
@@ -142,7 +167,17 @@ const Back = memo(function Back({ title, className }: BackProps) {
       <View className="absolute left-0">
         <BackButton onPress={handleBackPress} />
       </View>
-      <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
+      {/* Inset past the back button, which is positioned on top of this row: the
+          title is now a merchant name on a card transaction, and those run long
+          enough to reach under it. Two lines rather than one so the longest title
+          here — "Transaction 0x1234…5678 not found" — still reads in full, and
+          only a pathological merchant name clips. */}
+      <Text
+        numberOfLines={2}
+        className={cn('mx-14 text-center text-lg font-semibold text-white', className)}
+      >
+        {title}
+      </Text>
     </View>
   );
 });
@@ -224,18 +259,34 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 }: CardTransactionDetailProps) {
   const merchantName =
     transaction.merchant_name?.trim() || transaction.description?.trim() || 'Unknown';
-  const merchantLocation =
-    [transaction.merchant_city, transaction.merchant_country]
-      .filter(Boolean)
-      .join(', ')
-      .toUpperCase() || undefined;
-  const merchantCategory = getMerchantCategory(transaction.merchant_category_code);
-  const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
+  const merchantPlace = useMemo(() => getCardMerchantPlace(transaction), [transaction]);
+  // Numeric MCC first; issuers that name the category instead (Wirex) send the
+  // label ready to show, and there is no code for the lookup to resolve.
+  const merchantCategory =
+    getMerchantCategory(transaction.merchant_category_code) ?? transaction.merchant_category_label;
+  // A purchase takes money, so it reads with a minus — the stored sign is the
+  // ledger's and says the opposite. See `isOutgoingCardTransaction`.
+  const isOutgoing = isOutgoingCardTransaction(transaction);
   const { data: cashbacks } = useCashbacks();
   const { data: cardDetails } = useCardDetails();
   const last4 = cardDetails?.card_details?.last_4;
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
+  const explorerUrl = cardTransactionExplorerUrl(transaction.crypto_transaction_details);
+  // Our own settlement of the purchase: the soUSD that left the user's Safe on
+  // Fuse to reimburse the issuer. Only cards that spend against savings have one.
+  // The dollar equivalent of a foreign charge. Suppressed when the card was
+  // charged in dollars already, where it would just repeat the line above it.
+  // Signed to follow the charge rather than itself: it is stored unsigned.
+  const usdEquivalent = useMemo(() => {
+    const code = transaction.currency?.trim().toUpperCase();
+    if (!transaction.usd_amount || !code || code === 'USD') return undefined;
+    return formatCardTransactionAmount(transaction.usd_amount, isOutgoing, cardProvider);
+  }, [transaction.usd_amount, transaction.currency, cardProvider, isOutgoing]);
+
+  const spend = transaction.spend_details;
+  const sweepHash = spend?.sweep_tx_hash;
+  const sweepUrl = cardSweepExplorerUrl(spend);
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -246,19 +297,51 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return dateStr ? new Date(dateStr) : new Date();
   }, [isApproved, transaction.authorized_at, transaction.posted_at]);
 
-  const initial = useMemo(() => merchantName.charAt(0).toUpperCase(), [merchantName]);
+  // Support needs the ledger side to trace a purchase whose sweep is stuck or
+  // failed; none of it is worth a row on screen, but all of it belongs in the
+  // message the user sends.
+  const spendContext = useMemo(() => {
+    if (!spend) return '';
+    const lines = [
+      transaction.usd_amount && `USD value: ${transaction.usd_amount}`,
+      spend.so_usd_amount && `soUSD: ${spend.so_usd_amount}`,
+      spend.state && `Settlement: ${spend.state}`,
+      sweepHash && `Sweep: ${sweepHash}`,
+    ].filter(Boolean);
+    return lines.length ? `\n${lines.join('\n')}` : '';
+  }, [spend, sweepHash, transaction.usd_amount]);
 
   const transactionContext = useMemo(
     () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount, cardProvider)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}\n\nMy question: `,
-    [merchantName, transaction.amount, transaction.id, postedDate, cardProvider],
+      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+    [
+      merchantName,
+      transaction.amount,
+      transaction.currency,
+      transaction.id,
+      postedDate,
+      isOutgoing,
+      cardProvider,
+      spendContext,
+    ],
   );
 
   const handleExplorerPress = useCallback(() => {
-    if (txHash) Linking.openURL(`https://arbiscan.io/tx/${txHash}`);
-  }, [txHash]);
+    if (explorerUrl) Linking.openURL(explorerUrl);
+  }, [explorerUrl]);
+
+  const handleSweepPress = useCallback(() => {
+    if (sweepUrl) Linking.openURL(sweepUrl);
+  }, [sweepUrl]);
+
+  const handleLocationPress = useCallback(() => {
+    if (!merchantPlace) return;
+    Linking.openURL(getCardMerchantMapsUrl(merchantPlace, transaction.merchant_name));
+  }, [merchantPlace, transaction.merchant_name]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+  const feeInfo = getCardFeeInfo(transaction);
+  const localDetails = transaction.local_transaction_details;
 
   const statusLabel = isApproved
     ? 'Pending'
@@ -282,10 +365,23 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </View>
           ),
         },
-        merchantLocation && {
+        merchantPlace && {
           key: 'location',
           label: <Label>Location</Label>,
-          value: <Value>{merchantLocation}</Value>,
+          // The design draws this like any other value, so the tap is left
+          // undecorated rather than turned into a link: nothing is lost if it
+          // goes unnoticed, and an underline here would read as the only
+          // navigable row in a card of plain facts.
+          value: (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Open ${merchantPlace.address} in Google Maps`}
+              onPress={handleLocationPress}
+              className="active:opacity-70 web:hover:opacity-80"
+            >
+              <Value>{merchantPlace.label}</Value>
+            </Pressable>
+          ),
         },
         merchantCategory && {
           key: 'category',
@@ -293,7 +389,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           value: <Value>{merchantCategory}</Value>,
         },
       ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
-    [last4, merchantLocation, merchantCategory],
+    [last4, merchantPlace, merchantCategory, handleLocationPress],
   );
 
   const rows = useMemo(() => {
@@ -307,18 +403,26 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         transaction.declined_reason && {
           key: 'reason',
           label: <Label>Reason</Label>,
+          // Wraps rather than truncates — a decline reason is the one value on
+          // this screen the user has to read in full. No size of its own: it
+          // used to step down from `text-lg` to `text-base`, and now every value
+          // on the card is already the 16px that step was reaching for.
           value: (
-            <Value className="max-w-[60%] text-right text-base">
+            <Value className="max-w-[60%] text-right">
               {toTitleCase(transaction.declined_reason)}
             </Value>
           ),
         },
       cashbackInfo && {
         key: 'cashback',
+        // The one row the design colours on both sides (Figma 21287:5858): what
+        // the user earned back reads as a gain, not as another fact about the
+        // charge. The value still takes the escrow/pending amber on its own, so
+        // green here says "cashback" rather than "already paid".
         label: (
           <View className="flex-row items-center gap-1.5">
-            <Diamond />
-            <Label>Cashback</Label>
+            <CashbackDiamondIcon size={14} />
+            <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
           </View>
         ),
         value: (
@@ -341,13 +445,83 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           label: <Label>Releases in</Label>,
           value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
         },
+      // A refund the issuer folded into this transaction rather than sending as
+      // its own (Wirex). The amount above is already net of it, so without this
+      // row the figure silently disagrees with the receipt in the user's hand.
+      transaction.refunded_amount && {
+        key: 'refunded',
+        label: <Label>Refunded</Label>,
+        value: (
+          <Value className="text-brand">
+            {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
+          </Value>
+        ),
+      },
+      // What the merchant actually charged, shown right above the FX fee so the
+      // fee has a visible cause rather than looking like an unexplained charge.
+      localDetails?.amount &&
+        localDetails.currency && {
+          key: 'local-amount',
+          label: <Label>Charged in</Label>,
+          value: (
+            <Value>
+              {localDetails.amount} {localDetails.currency.toUpperCase()}
+            </Value>
+          ),
+        },
+      feeInfo && {
+        key: 'card-fee',
+        label: (
+          <Label>
+            {feeInfo.label}
+            {feeInfo.rate ? ` (${feeInfo.rate})` : ''}
+          </Label>
+        ),
+        value: (
+          <Value className={feeInfo.isWaived ? 'text-brand' : ''}>
+            {feeInfo.isWaived
+              ? feeInfo.waivedNote || 'Free'
+              : feeInfo.isPending
+                ? `${feeInfo.amount} (Pending)`
+                : feeInfo.amount}
+          </Value>
+        ),
+      },
+      // What the purchase actually cost the user in their own asset. The figure
+      // above is what the merchant charged; this is what left the wallet to
+      // cover it, and the two are in different units.
+      spend?.so_usd_amount && {
+        key: 'sousd-paid',
+        label: <Label>Paid with</Label>,
+        value: <Value>{formatNumber(Number(spend.so_usd_amount), 4)} soUSD</Value>,
+      },
+      spend?.so_usd_rate !== undefined && {
+        key: 'sousd-rate',
+        label: <Label>soUSD price</Label>,
+        value: <Value>${formatNumber(spend.so_usd_rate, 4)}</Value>,
+      },
+      sweepUrl &&
+        sweepHash && {
+          key: 'sweep',
+          label: <Label>Sweep</Label>,
+          value: (
+            <Pressable onPress={handleSweepPress} className="hover:opacity-70">
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(sweepHash)}
+                </Underline>
+                <ArrowUpRight color="white" size={16} />
+              </View>
+            </Pressable>
+          ),
+        },
       txHash && {
         key: 'explorer',
         label: <Label>Explorer</Label>,
         value: (
           <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
             <View className="flex-row items-center gap-1">
-              <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+              <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                 {eclipseAddress(txHash)}
               </Underline>
               <ArrowUpRight color="white" size={16} />
@@ -360,39 +534,50 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return allRows;
   }, [
     cashbackInfo,
+    feeInfo,
+    localDetails,
     txHash,
     handleExplorerPress,
     statusLabel,
     statusColor,
     isDeclined,
+    cardProvider,
+    spend,
+    sweepUrl,
+    sweepHash,
+    handleSweepPress,
+    transaction.currency,
     transaction.declined_reason,
+    transaction.refunded_amount,
   ]);
-
-  const tokenIcon = useMemo(
-    () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
-    [transaction.currency],
-  );
 
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
-        <Back title="Transaction details" className="text-xl md:text-2xl" />
+        {/* The merchant is the title (Figma 21287:5858) — on a card transaction
+            it is the one thing that identifies which purchase this is, and
+            "Transaction details" was a heading the whole screen already implied. */}
+        <Back title={merchantName} className="text-xl md:text-2xl" />
 
         <View className="items-center gap-4">
-          {/* Avatar with merchant initial or token icon */}
-          {isPurchase ? (
-            <View className="h-[75px] w-[75px] items-center justify-center rounded-full bg-[#2A2A2A]">
-              <Text className="text-3xl text-[#A0A0A0]">{initial}</Text>
-            </View>
-          ) : (
-            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
-          )}
+          {/* The card glyph, not the merchant's initial (Figma 21287:5884). The
+              same icon the activity row leads with, so a tapped row and the
+              screen it opens agree — and an initial said nothing the title above
+              does not already say in full. */}
+          <CardActivityIcon transaction={transaction} size={75} />
 
           <View className="items-center gap-1">
             <Text className="text-2xl font-bold text-white">
-              {formatCardAmount(transaction.amount, cardProvider)}
+              {formatCardTransactionAmount(
+                transaction.amount,
+                isOutgoing,
+                cardProvider,
+                transaction.currency,
+              )}
             </Text>
-            <Text className="text-base text-white/70">{merchantName}</Text>
+            {/* No "≈": the figure now carries a sign, and "≈ -$31.46" reads as
+                two operators. The activity row shows the conversion bare too. */}
+            {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
           </View>
         </View>
@@ -625,7 +810,7 @@ export default function ActivityDetail() {
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                   {eclipseAddress(hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />
@@ -784,7 +969,7 @@ export default function ActivityDetail() {
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
                   {eclipseAddress(hash)}
                 </Underline>
                 <ArrowUpRight color="white" size={16} />

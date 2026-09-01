@@ -337,39 +337,6 @@ export const isTransactionStuck = (timestamp: string): boolean => {
   return isBefore(transactionDate, oneDayAgo);
 };
 
-export const base64urlToUint8Array = (base64url: string): Uint8Array => {
-  // Convert base64url to base64
-  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  // Add padding if needed
-  const padLen = (4 - (base64.length % 4)) % 4;
-  base64 += '='.repeat(padLen);
-
-  // Decode base64 to binary string
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-};
-
-/**
- * Pull the WebAuthn credential id out of a Turnkey passkey stamp header. The
- * stamp is a JSON envelope (`{ authenticatorData, clientDataJson,
- * credentialId, signature }`) — API-key stamps carry no credentialId, so
- * anything unparseable or missing is simply "not a passkey stamp".
- */
-export const parseStampHeaderValueCredentialId = (stampHeaderValue: string): string | undefined => {
-  try {
-    const parsed = JSON.parse(stampHeaderValue) as { credentialId?: unknown };
-    return typeof parsed.credentialId === 'string' && parsed.credentialId
-      ? parsed.credentialId
-      : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
 export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   const ARBITRUM_CHAIN = 'arbitrum';
 

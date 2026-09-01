@@ -25,6 +25,7 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
@@ -80,12 +81,15 @@ interface TierContent {
   fees: { cardFees: string; bankDeposit: string; swaps: string; cashbackCap: string };
 }
 
+// Every tier's cashback figure on this screen comes from the shared rates table,
+// so the comparison here and the "N% Cashback" benefit card on the rewards
+// screen can't drift apart.
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
   [RewardsTier.CORE]: {
     headline: 'The Solid Foundation',
     unlockCopy: 'Starting tier',
     stats: [
-      { label: 'Cashback', value: '3%' },
+      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.CORE) },
       { label: '24/7 Fast support', value: '' },
     ],
     perks: [
@@ -94,7 +98,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       { title: 'Spend globally', description: 'Card accepted in 180+ countries' },
     ],
     cashback: {
-      everyPurchase: '3%',
+      everyPurchase: formatTierCashbackRate(RewardsTier.CORE),
       subscriptionRate: null,
     },
     fees: {
@@ -108,7 +112,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     headline: 'Enhanced Daily Rewards',
     unlockCopy: 'Unlocks at 5M points',
     stats: [
-      { label: 'Cashback', value: '4%' },
+      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.PRIME) },
       { label: 'Yield boost', value: '+2%' },
       { label: 'Back on AI', value: '25%' },
     ],
@@ -121,7 +125,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       { title: 'Higher cashback caps', description: 'Up to $100 monthly cap' },
     ],
     cashback: {
-      everyPurchase: '4%',
+      everyPurchase: formatTierCashbackRate(RewardsTier.PRIME),
       subscriptionRate: '25%',
     },
     fees: {
@@ -135,7 +139,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     headline: 'Unmatched Spending Power',
     unlockCopy: 'Unlocks at 35M Points',
     stats: [
-      { label: 'Cashback', value: '5%' },
+      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.ULTRA) },
       { label: 'Yield boost', value: '+3%' },
       { label: 'Back on AI', value: '50%' },
     ],
@@ -148,7 +152,7 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       { title: 'Higher cashback caps', description: 'Up to $200 monthly cap' },
     ],
     cashback: {
-      everyPurchase: '5%',
+      everyPurchase: formatTierCashbackRate(RewardsTier.ULTRA),
       subscriptionRate: '50%',
     },
     fees: {

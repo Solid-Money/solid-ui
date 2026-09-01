@@ -30,6 +30,15 @@ export default function KycWeb() {
 
   const verificationUrl = session.phase === 'ready' ? session.verificationUrl : null;
 
+  // Release the start guard whenever a new session begins. This screen is a tab
+  // route that is frozen rather than unmounted on exit, so the ref outlives the
+  // visit that set it — left latched it would swallow the relaunch after
+  // `useDiditSession` re-inits on re-entry. Every re-init passes through
+  // 'loading' before it has a URL.
+  useEffect(() => {
+    if (session.phase === 'loading') hasStartedRef.current = false;
+  }, [session.phase]);
+
   useEffect(() => {
     if (!verificationUrl || hasStartedRef.current) return;
 

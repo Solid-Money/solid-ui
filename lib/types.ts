@@ -216,6 +216,14 @@ export interface User {
   leaderboardPosition?: number;
   points?: number;
   credentialId?: string;
+  /**
+   * Every WebAuthn credential Turnkey holds for this account. Recovery *adds* a
+   * passkey rather than replacing the lost one, so a single value cannot
+   * describe the account — these feed `allowCredentials` on every passkey
+   * prompt, and pinning to one credential the authenticator no longer holds
+   * breaks every in-app action while login (unfiltered) keeps working.
+   */
+  credentialIds?: string[];
   externalWalletAddress?: string;
 }
 
@@ -748,22 +756,59 @@ export interface WirexRevealSessionResponse {
   messageTemplate: string;
 }
 
+// --- Wirex 3D Secure ---
 /**
- * Wirex card-spend authorization: the soUSD allowance the cardholder grants the
- * card-spend wallet, and everything needed to build the `approve` call.
+ * A 3D Secure challenge waiting on the cardholder.
  *
- * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its
- * own Master Account and our backend reimburses itself by pulling soUSD from the
- * user's Safe on each settlement — so there is no card balance to top up, and the
- * user's savings balance *is* their card balance. What they grant instead is
- * standing permission to take it, which is what this describes.
- *
- * Token, spender and chain all come from the backend rather than app config: the
- * spender address is environment-specific, and a stale client-side copy would have
- * users approving an allowance nobody can spend.
+ * When a merchant asks for 3DS, Wirex holds the transaction until it is approved
+ * or declined — the user is standing at the terminal while it waits. `amount` is
+ * a decimal string in `currency`'s major units ("127.15"): it comes off the wire
+ * that way and is only ever formatted for display, never used in arithmetic.
  */
+export interface WirexThreeDsRequest {
+  /** Issuer transaction id — what the approve/decline calls are keyed on. */
+  transactionId: string;
+  cardId: string;
+  cardLast4: string;
+  amount: string;
+  /** ISO 4217. */
+  currency: string;
+  merchantName: string;
+}
+
+export interface WirexThreeDsRequestsResponse {
+  requests: WirexThreeDsRequest[];
+  /**
+   * The exact message the wallet must sign to approve, with `{nonce}` to be
+   * replaced by the unix-seconds timestamp at signing time. From the backend so
+   * the wording cannot drift from what Wirex verifies.
+   */
+  messageTemplate: string;
+}
+
+export enum WirexThreeDsDecisionOutcome {
+  APPROVED = 'approved',
+  DECLINED = 'declined',
+  /**
+   * The challenge is gone — it timed out at the terminal, or was already
+   * decided. Not an error: the screen says so and refreshes.
+   */
+  EXPIRED = 'expired',
+}
+
+export interface WirexThreeDsDecisionResponse {
+  transactionId: string;
+  outcome: WirexThreeDsDecisionOutcome;
+}
+
 /**
- * A Wirex cardholder's `SolidCashModule` registration, as the backend records it.
+ * A Wirex cardholder's `SolidCashModule` registration, as the backend reads it.
+ *
+ * A Wirex card is not prefunded like a Rain card. Wirex pays the merchant from its own
+ * Master Account and our backend reimburses itself by debiting the user's Safe on each
+ * settlement — so there is no card balance to top up, and the user's savings balance
+ * *is* their card balance. What they grant instead is standing permission to take it,
+ * bounded by the on-chain caps this describes.
  *
  * The chain is the source of truth — `SolidCashModule.isRegistered` and the Safe's own
  * module list decide whether spending works, not this record. The backend stores it so
@@ -776,6 +821,16 @@ export interface WirexRevealSessionResponse {
 export interface WirexCardRegistrationResponse {
   /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
   registered: boolean;
+  /**
+   * The raw `isRegistered` flag, kept apart from {@link registered}.
+   *
+   * The two come apart in a state the UI has to handle differently: registration is
+   * permanent (`registerSafe` reverts `AlreadyRegistered`, and there is no deregister)
+   * but module consent can be withdrawn at any time. A Safe that registered and then
+   * disabled the module is `registeredOnChain` yet not `registered`, and the fix is to
+   * re-enable the module — not to register again, which cannot succeed.
+   */
+  registeredOnChain: boolean;
   /** Whether the module is enabled on the Safe. False once a user revokes consent. */
   moduleEnabled: boolean;
   /** Whether registration is offered at all in this environment. */
@@ -805,41 +860,46 @@ export interface WirexCardRegistrationResponse {
   chainId: number;
   /** Seconds from UTC the Safe's rolling windows reset at. Null before registration. */
   timezoneOffset: number | null;
+  /**
+   * What the card can spend right now, in decimal USD: the live on-chain figure less
+   * anything already committed to a transaction Wirex has authorized but not settled.
+   *
+   * Null when the chain could not be read — a zero would read as "no money" rather
+   * than "we do not know".
+   */
+  spendableUsd: string | null;
+  /**
+   * USD committed to authorizations Wirex has not settled yet, in decimal USD.
+   *
+   * The honest explanation for a spendable figure below the user's visible balance:
+   * the money is still in the Safe, but it is already promised.
+   */
+  heldUsd: string;
+  /**
+   * Addresses the card may draw from, in the order settlements draw from them
+   * (USDC, then USDT, then soUSD).
+   *
+   * From the backend rather than app config: the allowlist is on-chain state an admin
+   * changes without a deploy, and the draw order is backend policy. A client-side copy
+   * of either would go stale silently and mis-describe which of the user's assets gets
+   * spent.
+   */
+  spendableTokens: string[];
 }
 
-/** What the app tells the backend after a `registerSafe` user operation lands. */
+/**
+ * What the app tells the backend after a `registerSafe` user operation lands.
+ *
+ * None of it is trusted: the backend verifies the registration against the chain before
+ * recording anything, and stores the chain's limits rather than these. They are sent so
+ * a disagreement between what the app asked for and what the module holds is visible in
+ * the logs, which it would not be if only one side were ever recorded.
+ */
 export interface WirexCardRegistrationConfirmRequest {
   transactionHash: string;
   dailyLimitUsd: string;
   monthlyLimitUsd: string;
   timezoneOffset: number;
-}
-
-export interface WirexSpendAuthorizationResponse {
-  /** False re-enables the Authorize control — the allowance ran out, or the soUSD did. */
-  authorized: boolean;
-  /** Remaining allowance, in decimal soUSD. */
-  allowanceRemaining: string;
-  /** What a fresh Authorize would approve, in decimal soUSD. */
-  allowanceLimit: string;
-  /** The Safe's soUSD balance, in decimal soUSD. */
-  balance: string;
-  /** soUSD the card can reach right now (allowance ∧ balance, less unsettled holds). */
-  spendable: string;
-  /** USD value of `spendable`. */
-  spendableUsd: number;
-  /** soUSD committed to transactions Wirex has authorized but not settled. */
-  held: string;
-  /** soUSD ERC-20 address to call `approve` on. */
-  tokenAddress: string;
-  /** The `spender` argument — our card-spend wallet. */
-  spenderAddress: string;
-  /** Chain the approval must be sent on. Always Fuse (122). */
-  chainId: number;
-  /** soUSD decimals, so the client scales without assuming 18. */
-  decimals: number;
-  /** False when this environment has no card-spend wallet — hide the control. */
-  available: boolean;
 }
 
 // --- Rain contracts (funding) ---
@@ -1105,6 +1165,15 @@ export type StakeModal = (typeof STAKE_MODAL)[keyof typeof STAKE_MODAL];
 export type DepositFromSafeAccountModal =
   (typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL)[keyof typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL];
 
+/**
+ * Why the savings direct-deposit flow was opened.
+ *
+ * `card_deposit` is the Bangladesh card gate ("Deposit at least $5"), which
+ * completes off the soUSD balance alone — so that entry point only offers the
+ * stablecoins that mint soUSD.
+ */
+export type SavingsFundIntent = 'savings' | 'card_deposit';
+
 export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
@@ -1260,6 +1329,8 @@ export interface BridgeTransaction {
 }
 
 export enum ActivityTab {
+  /** Wallet and card activity in one feed — the Activity screen's default. */
+  ALL = 'all',
   WALLET = 'wallet',
   PROGRESS = 'progress',
   CARD = 'card',
@@ -1673,6 +1744,54 @@ export interface CryptoTransactionDetails {
   chain: string;
 }
 
+/** Fee categories the card can charge. Swaps are not one: they happen off-card. */
+export enum CardFeeCategory {
+  /** Purchase that settled in a currency other than the card's own. */
+  FX = 'fx',
+  /** Funds moved off the card. */
+  OFF_RAMP = 'offramp',
+}
+
+export enum CardFeeStatus {
+  Pending = 'Pending',
+  Charged = 'Charged',
+  Failed = 'Failed',
+  PermanentlyFailed = 'PermanentlyFailed',
+  /** Nothing was owed — see `waive_reason`. */
+  Waived = 'Waived',
+}
+
+export enum CardFeeWaiveReason {
+  /** The user's tier pays 0% here (Ultra, or a zeroed rate). */
+  TierFree = 'TierFree',
+  /** The fee rounded below the minimum worth charging. */
+  BelowMinimum = 'BelowMinimum',
+  /** The fee program, or this category, is switched off. */
+  Disabled = 'Disabled',
+}
+
+/**
+ * A fee applied to a card transaction.
+ *
+ * Waived fees are returned too: "FX fee — waived on Ultra" is where the tier
+ * pays for itself, and hiding the $0 line would make the fee look like it
+ * appeared out of nowhere if the user ever drops a tier.
+ */
+export interface CardTransactionFee {
+  category: CardFeeCategory | string;
+  /** Ready-to-show label from the backend, e.g. "FX fee". */
+  label: string;
+  /** USD, 2dp. "0.00" when waived. */
+  amount: string;
+  currency: string;
+  /** Rate applied as a fraction (0.0099 = 0.99%). */
+  percentage: number;
+  status: CardFeeStatus | string;
+  waive_reason?: CardFeeWaiveReason | string;
+  /** Tier the fee was rated at: 'core' | 'prime' | 'ultra'. */
+  tier: string;
+}
+
 export enum CardTransactionCategory {
   ADJUSTMENT = 'adjustment',
   PURCHASE = 'purchase',
@@ -1680,6 +1799,34 @@ export enum CardTransactionCategory {
   WITHDRAWAL = 'withdrawal',
   CRYPTO_FUNDING = 'crypto_funding',
   CRYPTO_WITHDRAWAL = 'crypto_withdrawal',
+}
+
+/**
+ * What our backend's own ledger knows about a card transaction, beyond what the
+ * issuer reports.
+ *
+ * Only present for cards that spend against savings rather than a prefunded
+ * balance (Wirex): the issuer settles from its Master Account and we reimburse it
+ * by pulling soUSD from the user's Safe on Fuse. That pull is the transaction the
+ * user's own money actually went through, and the issuer has no record of it.
+ */
+export interface CardSpendDetails {
+  /** Hash of the soUSD pull (a debit) or refund (a credit), on Fuse. */
+  sweep_tx_hash?: string;
+  /** Chain the sweep settled on. Fuse (122) — NOT the issuer's chain. */
+  chain_id?: number;
+  /** soUSD moved, as a decimal string. */
+  so_usd_amount?: string;
+  /** USD per soUSD share used to size the claim. */
+  so_usd_rate?: number;
+  /** The transaction converted to USD. */
+  usd_amount?: number;
+  /** USD per unit of the transaction currency (1 for USD). */
+  usd_rate?: number;
+  /** `held` | `settled` | `released` | `failed` — where the claim stands. */
+  state?: string;
+  settled_at?: string;
+  decline_reason?: string;
 }
 
 export interface CardTransaction {
@@ -1702,7 +1849,49 @@ export interface CardTransaction {
   merchant_city?: string;
   merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
+  /**
+   * What the transaction was worth in USD, when `currency` is not already a
+   * dollar. The opposite of `local_transaction_details`: that is a USD card
+   * reporting a foreign charge, this is a foreign charge reported in USD.
+   */
+  usd_amount?: string;
   declined_reason?: string;
+  /**
+   * A merchant category already written as a label ("Online Shopping"), for
+   * issuers that name the category instead of sending a numeric MCC. Wirex does;
+   * `getMerchantCategory` has nothing to resolve there, so this is shown instead.
+   */
+  merchant_category_label?: string;
+  /**
+   * How much of this transaction has been refunded, when the issuer models a
+   * refund as a credit on the original transaction rather than a separate one
+   * (Wirex does). `amount` is already net of it — this exists to explain why the
+   * figure is lower than what the merchant charged.
+   */
+  refunded_amount?: string;
+  /** Fees applied to this transaction. Absent when none were evaluated. */
+  fees?: CardTransactionFee[];
+  /**
+   * Our ledger's view of the same transaction. Returned by the single-transaction
+   * read only, so it is available on the detail screen and not in the list.
+   */
+  spend_details?: CardSpendDetails;
+}
+
+/** What the activity surfaces need to render a fee, derived from `fees`. */
+export interface CardFeeInfo {
+  /** Signed display amount, e.g. "-$0.99". "Free" when waived. */
+  amount: string;
+  /** Row label, e.g. "FX fee". */
+  label: string;
+  /** True when nothing was charged. */
+  isWaived: boolean;
+  /** True while the charge is still owed (pending or being retried). */
+  isPending: boolean;
+  /** "0.99%" — the rate the fee was charged at. Empty when waived. */
+  rate: string;
+  /** Explains a waived fee, e.g. "Waived on Ultra". */
+  waivedNote?: string;
 }
 
 export interface CardTransactionsResponse {

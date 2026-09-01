@@ -10,7 +10,12 @@ export const useIntercom = (): IntercomAPI => {
         Intercom.present();
       },
       showNewMessage: (message?: string) => {
-        if (message) {
+        // presentMessageComposer is a native HostFunction: hand it anything other
+        // than a string and it throws out of the bridge, which is a fatal,
+        // unhandled crash rather than a failed chat. Callers upstream are typed
+        // for a string but can still leak a press event, so re-check at the
+        // boundary and fall back to opening Intercom without a prefilled message.
+        if (typeof message === 'string' && message !== '') {
           Intercom.presentMessageComposer(message);
         } else {
           Intercom.present();

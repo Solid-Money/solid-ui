@@ -114,6 +114,31 @@ function isAnalyticsTransaction(transaction: ActivityEvent): boolean {
   );
 }
 
+const CARD_SUFFIX = '_card';
+
+/** Stands in for a missing address so nullish never collides with a real value. */
+const NULLISH = '\u0000';
+
+const bucketKey = (value?: string | null) => (value == null ? NULLISH : value.toLowerCase());
+
+/**
+ * Every identifier `isDuplicate` can match on, normalised the same way it does.
+ * Two transactions are duplicates only when one of these tokens is shared (or
+ * they are a `_card` sibling pair), which is what lets the index below stand in
+ * for a scan over every row already kept.
+ */
+function identifiersOf(transaction: ActivityEvent) {
+  return {
+    hashes: [
+      transaction.hash?.toLowerCase().trim(),
+      transaction.metadata?.txHash?.toLowerCase().trim(),
+    ],
+    userOpHash: transaction.userOpHash?.toLowerCase(),
+    clientTxId: transaction.clientTxId,
+    clientTxIdLower: transaction.clientTxId?.toLowerCase(),
+  };
+}
+
 /**
  * Deduplicate transactions based on hash/userOpHash
  * Priority: BRIDGE_DEPOSIT > CARD_TRANSACTION > SEND for card deposits
@@ -130,37 +155,125 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
   );
 
   const deduplicated = new Map<string, ActivityEvent>();
+
+  // Identifier → the keys currently holding it. This replaces the scan over
+  // every kept row that ran for each incoming transaction: with the 500-event
+  // store cap that was ~125k isDuplicate calls, each allocating a handful of
+  // lowercased strings, on every recompute of the activity list.
+  const byHash = new Map<string, Set<string>>();
+  const byUserOpHash = new Map<string, Set<string>>();
+  const byClientTxId = new Map<string, Set<string>>();
+  const byClientTxIdLower = new Map<string, Set<string>>();
+  // Map iteration order decided which duplicate the old scan found first, so
+  // keep the equivalent ordering for the candidates the index turns up.
+  const insertionOrder = new Map<string, number>();
+  let nextInsertion = 0;
+
+  const addToken = (index: Map<string, Set<string>>, token: string | undefined, key: string) => {
+    if (!token) return;
+    const keys = index.get(token);
+    if (keys) keys.add(key);
+    else index.set(token, new Set([key]));
+  };
+
+  const removeToken = (index: Map<string, Set<string>>, token: string | undefined, key: string) => {
+    if (!token) return;
+    const keys = index.get(token);
+    if (!keys) return;
+    keys.delete(key);
+    if (!keys.size) index.delete(token);
+  };
+
+  const forEachToken = (
+    transaction: ActivityEvent,
+    key: string,
+    apply: (index: Map<string, Set<string>>, token: string | undefined, key: string) => void,
+  ) => {
+    const ids = identifiersOf(transaction);
+    ids.hashes.forEach(hash => apply(byHash, hash, key));
+    apply(byUserOpHash, ids.userOpHash, key);
+    apply(byClientTxId, ids.clientTxId, key);
+    apply(byClientTxIdLower, ids.clientTxIdLower, key);
+  };
+
+  /** Mirrors `Map.set`: a new key appends, an existing key keeps its position. */
+  const keep = (key: string, transaction: ActivityEvent) => {
+    const replaced = deduplicated.get(key);
+    if (replaced) forEachToken(replaced, key, removeToken);
+    else insertionOrder.set(key, nextInsertion++);
+    deduplicated.set(key, transaction);
+    forEachToken(transaction, key, addToken);
+  };
+
+  const drop = (key: string) => {
+    const removed = deduplicated.get(key);
+    if (!removed) return;
+    forEachToken(removed, key, removeToken);
+    deduplicated.delete(key);
+    insertionOrder.delete(key);
+  };
+
+  const findDuplicateKey = (transaction: ActivityEvent): string | undefined => {
+    const ids = identifiersOf(transaction);
+    const candidates = new Set<string>();
+    const collect = (index: Map<string, Set<string>>, token: string | undefined) => {
+      if (!token) return;
+      index.get(token)?.forEach(key => candidates.add(key));
+    };
+
+    // Our hash against their hash, userOpHash or clientTxId.
+    for (const hash of ids.hashes) {
+      collect(byHash, hash);
+      collect(byUserOpHash, hash);
+      collect(byClientTxIdLower, hash);
+    }
+    // Their hash against our userOpHash or clientTxId.
+    collect(byHash, ids.userOpHash);
+    collect(byHash, ids.clientTxIdLower);
+    // The same userOpHash, or the very same clientTxId.
+    collect(byUserOpHash, ids.userOpHash);
+    collect(byClientTxId, ids.clientTxId);
+    // The `${trackingId}` / `${trackingId}_card` pair, either way round.
+    if (ids.clientTxId) {
+      collect(byClientTxId, `${ids.clientTxId}${CARD_SUFFIX}`);
+      if (ids.clientTxId.endsWith(CARD_SUFFIX)) {
+        collect(byClientTxId, ids.clientTxId.slice(0, -CARD_SUFFIX.length));
+      }
+    }
+
+    // isDuplicate still has the final say — it vetoes a `_savings` sibling pair
+    // that shares identifiers, which no index can express.
+    let bestKey: string | undefined;
+    let bestOrder = Infinity;
+    for (const candidateKey of candidates) {
+      const candidate = deduplicated.get(candidateKey);
+      if (!candidate || !isDuplicate(transaction, candidate)) continue;
+      const order = insertionOrder.get(candidateKey) ?? Infinity;
+      if (order < bestOrder) {
+        bestOrder = order;
+        bestKey = candidateKey;
+      }
+    }
+    return bestKey;
+  };
+
   for (const transaction of validTransactions) {
     const key = getDedupKey(transaction);
     const currentIsCardDeposit = isCardDeposit(transaction);
 
     if (!key) {
       // No key available, add as-is (will be unique by clientTxId in keyExtractor)
-      deduplicated.set(transaction.clientTxId || `no-key-${Math.random()}`, transaction);
+      keep(transaction.clientTxId || `no-key-${Math.random()}`, transaction);
       continue;
     }
 
     // Check if this transaction duplicates any existing one
-    let existing: ActivityEvent | undefined;
-    let existingKey: string | undefined;
-
-    // First check if key already exists (fast path)
-    if (deduplicated.has(key)) {
-      existing = deduplicated.get(key);
-      existingKey = key;
-    } else {
-      // Otherwise check all entries for duplicates (slower path)
-      for (const [mapKey, mapValue] of deduplicated.entries()) {
-        if (isDuplicate(transaction, mapValue)) {
-          existing = mapValue;
-          existingKey = mapKey;
-          break;
-        }
-      }
-    }
+    // First check if key already exists (fast path), then ask the index
+    const existingKey = deduplicated.has(key) ? key : findDuplicateKey(transaction);
+    const existing = existingKey ? deduplicated.get(existingKey) : undefined;
 
     if (!existing) {
-      deduplicated.set(key, transaction);
+      keep(key, transaction);
       continue;
     }
 
@@ -188,8 +301,8 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
 
       if (currentPriority > existingPriority) {
         // Current has higher priority, replace existing
-        deduplicated.delete(existingKey!);
-        deduplicated.set(key, transaction);
+        drop(existingKey!);
+        keep(key, transaction);
         continue;
       }
       if (currentPriority < existingPriority) {
@@ -207,8 +320,8 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
     const existingHasHash = !!existing.hash;
 
     if (currentHasHash && !existingHasHash) {
-      deduplicated.delete(existingKey!);
-      deduplicated.set(key, transaction);
+      drop(existingKey!);
+      keep(key, transaction);
     } else if (!currentHasHash && existingHasHash) {
       // Keep existing
     } else {
@@ -227,8 +340,8 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
         (existingIsAnalytics || existingIsFrontend)
       ) {
         // Current is backend, existing is not - prefer current
-        deduplicated.delete(existingKey!);
-        deduplicated.set(key, transaction);
+        drop(existingKey!);
+        keep(key, transaction);
       } else if (
         (currentIsAnalytics || currentIsFrontend) &&
         !existingIsAnalytics &&
@@ -237,8 +350,8 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
         // Current is not backend, existing is backend - keep existing
       } else if (currentIsFrontend && existingIsAnalytics) {
         // Current is frontend-created, existing is analytics - prefer current
-        deduplicated.delete(existingKey!);
-        deduplicated.set(key, transaction);
+        drop(existingKey!);
+        keep(key, transaction);
       } else if (currentIsAnalytics && existingIsFrontend) {
         // Current is analytics, existing is frontend-created - keep existing
       } else {
@@ -246,8 +359,8 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
         const currentTime = parseInt(transaction.timestamp || '0');
         const existingTime = parseInt(existing.timestamp || '0');
         if (currentTime > existingTime) {
-          deduplicated.delete(existingKey!);
-          deduplicated.set(key, transaction);
+          drop(existingKey!);
+          keep(key, transaction);
         }
       }
     }
@@ -256,20 +369,35 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
   let deduplicatedArray = Array.from(deduplicated.values());
 
   // Second pass: Remove SEND transactions that have a corresponding BRIDGE_DEPOSIT or CARD_TRANSACTION
-  // with the same toAddress (card funding address) and similar timestamp
+  // with the same toAddress (card funding address) and similar timestamp.
+  // Bucketed by funding address — the address has to match exactly, so each SEND
+  // only compares timestamps against the rows that could pair with it rather
+  // than re-walking the whole list.
+  const cardDepositsByAddress = new Map<string, ActivityEvent[]>();
+  for (const tx of deduplicatedArray) {
+    if (
+      tx.type !== TransactionType.BRIDGE_DEPOSIT &&
+      tx.type !== TransactionType.CARD_TRANSACTION
+    ) {
+      continue;
+    }
+    const address = bucketKey(tx.toAddress);
+    const bucket = cardDepositsByAddress.get(address);
+    if (bucket) bucket.push(tx);
+    else cardDepositsByAddress.set(address, [tx]);
+  }
+
   deduplicatedArray = deduplicatedArray.filter(transaction => {
     // Keep all non-SEND transactions
     if (transaction.type !== TransactionType.SEND) return true;
 
     // For SEND transactions, check if there's a BRIDGE_DEPOSIT or CARD_TRANSACTION with same toAddress
-    const hasCardDepositTransaction = deduplicatedArray.some(
-      tx =>
-        tx !== transaction &&
-        (tx.type === TransactionType.BRIDGE_DEPOSIT ||
-          tx.type === TransactionType.CARD_TRANSACTION) &&
-        tx.toAddress?.toLowerCase() === transaction.toAddress?.toLowerCase() &&
-        Math.abs(parseInt(tx.timestamp || '0') - parseInt(transaction.timestamp || '0')) < 300, // Within 5 minutes
-    );
+    const timestamp = parseInt(transaction.timestamp || '0');
+    const hasCardDepositTransaction = cardDepositsByAddress
+      .get(bucketKey(transaction.toAddress))
+      ?.some(
+        tx => tx !== transaction && Math.abs(parseInt(tx.timestamp || '0') - timestamp) < 300, // Within 5 minutes
+      );
 
     // Remove SEND if there's a corresponding card deposit transaction
     return !hasCardDepositTransaction;
@@ -281,17 +409,25 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
   // 2. WITHDRAW (chain 1) - redeems soUSD for USDC via BoringQueue
   // We hide the BRIDGE_DEPOSIT when a matching WITHDRAW exists from the same address
   // within 60 minutes, since the WITHDRAW is the user-facing final result.
+  // Bucketed on the two fields that have to match exactly, same as above.
+  const withdrawsByAddressAndAmount = new Map<string, ActivityEvent[]>();
+  for (const tx of deduplicatedArray) {
+    if (tx.type !== TransactionType.WITHDRAW) continue;
+    const withdrawKey = `${bucketKey(tx.fromAddress)}|${tx.amount ?? NULLISH}`;
+    const bucket = withdrawsByAddressAndAmount.get(withdrawKey);
+    if (bucket) bucket.push(tx);
+    else withdrawsByAddressAndAmount.set(withdrawKey, [tx]);
+  }
+
   deduplicatedArray = deduplicatedArray.filter(transaction => {
     if (transaction.type !== TransactionType.BRIDGE_DEPOSIT) return true;
 
-    const hasMatchingWithdraw = deduplicatedArray.some(
-      tx =>
-        tx !== transaction &&
-        tx.type === TransactionType.WITHDRAW &&
-        tx.fromAddress?.toLowerCase() === transaction.fromAddress?.toLowerCase() &&
-        tx.amount === transaction.amount &&
-        Math.abs(parseInt(tx.timestamp || '0') - parseInt(transaction.timestamp || '0')) < 3600, // Within 60 minutes
-    );
+    const timestamp = parseInt(transaction.timestamp || '0');
+    const hasMatchingWithdraw = withdrawsByAddressAndAmount
+      .get(`${bucketKey(transaction.fromAddress)}|${transaction.amount ?? NULLISH}`)
+      ?.some(
+        tx => tx !== transaction && Math.abs(parseInt(tx.timestamp || '0') - timestamp) < 3600, // Within 60 minutes
+      );
 
     return !hasMatchingWithdraw;
   });

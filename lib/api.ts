@@ -6,6 +6,7 @@ import { fuse } from 'viem/chains';
 
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -130,7 +131,8 @@ import {
   WirexCardRegistrationConfirmRequest,
   WirexCardRegistrationResponse,
   WirexRevealSessionResponse,
-  WirexSpendAuthorizationResponse,
+  WirexThreeDsDecisionResponse,
+  WirexThreeDsRequestsResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
@@ -2722,6 +2724,97 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
 };
 
 /**
+ * The 3D Secure challenges waiting on this cardholder.
+ *
+ * Pulled rather than relying on the push alone: Wirex times a webhook out after
+ * 10 seconds and never retries it, so a challenge whose push never arrived is
+ * only findable here.
+ */
+export const getWirexThreeDsRequests = async (): Promise<WirexThreeDsRequestsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests`,
+    {
+      method: 'GET',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Let a held payment through.
+ *
+ * The signature is the point: the backend verifies it recovers to the card's own
+ * wallet before telling Wirex to approve, so an access token on its own cannot
+ * approve someone's spending. Build the message from the list endpoint's
+ * `messageTemplate` and sign it with `useWalletMessageSigner` (a passkey prompt).
+ */
+export const approveWirexThreeDsRequest = async (
+  transactionId: string,
+  confirmation: { signature: string; nonce: number },
+): Promise<WirexThreeDsDecisionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests/${encodeURIComponent(
+      transactionId,
+    )}/approve`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(confirmation),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Refuse a held payment. No signature — stopping a transaction you do not
+ * recognise must not be gated on a biometric prompt that could fail.
+ */
+export const declineWirexThreeDsRequest = async (
+  transactionId: string,
+): Promise<WirexThreeDsDecisionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests/${encodeURIComponent(
+      transactionId,
+    )}/decline`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
  * Mint a Wirex reveal session on our backend (JWT-authenticated). The backend
  * resolves which card and wallet from its own records, so nothing about the card
  * is client-supplied.
@@ -2785,19 +2878,19 @@ export const revealCardDetailsComplete = async (
   return revealCardDetailsCompleteRain();
 };
 
-// --- Wirex card spending via SolidCashModule (IS_WIREX_TEST) ---
+// --- Wirex card spending via SolidCashModule ---
 
 /**
  * The user's `SolidCashModule` registration status and the limits around it.
  *
- * Distinct from {@link getWirexSpendAuthorization}, which describes the ERC-20
- * allowance flow. The two are different mechanisms for the same job and only one is
- * live per environment: an allowance is a token-level grant to a wallet, whereas the
- * module is a Safe module with its own on-chain per-transaction, daily and monthly
- * caps. Registration replaces the allowance rather than supplementing it.
+ * This is the only card-spend permission mechanism. It replaced an ERC-20 allowance
+ * granted to our card-spend wallet, whose single bound was the approved amount — no
+ * per-transaction ceiling, no rolling window, and nothing the user could see or shape
+ * over time. The module puts all of that on-chain.
  *
- * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it right
- * after a `registerSafe` transaction lands so the UI flips on the same interaction.
+ * `refresh` is accepted but no longer meaningful: registration is on-chain state the
+ * backend reads live on every request, because module consent can be revoked from any
+ * Safe client with no call to us. It is kept so an older build's request still parses.
  */
 export const getWirexCardRegistration = async (
   refresh = false,
@@ -2855,65 +2948,6 @@ export const confirmWirexCardRegistration = async (
 
   return response.json();
 };
-
-// --- Wirex card spending (soUSD allowance to our card-spend wallet) ---
-
-/**
- * The user's current card-spend authorization.
- *
- * `refresh` re-reads the chain instead of the backend's cached snapshot; pass it
- * straight after an `approve` transaction lands so the Authorize control flips on
- * the same interaction rather than up to a cache TTL later.
- */
-export const getWirexSpendAuthorization = async (
-  refresh = false,
-): Promise<WirexSpendAuthorizationResponse> => {
-  const jwt = getJWTToken();
-  const query = refresh ? '?refresh=true' : '';
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization${query}`,
-    {
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Tell the backend the user's `approve` transaction has landed, and get the
- * re-read authorization back.
- *
- * This grants nothing on its own — the allowance was granted on-chain by the
- * user's own signature — it only saves the UI from waiting out the snapshot TTL.
- */
-export const confirmWirexSpendAuthorization =
-  async (): Promise<WirexSpendAuthorizationResponse> => {
-    const jwt = getJWTToken();
-
-    const response = await fetch(
-      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-authorization/confirm`,
-      {
-        method: 'POST',
-        headers: {
-          ...getPlatformHeaders(),
-          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-        },
-        credentials: 'include',
-      },
-    );
-
-    if (!response.ok) throw response;
-
-    return response.json();
-  };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(
@@ -2981,6 +3015,15 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 };
 
 // Direct Deposit Session API
+
+/**
+ * Deposit-address requests block a screen that can show nothing until they
+ * answer, so they fail rather than hang: the backend derives the address over
+ * an RPC call and registers it with webhook providers, and a stalled provider
+ * used to leave the client on an endless spinner.
+ */
+const DIRECT_DEPOSIT_SESSION_TIMEOUT_MS = 30000;
+
 export const createDirectDepositSession = async (
   chainId: number,
   tokenSymbol: string,
@@ -2988,7 +3031,7 @@ export const createDirectDepositSession = async (
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session`,
     {
       method: 'POST',
@@ -3004,6 +3047,7 @@ export const createDirectDepositSession = async (
         ...(destinationType ? { destinationType } : {}),
       }),
     },
+    DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
   );
 
   if (!response.ok) throw response;

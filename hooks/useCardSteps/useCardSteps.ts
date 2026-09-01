@@ -3,11 +3,11 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
+import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
@@ -31,6 +31,7 @@ import {
 } from './kycFlowHelpers';
 import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
 import { resolveRainKycAction } from './rainKycAction';
+import { openCardSavingsDeposit } from './savingsDepositEntry';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -114,9 +115,14 @@ export function useCardSteps(
   // Opens the deposit-to-savings (soUSD) flow used by the BD "deposit first"
   // step. The global DepositModalProvider is mounted app-wide, so this works
   // from the card activation screen without mounting a modal locally.
+  //
+  // See openCardSavingsDeposit: this is the savings direct-deposit flow (token →
+  // network → per-session address, polled for the transfer), replacing the
+  // legacy static-Safe-address route.
+  const openDepositFlow = useOpenDepositFlow();
   const openSavingsDepositModal = useCallback(
-    () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS),
-    [],
+    () => openCardSavingsDeposit(useDepositStore.getState(), openDepositFlow),
+    [openDepositFlow],
   );
 
   // The BD minimum-deposit step now completes from the savings (soUSD) balance,
