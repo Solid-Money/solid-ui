@@ -756,6 +756,51 @@ export interface WirexRevealSessionResponse {
   messageTemplate: string;
 }
 
+// --- Wirex 3D Secure ---
+/**
+ * A 3D Secure challenge waiting on the cardholder.
+ *
+ * When a merchant asks for 3DS, Wirex holds the transaction until it is approved
+ * or declined — the user is standing at the terminal while it waits. `amount` is
+ * a decimal string in `currency`'s major units ("127.15"): it comes off the wire
+ * that way and is only ever formatted for display, never used in arithmetic.
+ */
+export interface WirexThreeDsRequest {
+  /** Issuer transaction id — what the approve/decline calls are keyed on. */
+  transactionId: string;
+  cardId: string;
+  cardLast4: string;
+  amount: string;
+  /** ISO 4217. */
+  currency: string;
+  merchantName: string;
+}
+
+export interface WirexThreeDsRequestsResponse {
+  requests: WirexThreeDsRequest[];
+  /**
+   * The exact message the wallet must sign to approve, with `{nonce}` to be
+   * replaced by the unix-seconds timestamp at signing time. From the backend so
+   * the wording cannot drift from what Wirex verifies.
+   */
+  messageTemplate: string;
+}
+
+export enum WirexThreeDsDecisionOutcome {
+  APPROVED = 'approved',
+  DECLINED = 'declined',
+  /**
+   * The challenge is gone — it timed out at the terminal, or was already
+   * decided. Not an error: the screen says so and refreshes.
+   */
+  EXPIRED = 'expired',
+}
+
+export interface WirexThreeDsDecisionResponse {
+  transactionId: string;
+  outcome: WirexThreeDsDecisionOutcome;
+}
+
 /**
  * A Wirex cardholder's `SolidCashModule` registration, as the backend reads it.
  *

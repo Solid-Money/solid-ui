@@ -4,16 +4,33 @@ import * as Notifications from 'expo-notifications';
 import { Href, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
-import { path } from '@/constants/path';
+import { cardThreeDsRequestPath, path } from '@/constants/path';
 import { registerPushToken } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { useUserStore } from '@/store/useUserStore';
 
+/** What the backend puts in a push's `data`. FCM values are always strings. */
+type NotificationData = {
+  type?: string;
+  /** 3DS only: the challenge the tap has to open. */
+  transactionId?: string;
+  amount?: string;
+  currency?: string;
+  merchantName?: string;
+  cardLast4?: string;
+};
+
 /**
- * Map a push notification's `type` (set by the backend) to an in-app route.
+ * Map a push notification's `data` (set by the backend) to an in-app route.
  * Card payment notifications open the card screen; anything else goes home.
+ *
+ * Takes the whole payload rather than just `type` because one destination needs
+ * more than the type to be reachable: a 3D Secure challenge is a question about
+ * one specific transaction, and the card screen is not an answer to it.
  */
-function getNotificationRoute(type?: string): Href {
+function getNotificationRoute(data?: NotificationData): Href {
+  const type = data?.type;
+
   // Referral cashback pushes (referral-signup, referral-inactive,
   // referral-qualified-*) open the referral program popup on the rewards screen
   // via the ?referral=open deep link.
@@ -39,6 +56,19 @@ function getNotificationRoute(type?: string): Href {
     // rather than the `/card` shim's status check.
     case 'card-transaction':
       return path.CARD_INFO;
+    // A 3DS challenge is held by the merchant until it is answered, so the tap
+    // lands straight on the decision screen. The amount and merchant ride along
+    // so it can render before the pending list has loaded. Without an id there
+    // is no challenge to open, so fall back to the list.
+    case 'card-3ds':
+      return data?.transactionId
+        ? cardThreeDsRequestPath(data.transactionId, {
+            amount: data.amount,
+            currency: data.currency,
+            merchantName: data.merchantName,
+            cardLast4: data.cardLast4,
+          })
+        : path.CARD_3DS;
     default:
       return path.HOME;
   }
@@ -79,8 +109,8 @@ export function usePushNotifications() {
     // fall back to home for anything unrecognised.
     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
       response => {
-        const data = response.notification.request.content.data as { type?: string } | undefined;
-        router.replace(getNotificationRoute(data?.type));
+        const data = response.notification.request.content.data as NotificationData | undefined;
+        router.replace(getNotificationRoute(data));
       },
     );
 

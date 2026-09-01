@@ -131,6 +131,8 @@ import {
   WirexCardRegistrationConfirmRequest,
   WirexCardRegistrationResponse,
   WirexRevealSessionResponse,
+  WirexThreeDsDecisionResponse,
+  WirexThreeDsRequestsResponse,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
@@ -2719,6 +2721,97 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
     card_security_code: cvc,
     expiry_date: expiry,
   };
+};
+
+/**
+ * The 3D Secure challenges waiting on this cardholder.
+ *
+ * Pulled rather than relying on the push alone: Wirex times a webhook out after
+ * 10 seconds and never retries it, so a challenge whose push never arrived is
+ * only findable here.
+ */
+export const getWirexThreeDsRequests = async (): Promise<WirexThreeDsRequestsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests`,
+    {
+      method: 'GET',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Let a held payment through.
+ *
+ * The signature is the point: the backend verifies it recovers to the card's own
+ * wallet before telling Wirex to approve, so an access token on its own cannot
+ * approve someone's spending. Build the message from the list endpoint's
+ * `messageTemplate` and sign it with `useWalletMessageSigner` (a passkey prompt).
+ */
+export const approveWirexThreeDsRequest = async (
+  transactionId: string,
+  confirmation: { signature: string; nonce: number },
+): Promise<WirexThreeDsDecisionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests/${encodeURIComponent(
+      transactionId,
+    )}/approve`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(confirmation),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Refuse a held payment. No signature — stopping a transaction you do not
+ * recognise must not be gated on a biometric prompt that could fail.
+ */
+export const declineWirexThreeDsRequest = async (
+  transactionId: string,
+): Promise<WirexThreeDsDecisionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wirex/3ds/requests/${encodeURIComponent(
+      transactionId,
+    )}/decline`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
 
 /**
