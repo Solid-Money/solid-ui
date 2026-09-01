@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
+import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
@@ -83,11 +84,17 @@ const RailPlaceholder = ({
   }
 
   if (rail.canActivate) {
+    // The wallet-link path raises a passkey prompt to prove wallet ownership to
+    // Wirex's external provider, so the button says so rather than promising
+    // details that a signature stands between the user and.
+    const needsSignature = rail.activationPath === 'walletLink';
+
     return (
       <View className="flex-1 items-center justify-center gap-4 py-16">
         <Text className="text-center text-lg font-medium text-white">Open a {label} account</Text>
         <Text className="max-w-[300px] text-center text-sm text-white/60">
           {RAIL_PRESENTATION[rail.accountType].blurb}.
+          {needsSignature ? ' You will be asked to confirm with your wallet.' : ''}
         </Text>
         <Button
           variant="brand"
@@ -97,6 +104,8 @@ const RailPlaceholder = ({
         >
           {isActivating ? (
             <ActivityIndicator color="#000" />
+          ) : needsSignature ? (
+            <Text className="text-base font-semibold text-black">Verify wallet</Text>
           ) : (
             <Text className="text-base font-semibold text-black">Get {label} details</Text>
           )}
@@ -137,6 +146,7 @@ export const WirexBankAccountDetails = ({
 }: WirexBankAccountDetailsProps = {}) => {
   const { data: overview, isLoading, refetch } = useWirexBankOverview();
   const activate = useActivateWirexBankAccount();
+  const walletLink = useWirexWalletLink();
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
@@ -163,14 +173,28 @@ export const WirexBankAccountDetails = ({
     );
   }, [activeRail, isLoading]);
 
+  /**
+   * Start activation down whichever path the capability calls for.
+   *
+   * Wirex rejects the wrong one with a 400 — the plain call when the capability
+   * wants wallet verification, and vice versa — so the path is read off the
+   * rail rather than assumed.
+   */
   const handleActivate = useCallback(() => {
     if (!activeRail) return;
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED, {
       provider: 'wirex',
       rail: activeRail.accountType,
+      activation_path: activeRail.activationPath,
     });
+
+    if (activeRail.activationPath === 'walletLink') {
+      void walletLink.link();
+      return;
+    }
+
     activate.mutate(activeRail.accountType);
-  }, [activeRail, activate]);
+  }, [activeRail, activate, walletLink]);
 
   if (isLoading) {
     return (
@@ -197,6 +221,11 @@ export const WirexBankAccountDetails = ({
     );
   }
 
+  // The wallet-link hook explains its own failures (a wrong wallet, a cancelled
+  // passkey prompt); plain activation has no such detail to offer.
+  const activationError =
+    walletLink.error ?? (activate.isError ? 'Could not open the account. Please try again.' : null);
+
   const presentation = RAIL_PRESENTATION[activeRail.accountType];
   const switcher =
     visibleRails.length > 1 ? (
@@ -212,13 +241,11 @@ export const WirexBankAccountDetails = ({
         <RailPlaceholder
           rail={activeRail}
           onActivate={handleActivate}
-          isActivating={activate.isPending}
+          isActivating={activate.isPending || walletLink.isLinking}
         />
-        {activate.isError && (
-          <Text className="px-6 pb-4 text-center text-sm text-red-400">
-            Could not open the account. Please try again.
-          </Text>
-        )}
+        {activationError ? (
+          <Text className="px-6 pb-4 text-center text-sm text-red-400">{activationError}</Text>
+        ) : null}
       </View>
     );
   }

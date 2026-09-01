@@ -46,7 +46,7 @@ async function describeFailure(error: unknown): Promise<string> {
       const body: unknown = await error.json();
       const message = (body as { message?: unknown })?.message;
       if (typeof message === 'string' && message) return message;
-      // Nest wraps a thrown object under `response` for some exception shapes.
+      // The ValidationPipe reports DTO failures as an array of messages.
       if (Array.isArray(message) && typeof message[0] === 'string') {
         return message[0];
       }
