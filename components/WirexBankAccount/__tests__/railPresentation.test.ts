@@ -106,19 +106,32 @@ describe('unavailableReason', () => {
   });
 });
 
+/**
+ * An overview around some rails. `provider`/`kycRequired`/`balances` are
+ * required by the DTO but say nothing about rail presentation, so they are
+ * filled in once here rather than at every call site.
+ */
+const overviewOf = (rails: WirexBankRailStatusDto[], isWirexUser = true) => ({
+  rails,
+  isWirexUser,
+  provider: 'wirex' as const,
+  kycRequired: false,
+  balances: [],
+});
+
 describe('visibleRails', () => {
   it('keeps a rail with an account', () => {
-    expect(visibleRails({ rails: [sepaRail()], isWirexUser: true })).toHaveLength(1);
+    expect(visibleRails(overviewOf([sepaRail()]))).toHaveLength(1);
   });
 
   it('keeps a rail the user can open', () => {
     const rail = sepaRail({ account: undefined, canActivate: true });
-    expect(visibleRails({ rails: [rail], isWirexUser: true })).toHaveLength(1);
+    expect(visibleRails(overviewOf([rail]))).toHaveLength(1);
   });
 
   it('keeps a rail that is still provisioning', () => {
     const rail = sepaRail({ account: undefined, isPending: true });
-    expect(visibleRails({ rails: [rail], isWirexUser: true })).toHaveLength(1);
+    expect(visibleRails(overviewOf([rail]))).toHaveLength(1);
   });
 
   it('drops a rail the user can neither use nor open', () => {
@@ -129,7 +142,7 @@ describe('visibleRails', () => {
       isPending: false,
       capabilityStatus: 'NotAvailable',
     });
-    expect(visibleRails({ rails: [rail], isWirexUser: true })).toEqual([]);
+    expect(visibleRails(overviewOf([rail]))).toEqual([]);
   });
 
   it('handles a missing overview', () => {
@@ -196,7 +209,7 @@ describe('canSendFrom', () => {
 
 describe('replaceRail', () => {
   it('swaps the matching rail and leaves the other untouched', () => {
-    const overview = { rails: [sepaRail(), achRail()], isWirexUser: true };
+    const overview = overviewOf([sepaRail(), achRail()]);
     const updated = achRail({ capabilityStatus: 'InProgress' });
 
     const result = replaceRail(overview, updated);
@@ -211,7 +224,7 @@ describe('replaceRail', () => {
   });
 
   it('appends a rail the cache did not have', () => {
-    const overview = { rails: [sepaRail()], isWirexUser: true };
+    const overview = overviewOf([sepaRail()]);
     expect(replaceRail(overview, achRail()).rails).toHaveLength(2);
   });
 
@@ -219,12 +232,17 @@ describe('replaceRail', () => {
     expect(replaceRail(undefined, sepaRail())).toEqual({
       rails: [sepaRail()],
       isWirexUser: true,
+      provider: 'wirex',
+      kycRequired: false,
+      // Empty means unknown, not zero. A fabricated 0 would flash over a
+      // balance the user actually holds until the next fetch.
+      balances: [],
     });
   });
 
   it('does not mutate the cached overview', () => {
     // React Query compares by reference; mutating in place skips the re-render.
-    const overview = { rails: [sepaRail()], isWirexUser: true };
+    const overview = overviewOf([sepaRail()]);
     const before = JSON.stringify(overview);
     replaceRail(overview, achRail());
     expect(JSON.stringify(overview)).toBe(before);

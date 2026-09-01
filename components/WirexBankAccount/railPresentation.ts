@@ -128,7 +128,19 @@ export function replaceRail(
   overview: WirexBankOverviewDto | undefined,
   rail: WirexBankRailStatusDto,
 ): WirexBankOverviewDto {
-  if (!overview) return { rails: [rail], isWirexUser: true };
+  // No cached overview to patch. Activation only ever succeeds for a Wirex user
+  // who has passed KYC, so those two are known; balances are left empty, which
+  // the DTO defines as "unknown" — the next fetch fills them in, and inventing a
+  // zero here would flash "€0.00" over a balance the user actually holds.
+  if (!overview) {
+    return {
+      rails: [rail],
+      isWirexUser: true,
+      provider: 'wirex',
+      kycRequired: false,
+      balances: [],
+    };
+  }
   const rails = overview.rails.some(item => item.accountType === rail.accountType)
     ? overview.rails.map(item => (item.accountType === rail.accountType ? rail : item))
     : [...overview.rails, rail];

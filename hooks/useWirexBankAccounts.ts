@@ -16,10 +16,11 @@ import {
   WirexBankOverviewDto,
   WirexBankTransferEstimateRequest,
   WirexBankTransferExecuteRequest,
+  WirexUnifiedBalanceDto,
 } from '@/lib/types/wirex-bank';
 import { withRefreshToken } from '@/lib/utils';
 
-const WIREX_BANK_OVERVIEW_KEY = 'wirexBankOverview';
+export const WIREX_BANK_OVERVIEW_KEY = 'wirexBankOverview';
 const WIREX_BANK_TRANSFERS_KEY = 'wirexBankTransfers';
 
 /**
@@ -46,6 +47,28 @@ export function useWirexBankOverview(enabled = true) {
     },
   });
 }
+
+/**
+ * The WEUR/WUSD the user's bank deposits settled into.
+ *
+ * Reuses the overview query rather than adding a request: the home screen and
+ * the bank screen then share one cache entry, and a deposit that lands while the
+ * bank screen polls updates the home rows for free.
+ *
+ * Returns `[]` for everyone without a Wirex account, and also when Wirex could
+ * not be reached — the backend cannot tell a client "unknown" any other way, and
+ * both cases mean the same thing here: show no bank rows rather than a zero.
+ */
+export function useWirexUnifiedBalances(enabled = true) {
+  const { data, isLoading } = useWirexBankOverview(enabled);
+  return {
+    balances: data?.balances ?? EMPTY_BALANCES,
+    isLoading,
+  };
+}
+
+/** Stable identity, so the memo in the breakdown does not re-run every render. */
+const EMPTY_BALANCES: WirexUnifiedBalanceDto[] = [];
 
 /** One rail out of the overview, or undefined while it loads. */
 export function useWirexBankRail(accountType: WirexBankAccountType) {

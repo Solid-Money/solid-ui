@@ -9,6 +9,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { TRANSFI_STATUS_KEY } from '@/hooks/useTransfi';
+import { WIREX_BANK_OVERVIEW_KEY } from '@/hooks/useWirexBankAccounts';
 import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { KycStatus, SumsubSessionFlow } from '@/lib/types';
@@ -59,8 +60,11 @@ export function useSumsubSession() {
   const [session, setSession] = useState<SumsubSessionState>({ phase: 'loading' });
 
   // The backend needs to know which product asked for the session so it doesn't
-  // record onramp users as Wirex card customers.
-  const sumsubFlow: SumsubSessionFlow = kycFlow === 'transfi' ? 'onramp' : 'card';
+  // record onramp users as Wirex card customers, and so it gates the Wirex claim
+  // on the right country list — the bank lists for a virtual account, the card
+  // list for a card. They disagree in both directions.
+  const sumsubFlow: SumsubSessionFlow =
+    kycFlow === 'transfi' ? 'onramp' : kycFlow === 'va' ? 'virtual_account' : 'card';
 
   /** Where this KYC outcome should land the user. No navigation, just the href. */
   const resolveDestination = useCallback(
@@ -69,8 +73,13 @@ export function useSumsubSession() {
       // shared with TransFi and the user resumes in the Add-funds modal, which
       // is mounted on the home screen.
       if (kycFlow === 'transfi') return String(path.HOME);
-      // Wirex has no virtual-account flow — this is card KYC only. Sumsub GREEN
-      // hands off to Wirex, which then adjudicates. So:
+      // Virtual account: the bank screen lives in the deposit modal, which is
+      // mounted on the home screen — so the destination is home and the modal is
+      // opened alongside it, the same shape as the transfi flow. The user lands
+      // back where they asked for an IBAN rather than on a card page they never
+      // wanted.
+      if (kycFlow === 'va') return String(path.HOME);
+      // Card. Sumsub GREEN hands off to Wirex, which then adjudicates. So:
       //  - APPROVED (Wirex approved) → activate, where the user issues the card.
       //  - UNDER_REVIEW (Sumsub passed, Wirex still deciding) → pending.
       //  - anything else → activate with the status so step 1 renders correctly.
@@ -97,6 +106,15 @@ export function useSumsubSession() {
       if (kycFlow === 'transfi') {
         queryClient.invalidateQueries({ queryKey: [TRANSFI_STATUS_KEY] });
         useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+      }
+
+      // Virtual account: reopen the bank screen. Its overview is invalidated
+      // first so it mounts against the Wirex account this verification just
+      // created, rather than the cached "no account" answer that sent the user
+      // into KYC in the first place.
+      if (kycFlow === 'va') {
+        queryClient.invalidateQueries({ queryKey: [WIREX_BANK_OVERVIEW_KEY] });
+        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
       }
 
       router.replace(destination as any);

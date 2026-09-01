@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { BankAccountDetailsView } from '@/components/DepositOption/VirtualAccountDetails/BankAccountDetailsView';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
@@ -11,6 +14,8 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
 import { cn } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
+import { useKycStore } from '@/store/useKycStore';
 
 import {
   detailRows,
@@ -147,6 +152,8 @@ export const WirexBankAccountDetails = ({
   const { data: overview, isLoading, refetch } = useWirexBankOverview();
   const activate = useActivateWirexBankAccount();
   const walletLink = useWirexWalletLink();
+  const router = useRouter();
+  const setModal = useDepositStore(state => state.setModal);
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
@@ -200,6 +207,43 @@ export const WirexBankAccountDetails = ({
     return (
       <View className="flex-1 items-center justify-center py-16">
         <ActivityIndicator />
+      </View>
+    );
+  }
+
+  /**
+   * Send the user into Sumsub for the virtual account.
+   *
+   * `kycFlow` is what tells the session which product asked, and it decides two
+   * things the card flow gets wrong here: the backend gates the Wirex claim on
+   * the bank country lists rather than the card list, and the user is returned
+   * to this screen afterwards instead of a card page.
+   *
+   * The deposit modal is closed first — the KYC screen is a route, and leaving a
+   * modal open over it strands the user behind it on return.
+   */
+  function startVerification() {
+    useKycStore.getState().setKycFlow('va');
+    setModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.SUMSUB_KYC as never);
+  }
+
+  // Wirex serves this user's country but they have never verified. The button
+  // starts that, rather than offering "Try again" on a lookup that is not
+  // failing — refetching would return the same answer forever.
+  if (overview?.kycRequired) {
+    return (
+      <View className="flex-1 items-center justify-center gap-4 py-12">
+        <Text className="text-center text-base text-white">
+          Verify your identity to open a bank account.
+        </Text>
+        <Text className="px-8 text-center text-sm text-white/60">
+          You will need a photo ID. If you already verified for a Solid card, this is the same check
+          — it takes a moment to pick up.
+        </Text>
+        <Button className="h-12 rounded-2xl px-6" onPress={startVerification}>
+          <Text className="text-base font-bold text-black">Verify identity</Text>
+        </Button>
       </View>
     );
   }

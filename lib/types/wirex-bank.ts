@@ -82,13 +82,39 @@ export interface WirexBankRailStatusDto {
   account?: WirexBankAccountDto;
 }
 
+/** One token in the Wirex unified balance (WEUR/WUSD on Base). */
+export interface WirexUnifiedBalanceDto {
+  tokenSymbol: string;
+  amount: number;
+  /** The fiat the token tracks: EUR for WEUR, USD for WUSD. */
+  currency: string;
+}
+
 export interface WirexBankOverviewDto {
   rails: WirexBankRailStatusDto[];
   /**
-   * False when the user has no Wirex customer at all — route them into
-   * verification rather than showing an empty bank-account screen.
+   * False when the user has no Wirex customer at all.
+   *
+   * Not the same question as `provider`: a user routed to Wirex who has never
+   * verified is `provider: 'wirex'` with `isWirexUser: false` — see
+   * `kycRequired`.
    */
   isWirexUser: boolean;
+  /**
+   * Which provider serves this user's virtual account, resolved server-side
+   * from their country against Wirex's per-rail availability. Routing is per
+   * feature, so this can disagree with whoever issues their card.
+   */
+  provider: 'wirex' | 'rain';
+  /** Wirex serves this country but the user has not verified — send them to Sumsub. */
+  kycRequired: boolean;
+  /**
+   * The balance the bank rails settle into.
+   *
+   * Empty means UNKNOWN, not zero — the backend returns an empty array when
+   * Wirex could not be reached. Never render a 0 from it.
+   */
+  balances: WirexUnifiedBalanceDto[];
 }
 
 export interface WirexWalletLinkChallengeDto {

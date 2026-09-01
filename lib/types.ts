@@ -636,7 +636,14 @@ export interface DiditVerificationStatusResponse {
  * 'onramp' is buy-crypto (TransFi). The backend uses this to decide what it
  * records on the card customer — the SDK experience is identical.
  */
-export type SumsubSessionFlow = 'card' | 'onramp';
+/**
+ * Which product asked for a Sumsub session. Mirrors the backend enum.
+ *
+ * `virtual_account` is gated on Wirex's BANK availability rather than the card
+ * list and is not silenced by the card switch — routing is per feature, so a
+ * user can be a Wirex bank customer in a country whose card goes to Rain.
+ */
+export type SumsubSessionFlow = 'card' | 'onramp' | 'virtual_account';
 
 /** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
 export interface SumsubSessionResponse {

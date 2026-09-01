@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
 
 import {
   BalanceBreakdownRows,
@@ -28,6 +29,9 @@ const OtherBalancesDropdown = ({
   // A Wirex card has no balance of its own, so it gets a Spendable row and no
   // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
   const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
+  // Money received by SEPA/ACH and still sitting at Wirex. Empty for everyone
+  // without a Wirex bank account, so the rows simply do not appear.
+  const { balances: bankBalances } = useWirexUnifiedBalances();
   const dismiss = () => setOpen(false);
   const openCardDeposit = () => {
     dismiss();
@@ -59,6 +63,7 @@ const OtherBalancesDropdown = ({
             cardHoldsOwnBalance={cardHoldsOwnBalance}
             canAddToCard={canAddToCard}
             spendableBalance={spendableBalance}
+            bankBalances={bankBalances}
           />
         </DialogContent>
       </Dialog>
