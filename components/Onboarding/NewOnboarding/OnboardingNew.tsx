@@ -106,7 +106,11 @@ export default function OnboardingNew() {
       <OnboardingHeroBackground />
       <View className="absolute inset-0 bg-black/30" />
 
-      <LandingScreen onGetStarted={() => setShowWelcome(true)} />
+      <LandingScreen
+        onGetStarted={() => setShowWelcome(true)}
+        onLogin={handleLoginPress}
+        isLoginPending={isLoginPending}
+      />
 
       <WelcomeSheet
         visible={showWelcome}

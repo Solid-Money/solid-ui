@@ -15,7 +15,7 @@ import {
 } from '.';
 
 /**
- * Native balances control: a pill (Wallet/Card/Savings donut + label) that
+ * Native balances control: a pill (Wallet/Card/Savings donut + total) that
  * presents a Gorhom bottom sheet with the balances broken out. Mirrors
  * InfoCenterDropdown.native.tsx.
  */
