@@ -1002,6 +1002,16 @@ export enum TransactionType {
   CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
+  /**
+   * Wirex bank rails (EUR SEPA / USD ACH) on the user's own virtual account.
+   *
+   * Separate from BANK_TRANSFER, which is the Bridge rail: a tap on that type
+   * opens the Bridge transfer-preview modal (see ActivityTransactions), which
+   * has no Wirex equivalent, and it is hard-coded inbound so a payout under it
+   * would render with the wrong sign.
+   */
+  WIREX_BANK_DEPOSIT = 'wirex_bank_deposit',
+  WIREX_BANK_PAYOUT = 'wirex_bank_payout',
   CARD_TRANSACTION = 'card_transaction',
   CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',
@@ -1035,6 +1045,7 @@ export enum TransactionCategory {
   WALLET_TRANSFER = 'Wallet transfer',
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
+  BANK_WITHDRAWAL = 'Bank withdraw',
   CARD_DEPOSIT = 'Card deposit',
   CARD_WITHDRAWAL = 'Card withdraw',
   REWARD = 'Reward',

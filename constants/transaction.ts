@@ -46,6 +46,14 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.IN,
     category: TransactionCategory.BANK_DEPOSIT,
   },
+  [TransactionType.WIREX_BANK_DEPOSIT]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.BANK_DEPOSIT,
+  },
+  [TransactionType.WIREX_BANK_PAYOUT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.BANK_WITHDRAWAL,
+  },
   [TransactionType.CARD_TRANSACTION]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,

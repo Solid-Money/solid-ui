@@ -472,6 +472,15 @@ export default function ActivityDetail() {
 
   const isFund = finalActivity?.type === TransactionType.FUND;
 
+  /**
+   * Wirex SEPA/ACH movements on the user's virtual account. They settle at the
+   * bank, not on chain, so none of the address/hash/explorer rows below apply —
+   * without the bank rows this screen would show a lone "Status".
+   */
+  const isWirexBank =
+    finalActivity?.type === TransactionType.WIREX_BANK_DEPOSIT ||
+    finalActivity?.type === TransactionType.WIREX_BANK_PAYOUT;
+
   const estimatedDurationSeconds = useMemo(() => {
     if (isFund) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
@@ -598,6 +607,39 @@ export default function ActivityDetail() {
         label: <Label>Status</Label>,
         value: <Value>{toTitleCase(status)}</Value>,
       },
+      isWirexBank &&
+        metadata?.rail && {
+          key: 'rail',
+          label: <Label>Method</Label>,
+          value: <Value>{metadata.rail as string}</Value>,
+        },
+      isWirexBank &&
+        (metadata?.counterpartyName || metadata?.counterpartyAccountLast4) && {
+          key: 'counterparty',
+          label: (
+            <Label>
+              {finalActivity.type === TransactionType.WIREX_BANK_DEPOSIT ? 'From' : 'To'}
+            </Label>
+          ),
+          value: (
+            <Value>
+              {[
+                metadata.counterpartyName,
+                // Only the last four are stored — a full IBAN is not needed to
+                // recognise the account, and this row is also read by support.
+                metadata.counterpartyAccountLast4 && `····${metadata.counterpartyAccountLast4}`,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            </Value>
+          ),
+        },
+      isWirexBank &&
+        metadata?.reference && {
+          key: 'reference',
+          label: <Label>Reference</Label>,
+          value: <Value>{metadata.reference as string}</Value>,
+        },
       metadata?.inputAmount &&
         metadata?.inputToken && {
           key: 'paid',
@@ -645,6 +687,7 @@ export default function ActivityDetail() {
     isDeposit,
     isFund,
     isBridgeDeposit,
+    isWirexBank,
     isPending,
     isDetected,
     isProcessing,
