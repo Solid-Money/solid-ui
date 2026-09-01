@@ -16,7 +16,16 @@ export type TransactionResult =
     }
   | typeof USER_CANCELLED_TRANSACTION;
 
-const isWebAuthnUserCancelledError = (error: any): boolean => {
+/**
+ * Whether a signing failure is the user dismissing the passkey prompt rather than
+ * something going wrong. WebAuthn reports a cancel and a timeout through the same
+ * `NotAllowedError`, and each platform words it differently, so this matches on
+ * the message.
+ *
+ * Exported because anything that raises a passkey prompt needs the distinction —
+ * a cancel is a decision, not an error to show.
+ */
+export const isWebAuthnUserCancelledError = (error: any): boolean => {
   const message = error?.message?.toLowerCase() || '';
   return (
     message.includes('failed to sign') ||

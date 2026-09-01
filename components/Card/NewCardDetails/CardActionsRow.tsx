@@ -1,13 +1,17 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { ShieldCheck } from 'lucide-react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
@@ -18,6 +22,11 @@ interface CircleActionProps {
   circleBackground?: string;
   onPress?: () => void;
   disabled?: boolean;
+  /**
+   * Count to overlay on the circle. Rendered outside it, because the circle
+   * clips its own children so the Figma icons stay round.
+   */
+  badgeCount?: number;
 }
 
 /**
@@ -31,6 +40,7 @@ const CircleAction = ({
   circleBackground,
   onPress,
   disabled,
+  badgeCount,
 }: CircleActionProps) => (
   <Pressable
     accessibilityLabel={label}
@@ -40,8 +50,19 @@ const CircleAction = ({
     style={styles.action}
     className="items-center transition-all active:scale-95 active:opacity-80"
   >
-    <View style={[styles.circle, circleBackground ? { backgroundColor: circleBackground } : null]}>
-      {children}
+    <View style={styles.circleSlot}>
+      <View
+        style={[styles.circle, circleBackground ? { backgroundColor: circleBackground } : null]}
+      >
+        {children}
+      </View>
+      {badgeCount ? (
+        <View style={styles.badge} className="bg-brand">
+          <Text className="text-[11px] font-semibold text-black">
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </Text>
+        </View>
+      ) : null}
     </View>
     <Text className="mt-[8px] text-center text-[14px] font-medium text-[#BFBFBF]">{label}</Text>
   </Pressable>
@@ -101,6 +122,10 @@ const CardActionsRow = ({
   // The hook's `isAvailable` already accounts for the card's issuer, so no provider
   // check is needed here — it is the single place that decision lives.
   const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
+  // Wirex-only, and gated inside the hook on the issuer rather than here. The
+  // count is the point of reading it from this row: a challenge whose push never
+  // arrived is otherwise invisible until the user goes looking for it.
+  const { requests: threeDsRequests, isSupported: hasThreeDs } = useWirexThreeDs();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
   // false for a Wirex card whatever else is true — depositing has no destination —
   // and `canRegisterSpend` is false for a Rain one, which has nothing to register.
@@ -178,6 +203,20 @@ const CardActionsRow = ({
           </CircleAction>
         </View>
       )}
+      {/* Wirex only: Rain never asks the cardholder to answer a 3DS challenge, so
+          the action would open a screen that is empty by construction. */}
+      {hasThreeDs && (
+        <View style={styles.item}>
+          <CircleAction
+            label="Approvals"
+            circleBackground="#2A2A2A"
+            badgeCount={threeDsRequests.length}
+            onPress={() => router.push(path.CARD_3DS)}
+          >
+            <ShieldCheck color="white" size={24} />
+          </CircleAction>
+        </View>
+      )}
       <View style={styles.item}>
         <CircleAction label="More" onPress={onMorePress}>
           <Image
@@ -197,6 +236,20 @@ const styles = StyleSheet.create({
   item: { flex: 1, maxWidth: 109 },
   action: { width: '100%' },
   actionIcon: { height: 50, width: 50 },
+  // Anchors the badge to the circle's corner: the circle itself clips its
+  // children, so the badge has to live beside it rather than inside it.
+  circleSlot: { height: 50, position: 'relative', width: 50 },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 9,
+    height: 18,
+    justifyContent: 'center',
+    minWidth: 18,
+    paddingHorizontal: 4,
+    position: 'absolute',
+    right: -4,
+    top: -4,
+  },
   circle: {
     alignItems: 'center',
     borderRadius: 25,
