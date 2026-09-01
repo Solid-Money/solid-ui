@@ -56,44 +56,44 @@ type PillProps = {
 } & React.ComponentProps<typeof Pressable>;
 
 /**
- * The dropdown pill trigger: a proportional Wallet/Card/Savings donut, the word
- * "Balances" and a chevron. Tapping opens the full breakdown.
- *
- * It used to carry the total too. The headline above it is that same total now, so
- * the pill said the number twice; naming what it opens is the part the headline
- * cannot say, and the donut still shows the composition at a glance.
+ * The dropdown pill trigger: a proportional Wallet/Card/Savings donut, the total
+ * across all three and a chevron. Tapping opens the full breakdown.
  */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ walletValue, cardValue, savingsValue, ...props }, ref) => (
-    <Pressable
-      ref={ref}
-      accessibilityRole="button"
-      accessibilityLabel="Show balance breakdown"
-      className="h-[35px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
-      {...props}
-    >
-      <OtherBalancesPie
-        walletValue={walletValue}
-        cardValue={cardValue}
-        savingsValue={savingsValue}
-        walletColor={WALLET_COLOR}
-        cardColor={CARD_COLOR}
-        savingsColor={SAVINGS_COLOR}
-      />
-      <Text
-        className="font-semibold text-white"
-        style={{
-          fontFamily: 'MonaSans_600SemiBold',
-          fontSize: 16,
-          fontWeight: '600',
-          lineHeight: 18,
-        }}
+  ({ walletValue, cardValue, savingsValue, ...props }, ref) => {
+    const total = (walletValue || 0) + (cardValue || 0) + (savingsValue || 0);
+
+    return (
+      <Pressable
+        ref={ref}
+        accessibilityRole="button"
+        accessibilityLabel="Show balance breakdown"
+        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
+        {...props}
       >
-        Balances
-      </Text>
-      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
-    </Pressable>
-  ),
+        <OtherBalancesPie
+          walletValue={walletValue}
+          cardValue={cardValue}
+          savingsValue={savingsValue}
+          walletColor={WALLET_COLOR}
+          cardColor={CARD_COLOR}
+          savingsColor={SAVINGS_COLOR}
+        />
+        <Text
+          className="font-semibold text-white"
+          style={{
+            fontFamily: 'MonaSans_600SemiBold',
+            fontSize: 16,
+            fontWeight: '600',
+            lineHeight: 18,
+          }}
+        >
+          {formatBalanceUSD(total)}
+        </Text>
+        <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+      </Pressable>
+    );
+  },
 );
 OtherBalancesPill.displayName = 'OtherBalancesPill';
 
