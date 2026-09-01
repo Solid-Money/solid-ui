@@ -5,6 +5,8 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 
+import { formatVaultApyLabel } from './earnPortfolio';
+
 interface EarnVaultCardProps {
   assetName: string;
   apy: number;
@@ -45,29 +47,12 @@ export const EarnVaultCard = ({
       {isApyLoading ? (
         <Skeleton className="h-[26px] w-20 rounded-full bg-white/10" />
       ) : (
-        <View className="h-[26px] w-20 items-center justify-center self-start overflow-hidden rounded-full">
-          <Image
-            source={getAsset('images/earn-apy-glass.png')}
-            contentFit="fill"
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, styles.apyGlassArtwork]}
-          />
-          <Text className="text-[16px] font-medium leading-4 text-[#94F27F]" style={styles.apyText}>
-            {apy.toFixed(1)} APY
+        <View className="h-[26px] items-center justify-center self-start rounded-full bg-white/10 px-[11px]">
+          <Text className="text-[16px] font-medium leading-4 text-[#94F27F]">
+            {formatVaultApyLabel(apy)}
           </Text>
         </View>
       )}
     </View>
   </Pressable>
 );
-
-const styles = StyleSheet.create({
-  apyGlassArtwork: {
-    opacity: 0.75,
-    zIndex: 0,
-  },
-  apyText: {
-    position: 'relative',
-    zIndex: 1,
-  },
-});
