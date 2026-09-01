@@ -108,6 +108,20 @@ export const TransfiAmount = () => {
     [config?.currencies, currency],
   );
 
+  // Where the purchase lands, in the user's terms. A Wirex delivery is handed to
+  // the card deposit address and bridged on to their Safe on Fuse, so naming the
+  // network TransFi settles on would describe a leg the user never sees — it
+  // says card balance, which is what the money becomes, and stops there.
+  const receiveLine = (() => {
+    if (config?.destinationType === 'card_direct_deposit') {
+      return "You'll receive USDC in your card balance";
+    }
+    const network = config?.tokenNetwork ?? 'Base';
+    const where =
+      config?.destinationType === 'card_funding' ? 'in your card balance' : 'in your wallet';
+    return `You'll receive USDC on ${network} ${where}`;
+  })();
+
   const handleContinue = () => {
     if (!isValid || !activePaymentCode || !currency) return;
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'buy_crypto' });
@@ -178,11 +192,7 @@ export const TransfiAmount = () => {
             </Text>
           </View>
         </View>
-        <Text className="mt-2 text-sm text-muted-foreground">
-          {`You'll receive USDC on ${config?.tokenNetwork ?? 'Base'}${
-            config?.destinationType === 'card_funding' ? ' in your card balance' : ' in your wallet'
-          }`}
-        </Text>
+        <Text className="mt-2 text-sm text-muted-foreground">{receiveLine}</Text>
       </View>
 
       {/* Pay in — currency selector (opens a step) */}

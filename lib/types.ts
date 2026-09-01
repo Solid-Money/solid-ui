@@ -2381,8 +2381,13 @@ export interface TransfiPaymentConfig {
   tokenLogo?: string;
   /** Chain the bought USDC is delivered on, e.g. 'Base'. */
   tokenNetwork?: string;
-  /** 'card_funding' when it tops up the card, 'safe' when it lands in the wallet. */
-  destinationType?: 'card_funding' | 'safe';
+  /**
+   * Which delivery route the purchase takes: 'card_funding' straight onto a Rain
+   * card, 'card_direct_deposit' to a Wirex cardholder's card deposit address
+   * (from where the direct-deposit pipeline carries it to their Safe on Fuse),
+   * 'safe' when there is no card to fund.
+   */
+  destinationType?: 'card_funding' | 'card_direct_deposit' | 'safe';
 }
 
 export interface TransfiQuote {
