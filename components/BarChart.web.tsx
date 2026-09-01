@@ -100,7 +100,7 @@ const Chart = ({ data, height = 150, compact = false, formatToolTip }: BarChartP
               <ChartTooltip data={data} formatToolTip={formatToolTip} />
             )
           }
-          trigger={compact ? 'click' : 'hover'}
+          trigger="hover"
           shared={compact ? false : undefined}
           cursor={compact ? false : undefined}
           position={compact ? { x: 0, y: 0 } : undefined}
