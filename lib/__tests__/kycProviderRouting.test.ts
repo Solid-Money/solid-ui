@@ -157,9 +157,13 @@ describe('resolveKycProvider', () => {
 
 /**
  * The card answer is gated server-side on whether Wirex is enabled in the
- * environment — Wirex is staging-only, and country→provider routing is a code
- * constant that ships to production unchanged. The onramp must not be caught by
- * that gate: TransFi's use of Sumsub for identity is live in its own right.
+ * environment. The onramp must not be caught by that gate: TransFi's use of
+ * Sumsub for identity is live in its own right.
+ *
+ * The client's job either way is to ASK and obey. It holds no copy of the
+ * geography, no cohort list and no precedence rule — Wirex now wins the markets
+ * both issuers serve, and that decision is entirely the backend's — so these
+ * cases pin the request it makes and that it follows whatever comes back.
  */
 describe('resolveKycProvider flow gating', () => {
   it('asks for the card answer by default', async () => {
@@ -180,10 +184,11 @@ describe('resolveKycProvider flow gating', () => {
     expect(mockGetProviderRouting).toHaveBeenCalledWith('DE', 'onramp');
   });
 
-  it('follows the backend when it gates a Wirex country down to Didit', async () => {
-    // What production now returns for a Wirex country: the geography says Wirex,
-    // the environment says no, so the user goes to Didit and is never routed into
-    // a staging-only issuer.
+  it('follows the backend when it routes a Wirex country down to Didit', async () => {
+    // The client must not second-guess this. A country on the Wirex geography
+    // can still come back Rain/Didit — the environment kill switch is off, or
+    // the wirex country document has been edited to close that market — and the
+    // answer is authoritative either way.
     storeCountry('DE');
     mockGetProviderRouting.mockResolvedValue({
       countryCode: 'DE',

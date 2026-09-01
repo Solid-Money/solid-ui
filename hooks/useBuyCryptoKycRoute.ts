@@ -33,7 +33,7 @@ export const useBuyCryptoKycRoute = () => {
       setKycFlow('transfi');
 
       // 'onramp': this identity is for TransFi, which uses Sumsub independently of
-      // the Wirex card, so it must not be switched off with the card's gate.
+      // the Wirex card, so it must not be switched off with the card's kill switch.
       const { kycProvider, countryCode } = await resolveKycProvider(fallbackProvider, 'onramp');
 
       setKycProvider(kycProvider);
