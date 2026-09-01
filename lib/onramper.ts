@@ -43,7 +43,11 @@ export async function initOnramper(): Promise<OnramperClient> {
 
   const { sessionId, sessionToken } = await fetchOnramperSession();
 
-  await client.initialize({ sessionId, sessionToken });
+  try {
+    await client.initialize({ sessionId, sessionToken });
+  } catch (e) {
+    throw new Error(`Failed to initialize Onramper client: ${e}`);
+  }
 
   return client;
 }

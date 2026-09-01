@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -13,6 +13,7 @@ import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
+import OnRamperDepositType from './OnRamperDepositType';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 40;
@@ -106,6 +107,8 @@ const DepositTypeSelection = () => {
           </View>
         </Pressable>
       </View>
+
+      <OnRamperDepositType />
 
       <VirtualAccountApplyDialog
         isOpen={isVirtualAccountApplyOpen}
