@@ -8,6 +8,7 @@ import { makeNativePriceFetcher } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
+import { VaultType } from '@/lib/types';
 
 const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
 const usdcVault = ACTIVE_VAULTS[0];
@@ -22,7 +23,13 @@ const fetchEthPrice = makeNativePriceFetcher(mainnet.id);
  * USDC uses its soUSD→USD rate directly; FUSE and ETH multiply their
  * soToken→native rate by the native token's USD price.
  */
-export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boolean } => {
+type SavingsValuesByVault = Record<VaultType, number>;
+
+export const useTotalSavingsUSD = (): {
+  data: number | undefined;
+  valuesByVault: SavingsValuesByVault | undefined;
+  isLoading: boolean;
+} => {
   const { user } = useUser();
   const address = user?.safeAddress as Address;
 
@@ -75,7 +82,7 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
     (hasFuseBalance && (isLoadingRateFuse || isLoadingFusePrice)) ||
     (hasEthBalance && (isLoadingRateEth || isLoadingEthPrice));
 
-  const data = useMemo(() => {
+  const valuesByVault = useMemo<SavingsValuesByVault | undefined>(() => {
     if (isLoading) return undefined;
     const rateUsdc = exchangeRateUsdc ?? 1;
     const rateFuse = exchangeRateFuse ?? 1;
@@ -85,7 +92,11 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
     const redeemableUsdc = (balanceUsdc ?? 0) * rateUsdc;
     const redeemableFuse = hasFuseBalance ? (balanceFuse ?? 0) * rateFuse * fusePrice : 0;
     const redeemableEth = hasEthBalance ? (balanceEth ?? 0) * rateEth * ethPrice : 0;
-    return redeemableUsdc + redeemableFuse + redeemableEth;
+    return {
+      [VaultType.USDC]: redeemableUsdc,
+      [VaultType.FUSE]: redeemableFuse,
+      [VaultType.ETH]: redeemableEth,
+    };
   }, [
     isLoading,
     hasFuseBalance,
@@ -100,5 +111,9 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
     ethPriceUsd,
   ]);
 
-  return { data, isLoading };
+  const data = valuesByVault
+    ? Object.values(valuesByVault).reduce((total, value) => total + value, 0)
+    : undefined;
+
+  return { data, valuesByVault, isLoading };
 };

@@ -16,7 +16,7 @@ export const PUBLIC_TAB_NAMES = ['index', 'savings', 'card'] as const;
  * Card is merged into the wallet page. Activity is opened from the header bell
  * as a protected stack screen, so neither appears here.
  */
-export const WHITELIST_TAB_NAMES = ['index', 'savings', 'rewards'] as const;
+export const WHITELIST_TAB_NAMES = ['index', 'earn', 'rewards'] as const;
 
 /**
  * Per-route label overrides for the redesigned bar. Lets us render "Wallet"
@@ -25,4 +25,5 @@ export const WHITELIST_TAB_NAMES = ['index', 'savings', 'rewards'] as const;
  */
 export const WHITELIST_TAB_LABELS: Record<string, string> = {
   index: 'Wallet',
+  earn: 'Earn',
 };

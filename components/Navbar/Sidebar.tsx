@@ -3,6 +3,7 @@ import { Pressable, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Href, router, usePathname } from 'expo-router';
 
+import { EarnTabIcon } from '@/components/Earn/EarnTabIcon';
 import { AnimatedTabIcon, type AnimatedTabIconName } from '@/components/tabBar/AnimatedTabIcon';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -27,7 +28,8 @@ export const SIDEBAR_BODY_TOP_GUTTER = 64;
 type SidebarItem = {
   label: string;
   href: Href;
-  animatedIcon: AnimatedTabIconName;
+  animatedIcon?: AnimatedTabIconName;
+  icon?: (focused: boolean) => ReactNode;
   /**
    * Route prefixes that keep this item highlighted. `/` only ever matches itself;
    * everything else also matches its nested routes.
@@ -49,10 +51,11 @@ const NAV_ITEMS: SidebarItem[] = [
     match: ['/', '/card', '/card-onboard'],
   },
   {
-    label: 'Savings',
-    href: path.SAVINGS,
-    animatedIcon: 'savings',
-    match: ['/savings'],
+    label: 'Earn',
+    href: path.EARN,
+    icon: focused => <EarnTabIcon focused={focused} />,
+    // Savings is the detail page reached from an Earn vault card.
+    match: ['/earn', '/savings'],
   },
   {
     label: 'Rewards',
@@ -98,7 +101,7 @@ const SidebarLink = ({ item, isActive }: SidebarLinkProps) => (
     )}
   >
     <View className="w-6 items-center">
-      <AnimatedTabIcon name={item.animatedIcon} focused={isActive} />
+      {item.icon?.(isActive) ?? <AnimatedTabIcon name={item.animatedIcon!} focused={isActive} />}
     </View>
     <Text className="text-[20px] font-medium leading-[22px] text-white">{item.label}</Text>
   </Pressable>

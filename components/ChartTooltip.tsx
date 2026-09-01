@@ -17,6 +17,7 @@ interface ChartTooltipProps {
   payload?: TooltipPayload[];
   data?: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
+  compact?: boolean;
 }
 
 export function calculatePercentageChange(oldValue: number, newValue: number) {
@@ -27,7 +28,13 @@ export function calculatePercentageChange(oldValue: number, newValue: number) {
   return ((newValue - oldValue) / oldValue) * 100;
 }
 
-const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProps) => {
+const ChartTooltip = ({
+  active,
+  payload,
+  data,
+  formatToolTip,
+  compact = false,
+}: ChartTooltipProps) => {
   const { selectedPrice, setSelectedPriceChange, setSelectedPrice } = useCoinStore(
     useShallow(state => ({
       selectedPrice: state.selectedPrice,
@@ -86,12 +93,30 @@ const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProp
   };
 
   return (
-    <View className="rounded-xl bg-primary p-3 shadow-md">
-      <View className="gap-1">
-        <Text className="text-lg font-semibold text-primary-foreground">
+    <View
+      className={
+        compact
+          ? 'rounded-lg bg-primary px-2 py-1.5 shadow-md'
+          : 'rounded-xl bg-primary p-3 shadow-md'
+      }
+    >
+      <View className={compact ? 'gap-0.5' : 'gap-1'}>
+        <Text
+          className={
+            compact
+              ? 'text-[13px] font-semibold leading-[15px] text-primary-foreground'
+              : 'text-lg font-semibold text-primary-foreground'
+          }
+        >
           {formatToolTip ? formatToolTip(selectedPrice) : format(selectedPrice)}
         </Text>
-        <Text className="text-sm text-muted-foreground">
+        <Text
+          className={
+            compact
+              ? 'text-[10px] leading-3 text-muted-foreground'
+              : 'text-sm text-muted-foreground'
+          }
+        >
           {formatChartTooltipDate(currentTimestamp)}
         </Text>
       </View>

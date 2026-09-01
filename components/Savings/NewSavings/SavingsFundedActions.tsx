@@ -14,16 +14,16 @@ import { useSavingStore } from '@/store/useSavingStore';
 const DepositTriggerButton = (props: React.ComponentProps<typeof Pressable>) => (
   <Pressable
     {...props}
-    className="h-14 flex-1 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
+    className="h-[50px] flex-1 flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
   >
-    <Text className="text-base font-bold text-black">Deposit</Text>
+    <Text className="text-base font-semibold text-black">Deposit</Text>
   </Pressable>
 );
 
 const WithdrawTrigger = (props: React.ComponentProps<typeof Pressable>) => (
   <Pressable
     {...props}
-    className="h-14 flex-1 flex-row items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80"
+    className="h-[50px] flex-1 flex-row items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-95 active:opacity-80"
   >
     <Text className="text-base font-semibold text-white">Withdraw</Text>
   </Pressable>

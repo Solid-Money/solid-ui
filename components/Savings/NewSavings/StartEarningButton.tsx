@@ -18,9 +18,9 @@ const DepositTriggerButton = ({
 }: { label: string } & React.ComponentProps<typeof Pressable>) => (
   <Pressable
     {...props}
-    className="h-14 w-full flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
+    className="h-[50px] w-full flex-row items-center justify-center rounded-full bg-white transition-all active:scale-95 active:opacity-80"
   >
-    <Text className="text-base font-bold text-black">{label}</Text>
+    <Text className="text-base font-semibold text-black">{label}</Text>
   </Pressable>
 );
 
