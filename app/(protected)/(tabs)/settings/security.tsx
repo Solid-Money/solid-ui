@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
@@ -14,13 +14,14 @@ import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn } from '@/lib/utils';
 
 // Lazy load heavy modal components - only loaded when user opens them
-const SecurityEmailModal = lazy(() =>
+const SecurityEmailModal = lazyWithRetry(() =>
   import('@/components/SecurityEmailModal').then(m => ({ default: m.SecurityEmailModal })),
 );
-const SecurityTotpModal = lazy(() =>
+const SecurityTotpModal = lazyWithRetry(() =>
   import('@/components/SecurityTotpModal').then(m => ({ default: m.SecurityTotpModal })),
 );
 

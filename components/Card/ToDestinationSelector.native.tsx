@@ -4,11 +4,20 @@ import { ChevronDown, Wallet as WalletIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { formatNumber } from '@/lib/utils';
+import { assetLabel } from '@/lib/utils/cardHelpers';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 
-import { assetLabel, type ToDestinationProps } from './ToDestinationSelector.web';
+import type { ToDestinationProps } from './ToDestinationSelector.types';
 
 export type { ToDestinationProps };
+
+/**
+ * Re-exported so `import { assetLabel } from '.../ToDestinationSelector'`
+ * resolves on native too. Metro picks this `.native` file over the `.web` one,
+ * so anything the web module exports has to be exported here as well or it
+ * silently becomes `undefined` on device.
+ */
+export { assetLabel };
 
 export default function ToDestinationSelector({
   onChange,

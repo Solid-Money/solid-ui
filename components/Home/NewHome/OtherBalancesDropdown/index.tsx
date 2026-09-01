@@ -7,52 +7,47 @@ import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardSpendableBalanceUSD } from '@/hooks/useCardSpendableBalance';
 import { formatBalanceUSD } from '@/lib/utils';
+import { canDepositToCard, cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 
+import {
+  type CardBalanceDisplay,
+  getTotalBalance,
+  type OtherBalances,
+  shouldShowCard,
+  shouldShowSpendable,
+} from './balanceTotals';
 import OtherBalancesPie from './OtherBalancesPie';
 
-/** Data required by both the native and web balances sheets. */
-export type OtherBalances = {
-  walletBalance: number;
-  cardBalance: number;
-  savingsBalance: number;
-  userHasCard: boolean;
-  isLoading?: boolean;
-};
+export { getTotalBalance, shouldShowCard, shouldShowSpendable };
+export type { CardBalanceDisplay, OtherBalances };
 
 const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 
 /**
- * Whether the Card belongs in the breakdown. Shown when the user has an active
- * card OR when there's a card balance to surface — so the balance isn't dropped
- * for testers whose card status isn't ACTIVE yet.
+ * The issuer-dependent half of the breakdown, resolved once for whichever sheet
+ * is mounted.
+ *
+ * The native and web sheets need exactly this and nothing else from the issuer, so
+ * it lives here rather than being derived twice: three predicates duplicated across
+ * two files is three chances for the row shown and the action offered on it to fall
+ * out of step.
  */
-export const shouldShowCard = (cardBalance: number, userHasCard: boolean) =>
-  userHasCard || (cardBalance || 0) > 0;
+export const useCardBalanceDisplay = (): CardBalanceDisplay => {
+  const { provider } = useCardProvider();
+  const { data: spendableBalance } = useCardSpendableBalanceUSD();
 
-/**
- * The headline figure: Wallet + Card. They're combined in the UI only — the two
- * balances stay separate under the hood (funds must be moved from the wallet to
- * the card before they can be spent), which the breakdown sheet lays out.
- */
-export const getSpendableTotal = ({
-  walletBalance,
-  cardBalance,
-  userHasCard,
-}: Pick<OtherBalances, 'walletBalance' | 'cardBalance' | 'userHasCard'>) =>
-  (walletBalance || 0) + (shouldShowCard(cardBalance, userHasCard) ? cardBalance || 0 : 0);
-
-/** Everything the user holds: Wallet + Card + Savings (the pill's figure). */
-export const getTotalBalance = ({
-  walletBalance,
-  cardBalance,
-  savingsBalance,
-  userHasCard,
-}: OtherBalances) =>
-  getSpendableTotal({ walletBalance, cardBalance, userHasCard }) + (savingsBalance || 0);
+  return {
+    cardHoldsOwnBalance: cardHoldsBalance(provider),
+    canAddToCard: canDepositToCard(provider),
+    spendableBalance,
+  };
+};
 
 type PillProps = {
   walletValue: number;
@@ -61,44 +56,44 @@ type PillProps = {
 } & React.ComponentProps<typeof Pressable>;
 
 /**
- * The dropdown pill trigger: a proportional Wallet/Card/Savings donut + the
- * total across all three + chevron. Tapping opens the full breakdown.
+ * The dropdown pill trigger: a proportional Wallet/Card/Savings donut, the word
+ * "Balances" and a chevron. Tapping opens the full breakdown.
+ *
+ * It used to carry the total too. The headline above it is that same total now, so
+ * the pill said the number twice; naming what it opens is the part the headline
+ * cannot say, and the donut still shows the composition at a glance.
  */
 export const OtherBalancesPill = React.forwardRef<View, PillProps>(
-  ({ walletValue, cardValue, savingsValue, ...props }, ref) => {
-    const total = (walletValue || 0) + (cardValue || 0) + (savingsValue || 0);
-
-    return (
-      <Pressable
-        ref={ref}
-        accessibilityRole="button"
-        accessibilityLabel="Show balance breakdown"
-        className="h-[35px] min-w-[120px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
-        {...props}
+  ({ walletValue, cardValue, savingsValue, ...props }, ref) => (
+    <Pressable
+      ref={ref}
+      accessibilityRole="button"
+      accessibilityLabel="Show balance breakdown"
+      className="h-[35px] flex-row items-center gap-[10px] self-center rounded-full bg-[#1C1C1C] pl-[13px] pr-[12px] transition-all active:scale-95 active:opacity-80"
+      {...props}
+    >
+      <OtherBalancesPie
+        walletValue={walletValue}
+        cardValue={cardValue}
+        savingsValue={savingsValue}
+        walletColor={WALLET_COLOR}
+        cardColor={CARD_COLOR}
+        savingsColor={SAVINGS_COLOR}
+      />
+      <Text
+        className="font-semibold text-white"
+        style={{
+          fontFamily: 'MonaSans_600SemiBold',
+          fontSize: 16,
+          fontWeight: '600',
+          lineHeight: 18,
+        }}
       >
-        <OtherBalancesPie
-          walletValue={walletValue}
-          cardValue={cardValue}
-          savingsValue={savingsValue}
-          walletColor={WALLET_COLOR}
-          cardColor={CARD_COLOR}
-          savingsColor={SAVINGS_COLOR}
-        />
-        <Text
-          className="font-semibold text-white"
-          style={{
-            fontFamily: 'MonaSans_600SemiBold',
-            fontSize: 16,
-            fontWeight: '600',
-            lineHeight: 18,
-          }}
-        >
-          {formatBalanceUSD(total)}
-        </Text>
-        <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
-      </Pressable>
-    );
-  },
+        Balances
+      </Text>
+      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+    </Pressable>
+  ),
 );
 OtherBalancesPill.displayName = 'OtherBalancesPill';
 
@@ -116,12 +111,15 @@ const BalanceRow = ({
   color,
   label,
   value,
+  caption,
   isLoading,
   children,
 }: {
   color: string;
   label: string;
   value: number;
+  /** Optional line under the figure, for a row whose meaning isn't self-evident. */
+  caption?: string;
   isLoading?: boolean;
   children?: React.ReactNode;
 }) => (
@@ -135,6 +133,9 @@ const BalanceRow = ({
         <Skeleton className="h-7 w-24 rounded-lg" />
       ) : (
         <Text className="text-2xl font-semibold text-white">{formatBalanceUSD(value)}</Text>
+      )}
+      {!isLoading && !!caption && (
+        <Text className="text-xs font-medium text-muted-foreground">{caption}</Text>
       )}
     </View>
     {children}
@@ -160,9 +161,8 @@ export const WalletBalanceRow = ({
  * Card balance row (green). "Add" opens the "Fund your card" popup (share deposit
  * address / transfer from wallet) — same modal as the card screen.
  *
- * No "Add" for a Wirex card: it holds no balance to deposit into, and the figure in
- * this row is already how much of the user's savings the card can reach. They
- * authorize spending on the card screen instead (`canDepositToCard`).
+ * Only for a card that holds a balance. A Wirex cardholder gets
+ * {@link SpendableBalanceRow} in this slot instead.
  */
 export const CardBalanceRow = ({
   cardBalance,
@@ -178,6 +178,35 @@ export const CardBalanceRow = ({
   <BalanceRow color={CARD_COLOR} label="Card" value={cardBalance} isLoading={isLoading}>
     {canAdd ? <AddButton onPress={onAdd} /> : null}
   </BalanceRow>
+);
+
+/**
+ * Spendable row (green — the colour the Card row would have used): how much of
+ * what the user already holds their card can spend.
+ *
+ * Sits last because it is a reading of the rows above rather than another pot beside
+ * them, and it only makes sense once you have seen the pots it draws on: the card
+ * settles from USDC and USDT in Wallet and from soUSD in Savings, in that order, so
+ * this figure spans both.
+ *
+ * No "Add", and not by omission. This is not a pot that can be topped up: the
+ * money arrives through Wallet or Savings and shows up here on its own. An "Add"
+ * here would imply a third destination.
+ */
+export const SpendableBalanceRow = ({
+  spendableBalance,
+  isLoading,
+}: {
+  spendableBalance: number;
+  isLoading?: boolean;
+}) => (
+  <BalanceRow
+    color={CARD_COLOR}
+    label="Spendable"
+    value={spendableBalance}
+    caption="Stablecoins and savings your card can spend"
+    isLoading={isLoading}
+  />
 );
 
 /** Savings balance row (purple). "Add" opens the savings deposit modal (global). */
@@ -204,7 +233,15 @@ export const SavingsBalanceRow = ({
   </BalanceRow>
 );
 
-/** The three balances, in order: Wallet, Card (when relevant), Savings. */
+/**
+ * The breakdown, in order: Wallet, Card (only when the card holds money of its
+ * own), Savings, then Spendable.
+ *
+ * The first three are pots; Spendable closes the list because it is a reading of the
+ * ones above it rather than a balance of its own. It also replaces Card for an issuer
+ * whose card holds nothing — the two are alternatives, never both, since a $0 Card row
+ * beside a funded Spendable one would read as money lost.
+ */
 export const BalanceBreakdownRows = ({
   walletBalance,
   cardBalance,
@@ -213,16 +250,17 @@ export const BalanceBreakdownRows = ({
   isLoading,
   onDismiss,
   onCardAdd,
+  cardHoldsOwnBalance = true,
   canAddToCard = true,
-}: OtherBalances & {
-  onDismiss?: () => void;
-  onCardAdd?: () => void;
-  /** False for an issuer whose card cannot be deposited into (Wirex). */
-  canAddToCard?: boolean;
-}) => (
+  spendableBalance = 0,
+}: OtherBalances &
+  Partial<CardBalanceDisplay> & {
+    onDismiss?: () => void;
+    onCardAdd?: () => void;
+  }) => (
   <>
     <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
-    {shouldShowCard(cardBalance, userHasCard) && (
+    {shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) && (
       <CardBalanceRow
         cardBalance={cardBalance}
         isLoading={isLoading}
@@ -235,5 +273,8 @@ export const BalanceBreakdownRows = ({
       isLoading={isLoading}
       onDismiss={onDismiss}
     />
+    {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
+      <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
+    )}
   </>
 );

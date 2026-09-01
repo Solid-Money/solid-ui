@@ -9,8 +9,9 @@ import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
+import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
-import { getSpendableTotal } from '@/components/Home/NewHome/OtherBalancesDropdown';
+import { getTotalBalance } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
@@ -23,6 +24,7 @@ import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkele
 import { CARD_INFO_SCREEN } from '@/constants/path';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
@@ -32,6 +34,7 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
+import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -40,11 +43,13 @@ import { useUserStore } from '@/store/useUserStore';
  * builds via the dispatcher in index(.native).tsx. Production and all
  * desktop-web users keep LegacyHome.
  *
- * Big "Wallet Balance" number = Wallet + Card (combined for display only — the
- * breakdown sheet lists Wallet, Card and Savings separately and notes that funds
- * must be moved onto the card to spend). Savings sits behind the pill, so
- * headline + pill covers everything. The green card is merged in here; Activity
- * moved to the header bell.
+ * Big "Balance" number = everything the user holds, Wallet + Card + Savings,
+ * combined for display only; the pill below it opens the breakdown that keeps them
+ * apart. A card with no balance of its own (Wirex) is left out of the sum and
+ * shows up in the breakdown as "Spendable" instead — its balance is a slice of
+ * savings, so adding it would count the same money twice. The green card is merged
+ * in here; Activity is reached from "Recent activity → See all" at the bottom of
+ * this screen, and the header's right-hand button opens support.
  */
 export default function HomeScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
@@ -60,8 +65,11 @@ export default function HomeScreenNew() {
   const intercom = useIntercom();
   const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
+  const { provider: cardProvider } = useCardProvider();
 
   const userHasCard = hasCard(cardStatus);
+  // Whether the card balance is a pot of its own or a view onto savings (Wirex).
+  const cardHoldsOwnBalance = cardHoldsBalance(cardProvider);
 
   // `/?screen=card-info` opens the card pane — the addressable form of the card
   // details "page", now that `/card/details` is only a redirect onto this. The
@@ -163,12 +171,17 @@ export default function HomeScreenNew() {
     totalSavingsUSD === undefined;
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
-  // Headline = Wallet + Card. They're only combined for display; the breakdown
-  // sheet lists them separately and explains that funds must be moved onto the
-  // card to be spent. Savings stays out of it (it's the pill), so
-  // headline + pill = everything the user holds.
-  const spendableBalance = getSpendableTotal({ walletBalance, cardBalance, userHasCard });
-  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(spendableBalance);
+  // Headline = everything the user holds. Combined for display only; the breakdown
+  // sheet keeps Wallet, Card / Spendable and Savings apart. The mobile header title
+  // is the same figure, so scrolling the headline away doesn't change the number.
+  const totalBalance = getTotalBalance({
+    walletBalance,
+    cardBalance,
+    savingsBalance,
+    userHasCard,
+    cardHoldsOwnBalance,
+  });
+  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(totalBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
   // Which next-step prompt (verify / fund / Apple Pay) belongs under the card,
   // if any — null once the user is done or has snoozed the current one.
@@ -194,7 +207,7 @@ export default function HomeScreenNew() {
               <Skeleton className="h-[54px] w-48 rounded-xl" />
             </View>
             <View className="items-center" style={{ transform: [{ translateY: -10 }] }}>
-              <Skeleton className="h-[35px] w-32 rounded-full" />
+              <Skeleton className="h-[35px] w-36 rounded-full" />
             </View>
             <View className="flex-row items-center gap-3 px-4">
               <Skeleton className="h-14 flex-1 rounded-full" />
@@ -205,7 +218,7 @@ export default function HomeScreenNew() {
         ) : (
           <View className="gap-5">
             <HeroExit spec={HERO_EXIT.balance}>
-              <WalletBalanceHeadline balance={walletBalance} />
+              <WalletBalanceHeadline balance={totalBalance} />
             </HeroExit>
             <HeroExit spec={HERO_EXIT.balance}>
               <BalancePillRow>
@@ -270,6 +283,10 @@ export default function HomeScreenNew() {
             </View>
           </HeroExit>
         )}
+
+        <HeroExit spec={HERO_EXIT.belowCard}>
+          <HomeRecentActivity />
+        </HeroExit>
       </View>
     </PageLayout>
   );

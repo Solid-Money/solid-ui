@@ -8,28 +8,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
-import { CardCollateralTokenBalanceDto } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { assetLabel } from '@/lib/utils/cardHelpers';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 
-export type ToDestinationProps = {
-  onChange: (value: CardDepositSource) => void;
-  tokenSymbol?: string;
-  /**
-   * Collateral assets the card actually holds, richest first. A card funded in
-   * USDT and one funded in USDC both back the same spending balance, but each
-   * is withdrawn separately — so every asset has to be offered, not just the
-   * one the app happens to default to.
-   */
-  assets?: CardCollateralTokenBalanceDto[];
-  /** Address of the asset currently selected. */
-  selectedTokenAddress?: string;
-  onSelectAsset?: (asset: CardCollateralTokenBalanceDto) => void;
-};
+import type { ToDestinationProps } from './ToDestinationSelector.types';
 
-/** "USDC" when the chain answered `symbol()`, else a short address. */
-export const assetLabel = (asset: CardCollateralTokenBalanceDto): string =>
-  asset.symbol || `${asset.tokenAddress.slice(0, 6)}…${asset.tokenAddress.slice(-4)}`;
+export type { ToDestinationProps };
+
+/**
+ * Re-exported so callers already importing it from the selector keep working.
+ * The implementation is platform-neutral on purpose — see `assetLabel`.
+ */
+export { assetLabel };
 
 export default function ToDestinationSelector({
   onChange,

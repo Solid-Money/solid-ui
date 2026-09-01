@@ -9,7 +9,12 @@ type QueryResponse = {
   hasNextPage: boolean;
 };
 
-export const useCardTransactions = () => {
+/**
+ * `enabled` exists for callers that render for cardholders and non-cardholders
+ * alike (the merged activity feed): there is no card history to ask for without
+ * a card, and the request errors rather than coming back empty.
+ */
+export const useCardTransactions = (options?: { enabled?: boolean }) => {
   return useInfiniteQuery<
     QueryResponse,
     Error,
@@ -17,6 +22,7 @@ export const useCardTransactions = () => {
     string[],
     string | undefined
   >({
+    enabled: options?.enabled ?? true,
     queryKey: cardTransactionsQueryKey,
     queryFn: async ({ pageParam }) => {
       const response = await getCardTransactions(pageParam);

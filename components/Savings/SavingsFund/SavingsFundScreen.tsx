@@ -17,13 +17,16 @@ type SavingsFundStep = 'options' | 'networks' | 'address';
  */
 const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
   const setModal = useDepositStore(state => state.setModal);
+  const savingsFundIntent = useDepositStore(state => state.savingsFundIntent);
   const {
     selectedToken,
     selectedChainId,
     depositAddress,
     isPreparingSession,
+    hasSessionError,
     selectToken,
     selectNetwork,
+    retryPrepareSession,
     moveFromWallet,
     depositFromExternalWallet,
     openDetectedDeposit,
@@ -45,6 +48,8 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
         address={depositAddress}
         symbol={selectedToken}
         chainId={selectedChainId ?? 0}
+        hasError={hasSessionError}
+        onRetry={retryPrepareSession}
         onChangeNetwork={() => setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS)}
         onDepositDetected={openDetectedDeposit}
       />
@@ -56,6 +61,7 @@ const SavingsFundScreen = ({ step }: { step: SavingsFundStep }) => {
       onTokenPress={selectToken}
       onMoveFromWalletPress={moveFromWallet}
       onExternalWalletPress={depositFromExternalWallet}
+      intent={savingsFundIntent}
     />
   );
 };

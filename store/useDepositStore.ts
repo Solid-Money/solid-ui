@@ -9,7 +9,12 @@ import {
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { DepositModal, SourceDepositInstructions, TransactionStatusModal } from '@/lib/types';
+import {
+  DepositModal,
+  SavingsFundIntent,
+  SourceDepositInstructions,
+  TransactionStatusModal,
+} from '@/lib/types';
 
 // Type-only imports (erased at build → no thirdweb runtime cost on mobile).
 import type { Account, Wallet } from 'thirdweb/wallets';
@@ -95,10 +100,18 @@ interface DepositState {
   directDepositSession: DirectDepositSession;
   sessionStartTime?: number;
   depositFromSolid: boolean;
+  /**
+   * Why the savings direct-deposit flow was open. Deliberately kept out of
+   * `directDepositSession` (which is persisted) so a stale intent can never leak
+   * into a later open from the Savings tab; like `depositFromSolid` it lives for
+   * one flow and is cleared by `resetDepositFlow`.
+   */
+  savingsFundIntent: SavingsFundIntent;
   /** Transient (not persisted) — populated only on desktop by ThirdwebConnectionBridge. */
   externalWallet: ExternalWalletState;
   setExternalWallet: (data: ExternalWalletState) => void;
   setDepositFromSolid: (v: boolean) => void;
+  setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -127,6 +140,7 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
       sessionStartTime: undefined,
       depositFromSolid: false,
+      savingsFundIntent: 'savings',
       externalWallet: {
         address: undefined,
         status: 'unknown',
@@ -136,6 +150,7 @@ export const useDepositStore = create<DepositState>()(
       },
       setExternalWallet: data => set({ externalWallet: data }),
       setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
+      setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -168,6 +183,7 @@ export const useDepositStore = create<DepositState>()(
           directDepositSession: {},
           sessionStartTime: undefined,
           depositFromSolid: false,
+          savingsFundIntent: 'savings',
         }),
     }),
     {

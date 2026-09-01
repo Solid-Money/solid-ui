@@ -9,7 +9,10 @@ import { useShallow } from 'zustand/react/shallow';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
-import { getCardFundTokenIcon } from '@/components/Card/CardFund/constants';
+import {
+  CARD_FUND_DESTINATION_TYPE,
+  getCardFundTokenIcon,
+} from '@/components/Card/CardFund/constants';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
@@ -113,7 +116,9 @@ export default function CardDirectDepositModal({
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
-      withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
+      withRefreshToken(() =>
+        createDirectDepositSession(chainId, token, CARD_FUND_DESTINATION_TYPE),
+      ),
     onSuccess: data => {
       if (data?.walletAddress) setDepositAddress(data.walletAddress);
     },

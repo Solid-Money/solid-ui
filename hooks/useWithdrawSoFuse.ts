@@ -5,6 +5,7 @@ import { fuse } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
+import { WITHDRAW_SECONDS_TO_DEADLINE } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
@@ -51,7 +52,7 @@ const useWithdrawSoFuse = (): WithdrawSoFuseResult => {
             data: encodeFunctionData({
               abi: BoringQueue_ABI,
               functionName: 'requestOnChainWithdraw',
-              args: [WRAPPED_FUSE, amountWei, 1, 260000],
+              args: [WRAPPED_FUSE, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
             }),
             value: 0n,
           },

@@ -1,12 +1,13 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { WhatsNew } from '@/lib/types';
 
 // Lazy load WhatsNewModal - this component imports react-native-reanimated-carousel
 // which is a heavy library. Since WhatsNewModal is only shown conditionally for
 // authenticated users, we defer its bundle to improve FCP for all routes.
-const WhatsNewModal = React.lazy(() => import('./WhatsNewModal'));
+const WhatsNewModal = lazyWithRetry(() => import('./WhatsNewModal'));
 
 interface LazyWhatsNewModalProps {
   whatsNew: WhatsNew;

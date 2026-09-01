@@ -63,3 +63,10 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'soeth') return 'ETH';
   return null;
 }
+
+/**
+ * `secondsToDeadline` passed to BoringQueue.requestOnChainWithdraw. The clock
+ * starts at maturity, and once it runs out the request can no longer be solved
+ * — only cancelled — so this is the window the solver has to fill it.
+ */
+export const WITHDRAW_SECONDS_TO_DEADLINE = 7 * 24 * 60 * 60; // 7 days

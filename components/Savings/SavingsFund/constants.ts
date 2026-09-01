@@ -5,6 +5,8 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
+import type { SavingsFundIntent } from '@/lib/types';
+
 export type SavingsFundToken = {
   symbol: string;
   /** Share token minted for this deposit — shown as the row's subtitle. */
@@ -68,6 +70,22 @@ export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
   ...SAVINGS_FUND_STABLECOINS,
   ...SAVINGS_FUND_CRYPTO,
 ];
+
+/**
+ * The token groups a savings direct deposit offers, for the flow's intent.
+ *
+ * `card_deposit` is the card's "Deposit at least $5" gate, which completes off
+ * the soUSD balance alone — so it offers only the stablecoins that mint soUSD.
+ * Were ETH or WFUSE on offer there, a user could deposit the full $5, fund
+ * soETH / soFUSE instead, and leave the step stuck at "not met" with nothing
+ * on screen explaining why.
+ */
+export const getSavingsFundTokenGroups = (
+  intent: SavingsFundIntent,
+): { stablecoins: SavingsFundToken[]; crypto: SavingsFundToken[] } => ({
+  stablecoins: SAVINGS_FUND_STABLECOINS,
+  crypto: intent === 'card_deposit' ? [] : SAVINGS_FUND_CRYPTO,
+});
 
 /** Deposits are credited within roughly this window on every supported chain. */
 export const SAVINGS_FUND_ESTIMATED_TIME = '~3 min';

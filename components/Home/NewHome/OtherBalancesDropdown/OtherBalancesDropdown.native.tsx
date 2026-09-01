@@ -5,14 +5,17 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Text } from '@/components/ui/text';
-import { useCardProvider } from '@/hooks/useCardProvider';
-import { canDepositToCard } from '@/lib/utils/cardHelpers';
 
-import { BalanceBreakdownRows, type OtherBalances, OtherBalancesPill } from '.';
+import {
+  BalanceBreakdownRows,
+  type OtherBalances,
+  OtherBalancesPill,
+  useCardBalanceDisplay,
+} from '.';
 
 /**
- * Native balances control: a pill (total + Wallet/Card/Savings donut) that
- * presents a Gorhom bottom sheet with all three balances broken out. Mirrors
+ * Native balances control: a pill (Wallet/Card/Savings donut + label) that
+ * presents a Gorhom bottom sheet with the balances broken out. Mirrors
  * InfoCenterDropdown.native.tsx.
  */
 const OtherBalancesDropdown = ({
@@ -26,9 +29,9 @@ const OtherBalancesDropdown = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const shouldOpenCardDepositRef = useRef(false);
   const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
-  // A Wirex card has no balance to deposit into — see `canDepositToCard`.
-  const { provider } = useCardProvider();
-  const canAddToCard = canDepositToCard(provider);
+  // A Wirex card has no balance of its own, so it gets a Spendable row and no
+  // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
+  const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
 
   const present = useCallback(() => bottomSheetModalRef.current?.present(), []);
   const dismiss = useCallback(() => bottomSheetModalRef.current?.dismiss(), []);
@@ -51,7 +54,9 @@ const OtherBalancesDropdown = ({
     <View className="items-center">
       <OtherBalancesPill
         walletValue={walletBalance}
-        cardValue={cardBalance}
+        // Zero for a card with no balance of its own: its reported figure is a
+        // slice of savings, so a segment for it would draw the same money twice.
+        cardValue={cardHoldsOwnBalance ? cardBalance : 0}
         savingsValue={savingsBalance}
         onPress={present}
       />
@@ -76,7 +81,9 @@ const OtherBalancesDropdown = ({
             isLoading={isLoading}
             onDismiss={dismiss}
             onCardAdd={openCardDeposit}
+            cardHoldsOwnBalance={cardHoldsOwnBalance}
             canAddToCard={canAddToCard}
+            spendableBalance={spendableBalance}
           />
         </BottomSheetView>
       </BottomSheetModal>

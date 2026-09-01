@@ -191,7 +191,17 @@ export const BankAccountDetailsView = ({
             label="More information"
             onPress={() => Linking.openURL(VIRTUAL_ACCOUNT_TERMS_URL)}
           />
-          <LinkRow icon={<SupportRowIcon />} label="Contact support" onPress={openSupportDrawer} />
+          {/*
+            Wrapped, not passed bare: Pressable hands onPress the press event,
+            which openSupportDrawer would take as its `chatMessage` and forward
+            into Intercom's composer. Carried over from qa, which fixed this on
+            the inline version this component was extracted from.
+          */}
+          <LinkRow
+            icon={<SupportRowIcon />}
+            label="Contact support"
+            onPress={() => openSupportDrawer()}
+          />
         </View>
       </ScrollView>
 

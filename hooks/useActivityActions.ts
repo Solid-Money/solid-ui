@@ -221,7 +221,13 @@ export function useActivityActions() {
               status: isTerminal ? currentStatus! : params.status || TransactionStatus.PROCESSING,
               hash: txHash,
               url: getExplorerUrl(params.chainId, txHash),
+              // Re-send the creation metadata alongside submittedAt. createActivity
+              // fires its POST without awaiting it, so this PATCH can reach the
+              // backend first and land as the record's whole metadata — dropping
+              // fields like outputToken/outputAmount that savings uses to tell a
+              // swap into a vault token apart from interest.
               metadata: {
+                ...params.metadata,
                 submittedAt: new Date().toISOString(),
               },
             });

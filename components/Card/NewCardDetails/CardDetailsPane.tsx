@@ -30,8 +30,15 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { CardStatus, KycStatus } from '@/lib/types';
-import { canToggleCardFreeze } from '@/lib/utils/cardHelpers';
+import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
+import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { CardStatus } from '@/lib/types';
+import {
+  canAddFundsToCard,
+  canToggleCardFreeze,
+  canWithdrawFromCard,
+  isCustomerFundsRestricted,
+} from '@/lib/utils/cardHelpers';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -118,9 +125,11 @@ const CardDetailsPane = () => {
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
   const canToggleFreeze = canToggleCardFreeze(cardDetails);
-  const isCustomerPausedOrOffboarded =
-    customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
-  const canMoveCardFunds = !isCardFrozen && !isCustomerPausedOrOffboarded;
+  // Add funds and Withdraw part ways on a frozen card — see the two helpers.
+  const fundsAccess = {
+    isCardFrozen,
+    isCustomerRestricted: isCustomerFundsRestricted(customer?.status),
+  };
 
   /**
    * Dismiss: fly the card back to where it came from, then let the pane's sections
@@ -224,15 +233,19 @@ const CardDetailsPane = () => {
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
               onMorePress={() => setIsAddToWalletOpen(true)}
-              canAddFunds={canMoveCardFunds}
-              canWithdraw={canMoveCardFunds}
+              canAddFunds={canAddFundsToCard(fundsAccess)}
+              canWithdraw={canWithdrawFromCard(fundsAccess)}
             />
           </HeroEnter>
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
             <CashbackDetailsSheet
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
-              cashbackRate={rewardsData?.cashbackRate ?? 0}
+              cashbackRate={resolveTierCashbackRate(
+                rewardsData?.currentTier,
+                rewardsData?.cashbackRate,
+                IS_TIER_CASHBACK_HARDCODED,
+              )}
               cashbackThisMonth={cashbackThisMonth}
               maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
               allTimeCashback={allTimeCashback}

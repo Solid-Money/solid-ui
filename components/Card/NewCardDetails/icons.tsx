@@ -127,9 +127,22 @@ export const SnowflakeIcon = () => (
   </Svg>
 );
 
-/** Figma 21843:877 — the green diamond on the cashback card. */
-export const CashbackDiamondIcon = () => (
-  <Svg width={21.5} height={18.1082} viewBox="0 0 21.5 18.1082" fill="none">
+/** The diamond's own proportions, so a resized one keeps its geometry. */
+const CASHBACK_DIAMOND_WIDTH = 21.5;
+const CASHBACK_DIAMOND_HEIGHT = 18.1082;
+
+/**
+ * Figma 21843:877 — the green diamond on the cashback card, and the same glyph
+ * beside the Cashback row on a transaction's details (Figma 21287:5858), where
+ * it sits against 16px text and so is asked for smaller.
+ */
+export const CashbackDiamondIcon = ({ size = CASHBACK_DIAMOND_WIDTH }: SizedIconProps) => (
+  <Svg
+    width={size}
+    height={(size * CASHBACK_DIAMOND_HEIGHT) / CASHBACK_DIAMOND_WIDTH}
+    viewBox="0 0 21.5 18.1082"
+    fill="none"
+  >
     <Path
       d="M2.76261 2.54595C3.41236 1.66591 3.73723 1.22588 4.21924 0.987938C4.70125 0.750001 5.26776 0.750001 6.40078 0.750001H10.75H15.0993C16.2323 0.750001 16.7988 0.750001 17.2808 0.987938C17.7628 1.22588 18.0877 1.66591 18.7374 2.54595L19.4004 3.44396C20.3141 4.68151 20.7709 5.30029 20.7493 5.99785C20.7276 6.69542 20.2331 7.28758 19.2441 8.472L13.3868 15.4868C12.5727 16.4619 12.1656 16.9495 11.6906 17.16C11.0945 17.4243 10.4055 17.4243 9.80942 17.16C9.33445 16.9495 8.92733 16.4619 8.11319 15.4868L2.25587 8.472C1.2669 7.28758 0.772422 6.69542 0.750739 5.99785C0.729067 5.30029 1.18591 4.68151 2.0996 3.44396L2.76261 2.54595Z"
       stroke="#94F27F"

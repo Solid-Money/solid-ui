@@ -7,7 +7,10 @@ import { useMutation } from '@tanstack/react-query';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
-import { getCardFundTokenIcon } from '@/components/Card/CardFund/constants';
+import {
+  CARD_FUND_DESTINATION_TYPE,
+  getCardFundTokenIcon,
+} from '@/components/Card/CardFund/constants';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
@@ -92,7 +95,9 @@ export default function CardDirectDepositModalMobile({
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
-      withRefreshToken(() => createDirectDepositSession(chainId, token, 'RAIN_CARD')),
+      withRefreshToken(() =>
+        createDirectDepositSession(chainId, token, CARD_FUND_DESTINATION_TYPE),
+      ),
     onSuccess: data => {
       if (data?.walletAddress) setDepositAddress(data.walletAddress);
     },

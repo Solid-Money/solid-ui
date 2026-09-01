@@ -31,16 +31,16 @@ interface RegisterSpendActionProps {
  *
  * ## What the user is actually agreeing to
  *
- * A Wirex card holds no balance. Wirex pays the merchant and our backend takes the soUSD
- * from the user's Safe afterwards, so their savings *are* their card balance. To make
- * that possible they enable a Safe module and register spending limits — one signature
- * covering both, because `registerSafe` and `Safe.enableModule` each require the Safe
- * itself as sender.
+ * A Wirex card holds no balance. Wirex pays the merchant and our backend debits the
+ * user's Safe afterwards — USDC first, then USDT, then soUSD — so what they hold *is*
+ * their card balance. To make that possible they enable a Safe module and register
+ * spending limits: one signature covering both, because `registerSafe` and
+ * `Safe.enableModule` each require the Safe itself as sender.
  *
- * This is a bigger grant than the allowance flow it replaces, so the sheet says so
- * plainly: the module can take soUSD without a further signature, bounded by the caps
- * chosen here, and the user can switch it off at any time. Describing it as "authorize
- * once" would understate it.
+ * This is a bigger grant than the ERC-20 allowance flow it replaced, so the sheet says
+ * so plainly: the module can take those assets without a further signature, bounded by
+ * the caps chosen here, and the user can switch it off at any time. Describing it as
+ * "authorize once" would understate it.
  *
  * ## Why limits are presets and the timezone is never asked
  *
@@ -56,8 +56,22 @@ interface RegisterSpendActionProps {
 const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDaily, setSelectedDaily] = useState<number | null>(null);
-  const { registration, isRegistered, isRevoked, isPaused, isRegistering, error, register } =
-    useCardSpendRegistration();
+  // Turning spending off declines the card at the till, so the destructive button asks
+  // once before it signs. Local to the sheet, and cleared whenever it closes, so a
+  // half-confirmed state is never what greets the user next time.
+  const [isConfirmingDisable, setIsConfirmingDisable] = useState(false);
+  const {
+    registration,
+    isRegistered,
+    isRevoked,
+    isPaused,
+    isRegistering,
+    canDisable,
+    isDisabling,
+    error,
+    register,
+    disable,
+  } = useCardSpendRegistration();
 
   // Only offer what the module would actually accept. An option that reverts with
   // ExceedsOrgDailyCeiling is worse than an option that isn't there.
@@ -95,6 +109,24 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
     }
   };
 
+  const handleDisable = async () => {
+    try {
+      // False means the signature prompt was dismissed — the module is still enabled and
+      // the card still spends, so the sheet stays as it was.
+      if (!(await disable())) return;
+      Toast.show({
+        type: 'success',
+        text1: 'Card spending is off',
+        text2: 'Your card will decline until you turn it back on. Your limits are saved.',
+        props: { badgeText: '' },
+      });
+      setIsConfirmingDisable(false);
+      setIsOpen(false);
+    } catch {
+      // `error` from the hook renders in the sheet; the user stays here to retry.
+    }
+  };
+
   const title = isRegistered
     ? 'Card spending is on'
     : isRevoked
@@ -107,7 +139,13 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
           padding/label styling lives on its root Pressable, and the asChild Slot chain
           drops those classes. SlotTrigger clones and merges onPress instead. */}
       <SlotTrigger onPress={() => setIsOpen(true)}>{trigger}</SlotTrigger>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={next => {
+          setIsOpen(next);
+          if (!next) setIsConfirmingDisable(false);
+        }}
+      >
         <DialogContent className="border-0 bg-[#1C1C1C] sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-white">{title}</DialogTitle>
@@ -182,9 +220,9 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
             <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#1F2419] p-3">
               <ShieldCheck size={18} color="#94F27F" style={styles.noticeIcon} />
               <Text className="flex-1 text-xs leading-snug text-[#ACACAC]">
-                Your card can take soUSD from your Safe up to these limits without asking again.
-                Nothing else can — payments only ever go to Solid&apos;s settlement account. Turn it
-                off any time and it stops immediately.
+                Your card can take stablecoins and savings from your Safe up to these limits without
+                asking again. Nothing else can — payments only ever go to Solid&apos;s settlement
+                account. Turn it off any time and it stops immediately.
               </Text>
             </View>
           ) : null}
@@ -198,10 +236,56 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
           {error ? <Text className="mt-3 text-sm text-red-400">{error}</Text> : null}
 
           {isRegistered ? (
-            <View className="mt-5 flex-row items-center justify-center gap-2">
-              <Check size={18} color="#94F27F" />
-              <Text className="text-base font-bold text-[#94F27F]">Set up</Text>
-            </View>
+            <>
+              <View className="mt-5 flex-row items-center justify-center gap-2">
+                <Check size={18} color="#94F27F" />
+                <Text className="text-base font-bold text-[#94F27F]">Set up</Text>
+              </View>
+              {/* Only when the module is actually live. In the revoked state it is already
+                  off and the action above is "turn it back on", so an off switch there
+                  would be a button that cannot do anything. */}
+              {canDisable ? (
+                <>
+                  {isConfirmingDisable ? (
+                    <Text className="mt-4 text-center text-sm text-[#ACACAC]">
+                      Your card will decline every payment until you turn spending back on. Your
+                      daily limit stays saved.
+                    </Text>
+                  ) : null}
+                  <Button
+                    variant={isConfirmingDisable ? 'destructive' : 'outline'}
+                    className="mt-4 h-12 w-full rounded-xl"
+                    disabled={isDisabling}
+                    onPress={
+                      isConfirmingDisable ? handleDisable : () => setIsConfirmingDisable(true)
+                    }
+                  >
+                    {isDisabling ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Text className="text-base font-bold text-white">
+                        {isConfirmingDisable
+                          ? 'Yes, turn card spending off'
+                          : 'Turn card spending off'}
+                      </Text>
+                    )}
+                  </Button>
+                  {isConfirmingDisable ? (
+                    <Pressable
+                      className="mt-2 self-center px-3 py-2"
+                      disabled={isDisabling}
+                      onPress={() => setIsConfirmingDisable(false)}
+                    >
+                      <Text className="text-sm text-[#ACACAC]">Keep it on</Text>
+                    </Pressable>
+                  ) : null}
+                  <Text className="mt-3 text-center text-xs text-[#6F6F6F]">
+                    One signature removes the module from your Safe. Nothing can be taken from your
+                    savings by the card after that.
+                  </Text>
+                </>
+              ) : null}
+            </>
           ) : (
             <Button
               variant="brand"
