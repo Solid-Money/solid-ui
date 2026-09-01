@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
@@ -13,11 +13,13 @@ import {
 } from '@/components/Card/CardFund/constants';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { CardProvider } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useTransfiStore } from '@/store/useTransfiStore';
 
 type Step = 'options' | 'networks' | 'address';
 
@@ -30,6 +32,14 @@ const MODAL_STATES: Record<Step, ModalState> = {
 };
 
 const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
+
+/**
+ * Wait out this modal's exit animation before the buy-crypto steps open —
+ * mounting the next dialog in the same commit as this one unmounts leaves the
+ * closing sheet's view on top of the new one, swallowing its taps. Same delay,
+ * and the same reason, as the Rain funding modal.
+ */
+const HANDOFF_DELAY_MS = 260;
 
 export interface WirexCardFundModalProps {
   /** Omit (or pass null) when driving the modal with isOpen/onOpenChange. */
@@ -49,13 +59,16 @@ export interface WirexCardFundModalProps {
  * funds go (the Rain card on Base, or this cardholder's Safe on Fuse, where the
  * card spends from).
  *
+ * The local-currency rows are offered too, and for the same reason: TransFi has
+ * no USDC-on-Fuse entry, so the backend delivers the bought USDC to that same
+ * card deposit address and the direct-deposit pipeline carries it to the Safe.
+ *
  * What differs is only how much of the options screen is offered:
- * `WIREX_CARD_FUND_SECTIONS` leaves the stablecoin rows on and everything else
- * off until the matching backend leg exists. That is why this is a separate
- * component rather than a flag on `CardDirectDepositModal` — it needs none of
- * that modal's other machinery (thirdweb wallet connect, virtual accounts, the
- * buy-crypto onramp, the move-from-Solid handoff), so one file serves web
- * desktop, web mobile and native alike.
+ * `WIREX_CARD_FUND_SECTIONS` leaves everything else off until the matching
+ * backend leg exists. That is why this is a separate component rather than a
+ * flag on `CardDirectDepositModal` — it needs none of that modal's other
+ * machinery (thirdweb wallet connect, virtual accounts, the move-from-Solid
+ * handoff), so one file serves web desktop, web mobile and native alike.
  */
 export default function WirexCardFundModal({
   trigger = null,
@@ -63,6 +76,10 @@ export default function WirexCardFundModal({
   onOpenChange,
 }: WirexCardFundModalProps) {
   const { provider } = useCardProvider();
+  const { handleBuyCryptoPress } = useBuyCryptoEntry();
+  const resetTransfi = useTransfiStore(state => state.reset);
+  const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
+  const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Uncontrolled by default (trigger drives it); controlled when isOpen is passed,
   // e.g. by the home "Add Funds" pill, which has no trigger of its own.
@@ -130,6 +147,37 @@ export default function WirexCardFundModal({
     [goToStep, prepareSession, selectedToken],
   );
 
+  // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
+  // buy-crypto steps live in the global deposit modal, so this closes the funding
+  // modal and hands off, letting useBuyCryptoEntry route to KYC or the amount
+  // screen. The bought USDC is delivered to this cardholder's card deposit
+  // address, so it ends up spendable in their Safe — which is why the row belongs
+  // in the card funding flow at all.
+  const handleLocalCurrencyPress = useCallback(
+    (code: string) => {
+      track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+        deposit_method: 'buy_crypto',
+        currency: code,
+      });
+      resetTransfi();
+      setTransfiCurrency(code);
+
+      handleOpenChange(false);
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+      handoffTimer.current = setTimeout(() => {
+        void handleBuyCryptoPress();
+      }, HANDOFF_DELAY_MS);
+    },
+    [handleBuyCryptoPress, handleOpenChange, resetTransfi, setTransfiCurrency],
+  );
+
+  useEffect(
+    () => () => {
+      if (handoffTimer.current) clearTimeout(handoffTimer.current);
+    },
+    [],
+  );
+
   // The webhook has seen the transfer — hand the user straight to its progress screen.
   const handleDepositDetected = useCallback(
     (clientTxId: string) => {
@@ -173,7 +221,11 @@ export default function WirexCardFundModal({
   const content = (() => {
     if (step === 'options') {
       return (
-        <CardFundOptions onTokenPress={handleTokenPress} sections={WIREX_CARD_FUND_SECTIONS} />
+        <CardFundOptions
+          onTokenPress={handleTokenPress}
+          onLocalCurrencyPress={handleLocalCurrencyPress}
+          sections={WIREX_CARD_FUND_SECTIONS}
+        />
       );
     }
 
