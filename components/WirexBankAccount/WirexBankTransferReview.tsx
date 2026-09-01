@@ -160,8 +160,14 @@ export const WirexBankTransferReview = ({
         <Text className="text-[14px] leading-5 text-white/70">Pay with</Text>
         {options.length === 0 ? (
           <View className="rounded-twice bg-card p-5">
+            {/*
+              `estimated_amounts` is a quote for the requested tokens, not a
+              balance filter — Wirex only rejects a short balance at execute,
+              with ErrorInsufficientFunds. So an empty list means nothing was
+              priced, which is not the same as "you cannot afford this".
+            */}
             <Text className="text-[15px] text-white/70">
-              None of your balances can cover this transfer.
+              No payment token is available for this transfer right now.
             </Text>
           </View>
         ) : (
