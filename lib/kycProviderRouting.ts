@@ -43,11 +43,16 @@ const resolveRoutingCountry = async (): Promise<string | undefined> => {
  * available everywhere.
  *
  * The card answer is gated server-side on whether Wirex is enabled in that
- * environment AND on the caller's own identity: production runs Wirex for an
- * internal team cohort only, so the same Wirex country resolves to Sumsub for a
- * team member and Didit for everyone else. That per-user gate is why the country
- * alone is not enough to decide — the routing must be asked for, over an
- * authenticated request, and must not be cached across accounts.
+ * environment, and is decided on the user's STORED residence country rather
+ * than the one passed here — the backend reads the caller from the JWT and uses
+ * the argument only as a fallback for a user with no country stored yet. So the
+ * country passed in is not enough to predict the answer: the routing must be
+ * asked for over an authenticated request, and must not be cached across
+ * accounts.
+ *
+ * There is no longer an internal-team cohort narrowing this. Wirex is open to
+ * every user whose country it serves, and it takes precedence over Rain in the
+ * markets both cover.
  *
  * @param fallbackProvider provider to keep when the country or routing is
  *   unavailable — the buy-crypto flow passes the backend's own suggestion here.
