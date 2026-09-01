@@ -25,6 +25,7 @@ import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
+import OnRamperDepositType from './OnRamperDepositType';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
@@ -162,6 +163,8 @@ const DepositTypeSelection = () => {
           </Pressable>
         </CardFundGroup>
       </View>
+
+      <OnRamperDepositType />
 
       <VirtualAccountApplyDialog
         isOpen={isVirtualAccountApplyOpen}
