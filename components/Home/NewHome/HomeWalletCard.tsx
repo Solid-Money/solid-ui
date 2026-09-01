@@ -36,11 +36,15 @@ const GET_CARD_PANEL_HEIGHT = 140;
 // Let the card cover 10px more of the panel, shortening the empty space above
 // the CTA without changing its bottom padding.
 const GET_CARD_PANEL_COVER = 98;
+const GET_CARD_CTA_TOP_GAP = 8;
 const GET_CARD_LABEL_BOTTOM = 13;
 const GET_CARD_PANEL_ASPECT_RATIO = GET_CARD_PANEL_WIDTH / GET_CARD_PANEL_HEIGHT;
 const CARDLESS_STACK_ASPECT_RATIO =
   GET_CARD_PANEL_WIDTH /
-  (GET_CARD_PANEL_WIDTH / CARD_BODY_ASPECT_RATIO + GET_CARD_PANEL_HEIGHT - GET_CARD_PANEL_COVER);
+  (GET_CARD_PANEL_WIDTH / CARD_BODY_ASPECT_RATIO +
+    GET_CARD_PANEL_HEIGHT -
+    GET_CARD_PANEL_COVER +
+    GET_CARD_CTA_TOP_GAP);
 
 /**
  * The merged green VISA Platinum "glass" card shown on the wallet page. Always

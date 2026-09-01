@@ -1,9 +1,10 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Leaf, Star } from 'lucide-react-native';
+import { Star } from 'lucide-react-native';
 
 import cardAnimation from '@/assets/tabs-icons/card.json';
+import { EarnTabIcon } from '@/components/Earn/EarnTabIcon';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { AnimatedTabIcon } from '@/components/tabBar/AnimatedTabIcon';
@@ -76,7 +77,9 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, size }) => (
             <AnimatedTabIcon name="savings" focused={focused} size={size} />
           ),
-          href: path.SAVINGS,
+          // The detailed Savings experience remains available at `/savings`,
+          // but Earn is now the portfolio-level tab entry point.
+          href: null,
         }}
       />
 
@@ -147,9 +150,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="earn"
         options={{
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Earn',
-          tabBarIcon: ({ color }) => <Leaf size={28} color={color} />,
-          href: null,
+          headerShown: false,
+          tabBarIcon: ({ focused, size }) => <EarnTabIcon focused={focused} size={size} />,
+          href: path.EARN,
         }}
       />
       <Tabs.Screen

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
+import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
@@ -220,14 +221,14 @@ export default function HomeScreenNew() {
               <WalletBalanceHeadline balance={totalBalance} />
             </HeroExit>
             <HeroExit spec={HERO_EXIT.balance}>
-              <View style={{ transform: [{ translateY: -10 }] }}>
+              <BalancePillRow>
                 <OtherBalancesDropdown
                   cardBalance={cardBalance}
                   savingsBalance={savingsBalance}
                   userHasCard={userHasCard}
                   walletBalance={walletBalance}
                 />
-              </View>
+              </BalancePillRow>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
               <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />

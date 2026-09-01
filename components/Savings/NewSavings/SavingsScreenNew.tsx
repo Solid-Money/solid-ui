@@ -2,131 +2,100 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
-import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { VaultKey } from '@/constants/withdraw';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { VaultType } from '@/lib/types';
-import { formatBalanceUSD } from '@/lib/utils';
 
-import ApyDropdown from './ApyDropdown';
-import MoreSavingsOptions from './MoreSavingsOptions';
-import RecentSavingsActivity from './RecentSavingsActivity';
-import SavingsBalanceHeadline from './SavingsBalanceHeadline';
 import SavingsFundedActions from './SavingsFundedActions';
 import SavingsHelpModal from './SavingsHelpModal';
-import SavingsYieldBoostCard from './SavingsYieldBoostCard';
+import SavingsVaultHero from './SavingsVaultHero';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
+import VaultApyHistoryCard from './VaultApyHistoryCard';
+import VaultBalanceCard from './VaultBalanceCard';
 import { isVaultType } from './vaultDeepLink';
-import VaultSavingsSection from './VaultSavingsSection';
+import VaultFaqCard from './VaultFaqCard';
+import { hasSelectedVaultFunds } from './vaultFunding';
+import VaultStrategyBreakdownCard from './VaultStrategyBreakdownCard';
 
-import type { ApyByType } from './savingsVaultData';
+const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
+  [VaultType.USDC]: 'USD',
+  [VaultType.FUSE]: 'FUSE',
+  [VaultType.ETH]: 'ETH',
+};
 
 /**
- * Redesigned savings screen (Apple "glass" style), shown only on qa/preview
- * builds via the dispatcher in savings.tsx. Production and all
- * desktop-web users keep the legacy savings screen.
- *
- * Two states share the "Savings Balance" headline + APY pill:
- * - FUNDED (total savings > 0): the selected vault's savings detail + recent
- *   savings activity.
- * - EMPTY (total savings == 0): the "Simulate your savings" projection + other
- *   vault options.
- *
- * "Savings Balance" = total redeemable USD across all vaults (soUSD + soFUSE +
- * soETH). The APY dropdown switches the selected vault everywhere on the screen.
+ * Figma 24766:4743 — the detail page reached from an Earn vault card. A
+ * funded actions and a vault-specific balance card replace the empty-state CTA
+ * only when this selected vault has funds.
  */
 export default function SavingsScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
 
-  // `/savings?vault=fuse` deep-links straight to a vault — used by the rewards
-  // "Add FUSE to your savings" CTA. Seeds initial state only, so the user can
-  // still switch vaults from here afterwards.
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
-  const [selectedVaultType, setSelectedVaultType] = useState<VaultType>(
-    isVaultType(vaultParam) ? vaultParam : VaultType.USDC,
-  );
+  const selectedVaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-  const { data: totalSavingsUSD, isLoading: isSavingsLoading } = useTotalSavingsUSD();
-
-  const usdcApy = useMaxAPY(VaultType.USDC);
-  const fuseApy = useMaxAPY(VaultType.FUSE);
-  const ethApy = useMaxAPY(VaultType.ETH);
-
-  const apyByType: ApyByType = {
-    [VaultType.USDC]: { maxAPY: usdcApy.maxAPY, isAPYsLoading: usdcApy.isAPYsLoading },
-    [VaultType.FUSE]: { maxAPY: fuseApy.maxAPY, isAPYsLoading: fuseApy.isAPYsLoading },
-    [VaultType.ETH]: { maxAPY: ethApy.maxAPY, isAPYsLoading: ethApy.isAPYsLoading },
-  };
-
-  const savingsBalance = totalSavingsUSD ?? 0;
-  const isBalanceLoading = isSavingsLoading || totalSavingsUSD === undefined;
-  const mobileTitle = isBalanceLoading ? null : formatBalanceUSD(savingsBalance);
-  const selectedApy = apyByType[selectedVaultType].maxAPY;
-  const isFunded = savingsBalance > 0;
+  const { valuesByVault, isLoading: isSavingsLoading } = useTotalSavingsUSD();
+  const { vaults: walletVaults, isLoading: isWalletVaultsLoading } = useSavingsVaults();
+  const { maxAPY: selectedApy, isAPYsLoading } = useMaxAPY(selectedVaultType);
+  const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[selectedVaultType]);
+  const selectedBalanceUsd = Math.max(
+    valuesByVault?.[selectedVaultType] ?? 0,
+    walletVault?.balanceUSD ?? 0,
+  );
+  const isBalanceLoading = isSavingsLoading || isWalletVaultsLoading || valuesByVault === undefined;
+  const isFunded = hasSelectedVaultFunds(
+    valuesByVault,
+    selectedVaultType,
+    Boolean(walletVault?.tokens.length),
+  );
 
   return (
     <PageLayout
-      mobileTitle={mobileTitle}
-      mobileHeaderRightAction="help"
-      onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
-      desktopHeaderRightAction={
-        <HeaderHelpButton
-          accessibilityLabel="How savings works"
-          onPress={() => setIsHelpOpen(true)}
-        />
-      }
+      showNavbar={false}
+      edges={['right', 'left', 'bottom']}
       additionalContent={
         <SavingsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }
     >
-      <View className="mb-5 w-full gap-5 pb-24">
-        {isBalanceLoading ? (
-          <View className="items-center gap-6 pt-6">
-            <Skeleton className="h-16 w-48 rounded-xl" />
-            <Skeleton className="h-9 w-32 rounded-full" />
-            <Skeleton className="h-14 w-11/12 rounded-full" />
-          </View>
-        ) : (
-          <>
-            <View className="gap-5">
-              <SavingsBalanceHeadline balance={savingsBalance} />
-              <View style={{ transform: [{ translateY: -10 }] }}>
-                <ApyDropdown
-                  vaultType={selectedVaultType}
-                  apyByType={apyByType}
-                  onSelect={setSelectedVaultType}
-                />
-              </View>
-              {isFunded ? (
-                <SavingsFundedActions vaultType={selectedVaultType} />
-              ) : (
-                <StartEarningButton vaultType={selectedVaultType} />
-              )}
-            </View>
+      <View className="mx-auto mb-5 w-full max-w-[419px] pb-[140px] web:md:max-w-[40rem]">
+        <SavingsVaultHero
+          vaultType={selectedVaultType}
+          apy={selectedApy}
+          isApyLoading={isAPYsLoading}
+          onHelpPress={() => setIsHelpOpen(true)}
+        />
 
-            {isFunded ? (
-              <>
-                <VaultSavingsSection vaultType={selectedVaultType} />
-                <SavingsYieldBoostCard />
-                <RecentSavingsActivity />
-              </>
-            ) : (
-              <>
-                <SimulateSavingsCard apy={selectedApy} />
-                <MoreSavingsOptions
-                  selectedType={selectedVaultType}
-                  apyByType={apyByType}
-                  onSelect={setSelectedVaultType}
-                />
-              </>
-            )}
-          </>
-        )}
+        <View className="mt-[51px] gap-[46px]">
+          {isBalanceLoading ? (
+            <Skeleton className="mx-4 h-[50px] rounded-full bg-white/10" />
+          ) : isFunded ? (
+            <>
+              <SavingsFundedActions vaultType={selectedVaultType} />
+              <VaultBalanceCard vaultType={selectedVaultType} balanceUsd={selectedBalanceUsd} />
+            </>
+          ) : (
+            <StartEarningButton vaultType={selectedVaultType} />
+          )}
+
+          <SimulateSavingsCard apy={selectedApy} />
+
+          <VaultApyHistoryCard vaultType={selectedVaultType} />
+
+          <View className="gap-[17px]">
+            <Text className="mx-4 text-[16px] font-normal leading-4 text-white/50">Breakdown</Text>
+            <VaultStrategyBreakdownCard vaultType={selectedVaultType} />
+          </View>
+
+          <VaultFaqCard />
+        </View>
       </View>
     </PageLayout>
   );

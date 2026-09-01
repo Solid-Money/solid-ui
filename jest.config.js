@@ -11,6 +11,7 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.setup.js'],
   setupFilesAfterEnv: [],
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
+  testPathIgnorePatterns: ['/node_modules/', '/playwright/'],
   collectCoverageFrom: [
     'hooks/**/*.{ts,tsx}',
     'components/**/*.{ts,tsx}',

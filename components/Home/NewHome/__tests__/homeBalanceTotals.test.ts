@@ -2,7 +2,7 @@ import {
   getTotalBalance,
   shouldShowCard,
   shouldShowSpendable,
-} from '@/components/Home/NewHome/OtherBalancesDropdown';
+} from '@/components/Home/NewHome/OtherBalancesDropdown/balanceTotals';
 
 /**
  * The home headline is now every balance added together, which makes one mistake

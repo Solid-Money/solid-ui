@@ -55,7 +55,14 @@ describe('sumCardSpendableUSD', () => {
   });
 
   it('ignores an asset the card cannot spend', () => {
-    const tokens = [token({}), token({ contractTickerSymbol: 'WFUSE', quoteRate: 0.02 })];
+    const tokens = [
+      token({}),
+      token({
+        contractTickerSymbol: 'WFUSE',
+        contractAddress: '0x0000000000000000000000000000000000000001',
+        quoteRate: 0.02,
+      }),
+    ];
 
     expect(sumCardSpendableUSD(tokens, CARD_SPENDABLE_ASSETS)).toBeCloseTo(1.08, 6);
   });
