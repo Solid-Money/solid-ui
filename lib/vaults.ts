@@ -1,6 +1,6 @@
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
-import { DepositMethod, Vault, VaultDepositConfig } from '@/lib/types';
+import { DepositMethod, TokenBalance, Vault, VaultDepositConfig } from '@/lib/types';
 
 const DEFAULT_METHODS: DepositMethod[] = [
   'wallet',
@@ -72,6 +72,30 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
   const tokens = Object.keys(BRIDGE_TOKENS[chainId]?.tokens ?? {});
 
   return tokens.filter(symbol => config.supportedTokens.includes(symbol));
+};
+
+/** The wallet-token fields `hasDepositableWalletBalance` reads. */
+type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 'balance'>;
+
+/**
+ * Whether any of these wallet tokens could be deposited into `vault` — one the
+ * vault accepts, held on a chain it accepts, with a non-zero balance.
+ *
+ * Not the same question as "does the wallet hold anything": the deposit-from-Solid
+ * form is per-vault and per-chain (soUSD takes USDC/USDT on any bridged chain,
+ * soETH takes ETH/WETH on Ethereum, soFUSE takes FUSE/WFUSE on Fuse), so someone
+ * holding only FUSE has funds but none the USD vault could take.
+ */
+export const hasDepositableWalletBalance = (tokens: DepositableToken[], vault?: Vault): boolean => {
+  const { supportedChains, supportedTokens } = getVaultDepositConfig(vault);
+  const accepted = new Set(supportedTokens.map(symbol => symbol.toUpperCase()));
+
+  return tokens.some(
+    token =>
+      supportedChains.includes(token.chainId) &&
+      accepted.has(token.contractTickerSymbol?.toUpperCase()) &&
+      BigInt(token.balance || '0') > 0n,
+  );
 };
 
 export const getDefaultDepositSelection = (vault?: Vault) => {

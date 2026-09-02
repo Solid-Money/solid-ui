@@ -126,13 +126,17 @@ export const useSavingsFundFlow = () => {
     prepareSession({ chainId: selectedChainId, token: selectedToken });
   }, [prepareSession, selectedChainId, selectedToken]);
 
-  /** "Move from wallet or savings" — the existing deposit-from-Solid form. */
+  /** "Move from wallet" — the existing deposit-from-Solid form. */
   const moveFromWallet = useCallback(() => {
     setDepositFromSolid(true);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   }, [setDepositFromSolid, setModal]);
 
-  /** "Deposit from an external wallet" — the existing connect-wallet options. */
+  /**
+   * "Deposit from an external wallet" — the existing connect-wallet options
+   * sub-screen. Mobile only: desktop connects from the options screen itself
+   * (SavingsFundConnectWalletRow), which is all that sub-screen offered there.
+   */
   const depositFromExternalWallet = useCallback(() => {
     setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
   }, [setModal]);
