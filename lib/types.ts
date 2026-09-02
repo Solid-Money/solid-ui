@@ -1560,6 +1560,40 @@ export interface TierBenefit {
   image?: string;
 }
 
+/** One row of the tier screen's "Fees & Caps" table. */
+export interface TierFeeLine {
+  /**
+   * Stable row key: a FeeProduct value ('swap' | 'fx' | 'offramp' |
+   * 'bank_deposit'), or 'virtual_card' for the row with no fee behind it.
+   */
+  key: string;
+  label: string;
+  /** Rate as a fraction (0.005 = 0.5%). 0 when this tier pays nothing. */
+  rate: number;
+  /** Pre-rendered value: 'Free' when the rate is 0, else '0.5%'. */
+  value: string;
+}
+
+/**
+ * The "Fees & Caps" block for one tier.
+ *
+ * Values arrive pre-rendered from the same config the charge engine bills from,
+ * so the table can't promise "Free" while a fee is being charged, and the three
+ * tier tabs can't round the same rate differently.
+ */
+export interface TierFees {
+  lines: TierFeeLine[];
+  cashbackCap: string;
+  /** FUSE that must be staked to hold this tier outright. 0 when none is. */
+  fuseUnlockAmount: number;
+  /** Rendered requirement, e.g. 'Not required' or '400,000 FUSE'. */
+  fuseUnlock: string;
+  /** True when every fee on this tier is zero — the Ultra promise. */
+  allFree: boolean;
+  /** Copy under the table, absent on a tier that already pays nothing. */
+  footnote?: string;
+}
+
 export interface TierBenefits {
   tier: RewardsTier;
   depositBoost: TierBenefit;
@@ -1575,6 +1609,13 @@ export interface TierBenefits {
   bankDeposit: TierBenefit;
   swapFees: TierBenefit;
   support: TierBenefit;
+  /**
+   * Everything the "Fees & Caps" card needs, in one block.
+   *
+   * Optional because a client can outlive the backend that serves it — a build
+   * pointed at an older API renders the legacy rows rather than an empty card.
+   */
+  fees?: TierFees;
 }
 
 export interface TierBenefitItem {
@@ -1668,6 +1709,53 @@ export interface FullRewardsConfig {
   subscriptionDiscount: SubscriptionDiscountConfig;
   fuseStaking: FuseStakingConfig;
   referral: ReferralConfig;
+}
+
+/** Products Solid charges a per-tier fee on. Mirrors the backend FeeProduct. */
+export enum FeeProduct {
+  SWAP = 'swap',
+  FX = 'fx',
+  /** Bank withdrawal. Stored under its original `offramp` name. */
+  BANK_WITHDRAWAL = 'offramp',
+  BANK_DEPOSIT = 'bank_deposit',
+}
+
+/** The fee rates the signed-in user currently pays, from their live tier. */
+export interface ProductFeeRates {
+  tier: number;
+  tierName: string;
+  /** Rate per product, as fractions. 0 means this user pays nothing. */
+  rates: Record<FeeProduct, number>;
+  /** Fees computing below this (USD) are not charged at all. */
+  minChargeUsd: number;
+  /**
+   * Where an on-chain swap fee must be sent.
+   *
+   * Absent when the revenue wallet is unconfigured, which the client must treat
+   * as "do not collect a swap fee": appending a transfer to a zero or guessed
+   * address would burn the user's money.
+   */
+  revenueWalletAddress?: string;
+}
+
+/** What the user will pay on one specific amount. */
+export interface ProductFeeQuote {
+  product: FeeProduct;
+  tier: number;
+  tierName: string;
+  percentage: number;
+  feeAmountUsd: string;
+  waiveReason?: string;
+}
+
+export interface RecordSwapFeeParams {
+  transactionHash: string;
+  baseAmountUsd: number;
+  feeTokenAddress: string;
+  feeTokenSymbol?: string;
+  feeTokenAmount: string;
+  feeAmountUsd: number;
+  percentage?: number;
 }
 
 export enum LifiOrder {

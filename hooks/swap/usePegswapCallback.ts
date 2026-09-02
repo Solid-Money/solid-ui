@@ -1,9 +1,11 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Currency, Token, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import JSBI from 'jsbi';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Address, encodeFunctionData, formatUnits } from 'viem';
+import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
-import * as Sentry from '@sentry/react-native';
 
 import {
   BNB,
@@ -25,8 +27,7 @@ import {
 import { useReadPegSwapGetSwappableAmount, useSimulatePegSwapSwap } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ApprovalState } from '@/lib/types/approve-state';
-import { Address, encodeFunctionData, formatUnits } from 'viem';
-import { fuse } from 'viem/chains';
+
 import { useApproveCallbackFromPegSwap } from '../useApprove';
 import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';

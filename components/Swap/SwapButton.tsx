@@ -47,7 +47,16 @@ const SwapButton: React.FC = () => {
     isVoltageTradeLoading,
     isVoltageTrade,
     voltageTrade,
+    swapFee,
+    revenueWalletAddress,
   } = useDerivedSwapInfo();
+
+  // Passed down rather than re-derived inside each callback, so all three swap
+  // rails collect the same fee the confirm sheet quoted.
+  const feeCollection = useMemo(
+    () => ({ fee: swapFee, revenueWalletAddress }),
+    [swapFee, revenueWalletAddress],
+  );
 
   const {
     wrapType,
@@ -131,6 +140,7 @@ const SwapButton: React.FC = () => {
       : (() => {
           return undefined;
         })(),
+    feeCollection,
   );
 
   const {
@@ -157,6 +167,7 @@ const SwapButton: React.FC = () => {
           ),
         }
       : undefined,
+    feeCollection,
   );
 
   const {

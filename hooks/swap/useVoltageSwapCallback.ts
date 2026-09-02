@@ -1,24 +1,28 @@
+import { useCallback, useMemo, useState } from 'react';
+import { Percent } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { Address } from 'abitype';
+import { encodeFunctionData } from 'viem';
+import { fuse } from 'viem/chains';
 
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 import { SwapCallbackState } from '@/lib/types/swap-state';
-import { Percent } from '@cryptoalgebra/fuse-sdk';
-import { Address } from 'abitype';
-import { encodeFunctionData } from 'viem';
-import { fuse } from 'viem/chains';
+
 import { useApproveCallbackFromVoltageTrade } from '../useApprove';
 import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';
+
+import { SwapFeeCollection, useSwapFeeCollection } from './useSwapFeeCollection';
 import { VoltageTrade } from './useVoltageRouter';
 
 export function useVoltageSwapCallback(
   trade: VoltageTrade | undefined,
   allowedSlippage: Percent,
   successInfo?: TransactionSuccessInfo,
+  swapFee?: SwapFeeCollection,
 ) {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
@@ -35,6 +39,11 @@ export function useVoltageSwapCallback(
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
+  const { feeTransaction, reportCollectedFee } = useSwapFeeCollection(
+    swapFee,
+    trade?.inputAmount?.currency,
+  );
+
   const swapCallback = useCallback(async () => {
     if (!trade || !account || !user?.suborgId || !user?.signWith) return;
 
@@ -42,7 +51,7 @@ export function useVoltageSwapCallback(
       setIsSendingSwap(true);
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const transactions: Array<{ to: Address; data: `0x${string}`; value?: bigint }> = [];
+      const transactions: { to: Address; data: `0x${string}`; value?: bigint }[] = [];
 
       if (needAllowance && approvalConfig) {
         Sentry.addBreadcrumb({
@@ -73,6 +82,14 @@ export function useVoltageSwapCallback(
         data: trade?.data as `0x${string}`,
         value: BigInt(trade?.value?.quotient.toString() || '0'),
       });
+
+      // Solid's fee, in the same batch so the user signs once. Appended after
+      // the swap rather than before it: on a native-currency swap the value the
+      // router needs is still in the wallet at this point, and taking the fee
+      // first could leave the swap itself short.
+      if (feeTransaction) {
+        transactions.push(feeTransaction);
+      }
 
       const result = await trackTransaction(
         {
@@ -113,6 +130,15 @@ export function useVoltageSwapCallback(
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
+
+      // The hash lives on the result object, not on the unwrapped `transaction`
+      // (which is the receipt). Narrowed with `in` because TransactionResult is
+      // a union with the user-cancelled symbol.
+      reportCollectedFee(
+        result && typeof result === 'object' && 'transactionHash' in result
+          ? result.transactionHash
+          : undefined,
+      );
 
       // Invalidate all balance queries immediately after successful transaction
       queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -155,6 +181,8 @@ export function useVoltageSwapCallback(
     successInfo,
     trackTransaction,
     queryClient,
+    feeTransaction,
+    reportCollectedFee,
   ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications

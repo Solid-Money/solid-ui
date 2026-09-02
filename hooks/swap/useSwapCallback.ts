@@ -1,20 +1,22 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Address, encodeFunctionData, erc20Abi } from 'viem';
+import { fuse } from 'viem/chains';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-
 import { SwapCallbackState } from '@/lib/types/swap-state';
-import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
-import { Address, encodeFunctionData, erc20Abi } from 'viem';
-import { fuse } from 'viem/chains';
+
 import { useApproveCallbackFromTrade } from '../useApprove';
 import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';
+
 import { useSwapCallArguments } from './useSwapCallArguments';
+import { SwapFeeCollection, useSwapFeeCollection } from './useSwapFeeCollection';
 
 interface SwapCallEstimate {
   calldata: string;
@@ -37,6 +39,7 @@ export function useSwapCallback(
   trade: Trade<Currency, Currency, TradeType> | undefined,
   allowedSlippage: Percent,
   successInfo?: TransactionSuccessInfo,
+  swapFee?: SwapFeeCollection,
 ) {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
@@ -50,6 +53,11 @@ export function useSwapCallback(
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
   const swapCalldata = useSwapCallArguments(trade, allowedSlippage);
+
+  const { feeTransaction, reportCollectedFee } = useSwapFeeCollection(
+    swapFee,
+    trade?.inputAmount.currency,
+  );
 
   useEffect(() => {
     function findBestCall() {
@@ -124,7 +132,7 @@ export function useSwapCallback(
     try {
       setIsSendingSwap(true);
 
-      const transactions: Array<{ to: Address; data: `0x${string}`; value: bigint }> = [];
+      const transactions: { to: Address; data: `0x${string}`; value: bigint }[] = [];
 
       // Add approval transaction if needed
       if (needAllowance || (isTokenInput && !approvalConfig)) {
@@ -200,6 +208,18 @@ export function useSwapCallback(
         value: swapConfig.request.value || 0n,
       });
 
+      // Solid's fee, in the same batch so the user signs once. Appended after
+      // the swap rather than before it: on a native-currency swap the value the
+      // router needs is still in the wallet at this point, and taking the fee
+      // first could leave the swap itself short.
+      if (feeTransaction) {
+        transactions.push({
+          to: feeTransaction.to,
+          data: feeTransaction.data,
+          value: feeTransaction.value ?? 0n,
+        });
+      }
+
       if (transactions.length === 0) {
         throw new Error('No transactions to execute - this indicates a configuration issue');
       }
@@ -237,6 +257,15 @@ export function useSwapCallback(
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
+
+      // The hash lives on the result object, not on the unwrapped `transaction`
+      // (which is the receipt). Narrowed with `in` because TransactionResult is
+      // a union with the user-cancelled symbol.
+      reportCollectedFee(
+        result && typeof result === 'object' && 'transactionHash' in result
+          ? result.transactionHash
+          : undefined,
+      );
 
       Sentry.addBreadcrumb({
         message: 'Swap executed successfully',
@@ -315,6 +344,8 @@ export function useSwapCallback(
     successInfo,
     trackTransaction,
     queryClient,
+    feeTransaction,
+    reportCollectedFee,
   ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications

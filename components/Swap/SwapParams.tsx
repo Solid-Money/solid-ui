@@ -30,6 +30,7 @@ import {
   computeSlippageAdjustedAmounts,
   warningSeverity,
 } from '@/lib/utils/swap/prices';
+import { toFeeCurrencyAmount } from '@/lib/utils/swapFee';
 import { publicClient } from '@/lib/wagmi';
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 
@@ -42,8 +43,21 @@ const SwapParams = () => {
     voltageTrade,
     isVoltageTrade,
     isVoltageTradeLoading,
+    swapFee,
   } = useDerivedSwapInfo();
   const typedValue = useSwapState(state => state.typedValue);
+
+  /**
+   * Solid's own fee on this swap, as a currency amount.
+   *
+   * Undefined when the user's tier pays nothing, which is what hides the row
+   * entirely — an "Ultra fee: Free" line on a screen with no other fees reads
+   * as a fee that might appear later.
+   */
+  const solidFee = useMemo(
+    () => toFeeCurrencyAmount(currencies[SwapField.INPUT], swapFee.feeAmount),
+    [currencies, swapFee.feeAmount],
+  );
 
   const { wrapType } = useWrapCallback(
     currencies[SwapField.INPUT],
@@ -169,6 +183,10 @@ const SwapParams = () => {
     };
   }, [trade, tradeState.fee]);
 
+  const solidFeeString = solidFee
+    ? `${solidFee.toSignificant(4)} ${solidFee.currency.symbol}`
+    : undefined;
+
   const { realizedLPFee, priceImpact } = useMemo(() => {
     if (!trade) return { realizedLPFee: undefined, priceImpact: undefined };
 
@@ -261,6 +279,14 @@ const SwapParams = () => {
               {slidingFee ? `${slidingFee.toFixed(4)}%` : '-'}
             </Text>
           </View>
+          {solidFeeString ? (
+            <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
+              <Text className="text-base font-medium text-white/70">
+                Solid fee ({(swapFee.rate * 100).toFixed(2)}%)
+              </Text>
+              <Text className="text-base font-semibold">{solidFeeString}</Text>
+            </View>
+          ) : null}
           <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
             <Text className="text-base font-medium text-white/70">Price impact</Text>
             <PriceImpact priceImpact={priceImpact} />

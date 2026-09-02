@@ -64,6 +64,7 @@ import {
   EphemeralKeyResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
+  FeeProduct,
   FromCurrency,
   FullRewardsConfig,
   GenerateAgentApiKeyResponse,
@@ -84,6 +85,8 @@ import {
   OnrampAutomationRail,
   OnrampAutomationResponseDto,
   Points,
+  ProductFeeQuote,
+  ProductFeeRates,
   PromotionsBannerResponse,
   ProviderRoutingResponse,
   ProvisioningActivity,
@@ -94,6 +97,7 @@ import {
   RainConsumerType,
   RainContractResponseDto,
   RainKycSubmitResponse,
+  RecordSwapFeeParams,
   ReferralSummary,
   RegionInterestPayload,
   RewardsUserData,
@@ -1655,6 +1659,74 @@ export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
       credentials: 'include',
     },
   );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The product fee rates this user currently pays.
+ *
+ * Read per user rather than from a published table: the rate depends on the
+ * tier, and the tier depends on points and FUSE staking that only the server
+ * can resolve. One call returns every product so a screen renders its whole fee
+ * table from a single snapshot.
+ */
+export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/rates`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** What this user would pay on a given amount, right now. */
+export const fetchProductFeeQuote = async (
+  product: FeeProduct,
+  baseAmountUsd: number,
+): Promise<ProductFeeQuote> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/quote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ product, baseAmountUsd }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Tell the backend a swap fee was collected on-chain.
+ *
+ * Idempotent on the transaction hash, so a retry after a dropped response
+ * records the fee once. The server re-checks the amount against the user's live
+ * tier, so this reports what moved rather than asserting what was owed.
+ */
+export const recordSwapFee = async (
+  params: RecordSwapFeeParams,
+): Promise<{ recorded: boolean; feeAmountUsd: string }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/swap`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(params),
+  });
   if (!response.ok) throw response;
   return response.json();
 };

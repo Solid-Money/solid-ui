@@ -47,14 +47,16 @@ const TierProgressBar = ({
           style={[{ backgroundColor: '#FFD151', height: '100%' }, animatedProgress]}
         ></Animated.View>
       </View>
-      <View className="flex-1 flex-row items-center justify-between min-h-[20px]">
+      <View className="min-h-[20px] flex-1 flex-row items-center justify-between">
         <View>
-          <Text className="text-base text-rewards/70 font-normal">{toTitleCase(currentTier)}</Text>
+          <Text className="text-base font-normal text-rewards/70">{toTitleCase(currentTier)}</Text>
         </View>
         <View className="flex-row items-center gap-4">
           <View className="flex-row items-center gap-1">
-            <Text className="text-base font-normal">{compactNumberFormat(pointsNeeded)} more points to</Text>
-            <Text className="text-base text-rewards/70 font-normal">{toTitleCase(nextTier)}</Text>
+            <Text className="text-base font-normal">
+              {compactNumberFormat(pointsNeeded)} more points to
+            </Text>
+            <Text className="text-base font-normal text-rewards/70">{toTitleCase(nextTier)}</Text>
             <Image
               source={getTierIcon(nextTier)}
               contentFit="contain"

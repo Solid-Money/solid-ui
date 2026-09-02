@@ -24,12 +24,13 @@ import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { useRewardsUserData } from '@/hooks/useRewards';
+import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
+import { resolveTierFees } from './tierFees';
 import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
 import TierStatsBand from './TierStatsBand';
@@ -78,7 +79,6 @@ interface TierContent {
    * categories themselves come from SUBSCRIPTION_CATEGORIES.
    */
   cashback: { everyPurchase: string; subscriptionRate: string | null };
-  fees: { cardFees: string; bankDeposit: string; swaps: string; cashbackCap: string };
 }
 
 // Every tier's cashback figure on this screen comes from the shared rates table,
@@ -101,12 +101,6 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       everyPurchase: formatTierCashbackRate(RewardsTier.CORE),
       subscriptionRate: null,
     },
-    fees: {
-      cardFees: 'Free',
-      bankDeposit: 'Free',
-      swaps: 'Free',
-      cashbackCap: 'Up to 50$ monthly',
-    },
   },
   [RewardsTier.PRIME]: {
     headline: 'Enhanced Daily Rewards',
@@ -128,12 +122,6 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
       everyPurchase: formatTierCashbackRate(RewardsTier.PRIME),
       subscriptionRate: '25%',
     },
-    fees: {
-      cardFees: 'Free',
-      bankDeposit: 'Free',
-      swaps: 'Free',
-      cashbackCap: 'Up to 100$ monthly',
-    },
   },
   [RewardsTier.ULTRA]: {
     headline: 'Unmatched Spending Power',
@@ -154,12 +142,6 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     cashback: {
       everyPurchase: formatTierCashbackRate(RewardsTier.ULTRA),
       subscriptionRate: '50%',
-    },
-    fees: {
-      cardFees: 'Free',
-      bankDeposit: 'Free',
-      swaps: 'Free',
-      cashbackCap: 'Up to 200$ monthly',
     },
   },
 };
@@ -267,55 +249,87 @@ const CoreCashbackCard = () => {
   );
 };
 
-const CoreFeesCard = () => {
-  const { fees } = TIER_CONTENT[RewardsTier.CORE];
-  const rows = [
-    { label: 'Card fees', value: fees.cardFees, top: 73, emphasize: false },
-    { label: 'Bank deposit', value: fees.bankDeposit, top: 125, emphasize: true },
-    { label: 'Swaps', value: fees.swaps, top: 177, emphasize: true },
-  ];
+/**
+ * The "Fees & Caps" table for one tier.
+ *
+ * Every row is driven by the live fee config, so what this shows and what the
+ * charge engine bills can't drift apart. One component for all three tiers: the
+ * Core and premium versions were byte-identical apart from which hardcoded
+ * block they read, and keeping two copies is how a fee ends up correct on one
+ * tab and stale on another.
+ *
+ * Laid out in flow rather than at fixed offsets, which the previous version
+ * used. There are now seven rows rather than four, they are driven by config
+ * that can grow a product, and an absolute layout silently overlaps its rows
+ * the moment there is one more than it was measured for.
+ */
+const TierFeesCard = ({ tier }: { tier: RewardsTier }) => {
+  const { data: tierBenefits } = useTierBenefits();
+  const fees = resolveTierFees(tier, tierBenefits?.find(benefit => benefit.tier === tier)?.fees);
 
   return (
-    <View className="relative mx-4 mt-[15px] h-[292px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
+    <View className="mx-4 mt-[15px] overflow-hidden rounded-twice bg-[#1C1C1C]">
+      <Text className="px-[19px] pb-[19px] pt-[19px] text-white/70" style={CORE_MEDIUM_16}>
         Fees & Caps
       </Text>
-      <View className="absolute left-0 right-0 top-[57px]">
-        <CoreDivider />
-      </View>
-      {rows.map(row => (
-        <View
-          key={row.label}
-          className="absolute left-[19px] right-4 h-9 flex-row items-center justify-between"
-          style={{ top: row.top }}
-        >
+      <CoreDivider />
+
+      <View className="px-[19px] py-2">
+        {fees.lines.map(line => (
+          <View key={line.key} className="h-[52px] flex-row items-center justify-between">
+            <Text
+              className="text-white"
+              style={{
+                ...CORE_MEDIUM_16,
+                // The virtual card is the one row that is not a fee, so it sits
+                // in the lighter weight the fee rows use for emphasis by contrast.
+                fontFamily:
+                  line.key === 'virtual_card' ? 'MonaSans_500Medium' : 'MonaSans_600SemiBold',
+              }}
+            >
+              {line.label}
+            </Text>
+            <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
+              <Text className="text-white" style={CORE_MEDIUM_16}>
+                {line.value}
+              </Text>
+            </View>
+          </View>
+        ))}
+
+        <View className="h-[52px] flex-row items-center justify-between">
           <Text
             className="text-white"
-            style={{
-              ...CORE_MEDIUM_16,
-              fontFamily: row.emphasize ? 'MonaSans_600SemiBold' : 'MonaSans_500Medium',
-            }}
+            style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
           >
-            {row.label}
+            Cashback cap
           </Text>
-          <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
-            <Text className="text-white" style={CORE_MEDIUM_16}>
-              {row.value}
-            </Text>
-          </View>
+          <Text className="text-right text-white" style={CORE_MEDIUM_16}>
+            {fees.cashbackCap}
+          </Text>
         </View>
-      ))}
-      <View className="absolute left-[19px] right-4 top-[238px] flex-row justify-between">
-        <Text
-          className="text-white"
-          style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
-        >
-          Cashback cap
-        </Text>
-        <Text className="text-right text-white" style={CORE_MEDIUM_16}>
-          {fees.cashbackCap}
-        </Text>
+
+        <View className="h-[52px] flex-row items-center justify-between">
+          <Text
+            className="text-white"
+            style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
+          >
+            FUSE unlock
+          </Text>
+          <Text className="text-right text-white/70" style={CORE_MEDIUM_16}>
+            {fees.fuseUnlock}
+          </Text>
+        </View>
       </View>
+
+      {fees.footnote ? (
+        <Text
+          className="px-[19px] pb-[19px] text-center text-brand"
+          style={{ ...CORE_REGULAR_14, lineHeight: 18 }}
+        >
+          {fees.footnote}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -429,59 +443,6 @@ const PremiumCashbackCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.U
   );
 };
 
-const PremiumFeesCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
-  const { fees } = TIER_CONTENT[tier];
-  const rows = [
-    { label: 'Card fees', value: fees.cardFees, top: 73, emphasize: false },
-    { label: 'Bank deposit', value: fees.bankDeposit, top: 125, emphasize: true },
-    { label: 'Swaps', value: fees.swaps, top: 177, emphasize: true },
-  ];
-
-  return (
-    <View className="relative mx-4 mt-[15px] h-[292px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
-        Fees & Caps
-      </Text>
-      <View className="absolute left-0 right-0 top-[57px]">
-        <CoreDivider />
-      </View>
-      {rows.map(row => (
-        <View
-          key={row.label}
-          className="absolute left-[19px] right-4 h-9 flex-row items-center justify-between"
-          style={{ top: row.top }}
-        >
-          <Text
-            className="text-white"
-            style={{
-              ...CORE_MEDIUM_16,
-              fontFamily: row.emphasize ? 'MonaSans_600SemiBold' : 'MonaSans_500Medium',
-            }}
-          >
-            {row.label}
-          </Text>
-          <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
-            <Text className="text-white" style={CORE_MEDIUM_16}>
-              {row.value}
-            </Text>
-          </View>
-        </View>
-      ))}
-      <View className="absolute left-[19px] right-4 top-[238px] flex-row justify-between">
-        <Text
-          className="text-white"
-          style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
-        >
-          Cashback cap
-        </Text>
-        <Text className="text-right text-white" style={CORE_MEDIUM_16}>
-          {fees.cashbackCap}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
 /**
  * Redesigned "Explore tiers" screen (Apple "glass" style companion to
  * RewardsScreenNew). Reachable from the "Explore tiers" button on the
@@ -580,7 +541,7 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
 
         <CoreSummaryAndPerks />
         <CoreCashbackCard />
-        <CoreFeesCard />
+        <TierFeesCard tier={RewardsTier.CORE} />
       </View>
     );
   }
@@ -653,7 +614,7 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
 
       <PremiumSummaryAndPerks tier={tier} />
       <PremiumCashbackCard tier={tier} />
-      <PremiumFeesCard tier={tier} />
+      <TierFeesCard tier={tier} />
     </View>
   );
 };

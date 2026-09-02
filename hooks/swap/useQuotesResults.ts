@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
+import { Currency, CurrencyAmount, encodeRouteToPath } from '@cryptoalgebra/fuse-sdk';
+import { useReadContracts } from 'wagmi';
+
 import { ALGEBRA_QUOTER_V2 } from '@/constants/addresses';
 import { algebraQuoterV2ABI } from '@/lib/abis';
 import { fuseConfig } from '@/lib/wagmi';
-import { Currency, CurrencyAmount, encodeRouteToPath } from '@cryptoalgebra/fuse-sdk';
-import { useMemo } from 'react';
-import { useReadContracts } from 'wagmi';
+
 import { useAllRoutes } from './useAllRoutes';
 
 export function useQuotesResults({
