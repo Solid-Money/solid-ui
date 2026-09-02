@@ -19,6 +19,7 @@ import { useSpinStatus } from '@/hooks/useSpinWin';
 import { IS_TIER_CASHBACK_HARDCODED, isDevFeatureEnabled } from '@/lib/config';
 import { resolveTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
+import { useSwapState } from '@/store/swapStore';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
@@ -28,9 +29,9 @@ import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
 import { hasSkipTheLine } from './skipTheLine';
-import SkipTheLineSection from './SkipTheLineSection';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
+import TierUpgradeCard from './TierUpgradeCard';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -50,6 +51,7 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
@@ -110,6 +112,12 @@ export default function RewardsScreenNew() {
   // page with Core-tier defaults and zeroed stats rather than an error state.
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const totalPoints = rewardsData?.totalPoints ?? 0;
+  const nextTier = rewardsData?.nextTier ?? null;
+  const skipLine = rewardsData?.fuseSkipLine;
+  const showTierUpgradeCard =
+    hasSkipTheLine(skipLine) &&
+    nextTier !== null &&
+    skipLine.tiers.some(rung => rung.tier === nextTier);
 
   if (rewardsLocked) {
     return (
@@ -226,6 +234,15 @@ export default function RewardsScreenNew() {
           cashback={cashback}
           cashbackPending={cashbackPending}
           referrals={referrals}
+          cashbackDetails={{
+            cashbackRate,
+            cashbackThisMonth: cashback,
+            cashbackPendingThisMonth: cashbackPending,
+            maxCashbackMonthly: rewardsData?.maxCashbackMonthly ?? 0,
+            allTimeCashback,
+          }}
+          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+          onReferralsPress={() => setIsReferralModalOpen(true)}
         />
 
         <View className="mt-8">
@@ -241,13 +258,16 @@ export default function RewardsScreenNew() {
           />
         </View>
 
-        {/* Sits below the earned benefits: this is the shortcut past them.
-            Renders nothing unless the backend says the mechanic is live. */}
-        {hasSkipTheLine(rewardsData?.fuseSkipLine) && (
-          <View className="mt-8">
-            <SkipTheLineSection
-              skipLine={rewardsData?.fuseSkipLine}
-              onAddFuse={() => router.push(path.SAVINGS_FUSE)}
+        {/* The compact card presents both routes to the next tier: normal points
+            progress and the optional FUSE shortcut configured by the backend. */}
+        {showTierUpgradeCard && (
+          <View className="mt-8 px-4">
+            <TierUpgradeCard
+              currentPoints={totalPoints}
+              targetPoints={rewardsData?.nextTierPoints ?? 0}
+              nextTier={nextTier}
+              skipLine={skipLine}
+              onUpgradeTier={() => openBuyFuse(nextTier ?? undefined)}
             />
           </View>
         )}
