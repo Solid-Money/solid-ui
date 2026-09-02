@@ -9,10 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
+import {
+  formatUsd,
+  INITIAL_DAILY_LIMIT_USD,
+  offerableDailyPresets,
+  usdToOnChain,
+} from '@/constants/cardSpendModule';
 import { path } from '@/constants/path';
+import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
-import { CardStatus } from '@/lib/types';
+import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -49,12 +56,26 @@ const underlineProps = {
   borderColor: 'rgba(255, 255, 255, 1)' as const,
 };
 
+/**
+ * What the activation button is doing, so the label can say which of its two on-chain
+ * steps the user is being asked to approve. A single boolean could not: the second step
+ * raises a signature prompt for something the first never mentioned.
+ */
+type ActivationPhase = 'idle' | 'creating' | 'enabling-spend';
+
 export default function CardReady() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: cardStatusResponse } = useCardStatus();
-  const [activating, setActivating] = useState(false);
+  const { data: cardStatusResponse, refetch: refetchCardStatus } = useCardStatus();
+  const [activationPhase, setActivationPhase] = useState<ActivationPhase>('idle');
   const [consents, setConsents] = useState<ConsentState>(initialConsents);
+  const activating = activationPhase !== 'idle';
+
+  // Read the module state up front, before there is a card to resolve an issuer from —
+  // this screen registers the Safe in the same press that creates the card, so waiting
+  // for the issuer would mean waiting for the thing that has not happened yet.
+  const { registration: spendRegistration, register: registerCardSpending } =
+    useCardSpendRegistration({ enabled: true });
 
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
   const setShouldShowWelcomePopup = useCardWelcomePopupStore(
@@ -89,6 +110,25 @@ export default function CardReady() {
 
   const toggle = (key: ConsentKey) => setConsents(prev => ({ ...prev, [key]: !prev[key] }));
 
+  /**
+   * The daily cap the activation press registers with, or null when the org has no
+   * limit open that the module would accept.
+   *
+   * {@link INITIAL_DAILY_LIMIT_USD} clamped *downwards* to what the org actually allows —
+   * never upwards. A ceiling below the default is the org saying this account may not
+   * have that much, so the answer is the largest offer underneath it rather than the
+   * nearest one; overshooting would only revert with ExceedsOrgDailyCeiling.
+   *
+   * Falls back to the plain default when the chain read has not landed yet — the mutation
+   * re-reads and refuses a limit above the ceilings anyway, so the worst case there is a
+   * skipped step, not a failed transaction.
+   */
+  const initialDailyLimit = useMemo(() => {
+    if (!spendRegistration) return INITIAL_DAILY_LIMIT_USD;
+    const offerable = offerableDailyPresets(spendRegistration);
+    return offerable.filter(dollars => dollars <= INITIAL_DAILY_LIMIT_USD).at(-1) ?? null;
+  }, [spendRegistration]);
+
   // This screen creates the card, and the backend allows exactly one per
   // provider. Re-entering it with a card already in flight (browser back, a deep
   // link, a stale tab) leaves the only button here guaranteed to fail with "card
@@ -100,11 +140,48 @@ export default function CardReady() {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 
+  /**
+   * Enable `SolidCashModule` on the Safe with the smallest daily limit, as part of the
+   * same press that created the card.
+   *
+   * A Wirex card holds no balance — it spends from the user's Safe — so a card without
+   * this module is a card that declines everything. Splitting it into a second visit and
+   * a second signature is what left cardholders with a card they could not use, so it
+   * rides along here.
+   *
+   * Deliberately best-effort: the card already exists at this point, and there is a
+   * setup action on the card screen. A failed or dismissed signature must not read as a
+   * failed activation, because the card is genuinely there either way.
+   */
+  const enableCardSpending = async () => {
+    if (initialDailyLimit === null || spendRegistration?.registered) return;
+
+    const explainSetupIsPending = () =>
+      Toast.show({
+        type: 'info',
+        text1: 'Finish setting up card spending',
+        text2: 'Your card is ready — open it and tap Set up to let it spend from savings.',
+        props: { badgeText: '' },
+      });
+
+    try {
+      setActivationPhase('enabling-spend');
+      // False means the signature prompt was dismissed: nothing was granted, so the card
+      // cannot spend yet and the user has to be told where to finish.
+      if (!(await registerCardSpending(initialDailyLimit, 'card_activation'))) {
+        explainSetupIsPending();
+      }
+    } catch (error) {
+      console.error('Error enabling card spending during activation:', error);
+      explainSetupIsPending();
+    }
+  };
+
   const handleActivateCard = async () => {
     if (!allAccepted) return;
 
     try {
-      setActivating(true);
+      setActivationPhase('creating');
 
       await withRefreshToken(() =>
         submitCardConsents({
@@ -122,6 +199,15 @@ export default function CardReady() {
       // Show the welcome popup whenever the card lands, including when it opens a
       // moment later on the issuance flow.
       setShouldShowWelcomePopup(true);
+
+      // Read the issuer off the row the card was just written to, rather than the
+      // pre-press copy in `cardStatusResponse`. `createCard` does not report a provider,
+      // and `resolveCardIssuer` cannot help here either — it only names an issuer for an
+      // active card, and a fresh Wirex card sits at PENDING for the first few seconds.
+      const { data: refreshedStatus } = await refetchCardStatus();
+      if (refreshedStatus?.provider === CardProvider.WIREX) {
+        await enableCardSpending();
+      }
 
       if (card.status !== CardStatus.PENDING) {
         // BD users land on the issuance flow to complete the minimum-deposit
@@ -152,7 +238,7 @@ export default function CardReady() {
         props: { badgeText: '' },
       });
     } finally {
-      setActivating(false);
+      setActivationPhase('idle');
     }
   };
 
@@ -220,9 +306,25 @@ export default function CardReady() {
         className="mt-6 h-12 w-full rounded-xl"
       >
         <Text className="text-base font-bold text-primary-foreground">
-          {activating ? 'Activating...' : 'Activate card'}
+          {activationPhase === 'enabling-spend'
+            ? 'Enabling card spending...'
+            : activating
+              ? 'Activating...'
+              : 'Activate card'}
         </Text>
       </Button>
+
+      {/* Shown only once the card exists and its issuer turns out to be the one that
+          spends from savings — that is the first moment this is true rather than a guess,
+          and it is the moment the signature prompt appears. Saying it up front would mean
+          telling every applicant about a grant most of them will never be asked for. */}
+      {activationPhase === 'enabling-spend' && initialDailyLimit !== null ? (
+        <Text className="mt-3 text-center text-xs leading-snug text-[#ACACAC]">
+          Approve the signature to let your card spend from your savings, up to{' '}
+          {formatUsd(usdToOnChain(initialDailyLimit))} a day. You can change that limit or turn
+          spending off any time from your card.
+        </Text>
+      ) : null}
     </CardStatusPage>
   );
 }

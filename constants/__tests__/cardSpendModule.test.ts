@@ -1,22 +1,24 @@
 import {
   DAILY_LIMIT_PRESETS_USD,
+  formatDelayDuration,
   formatUsd,
   getDeviceTimezoneOffsetSeconds,
+  INITIAL_DAILY_LIMIT_USD,
   MONTHLY_LIMIT_MULTIPLIER,
+  monthlyLimitFor,
+  offerableDailyPresets,
   onChainToUsd,
   ONE_USD,
   usdToOnChain,
 } from '@/constants/cardSpendModule';
 
 /**
- * Mirrors the filter in `RegisterSpendAction`, which decides which daily limits are
- * offered. Kept here so the constraint can be tested without rendering the sheet.
+ * The filter the setup sheet and the activation flow both offer limits through, called
+ * the way they call it. Exercised here rather than through the sheet so the constraint
+ * is tested without rendering anything.
  */
-const offerablePresets = (maxDaily: bigint, maxMonthly: bigint) =>
-  DAILY_LIMIT_PRESETS_USD.filter(dollars => {
-    const daily = usdToOnChain(dollars);
-    return daily <= maxDaily && daily * MONTHLY_LIMIT_MULTIPLIER <= maxMonthly;
-  });
+const offerablePresets = (maxDailyLimitUsd: bigint, maxMonthlyLimitUsd: bigint) =>
+  offerableDailyPresets({ maxDailyLimitUsd, maxMonthlyLimitUsd });
 
 describe('getDeviceTimezoneOffsetSeconds', () => {
   afterEach(() => {
@@ -111,6 +113,100 @@ describe('preset filtering against live org ceilings', () => {
       const daily = usdToOnChain(dollars);
       expect(daily * MONTHLY_LIMIT_MULTIPLIER).toBeGreaterThanOrEqual(daily);
     }
+  });
+});
+
+describe('the limit activation registers with', () => {
+  // It is offered in the sheet too, so a user who wants a different number is picking
+  // between comparable options rather than being shown a limit that is not on the list.
+  it('is one of the offered presets', () => {
+    expect(DAILY_LIMIT_PRESETS_USD).toContain(INITIAL_DAILY_LIMIT_USD);
+  });
+
+  // The point of the default: lowering is immediate and entirely the user's call, raising
+  // waits out `limitRaiseDelay`. Setting it at the bottom of the range would make the
+  // first over-limit tap a day-long lockout, which is the direction that cannot be fixed
+  // quickly.
+  it('leaves room to come down rather than sitting at the floor', () => {
+    expect(INITIAL_DAILY_LIMIT_USD).toBeGreaterThan(Math.min(...DAILY_LIMIT_PRESETS_USD));
+  });
+
+  // Registration is clamped down to the org ceilings, never up. If the default itself is
+  // unreachable under the deployed ceilings then every activation silently falls back,
+  // which is worth failing a test over rather than discovering in the funnel.
+  it('is reachable under the deployed ceilings', () => {
+    expect(offerablePresets(1_000n * ONE_USD, 10_000n * ONE_USD)).toContain(
+      INITIAL_DAILY_LIMIT_USD,
+    );
+  });
+});
+
+describe('monthlyLimitFor', () => {
+  const usd = (dollars: number) => usdToOnChain(dollars);
+
+  it('is ten times the daily for a Safe that has not registered yet', () => {
+    expect(monthlyLimitFor(usd(100), null)).toBe(usd(1_000));
+  });
+
+  // The pair a Safe registered through this app always has: monthly = 10x daily. Both
+  // halves move in the same direction, so neither call can reject the other's component.
+  it('moves both halves together when the stored pair are ten times apart', () => {
+    const current = { dailyLimitUsd: usd(500), monthlyLimitUsd: usd(5_000) };
+    expect(monthlyLimitFor(usd(1_000), current)).toBe(usd(10_000));
+    expect(monthlyLimitFor(usd(100), current)).toBe(usd(1_000));
+  });
+
+  // A Safe that took the org defaults ($100 daily / $5,000 monthly) is the case the
+  // clamp exists for: the derived monthly for $250 is $2,500, which is *below* the
+  // stored monthly, and sending that with a raised daily reverts NotAnIncrease.
+  it('never lets the monthly cross the stored one against the daily', () => {
+    const defaults = { dailyLimitUsd: usd(100), monthlyLimitUsd: usd(5_000) };
+
+    const raised = monthlyLimitFor(usd(250), defaults);
+    expect(raised).toBeGreaterThanOrEqual(defaults.monthlyLimitUsd);
+
+    const lowered = monthlyLimitFor(usd(50), defaults);
+    expect(lowered).toBeLessThanOrEqual(defaults.monthlyLimitUsd);
+  });
+
+  it('leaves the monthly alone when the daily does not move', () => {
+    const current = { dailyLimitUsd: usd(100), monthlyLimitUsd: usd(5_000) };
+    expect(monthlyLimitFor(usd(100), current)).toBe(usd(5_000));
+  });
+
+  // DailyLimitCannotBeGreaterThanMonthlyLimit is checked by every write path, so no
+  // clamped result may ever land below its own daily.
+  it('always returns at least the daily it was given', () => {
+    const currents = [
+      null,
+      { dailyLimitUsd: usd(100), monthlyLimitUsd: usd(5_000) },
+      { dailyLimitUsd: usd(2_500), monthlyLimitUsd: usd(2_500) },
+    ];
+    for (const current of currents) {
+      for (const dollars of DAILY_LIMIT_PRESETS_USD) {
+        expect(monthlyLimitFor(usd(dollars), current)).toBeGreaterThanOrEqual(usd(dollars));
+      }
+    }
+  });
+});
+
+describe('formatDelayDuration', () => {
+  it('reads the deployed 24-hour raise delay as hours', () => {
+    expect(formatDelayDuration(24 * 60 * 60)).toBe('24 hours');
+  });
+
+  it('switches to days past two of them', () => {
+    expect(formatDelayDuration(3 * 24 * 60 * 60)).toBe('3 days');
+  });
+
+  it('singularises', () => {
+    expect(formatDelayDuration(60 * 60)).toBe('1 hour');
+  });
+
+  // A zero or missing delay is org configuration, not an error, and "0 minutes" reads as
+  // a bug in the sentence it appears in.
+  it('says something sensible when there is no delay at all', () => {
+    expect(formatDelayDuration(0)).toBe('shortly');
   });
 });
 

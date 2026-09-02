@@ -326,6 +326,20 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_DISABLE_COMPLETED: 'card_spend_disable_completed',
   CARD_SPEND_DISABLE_FAILED: 'card_spend_disable_failed',
   CARD_SPEND_DISABLE_CANCELLED: 'card_spend_disable_cancelled',
+  // Changing the caps on an existing registration. Separate from the register funnel
+  // because it is a returning user tuning a live card, not a new one being set up, and
+  // the two directions are genuinely different products of the contract: a decrease
+  // lands immediately, an increase is only *requested* and matures after
+  // `limitRaiseDelay`. `is_increase` on the completed event is what tells those apart.
+  CARD_SPEND_LIMIT_UPDATE_PRESSED: 'card_spend_limit_update_pressed',
+  CARD_SPEND_LIMIT_UPDATE_COMPLETED: 'card_spend_limit_update_completed',
+  CARD_SPEND_LIMIT_UPDATE_FAILED: 'card_spend_limit_update_failed',
+  CARD_SPEND_LIMIT_UPDATE_CANCELLED: 'card_spend_limit_update_cancelled',
+  // Disarming a requested increase before it matures. Its own events because it is the
+  // signal that the delay window did its job — someone saw a raise they did not want.
+  CARD_SPEND_PENDING_INCREASE_CANCEL_PRESSED: 'card_spend_pending_increase_cancel_pressed',
+  CARD_SPEND_PENDING_INCREASE_CANCEL_COMPLETED: 'card_spend_pending_increase_cancel_completed',
+  CARD_SPEND_PENDING_INCREASE_CANCEL_FAILED: 'card_spend_pending_increase_cancel_failed',
 
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',

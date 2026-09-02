@@ -104,17 +104,22 @@ export const RAIN_CARD_FUND_SECTIONS: CardFundSections = {
 };
 
 /**
- * Wirex cards launch with direct stablecoin deposits only.
+ * Wirex cards offer direct stablecoin deposits and the local-currency onramp.
  *
- * The other methods are not conceptually impossible for Wirex — they all end in
- * the same place, spendable stablecoin in the cardholder's Safe on Fuse — but
- * each needs its own backend leg pointed at Fuse first. They stay off here until
- * that lands, rather than being offered and then failing with no destination.
+ * Local currencies work because the onramp needs no Fuse leg of its own: TransFi
+ * has no USDC-on-Fuse entry, so the backend points the delivery at the same card
+ * deposit address the stablecoin rows hand out, and the direct-deposit pipeline
+ * carries it to the Safe on Fuse from there.
+ *
+ * The rest are not conceptually impossible for Wirex — they all end in the same
+ * place, spendable stablecoin in the cardholder's Safe on Fuse — but each needs
+ * its own backend leg pointed at Fuse first. They stay off here until that
+ * lands, rather than being offered and then failing with no destination.
  */
 export const WIREX_CARD_FUND_SECTIONS: CardFundSections = {
   stablecoins: true,
   cashDeposit: false,
-  localCurrencies: false,
+  localCurrencies: true,
   moveFromSolid: false,
   externalWallet: false,
 };

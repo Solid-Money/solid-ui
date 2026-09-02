@@ -24,7 +24,9 @@ const HomeSavingsStatCard = ({ className }: HomeSavingsStatCardProps) => {
 
   return (
     <Pressable onPress={() => router.push(path.SAVINGS)} className={cn('flex-1', className)}>
-      <View className="gap-3 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
+      {/* `flex-1` keeps this level with the cashback card beside it, which
+          grows a line taller whenever it has pending cashback to report. */}
+      <View className="flex-1 gap-3 rounded-twice bg-card p-5" style={{ minHeight: 188 }}>
         <Image
           source={getAsset('images/flash-lavender-background.png')}
           alt="Savings"

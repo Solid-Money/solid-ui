@@ -12,12 +12,25 @@ import { useUserStore } from '@/store/useUserStore';
 /** What the backend puts in a push's `data`. FCM values are always strings. */
 type NotificationData = {
   type?: string;
-  /** 3DS only: the challenge the tap has to open. */
+  /** 3DS: the challenge the tap has to open. Card spend: the transaction. */
   transactionId?: string;
   amount?: string;
   currency?: string;
   merchantName?: string;
   cardLast4?: string;
+  /** Card spend only. Which outcome — approved, refunded, declined, reversed. */
+  status?: string;
+  /** Card spend only. Which issuer settled it; never shown to the cardholder. */
+  provider?: string;
+  /**
+   * Card spend only, and only when the merchant charged in another currency:
+   * what was on the terminal, alongside `amount`/`currency` in USD.
+   */
+  localAmount?: string;
+  localCurrency?: string;
+  /** Card spend only. Projected USDC cashback and the rate that produced it. */
+  cashbackAmount?: string;
+  cashbackRate?: string;
 };
 
 /**

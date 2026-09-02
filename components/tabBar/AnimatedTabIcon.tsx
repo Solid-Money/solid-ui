@@ -4,6 +4,7 @@ import Animated, {
   cancelAnimation,
   Easing,
   interpolateColor,
+  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
@@ -12,7 +13,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
-export type AnimatedTabIconName = 'wallet' | 'savings' | 'rewards' | 'activity' | 'profile';
+export type AnimatedTabIconName =
+  | 'wallet'
+  | 'savings'
+  | 'earn'
+  | 'rewards'
+  | 'activity'
+  | 'profile';
 
 interface AnimatedTabIconProps {
   name: AnimatedTabIconName;
@@ -32,6 +39,8 @@ const WALLET_PATH =
 
 const SAVINGS_PATH =
   'M10.9323 0.750409H5.57485C5.40779 0.750409 5.32425 0.750409 5.25051 0.775848C5.18529 0.798337 5.12589 0.83505 5.07661 0.883323C5.02088 0.937907 4.98352 1.01262 4.9088 1.16205L0.999303 8.98103C0.820881 9.33791 0.73167 9.51635 0.753098 9.66137C0.771808 9.78796 0.841862 9.90134 0.946767 9.97469C1.06691 10.0587 1.26639 10.0587 1.66535 10.0587H7.44169L4.64921 19.3671L15.9989 7.59698C16.3819 7.19988 16.5733 7.00133 16.5845 6.83143C16.5942 6.68397 16.5333 6.54065 16.4204 6.44528C16.2904 6.33541 16.0146 6.33541 15.4629 6.33541H8.83794L10.9323 0.750409Z';
+
+const EARN_BAR_PATHS = ['M4 13V20', 'M12 9V20', 'M20 2V20'] as const;
 
 const REWARDS_OUTLINE_PATH =
   'M17.278 5.69833L9.25022 10.25M9.25022 10.25L1.22241 5.69833M9.25022 10.25V19.4068M5.00022 3.02092L13.5002 7.8403M17.7502 14.8966L9.98405 19.4726C9.7162 19.6246 9.58228 19.7004 9.44052 19.7302C9.31491 19.7566 9.18552 19.7566 9.06 19.7302C8.91815 19.7004 8.78423 19.6246 8.51638 19.4726L1.52746 15.5101C1.24459 15.3497 1.10314 15.2695 1.00014 15.1554C0.909033 15.0545 0.840079 14.9349 0.797891 14.8046C0.750215 14.6573 0.750215 14.4922 0.750215 14.1619V6.33805C0.750215 6.00779 0.750215 5.84266 0.797891 5.69538C0.840079 5.56508 0.909033 5.44548 1.00014 5.34458C1.10314 5.23051 1.24458 5.15032 1.52746 4.98993L8.51638 1.02733C8.78423 0.875465 8.91815 0.799531 9.06 0.769757C9.18552 0.743414 9.31491 0.743414 9.44052 0.769757C9.58228 0.799531 9.7162 0.875465 9.98405 1.02733L16.9729 4.98993C17.2559 5.15032 17.3973 5.23051 17.5003 5.34458C17.5914 5.44548 17.6604 5.56508 17.7025 5.69538C17.7502 5.84266 17.7502 6.00779 17.7502 6.33805V14.8966Z';
@@ -81,6 +90,20 @@ const SAVINGS_ROTATE_TIMES = [0, 0.01615, 0.0566, 0.0765, 1] as const;
 const SAVINGS_ROTATE_VALUES = [0, 0, 5, 0, 0] as const;
 const SAVINGS_ROTATE_EASINGS = [LINEAR, EASE_OUT, EASE_OUT, LINEAR] as const;
 
+const EARN_BAR_TRANSLATE_TIMES = [
+  [0, 0.05, 0.12, 0.23, 1],
+  [0, 0.075, 0.145, 0.25, 1],
+  [0, 0.1, 0.17, 0.27, 1],
+] as const;
+
+const EARN_BAR_TRANSLATE_VALUES = [
+  [0, -1.5, 0.4, 0, 0],
+  [0, -2, 0.5, 0, 0],
+  [0, -1.25, 0.35, 0, 0],
+] as const;
+
+const EARN_BAR_TRANSLATE_EASINGS = [EASE_OUT, EASE_IN_OUT, EASE_OUT, LINEAR] as const;
+
 const ACTIVITY_ROTATE_TIMES = [0, 0.01615, 0.0566, 0.0915, 0.1275, 1] as const;
 const ACTIVITY_ROTATE_VALUES = [0, 0, 7, -3.5, 0, 0] as const;
 const ACTIVITY_ROTATE_EASINGS = [LINEAR, EASE_OUT, EASE_IN_OUT, EASE_OUT, LINEAR] as const;
@@ -121,7 +144,7 @@ const interpolateKeyframes = (
 const getScale = (progress: number, name: AnimatedTabIconName) => {
   'worklet';
 
-  if (name === 'savings') {
+  if (name === 'savings' || name === 'earn') {
     return interpolateKeyframes(
       progress,
       SAVINGS_SCALE_TIMES,
@@ -150,7 +173,7 @@ const getRotation = (progress: number, name: AnimatedTabIconName) => {
     );
   }
 
-  if (name !== 'savings') return 0;
+  if (name !== 'savings' && name !== 'earn') return 0;
 
   return interpolateKeyframes(
     progress,
@@ -163,8 +186,9 @@ const getRotation = (progress: number, name: AnimatedTabIconName) => {
 const getFillOpacity = (progress: number, name: AnimatedTabIconName) => {
   'worklet';
 
-  const fadeStart = name === 'savings' ? 0.15635 : 0.1376;
-  const fadeEnd = name === 'savings' ? 0.25015 : 0.2374;
+  const usesSavingsFade = name === 'savings' || name === 'earn';
+  const fadeStart = usesSavingsFade ? 0.15635 : 0.1376;
+  const fadeEnd = usesSavingsFade ? 0.25015 : 0.2374;
 
   if (progress <= fadeStart) return 0;
   if (progress >= fadeEnd) return 1;
@@ -214,8 +238,65 @@ function VectorFrame({ width, height, children }: VectorFrameProps) {
   );
 }
 
+type EarnBarProps = {
+  index: 0 | 1 | 2;
+  progress: SharedValue<number>;
+  variant: 'outline' | 'fill';
+};
+
+function EarnBar({ index, progress, variant }: EarnBarProps) {
+  const motionStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolateKeyframes(
+          progress.value,
+          EARN_BAR_TRANSLATE_TIMES[index],
+          EARN_BAR_TRANSLATE_VALUES[index],
+          EARN_BAR_TRANSLATE_EASINGS,
+        ),
+      },
+    ],
+  }));
+
+  const animatedProps = useAnimatedProps(() => ({
+    stroke:
+      variant === 'outline'
+        ? (interpolateColor(
+            getOutlineColorProgress(progress.value),
+            [0, 1],
+            [OUTLINE_COLOR, ACTIVE_COLOR],
+          ) as string)
+        : ACTIVE_COLOR,
+  }));
+
+  return (
+    <Animated.View style={[styles.fillLayer, motionStyle]}>
+      <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
+        <AnimatedPath
+          animatedProps={animatedProps}
+          d={EARN_BAR_PATHS[index]}
+          fill="none"
+          stroke={variant === 'outline' ? OUTLINE_COLOR : ACTIVE_COLOR}
+          strokeWidth={variant === 'outline' ? 1.5 : 3}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+function EarnBars({ progress, variant }: Omit<EarnBarProps, 'index'>) {
+  return (
+    <>
+      <EarnBar index={0} progress={progress} variant={variant} />
+      <EarnBar index={1} progress={progress} variant={variant} />
+      <EarnBar index={2} progress={progress} variant={variant} />
+    </>
+  );
+}
+
 /**
- * Wallet, Savings, Rewards, Activity, and Profile icons from the Figma motion set.
+ * Wallet, Savings, Earn, Rewards, Activity, and Profile icons from the Figma motion set.
  * Every icon drives its layers from one 2-second progress value so the scale,
  * stroke, and fill tracks stay coordinated with the exported timeline.
  */
@@ -303,6 +384,10 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
       );
     }
 
+    if (name === 'earn') {
+      return <EarnBars progress={progress} variant="outline" />;
+    }
+
     if (name === 'rewards') {
       return (
         <VectorFrame width={18.5004} height={20.5}>
@@ -385,6 +470,10 @@ export function AnimatedTabIcon({ name, focused, size = 24 }: AnimatedTabIconPro
           </Svg>
         </VectorFrame>
       );
+    }
+
+    if (name === 'earn') {
+      return <EarnBars progress={progress} variant="fill" />;
     }
 
     if (name === 'rewards') {

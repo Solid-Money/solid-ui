@@ -4,7 +4,6 @@ import { Tabs } from 'expo-router';
 import { Star } from 'lucide-react-native';
 
 import cardAnimation from '@/assets/tabs-icons/card.json';
-import { EarnTabIcon } from '@/components/Earn/EarnTabIcon';
 import { HapticTab } from '@/components/HapticTab';
 import { LottieTabIcon } from '@/components/LottieTabIcon';
 import { AnimatedTabIcon } from '@/components/tabBar/AnimatedTabIcon';
@@ -153,7 +152,9 @@ export default function TabLayout() {
           lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Earn',
           headerShown: false,
-          tabBarIcon: ({ focused, size }) => <EarnTabIcon focused={focused} size={size} />,
+          tabBarIcon: ({ focused, size }) => (
+            <AnimatedTabIcon name="earn" focused={focused} size={size} />
+          ),
           href: path.EARN,
         }}
       />

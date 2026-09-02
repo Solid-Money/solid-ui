@@ -50,7 +50,9 @@ const SavingsVaultHero = ({ vaultType, apy, isApyLoading, onHelpPress }: Savings
   const insets = useSafeAreaInsets();
   const { isDesktop } = useDimension();
   const content = VAULT_HERO_CONTENT[vaultType];
-  const headerTop = Math.max(insets.top + 9, 16);
+  // Match the Wallet / Rewards navbar row: safe-area inset followed by its
+  // 16px top padding. The buttons keep their original hero styling.
+  const headerTop = insets.top + 16;
 
   return (
     <View className="relative h-[264px] w-full">

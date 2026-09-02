@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
@@ -10,18 +10,22 @@ import { getAsset } from '@/lib/assets';
 interface LandingScreenProps {
   /** Advances the flow to the Welcome step (opens the auth sheet). */
   onGetStarted: () => void;
+  /** Starts the existing-user login flow directly from the landing screen. */
+  onLogin: () => void;
+  isLoginPending: boolean;
 }
 
 /**
  * Step 1 of the redesigned mobile onboarding — a full-bleed hero with the Solid
- * lockup, headline and a single "Get started" call-to-action. The hero image
- * and dark scrim are provided by the parent (OnboardingNew) so they persist
- * while the Welcome sheet animates in on top.
+ * lockup, headline, "Get started" call-to-action and existing-user login link.
+ * The hero image and dark scrim are provided by the parent (OnboardingNew) so
+ * they persist while the Welcome sheet animates in on top.
  *
  * Figma: node 20048-2441.
  */
-export function LandingScreen({ onGetStarted }: LandingScreenProps) {
+export function LandingScreen({ onGetStarted, onLogin, isLoginPending }: LandingScreenProps) {
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 20);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -52,11 +56,25 @@ export function LandingScreen({ onGetStarted }: LandingScreenProps) {
       <Button
         variant="secondary"
         className="absolute left-[20px] right-[20px] h-[54px] rounded-full border-0 bg-white active:opacity-90"
-        style={{ bottom: insets.bottom + 12 }}
+        style={{ bottom: bottomInset + 48 }}
         onPress={onGetStarted}
       >
         <Text className="text-[18px] font-semibold text-black">Get started</Text>
       </Button>
+
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel="Log in"
+        className="absolute left-[20px] right-[20px] web:hover:opacity-70"
+        style={{ bottom: bottomInset + 10 }}
+        onPress={onLogin}
+        disabled={isLoginPending}
+        hitSlop={12}
+      >
+        <Text className="text-center font-normal text-white" style={styles.loginLink}>
+          Already have an account? Log in
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -108,5 +126,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 21.6,
     textAlign: 'center',
+  },
+  loginLink: {
+    fontFamily: 'MonaSans_400Regular',
+    fontSize: 16,
+    lineHeight: 19.2,
   },
 });
