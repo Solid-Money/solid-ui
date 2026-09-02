@@ -263,6 +263,10 @@ export const SWAP_MODAL = {
     name: 'open_form',
     number: 1,
   },
+  OPEN_BUY_FUSE: {
+    name: 'open_buy_fuse',
+    number: 1,
+  },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 2,

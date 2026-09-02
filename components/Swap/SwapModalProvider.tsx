@@ -7,6 +7,7 @@ import ExchangeDisclaimer from '@/components/Compliance/ExchangeDisclaimer';
 import GeoRestrictionNotice from '@/components/Compliance/GeoRestrictionNotice';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
+import BuyFuseScreen from '@/components/Swap/BuyFuseScreen';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
@@ -39,17 +40,20 @@ const SwapModalProvider = () => {
     })),
   );
 
-  const { currentModal, previousModal, transaction, setModal } = useSwapState(
+  const { currentModal, previousModal, transaction, buyFuseTier, setModal } = useSwapState(
     useShallow(state => ({
       currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
       previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
       transaction: state.transaction,
+      buyFuseTier: state.buyFuseTier,
       setModal: state.actions.setModal,
     })),
   );
 
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
+  const isBuyFuseContent = isBuyFuse && isSwapAvailable && hasAcceptedSwapDisclaimer;
 
   const handleOpenChange = useCallback(
     (value: boolean) => {
@@ -76,13 +80,13 @@ const SwapModalProvider = () => {
 
   const title = useMemo(() => {
     if (isTransactionStatus) return undefined;
-    return 'Swap';
-  }, [isTransactionStatus]);
+    return isBuyFuse ? 'Buy FUSE' : 'Swap';
+  }, [isBuyFuse, isTransactionStatus]);
 
   const contentKey = useMemo(() => {
     if (isTransactionStatus) return 'transaction-status';
-    return 'swap-form';
-  }, [isTransactionStatus]);
+    return isBuyFuse ? 'buy-fuse' : 'swap-form';
+  }, [isBuyFuse, isTransactionStatus]);
 
   const handleAcceptSwapDisclaimer = useCallback(() => {
     acceptDisclaimer('swap');
@@ -95,6 +99,10 @@ const SwapModalProvider = () => {
 
     if (!hasAcceptedSwapDisclaimer) {
       return <ExchangeDisclaimer feature="swap" onAccept={handleAcceptSwapDisclaimer} />;
+    }
+
+    if (isBuyFuse) {
+      return <BuyFuseScreen requestedTier={buyFuseTier} />;
     }
 
     if (isTransactionStatus) {
@@ -131,6 +139,8 @@ const SwapModalProvider = () => {
     isSwapAvailable,
     hasAcceptedSwapDisclaimer,
     handleAcceptSwapDisclaimer,
+    isBuyFuse,
+    buyFuseTier,
     isTransactionStatus,
     transaction,
     handleTransactionStatusPress,
@@ -151,8 +161,10 @@ const SwapModalProvider = () => {
       title={title}
       titleClassName="items-center w-full"
       containerClassName="w-full max-w-md"
-      showBackButton={false}
+      showBackButton={isBuyFuse}
+      onBackPress={isBuyFuse ? () => handleOpenChange(false) : undefined}
       contentKey={contentKey}
+      disableScroll={isBuyFuseContent}
     >
       {content}
     </ResponsiveModal>

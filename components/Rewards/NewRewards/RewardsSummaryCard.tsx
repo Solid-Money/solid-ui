@@ -1,15 +1,22 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
 import { CASHBACK_PENDING_TEXT_COLOR } from '@/lib/cashbackProgress';
 import { formatBalanceUSD } from '@/lib/utils';
 
+import CashbackDetailsSheet from './CashbackDetailsSheet';
+
+import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
+
 interface RewardsSummaryCardProps {
   cashback: number;
   /** Cashback earned this month but still escrowed; absent hides the line. */
   cashbackPending?: number;
   referrals: number;
+  cashbackDetails: CashbackDetailsData;
+  onGetMoreCashback: () => void;
+  onReferralsPress: () => void;
 }
 
 const RewardsIcon = () => (
@@ -38,11 +45,18 @@ interface SummaryStatProps {
    * doesn't push its label and figure out of line with the other's.
    */
   reserveFootnote?: boolean;
+  onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, footnote, reserveFootnote }: SummaryStatProps) => (
-  <View className="flex-1 items-center justify-center gap-2.5">
+const SummaryStat = ({ label, value, footnote, reserveFootnote, onPress }: SummaryStatProps) => (
+  <Pressable
+    accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={`${label}. ${formatBalanceUSD(value)}${footnote ? `. ${footnote}` : ''}`}
+    disabled={!onPress}
+    onPress={onPress}
+    className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
+  >
     <Text
       className="text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
@@ -71,13 +85,20 @@ const SummaryStat = ({ label, value, footnote, reserveFootnote }: SummaryStatPro
       // an empty line where the other column has a footnote.
       reserveFootnote && <View style={{ height: FOOTNOTE_LINE_HEIGHT }} />
     )}
-  </View>
+  </Pressable>
 );
 
 /**
  * "Rewards" summary card: Cashback and Referrals split into two columns.
  */
-const RewardsSummaryCard = ({ cashback, cashbackPending, referrals }: RewardsSummaryCardProps) => {
+const RewardsSummaryCard = ({
+  cashback,
+  cashbackPending,
+  referrals,
+  cashbackDetails,
+  onGetMoreCashback,
+  onReferralsPress,
+}: RewardsSummaryCardProps) => {
   // Cashback settles days after the purchase, so the settled figure alone reads
   // as $0 for the fortnight an escrow takes to mature — which is exactly when a
   // fresh purchase is on the cardholder's mind.
@@ -96,13 +117,26 @@ const RewardsSummaryCard = ({ cashback, cashbackPending, referrals }: RewardsSum
       </View>
 
       <View className="h-24 flex-row">
-        <SummaryStat
-          label="Cashback"
-          value={cashback}
-          footnote={showPending ? `+${formatBalanceUSD(cashbackPending ?? 0)} pending` : undefined}
+        <CashbackDetailsSheet
+          trigger={
+            <SummaryStat
+              label="Cashback"
+              value={cashback}
+              footnote={
+                showPending ? `+${formatBalanceUSD(cashbackPending ?? 0)} pending` : undefined
+              }
+            />
+          }
+          {...cashbackDetails}
+          onGetMoreCashback={onGetMoreCashback}
         />
         <View className="w-px bg-white/10" />
-        <SummaryStat label="Referrals" value={referrals} reserveFootnote={showPending} />
+        <SummaryStat
+          label="Referrals"
+          value={referrals}
+          reserveFootnote={showPending}
+          onPress={onReferralsPress}
+        />
       </View>
 
       <View className="absolute left-0 right-0 top-16 h-px bg-white/10" />
