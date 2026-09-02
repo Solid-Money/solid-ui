@@ -114,20 +114,20 @@ export default function CardReady() {
    * The daily cap the activation press registers with, or null when the org has no
    * limit open that the module would accept.
    *
-   * The smallest offer, not the largest: the user was not asked, so the grant has to be
-   * the least this card can be given and still work. It is one tap to raise in the
-   * spending sheet afterwards, and the sheet is where a limit anyone actually chose gets
-   * chosen. Falls back to the preset when the chain read has not landed yet — the
-   * mutation re-reads and refuses a limit above the ceilings anyway, so the worst case
-   * is a skipped step, not a failed transaction.
+   * {@link INITIAL_DAILY_LIMIT_USD} clamped *downwards* to what the org actually allows —
+   * never upwards. A ceiling below the default is the org saying this account may not
+   * have that much, so the answer is the largest offer underneath it rather than the
+   * nearest one; overshooting would only revert with ExceedsOrgDailyCeiling.
+   *
+   * Falls back to the plain default when the chain read has not landed yet — the mutation
+   * re-reads and refuses a limit above the ceilings anyway, so the worst case there is a
+   * skipped step, not a failed transaction.
    */
-  const initialDailyLimit = useMemo(
-    () =>
-      spendRegistration
-        ? (offerableDailyPresets(spendRegistration)[0] ?? null)
-        : INITIAL_DAILY_LIMIT_USD,
-    [spendRegistration],
-  );
+  const initialDailyLimit = useMemo(() => {
+    if (!spendRegistration) return INITIAL_DAILY_LIMIT_USD;
+    const offerable = offerableDailyPresets(spendRegistration);
+    return offerable.filter(dollars => dollars <= INITIAL_DAILY_LIMIT_USD).at(-1) ?? null;
+  }, [spendRegistration]);
 
   // This screen creates the card, and the backend allows exactly one per
   // provider. Re-entering it with a card already in flight (browser back, a deep
