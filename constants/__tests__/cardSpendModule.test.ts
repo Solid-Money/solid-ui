@@ -117,11 +117,27 @@ describe('preset filtering against live org ceilings', () => {
 });
 
 describe('the limit activation registers with', () => {
-  // The activation button never asks, so the grant it makes without asking has to be the
-  // smallest one on offer. A regression here silently widens what every new card may
-  // take from a Safe on a single unexplained signature.
-  it('is the smallest preset', () => {
-    expect(INITIAL_DAILY_LIMIT_USD).toBe(Math.min(...DAILY_LIMIT_PRESETS_USD));
+  // It is offered in the sheet too, so a user who wants a different number is picking
+  // between comparable options rather than being shown a limit that is not on the list.
+  it('is one of the offered presets', () => {
+    expect(DAILY_LIMIT_PRESETS_USD).toContain(INITIAL_DAILY_LIMIT_USD);
+  });
+
+  // The point of the default: lowering is immediate and entirely the user's call, raising
+  // waits out `limitRaiseDelay`. Setting it at the bottom of the range would make the
+  // first over-limit tap a day-long lockout, which is the direction that cannot be fixed
+  // quickly.
+  it('leaves room to come down rather than sitting at the floor', () => {
+    expect(INITIAL_DAILY_LIMIT_USD).toBeGreaterThan(Math.min(...DAILY_LIMIT_PRESETS_USD));
+  });
+
+  // Registration is clamped down to the org ceilings, never up. If the default itself is
+  // unreachable under the deployed ceilings then every activation silently falls back,
+  // which is worth failing a test over rather than discovering in the funnel.
+  it('is reachable under the deployed ceilings', () => {
+    expect(offerablePresets(1_000n * ONE_USD, 10_000n * ONE_USD)).toContain(
+      INITIAL_DAILY_LIMIT_USD,
+    );
   });
 });
 
