@@ -13,6 +13,7 @@ import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -61,6 +62,27 @@ export function useSumsubSession() {
   // The backend needs to know which product asked for the session so it doesn't
   // record onramp users as Wirex card customers.
   const sumsubFlow: SumsubSessionFlow = kycFlow === 'transfi' ? 'onramp' : 'card';
+
+  /**
+   * The country to offer the backend for a CARD session, read at call time.
+   *
+   * A fallback only: the backend prefers the user's stored residence country
+   * and consults this for a user who has none — and then accepts it only when
+   * the user picked it themselves, so `source` is passed through rather than
+   * flattened. Reading the store here rather than through a selector matches
+   * `resolveKycProvider`: the country gate persists its answer a tick before
+   * this screen mounts, so a country captured in a render closure can still be
+   * the pre-gate `null`.
+   *
+   * `undefined` is a legitimate answer — the backend then refuses with
+   * COUNTRY_REQUIRED and we send the user to pick one, which is the point.
+   */
+  const readDeclaredCountry = useCallback(() => {
+    if (sumsubFlow === 'onramp') return undefined;
+    const info = useCountryStore.getState().countryInfo;
+    if (!info?.countryCode) return undefined;
+    return { countryCode: info.countryCode, source: info.source };
+  }, [sumsubFlow]);
 
   /** Where this KYC outcome should land the user. No navigation, just the href. */
   const resolveDestination = useCallback(
@@ -139,10 +161,12 @@ export function useSumsubSession() {
    * to 'card' would re-run the card-side bookkeeping.
    */
   const fetchAccessToken = useCallback(async (): Promise<string> => {
-    const res = await withRefreshToken(() => createSumsubSession(sumsubFlow));
+    const res = await withRefreshToken(() =>
+      createSumsubSession(sumsubFlow, readDeclaredCountry()),
+    );
     if (!res?.token) throw new Error('No Sumsub access token in session response');
     return res.token;
-  }, [sumsubFlow]);
+  }, [readDeclaredCountry, sumsubFlow]);
 
   const initSession = useCallback(async () => {
     switch (debugState) {
@@ -170,7 +194,9 @@ export function useSumsubSession() {
 
     try {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'sumsub', flow: sumsubFlow });
-      const res = await withRefreshToken(() => createSumsubSession(sumsubFlow));
+      const res = await withRefreshToken(() =>
+        createSumsubSession(sumsubFlow, readDeclaredCountry()),
+      );
       if (!res?.token) {
         setSession({ phase: 'error', message: 'Failed to create verification session' });
         return;
@@ -203,11 +229,48 @@ export function useSumsubSession() {
         });
         return;
       }
+      /**
+       * COUNTRY_REQUIRED (400): the backend will not open a card verification
+       * without knowing where the user lives — it has no stored country and we
+       * either sent none or sent one we only guessed from their IP. Send them to
+       * pick it; the selection screen persists the choice and re-enters the flow,
+       * and the next session establishes it server-side.
+       *
+       * This is a redirect rather than an error state because there is nothing
+       * wrong to report: the flow is missing an answer only the user has. Left
+       * as a generic error, it presented as "Failed to create verification
+       * session" with no way forward — and before the backend required a
+       * country at all, it silently produced a verified user with no card.
+       */
+      if (e?.code === 'COUNTRY_REQUIRED') {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'country_required',
+          kycProvider: 'sumsub',
+        });
+        router.replace(path.CARD_COUNTRY_SELECTION as any);
+        return;
+      }
+      /**
+       * CARD_PROVIDER_MISMATCH (400): the user's country is known and it is not
+       * Wirex's, so Sumsub is the wrong widget for them — a stale build, or a
+       * country that has moved between issuers since this screen was routed to.
+       * Back to the country screen, which re-asks routing on the way through and
+       * lands them on Didit. Refusing beats minting an applicant Wirex will
+       * never be told about.
+       */
+      if (e?.code === 'CARD_PROVIDER_MISMATCH') {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'provider_mismatch',
+          kycProvider: 'sumsub',
+        });
+        router.replace(path.CARD_COUNTRY_SELECTION as any);
+        return;
+      }
       const message = e?.message || 'Failed to create verification session';
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, [debugState, redirectBasedOnKycStatus, sumsubFlow]);
+  }, [debugState, readDeclaredCountry, redirectBasedOnKycStatus, router, sumsubFlow]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });
