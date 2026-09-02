@@ -3,14 +3,25 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import {
+  CASHBACK_EARNED_COLOR,
+  CASHBACK_PENDING_COLOR,
+  CASHBACK_PENDING_TEXT_COLOR,
+  resolveCashbackProgress,
+} from '@/lib/cashbackProgress';
 import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
 import { resolveTierCashbackRate } from '@/lib/tierCashback';
-import { formatNumber } from '@/lib/utils';
+import { formatBalanceUSD, formatNumber } from '@/lib/utils';
 
 /**
  * "Cashback earned: $38 / $150" card with the progress track and the spend-more
  * hint (Figma 21843:872). Numbers come from the rewards user data, the same
  * source the Rewards tab's cashback card reads.
+ *
+ * The track carries a second, dimmer segment for cashback that has been earned
+ * but not yet paid. Without it the line stays empty for the fortnight an escrow
+ * takes to mature, which is exactly when a cardholder who just spent comes
+ * looking for it.
  */
 interface CardCashbackCardProps {
   onPress?: () => void;
@@ -20,6 +31,10 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   const { data: rewardsData } = useRewardsUserData();
 
   const earned = rewardsData?.cashbackThisMonth ?? 0;
+  // Left undefined on a backend that doesn't project it, which is what hides
+  // the pending segment and its label rather than claiming a confident $0.
+  const pending = rewardsData?.cashbackPendingThisMonth;
+  const pendingUsd = pending ?? 0;
   const cap = rewardsData?.maxCashbackMonthly ?? 0;
   // The rate this card's own sheet quotes, so "spend $X more" is the spend that
   // actually reaches the cap at the advertised rate.
@@ -29,9 +44,16 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
     IS_TIER_CASHBACK_HARDCODED,
   );
 
-  const progress = cap > 0 ? Math.min(100, Math.max(0, (earned / cap) * 100)) : 0;
-  // Spend needed to reach the monthly cap: (cap - earned) * 100 / rate%.
-  const remainingSpend = rate > 0 ? (Math.max(0, cap - earned) * 100) / rate : 0;
+  const { earnedPct, pendingPct } = resolveCashbackProgress({
+    earned,
+    pending: pendingUsd,
+    cap,
+  });
+  // Spend needed to reach the monthly cap. Measured against what has settled
+  // plus what is on its way, since the pending part draws down the same cap
+  // when it matures — otherwise this asks for spend that will be capped.
+  const remainingSpend = rate > 0 ? (Math.max(0, cap - earned - pendingUsd) * 100) / rate : 0;
+  const showPending = pending !== undefined && pending > 0;
 
   return (
     <Pressable
@@ -52,11 +74,19 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
         </Text>
       </View>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${progress}%` }]} />
+        <View style={[styles.fill, { width: `${earnedPct}%` }]} />
+        {/* Continues where the earned segment stops, so the two read as one
+            line rather than two bars stacked on the same row. */}
+        <View style={[styles.pendingFill, { width: `${pendingPct}%` }]} />
       </View>
       {/* Reserved height so the card doesn't resize once the rewards data lands
           (the hint would otherwise read "Spend $0 more" while it loads). */}
       <View style={styles.hint}>
+        {showPending && (
+          <Text className="text-[14px] font-medium" style={{ color: CASHBACK_PENDING_TEXT_COLOR }}>
+            {formatBalanceUSD(pendingUsd)} pending
+          </Text>
+        )}
         {cap > 0 && (
           <Text className="text-[14px] font-normal text-white/70">
             Spend ${formatNumber(remainingSpend, 0, 0)} more for max cashback this month
@@ -75,14 +105,16 @@ const styles = StyleSheet.create({
   track: {
     backgroundColor: '#464646',
     borderRadius: 2.5,
+    flexDirection: 'row',
     height: 5,
     marginHorizontal: 21,
     marginTop: 16,
     overflow: 'hidden',
   },
-  fill: { backgroundColor: '#94F27F', borderRadius: 2.5, height: 5 },
+  fill: { backgroundColor: CASHBACK_EARNED_COLOR, height: 5 },
+  pendingFill: { backgroundColor: CASHBACK_PENDING_COLOR, height: 5 },
   // 19 + one 17pt line + 21, so the row keeps its height before the data lands.
-  hint: { minHeight: 57, paddingBottom: 21, paddingHorizontal: 20, paddingTop: 19 },
+  hint: { gap: 4, minHeight: 57, paddingBottom: 21, paddingHorizontal: 20, paddingTop: 19 },
 });
 
 export default CardCashbackCard;

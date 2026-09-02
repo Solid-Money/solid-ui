@@ -247,6 +247,7 @@ const CardDetailsPane = () => {
                 IS_TIER_CASHBACK_HARDCODED,
               )}
               cashbackThisMonth={cashbackThisMonth}
+              cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
               maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
               allTimeCashback={allTimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
