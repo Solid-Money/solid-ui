@@ -64,6 +64,7 @@ describe('fallbackTierFees', () => {
       'virtual_card',
       'bank_deposit',
       'swap',
+      'stocks',
       'fx',
       'offramp',
     ]);

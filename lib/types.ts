@@ -1718,6 +1718,10 @@ export enum FeeProduct {
   /** Bank withdrawal. Stored under its original `offramp` name. */
   BANK_WITHDRAWAL = 'offramp',
   BANK_DEPOSIT = 'bank_deposit',
+  /** Tokenised-equity trade, settled through CoW on mainnet. */
+  STOCKS = 'stocks',
+  /** Buy-crypto order through TransFi's card / local payment rails. */
+  TRANSFI = 'transfi',
 }
 
 /** The fee rates the signed-in user currently pays, from their live tier. */
@@ -1750,6 +1754,18 @@ export interface ProductFeeQuote {
 
 export interface RecordSwapFeeParams {
   transactionHash: string;
+  baseAmountUsd: number;
+  feeTokenAddress: string;
+  feeTokenSymbol?: string;
+  feeTokenAmount: string;
+  feeAmountUsd: number;
+  percentage?: number;
+}
+
+export interface RecordStocksFeeParams {
+  /** CoW order uid — the idempotency key, since one batch is one order. */
+  orderUid: string;
+  transactionHash?: string;
   baseAmountUsd: number;
   feeTokenAddress: string;
   feeTokenSymbol?: string;

@@ -38,6 +38,7 @@ const FALLBACK_CASHBACK_CAP: Record<RewardsTier, string> = {
 const FEE_ROWS: { key: string; label: string }[] = [
   { key: 'bank_deposit', label: 'Bank deposit' },
   { key: 'swap', label: 'Swaps' },
+  { key: 'stocks', label: 'Stocks' },
   { key: 'fx', label: 'FX conversion' },
   { key: 'offramp', label: 'Bank withdrawal' },
 ];

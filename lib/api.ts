@@ -97,6 +97,7 @@ import {
   RainConsumerType,
   RainContractResponseDto,
   RainKycSubmitResponse,
+  RecordStocksFeeParams,
   RecordSwapFeeParams,
   ReferralSummary,
   RegionInterestPayload,
@@ -1727,6 +1728,33 @@ export const recordSwapFee = async (
     credentials: 'include',
     body: JSON.stringify(params),
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Tell the backend a stocks trading fee was collected on-chain.
+ *
+ * Keyed on the CoW order uid rather than a transaction hash: the pre-sign batch
+ * is what we broadcast, but the order is what fills, and one batch is one order.
+ */
+export const recordStocksFee = async (
+  params: RecordStocksFeeParams,
+): Promise<{ recorded: boolean; feeAmountUsd: string }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/stocks`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(params),
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };

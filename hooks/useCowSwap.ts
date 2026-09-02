@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { mainnet } from 'viem/chains';
 
+import { useRecordStocksFee } from '@/hooks/useStocksFee';
 import {
   buildPresignTransactions,
   cowGetOrder,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/cowswap';
 import { executeTransactions } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
+import { BatchTransaction, SwapFee } from '@/lib/utils/swapFee';
 
 import { useActivityActions } from './useActivityActions';
 import useUser from './useUser';
@@ -60,8 +62,7 @@ export function useCowQuote(params: CowQuoteParams) {
 
     try {
       // Determine which token is the stock (non-USDC) for reference price lookup
-      const isBuyingStock =
-        params.sellToken.toLowerCase() === USDC_MAINNET.toLowerCase();
+      const isBuyingStock = params.sellToken.toLowerCase() === USDC_MAINNET.toLowerCase();
       const stockToken = isBuyingStock ? params.buyToken : params.sellToken;
 
       // Fetch quote, slippage tolerance, and reference price in parallel
@@ -170,7 +171,21 @@ export type CowOrderResult = {
   reset: () => void;
 };
 
-export function useCowOrder(sellTokenSymbol: string, buyTokenSymbol: string): CowOrderResult {
+/** Solid's fee on this trade, plus what the reporter needs to book it. */
+export type CowOrderFee = {
+  fee: SwapFee;
+  feeTransaction: BatchTransaction | null;
+  /** USD price of one whole sell token — the share price when selling a stock. */
+  sellTokenPriceUsd: number | undefined;
+  /** True when the sell side is the stock rather than USDC. */
+  isSellingStock: boolean;
+};
+
+export function useCowOrder(
+  sellTokenSymbol: string,
+  buyTokenSymbol: string,
+  orderFee?: CowOrderFee,
+): CowOrderResult {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
   const queryClient = useQueryClient();
@@ -182,6 +197,7 @@ export function useCowOrder(sellTokenSymbol: string, buyTokenSymbol: string): Co
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
+  const reportStocksFee = useRecordStocksFee();
 
   useEffect(() => {
     mountedRef.current = true;
@@ -234,10 +250,22 @@ export function useCowOrder(sellTokenSymbol: string, buyTokenSymbol: string): Co
         // sellAmount here is the full amount (sellAmount + feeAmount) since feeAmount is 0
         const transactions = buildPresignTransactions(uid, quote.quote.sellToken, sellAmount);
 
+        // Solid's fee, in the same batch so the user signs once. Appended after
+        // the pre-sign rather than before it: the order is what the user came
+        // for, and a batch that took the fee first and then failed to pre-sign
+        // would have charged for nothing.
+        if (orderFee?.feeTransaction) {
+          transactions.push({
+            to: orderFee.feeTransaction.to,
+            data: orderFee.feeTransaction.data,
+            value: orderFee.feeTransaction.value ?? 0n,
+          });
+        }
+
         // 3. Execute batch via Safe AA on Ethereum mainnet
         const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
-        await trackTransaction(
+        const result = await trackTransaction(
           {
             type: TransactionType.SWAP,
             title: `${sellTokenSymbol} → ${buyTokenSymbol}`,
@@ -266,7 +294,24 @@ export function useCowOrder(sellTokenSymbol: string, buyTokenSymbol: string): Co
             ),
         );
 
-        // 4. Poll for order fulfillment
+        // 4. Record the fee we just collected. The order is placed either way —
+        // it settles off-chain through CoW — so this is bookkeeping, not a gate.
+        if (orderFee) {
+          reportStocksFee({
+            orderUid: uid,
+            transactionHash:
+              result && typeof result === 'object' && 'transactionHash' in result
+                ? result.transactionHash
+                : undefined,
+            fee: orderFee.fee,
+            sellTokenAddress: quote.quote.sellToken,
+            sellTokenSymbol,
+            sellTokenPriceUsd: orderFee.sellTokenPriceUsd,
+            isSellingStock: orderFee.isSellingStock,
+          });
+        }
+
+        // 5. Poll for order fulfillment
         startPolling(uid);
       } catch (e: any) {
         if (mountedRef.current) {
@@ -276,7 +321,7 @@ export function useCowOrder(sellTokenSymbol: string, buyTokenSymbol: string): Co
         throw e;
       }
     },
-    [user, safeAA, trackTransaction, sellTokenSymbol, buyTokenSymbol],
+    [user, safeAA, trackTransaction, sellTokenSymbol, buyTokenSymbol, orderFee, reportStocksFee],
   );
 
   const reset = useCallback(() => {

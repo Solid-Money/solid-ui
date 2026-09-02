@@ -15,6 +15,7 @@ const FEE_ROWS: { key: string; label: string; subtitle?: string }[] = [
   { key: 'bank_deposit', label: 'Bank deposit' },
   // Swap is not available on iOS, so the swap row is omitted there.
   ...(Platform.OS === 'ios' ? [] : [{ key: 'swap', label: 'Swaps' }]),
+  { key: 'stocks', label: 'Stocks' },
   { key: 'fx', label: 'FX conversion' },
   { key: 'offramp', label: 'Bank withdrawal' },
 ];

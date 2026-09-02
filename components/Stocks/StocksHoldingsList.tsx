@@ -3,8 +3,8 @@ import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 
-import { Holding } from './stocksData';
 import StockRow from './StockRow';
+import { Holding } from './stocksData';
 
 type StocksHoldingsListProps = {
   holdings: Holding[];
