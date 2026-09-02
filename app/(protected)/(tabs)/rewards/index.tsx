@@ -70,11 +70,13 @@ function LegacyRewards() {
 
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
-    const { cashbackThisMonth, cashbackRate, maxCashbackMonthly } = rewardsData;
+    const { cashbackThisMonth, cashbackPendingThisMonth, cashbackRate, maxCashbackMonthly } =
+      rewardsData;
     return [
       <CashbackCard
         key="cashback"
         cashbackThisMonth={cashbackThisMonth}
+        cashbackPendingThisMonth={cashbackPendingThisMonth}
         cashbackRate={cashbackRate}
         maxCashbackMonthly={maxCashbackMonthly}
       />,

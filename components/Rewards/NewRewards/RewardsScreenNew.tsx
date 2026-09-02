@@ -142,6 +142,9 @@ export default function RewardsScreenNew() {
   }
 
   const cashback = rewardsData?.cashbackThisMonth ?? 0;
+  // Left undefined on a backend that doesn't project it, which is what hides
+  // every pending label rather than claiming a confident $0.
+  const cashbackPending = rewardsData?.cashbackPendingThisMonth;
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
@@ -219,12 +222,17 @@ export default function RewardsScreenNew() {
           )}
         </View>
 
-        <RewardsSummaryCard cashback={cashback} referrals={referrals} />
+        <RewardsSummaryCard
+          cashback={cashback}
+          cashbackPending={cashbackPending}
+          referrals={referrals}
+        />
 
         <View className="mt-8">
           <TierBenefitsGrid
             cashbackRate={cashbackRate}
             cashbackThisMonth={cashback}
+            cashbackPendingThisMonth={cashbackPending}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}
             {...benefitRates}

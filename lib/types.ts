@@ -468,6 +468,11 @@ export interface CardResponse {
 export interface CashbackData {
   monthlySoUsdAmount: number;
   monthlyUsdValue: number;
+  /**
+   * Cashback earned this month that is still escrowed, projected in USD.
+   * Absent on backends that predate the pending projection.
+   */
+  monthlyPendingUsdValue?: number;
   totalSoUsdAmount: number;
   totalUsdValue: number;
   percentage: number;
@@ -1493,6 +1498,16 @@ export interface RewardsUserData {
   nextTier: RewardsTier | null;
   cashbackRate: number;
   cashbackThisMonth: number;
+  /**
+   * Cashback earned this month that is still escrowed, in USD, already trimmed
+   * to what the monthly cap can still pay out.
+   *
+   * Cashback settles days after the purchase, so `cashbackThisMonth` alone reads
+   * as $0 to someone who just spent — this is the rest of that answer. A
+   * projection, not a settled figure: absent on older backends, which is what
+   * hides every pending label.
+   */
+  cashbackPendingThisMonth?: number;
   maxCashbackMonthly: number;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
