@@ -27,11 +27,17 @@ export const DAILY_LIMIT_PRESETS_USD = [100, 250, 500, 1_000, 2_500] as const;
  * The daily limit card activation registers with, in whole dollars.
  *
  * The activation button enables the module in the same signature that creates the card,
- * so it cannot stop to ask — and an unasked-for limit has to be the *smallest* one. A
- * cap that turns out to be too low costs a decline the user can fix in the spending
- * sheet in seconds; a cap that is too high is authority they never chose to grant.
+ * so it cannot stop to ask, and the two directions of a later change are not symmetric:
+ * lowering this is immediate and entirely in the user's hands, while raising it waits out
+ * `limitRaiseDelay`. Starting low would therefore lock a new cardholder out of their own
+ * card for a day the first time they spend more than the amount nobody asked them about
+ * — the failure they cannot fix quickly. So this is the working default, and the sheet is
+ * where anyone who wants less says so.
+ *
+ * Clamped by the caller against the live org ceilings, which are the real bound on what
+ * a Safe may ever grant.
  */
-export const INITIAL_DAILY_LIMIT_USD = DAILY_LIMIT_PRESETS_USD[0];
+export const INITIAL_DAILY_LIMIT_USD = 1_000;
 
 /**
  * Monthly limit as a multiple of the chosen daily limit.
