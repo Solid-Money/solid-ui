@@ -2,13 +2,11 @@ import { View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
-import { CASHBACK_PENDING_TEXT_COLOR } from '@/lib/cashbackProgress';
 import { formatBalanceUSD } from '@/lib/utils';
 
 interface RewardsSummaryCardProps {
+  /** This month's cashback, settled and escrowed together. */
   cashback: number;
-  /** Cashback earned this month but still escrowed; absent hides the line. */
-  cashbackPending?: number;
   referrals: number;
 }
 
@@ -26,22 +24,13 @@ const RewardsIcon = () => (
   </View>
 );
 
-const FOOTNOTE_LINE_HEIGHT = 12;
-
 interface SummaryStatProps {
   label: string;
   value: number;
-  /** Secondary line under the figure. */
-  footnote?: string;
-  /**
-   * Hold the footnote's height even without one, so a footnote on one column
-   * doesn't push its label and figure out of line with the other's.
-   */
-  reserveFootnote?: boolean;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value, footnote, reserveFootnote }: SummaryStatProps) => (
+const SummaryStat = ({ label, value }: SummaryStatProps) => (
   <View className="flex-1 items-center justify-center gap-2.5">
     <Text
       className="text-base text-white/70"
@@ -55,34 +44,13 @@ const SummaryStat = ({ label, value, footnote, reserveFootnote }: SummaryStatPro
     >
       {formatBalanceUSD(value)}
     </Text>
-    {footnote ? (
-      <Text
-        className="text-xs"
-        style={{
-          color: CASHBACK_PENDING_TEXT_COLOR,
-          fontFamily: 'MonaSans_500Medium',
-          lineHeight: FOOTNOTE_LINE_HEIGHT,
-        }}
-      >
-        {footnote}
-      </Text>
-    ) : (
-      // A blank spacer rather than blank text, so a screen reader doesn't read
-      // an empty line where the other column has a footnote.
-      reserveFootnote && <View style={{ height: FOOTNOTE_LINE_HEIGHT }} />
-    )}
   </View>
 );
 
 /**
  * "Rewards" summary card: Cashback and Referrals split into two columns.
  */
-const RewardsSummaryCard = ({ cashback, cashbackPending, referrals }: RewardsSummaryCardProps) => {
-  // Cashback settles days after the purchase, so the settled figure alone reads
-  // as $0 for the fortnight an escrow takes to mature — which is exactly when a
-  // fresh purchase is on the cardholder's mind.
-  const showPending = cashbackPending !== undefined && cashbackPending > 0;
-
+const RewardsSummaryCard = ({ cashback, referrals }: RewardsSummaryCardProps) => {
   return (
     <View className="relative mx-4 h-40 overflow-hidden rounded-twice bg-card">
       <View className="h-16 flex-row items-center px-3">
@@ -96,13 +64,9 @@ const RewardsSummaryCard = ({ cashback, cashbackPending, referrals }: RewardsSum
       </View>
 
       <View className="h-24 flex-row">
-        <SummaryStat
-          label="Cashback"
-          value={cashback}
-          footnote={showPending ? `+${formatBalanceUSD(cashbackPending ?? 0)} pending` : undefined}
-        />
+        <SummaryStat label="Cashback" value={cashback} />
         <View className="w-px bg-white/10" />
-        <SummaryStat label="Referrals" value={referrals} reserveFootnote={showPending} />
+        <SummaryStat label="Referrals" value={referrals} />
       </View>
 
       <View className="absolute left-0 right-0 top-16 h-px bg-white/10" />

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { CASHBACK_PENDING_TEXT_COLOR } from '@/lib/cashbackProgress';
+import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { cn, formatBalanceUSD, formatNumber, formatWholeDollars } from '@/lib/utils';
 
 import RewardsDiamondIcon from './RewardsDiamondIcon';
@@ -56,9 +56,14 @@ const CashbackDetailsContent = ({
       Earn USDC back on eligible card spend, up to your monthly limit
     </Text>
 
-    {/* The monthly cap is its own row rather than a "/ $150" suffix: earned and
-        pending are both measured against it, and repeating it on each would read
-        as two separate caps. */}
+    {/* One cashback figure, settled and escrowed together — see
+        `monthlyCashbackTotal`. Cents are kept: a single purchase earns well
+        under a dollar, and rounding the month's first purchase to $0 is the
+        confusion this figure exists to fix.
+
+        The monthly cap keeps the row of its own it got when there were two
+        figures measured against it, rather than going back to a "/ $150"
+        suffix — it is a limit on the month, not a property of the amount. */}
     <View className="mt-9 w-full overflow-hidden rounded-twice bg-[#2B2B2B]">
       <StatRow label="Your cashback rate">
         <Text className="text-lg font-bold text-[#94F27F]">
@@ -68,22 +73,9 @@ const CashbackDetailsContent = ({
       <Divider />
       <StatRow label="Cashback earned this month">
         <Text className="text-lg font-medium text-[#94F27F]">
-          {formatWholeDollars(cashbackThisMonth)}
+          {formatBalanceUSD(monthlyCashbackTotal(cashbackThisMonth, cashbackPendingThisMonth))}
         </Text>
       </StatRow>
-      {cashbackPendingThisMonth !== undefined && (
-        <>
-          <Divider />
-          {/* Cents kept here, unlike the settled rows: a single purchase's
-              cashback is usually under a dollar, and rounding it to $0 is the
-              confusion this row exists to fix. */}
-          <StatRow label="Cashback pending this month">
-            <Text className="text-lg font-medium" style={{ color: CASHBACK_PENDING_TEXT_COLOR }}>
-              {formatBalanceUSD(cashbackPendingThisMonth ?? 0)}
-            </Text>
-          </StatRow>
-        </>
-      )}
       <Divider />
       <StatRow label="Monthly cap">
         <Text className="text-lg font-medium text-white">
