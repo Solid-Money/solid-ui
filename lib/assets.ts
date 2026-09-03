@@ -799,6 +799,10 @@ export const ASSETS = {
     module: require('@/assets/images/reward-tier-star.png'),
     hash: 'e3b44279',
   },
+  'images/rewards-points-star.svg': {
+    module: require('@/assets/images/rewards-points-star.svg'),
+    hash: '26997a2e',
+  },
   'images/rewards-tiers/cashback-cap.png': {
     module: require('@/assets/images/rewards-tiers/cashback-cap.png'),
     hash: '47879d46',

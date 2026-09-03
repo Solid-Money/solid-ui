@@ -18,6 +18,7 @@ const INCOMING_BADGE_TYPES = new Set<TransactionType>([
   TransactionType.FUND,
   TransactionType.BRIDGE_TRANSFER,
   TransactionType.BANK_TRANSFER,
+  TransactionType.WIREX_BANK_DEPOSIT,
   TransactionType.MERCURYO_TRANSACTION,
   TransactionType.RESCUE_TOKEN,
 ]);
@@ -29,6 +30,7 @@ const OUTGOING_BADGE_TYPES = new Set<TransactionType>([
   TransactionType.FAST_WITHDRAW,
   TransactionType.REPAY_AND_WITHDRAW_COLLATERAL,
   TransactionType.WITHDRAW_COLLATERAL,
+  TransactionType.WIREX_BANK_PAYOUT,
 ]);
 
 type ActivityTokenIconProps = {

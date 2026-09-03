@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -25,8 +26,11 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
+import { useSwapState } from '@/store/swapStore';
+import { useDepositStore } from '@/store/useDepositStore';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
@@ -34,6 +38,7 @@ import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
 import TierStatsBand from './TierStatsBand';
 import TierSwitcher from './TierSwitcher';
+import UpgradeTierSheet from './UpgradeTierSheet';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
@@ -495,6 +500,8 @@ const HEADER_TOP_SPACING = 20;
 const DESKTOP_HERO_TOP_REDUCTION = 30;
 const SLIDE_DURATION = 260;
 const SLIDE_EASING = Easing.out(Easing.cubic);
+const PREMIUM_FOOTER_SLIDE_DURATION = 360;
+const PREMIUM_FOOTER_SLIDE_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const SWIPE_DISTANCE_THRESHOLD = 50;
 const SWIPE_VELOCITY_THRESHOLD = 400;
 // Dampens the drag past the first/last tier so it feels like it's resisting.
@@ -502,6 +509,16 @@ const RUBBER_BAND_FACTOR = 0.3;
 // bg-background (--background), used as the solid end of the top/bottom fades.
 const BACKGROUND = '#0F0F10';
 const PAGE_BOTTOM_SPACING = 48;
+const PREMIUM_FOOTER_FADE_HEIGHT = 82;
+const PREMIUM_FOOTER_OVERLAP = 94;
+const PREMIUM_FOOTER_BUTTON_TOP = 130;
+const PREMIUM_FOOTER_BUTTON_HEIGHT = 50;
+const PREMIUM_FOOTER_MIN_BOTTOM_SPACING = 19;
+const PREMIUM_FOOTER_VERTICAL_OFFSET = 5;
+const FUSE_UPGRADE_AMOUNT: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
+  [RewardsTier.PRIME]: '50k',
+  [RewardsTier.ULTRA]: '400k',
+};
 // Extra height the fades extend beyond their bar's own content, so scrolled
 // content dims out smoothly under the header / off the bottom edge instead of
 // getting a hard clip (mirrors CardWaitingModal's FADE_EXTENT).
@@ -514,6 +531,109 @@ interface TierPageProps {
   /** Width of the page column — the window on mobile, the body column on desktop. */
   pageWidth: number;
 }
+
+const PremiumUpgradeFooter = ({
+  selectedTier,
+  onUpgradePress,
+}: {
+  selectedTier: RewardsTier;
+  onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
+}) => {
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
+  const isVisible = selectedTier !== RewardsTier.CORE;
+  const lastPremiumTier = useRef<RewardsTier.PRIME | RewardsTier.ULTRA>(RewardsTier.PRIME);
+
+  if (selectedTier === RewardsTier.PRIME || selectedTier === RewardsTier.ULTRA) {
+    lastPremiumTier.current = selectedTier;
+  }
+
+  const tier = lastPremiumTier.current;
+  const fuseAmount = FUSE_UPGRADE_AMOUNT[tier];
+  const bottomSpacing =
+    Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) + PREMIUM_FOOTER_VERTICAL_OFFSET;
+  const footerHeight = PREMIUM_FOOTER_BUTTON_TOP + PREMIUM_FOOTER_BUTTON_HEIGHT + bottomSpacing;
+  const footerTranslateY = useSharedValue(isVisible ? 0 : footerHeight);
+
+  useEffect(() => {
+    footerTranslateY.value = reduceMotion
+      ? isVisible
+        ? 0
+        : footerHeight
+      : withTiming(isVisible ? 0 : footerHeight, {
+          duration: PREMIUM_FOOTER_SLIDE_DURATION,
+          easing: PREMIUM_FOOTER_SLIDE_EASING,
+        });
+  }, [footerHeight, footerTranslateY, isVisible, reduceMotion]);
+
+  const footerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: footerTranslateY.value }],
+  }));
+
+  return (
+    <Animated.View
+      pointerEvents={isVisible ? 'box-none' : 'none'}
+      style={[
+        {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          height: footerHeight,
+        },
+        footerAnimatedStyle,
+      ]}
+    >
+      <LinearGradient
+        colors={[`${BACKGROUND}00`, BACKGROUND]}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: PREMIUM_FOOTER_FADE_HEIGHT,
+        }}
+      />
+      <View
+        pointerEvents="box-none"
+        className="absolute bottom-0 left-0 right-0 items-center bg-[#0F0F10]"
+        style={{ top: PREMIUM_FOOTER_FADE_HEIGHT }}
+      >
+        <Text
+          className="mt-[11px] text-center text-white/70"
+          style={{
+            fontFamily: 'MonaSans_400Regular',
+            fontSize: 16,
+            lineHeight: 23,
+          }}
+        >
+          Deposit {fuseAmount} FUSE to upgrade
+        </Text>
+        <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Deposit ${fuseAmount} FUSE to upgrade to ${TIER_LABELS[tier]}`}
+            onPress={() => onUpgradePress(tier)}
+            className="mt-[14px] h-[50px] items-center justify-center rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+          >
+            <Text
+              className="font-semibold text-black"
+              style={{
+                fontFamily: 'MonaSans_600SemiBold',
+                fontSize: 16,
+                lineHeight: 23,
+              }}
+            >
+              Upgrade
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
 
 /**
  * One tier's full page of content — all three are mounted side by side (see
@@ -590,7 +710,12 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
       style={{
         width: pageWidth,
         paddingTop: pageTopSpacing,
-        paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING,
+        paddingBottom:
+          PREMIUM_FOOTER_BUTTON_TOP +
+          PREMIUM_FOOTER_BUTTON_HEIGHT +
+          Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) +
+          PREMIUM_FOOTER_VERTICAL_OFFSET -
+          PREMIUM_FOOTER_OVERLAP,
       }}
     >
       <View className="items-center pt-4">
@@ -661,8 +786,14 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
 export default function RewardsBenefitsScreenNew() {
   const { data: rewardsData } = useRewardsUserData();
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(null);
+  const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
+  const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
+    RewardsTier.PRIME,
+  );
   const selectedTier = selectedTierOverride ?? rewardsData?.currentTier ?? RewardsTier.CORE;
   const insets = useSafeAreaInsets();
+  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
   // The pager's pages are as wide as the column the page gets, which on desktop is
   // the body column beside the sidebar rather than the whole window.
   const pageWidth = usePageWidth();
@@ -691,6 +822,26 @@ export default function RewardsBenefitsScreenNew() {
   const rowStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
+
+  const handleUpgradePress = useCallback((tier: RewardsTier.PRIME | RewardsTier.ULTRA) => {
+    setUpgradeTier(tier);
+    setIsUpgradeSheetOpen(true);
+  }, []);
+
+  const handleDepositFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+
+    const depositStore = useDepositStore.getState();
+    depositStore.resetDepositFlow();
+    depositStore.setSavingsFundIntent('savings');
+    depositStore.setDepositFromSolid(false);
+    selectSavingsFundToken('WFUSE');
+  }, [selectSavingsFundToken]);
+
+  const handleBuyFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+    openBuyFuse(upgradeTier);
+  }, [openBuyFuse, upgradeTier]);
 
   // Top fade sits over the scrolled content so the header + tier switcher stay
   // legible as content passes under them; the matching bottom fade dims content
@@ -738,6 +889,14 @@ export default function RewardsBenefitsScreenNew() {
           right: 0,
           height: insets.bottom + FADE_EXTENT,
         }}
+      />
+      <PremiumUpgradeFooter selectedTier={selectedTier} onUpgradePress={handleUpgradePress} />
+      <UpgradeTierSheet
+        open={isUpgradeSheetOpen}
+        tier={upgradeTier}
+        onOpenChange={setIsUpgradeSheetOpen}
+        onDepositFuse={handleDepositFuse}
+        onBuyFuse={handleBuyFuse}
       />
     </>
   );

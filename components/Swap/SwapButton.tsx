@@ -24,7 +24,12 @@ import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/p
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
 
-const SwapButton: React.FC = () => {
+interface SwapButtonProps {
+  label?: string;
+  showSecurityIcon?: boolean;
+}
+
+const SwapButton: React.FC<SwapButtonProps> = ({ label = 'Swap', showSecurityIcon = true }) => {
   const { isExpertMode } = useUserState();
   const { user } = useUser();
 
@@ -540,8 +545,13 @@ const SwapButton: React.FC = () => {
           <Text className="text-base font-bold">Enter an amount</Text>
         ) : (
           <View className="flex-row items-center gap-2">
-            <Image source={getAsset('images/security_key.png')} style={{ width: 21, height: 10 }} />
-            <Text className="text-base font-bold">Swap</Text>
+            {showSecurityIcon && (
+              <Image
+                source={getAsset('images/security_key.png')}
+                style={{ width: 21, height: 10 }}
+              />
+            )}
+            <Text className="text-base font-bold">{label}</Text>
           </View>
         )}
       </Button>
