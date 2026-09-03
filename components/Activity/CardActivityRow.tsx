@@ -145,8 +145,14 @@ const CardActivityRow = ({
           )}
         </Text>
         {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
-        {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
-          <Text className="text-sm font-medium text-brand">{cashbackInfo.amount}</Text>
+        {/* Green once the payout has landed; ordinary text while it is still a
+            projection of what this purchase will earn. The label on the left
+            already carries the escrow status, so the figure does not repeat
+            it. */}
+        {cashbackInfo?.amount && (
+          <Text className={cn('text-sm font-medium', cashbackInfo.isPaid && 'text-brand')}>
+            {cashbackInfo.amount}
+          </Text>
         )}
         {feeInfo && (
           <Text

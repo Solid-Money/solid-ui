@@ -1366,13 +1366,32 @@ export interface Cashback {
   fiatAmount?: string;
   fiatCurrency?: string;
   payoutAt?: string;
+  /**
+   * USD this row is projected to pay out when its escrow matures.
+   *
+   * An escrowed row has no payout amount yet — `soUsdAmount` is written when it
+   * matures — so this is what lets a receipt name a figure on the day of the
+   * purchase. Only sent for rows still awaiting payout, and absent on backends
+   * that predate the projection.
+   */
+  projectedUsdValue?: number;
   createdAt: string;
 }
 
 export interface CashbackInfo {
-  amount: string;
+  /**
+   * The figure to print, already formatted (e.g. "+$5.77"). Null when neither a
+   * payout nor a projection is available, which is what makes a surface fall
+   * back to naming the status instead of a number.
+   */
+  amount: string | null;
   isPending: boolean;
   isEscrowed: boolean;
+  /**
+   * Whether the payout has actually landed. The only state that colours the
+   * figure: until then it is a projection, and reads as ordinary text.
+   */
+  isPaid: boolean;
   payoutAt?: string;
 }
 

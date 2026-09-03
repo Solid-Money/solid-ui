@@ -420,27 +420,23 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         },
       cashbackInfo && {
         key: 'cashback',
-        // The one row the design colours on both sides (Figma 21287:5858): what
-        // the user earned back reads as a gain, not as another fact about the
-        // charge. The value still takes the escrow/pending amber on its own, so
-        // green here says "cashback" rather than "already paid".
+        // The label is green on both sides of the design (Figma 21287:5858):
+        // what the user earned back reads as a gain, not as another fact about
+        // the charge.
         label: (
           <View className="flex-row items-center gap-1.5">
             <CashbackDiamondIcon size={14} />
             <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
           </View>
         ),
+        // The figure earns its green only once the payout has landed. Until
+        // then it is a projection, and it carries no "(Escrowed)" or
+        // "(Pending)" of its own — the "Releases in" row below already says the
+        // money is still on its way, and saying so twice on one receipt reads
+        // as a warning about the amount rather than a note about its timing.
         value: (
-          <Value className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-brand'}>
-            {cashbackInfo.amount === 'Pending'
-              ? cashbackInfo.isEscrowed
-                ? 'Escrowed'
-                : 'Pending'
-              : cashbackInfo.isEscrowed
-                ? `${cashbackInfo.amount} (Escrowed)`
-                : cashbackInfo.isPending
-                  ? `${cashbackInfo.amount} (Pending)`
-                  : cashbackInfo.amount}
+          <Value className={cashbackInfo.isPaid ? 'text-brand' : undefined}>
+            {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
           </Value>
         ),
       },
