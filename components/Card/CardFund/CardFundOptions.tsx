@@ -14,7 +14,10 @@ import {
   getCardFundNetworkChips,
   RAIN_CARD_FUND_SECTIONS,
 } from '@/components/Card/CardFund/constants';
-import { CARD_FUND_LOCAL_CURRENCIES } from '@/components/Card/CardFund/localCurrencies';
+import {
+  CARD_FUND_LOCAL_CURRENCIES,
+  getCardFundLocalPaymentMethods,
+} from '@/components/Card/CardFund/localCurrencies';
 import NeedHelp from '@/components/NeedHelp';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
@@ -90,6 +93,7 @@ const CardFundOptions = ({
                   key={currency.code}
                   icon={currency.icon}
                   title={currency.code}
+                  chips={getCardFundLocalPaymentMethods(currency.code)}
                   onPress={() => onLocalCurrencyPress?.(currency.code)}
                 />
               ))
