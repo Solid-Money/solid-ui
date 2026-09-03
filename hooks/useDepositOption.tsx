@@ -10,11 +10,13 @@ import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
+import { TransfiError } from '@/components/BuyCrypto/Transfi/TransfiError';
 import { TransfiKycConsent } from '@/components/BuyCrypto/Transfi/TransfiKycConsent';
 import { TransfiKycPending } from '@/components/BuyCrypto/Transfi/TransfiKycPending';
 import { TransfiOrderStatus } from '@/components/BuyCrypto/Transfi/TransfiOrderStatus';
 import { TransfiPayment } from '@/components/BuyCrypto/Transfi/TransfiPayment';
 import { TransfiPaymentMethodSelector } from '@/components/BuyCrypto/Transfi/TransfiPaymentMethodSelector';
+import { TransfiProfileForm } from '@/components/BuyCrypto/Transfi/TransfiProfileForm';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
@@ -35,11 +37,13 @@ import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScree
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { WirexBankAccountPane } from '@/components/WirexBankAccount/WirexBankAccountPane';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
@@ -113,6 +117,7 @@ const useDepositOption = ({
   const { address, status } = externalWallet;
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
@@ -146,6 +151,8 @@ const useDepositOption = ({
     currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD.name;
   const isBuyCryptoPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT.name;
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
+  const isBuyCryptoProfile = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name;
+  const isBuyCryptoError = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -301,6 +308,14 @@ const useDepositOption = ({
       return <TransfiOrderStatus />;
     }
 
+    if (isBuyCryptoProfile) {
+      return <TransfiProfileForm />;
+    }
+
+    if (isBuyCryptoError) {
+      return <TransfiError />;
+    }
+
     if (isPublicAddress) {
       return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
@@ -338,6 +353,13 @@ const useDepositOption = ({
     }
 
     if (isVirtualAccountDetails) {
+      // Which provider issued the account decides which screen shows it. The
+      // Wirex pane owns its own activation and send flows, so it needs no
+      // onRetry route back through the Rain ToS step.
+      if (virtualAccountProvider === 'wirex') {
+        return <WirexBankAccountPane />;
+      }
+
       return (
         <VirtualAccountDetailsModal
           onRetry={() => setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS)}
@@ -379,6 +401,8 @@ const useDepositOption = ({
     if (isBuyCryptoPaymentMethod) return 'buy-crypto-payment-method';
     if (isBuyCryptoPayment) return 'buy-crypto-payment';
     if (isBuyCryptoStatus) return 'buy-crypto-status';
+    if (isBuyCryptoProfile) return 'buy-crypto-profile';
+    if (isBuyCryptoError) return 'buy-crypto-error';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -416,6 +440,10 @@ const useDepositOption = ({
     if (isBuyCryptoPaymentMethod) return 'Payment method';
     if (isBuyCryptoPayment) return 'Complete payment';
     if (isBuyCryptoStatus) return 'Order status';
+    if (isBuyCryptoProfile) return 'Complete your details';
+    // The error screen carries its own headline and icon; a second title above
+    // it would say the same thing twice.
+    if (isBuyCryptoError) return undefined;
     if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -446,7 +474,9 @@ const useDepositOption = ({
       isBuyCryptoKycConsent ||
       isBuyCryptoKycPending ||
       isBuyCryptoPayment ||
-      isBuyCryptoStatus
+      isBuyCryptoStatus ||
+      isBuyCryptoProfile ||
+      isBuyCryptoError
     ) {
       return 'w-[470px] max-h-[90vh]';
     }
@@ -700,6 +730,14 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+    } else if (isBuyCryptoProfile) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR);
+    } else if (isBuyCryptoError) {
+      // The failure is what sent them here; going back to the step that raised
+      // it would only reproduce it. Leave the flow instead.
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isBuyCryptoStatus) {
       // Payment already initiated — closing is the only sensible back action.
       setModal(DEPOSIT_MODAL.CLOSE);

@@ -14,6 +14,8 @@ import { canDepositToCard, cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
+  type BankBalance,
+  bankBalancesToShow,
   type CardBalanceDisplay,
   getTotalBalance,
   type OtherBalances,
@@ -22,12 +24,32 @@ import {
 } from './balanceTotals';
 import OtherBalancesPie from './OtherBalancesPie';
 
-export { getTotalBalance, shouldShowCard, shouldShowSpendable };
-export type { CardBalanceDisplay, OtherBalances };
+export { bankBalancesToShow, getTotalBalance, shouldShowCard, shouldShowSpendable };
+export type { BankBalance, CardBalanceDisplay, OtherBalances };
 
 const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
+const BANK_COLOR = '#F2B94F'; // amber — the one pot held outside Solid
+
+/**
+ * A bank balance in its own currency.
+ *
+ * `formatBalanceUSD` is USD-only, and these are the only figures on this screen
+ * that are not. Intl gives the right symbol and placement per locale (€55.93,
+ * $120.00) and degrades to the ISO code for a currency it does not know rather
+ * than throwing, which is what an unrecognised value from Wirex would do.
+ */
+const formatCurrencyAmount = (amount: number, currency: string): string => {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency.toUpperCase()}`;
+  }
+};
 
 /**
  * The issuer-dependent half of the breakdown, resolved once for whichever sheet
@@ -111,6 +133,7 @@ const BalanceRow = ({
   color,
   label,
   value,
+  formattedValue,
   caption,
   isLoading,
   children,
@@ -118,6 +141,11 @@ const BalanceRow = ({
   color: string;
   label: string;
   value: number;
+  /**
+   * Overrides the default USD rendering. Only the bank rows need it — they are
+   * the one balance here that can be denominated in something other than USD.
+   */
+  formattedValue?: string;
   /** Optional line under the figure, for a row whose meaning isn't self-evident. */
   caption?: string;
   isLoading?: boolean;
@@ -132,7 +160,9 @@ const BalanceRow = ({
       {isLoading ? (
         <Skeleton className="h-7 w-24 rounded-lg" />
       ) : (
-        <Text className="text-2xl font-semibold text-white">{formatBalanceUSD(value)}</Text>
+        <Text className="text-2xl font-semibold text-white">
+          {formattedValue ?? formatBalanceUSD(value)}
+        </Text>
       )}
       {!isLoading && !!caption && (
         <Text className="text-xs font-medium text-muted-foreground">{caption}</Text>
@@ -209,6 +239,43 @@ export const SpendableBalanceRow = ({
   />
 );
 
+/**
+ * Bank balance rows (amber) — money sitting in the user's Wirex account after a
+ * SEPA or ACH deposit.
+ *
+ * One row per currency held. They are not summed into a single figure because
+ * EUR and USD are not addable without a live rate, and are not folded into the
+ * headline for the same reason (see `getTotalBalance`).
+ *
+ * No "Add" and no conversion to USD: this pot is filled by a bank transfer to
+ * the user's IBAN or ACH details, and emptied by an outbound transfer from the
+ * bank screen. Nothing in the app moves it, which is what the caption says.
+ */
+export const BankBalanceRows = ({
+  balances,
+  isLoading,
+}: {
+  balances: BankBalance[];
+  isLoading?: boolean;
+}) => (
+  <>
+    {balances.map((balance, index) => (
+      <BalanceRow
+        key={balance.tokenSymbol}
+        color={BANK_COLOR}
+        label={`Bank (${balance.currency})`}
+        value={balance.amount}
+        formattedValue={formatCurrencyAmount(balance.amount, balance.currency)}
+        // Once, on the last row, so two rows do not repeat the same sentence.
+        caption={
+          index === balances.length - 1 ? 'Received by bank transfer, held at Wirex' : undefined
+        }
+        isLoading={isLoading}
+      />
+    ))}
+  </>
+);
+
 /** Savings balance row (purple). "Add" opens the savings deposit modal (global). */
 export const SavingsBalanceRow = ({
   savingsBalance,
@@ -235,12 +302,16 @@ export const SavingsBalanceRow = ({
 
 /**
  * The breakdown, in order: Wallet, Card (only when the card holds money of its
- * own), Savings, then Spendable.
+ * own), Savings, Bank, then Spendable.
  *
- * The first three are pots; Spendable closes the list because it is a reading of the
+ * The first four are pots; Spendable closes the list because it is a reading of the
  * ones above it rather than a balance of its own. It also replaces Card for an issuer
  * whose card holds nothing — the two are alternatives, never both, since a $0 Card row
  * beside a funded Spendable one would read as money lost.
+ *
+ * Bank sits after Savings and only when there is something in it. It is the one
+ * pot held outside Solid, so it is last among the real balances — and unlike the
+ * others it is absent, not zero, for everyone who has never had a bank deposit.
  */
 export const BalanceBreakdownRows = ({
   walletBalance,
@@ -253,28 +324,35 @@ export const BalanceBreakdownRows = ({
   cardHoldsOwnBalance = true,
   canAddToCard = true,
   spendableBalance = 0,
+  bankBalances = [],
 }: OtherBalances &
   Partial<CardBalanceDisplay> & {
     onDismiss?: () => void;
     onCardAdd?: () => void;
-  }) => (
-  <>
-    <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
-    {shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) && (
-      <CardBalanceRow
-        cardBalance={cardBalance}
+    bankBalances?: BankBalance[];
+  }) => {
+  const bankRows = bankBalancesToShow(bankBalances);
+
+  return (
+    <>
+      <WalletBalanceRow walletBalance={walletBalance} isLoading={isLoading} onDismiss={onDismiss} />
+      {shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) && (
+        <CardBalanceRow
+          cardBalance={cardBalance}
+          isLoading={isLoading}
+          onAdd={onCardAdd}
+          canAdd={canAddToCard}
+        />
+      )}
+      <SavingsBalanceRow
+        savingsBalance={savingsBalance}
         isLoading={isLoading}
-        onAdd={onCardAdd}
-        canAdd={canAddToCard}
+        onDismiss={onDismiss}
       />
-    )}
-    <SavingsBalanceRow
-      savingsBalance={savingsBalance}
-      isLoading={isLoading}
-      onDismiss={onDismiss}
-    />
-    {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
-      <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
-    )}
-  </>
-);
+      {bankRows.length > 0 && <BankBalanceRows balances={bankRows} isLoading={isLoading} />}
+      {shouldShowSpendable({ userHasCard, cardHoldsOwnBalance }) && (
+        <SpendableBalanceRow spendableBalance={spendableBalance} isLoading={isLoading} />
+      )}
+    </>
+  );
+};

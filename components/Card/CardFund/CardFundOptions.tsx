@@ -7,13 +7,17 @@ import FundMoveSavings from '@/assets/images/fund-move-savings';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
+  CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS,
   CARD_FUND_TOKENS,
   CARD_FUND_USD_ICON,
   CardFundSections,
   getCardFundNetworkChips,
   RAIN_CARD_FUND_SECTIONS,
 } from '@/components/Card/CardFund/constants';
-import { CARD_FUND_LOCAL_CURRENCIES } from '@/components/Card/CardFund/localCurrencies';
+import {
+  CARD_FUND_LOCAL_CURRENCIES,
+  getCardFundLocalPaymentMethods,
+} from '@/components/Card/CardFund/localCurrencies';
 import NeedHelp from '@/components/NeedHelp';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
@@ -72,7 +76,7 @@ const CardFundOptions = ({
       ) : null}
 
       {showCashDeposit ? (
-        <CardFundGroup label="Cash deposit">
+        <CardFundGroup label="Cash deposit" maxVisibleRows={CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS}>
           {sections.cashDeposit ? (
             <CardFundRow
               icon={
@@ -89,6 +93,7 @@ const CardFundOptions = ({
                   key={currency.code}
                   icon={currency.icon}
                   title={currency.code}
+                  chips={getCardFundLocalPaymentMethods(currency.code)}
                   onPress={() => onLocalCurrencyPress?.(currency.code)}
                 />
               ))

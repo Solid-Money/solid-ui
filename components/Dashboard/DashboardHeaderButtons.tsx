@@ -1,4 +1,4 @@
-import { Linking, View } from 'react-native';
+import { View } from 'react-native';
 
 import FuseLogoSkeleton from '@/assets/images/fuse-logo-skeleton';
 import HomeSend from '@/assets/images/home-send';
@@ -13,6 +13,7 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { useSwapState } from '@/store/swapStore';
 
 type DashboardHeaderButtonsProps = {
   deposit?: {
@@ -45,6 +46,8 @@ const DashboardHeaderButtons = ({
   disableSwap,
   preserveSelectedVault,
 }: DashboardHeaderButtonsProps) => {
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
+
   const withdrawTrigger = (
     <Button
       variant="secondary"
@@ -75,7 +78,7 @@ const DashboardHeaderButtons = ({
               button_name: 'buy_fuse',
               source: 'dashboard_header',
             });
-            Linking.openURL('https://www.fuse.io/get-fuse');
+            openBuyFuse();
           }}
         >
           <View className="flex-row items-center gap-2">

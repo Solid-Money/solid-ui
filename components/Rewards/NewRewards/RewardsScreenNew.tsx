@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -15,11 +15,14 @@ import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { IS_TIER_CASHBACK_HARDCODED, isDevFeatureEnabled } from '@/lib/config';
 import { resolveTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
+import { useSwapState } from '@/store/swapStore';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
@@ -28,10 +31,11 @@ import { useUserStore } from '@/store/useUserStore';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
-import { hasSkipTheLine } from './skipTheLine';
-import SkipTheLineSection from './SkipTheLineSection';
+import { resolveTierUpgradeCardData } from './skipTheLine';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
+import TierUpgradeCard from './TierUpgradeCard';
+import UpgradeTierSheet from './UpgradeTierSheet';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -51,6 +55,8 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
+  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
@@ -62,6 +68,32 @@ export default function RewardsScreenNew() {
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
+  const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
+    RewardsTier.PRIME,
+  );
+
+  const handleUpgradeTier = useCallback((tier: RewardsTier | null) => {
+    if (tier !== RewardsTier.PRIME && tier !== RewardsTier.ULTRA) return;
+
+    setUpgradeTier(tier);
+    setIsUpgradeSheetOpen(true);
+  }, []);
+
+  const handleDepositFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+
+    const depositStore = useDepositStore.getState();
+    depositStore.resetDepositFlow();
+    depositStore.setSavingsFundIntent('savings');
+    depositStore.setDepositFromSolid(false);
+    selectSavingsFundToken('WFUSE');
+  }, [selectSavingsFundToken]);
+
+  const handleBuyFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+    openBuyFuse(upgradeTier);
+  }, [openBuyFuse, upgradeTier]);
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
   // true when the backend doesn't send it, so we never prompt prematurely.
@@ -111,6 +143,13 @@ export default function RewardsScreenNew() {
   // page with Core-tier defaults and zeroed stats rather than an error state.
   const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
   const totalPoints = rewardsData?.totalPoints ?? 0;
+  const { nextTier, targetPoints, skipLine, showTierUpgradeCard } = resolveTierUpgradeCardData({
+    currentTier,
+    nextTier: rewardsData?.nextTier,
+    targetPoints: rewardsData?.nextTierPoints,
+    skipLine: rewardsData?.fuseSkipLine,
+    allowFallback: isDevFeatureEnabled,
+  });
 
   if (rewardsLocked) {
     return (
@@ -225,7 +264,22 @@ export default function RewardsScreenNew() {
           )}
         </View>
 
-        <RewardsSummaryCard cashback={cashback} referrals={referrals} />
+        <RewardsSummaryCard
+          cashback={cashback}
+          referrals={referrals}
+          cashbackDetails={{
+            cashbackRate,
+            // The settled and escrowed halves go in separately: the sheet sums
+            // them itself, so handing it `cashback` would count the escrowed
+            // part twice.
+            cashbackThisMonth: cashbackSettled,
+            cashbackPendingThisMonth: cashbackPending,
+            maxCashbackMonthly: rewardsData?.maxCashbackMonthly ?? 0,
+            allTimeCashback,
+          }}
+          onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+          onReferralsPress={() => setIsReferralModalOpen(true)}
+        />
 
         <View className="mt-8">
           <TierBenefitsGrid
@@ -243,13 +297,16 @@ export default function RewardsScreenNew() {
           />
         </View>
 
-        {/* Sits below the earned benefits: this is the shortcut past them.
-            Renders nothing unless the backend says the mechanic is live. */}
-        {hasSkipTheLine(rewardsData?.fuseSkipLine) && (
-          <View className="mt-8">
-            <SkipTheLineSection
-              skipLine={rewardsData?.fuseSkipLine}
-              onAddFuse={() => router.push(path.SAVINGS_FUSE)}
+        {/* The compact card presents both routes to the next tier: normal points
+            progress and the optional FUSE shortcut configured by the backend. */}
+        {showTierUpgradeCard && (
+          <View className="mt-8 px-4">
+            <TierUpgradeCard
+              currentPoints={totalPoints}
+              targetPoints={targetPoints}
+              nextTier={nextTier}
+              skipLine={skipLine}
+              onUpgradeTier={() => handleUpgradeTier(nextTier)}
             />
           </View>
         )}
@@ -258,6 +315,13 @@ export default function RewardsScreenNew() {
       <ReferralProgramModalNew
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
+      />
+      <UpgradeTierSheet
+        open={isUpgradeSheetOpen}
+        tier={upgradeTier}
+        onOpenChange={setIsUpgradeSheetOpen}
+        onDepositFuse={handleDepositFuse}
+        onBuyFuse={handleBuyFuse}
       />
     </PageLayout>
   );

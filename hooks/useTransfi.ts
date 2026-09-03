@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  completeTransfiProfile,
   createTransfiOrder,
   getTransfiOrder,
   getTransfiPaymentConfig,
@@ -10,6 +11,8 @@ import {
   retryTransfiKyc,
   shareTransfiKyc,
 } from '@/lib/api';
+import { TransfiError } from '@/lib/transfiErrors';
+import { TransfiProfileInput } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 export const TRANSFI_STATUS_KEY = 'transfiStatus';
@@ -67,12 +70,42 @@ export function useRetryTransfiKyc() {
   });
 }
 
+/**
+ * Send the address/phone the user filled in, then re-share their KYC.
+ *
+ * The response is the refreshed gating status, so it replaces the cached one —
+ * the pending screen and the entry point both read from there, and leaving the
+ * pre-share status behind would send the user back to the same dead end.
+ */
+export function useCompleteTransfiProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (profile: TransfiProfileInput) => {
+      const data = await withRefreshToken(() => completeTransfiProfile(profile));
+      if (!data) throw new Error('Failed to save your details');
+      return data;
+    },
+    onSuccess: data => {
+      queryClient.setQueryData([TRANSFI_STATUS_KEY], data);
+    },
+  });
+}
+
+/**
+ * Don't retry a refusal the server has already decided on. A 4xx here is a
+ * verdict — an unsupported region, an amount outside the limits — and three
+ * more attempts only delay the screen that explains it.
+ */
+const retryUnlessRefused = (failureCount: number, error: unknown) =>
+  failureCount < 1 && !(error instanceof TransfiError && error.status >= 400 && error.status < 500);
+
 export function useTransfiPaymentConfig(enabled = true) {
   return useQuery({
     queryKey: [TRANSFI_PAYMENT_CONFIG_KEY],
     queryFn: () => withRefreshToken(() => getTransfiPaymentConfig()),
     enabled,
     staleTime: 5 * 60 * 1000,
+    retry: retryUnlessRefused,
   });
 }
 
@@ -83,6 +116,7 @@ export function useTransfiPaymentMethods(currency?: string) {
     queryFn: () => withRefreshToken(() => getTransfiPaymentMethods(currency as string)),
     enabled: Boolean(currency),
     staleTime: 60 * 1000,
+    retry: retryUnlessRefused,
   });
 }
 
@@ -111,7 +145,7 @@ export function useTransfiQuote(
       withRefreshToken(() => getTransfiQuote(amount, currency, paymentCode, signal)),
     enabled: enabled && Boolean(currency) && Number.isFinite(numeric) && numeric > 0,
     placeholderData: keepPreviousData,
-    retry: 1,
+    retry: retryUnlessRefused,
   });
 }
 

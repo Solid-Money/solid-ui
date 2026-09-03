@@ -19,9 +19,16 @@ export function useWalletMessageSigner() {
   const { user } = useUser();
   const { createHttpClient } = useTurnkey();
 
+  // `walletAddress` is optional on the stored user and the signup path never wrote
+  // it, so rows persisted by a signup that was never followed by a fresh login
+  // carry only `signWith`. Both are assigned the same EOA by the backend, and
+  // `signWith` is required — so it is the safer of the two to key off, and reading
+  // it heals those rows without forcing the user to log out and back in.
+  const signerAddress = user?.walletAddress ?? user?.signWith;
+
   const signMessage = useCallback(
     async (message: string): Promise<string> => {
-      if (!user?.walletAddress || !user?.suborgId) {
+      if (!signerAddress || !user?.suborgId) {
         throw new Error('Wallet is not ready yet');
       }
 
@@ -29,19 +36,19 @@ export function useWalletMessageSigner() {
       const turnkeyAccount = await createAccount({
         client: passkeyClient,
         organizationId: user.suborgId,
-        signWith: user.walletAddress,
+        signWith: signerAddress,
       });
 
       return turnkeyAccount.signMessage({ message });
     },
-    [createHttpClient, user?.walletAddress, user?.suborgId],
+    [createHttpClient, signerAddress, user?.suborgId],
   );
 
   return {
     signMessage,
     /** Whether a signature can be attempted at all. */
-    canSign: Boolean(user?.walletAddress && user?.suborgId),
+    canSign: Boolean(signerAddress && user?.suborgId),
     /** The EOA that will sign — the address a provider verifies against. */
-    walletAddress: user?.walletAddress,
+    walletAddress: signerAddress,
   };
 }

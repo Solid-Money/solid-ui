@@ -1,13 +1,20 @@
-import { View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
 import { formatBalanceUSD } from '@/lib/utils';
 
+import CashbackDetailsSheet from './CashbackDetailsSheet';
+
+import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
+
 interface RewardsSummaryCardProps {
   /** This month's cashback, settled and escrowed together. */
   cashback: number;
   referrals: number;
+  cashbackDetails: CashbackDetailsData;
+  onGetMoreCashback: () => void;
+  onReferralsPress: () => void;
 }
 
 const RewardsIcon = () => (
@@ -27,11 +34,19 @@ const RewardsIcon = () => (
 interface SummaryStatProps {
   label: string;
   value: number;
+  onPress?: () => void;
 }
 
 /** One column of the card: what the reward is, and how much of it there is. */
-const SummaryStat = ({ label, value }: SummaryStatProps) => (
-  <View className="flex-1 items-center justify-center gap-2.5">
+const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
+  <Pressable
+    accessibilityRole={onPress ? 'button' : undefined}
+    accessibilityLabel={`${label}. ${formatBalanceUSD(value)}`}
+    disabled={!onPress}
+    onPress={onPress}
+    className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
+    style={Platform.OS === 'web' ? { minHeight: 96 } : undefined}
+  >
     <Text
       className="text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
@@ -44,13 +59,22 @@ const SummaryStat = ({ label, value }: SummaryStatProps) => (
     >
       {formatBalanceUSD(value)}
     </Text>
-  </View>
+  </Pressable>
 );
 
 /**
  * "Rewards" summary card: Cashback and Referrals split into two columns.
+ *
+ * The cashback figure counts this month's settled and escrowed cashback as one
+ * number — see `monthlyCashbackTotal`, which the caller applies.
  */
-const RewardsSummaryCard = ({ cashback, referrals }: RewardsSummaryCardProps) => {
+const RewardsSummaryCard = ({
+  cashback,
+  referrals,
+  cashbackDetails,
+  onGetMoreCashback,
+  onReferralsPress,
+}: RewardsSummaryCardProps) => {
   return (
     <View className="relative mx-4 h-40 overflow-hidden rounded-twice bg-card">
       <View className="h-16 flex-row items-center px-3">
@@ -64,9 +88,13 @@ const RewardsSummaryCard = ({ cashback, referrals }: RewardsSummaryCardProps) =>
       </View>
 
       <View className="h-24 flex-row">
-        <SummaryStat label="Cashback" value={cashback} />
+        <CashbackDetailsSheet
+          trigger={<SummaryStat label="Cashback" value={cashback} />}
+          {...cashbackDetails}
+          onGetMoreCashback={onGetMoreCashback}
+        />
         <View className="w-px bg-white/10" />
-        <SummaryStat label="Referrals" value={referrals} />
+        <SummaryStat label="Referrals" value={referrals} onPress={onReferralsPress} />
       </View>
 
       <View className="absolute left-0 right-0 top-16 h-px bg-white/10" />

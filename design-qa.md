@@ -414,3 +414,56 @@ final result: passed
 - None required for this scoped alignment fix.
 
 final result: passed
+
+---
+
+# Rewards summary interaction QA
+
+## Evidence
+
+- Source visual truth: `/var/folders/kq/f7j7tsp96mjgyhrd2x1xmd3c0000gn/T/codex-clipboard-47cc6d5a-1c6e-4a95-9ab0-57e409d6d7de.png`
+- Closed implementation: `/Users/elismargon/Developer/solid/solid-ui/artifacts/design-qa/rewards-summary-mobile.png`
+- Cashback open: `/Users/elismargon/Developer/solid/solid-ui/artifacts/design-qa/rewards-cashback-open.png`
+- Referrals open: `/Users/elismargon/Developer/solid/solid-ui/artifacts/design-qa/rewards-referrals-open.png`
+- Full-view comparison: `/Users/elismargon/Developer/solid/solid-ui/artifacts/design-qa/rewards-summary-comparison.png`
+- Focused card comparison: `/Users/elismargon/Developer/solid/solid-ui/artifacts/design-qa/rewards-summary-card-comparison.png`
+- Source pixels: 850 x 1104, including the device frame and a partial screen crop.
+- Implementation pixels and CSS viewport: 393 x 852 at device scale factor 1.
+- Density normalization: the full-view comparison scales both captures to 900 px high. The focused comparison crops the Rewards card from both captures, scales both to 700 px wide, and pads the shorter crop for an equal-height side-by-side review.
+- State: mobile dark-mode Rewards screen, summary closed for visual comparison; each summary action opened separately for interaction verification.
+
+## Findings
+
+- No actionable P0, P1, or P2 mismatch was introduced. The Cashback and Referrals columns keep the existing card layout while gaining full-column tap targets.
+- Fonts and typography: the existing Mona Sans family, weights, sizes, line heights, hierarchy, wrapping, and labels are unchanged by the interaction wrappers.
+- Spacing and layout rhythm: the header, divider, equal-width columns, internal alignment, card radius, and vertical rhythm remain intact. The Pressable roots occupy the same flex layout as the previous View roots.
+- Colors and visual tokens: the existing card background, white opacity levels, divider, green Rewards icon, and active-state opacity are preserved.
+- Image quality and asset fidelity: no image or icon assets changed. The existing vector Rewards icon remains sharp and unchanged.
+- Copy and content: `Cashback`, `Referrals`, the amounts, and the optional pending line remain unchanged.
+- Accessibility and affordance: both columns are exposed as buttons with value-aware labels. The Cashback column opens the existing cashback details sheet; the Referrals column opens the existing referral program drawer.
+- The reference shows a Prime account and an available Spin action, while the local preview rendered Core fallback data and no Spin action because the local rewards requests could not reach their services. These are pre-existing data/runtime differences outside this interaction change.
+
+## Primary interactions tested
+
+- Tapped `Cashback. $0.00`: the Cashback details bottom sheet opened and displayed the rate, monthly earnings, cap, all-time cashback, and action button.
+- Closed the Cashback sheet, then tapped `Referrals. $0.00`: the referral drawer opened and displayed the referral offer, qualification steps, sharing actions, and invited-friends section.
+- Checked browser console errors: only pre-existing local API `Failed to fetch` errors appeared; no render, press-handler, or modal-opening error was introduced by this change.
+
+## Comparison history
+
+- Pass 1: the closed-state full view and focused Rewards-card comparison showed no P0/P1/P2 regression, so no visual correction iteration was required.
+
+## Implementation checklist
+
+- [x] Entire Cashback summary half is tappable.
+- [x] Cashback tap opens the existing cashback details sheet.
+- [x] Entire Referrals summary half is tappable.
+- [x] Referrals tap opens the existing referral drawer.
+- [x] Existing visual layout and assets are preserved.
+- [x] Both controls expose accessible button labels.
+
+## Follow-up polish
+
+- None required for this scoped interaction change.
+
+final result: passed

@@ -193,6 +193,15 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER: 'buy_crypto_payment_confirmed_by_user',
   BUY_CRYPTO_ORDER_COMPLETED: 'buy_crypto_order_completed',
   BUY_CRYPTO_ORDER_FAILED: 'buy_crypto_order_failed',
+  /** The error screen was shown, with the code and action that produced it. */
+  BUY_CRYPTO_ERROR_VIEWED: 'buy_crypto_error_viewed',
+  /** Which way out of the error screen the user took. */
+  BUY_CRYPTO_ERROR_ACTION_PRESSED: 'buy_crypto_error_action_pressed',
+  /** The amount was rejected for being outside the payment method's limits. */
+  BUY_CRYPTO_AMOUNT_OUT_OF_LIMITS: 'buy_crypto_amount_out_of_limits',
+  BUY_CRYPTO_PROFILE_FORM_VIEWED: 'buy_crypto_profile_form_viewed',
+  BUY_CRYPTO_PROFILE_FORM_SUBMITTED: 'buy_crypto_profile_form_submitted',
+  BUY_CRYPTO_PROFILE_FORM_FAILED: 'buy_crypto_profile_form_failed',
 
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
@@ -233,8 +242,10 @@ export const TRACKING_EVENTS = {
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
 
-  // Home Prompt Card Events (verification / fund / Apple Pay nudges)
+  // Home CTA banner events — the one next-step card under the wallet card,
+  // whichever rung of the funnel the user is on (Figma 25141:6965).
   HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
+  HOME_PROMPT_CTA_PRESSED: 'home_prompt_cta_pressed',
 
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
