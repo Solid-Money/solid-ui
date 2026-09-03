@@ -72,6 +72,12 @@ import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 type RowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
+  /**
+   * A note about this row, on its own line beneath it and spanning the card's
+   * width. For the rare row whose value needs a caveat that will not fit
+   * right-aligned under the value itself.
+   */
+  caption?: React.ReactNode;
   className?: string;
   isLast?: boolean;
 };
@@ -97,16 +103,14 @@ type SupportSectionProps = {
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
 const CARD_DATE_FORMAT = "MMM d yyyy 'at' h:mm a";
 
-const Row = memo(function Row({ label, value, isLast }: RowProps) {
+const Row = memo(function Row({ label, value, caption, isLast }: RowProps) {
   return (
-    <View
-      className={cn(
-        'flex-row items-center justify-between border-b border-[#2C2C2E] px-6 py-5',
-        isLast && 'border-b-0',
-      )}
-    >
-      {label}
-      {value}
+    <View className={cn('border-b border-[#2C2C2E] px-6 py-5', isLast && 'border-b-0')}>
+      <View className="flex-row items-center justify-between">
+        {label}
+        {value}
+      </View>
+      {caption}
     </View>
   );
 });
@@ -219,8 +223,15 @@ type CardTransactionDetailProps = {
   cardProvider?: CardProvider | null;
 };
 
+type DetailRow = {
+  key: string;
+  label: React.ReactNode;
+  value: React.ReactNode;
+  caption?: React.ReactNode;
+};
+
 type DetailCardProps = {
-  rows: { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  rows: DetailRow[];
 };
 
 const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
@@ -229,7 +240,13 @@ const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
   return (
     <View className="overflow-hidden rounded-twice bg-card">
       {rows.map((row, index) => (
-        <Row key={row.key} label={row.label} value={row.value} isLast={index === rows.length - 1} />
+        <Row
+          key={row.key}
+          label={row.label}
+          value={row.value}
+          caption={row.caption}
+          isLast={index === rows.length - 1}
+        />
       ))}
     </View>
   );
@@ -453,6 +470,17 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
           </Value>
         ),
+        // While the charge is still pending, the amount at the top of this
+        // screen is the authorization — the cashback is not netted off it, and
+        // two figures on one receipt that don't reconcile is the kind of thing a
+        // cardholder reads as an error. Spans the row rather than sitting under
+        // the value, where a sentence this long would wrap to three lines
+        // against the label.
+        caption: isApproved ? (
+          <Text className="mt-2 text-[13px] leading-4 text-white/50">
+            Cashback amount is not reflected on a pending transaction sum
+          </Text>
+        ) : undefined,
       },
       cashbackInfo?.isEscrowed &&
         cashbackInfo.payoutAt && {
@@ -544,7 +572,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Pressable>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
 
     return allRows;
   }, [
@@ -553,6 +581,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     localDetails,
     txHash,
     handleExplorerPress,
+    isApproved,
     isDeclined,
     cardProvider,
     spend,
@@ -959,7 +988,7 @@ export default function ActivityDetail() {
           label: <Label>Estimated time</Label>,
           value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     isDeposit,
@@ -1053,7 +1082,7 @@ export default function ActivityDetail() {
           </View>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [finalActivity, depositDestination]);
 
   const depositStatusRows = useMemo(() => {
@@ -1113,7 +1142,7 @@ export default function ActivityDetail() {
             </Pressable>
           ),
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     depositStatus,
