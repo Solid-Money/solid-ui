@@ -193,6 +193,15 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER: 'buy_crypto_payment_confirmed_by_user',
   BUY_CRYPTO_ORDER_COMPLETED: 'buy_crypto_order_completed',
   BUY_CRYPTO_ORDER_FAILED: 'buy_crypto_order_failed',
+  /** The error screen was shown, with the code and action that produced it. */
+  BUY_CRYPTO_ERROR_VIEWED: 'buy_crypto_error_viewed',
+  /** Which way out of the error screen the user took. */
+  BUY_CRYPTO_ERROR_ACTION_PRESSED: 'buy_crypto_error_action_pressed',
+  /** The amount was rejected for being outside the payment method's limits. */
+  BUY_CRYPTO_AMOUNT_OUT_OF_LIMITS: 'buy_crypto_amount_out_of_limits',
+  BUY_CRYPTO_PROFILE_FORM_VIEWED: 'buy_crypto_profile_form_viewed',
+  BUY_CRYPTO_PROFILE_FORM_SUBMITTED: 'buy_crypto_profile_form_submitted',
+  BUY_CRYPTO_PROFILE_FORM_FAILED: 'buy_crypto_profile_form_failed',
 
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',

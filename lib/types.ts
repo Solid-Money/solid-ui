@@ -2412,6 +2412,21 @@ export interface TransfiKycRetryResponse extends TransfiStatusResponse {
   kycUrl?: string;
 }
 
+/**
+ * Address/phone a user fills in to unblock TRANSFI_PROFILE_DATA_INCOMPLETE.
+ * Only the fields they were told were missing need to be sent.
+ */
+export interface TransfiProfileInput {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  /** National number, digits only. */
+  phone?: string;
+  /** Calling code, e.g. '+972'. */
+  phoneCode?: string;
+}
+
 export interface TransfiPaymentMethodOption {
   paymentCode: string;
   paymentName?: string;
