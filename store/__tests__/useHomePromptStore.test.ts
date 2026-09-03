@@ -2,6 +2,7 @@
 
 import {
   HOME_PROMPT_SNOOZE_MS,
+  isHomePromptDismissible,
   isHomePromptSnoozed,
   useHomePromptStore,
 } from '@/store/useHomePromptStore';
@@ -55,12 +56,40 @@ describe('home prompt snoozing', () => {
     const { dismissedAt } = useHomePromptStore.getState();
 
     expect(isHomePromptSnoozed(dismissedAt, 'fund')).toBe(true);
-    expect(isHomePromptSnoozed(dismissedAt, 'apple-pay')).toBe(false);
+    expect(isHomePromptSnoozed(dismissedAt, 'add-to-wallet')).toBe(false);
   });
 
   it('does not hide forever when the device clock moves backwards', () => {
     const now = 1_700_000_000_000;
 
     expect(isHomePromptSnoozed({ fund: now }, 'fund', now - 60_000)).toBe(false);
+  });
+
+  it('gives every rung of the funnel except cashback a snooze window', () => {
+    // A key added to HomePromptKey without a window here would snooze for
+    // `undefined` ms, i.e. never come back.
+    const keys = [
+      'get-card',
+      'verification',
+      'kyc-review',
+      'kyc-rejected',
+      'activate-card',
+      'fund',
+      'add-to-wallet',
+    ] as const;
+
+    for (const key of keys) {
+      expect(isHomePromptDismissible(key)).toBe(true);
+      expect(HOME_PROMPT_SNOOZE_MS[key]).toBeGreaterThan(0);
+    }
+  });
+
+  it('never snoozes the terminal cashback banner — it has no close button', () => {
+    const now = 1_700_000_000_000;
+
+    expect(isHomePromptDismissible('cashback')).toBe(false);
+    // Even a hand-written dismissal (an older build, a corrupted store) cannot
+    // hide it, which is what "stays visible indefinitely" has to mean.
+    expect(isHomePromptSnoozed({ cashback: now } as never, 'cashback', now + 1000)).toBe(false);
   });
 });
