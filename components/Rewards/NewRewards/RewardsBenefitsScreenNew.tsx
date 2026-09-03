@@ -573,8 +573,17 @@ const PremiumUpgradeFooter = ({
   return (
     <Animated.View
       pointerEvents={isVisible ? 'box-none' : 'none'}
-      className="absolute bottom-0 left-0 right-0 z-20"
-      style={[{ height: footerHeight }, footerAnimatedStyle]}
+      style={[
+        {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          height: footerHeight,
+        },
+        footerAnimatedStyle,
+      ]}
     >
       <LinearGradient
         colors={[`${BACKGROUND}00`, BACKGROUND]}
@@ -602,23 +611,25 @@ const PremiumUpgradeFooter = ({
         >
           Deposit {fuseAmount} FUSE to upgrade
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Deposit ${fuseAmount} FUSE to upgrade to ${TIER_LABELS[tier]}`}
-          onPress={() => onUpgradePress(tier)}
-          className="mx-[18px] mt-[14px] h-[50px] items-center justify-center self-stretch rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
-        >
-          <Text
-            className="font-semibold text-black"
-            style={{
-              fontFamily: 'MonaSans_600SemiBold',
-              fontSize: 16,
-              lineHeight: 23,
-            }}
+        <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Deposit ${fuseAmount} FUSE to upgrade to ${TIER_LABELS[tier]}`}
+            onPress={() => onUpgradePress(tier)}
+            className="mt-[14px] h-[50px] items-center justify-center rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
           >
-            Upgrade
-          </Text>
-        </Pressable>
+            <Text
+              className="font-semibold text-black"
+              style={{
+                fontFamily: 'MonaSans_600SemiBold',
+                fontSize: 16,
+                lineHeight: 23,
+              }}
+            >
+              Upgrade
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   );

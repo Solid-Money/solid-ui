@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
@@ -56,6 +56,7 @@ const SummaryStat = ({ label, value, footnote, reserveFootnote, onPress }: Summa
     disabled={!onPress}
     onPress={onPress}
     className="flex-1 items-center justify-center gap-2.5 transition-all active:opacity-70"
+    style={Platform.OS === 'web' ? { minHeight: 96 } : undefined}
   >
     <Text
       className="text-base text-white/70"

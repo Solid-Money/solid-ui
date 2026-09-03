@@ -1,11 +1,12 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
+import { useIsSidebarShell } from '@/components/Navbar/Sidebar';
 import { Image } from '@/components/ui/Image';
 import { Text } from '@/components/ui/text';
 import { getTierDisplayName } from '@/constants/rewards';
 import { getAsset } from '@/lib/assets';
-import { compactNumberFormat } from '@/lib/utils';
+import { cn, compactNumberFormat } from '@/lib/utils';
 
 import type { FuseSkipLine, RewardsTier } from '@/lib/types';
 
@@ -13,13 +14,6 @@ const clampProgress = (currentPoints: number, targetPoints: number) => {
   if (targetPoints <= 0) return 0;
   return Math.min(100, Math.max(0, (currentPoints / targetPoints) * 100));
 };
-
-const formatPoints = (points: number) =>
-  new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(points);
 
 const PointsProgress = ({ percent }: { percent: number }) => {
   const animatedProgress = useAnimatedStyle(
@@ -57,7 +51,9 @@ const TierUpgradeCard = ({
   skipLine,
   onUpgradeTier,
 }: TierUpgradeCardProps) => {
+  const isSidebarShell = useIsSidebarShell();
   const fuseTier = nextTier ? skipLine?.tiers.find(rung => rung.tier === nextTier) : undefined;
+  const useDesktopSpacing = Platform.OS === 'web' && isSidebarShell;
 
   if (!nextTier || !fuseTier) {
     return null;
@@ -68,36 +64,45 @@ const TierUpgradeCard = ({
   const progress = clampProgress(currentPoints, targetPoints);
 
   return (
-    <View className="min-h-[306px] overflow-hidden rounded-[23px] bg-[#1C1C1C] px-5 pb-[17px] pt-[17px]">
-      <Text className="font-bold text-white" style={styles.title}>
-        Earn points
-      </Text>
-      <Text className="mt-1 text-white/70" style={styles.body}>
-        Get to the next tier for free just by using the app
-      </Text>
+    <View
+      className={cn(
+        'min-h-[306px] overflow-hidden rounded-[23px] bg-[#1C1C1C]',
+        !useDesktopSpacing && 'px-5 pb-[17px] pt-[17px]',
+      )}
+    >
+      <View className={cn(useDesktopSpacing && 'px-6 py-6')}>
+        <Text className="font-bold text-white" style={styles.title}>
+          Earn points
+        </Text>
+        <Text className="mt-1 text-white/70" style={styles.body}>
+          Get to the next tier for free just by using the app
+        </Text>
 
-      <View className="mt-4 flex-row items-center gap-[10px]">
-        <PointsProgress percent={progress} />
-        <Text className="text-white" style={styles.progressValue}>
-          {formatPoints(currentPoints)}
-          <Text className="text-white/70" style={styles.progressTarget}>
-            /{formatPoints(targetPoints)}
+        <View className="mt-4 flex-row items-center gap-[10px]">
+          <PointsProgress percent={progress} />
+          <View style={styles.progressValueRow}>
+            <Text className="text-white" style={styles.progressValue}>
+              {compactNumberFormat(currentPoints)}
+            </Text>
+            <Text className="text-white/70" style={styles.progressTarget}>
+              /{compactNumberFormat(targetPoints)}
+            </Text>
+          </View>
+        </View>
+
+        <View className="mt-[9px] flex-row items-center gap-1">
+          <Text className="font-medium text-white" style={styles.pointsRemaining}>
+            {compactNumberFormat(pointsRemaining)} more points to {tierName}
           </Text>
-        </Text>
+          <Image
+            source={getAsset('images/rewards-points-star.svg')}
+            style={{ width: 16, height: 16 }}
+            contentFit="contain"
+          />
+        </View>
       </View>
 
-      <View className="mt-[9px] flex-row items-center gap-1">
-        <Text className="font-medium text-white" style={styles.pointsRemaining}>
-          {formatPoints(pointsRemaining)} more points to {tierName}
-        </Text>
-        <Image
-          source={getAsset('images/rewards-points-star.svg')}
-          style={{ width: 16, height: 16 }}
-          contentFit="contain"
-        />
-      </View>
-
-      <View className="-mx-5 mt-[15px] flex-row items-center gap-4">
+      <View className={cn('flex-row items-center gap-4', !useDesktopSpacing && '-mx-5 mt-[15px]')}>
         <View className="h-px flex-1 bg-white/10" />
         <Text className="text-white/50" style={styles.orLabel}>
           Or
@@ -105,24 +110,29 @@ const TierUpgradeCard = ({
         <View className="h-px flex-1 bg-white/10" />
       </View>
 
-      <Text className="mt-[9px] font-bold text-white" style={styles.title}>
-        Skip the line with FUSE
-      </Text>
-      <Text className="mt-[3px] text-white/70" style={styles.body}>
-        Deposit {compactNumberFormat(fuseTier.requiredFuse)} FUSE to saving and unlock the{' '}
-        {tierName} tier now!
-      </Text>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Upgrade to ${tierName} with FUSE`}
-        onPress={onUpgradeTier}
-        className="mt-[18px] h-[35px] w-[129px] items-center justify-center self-start rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
-      >
-        <Text className="font-semibold text-black" style={styles.buttonLabel}>
-          Upgrade tier
+      <View className={cn(useDesktopSpacing && 'px-6 py-6')}>
+        <Text
+          className={cn('font-bold text-white', !useDesktopSpacing && 'mt-[9px]')}
+          style={styles.title}
+        >
+          Skip the line with FUSE
         </Text>
-      </Pressable>
+        <Text className="mt-[3px] text-white/70" style={styles.body}>
+          Deposit {compactNumberFormat(fuseTier.requiredFuse)} FUSE to saving and unlock the{' '}
+          {tierName} tier now!
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Upgrade to ${tierName} with FUSE`}
+          onPress={onUpgradeTier}
+          className="mt-[18px] h-[35px] w-[129px] items-center justify-center self-start rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+        >
+          <Text className="font-semibold text-black" style={styles.buttonLabel}>
+            Upgrade tier
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 };
@@ -145,6 +155,10 @@ const styles = StyleSheet.create({
     fontFamily: 'MonaSans_400Regular',
     fontSize: 16,
     lineHeight: 20,
+  },
+  progressValueRow: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
   },
   progressTarget: {
     color: 'rgba(255,255,255,0.7)',
