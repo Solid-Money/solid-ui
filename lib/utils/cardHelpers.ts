@@ -466,6 +466,10 @@ const PENDING_CASHBACK_STATUSES: CashbackStatus[] = [
   CashbackStatus.Pending,
 ];
 
+/** "+$5.77", or null when there is no positive figure worth printing. */
+const formatCashbackAmount = (value: number | undefined): string | null =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? `+$${value.toFixed(2)}` : null;
+
 /**
  * Get cashback info for a transaction
  * @param transactionId - The card transaction ID
@@ -492,17 +496,22 @@ export const getCashbackAmount = (
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
   const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
-  // For pending cashbacks without a payout amount yet, show pending indicator
-  // without an amount. New cashbacks carry soUsdAmount; pre-migration ones
-  // carry the legacy fuseAmount.
+  // New cashbacks carry soUsdAmount; pre-migration ones carry the legacy
+  // fuseAmount. Neither is written until the escrow matures.
   const soUsdAmount = cashback.soUsdAmount;
   const legacyFuseAmount = cashback.fuseAmount;
 
   if (!soUsdAmount && !legacyFuseAmount) {
+    // Nothing has been paid yet, so the figure is the backend's projection of
+    // what this purchase will earn — which is the whole point of showing it
+    // here, on the day of the purchase rather than a fortnight later. A backend
+    // that sends no projection leaves the amount null and the surface names the
+    // status instead.
     return {
-      amount: 'Pending',
+      amount: formatCashbackAmount(cashback.projectedUsdValue),
       isPending: true,
       isEscrowed,
+      isPaid: false,
       payoutAt: cashback.payoutAt,
     };
   }
@@ -518,9 +527,10 @@ export const getCashbackAmount = (
   }
 
   return {
-    amount: `+$${amount.toFixed(2)}`,
+    amount: formatCashbackAmount(amount),
     isPending,
     isEscrowed,
+    isPaid: cashback.status === CashbackStatus.Paid,
     payoutAt: cashback.payoutAt,
   };
 };

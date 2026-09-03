@@ -15,6 +15,7 @@ import {
 import { mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
+import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
@@ -33,6 +34,7 @@ import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardTransactionFromList } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
@@ -40,6 +42,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
   CardTransaction,
+  CardTransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -169,9 +172,8 @@ const Back = memo(function Back({ title, className }: BackProps) {
       </View>
       {/* Inset past the back button, which is positioned on top of this row: the
           title is now a merchant name on a card transaction, and those run long
-          enough to reach under it. Two lines rather than one so the longest title
-          here — "Transaction 0x1234…5678 not found" — still reads in full, and
-          only a pathological merchant name clips. */}
+          enough to reach under it. Two lines rather than one so a long merchant
+          name still reads in full. */}
       <Text
         numberOfLines={2}
         className={cn('mx-14 text-center text-lg font-semibold text-white', className)}
@@ -350,7 +352,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       : isReversed
         ? 'Reversed'
         : 'Confirmed';
-  const statusColor = isApproved ? 'text-yellow-500' : isDeclined ? 'text-red-400' : '';
+  // Declined never reaches this: it is drawn as a chip in the header instead.
+  const statusColor = isApproved ? 'text-yellow-500' : '';
 
   const merchantRows = useMemo(
     () =>
@@ -394,7 +397,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const rows = useMemo(() => {
     const allRows = [
-      {
+      // The chip in the header already says "Declined", and louder than a row
+      // in a card of plain facts can.
+      !isDeclined && {
         key: 'status',
         label: <Label>Status</Label>,
         value: <Value className={statusColor}>{statusLabel}</Value>,
@@ -415,27 +420,23 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         },
       cashbackInfo && {
         key: 'cashback',
-        // The one row the design colours on both sides (Figma 21287:5858): what
-        // the user earned back reads as a gain, not as another fact about the
-        // charge. The value still takes the escrow/pending amber on its own, so
-        // green here says "cashback" rather than "already paid".
+        // The label is green on both sides of the design (Figma 21287:5858):
+        // what the user earned back reads as a gain, not as another fact about
+        // the charge.
         label: (
           <View className="flex-row items-center gap-1.5">
             <CashbackDiamondIcon size={14} />
             <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
           </View>
         ),
+        // The figure earns its green only once the payout has landed. Until
+        // then it is a projection, and it carries no "(Escrowed)" or
+        // "(Pending)" of its own — the "Releases in" row below already says the
+        // money is still on its way, and saying so twice on one receipt reads
+        // as a warning about the amount rather than a note about its timing.
         value: (
-          <Value className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-brand'}>
-            {cashbackInfo.amount === 'Pending'
-              ? cashbackInfo.isEscrowed
-                ? 'Escrowed'
-                : 'Pending'
-              : cashbackInfo.isEscrowed
-                ? `${cashbackInfo.amount} (Escrowed)`
-                : cashbackInfo.isPending
-                  ? `${cashbackInfo.amount} (Pending)`
-                  : cashbackInfo.amount}
+          <Value className={cashbackInfo.isPaid ? 'text-brand' : undefined}>
+            {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
           </Value>
         ),
       },
@@ -579,11 +580,69 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
                 two operators. The activity row shows the conversion bare too. */}
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
+            {/* A decline reads as a chip, the same one the activity row uses
+                (Figma 24781:7993), rather than as one more fact in the detail
+                card below. It changes what every figure above it means — the
+                money never left — so it belongs beside them, not in a list of
+                properties the user has to read to find out the purchase never
+                happened. The reason still gets its own row. */}
+            {isDeclined && (
+              // `self-center` overrides the pill's own `self-start`: on a row it
+              // hangs off the merchant's left edge, here it sits under a centred
+              // amount.
+              <ActivityStatusPill label="Declined" tone="danger" className="mt-1 self-center" />
+            )}
           </View>
         </View>
 
         <DetailCard rows={merchantRows} />
         <DetailCard rows={rows} />
+        <ContactSupportCard transactionContext={transactionContext} />
+      </View>
+    </PageLayout>
+  );
+});
+
+/**
+ * A card transaction whose details neither source will give us.
+ *
+ * The issuer does not serve a single-transaction read for every row it puts in
+ * the feed, and the feed itself can be a page too short or a request too far.
+ * The user still tapped a purchase they can see on their statement, so this
+ * stays the purchase's own screen rather than becoming an error page about it —
+ * with the merchant, the figure and the date left out rather than invented,
+ * because a made-up amount on a card transaction is worse than a missing one.
+ */
+const UnknownCardTransaction = memo(function UnknownCardTransaction({
+  clientTxId,
+}: {
+  clientTxId: string;
+}) {
+  const transactionContext = useMemo(
+    () =>
+      `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+    [clientTxId],
+  );
+
+  return (
+    <PageLayout desktopOnly>
+      <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+        <Back title="Card transaction" className="text-xl md:text-2xl" />
+
+        <View className="items-center gap-4">
+          <CardActivityIcon
+            transaction={{ category: CardTransactionCategory.PURCHASE, currency: '' }}
+            size={75}
+          />
+
+          <View className="items-center gap-1">
+            <Text className="text-center text-base text-white/70">
+              We could not load the details of this purchase. Support can look it up for you.
+            </Text>
+            <Text className="text-sm text-white/40">{eclipseAddress(clientTxId)}</Text>
+          </View>
+        </View>
+
         <ContactSupportCard transactionContext={transactionContext} />
       </View>
     </PageLayout>
@@ -618,6 +677,19 @@ export default function ActivityDetail() {
     enabled: !!cardTxId,
   });
 
+  // The feed row, for the transactions the issuer will not serve on their own —
+  // a declined Wirex purchase 404s the single-activity read, and this screen
+  // used to answer that with "Transaction … not found" about a transaction the
+  // user was looking at a tap earlier. The row carries the merchant, amount,
+  // currency, status and decline reason, which is everything below except the
+  // fees and our own ledger's view.
+  const { transaction: listCardTransaction, isFetching: isCardListFetching } =
+    useCardTransactionFromList(cardTxId, {
+      fetchIfMissing: !!cardTxId && !cardTransaction && !isCardTransactionLoading,
+    });
+
+  const cardTransactionDetail = cardTransaction ?? listCardTransaction;
+
   // Fetch from backend if not found in cache (fallback for activities not yet loaded)
   const { data: backendActivity, isLoading: isBackendLoading } = useQuery({
     queryKey: ['activity-event', clientTxId],
@@ -634,7 +706,11 @@ export default function ActivityDetail() {
   const isBackendQueryPending =
     !activity && !isActivitiesLoading && !!clientTxId && !isCardTransaction && !backendActivity;
   const isAnyLoading =
-    isActivitiesLoading || isBackendLoading || isCardTransactionLoading || isBackendQueryPending;
+    isActivitiesLoading ||
+    isBackendLoading ||
+    isCardTransactionLoading ||
+    isCardListFetching ||
+    isBackendQueryPending;
 
   const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const chainId = finalActivity?.chainId;
@@ -1036,6 +1112,12 @@ export default function ActivityDetail() {
     return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
   }, [finalActivity, statusSign, clientTxId]);
 
+  const missingTransactionContext = useMemo(
+    () =>
+      `Question about transaction:\n\nTransaction ID: ${clientTxId}\nI cannot open its details in the app.\n\nMy question: `,
+    [clientTxId],
+  );
+
   // Show loading if clientTxId is not ready
   if (!clientTxId) {
     return (
@@ -1045,9 +1127,14 @@ export default function ActivityDetail() {
     );
   }
 
-  // Card transaction
-  if (isCardTransaction && cardTransaction && !isAnyLoading) {
-    return <CardTransactionDetail transaction={cardTransaction} cardProvider={cardProvider} />;
+  // Card transaction. Rendered as soon as either source has it rather than once
+  // the single read settles: the feed row is enough to draw the whole header,
+  // and waiting on a read that may never return it is what produced the
+  // not-found screen.
+  if (isCardTransaction && cardTransactionDetail) {
+    return (
+      <CardTransactionDetail transaction={cardTransactionDetail} cardProvider={cardProvider} />
+    );
   }
 
   // Loading
@@ -1059,12 +1146,34 @@ export default function ActivityDetail() {
     );
   }
 
-  // Not found
+  // A card transaction keeps its own screen even with nothing to put on it: the
+  // user tapped a purchase that exists — they can see it on the feed, or on
+  // their statement — so an error page about it would be the app arguing with
+  // them. See `UnknownCardTransaction`.
+  if (isCardTransaction) {
+    return <UnknownCardTransaction clientTxId={clientTxId} />;
+  }
+
+  // Not found. A wallet activity that neither the activity store nor the
+  // backend read knows about, which unlike a card transaction means there is
+  // genuinely no such transaction to show. A bare title left the user on a
+  // screen that named an id and explained nothing, so the id moves into the
+  // body and support is one tap away.
   if (!finalActivity) {
     return (
       <PageLayout desktopOnly>
         <View className="mx-auto w-full max-w-lg gap-8 px-4 py-8 md:gap-16 md:py-12">
-          <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
+          <Back title="Transaction not found" />
+
+          <View className="items-center gap-2">
+            <Text className="text-center text-base text-white/70">
+              We could not load this transaction. It may still be settling — try again from the
+              activity list in a moment.
+            </Text>
+            <Text className="text-center text-sm text-white/40">{eclipseAddress(clientTxId)}</Text>
+          </View>
+
+          <SupportSection transactionContext={missingTransactionContext} />
         </View>
       </PageLayout>
     );

@@ -21,7 +21,8 @@ import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
-import { CARD_INFO_SCREEN } from '@/constants/path';
+import { resolveDigitalWallet } from '@/constants/digital-wallet';
+import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -77,16 +78,28 @@ export default function HomeScreenNew() {
   // `referral`: it is a one-shot instruction, and leaving it in the URL would
   // re-open the pane every time this screen remounts, including right after the
   // user closed it.
-  const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
+  const { screen: screenParam, wallet: walletParam } = useLocalSearchParams<{
+    screen?: string;
+    wallet?: string;
+  }>();
   const openCardPane = useCardPaneStore(state => state.open);
+  const openCardPaneWalletGuide = useCardPaneStore(state => state.openWalletGuide);
 
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
-    // No origin rect: there was no card tap to fly back to, so dismissing just
-    // closes (see `CardDetailsPane.close`).
-    openCardPane();
-    router.setParams({ screen: undefined });
-  }, [screenParam, openCardPane]);
+    // `&wallet=apple|google` asks for the "Add to Wallet" guide on top of the
+    // pane, on that wallet's tab — the addressable form of the popup, which is
+    // what lets the home "Add to Apple Pay" banner be nothing but a redirect.
+    const wallet = resolveDigitalWallet(walletParam);
+    // No origin rect either way: there was no card tap to fly back to, so
+    // dismissing just closes (see `CardDetailsPane.close`).
+    if (wallet) {
+      openCardPaneWalletGuide(wallet);
+    } else {
+      openCardPane();
+    }
+    router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
+  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
 
   const {
     isLoading: isLoadingTokens,
@@ -183,9 +196,17 @@ export default function HomeScreenNew() {
   });
   const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(totalBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
-  // Which next-step prompt (verify / fund / Apple Pay) belongs under the card,
-  // if any — null once the user is done or has snoozed the current one.
+  // Which rung of the card funnel belongs under the card, if any — null once the
+  // user is done or has snoozed the current one. See `resolveHomePromptStep`.
   const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
+  // "Fund your wallet" is the one banner a wrong `depositCompleted` would show
+  // to the wrong user, so it is the only one that waits for that answer to
+  // settle. The verification banners do not read it at all, and a brand-new user
+  // — exactly the audience for "Get your card" — is also the likeliest to have an
+  // empty or erroring token fetch, so holding those back would hide the banner
+  // from the people it is for.
+  const isPromptReady =
+    !isCardStatusLoading && !!promptKey && (promptKey !== 'fund' || !isDepositStatusUnresolved);
 
   return (
     // The card details are a layer on this screen rather than a route of their own,
@@ -247,7 +268,7 @@ export default function HomeScreenNew() {
               depositCompleted={depositCompleted}
             />
           )}
-          {!isCardStatusLoading && !isDepositStatusUnresolved && promptKey && (
+          {isPromptReady && promptKey && (
             <HeroExit spec={HERO_EXIT.belowCard}>
               <HomePromptCard
                 promptKey={promptKey}
