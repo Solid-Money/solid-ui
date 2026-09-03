@@ -26,6 +26,16 @@ interface HomeWalletCardProps {
   last4?: string;
   /** Whether the user has already funded their account (deposit step). */
   depositCompleted: boolean;
+  /**
+   * Whether a CTA banner is rendered directly below (see `HomePromptCard`).
+   *
+   * When one is, the cardless "Get your card" strip is dropped: the banner is
+   * the labelled next step now, and repeating it under the card said the same
+   * thing twice — or, on the review and declined banners, said something the
+   * banner directly contradicts. The art stays tappable either way, so the
+   * setup prompt is still one tap from here.
+   */
+  hasCtaBanner?: boolean;
 }
 
 const CARD_BODY_ASPECT_RATIO =
@@ -54,8 +64,16 @@ const CARDLESS_STACK_ASPECT_RATIO =
  * start flying on the tap's own frame with nothing mounting underneath it. Without a
  * card, tapping instead opens the same "Your card is waiting" verification prompt as
  * HomeVerificationCard.
+ *
+ * The cardless "Get your card" strip is the fallback entry point, shown only when
+ * no CTA banner is — see `hasCtaBanner`.
  */
-const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProps) => {
+const HomeWalletCard = ({
+  hasCard,
+  last4,
+  depositCompleted,
+  hasCtaBanner,
+}: HomeWalletCardProps) => {
   const start = useCardHeroStore(state => state.start);
   const heroActive = useCardHeroStore(state => state.active);
   const openPane = useCardPaneStore(state => state.open);
@@ -80,31 +98,43 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
           onPress={() => setIsVerificationOpen(true)}
           className="px-4"
         >
-          <View style={styles.cardlessStack}>
-            <View
-              className="items-center justify-end overflow-hidden bg-card"
-              style={styles.getCardPanel}
-            >
-              <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
-                <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
-                  Get your card
-                </Text>
-                <Image
-                  source={getAsset('images/get-your-card-chevron.svg')}
-                  style={styles.getCardChevron}
-                  contentFit="fill"
-                />
-              </View>
-            </View>
-            <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
-              {/* The artwork bleeds outside the pressable's layout frame for its
-                  baked-in shadow. Keep that visual overflow from becoming a hit
-                  target over the action buttons above. */}
+          {hasCtaBanner ? (
+            // The banner below is the labelled next step, so the card stands on
+            // its own — the same frame the cardholder layout uses, with no stack
+            // reserving room for a strip that isn't there.
+            <View style={styles.cardBodyFrame}>
+              {/* The artwork bleeds outside this frame for its baked-in shadow.
+                  Keep that visual overflow from becoming a hit target over the
+                  action buttons above. */}
               <View pointerEvents="none" style={styles.cardBox}>
                 {card}
               </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.cardlessStack}>
+              <View
+                className="items-center justify-end overflow-hidden bg-card"
+                style={styles.getCardPanel}
+              >
+                <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
+                  <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
+                    Get your card
+                  </Text>
+                  <Image
+                    source={getAsset('images/get-your-card-chevron.svg')}
+                    style={styles.getCardChevron}
+                    contentFit="fill"
+                  />
+                </View>
+              </View>
+              <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
+                {/* Same shadow-overflow guard as above. */}
+                <View pointerEvents="none" style={styles.cardBox}>
+                  {card}
+                </View>
+              </View>
+            </View>
+          )}
         </Pressable>
         <CardWaitingModal
           isOpen={isVerificationOpen}
