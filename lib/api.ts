@@ -2252,7 +2252,9 @@ export const getCashbacks = async (): Promise<Cashback[]> => {
   return response.json();
 };
 
-export const getCardTransaction = async (transactionId: string): Promise<CardTransaction> => {
+export const getCardTransaction = async (
+  transactionId: string,
+): Promise<CardTransaction | null> => {
   const jwt = getJWTToken();
 
   const url = new URL(
@@ -2267,6 +2269,13 @@ export const getCardTransaction = async (transactionId: string): Promise<CardTra
     },
     credentials: 'include',
   });
+
+  // Not every transaction in the history has a single-transaction read behind
+  // it: Wirex serves declined ones in the activity feed but 404s the
+  // single-activity endpoint for them. That is an answer, not a failure — it
+  // says "use the feed row you already have" rather than an error worth
+  // retrying, and the detail screen falls back to exactly that.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 

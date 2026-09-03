@@ -100,7 +100,7 @@ export default function SumsubKycWeb() {
 
   return (
     <PageLayout desktopOnly>
-      <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
+      <View className="mx-auto w-full max-w-lg flex-1 px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <BackButton />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
@@ -118,9 +118,11 @@ export default function SumsubKycWeb() {
         )}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
+          // The widget renders its own leading whitespace, so it sits flush
+          // under the header rather than adding a second gap on top of it.
           <View
             id={SUMSUB_EMBED_CONTAINER_ID}
-            className="mt-4 min-h-[600px] w-full"
+            className="min-h-[600px] w-full"
             style={{ minHeight: 600 }}
           />
         )}
