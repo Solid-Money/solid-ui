@@ -10,14 +10,14 @@ import { cn, compactNumberFormat } from '@/lib/utils';
 
 import type { FuseSkipLineTier } from '@/lib/types';
 
-const TIER_SUBSCRIPTION_CASHBACK_RATE: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
-  [RewardsTier.PRIME]: '25%',
-  [RewardsTier.ULTRA]: '50%',
+const TIER_SUMMARY: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
+  [RewardsTier.PRIME]: '25% back on AI, streaming & music',
+  [RewardsTier.ULTRA]: '50% back on AI, streaming & music',
 };
 
 const TIER_MONTHLY_CASHBACK_CAP: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
-  [RewardsTier.PRIME]: '$100/mo',
-  [RewardsTier.ULTRA]: '$200/mo',
+  [RewardsTier.PRIME]: '$100/mo cashback',
+  [RewardsTier.ULTRA]: '$200/mo cashback',
 };
 
 interface BuyFuseTierCardProps {
@@ -36,7 +36,7 @@ const TierProgress = ({ percent }: { percent: number }) => {
 
   return (
     <View className="h-[10px] overflow-hidden rounded-xl bg-white/20">
-      <Animated.View className="h-full rounded-xl bg-white" style={animatedStyle} />
+      <Animated.View style={[styles.progressFill, animatedStyle]} />
     </View>
   );
 };
@@ -86,7 +86,7 @@ export default function BuyFuseTierCard({
   const targetTierName = getTierDisplayName(targetTier);
 
   const amountLabel = compactNumberFormat(target.remainingFuse).toUpperCase();
-  const subscriptionCashbackRate = TIER_SUBSCRIPTION_CASHBACK_RATE[targetTier];
+  const benefitSummary = TIER_SUMMARY[targetTier];
   const monthlyCashbackCap = TIER_MONTHLY_CASHBACK_CAP[targetTier];
 
   return (
@@ -131,39 +131,25 @@ export default function BuyFuseTierCard({
         </View>
       </View>
 
-      <View className="px-5 py-4">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="shrink text-lg font-semibold text-white">Unlock {targetTierName}</Text>
-          <View className="shrink-0 rounded-full border border-[#94F27F]/20 bg-[#94F27F]/10 px-3 py-2">
-            <Text className="text-sm font-semibold text-[#94F27F]">Up to {monthlyCashbackCap}</Text>
-          </View>
-        </View>
-
-        <View className="mt-3 flex-row rounded-xl border border-white/5 bg-white/5 px-4 py-3">
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-[#94F27F]">
-              {formatTierCashbackRate(targetTier)}
-            </Text>
-            <Text className="mt-0.5 text-xs font-medium text-white/60">Cashback</Text>
-          </View>
-
-          <View className="mx-4 w-px bg-white/10" />
-
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-[#94F27F]">
-              {subscriptionCashbackRate}
-            </Text>
-            <Text className="mt-0.5 text-xs font-medium leading-4 text-white/60">
-              AI, streaming & music
-            </Text>
-          </View>
-        </View>
+      <View className="px-5 py-[18px]">
+        <Text className="text-base font-medium text-white">
+          Unlock {targetTierName} and earn{' '}
+          <Text className="text-base font-medium text-[#94F27F]">{monthlyCashbackCap}</Text>
+        </Text>
+        <Text className="mt-1 text-sm font-medium text-white/70">
+          Cashback: {formatTierCashbackRate(targetTier)} {'  |  '} {benefitSummary}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  progressFill: {
+    height: '100%',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
   shadow: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
