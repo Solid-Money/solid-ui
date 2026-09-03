@@ -7,6 +7,7 @@ import FundMoveSavings from '@/assets/images/fund-move-savings';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
+  CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS,
   CARD_FUND_TOKENS,
   CARD_FUND_USD_ICON,
   CardFundSections,
@@ -72,7 +73,7 @@ const CardFundOptions = ({
       ) : null}
 
       {showCashDeposit ? (
-        <CardFundGroup label="Cash deposit">
+        <CardFundGroup label="Cash deposit" maxVisibleRows={CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS}>
           {sections.cashDeposit ? (
             <CardFundRow
               icon={
