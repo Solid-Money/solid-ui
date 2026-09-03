@@ -18,6 +18,38 @@ export type CardFundLocalCurrency = {
 };
 
 /**
+ * Rails each local currency can be paid with, shown as chips on its row so the
+ * corridor is visible before the flow is opened — the same way the token rows
+ * show their networks.
+ *
+ * Keyed by code rather than listed on the rows, so a new corridor stays a row
+ * plus its flag asset. Brand names carry their own casing (bKash, M-Pesa,
+ * GCash), the way "Wire" does on the USD row.
+ */
+export const CARD_FUND_LOCAL_PAYMENT_METHODS: Record<string, string[]> = {
+  AED: ['Bank transfer'],
+  ARS: ['Bank transfer'],
+  BDT: ['bKash', 'Nagad'],
+  BRL: ['PIX'],
+  COP: ['Bank transfer'],
+  EUR: ['SEPA Instant'],
+  GHS: ['AirtelTigo', 'MTN', 'Vodafone'],
+  IDR: ['Bank transfer'],
+  KES: ['Airtel', 'M-Pesa', 'T-Kash'],
+  MXN: ['Bank transfer'],
+  MYR: ['Bank transfer'],
+  NGN: ['Bank transfer'],
+  PEN: ['Bank transfer'],
+  PHP: ['Bank transfer', 'GCash', 'GrabPay'],
+  UGX: ['Airtel', 'MTN'],
+  ZMW: ['Airtel', 'MTN', 'Zamtel'],
+};
+
+/** Rails shown on a local-currency row; empty for a currency with none listed. */
+export const getCardFundLocalPaymentMethods = (code: string): string[] =>
+  CARD_FUND_LOCAL_PAYMENT_METHODS[code] ?? [];
+
+/**
  * Local currencies offered under "Cash deposit", in display order. Each opens the
  * TransFi buy-crypto flow preseeded with it; the bought USDC is delivered to the
  * card funding address, so it lands as card balance.
@@ -33,9 +65,6 @@ export type CardFundLocalCurrency = {
  * flag-icons' square (1:1) set at the same 144x144, which keeps wide flags whole
  * instead of centre-cropping them. `flagImage` rounds them at render time, so the
  * source PNGs are square and need no circular mask of their own.
- *
- * Rails are not listed per currency: the row is flag + code, and the rail is
- * picked inside the flow.
  *
  * The leading three are the design's, not alphabetical: the "Cash deposit" group
  * shows only `CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS` rows before its "Show more"
