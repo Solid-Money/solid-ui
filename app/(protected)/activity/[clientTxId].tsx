@@ -42,6 +42,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
   CardTransaction,
+  CardTransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -606,6 +607,52 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   );
 });
 
+/**
+ * A card transaction whose details neither source will give us.
+ *
+ * The issuer does not serve a single-transaction read for every row it puts in
+ * the feed, and the feed itself can be a page too short or a request too far.
+ * The user still tapped a purchase they can see on their statement, so this
+ * stays the purchase's own screen rather than becoming an error page about it —
+ * with the merchant, the figure and the date left out rather than invented,
+ * because a made-up amount on a card transaction is worse than a missing one.
+ */
+const UnknownCardTransaction = memo(function UnknownCardTransaction({
+  clientTxId,
+}: {
+  clientTxId: string;
+}) {
+  const transactionContext = useMemo(
+    () =>
+      `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+    [clientTxId],
+  );
+
+  return (
+    <PageLayout desktopOnly>
+      <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+        <Back title="Card transaction" className="text-xl md:text-2xl" />
+
+        <View className="items-center gap-4">
+          <CardActivityIcon
+            transaction={{ category: CardTransactionCategory.PURCHASE, currency: '' }}
+            size={75}
+          />
+
+          <View className="items-center gap-1">
+            <Text className="text-center text-base text-white/70">
+              We could not load the details of this purchase. Support can look it up for you.
+            </Text>
+            <Text className="text-sm text-white/40">{eclipseAddress(clientTxId)}</Text>
+          </View>
+        </View>
+
+        <ContactSupportCard transactionContext={transactionContext} />
+      </View>
+    </PageLayout>
+  );
+});
+
 const formatSymbol = (symbol?: string) => (symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol);
 
 export default function ActivityDetail() {
@@ -1060,11 +1107,19 @@ export default function ActivityDetail() {
     );
   }
 
-  // Not found. Reached only once every source has come back empty — the
-  // activity store, the backend read, and for a card transaction the history
-  // feed as well. A bare title left the user on a screen that named an id and
-  // explained nothing, so the id moves into the body and support is one tap
-  // away, which is the only useful thing to do from here.
+  // A card transaction keeps its own screen even with nothing to put on it: the
+  // user tapped a purchase that exists — they can see it on the feed, or on
+  // their statement — so an error page about it would be the app arguing with
+  // them. See `UnknownCardTransaction`.
+  if (isCardTransaction) {
+    return <UnknownCardTransaction clientTxId={clientTxId} />;
+  }
+
+  // Not found. A wallet activity that neither the activity store nor the
+  // backend read knows about, which unlike a card transaction means there is
+  // genuinely no such transaction to show. A bare title left the user on a
+  // screen that named an id and explained nothing, so the id moves into the
+  // body and support is one tap away.
   if (!finalActivity) {
     return (
       <PageLayout desktopOnly>
