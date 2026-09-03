@@ -732,9 +732,19 @@ export const getDiditVerificationStatus = async (): Promise<DiditVerificationSta
  *
  * `flow` tells the backend which product is asking — it decides what gets
  * recorded against the user's card customer, not what the SDK shows.
+ *
+ * `country` is REQUIRED by the backend for the card flow, and only as a
+ * fallback: it prefers the user's stored residence country and consults this
+ * only for a user who has none, in which case `source` must be `manual` — a
+ * country the user picked themselves. An IP guess is refused, because storing
+ * it as residence would pin a traveller's card issuer to wherever their phone
+ * was. Either refusal comes back as COUNTRY_REQUIRED, whose only answer is to
+ * send the user to the country selection screen and retry. The onramp flow
+ * ignores both fields.
  */
 export const createSumsubSession = async (
   flow: SumsubSessionFlow = 'card',
+  country?: { countryCode?: string; source?: 'ip' | 'manual' },
 ): Promise<SumsubSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/sumsub/session`, {
@@ -745,7 +755,13 @@ export const createSumsubSession = async (
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({ flow }),
+    body: JSON.stringify({
+      flow,
+      // Omitted rather than sent as undefined: the DTO validates the shape when
+      // present, and an explicit null would fail it.
+      ...(country?.countryCode && { countryCode: country.countryCode }),
+      ...(country?.source && { countrySource: country.source }),
+    }),
   });
   if (!response.ok) {
     let code: string | undefined;
@@ -2386,7 +2402,9 @@ export const getCashbacks = async (): Promise<Cashback[]> => {
   return response.json();
 };
 
-export const getCardTransaction = async (transactionId: string): Promise<CardTransaction> => {
+export const getCardTransaction = async (
+  transactionId: string,
+): Promise<CardTransaction | null> => {
   const jwt = getJWTToken();
 
   const url = new URL(
@@ -2401,6 +2419,13 @@ export const getCardTransaction = async (transactionId: string): Promise<CardTra
     },
     credentials: 'include',
   });
+
+  // Not every transaction in the history has a single-transaction read behind
+  // it: Wirex serves declined ones in the activity feed but 404s the
+  // single-activity endpoint for them. That is an answer, not a failure — it
+  // says "use the feed row you already have" rather than an error worth
+  // retrying, and the detail screen falls back to exactly that.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 

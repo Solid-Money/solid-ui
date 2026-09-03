@@ -85,3 +85,78 @@ export function shouldPromptToFinishKyc(
 ): boolean {
   return hasStartedKyc(cardStatus, kycStartedAt) && hasUnfinishedKyc(cardStatus);
 }
+
+/**
+ * Where the user stands in identity verification, as one value.
+ *
+ * The home CTA banner needs the whole ladder rather than the single
+ * "is there something to finish?" question {@link shouldPromptToFinishKyc}
+ * answers: it shows a different card for each rung (Figma 25141:6965), and
+ * "waiting on a decision" and "declined" are states of their own there, not just
+ * reasons not to nudge.
+ *
+ * Both card issuers land here. Rain's `rainApplicationStatus` wins whenever it
+ * is present — it is the later, more specific stage of the same funnel — and the
+ * backend `kycStatus` covers the Didit-only phase before Rain has seen the
+ * applicant, as well as the whole Wirex/Sumsub flow, which has no Rain
+ * application at all.
+ */
+export type KycProgress =
+  /** Nothing started; no provider has seen this user. */
+  | 'not-started'
+  /** Started, and the next move is the user's (resubmit, finish a step). */
+  | 'unfinished'
+  /** Submitted; waiting on the provider or on us. Nothing for the user to do. */
+  | 'in-review'
+  /** Verified — the user can be issued a card. */
+  | 'approved'
+  /** Closed against the user: declined, offboarded, locked or canceled. */
+  | 'rejected';
+
+/** Rain statuses that closed the application against the user. */
+const REJECTED_RAIN_STATUSES: RainApplicationStatus[] = [
+  RainApplicationStatus.DENIED,
+  RainApplicationStatus.LOCKED,
+  RainApplicationStatus.CANCELED,
+];
+
+/** Rain statuses that mean a decision is being made. */
+const IN_REVIEW_RAIN_STATUSES: RainApplicationStatus[] = [
+  RainApplicationStatus.PENDING,
+  RainApplicationStatus.MANUAL_REVIEW,
+];
+
+/** Backend KYC statuses that are final rejections. */
+const REJECTED_KYC_STATUSES: KycStatus[] = [KycStatus.REJECTED, KycStatus.OFFBOARDED];
+
+/** Backend KYC statuses where the decision sits with the provider or with us. */
+const IN_REVIEW_KYC_STATUSES: KycStatus[] = [KycStatus.UNDER_REVIEW, KycStatus.PAUSED];
+
+export function resolveKycProgress(
+  cardStatus: CardStatusResponse | null | undefined,
+  kycStartedAt?: number | null,
+): KycProgress {
+  const rainStatus = cardStatus?.rainApplicationStatus;
+  if (isKnownRainStatus(rainStatus) && rainStatus !== RainApplicationStatus.NOT_STARTED) {
+    if (rainStatus === RainApplicationStatus.APPROVED) return 'approved';
+    if (REJECTED_RAIN_STATUSES.includes(rainStatus)) return 'rejected';
+    if (IN_REVIEW_RAIN_STATUSES.includes(rainStatus)) return 'in-review';
+    // needsVerification / needsInformation — Rain is waiting on the user.
+    return 'unfinished';
+  }
+
+  const kycStatus = cardStatus?.kycStatus;
+  if (kycStatus && kycStatus !== KycStatus.NOT_STARTED) {
+    if (kycStatus === KycStatus.APPROVED) return 'approved';
+    if (REJECTED_KYC_STATUSES.includes(kycStatus)) return 'rejected';
+    if (IN_REVIEW_KYC_STATUSES.includes(kycStatus)) return 'in-review';
+    // incomplete / awaiting_questionnaire / awaiting_ubo — the user's move.
+    return 'unfinished';
+  }
+
+  // No usable server status. The local "SDK was opened" marker is the only
+  // evidence a user who walked out of Didit/Sumsub leaves behind for a while —
+  // `/cards/status` still reads not_started (or 404s into null) — and they are
+  // exactly who the "Finish verification" banner is for.
+  return hasStartedKyc(cardStatus, kycStartedAt) ? 'unfinished' : 'not-started';
+}

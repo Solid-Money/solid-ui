@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
 import { Text } from '@/components/ui/text';
 
 const cashbackArtwork = require('@/assets/images/home-cashback-promo-10.png');
@@ -47,7 +48,7 @@ const HomeCashbackPromoBanner = () => (
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1C1C1C',
-    borderRadius: 23,
+    borderRadius: HOME_BANNER_RADIUS,
     height: 98,
     overflow: 'hidden',
     position: 'relative',

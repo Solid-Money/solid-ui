@@ -59,6 +59,25 @@ const PILL_EXTRA_HEIGHT = 16;
 const SLIDE_TIMING = { duration: 320, easing: Easing.out(Easing.cubic) };
 const VISIBLE_TAB_NAMES = WHITELIST_TAB_NAMES as readonly string[];
 
+/**
+ * Tab routes that render without the bottom bar.
+ *
+ * - `settings`: its own full-screen list.
+ * - `sumsub-kyc`: the embedded Sumsub widget owns the whole viewport, and the
+ *   bar sits on top of its "Agree and continue" button.
+ */
+const HIDDEN_TAB_ROUTES = new Set(['settings', 'sumsub-kyc']);
+
+/**
+ * Nested routes that render without the bottom bar, keyed by the deepest focused
+ * route name inside the active tab.
+ *
+ * - `benefits`: the rewards benefits screen has its own bottom fade + CTA.
+ * - `ready`: the card consent screen is a tall single-purpose form, and the bar
+ *   covers its last checkbox on short screens.
+ */
+const HIDDEN_NESTED_ROUTES = new Set(['benefits', 'ready']);
+
 type TabLayout = { x: number; y: number; width: number; height: number };
 
 type TabButtonProps = {
@@ -119,9 +138,8 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
   const blurTarget = useTabBarBlurTarget();
   const activeRoute = state.routes[state.index];
   const currentRouteName = activeRoute?.name;
-  // Deepest focused route inside the active tab's nested navigator — the
-  // redesigned rewards benefits screen renders its own bottom fade + CTA and
-  // hides this bar entirely.
+  // Deepest focused route inside the active tab's nested navigator — a few
+  // screens hide this bar entirely (see HIDDEN_NESTED_ROUTES).
   const focusedNestedRoute = activeRoute ? getFocusedRouteNameFromRoute(activeRoute) : undefined;
 
   const bottomInset = Math.max(
@@ -211,7 +229,10 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     opacity: pillOpacity.value,
   }));
 
-  if (currentRouteName === 'settings' || focusedNestedRoute === 'benefits') {
+  if (
+    (currentRouteName && HIDDEN_TAB_ROUTES.has(currentRouteName)) ||
+    (focusedNestedRoute && HIDDEN_NESTED_ROUTES.has(focusedNestedRoute))
+  ) {
     return null;
   }
 
