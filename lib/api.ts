@@ -7,6 +7,7 @@ import { fuse } from 'viem/chains';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import {
   WirexBankAccountType,
@@ -128,6 +129,7 @@ import {
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
+  TransfiProfileInput,
   TransfiQuote,
   TransfiStatusResponse,
   UpdateActivityEvent,
@@ -1341,6 +1343,12 @@ export const getWirexBankTransfers = async (limit?: number): Promise<WirexBankTr
 // TransFi buy-crypto onramp
 // -----------------------------------------------------------------------------
 
+/**
+ * TransFi calls throw a typed TransfiError rather than the raw Response every
+ * other endpoint here throws: the buy-crypto screens need the failure's `code`
+ * and `action` to decide what to show, and a Response body can only be read
+ * once — consuming it in a component is too late.
+ */
 const transfiHeaders = () => {
   const jwt = getJWTToken();
   return {
@@ -1355,7 +1363,7 @@ export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
     credentials: 'include',
     headers: transfiHeaders(),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1366,7 +1374,7 @@ export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1382,7 +1390,24 @@ export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/**
+ * Supply the address/phone TransFi needs when the verified identity didn't
+ * carry them, then re-share. Resolves with the refreshed gating status.
+ */
+export const completeTransfiProfile = async (
+  profile: TransfiProfileInput,
+): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/profile`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify(profile),
+  });
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1392,7 +1417,7 @@ export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> =
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1405,7 +1430,7 @@ export const getTransfiPaymentMethods = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-methods?${params.toString()}`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1423,7 +1448,7 @@ export const getTransfiQuote = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
     { credentials: 'include', headers: transfiHeaders(), signal },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1439,7 +1464,7 @@ export const createTransfiOrder = async (
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
     body: JSON.stringify({ usdcAmount, paymentCode, currency }),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1449,7 +1474,7 @@ export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStat
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 

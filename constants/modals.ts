@@ -137,6 +137,23 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_status',
     number: 25,
   },
+  /**
+   * Failure screen for the buy-crypto flow. Numbered past every other step so
+   * arriving at it always animates forward, whichever step failed.
+   */
+  OPEN_BUY_CRYPTO_ERROR: {
+    name: 'open_buy_crypto_error',
+    number: 26,
+  },
+  /**
+   * Fill in the address/phone TransFi needs when the verified identity didn't
+   * carry them. Only ever reached from the error step, so it is numbered after
+   * it.
+   */
+  OPEN_BUY_CRYPTO_PROFILE: {
+    name: 'open_buy_crypto_profile',
+    number: 27,
+  },
 };
 
 export const SEND_MODAL = {

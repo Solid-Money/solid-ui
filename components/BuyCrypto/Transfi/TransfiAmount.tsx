@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -16,6 +16,8 @@ import {
 } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { asTransfiError, TransfiError } from '@/lib/transfiErrors';
+import { formatUsdcBound, resolveAmountLimits } from '@/lib/transfiLimits';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -48,8 +50,19 @@ export const TransfiAmount = () => {
   const setAmount = useTransfiStore(state => state.setAmount);
   const setFiatCurrency = useTransfiStore(state => state.setFiatCurrency);
   const setOrder = useTransfiStore(state => state.setOrder);
+  const setError = useTransfiStore(state => state.setError);
 
-  const { data: config, isLoading: configLoading } = useTransfiPaymentConfig();
+  const { data: config, isLoading: configLoading, error: configError } = useTransfiPaymentConfig();
+
+  // Without the config there is no currency list and no token to buy, so the
+  // screen can only render an inert shell. A region TransFi has no payable
+  // currency for lands here, and it deserves a sentence rather than a form that
+  // never enables.
+  useEffect(() => {
+    if (!configError) return;
+    setError(asTransfiError(configError), DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR);
+  }, [configError, setError, setModal]);
 
   // Default the currency to the server suggestion once config loads.
   useEffect(() => {
@@ -64,12 +77,11 @@ export const TransfiAmount = () => {
   // Quote on the settled amount, not on every keystroke: typing "400" would
   // otherwise fire quotes for 4, 40 and 400 and leave the first two racing.
   const debouncedAmount = useDebounce(amount, QUOTE_DEBOUNCE_MS);
-  const { data: quote, isFetching: quoteFetching } = useTransfiQuote(
-    debouncedAmount,
-    currency ?? undefined,
-    activePaymentCode,
-    Boolean(config),
-  );
+  const {
+    data: quote,
+    isFetching: quoteFetching,
+    error: quoteError,
+  } = useTransfiQuote(debouncedAmount, currency ?? undefined, activePaymentCode, Boolean(config));
 
   const { mutate: createOrder, isPending: creatingOrder } = useCreateTransfiOrder();
 
@@ -78,17 +90,49 @@ export const TransfiAmount = () => {
   // previous one is kept as placeholder data — so only treat it as describing
   // the current amount once the echoed usdcAmount matches what's in the box.
   const isQuoteCurrent = quote != null && Number(quote.usdcAmount) === amountNum;
-  const isQuotePending =
-    amountNum > 0 && (quoteFetching || amount !== debouncedAmount || !isQuoteCurrent);
   const liveQuote = isQuoteCurrent ? quote : undefined;
 
-  // Limits are fiat-denominated (e.g. 659–30,000 BDT), so they must be compared
-  // against the fiat total, never against the USDC amount being bought.
-  const fiatTotal = liveQuote?.fiatAmount;
-  const belowMin =
-    liveQuote?.minLimit != null && fiatTotal != null && fiatTotal < liveQuote.minLimit;
-  const aboveMax =
-    liveQuote?.maxLimit != null && fiatTotal != null && fiatTotal > liveQuote.maxLimit;
+  const selectedMethod = useMemo(
+    () => methods?.find(m => m.paymentCode === activePaymentCode),
+    [methods, activePaymentCode],
+  );
+  const selectedCurrency = useMemo(
+    () => config?.currencies.find(c => c.currency === currency),
+    [config?.currencies, currency],
+  );
+
+  // TransFi refuses to price an amount outside the limits, so an out-of-range
+  // entry arrives as a failed quote rather than a quote that fails validation.
+  // That is not an error screen — it is this input telling the user to change
+  // the number, so it is handled here and the failure never leaves the step.
+  const limitError =
+    quoteError instanceof TransfiError && quoteError.action === 'adjust_amount'
+      ? quoteError
+      : undefined;
+  const isQuotePending =
+    amountNum > 0 &&
+    !quoteError &&
+    (quoteFetching || amount !== debouncedAmount || !isQuoteCurrent);
+
+  // Last exchange rate seen for this currency + method. The limits are in fiat
+  // while the box is in USDC, so without a rate the range can only be stated in
+  // a unit the user isn't typing in.
+  const pairKey = `${currency}:${activePaymentCode}`;
+  const [lastRate, setLastRate] = useState<{ pair: string; rate: number }>();
+  useEffect(() => {
+    if (liveQuote?.exchangeRate) {
+      setLastRate({ pair: `${currency}:${activePaymentCode}`, rate: liveQuote.exchangeRate });
+    }
+  }, [liveQuote?.exchangeRate, currency, activePaymentCode]);
+
+  const { minLimit, maxLimit, minUsdc, maxUsdc, belowMin, aboveMax } = resolveAmountLimits({
+    amount: amountNum,
+    quote: liveQuote,
+    quoteError,
+    method: selectedMethod,
+    rate: lastRate?.pair === pairKey ? lastRate.rate : undefined,
+  });
+
   const isValid =
     Number.isFinite(amountNum) &&
     amountNum > 0 &&
@@ -99,14 +143,18 @@ export const TransfiAmount = () => {
     !!activePaymentCode &&
     !!currency;
 
-  const selectedMethod = useMemo(
-    () => methods?.find(m => m.paymentCode === activePaymentCode),
-    [methods, activePaymentCode],
-  );
-  const selectedCurrency = useMemo(
-    () => config?.currencies.find(c => c.currency === currency),
-    [config?.currencies, currency],
-  );
+  // Reported once per amount that lands out of range, not per keystroke: the
+  // limits being wrong for a market is the signal, not how fast someone types.
+  useEffect(() => {
+    if (!limitError) return;
+    track(TRACKING_EVENTS.BUY_CRYPTO_AMOUNT_OUT_OF_LIMITS, {
+      usdc_amount: Number(debouncedAmount),
+      currency,
+      payment_code: activePaymentCode,
+      min_limit: limitError.details.minLimit,
+      max_limit: limitError.details.maxLimit,
+    });
+  }, [limitError, debouncedAmount, currency, activePaymentCode]);
 
   // Where the purchase lands, in the user's terms. A Wirex delivery is handed to
   // the card deposit address and bridged on to their Safe on Fuse, so naming the
@@ -142,12 +190,20 @@ export const TransfiAmount = () => {
           setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT);
         },
         onError: error => {
+          const transfiError = asTransfiError(error);
           track(TRACKING_EVENTS.BUY_CRYPTO_ORDER_CREATION_FAILED, {
             usdc_amount: Number(amount),
             currency,
             payment_code: activePaymentCode,
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error_code: transfiError.code,
+            error_action: transfiError.action,
+            error_message: transfiError.message,
           });
+          // TransFi's refusals (unsupported country, a compliance hold) used to
+          // stop here, leaving the button re-enabled and the user with no idea
+          // the order never existed. Hand it to the error step instead.
+          setError(transfiError, DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+          setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR);
         },
       },
     );
@@ -244,23 +300,33 @@ export const TransfiAmount = () => {
           value={formatFiat(liveQuote?.fiatAmount, currency ?? '')}
           emphasize
         />
-        {/* Limits depend only on the currency + method, so they stay accurate
-            while a new amount's quote is in flight. */}
-        {quote?.minLimit != null || quote?.maxLimit != null ? (
+        {/* Limits depend only on the currency + method, so they are shown from
+            the payment method before the first quote and stay accurate while a
+            new amount's quote is in flight. */}
+        {minLimit != null || maxLimit != null ? (
           <Text className="text-xs text-muted-foreground">
-            Limits: {formatFiat(quote?.minLimit, currency ?? '')} –{' '}
-            {formatFiat(quote?.maxLimit, currency ?? '')}
+            Limits: {formatFiat(minLimit, currency ?? '')} – {formatFiat(maxLimit, currency ?? '')}
           </Text>
         ) : null}
         {belowMin ? (
           <Text className="text-xs text-red-500">
-            Amount is below the {formatFiat(liveQuote?.minLimit, currency ?? '')} minimum.
+            Enter at least {formatFiat(minLimit, currency ?? '')}
+            {minUsdc != null ? ` (about ${formatUsdcBound(minUsdc, 'up')} USDC)` : ''}.
           </Text>
         ) : null}
         {aboveMax ? (
           <Text className="text-xs text-red-500">
-            Amount is above the {formatFiat(liveQuote?.maxLimit, currency ?? '')} maximum.
+            Enter at most {formatFiat(maxLimit, currency ?? '')}
+            {maxUsdc != null ? ` (about ${formatUsdcBound(maxUsdc, 'down')} USDC)` : ''}.
           </Text>
+        ) : null}
+        {/* The quote itself failed on the limits and we have no rate to convert
+            with — say so plainly rather than leaving the breakdown at "—". */}
+        {limitError && !belowMin && !aboveMax ? (
+          <Text className="text-xs text-red-500">{limitError.message}</Text>
+        ) : null}
+        {quoteError && !limitError ? (
+          <Text className="text-xs text-red-500">{asTransfiError(quoteError).message}</Text>
         ) : null}
       </View>
 
@@ -277,9 +343,11 @@ export const TransfiAmount = () => {
         <Text className="text-base font-bold text-primary-foreground">
           {creatingOrder
             ? 'Creating order…'
-            : isQuotePending
-              ? 'Getting quote…'
-              : 'Continue to payment'}
+            : belowMin || aboveMax || limitError
+              ? 'Amount out of limits'
+              : isQuotePending
+                ? 'Getting quote…'
+                : 'Continue to payment'}
         </Text>
       </Button>
     </View>
