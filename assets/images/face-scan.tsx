@@ -1,15 +1,35 @@
 import * as React from 'react';
 import Svg, { Path, SvgProps } from 'react-native-svg';
 
-/** Face-scan brackets used on the home "Finish verification" prompt (Figma 20172:8385). */
-const FaceScan = ({ color = 'white', ...props }: SvgProps & { color?: string }) => (
+/**
+ * The mouth inside the brackets. Everything else about the glyph is identical
+ * between the two states the design draws (Figma 25141:7081 vs 25141:7195), so
+ * the expression is the only thing that varies.
+ */
+const MOUTH_PATH = {
+  /** Smiling — the encouraging states (get card, finish verification, ready). */
+  smile:
+    'M30.2917 51.5833C32.8782 53.5005 36.024 54.625 39.4167 54.625C42.8093 54.625 45.955 53.5005 48.5417 51.5833',
+  /** Flat — the "your verification declined" card. */
+  flat: 'M30.9167 54.6249C33.4167 54.6251 36.024 54.6251 39.4167 54.6251C42.8093 54.6251 45.4167 54.625 48.4167 54.6251',
+} as const;
+
+export type FaceScanExpression = keyof typeof MOUTH_PATH;
+
+/**
+ * Face-scan brackets used on the home verification prompts (Figma 20172:8385).
+ *
+ * `expression` picks the mouth: the declined banner draws the same face with a
+ * flat one instead of a smile, which is the whole difference between the two
+ * assets in the design.
+ */
+const FaceScan = ({
+  color = 'white',
+  expression = 'smile',
+  ...props
+}: SvgProps & { color?: string; expression?: FaceScanExpression }) => (
   <Svg width={73} height={73} viewBox="0 0 78.8333 78.8333" fill="none" {...props}>
-    <Path
-      d="M30.2917 51.5833C32.8782 53.5005 36.024 54.625 39.4167 54.625C42.8093 54.625 45.955 53.5005 48.5417 51.5833"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-    />
+    <Path d={MOUTH_PATH[expression]} stroke={color} strokeWidth={2} strokeLinecap="round" />
     <Path
       d="M48.5417 39.4167C50.2215 39.4167 51.5833 37.374 51.5833 34.8542C51.5833 32.3344 50.2215 30.2917 48.5417 30.2917C46.8618 30.2917 45.5 32.3344 45.5 34.8542C45.5 37.374 46.8618 39.4167 48.5417 39.4167Z"
       fill={color}
