@@ -15,7 +15,9 @@ import {
 import { mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
-import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
+import ActivityStatusPill, {
+  type ActivityStatusTone,
+} from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
@@ -70,6 +72,12 @@ import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 type RowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
+  /**
+   * A note about this row, on its own line beneath it and spanning the card's
+   * width. For the rare row whose value needs a caveat that will not fit
+   * right-aligned under the value itself.
+   */
+  caption?: React.ReactNode;
   className?: string;
   isLast?: boolean;
 };
@@ -95,16 +103,14 @@ type SupportSectionProps = {
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
 const CARD_DATE_FORMAT = "MMM d yyyy 'at' h:mm a";
 
-const Row = memo(function Row({ label, value, isLast }: RowProps) {
+const Row = memo(function Row({ label, value, caption, isLast }: RowProps) {
   return (
-    <View
-      className={cn(
-        'flex-row items-center justify-between border-b border-[#2C2C2E] px-6 py-5',
-        isLast && 'border-b-0',
-      )}
-    >
-      {label}
-      {value}
+    <View className={cn('border-b border-[#2C2C2E] px-6 py-5', isLast && 'border-b-0')}>
+      <View className="flex-row items-center justify-between">
+        {label}
+        {value}
+      </View>
+      {caption}
     </View>
   );
 });
@@ -217,8 +223,15 @@ type CardTransactionDetailProps = {
   cardProvider?: CardProvider | null;
 };
 
+type DetailRow = {
+  key: string;
+  label: React.ReactNode;
+  value: React.ReactNode;
+  caption?: React.ReactNode;
+};
+
 type DetailCardProps = {
-  rows: { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  rows: DetailRow[];
 };
 
 const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
@@ -227,7 +240,13 @@ const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
   return (
     <View className="overflow-hidden rounded-twice bg-card">
       {rows.map((row, index) => (
-        <Row key={row.key} label={row.label} value={row.value} isLast={index === rows.length - 1} />
+        <Row
+          key={row.key}
+          label={row.label}
+          value={row.value}
+          caption={row.caption}
+          isLast={index === rows.length - 1}
+        />
       ))}
     </View>
   );
@@ -345,15 +364,32 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const feeInfo = getCardFeeInfo(transaction);
   const localDetails = transaction.local_transaction_details;
 
-  const statusLabel = isApproved
-    ? 'Pending'
-    : isDeclined
-      ? 'Declined'
-      : isReversed
-        ? 'Reversed'
-        : 'Confirmed';
-  // Declined never reaches this: it is drawn as a chip in the header instead.
-  const statusColor = isApproved ? 'text-yellow-500' : '';
+  /**
+   * The chip under the amount, and the only place this screen reports status.
+   *
+   * It answers one question — is anything about this purchase still in flight?
+   * — which is why there is no Status row in the card below: once the charge
+   * has posted and the cashback has been paid, there is nothing to report, and
+   * a row reading "Confirmed" on a settled receipt is a fact nobody came for.
+   *
+   * A cashback still in escrow keeps the chip up. The amount beside it is a
+   * projection until it pays, and the chip is what says so — which is what lets
+   * the cashback row itself just name the figure.
+   */
+  const statusPill = useMemo((): { label: string; tone: ActivityStatusTone } | null => {
+    // A declined charge never happened, and a reversed one was undone. Both are
+    // terminal, so neither is "pending" — and both change what every figure
+    // above the chip means.
+    if (isDeclined) return { label: 'Declined', tone: 'danger' };
+    if (isReversed) return { label: 'Reversed', tone: 'danger' };
+
+    // `approved` is authorized but not yet posted. Cashback is settled once it
+    // has actually paid; a transaction that earned none has nothing to wait for.
+    const isSpendSettled = !isApproved;
+    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid;
+
+    return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
+  }, [cashbackInfo, isApproved, isDeclined, isReversed]);
 
   const merchantRows = useMemo(
     () =>
@@ -397,13 +433,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const rows = useMemo(() => {
     const allRows = [
-      // The chip in the header already says "Declined", and louder than a row
-      // in a card of plain facts can.
-      !isDeclined && {
-        key: 'status',
-        label: <Label>Status</Label>,
-        value: <Value className={statusColor}>{statusLabel}</Value>,
-      },
+      // No Status row: the chip under the amount carries it, and says it louder
+      // than a row in a card of plain facts can. See `statusPill`.
       isDeclined &&
         transaction.declined_reason && {
           key: 'reason',
@@ -439,6 +470,17 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
           </Value>
         ),
+        // While the charge is still pending, the amount at the top of this
+        // screen is the authorization — the cashback is not netted off it, and
+        // two figures on one receipt that don't reconcile is the kind of thing a
+        // cardholder reads as an error. Spans the row rather than sitting under
+        // the value, where a sentence this long would wrap to three lines
+        // against the label.
+        caption: isApproved ? (
+          <Text className="mt-2 text-[13px] leading-4 text-white/50">
+            Cashback amount is not reflected on a pending transaction sum
+          </Text>
+        ) : undefined,
       },
       cashbackInfo?.isEscrowed &&
         cashbackInfo.payoutAt && {
@@ -530,7 +572,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Pressable>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
 
     return allRows;
   }, [
@@ -539,8 +581,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     localDetails,
     txHash,
     handleExplorerPress,
-    statusLabel,
-    statusColor,
+    isApproved,
     isDeclined,
     cardProvider,
     spend,
@@ -580,17 +621,22 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
                 two operators. The activity row shows the conversion bare too. */}
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
-            {/* A decline reads as a chip, the same one the activity row uses
-                (Figma 24781:7993), rather than as one more fact in the detail
-                card below. It changes what every figure above it means — the
-                money never left — so it belongs beside them, not in a list of
-                properties the user has to read to find out the purchase never
-                happened. The reason still gets its own row. */}
-            {isDeclined && (
+            {/* Status reads as a chip, the same one the activity row uses
+                (Figma 24781:7724 / 24781:7993), rather than as one more fact in
+                the detail card below. It changes what every figure above it
+                means — a declined charge never left the account — so it belongs
+                beside them, not in a list of properties the user has to read to
+                find out the purchase never happened. A decline's reason still
+                gets its own row. */}
+            {statusPill && (
               // `self-center` overrides the pill's own `self-start`: on a row it
               // hangs off the merchant's left edge, here it sits under a centred
               // amount.
-              <ActivityStatusPill label="Declined" tone="danger" className="mt-1 self-center" />
+              <ActivityStatusPill
+                label={statusPill.label}
+                tone={statusPill.tone}
+                className="mt-1 self-center"
+              />
             )}
           </View>
         </View>
@@ -942,7 +988,7 @@ export default function ActivityDetail() {
           label: <Label>Estimated time</Label>,
           value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     isDeposit,
@@ -1036,7 +1082,7 @@ export default function ActivityDetail() {
           </View>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [finalActivity, depositDestination]);
 
   const depositStatusRows = useMemo(() => {
@@ -1096,7 +1142,7 @@ export default function ActivityDetail() {
             </Pressable>
           ),
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     depositStatus,
