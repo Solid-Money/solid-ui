@@ -233,8 +233,10 @@ export const TRACKING_EVENTS = {
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
 
-  // Home Prompt Card Events (verification / fund / Apple Pay nudges)
+  // Home CTA banner events — the one next-step card under the wallet card,
+  // whichever rung of the funnel the user is on (Figma 25141:6965).
   HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
+  HOME_PROMPT_CTA_PRESSED: 'home_prompt_cta_pressed',
 
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',

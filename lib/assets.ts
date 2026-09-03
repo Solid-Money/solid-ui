@@ -422,7 +422,7 @@ export const ASSETS = {
     module: require('@/assets/images/exclamation_mark.png'),
     hash: '962c5177',
   },
-  'images/face-scan.tsx': { module: require('@/assets/images/face-scan.tsx'), hash: 'f9d44e3f' },
+  'images/face-scan.tsx': { module: require('@/assets/images/face-scan.tsx'), hash: '40f9cccf' },
   'images/face-verification.png': {
     module: require('@/assets/images/face-verification.png'),
     hash: 'd630cb67',
@@ -494,6 +494,10 @@ export const ASSETS = {
     module: require('@/assets/images/globe-green.png'),
     hash: 'ba254b95',
   },
+  'images/google-pay-circle.tsx': {
+    module: require('@/assets/images/google-pay-circle.tsx'),
+    hash: 'c87a29c8',
+  },
   'images/google_pay.png': { module: require('@/assets/images/google_pay.png'), hash: '78c91f8f' },
   'images/gray_onboarding_bg.png': {
     module: require('@/assets/images/gray_onboarding_bg.png'),
@@ -513,7 +517,7 @@ export const ASSETS = {
   },
   'images/header-help.tsx': {
     module: require('@/assets/images/header-help.tsx'),
-    hash: 'dafee275',
+    hash: '2e866867',
   },
   'images/header-support.tsx': {
     module: require('@/assets/images/header-support.tsx'),
@@ -935,6 +939,14 @@ export const ASSETS = {
     module: require('@/assets/images/save-yellow.png'),
     hash: '6b97a369',
   },
+  'images/savings-eth-hero-background.jpg': {
+    module: require('@/assets/images/savings-eth-hero-background.jpg'),
+    hash: 'ed87af99',
+  },
+  'images/savings-fuse-hero-background.jpg': {
+    module: require('@/assets/images/savings-fuse-hero-background.jpg'),
+    hash: '65c0de22',
+  },
   'images/savings-grow.png': {
     module: require('@/assets/images/savings-grow.png'),
     hash: 'e9cde107',
@@ -954,14 +966,6 @@ export const ASSETS = {
   'images/savings-nav-bar-icon.tsx': {
     module: require('@/assets/images/savings-nav-bar-icon.tsx'),
     hash: 'd9241a35',
-  },
-  'images/savings-eth-hero-background.jpg': {
-    module: require('@/assets/images/savings-eth-hero-background.jpg'),
-    hash: 'ed87af99',
-  },
-  'images/savings-fuse-hero-background.jpg': {
-    module: require('@/assets/images/savings-fuse-hero-background.jpg'),
-    hash: '65c0de22',
   },
   'images/savings-usd-hero-background.jpg': {
     module: require('@/assets/images/savings-usd-hero-background.jpg'),

@@ -71,6 +71,10 @@ const CardDetailsPane = () => {
   const isOpen = useCardPaneStore(state => state.isOpen);
   const originRect = useCardPaneStore(state => state.originRect);
   const closePane = useCardPaneStore(state => state.close);
+  // Set by a `?wallet=apple|google` link (the home "Add to Apple Pay" banner),
+  // which asks for the guide rather than merely for this pane.
+  const walletGuide = useCardPaneStore(state => state.walletGuide);
+  const dismissWalletGuide = useCardPaneStore(state => state.dismissWalletGuide);
   const startFlight = useCardHeroStore(state => state.start);
 
   // Shown here rather than on the old details route: card issuance sets this flag
@@ -265,8 +269,14 @@ const CardDetailsPane = () => {
       />
       <AddToWalletModal
         trigger={null}
-        isOpen={isAddToWalletOpen}
-        onOpenChange={setIsAddToWalletOpen}
+        isOpen={isAddToWalletOpen || (isOpen && walletGuide !== null)}
+        onOpenChange={open => {
+          setIsAddToWalletOpen(open);
+          // Closing has to clear the link's request as well, or the guide would
+          // immediately re-open from it.
+          if (!open) dismissWalletGuide();
+        }}
+        initialWallet={walletGuide ?? undefined}
       />
     </View>
   );

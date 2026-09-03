@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
 import HomeCashbackPromoBanner from '@/components/Home/NewHome/HomeCashbackPromoBanner';
 import { useDimension } from '@/hooks/useDimension';
 import { usePromotionsBannerPress, usePromotionsBanners } from '@/hooks/usePromotionsBanners';
@@ -18,7 +19,6 @@ import type { ImageLoadEventData } from 'expo-image';
 // growing with it, which is how the neighbouring sections behave too (see
 // GET_CARD_PANEL_ASPECT_RATIO in HomeWalletCard).
 const BANNER_ASPECT_RATIO = 387 / 98;
-const BANNER_RADIUS = 23;
 
 // The hardcoded 10% cashback promo is paused; keep the implementation ready for
 // a future relaunch. Admin-managed banners are not gated by this — the whole
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    borderRadius: BANNER_RADIUS,
+    borderRadius: HOME_BANNER_RADIUS,
     overflow: 'hidden',
     width: '100%',
   },

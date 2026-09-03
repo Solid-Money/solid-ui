@@ -21,7 +21,8 @@ import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
-import { CARD_INFO_SCREEN } from '@/constants/path';
+import { resolveDigitalWallet } from '@/constants/digital-wallet';
+import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -77,16 +78,28 @@ export default function HomeScreenNew() {
   // `referral`: it is a one-shot instruction, and leaving it in the URL would
   // re-open the pane every time this screen remounts, including right after the
   // user closed it.
-  const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
+  const { screen: screenParam, wallet: walletParam } = useLocalSearchParams<{
+    screen?: string;
+    wallet?: string;
+  }>();
   const openCardPane = useCardPaneStore(state => state.open);
+  const openCardPaneWalletGuide = useCardPaneStore(state => state.openWalletGuide);
 
   useEffect(() => {
     if (screenParam !== CARD_INFO_SCREEN) return;
-    // No origin rect: there was no card tap to fly back to, so dismissing just
-    // closes (see `CardDetailsPane.close`).
-    openCardPane();
-    router.setParams({ screen: undefined });
-  }, [screenParam, openCardPane]);
+    // `&wallet=apple|google` asks for the "Add to Wallet" guide on top of the
+    // pane, on that wallet's tab — the addressable form of the popup, which is
+    // what lets the home "Add to Apple Pay" banner be nothing but a redirect.
+    const wallet = resolveDigitalWallet(walletParam);
+    // No origin rect either way: there was no card tap to fly back to, so
+    // dismissing just closes (see `CardDetailsPane.close`).
+    if (wallet) {
+      openCardPaneWalletGuide(wallet);
+    } else {
+      openCardPane();
+    }
+    router.setParams({ screen: undefined, [CARD_INFO_WALLET_PARAM]: undefined });
+  }, [screenParam, walletParam, openCardPane, openCardPaneWalletGuide]);
 
   const {
     isLoading: isLoadingTokens,
