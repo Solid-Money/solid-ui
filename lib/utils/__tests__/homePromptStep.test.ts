@@ -13,6 +13,7 @@ const base: HomePromptStepInput = {
   cardStatus: {},
   kycStartedAt: null,
   hasSpentOnCard: false,
+  isCardSpendResolved: true,
   wallet: DigitalWalletType.Apple,
   // Answered, and the card is in neither wallet.
   eligibility: {},
@@ -119,8 +120,24 @@ describe('resolveHomePromptStep — the post-card rungs', () => {
     expect(step({ eligibility: undefined })).toBeNull();
   });
 
+  it('waits for the card history before offering the wallet nudge', () => {
+    // Otherwise a returning cardholder is shown a step they are already past,
+    // and watches it swap to the cashback banner a moment later.
+    expect(step({ isCardSpendResolved: false })).toBeNull();
+  });
+
+  it('still offers the wallet nudge when the card history cannot be read', () => {
+    // `isCardSpendResolved` is true on failure as well as on success, so an
+    // unreachable history does not withhold the banner indefinitely.
+    expect(step({ isCardSpendResolved: true, hasSpentOnCard: false })).toBe('add-to-wallet');
+  });
+
   it('shows the cashback banner once the card has been spent on', () => {
     expect(step({ hasSpentOnCard: true })).toBe('cashback');
+  });
+
+  it('shows cashback as soon as spend is known, without waiting further', () => {
+    expect(step({ hasSpentOnCard: true, isCardSpendResolved: false })).toBe('cashback');
   });
 
   it('cashback outranks the wallet nudge — spend is the last rung', () => {

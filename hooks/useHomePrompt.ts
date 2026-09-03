@@ -39,7 +39,9 @@ export function useHomePrompt({
 
   // Same query key the wallet screen's activity feed already uses, so this is a
   // cache read rather than a second request.
-  const { data: cardTransactions } = useCardTransactions({ enabled: hasCard });
+  const { data: cardTransactions, isLoading: isCardSpendLoading } = useCardTransactions({
+    enabled: hasCard,
+  });
 
   const key = resolveHomePromptStep({
     hasCard,
@@ -47,6 +49,10 @@ export function useHomePrompt({
     cardStatus,
     kycStartedAt,
     hasSpentOnCard: (cardTransactions?.pages ?? []).some(page => page.data.length > 0),
+    // `isLoading` rather than "is there data": it is false once the request has
+    // failed as well as once it has answered, so an unreachable card history
+    // does not withhold the wallet nudge for good.
+    isCardSpendResolved: !isCardSpendLoading,
     wallet: walletPromptPossible ? DEVICE_DIGITAL_WALLET : null,
     eligibility,
   });

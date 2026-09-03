@@ -16,6 +16,12 @@ export interface HomePromptStepInput {
   /** Whether the card already has spend against it. */
   hasSpentOnCard: boolean;
   /**
+   * Whether the card history has answered yet — false only while the first page
+   * is still in flight. A failed request counts as resolved: an unreachable
+   * history must not withhold the wallet nudge indefinitely.
+   */
+  isCardSpendResolved: boolean;
+  /**
    * The wallet this device can add the card to, or null off-device (desktop
    * web), where there is no wallet to provision into.
    */
@@ -56,6 +62,7 @@ export function resolveHomePromptStep({
   cardStatus,
   kycStartedAt,
   hasSpentOnCard,
+  isCardSpendResolved,
   wallet,
   eligibility,
 }: HomePromptStepInput): HomePromptKey | null {
@@ -67,6 +74,11 @@ export function resolveHomePromptStep({
   // outranks the wallet nudge: the design treats "has transactions" as the last
   // rung of the ladder, and this banner is the one that then stays for good.
   if (hasSpentOnCard) return 'cashback';
+
+  // Nothing until the history has answered, or a returning cardholder is shown
+  // the wallet nudge — a step they are already past — for as long as the load
+  // takes, and then watched it swap under them.
+  if (!isCardSpendResolved) return null;
 
   // Only ask a device that has a wallet, and only once eligibility has answered
   // — an unknown answer must not be read as "not in the wallet yet".
