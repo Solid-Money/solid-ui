@@ -27,10 +27,13 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
+import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
@@ -515,10 +518,6 @@ const PREMIUM_FOOTER_BUTTON_TOP = 130;
 const PREMIUM_FOOTER_BUTTON_HEIGHT = 50;
 const PREMIUM_FOOTER_MIN_BOTTOM_SPACING = 19;
 const PREMIUM_FOOTER_VERTICAL_OFFSET = 5;
-const FUSE_UPGRADE_AMOUNT: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
-  [RewardsTier.PRIME]: '50k',
-  [RewardsTier.ULTRA]: '400k',
-};
 // Extra height the fades extend beyond their bar's own content, so scrolled
 // content dims out smoothly under the header / off the bottom edge instead of
 // getting a hard clip (mirrors CardWaitingModal's FADE_EXTENT).
@@ -535,13 +534,32 @@ interface TierPageProps {
 const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
+  currentTier,
+  unavailable,
+  pending,
+  remainingFuse,
 }: {
   selectedTier: RewardsTier;
+  currentTier?: RewardsTier;
+  unavailable: boolean;
+  pending: boolean;
+  remainingFuse?: number;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const isVisible = selectedTier !== RewardsTier.CORE;
+  const action = getTierAction(selectedTier, currentTier, unavailable);
+  const canUpgrade = action === 'upgrade' && !pending && remainingFuse !== undefined;
+  const label = pending
+    ? 'Confirming tier…'
+    : action === 'current'
+      ? 'Current tier'
+      : action === 'included'
+        ? 'Included in your tier'
+        : canUpgrade
+          ? 'Upgrade'
+          : 'Tier unavailable';
+  const isVisible = selectedTier !== currentTier;
   const lastPremiumTier = useRef<RewardsTier.PRIME | RewardsTier.ULTRA>(RewardsTier.PRIME);
 
   if (selectedTier === RewardsTier.PRIME || selectedTier === RewardsTier.ULTRA) {
@@ -549,7 +567,7 @@ const PremiumUpgradeFooter = ({
   }
 
   const tier = lastPremiumTier.current;
-  const fuseAmount = FUSE_UPGRADE_AMOUNT[tier];
+  const fuseAmount = remainingFuse?.toLocaleString('en-US');
   const bottomSpacing =
     Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) + PREMIUM_FOOTER_VERTICAL_OFFSET;
   const footerHeight = PREMIUM_FOOTER_BUTTON_TOP + PREMIUM_FOOTER_BUTTON_HEIGHT + bottomSpacing;
@@ -572,6 +590,8 @@ const PremiumUpgradeFooter = ({
 
   return (
     <Animated.View
+      accessibilityElementsHidden={!isVisible}
+      importantForAccessibility={isVisible ? 'auto' : 'no-hide-descendants'}
       pointerEvents={isVisible ? 'box-none' : 'none'}
       style={[
         {
@@ -609,24 +629,34 @@ const PremiumUpgradeFooter = ({
             lineHeight: 23,
           }}
         >
-          Deposit {fuseAmount} FUSE to upgrade
+          {pending
+            ? 'Savings changed. Waiting for rewards confirmation.'
+            : canUpgrade
+              ? `Deposit ${fuseAmount} FUSE to Savings to upgrade`
+              : action === 'unavailable'
+                ? 'Checking your current membership'
+                : 'Your membership benefits'}
         </Text>
         <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Deposit ${fuseAmount} FUSE to upgrade to ${TIER_LABELS[tier]}`}
-            onPress={() => onUpgradePress(tier)}
-            className="mt-[14px] h-[50px] items-center justify-center rounded-full bg-[#94F27F] transition-all active:scale-95 active:opacity-80"
+            accessibilityLabel={label}
+            accessibilityState={{ disabled: !canUpgrade }}
+            disabled={!canUpgrade}
+            onPress={() => {
+              if (canUpgrade) onUpgradePress(tier);
+            }}
+            className={`mt-[14px] h-[50px] items-center justify-center rounded-full ${canUpgrade ? 'bg-[#94F27F] active:opacity-80' : 'bg-white/10'}`}
           >
             <Text
-              className="font-semibold text-black"
+              className={`font-semibold ${canUpgrade ? 'text-black' : 'text-white/70'}`}
               style={{
                 fontFamily: 'MonaSans_600SemiBold',
                 fontSize: 16,
                 lineHeight: 23,
               }}
             >
-              Upgrade
+              {label}
             </Text>
           </Pressable>
         </View>
@@ -654,7 +684,7 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
         style={{
           width: pageWidth,
           paddingTop: pageTopSpacing,
-          paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING,
+          paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING + PREMIUM_FOOTER_BUTTON_TOP,
         }}
       >
         <View className="items-center pt-4">
@@ -784,7 +814,22 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
 };
 
 export default function RewardsBenefitsScreenNew() {
-  const { data: rewardsData } = useRewardsUserData();
+  const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  return <RewardsBenefitsForAccount key={userId ?? 'none'} />;
+}
+
+function RewardsBenefitsForAccount() {
+  const { data: rewardsData, isError } = useRewardsUserData();
+  const confirmed = useRewardsUpgradeStore(state => state.confirmed);
+  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
+  const timedOut = useRewardsUpgradeStore(state => state.timedOut);
+  const currentTier = isError ? undefined : confirmed?.currentTier;
+  const upgradeTarget = (tier: RewardsTier) =>
+    rewardsData?.fuseSkipLine?.enabled
+      ? rewardsData.fuseSkipLine.tiers.find(
+          target => target.tier === tier && target.requiredFuse > 0,
+        )
+      : undefined;
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(null);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
   const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
@@ -823,12 +868,19 @@ export default function RewardsBenefitsScreenNew() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  const handleUpgradePress = useCallback((tier: RewardsTier.PRIME | RewardsTier.ULTRA) => {
+  const handleUpgradePress = (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => {
+    if (!isHigherTier(tier, currentTier) || pending || !upgradeTarget(tier)) return;
     setUpgradeTier(tier);
     setIsUpgradeSheetOpen(true);
-  }, []);
+  };
+  const canUseUpgradeSheet =
+    isHigherTier(upgradeTier, currentTier) && !pending && !!upgradeTarget(upgradeTier);
+  useEffect(() => {
+    if (!canUseUpgradeSheet) setIsUpgradeSheetOpen(false);
+  }, [canUseUpgradeSheet]);
 
   const handleDepositFuse = useCallback(() => {
+    if (!canUseUpgradeSheet) return;
     setIsUpgradeSheetOpen(false);
 
     const depositStore = useDepositStore.getState();
@@ -836,12 +888,13 @@ export default function RewardsBenefitsScreenNew() {
     depositStore.setSavingsFundIntent('savings');
     depositStore.setDepositFromSolid(false);
     selectSavingsFundToken('WFUSE');
-  }, [selectSavingsFundToken]);
+  }, [selectSavingsFundToken, canUseUpgradeSheet]);
 
   const handleBuyFuse = useCallback(() => {
+    if (!canUseUpgradeSheet) return;
     setIsUpgradeSheetOpen(false);
     openBuyFuse(upgradeTier);
-  }, [openBuyFuse, upgradeTier]);
+  }, [openBuyFuse, upgradeTier, canUseUpgradeSheet]);
 
   // Top fade sits over the scrolled content so the header + tier switcher stay
   // legible as content passes under them; the matching bottom fade dims content
@@ -890,9 +943,17 @@ export default function RewardsBenefitsScreenNew() {
           height: insets.bottom + FADE_EXTENT,
         }}
       />
-      <PremiumUpgradeFooter selectedTier={selectedTier} onUpgradePress={handleUpgradePress} />
+      <PremiumUpgradeFooter
+        selectedTier={selectedTier}
+        currentTier={currentTier}
+        unavailable={!currentTier || isError}
+        pending={pending}
+        remainingFuse={upgradeTarget(selectedTier)?.remainingFuse}
+        onUpgradePress={handleUpgradePress}
+      />
       <UpgradeTierSheet
-        open={isUpgradeSheetOpen}
+        open={isUpgradeSheetOpen && canUseUpgradeSheet}
+        remainingFuse={upgradeTarget(upgradeTier)?.remainingFuse}
         tier={upgradeTier}
         onOpenChange={setIsUpgradeSheetOpen}
         onDepositFuse={handleDepositFuse}
@@ -957,6 +1018,12 @@ export default function RewardsBenefitsScreenNew() {
       additionalContent={overlays}
       scrollEnabled={!isSwiping}
     >
+      {timedOut && (
+        <Text className="mt-28 px-5 text-center text-white/70">
+          Savings refreshed. No higher tier has been confirmed yet. Check your FUSE Savings balance
+          and tier requirement before adding more.
+        </Text>
+      )}
       <GestureDetector gesture={swipeGesture} touchAction="pan-y">
         {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
             the column's edge — on mobile they simply hang off-screen. */}
@@ -966,7 +1033,7 @@ export default function RewardsBenefitsScreenNew() {
               <TierPage
                 key={tier}
                 tier={tier}
-                isCurrentTier={rewardsData?.currentTier === tier}
+                isCurrentTier={currentTier === tier}
                 isDesktopLayout={isSidebarShell}
                 pageWidth={pageWidth}
               />

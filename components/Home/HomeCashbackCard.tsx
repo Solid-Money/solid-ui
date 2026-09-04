@@ -9,8 +9,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { getAsset } from '@/lib/assets';
-import { CASHBACK_PENDING_TEXT_COLOR } from '@/lib/cashbackProgress';
-import { cn, formatBalanceUSD, formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 interface HomeCashbackCardProps {
   className?: string;
@@ -19,18 +18,12 @@ interface HomeCashbackCardProps {
 /**
  * Compact "Cashback" stat card. Shows total cashback earned (from card details)
  * and the headline cashback rate. Sits next to the savings card on home.
- *
- * The total only counts cashback that has been paid, and an escrow takes days
- * to mature — so a purchase made this morning is reported on the pending line
- * rather than silently missing from the figure above it.
  */
 const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
   const router = useRouter();
   const { data: cardDetails, isLoading } = useCardDetails();
 
   const cashbackUsd = cardDetails?.cashback?.totalUsdValue ?? 0;
-  const pendingUsd = cardDetails?.cashback?.monthlyPendingUsdValue;
-  const showPending = pendingUsd !== undefined && pendingUsd > 0;
   const rawPercentage = cardDetails?.cashback?.percentage;
   const percentage =
     rawPercentage == null ? 3 : rawPercentage <= 1 ? rawPercentage * 100 : rawPercentage;
@@ -91,17 +84,6 @@ const HomeCashbackCard = ({ className }: HomeCashbackCardProps) => {
               </>
             )}
           </View>
-          {/* No skeleton guard needed: nothing is pending until the card
-              details land, which is also what clears the skeleton. */}
-          {showPending && (
-            <Text
-              className="text-xs font-medium leading-tight"
-              style={{ color: CASHBACK_PENDING_TEXT_COLOR }}
-              numberOfLines={1}
-            >
-              +{formatBalanceUSD(pendingUsd)} pending
-            </Text>
-          )}
         </View>
       </View>
     </Pressable>

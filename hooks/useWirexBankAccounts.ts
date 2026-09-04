@@ -49,6 +49,26 @@ export function useWirexBankOverview(enabled = true) {
 }
 
 /**
+ * Kill switch for the bank balance rows.
+ *
+ * Off until the balance is proven to be the user's own. It comes from Wirex's
+ * `GET /api/v1/wallet`, which takes no wallet argument — the scoping rests
+ * entirely on the `X-User-Wallet` header being honoured there, on an endpoint
+ * found by probing rather than from Wirex's docs. The response names the wallet
+ * it answered for (`wallet_address`, `wallet_type`) and the backend drops both,
+ * so a partner-level wallet would be surfaced verbatim and every Wirex user
+ * would see the same figure.
+ *
+ * Showing the pooled float as a user's balance is worse than showing nothing:
+ * some of them will read it as their money and try to move it.
+ *
+ * To re-enable: confirm `wallet_address` differs between two Wirex users and
+ * matches what `/api/v1/bank/accounts/init` reports for each, add the matching
+ * guard server-side, then flip this to `true`.
+ */
+const BANK_BALANCES_ENABLED = false;
+
+/**
  * The WEUR/WUSD the user's bank deposits settled into.
  *
  * Reuses the overview query rather than adding a request: the home screen and
@@ -58,11 +78,16 @@ export function useWirexBankOverview(enabled = true) {
  * Returns `[]` for everyone without a Wirex account, and also when Wirex could
  * not be reached — the backend cannot tell a client "unknown" any other way, and
  * both cases mean the same thing here: show no bank rows rather than a zero.
+ *
+ * While {@link BANK_BALANCES_ENABLED} is off it returns `[]` for everyone and
+ * the query does not run — the home screen is the only caller, so the switch
+ * takes out the request as well as the rows. The bank screen's own use of
+ * {@link useWirexBankOverview} is untouched.
  */
 export function useWirexUnifiedBalances(enabled = true) {
-  const { data, isLoading } = useWirexBankOverview(enabled);
+  const { data, isLoading } = useWirexBankOverview(enabled && BANK_BALANCES_ENABLED);
   return {
-    balances: data?.balances ?? EMPTY_BALANCES,
+    balances: BANK_BALANCES_ENABLED ? (data?.balances ?? EMPTY_BALANCES) : EMPTY_BALANCES,
     isLoading,
   };
 }

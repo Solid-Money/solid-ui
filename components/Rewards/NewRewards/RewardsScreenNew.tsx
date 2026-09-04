@@ -17,6 +17,7 @@ import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useSpinStatus } from '@/hooks/useSpinWin';
+import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { IS_TIER_CASHBACK_HARDCODED, isDevFeatureEnabled } from '@/lib/config';
 import { resolveTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
@@ -180,12 +181,14 @@ export default function RewardsScreenNew() {
     );
   }
 
-  const cashback = rewardsData?.cashbackThisMonth ?? 0;
-  // Left undefined on a backend that doesn't project it, which is what hides
-  // every pending label rather than claiming a confident $0.
+  const cashbackSettled = rewardsData?.cashbackThisMonth ?? 0;
   const cashbackPending = rewardsData?.cashbackPendingThisMonth;
+  // One figure, settled and escrowed together — see `monthlyCashbackTotal`.
+  const cashback = monthlyCashbackTotal(cashbackSettled, cashbackPending);
   const referrals = referralSummary?.totalRewardedUsd ?? 0;
-  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashback);
+  // All-time counts only what has actually been paid, so this month's escrowed
+  // part is deliberately not floored into it.
+  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackSettled);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
   const cashbackRate = resolveTierCashbackRate(
@@ -263,11 +266,13 @@ export default function RewardsScreenNew() {
 
         <RewardsSummaryCard
           cashback={cashback}
-          cashbackPending={cashbackPending}
           referrals={referrals}
           cashbackDetails={{
             cashbackRate,
-            cashbackThisMonth: cashback,
+            // The settled and escrowed halves go in separately: the sheet sums
+            // them itself, so handing it `cashback` would count the escrowed
+            // part twice.
+            cashbackThisMonth: cashbackSettled,
             cashbackPendingThisMonth: cashbackPending,
             maxCashbackMonthly: rewardsData?.maxCashbackMonthly ?? 0,
             allTimeCashback,
@@ -279,7 +284,10 @@ export default function RewardsScreenNew() {
         <View className="mt-8">
           <TierBenefitsGrid
             cashbackRate={cashbackRate}
-            cashbackThisMonth={cashback}
+            // The settled and escrowed halves go down separately: the sheet
+            // sums them itself, so handing it `cashback` would count the
+            // escrowed part twice.
+            cashbackThisMonth={cashbackSettled}
             cashbackPendingThisMonth={cashbackPending}
             maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
             allTimeCashback={allTimeCashback}

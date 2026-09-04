@@ -8,17 +8,13 @@ import { RewardsTier } from '@/lib/types';
 const DEPOSIT_ICON = require('@/assets/images/rewards-upgrade-deposit.png');
 const BUY_ICON = require('@/assets/images/rewards-upgrade-buy.png');
 
-const UPGRADE_AMOUNT: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
-  [RewardsTier.PRIME]: '50K',
-  [RewardsTier.ULTRA]: '400K',
-};
-
 const TIER_LABEL: Record<RewardsTier.PRIME | RewardsTier.ULTRA, string> = {
   [RewardsTier.PRIME]: 'Prime',
   [RewardsTier.ULTRA]: 'Ultra',
 };
 
 interface UpgradeTierSheetContentProps {
+  remainingFuse?: number;
   tier: RewardsTier.PRIME | RewardsTier.ULTRA;
   onDepositFuse: () => void;
   onBuyFuse: () => void;
@@ -55,6 +51,7 @@ const UpgradeActionRow = ({ label, icon, onPress }: UpgradeActionRowProps) => (
 
 const UpgradeTierSheetContent = ({
   tier,
+  remainingFuse,
   onDepositFuse,
   onBuyFuse,
   topPadding = 36,
@@ -81,10 +78,11 @@ const UpgradeTierSheetContent = ({
           lineHeight: 18,
         }}
       >
-        Deposit or buy {UPGRADE_AMOUNT[tier]} FUSE to upgrade to {tierLabel}
+        Add {remainingFuse?.toLocaleString('en-US') ?? 'the required'} FUSE to Savings. Buying is
+        followed by a deposit confirmation.
       </Text>
 
-      <View className="mt-[44px] h-[158px] w-full max-w-[352px] overflow-hidden rounded-[20px] bg-[#2B2B2B]">
+      <View className="mt-[28px] h-[158px] w-full max-w-[352px] overflow-hidden rounded-[20px] bg-[#2B2B2B]">
         <UpgradeActionRow label="Deposit FUSE" icon={DEPOSIT_ICON} onPress={onDepositFuse} />
         <View className="h-px bg-white/10" />
         <UpgradeActionRow label="Buy FUSE" icon={BUY_ICON} onPress={onBuyFuse} />
