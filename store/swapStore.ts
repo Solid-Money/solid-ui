@@ -25,6 +25,7 @@ import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
 import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
 import useUser from '@/hooks/useUser';
+import { getSwapFundingError } from '@/lib/swapFunding';
 import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { TradeState, TradeStateType } from '@/lib/types/trade-state';
@@ -371,12 +372,19 @@ export function useDerivedSwapInfo(): {
 
   const [balanceIn, amountIn] = [
     currencyBalances[SwapField.INPUT],
-    toggledTrade?.maximumAmountIn(allowedSlippage),
+    isVoltageTrade
+      ? voltageTrade.trade?.inputAmount
+      : toggledTrade?.maximumAmountIn(allowedSlippage),
   ];
 
-  if (balanceIn && amountIn && balanceIn.lessThan(amountIn)) {
-    inputError = `Insufficient ${amountIn.currency.symbol} balance`;
-  }
+  inputError =
+    inputError ??
+    getSwapFundingError({
+      balance: balanceIn ? BigInt(balanceIn.quotient.toString()) : undefined,
+      requiredInput: amountIn ? BigInt(amountIn.quotient.toString()) : undefined,
+      hasAmount: !!parsedAmount?.greaterThan('0'),
+      symbol: inputCurrency?.symbol ?? 'funds',
+    });
 
   const isWrap =
     currencies.INPUT &&

@@ -2,11 +2,6 @@ import { RewardsTier } from '@/lib/types';
 
 import type { FuseSkipLine, FuseSkipLineTier } from '@/lib/types';
 
-export const DEFAULT_FUSE_TIER_THRESHOLDS: Record<RewardsTier.PRIME | RewardsTier.ULTRA, number> = {
-  [RewardsTier.PRIME]: 50_000,
-  [RewardsTier.ULTRA]: 400_000,
-};
-
 export const BUY_FUSE_TIER_ORDER = [RewardsTier.PRIME, RewardsTier.ULTRA] as const;
 
 const TIER_RANK: Record<RewardsTier, number> = {
@@ -15,35 +10,32 @@ const TIER_RANK: Record<RewardsTier, number> = {
   [RewardsTier.ULTRA]: 2,
 };
 
-/**
- * Build the still-reachable FUSE upgrade rungs for the buy screen.
- *
- * The rewards response wins when it contains a threshold. The two launch
- * thresholds remain as a fallback so a direct link does not render an empty
- * tier card while an older rewards response is cached.
- */
+/** Only the backend's enabled rungs are eligible for an upgrade purchase. */
 export const getBuyFuseTierTargets = (
   currentTier: RewardsTier,
   skipLine?: FuseSkipLine,
 ): FuseSkipLineTier[] => {
+  if (!skipLine?.enabled) return [];
   const balanceFuse = Math.max(0, skipLine?.balanceFuse ?? 0);
 
-  return BUY_FUSE_TIER_ORDER.map(tier => {
-    const backendTier = skipLine?.tiers.find(candidate => candidate.tier === tier);
-    const requiredFuse = Math.max(
-      0,
-      backendTier?.requiredFuse ?? DEFAULT_FUSE_TIER_THRESHOLDS[tier],
-    );
-    const remainingFuse = Math.max(0, requiredFuse - balanceFuse);
+  return BUY_FUSE_TIER_ORDER.filter(tier => {
+    const required = skipLine.tiers.find(candidate => candidate.tier === tier)?.requiredFuse;
+    return required !== undefined && Number.isFinite(required) && required > 0;
+  })
+    .map(tier => {
+      const backendTier = skipLine?.tiers.find(candidate => candidate.tier === tier);
+      const requiredFuse = Math.max(0, backendTier!.requiredFuse);
+      const remainingFuse = Math.max(0, requiredFuse - balanceFuse);
 
-    return {
-      tier,
-      requiredFuse,
-      remainingFuse,
-      unlocked: remainingFuse === 0,
-      progressPct: requiredFuse > 0 ? Math.min(100, (balanceFuse / requiredFuse) * 100) : 0,
-    };
-  }).filter(target => TIER_RANK[target.tier] > TIER_RANK[currentTier] && !target.unlocked);
+      return {
+        tier,
+        requiredFuse,
+        remainingFuse,
+        unlocked: remainingFuse === 0,
+        progressPct: requiredFuse > 0 ? Math.min(100, (balanceFuse / requiredFuse) * 100) : 0,
+      };
+    })
+    .filter(target => TIER_RANK[target.tier] > TIER_RANK[currentTier] && !target.unlocked);
 };
 
 export const getBuyFuseProgress = (

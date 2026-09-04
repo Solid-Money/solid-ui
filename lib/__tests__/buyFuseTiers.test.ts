@@ -5,14 +5,38 @@ import {
   getNextBuyFuseTier,
   hasReachedFuseTarget,
 } from '@/lib/buyFuseTiers';
-import { RewardsTier } from '@/lib/types';
+import { FuseSkipLine, RewardsTier } from '@/lib/types';
+
+const liveThresholds: FuseSkipLine = {
+  enabled: true,
+  balanceFuse: 0,
+  balanceUsd: 0,
+  unlockedTier: RewardsTier.CORE,
+  tiers: [
+    {
+      tier: RewardsTier.PRIME,
+      requiredFuse: 50000,
+      remainingFuse: 50000,
+      unlocked: false,
+      progressPct: 0,
+    },
+    {
+      tier: RewardsTier.ULTRA,
+      requiredFuse: 400000,
+      remainingFuse: 400000,
+      unlocked: false,
+      progressPct: 0,
+    },
+  ],
+};
 
 describe('buy FUSE tier targets', () => {
-  it('uses the launch thresholds when rewards data is not available yet', () => {
-    expect(getBuyFuseTierTargets(RewardsTier.CORE)).toMatchObject([
-      { tier: RewardsTier.PRIME, requiredFuse: 50_000, remainingFuse: 50_000 },
-      { tier: RewardsTier.ULTRA, requiredFuse: 400_000, remainingFuse: 400_000 },
-    ]);
+  it('does not offer an upgrade without enabled backend thresholds', () => {
+    expect(getBuyFuseTierTargets(RewardsTier.CORE)).toEqual([]);
+    expect(getBuyFuseTierTargets(RewardsTier.CORE, { ...liveThresholds, enabled: false })).toEqual(
+      [],
+    );
+    expect(getBuyFuseTierTargets(RewardsTier.CORE, { ...liveThresholds, tiers: [] })).toEqual([]);
   });
 
   it('uses live thresholds and subtracts the FUSE already held in savings', () => {
@@ -46,8 +70,10 @@ describe('buy FUSE tier targets', () => {
   });
 
   it('only offers tiers above the current one', () => {
-    expect(getBuyFuseTierTargets(RewardsTier.PRIME)).toMatchObject([{ tier: RewardsTier.ULTRA }]);
-    expect(getBuyFuseTierTargets(RewardsTier.ULTRA)).toEqual([]);
+    expect(getBuyFuseTierTargets(RewardsTier.PRIME, liveThresholds)).toMatchObject([
+      { tier: RewardsTier.ULTRA },
+    ]);
+    expect(getBuyFuseTierTargets(RewardsTier.ULTRA, liveThresholds)).toEqual([]);
   });
 
   it('turns green only when the entered amount reaches the remaining threshold', () => {
@@ -61,14 +87,14 @@ describe('buy FUSE tier targets', () => {
   });
 
   it('toggles the target from Prime to Ultra and back to Prime', () => {
-    const targets = getBuyFuseTierTargets(RewardsTier.CORE);
+    const targets = getBuyFuseTierTargets(RewardsTier.CORE, liveThresholds);
 
     expect(getNextBuyFuseTier(targets, RewardsTier.PRIME)).toBe(RewardsTier.ULTRA);
     expect(getNextBuyFuseTier(targets, RewardsTier.ULTRA)).toBe(RewardsTier.PRIME);
   });
 
   it('selects the highest tier reached by a manually entered amount', () => {
-    const targets = getBuyFuseTierTargets(RewardsTier.CORE);
+    const targets = getBuyFuseTierTargets(RewardsTier.CORE, liveThresholds);
 
     expect(getBuyFuseTierForAmount(targets, 0)).toBe(RewardsTier.PRIME);
     expect(getBuyFuseTierForAmount(targets, 49_999)).toBe(RewardsTier.PRIME);

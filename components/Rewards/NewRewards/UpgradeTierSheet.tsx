@@ -11,6 +11,7 @@ const MAX_SHEET_WIDTH = 419;
 const UpgradeTierSheet = ({
   open,
   tier,
+  remainingFuse,
   onOpenChange,
   onDepositFuse,
   onBuyFuse,
@@ -23,13 +24,14 @@ const UpgradeTierSheet = ({
         showCloseButton={false}
         webPresentation="bottom-sheet"
         overlayClassName="web:backdrop-blur-none"
-        className="h-[412px] overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
+        className="h-[470px] overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
         style={{ width: Math.min(windowWidth, MAX_SHEET_WIDTH) }}
       >
         <DialogTitle className="sr-only">Upgrade tier</DialogTitle>
         <View className="absolute left-1/2 top-5 z-10 h-[5px] w-[73px] -translate-x-1/2 rounded-full bg-white/20" />
         <UpgradeTierSheetContent
           tier={tier}
+          remainingFuse={remainingFuse}
           onDepositFuse={onDepositFuse}
           onBuyFuse={onBuyFuse}
           topPadding={61}
