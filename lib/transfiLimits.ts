@@ -29,7 +29,7 @@ export const resolveAmountLimits = ({
   quote,
   quoteError,
   method,
-  rate,
+  usdcPerFiat,
 }: {
   /** The USDC amount as typed, not the debounced one. */
   amount: number;
@@ -38,8 +38,14 @@ export const resolveAmountLimits = ({
   /** The quote request's failure, if it failed. */
   quoteError?: unknown;
   method?: TransfiPaymentMethodOption;
-  /** Last exchange rate seen for this currency + method (fiat per USDC). */
-  rate?: number;
+  /**
+   * Last exchange rate seen for this currency + method, in the direction TransFi
+   * states it: USDC per one unit of fiat. A EUR quote comes back as ~1.1583 (one
+   * euro buys 1.1583 USDC), a BRL one as ~0.196 — so a fiat bound is *multiplied*
+   * by it to reach USDC, not divided. Dividing turned a 26 BRL floor into a
+   * 132 USDC one and pushed a 100k USDC ceiling out to 2.6 million.
+   */
+  usdcPerFiat?: number;
 }): AmountLimits => {
   const limitError =
     quoteError instanceof TransfiError && quoteError.action === 'adjust_amount'
@@ -49,8 +55,8 @@ export const resolveAmountLimits = ({
   const minLimit = quote?.minLimit ?? limitError?.details.minLimit ?? method?.minAmount;
   const maxLimit = quote?.maxLimit ?? limitError?.details.maxLimit ?? method?.maxAmount;
 
-  const minUsdc = rate && minLimit != null ? minLimit / rate : undefined;
-  const maxUsdc = rate && maxLimit != null ? maxLimit / rate : undefined;
+  const minUsdc = usdcPerFiat && minLimit != null ? minLimit * usdcPerFiat : undefined;
+  const maxUsdc = usdcPerFiat && maxLimit != null ? maxLimit * usdcPerFiat : undefined;
 
   // Two comparisons, deliberately. The USDC one fires as the user types, before
   // the debounced quote is even requested. The fiat one is the exact check once

@@ -32,6 +32,21 @@ const formatFiat = (value: number | undefined, currency: string) =>
     : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)} ${currency}`;
 
 /**
+ * The quoted rate, in the direction this screen reads it.
+ *
+ * TransFi states the rate as USDC per unit of fiat (0.196 for BRL), so printing
+ * it beside "1 USDC ≈" claimed a USDC cost about five BRL cents. The row says
+ * what one USDC costs, so the rate is inverted here — and rounded, rather than
+ * spilling `0.19611938571486007` across the line.
+ */
+const formatRate = (usdcPerFiat: number | undefined, currency: string) =>
+  usdcPerFiat
+    ? `1 USDC ≈ ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
+        1 / usdcPerFiat,
+      )} ${currency}`
+    : '—';
+
+/**
  * Primary buy-crypto screen: enter a USDC amount, then pick the fiat currency
  * and payment method (each opens its own modal step, like the swap token
  * selector). Shows the live local-currency quote. Selection state lives in
@@ -114,14 +129,18 @@ export const TransfiAmount = () => {
     !quoteError &&
     (quoteFetching || amount !== debouncedAmount || !isQuoteCurrent);
 
-  // Last exchange rate seen for this currency + method. The limits are in fiat
-  // while the box is in USDC, so without a rate the range can only be stated in
-  // a unit the user isn't typing in.
+  // Last exchange rate seen for this currency + method, as TransFi quotes it —
+  // USDC per unit of fiat. The limits are in fiat while the box is in USDC, so
+  // without a rate the range can only be stated in a unit the user isn't
+  // typing in.
   const pairKey = `${currency}:${activePaymentCode}`;
-  const [lastRate, setLastRate] = useState<{ pair: string; rate: number }>();
+  const [lastRate, setLastRate] = useState<{ pair: string; usdcPerFiat: number }>();
   useEffect(() => {
     if (liveQuote?.exchangeRate) {
-      setLastRate({ pair: `${currency}:${activePaymentCode}`, rate: liveQuote.exchangeRate });
+      setLastRate({
+        pair: `${currency}:${activePaymentCode}`,
+        usdcPerFiat: liveQuote.exchangeRate,
+      });
     }
   }, [liveQuote?.exchangeRate, currency, activePaymentCode]);
 
@@ -130,7 +149,7 @@ export const TransfiAmount = () => {
     quote: liveQuote,
     quoteError,
     method: selectedMethod,
-    rate: lastRate?.pair === pairKey ? lastRate.rate : undefined,
+    usdcPerFiat: lastRate?.pair === pairKey ? lastRate.usdcPerFiat : undefined,
   });
 
   const isValid =
@@ -282,11 +301,7 @@ export const TransfiAmount = () => {
         <QuoteRow
           label="Rate"
           pending={isQuotePending}
-          value={
-            liveQuote?.exchangeRate != null
-              ? `1 USDC ≈ ${liveQuote.exchangeRate} ${currency ?? ''}`
-              : '—'
-          }
+          value={formatRate(liveQuote?.exchangeRate, currency ?? '')}
         />
         <QuoteRow
           label="Fees"
