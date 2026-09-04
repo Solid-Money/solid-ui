@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
 import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
 import {
   ActivityEvent,
   SSEActivityData,
@@ -693,6 +694,9 @@ class SSEConnectionManager {
       return;
     }
 
+    const eventUserId = this.currentUserId;
+    if (data.userId !== eventUserId) return;
+
     // Debounce balance query invalidation - rapid balance events only trigger one invalidation
     // Use shorter debounce for deposit events to show balance faster after deposit completion
     const debounceMs =
@@ -704,6 +708,7 @@ class SSEConnectionManager {
 
     this.balanceDebounceTimer = setTimeout(() => {
       this.balanceDebounceTimer = null;
+      if (this.currentUserId !== eventUserId) return;
       try {
         // Invalidate token balance queries to trigger refetch
         queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
@@ -711,6 +716,19 @@ class SSEConnectionManager {
         // Invalidate vault balance queries to trigger refetch
         // Using partial match to invalidate all vault balance variants
         queryClient.invalidateQueries({ queryKey: ['vault'] });
+        queryClient.invalidateQueries({ queryKey: ['rewards', 'userData', eventUserId] });
+        // External deposits, withdrawals and share transfers can change tier
+        // eligibility. Reconcile past the vault cache without inferring a tier.
+        if (
+          ['deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'bonus'].includes(
+            data.balance.changeType,
+          )
+        ) {
+          const user = useUserStore.getState().users.find(user => user.userId === eventUserId);
+          // The stream does not identify the destination vault. Poll quietly
+          // for external Savings deposits without blocking a new wallet-funded buy.
+          refreshRewardsAfterSavings(queryClient, eventUserId, user?.safeAddress, false);
+        }
       } catch (err) {
         Sentry.captureException(err, {
           tags: { type: 'sse_balance_update_error' },

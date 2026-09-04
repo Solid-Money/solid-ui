@@ -28,6 +28,7 @@ import DepositExternalWalletOptions from '@/components/DepositOption/DepositExte
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import DepositTypeSelection from '@/components/DepositOption/DepositTypeSelection';
+import DepositWalletConnector from '@/components/DepositOption/DepositWalletConnector';
 import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
@@ -172,6 +173,7 @@ const useDepositOption = ({
   const isSavingsFundFlow = isSavingsFund || isSavingsFundNetworks || isSavingsFundAddress;
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
+  const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -378,6 +380,10 @@ const useDepositOption = ({
       return <DepositOptions />;
     }
 
+    if (isWalletConnector) {
+      return <DepositWalletConnector />;
+    }
+
     return <DepositTypeSelection />;
   };
 
@@ -415,6 +421,7 @@ const useDepositOption = ({
     if (isVirtualAccountTos) return 'virtual-account-tos';
     if (isVirtualAccountApply) return 'virtual-account-apply';
     if (isOptions) return 'deposit-options';
+    if (isWalletConnector) return 'deposit-wallet-connector';
     return 'deposit-type-selection';
   };
 
@@ -453,13 +460,18 @@ const useDepositOption = ({
     if (isVirtualAccountTos) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
-    if (isDepositTypeSelection) return 'Deposit with';
+    if (isDepositTypeSelection) return 'Fund your wallet';
+    if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
 
   const getContentClassName = () => {
     if (isVirtualAccountApply) {
       return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:!px-0 md:!pt-0';
+    }
+
+    if (isDepositTypeSelection) {
+      return 'rounded-t-[30px]';
     }
 
     if (isBuyCrypto) {
@@ -724,8 +736,10 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBuyCryptoOptions) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isWalletConnector) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
@@ -744,7 +758,7 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
@@ -771,10 +785,10 @@ const useDepositOption = ({
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isNetworks) {
       setDepositFromSolid(false);
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isOptions) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else {
@@ -831,7 +845,8 @@ const useDepositOption = ({
       !isDepositDirectlyTokens &&
       !isSavingsFundFlow &&
       !isExternalWalletOptions &&
-      !isBuyCryptoOptions
+      !isBuyCryptoOptions &&
+      !isWalletConnector
     ) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
@@ -846,6 +861,7 @@ const useDepositOption = ({
     isSavingsFundFlow,
     isExternalWalletOptions,
     isBuyCryptoOptions,
+    isWalletConnector,
     currentModal.name,
   ]);
 
@@ -870,6 +886,7 @@ const useDepositOption = ({
     isBankTransferKycFrame ||
     isExternalWalletOptions ||
     isBuyCryptoOptions ||
+    isWalletConnector ||
     isPublicAddress ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
@@ -879,10 +896,14 @@ const useDepositOption = ({
     isTokenSelector ||
     isVirtualAccountApply;
 
+  const needsWalletProvider =
+    isWalletConnector || isNetworks || (isFormAndAddress && !depositFromSolid) || isTokenSelector;
+
   // The virtual account details screen owns its ScrollView so it can overlay the
   // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
   const disableScroll =
     (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
+    isWalletConnector ||
     isVirtualAccountDetails ||
     isVirtualAccountApply;
   const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
@@ -891,6 +912,8 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
+    compactHeader: isDepositTypeSelection,
+    needsWalletProvider,
     disableScroll,
     fillViewportHeight,
     hideHeader,

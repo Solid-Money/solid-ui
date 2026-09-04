@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
@@ -16,8 +17,10 @@ import {
   trackDepositValidated,
 } from '@/lib/deposit/telemetry';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
 import { Status, StatusInfo, TransactionStatus, TransactionType } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
@@ -36,6 +39,8 @@ const useDepositFromSolidFuse = (
   minimumAmount: string = '100',
 ): DepositResult => {
   const { user, safeAA } = useUser();
+  const queryClient = useQueryClient();
+  const inFlight = useRef(false);
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
@@ -91,6 +96,17 @@ const useDepositFromSolidFuse = (
 
   const deposit = async (amount: string) => {
     if (!isFuseChain || (token !== 'WFUSE' && token !== 'FUSE')) return undefined;
+    if (inFlight.current) return undefined;
+    inFlight.current = true;
+    const accountSession = useRewardsUpgradeStore.getState().session;
+    const assertAccount = async () => {
+      if (
+        !user?.userId ||
+        selectedRewardsUserId() !== user.userId ||
+        useRewardsUpgradeStore.getState().session !== accountSession
+      )
+        throw new Error('Account changed. Reopen the deposit for the selected account.');
+    };
 
     const isSponsor = Number(amount) >= Number(minimumAmount);
     const ctx: DepositContext = {
@@ -106,8 +122,10 @@ const useDepositFromSolidFuse = (
     };
 
     let trackingId: string | undefined;
+    let cancelled = false;
 
     try {
+      await assertAccount();
       trackDepositInitiated(ctx);
 
       if (!safeAddress) {
@@ -130,6 +148,8 @@ const useDepositFromSolidFuse = (
       });
 
       const amountWei = parseUnits(amount, 18);
+      if (amountWei <= 0n || balance === undefined || amountWei > balance)
+        throw new Error('Insufficient confirmed FUSE balance');
 
       let transactions: { to: Address; data?: `0x${string}`; value?: bigint }[];
 
@@ -180,6 +200,7 @@ const useDepositFromSolidFuse = (
 
       if (transactions.length > 0) {
         const smartAccountClient = await safeAA(fuse, user!.suborgId, user!.signWith);
+        await assertAccount();
         const result = await executeTransactions(
           smartAccountClient,
           transactions,
@@ -191,9 +212,11 @@ const useDepositFromSolidFuse = (
               userOpHash,
             });
           },
+          assertAccount,
         );
 
         if (result === USER_CANCELLED_TRANSACTION) {
+          cancelled = true;
           // Mark the pre-created activity as cancelled
           updateActivity(trackingId, {
             status: TransactionStatus.CANCELLED,
@@ -201,7 +224,12 @@ const useDepositFromSolidFuse = (
           throw new Error('User cancelled transaction');
         }
 
-        if (result && typeof result === 'object' && 'transactionHash' in result) {
+        if (
+          result &&
+          typeof result === 'object' &&
+          result.transaction?.status === 'success' &&
+          'transactionHash' in result
+        ) {
           txHash = (result as { transactionHash: `0x${string}` }).transactionHash;
           // Update the activity with the on-chain transaction hash
           updateActivity(trackingId, {
@@ -211,7 +239,15 @@ const useDepositFromSolidFuse = (
         }
       }
 
-      if (txHash) setHash(txHash);
+      if (!txHash) throw new Error('FUSE deposit has not been confirmed');
+      setHash(txHash);
+      // An old account's receipt must never update the newly selected account.
+      if (
+        selectedRewardsUserId() !== user!.userId ||
+        useRewardsUpgradeStore.getState().session !== accountSession
+      )
+        return undefined;
+      refreshRewardsAfterSavings(queryClient, user!.userId, safeAddress);
 
       // On-chain deposit is complete — mark as success directly.
       // No backend createDeposit() call needed since the Safe already
@@ -237,7 +273,7 @@ const useDepositFromSolidFuse = (
       // Mark activity as FAILED so it doesn't stay stuck in PENDING
       if (trackingId) {
         updateActivity(trackingId, {
-          status: TransactionStatus.FAILED,
+          status: cancelled ? TransactionStatus.CANCELLED : TransactionStatus.FAILED,
           metadata: {
             error: error?.message || 'Unknown error',
             failedAt: new Date().toISOString(),
@@ -248,6 +284,8 @@ const useDepositFromSolidFuse = (
       setDepositStatus({ status: Status.ERROR });
       setError(errMsg);
       throw error;
+    } finally {
+      inFlight.current = false;
     }
   };
 

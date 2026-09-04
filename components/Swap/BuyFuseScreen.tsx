@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ADDRESS_ZERO } from '@cryptoalgebra/fuse-sdk';
 import { Wallet } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -7,13 +8,17 @@ import { useShallow } from 'zustand/react/shallow';
 import MessageCircle from '@/assets/images/messages';
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import BuyFuseSavingsReview from '@/components/Swap/BuyFuseSavingsReview';
 import BuyFuseTierCard from '@/components/Swap/BuyFuseTierCard';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
+import { SWAP_MODAL } from '@/constants/modals';
 import { STABLECOINS_TOKENS } from '@/constants/tokens';
+import { VAULTS } from '@/constants/vaults';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { useUSDCValue } from '@/hooks/useUSDCValue';
+import { formatBuyFuseFundingBalance } from '@/lib/buyFuseFunding';
 import {
   getBuyFuseProgress,
   getBuyFuseTierForAmount,
@@ -22,14 +27,18 @@ import {
   hasReachedFuseTarget,
 } from '@/lib/buyFuseTiers';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { formatUSD } from '@/lib/utils';
 import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
+import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { useUserStore } from '@/store/useUserStore';
 
-const formatBalance = (value: number) =>
-  new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+const MINIMUM_FUSE_SAVINGS_DEPOSIT = Number(
+  VAULTS.find(vault => vault.name === 'FUSE')?.minimumAmount ?? 0,
+);
 
 const sanitizeAmount = (value: string) => {
   const normalized = value === '.' ? '0.' : value;
@@ -43,8 +52,17 @@ interface BuyFuseScreenProps {
   requestedTier?: RewardsTier;
 }
 
-export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
-  const { data: rewardsData } = useRewardsUserData();
+export default function BuyFuseScreen(props: BuyFuseScreenProps) {
+  const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  return <BuyFuseForAccount key={userId ?? 'none'} {...props} />;
+}
+
+function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { data: rewardsData, isError } = useRewardsUserData();
+  const confirmed = useRewardsUpgradeStore(state => state.confirmed);
+  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
+  const [purchased, setPurchased] = useState(false);
 
   const { independentField, typedValue, selectCurrency, typeInput, resetForm } = useSwapState(
     useShallow(state => ({
@@ -74,10 +92,10 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
     return () => resetForm();
   }, [resetForm, selectCurrency, typeInput]);
 
-  const currentTier = rewardsData?.currentTier ?? RewardsTier.CORE;
+  const currentTier = isError ? undefined : confirmed?.currentTier;
   const balanceFuse = Math.max(0, rewardsData?.fuseSkipLine?.balanceFuse ?? 0);
   const targets = useMemo(
-    () => getBuyFuseTierTargets(currentTier, rewardsData?.fuseSkipLine),
+    () => (currentTier ? getBuyFuseTierTargets(currentTier, rewardsData?.fuseSkipLine) : []),
     [currentTier, rewardsData?.fuseSkipLine],
   );
   const [selectedTier, setSelectedTier] = useState<RewardsTier | undefined>(requestedTier);
@@ -90,6 +108,9 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
 
   const selectedTarget =
     targets.find(target => target.tier === selectedTier) ?? targets[0] ?? undefined;
+  const staleRequest =
+    !!requestedTier && !!currentTier && !isHigherTier(requestedTier, currentTier);
+  const canBuy = !!currentTier && !isError && !pending && !staleRequest && !!selectedTarget;
   const selectedTrade = isVoltageTrade ? voltageTrade.trade : trade;
   const outputAmount =
     independentField === SwapField.OUTPUT ? parsedAmount : selectedTrade?.outputAmount;
@@ -106,7 +127,7 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
     : 100;
 
   const inputBalance = currencyBalances[SwapField.INPUT];
-  const inputBalanceNumber = Number(inputBalance?.toSignificant(8) ?? 0) || 0;
+  const fundingBalanceLabel = formatBuyFuseFundingBalance(inputBalance?.toSignificant(8));
   const canUseMax = Boolean(inputBalance?.greaterThan(0));
   const isOutputLoading =
     independentField === SwapField.INPUT &&
@@ -132,11 +153,19 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
     if (inputBalance) onUserInput(SwapField.INPUT, inputBalance.toExact());
   }, [inputBalance, onUserInput]);
 
+  const handleSupportPress = useCallback(() => {
+    useSwapState.getState().actions.setModal(SWAP_MODAL.CLOSE);
+    openSupportDrawer();
+  }, []);
+
   const handleTierPress = useCallback(() => {
     if (!selectedTarget) return;
 
-    if (!reachedTarget) {
-      onUserInput(SwapField.OUTPUT, String(selectedTarget.remainingFuse));
+    if (!reachedTarget || enteredFuse < MINIMUM_FUSE_SAVINGS_DEPOSIT) {
+      onUserInput(
+        SwapField.OUTPUT,
+        String(Math.max(selectedTarget.remainingFuse, MINIMUM_FUSE_SAVINGS_DEPOSIT)),
+      );
       return;
     }
 
@@ -145,18 +174,21 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
     if (!nextTarget) return;
 
     setSelectedTier(nextTarget.tier);
-    onUserInput(SwapField.OUTPUT, String(nextTarget.remainingFuse));
-  }, [onUserInput, reachedTarget, selectedTarget, targets]);
+    onUserInput(
+      SwapField.OUTPUT,
+      String(Math.max(nextTarget.remainingFuse, MINIMUM_FUSE_SAVINGS_DEPOSIT)),
+    );
+  }, [onUserInput, reachedTarget, selectedTarget, targets, enteredFuse]);
 
   const amountCard = (
     <View>
-      <View className="mb-2 flex-row items-center justify-between px-1">
+      <View className="mb-2 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
         <Text className="text-base font-medium text-white/70">Amount</Text>
         <View className="flex-row items-center gap-2">
           <View className="flex-row items-center gap-1.5">
             <Wallet size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.4} />
             <Text className="text-base font-medium text-white/50">
-              {formatBalance(inputBalanceNumber)} USDC
+              {fundingBalanceLabel} USDC on Fuse
             </Text>
           </View>
           {canUseMax && <Max onPress={handleMax} />}
@@ -185,8 +217,14 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
           <Text className="text-lg font-semibold text-white">FUSE</Text>
         </View>
       </View>
+
+      <Text className="mt-3 px-1 text-sm font-medium text-white/50">
+        USDC on other networks, including Ethereum, can’t be used directly here.
+      </Text>
     </View>
   );
+
+  if (purchased) return <BuyFuseSavingsReview />;
 
   return (
     <ScrollView
@@ -195,32 +233,60 @@ export default function BuyFuseScreen({ requestedTier }: BuyFuseScreenProps) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <View className="mx-auto w-full max-w-md flex-1 pb-4">
+      <View
+        className="mx-auto w-full max-w-md"
+        style={{ flexGrow: 1, paddingBottom: 16 + Math.max(insets.bottom, 32) }}
+      >
         {amountCard}
 
         <View className="mt-6">
-          <BuyFuseTierCard
-            currentTier={currentTier}
-            target={selectedTarget}
-            progressPct={progressPct}
-            reached={reachedTarget}
-            onPress={handleTierPress}
-          />
+          {currentTier && !isError && (selectedTarget || currentTier === RewardsTier.ULTRA) ? (
+            <BuyFuseTierCard
+              currentTier={currentTier}
+              target={selectedTarget}
+              progressPct={progressPct}
+              reached={reachedTarget}
+              onPress={handleTierPress}
+            />
+          ) : (
+            <Text className="text-white/70">
+              {isError
+                ? 'Unable to confirm your tier. Please try again.'
+                : 'Checking available tier upgrades…'}
+            </Text>
+          )}
+          <Text className="mt-3 text-sm text-white/70">
+            {pending
+              ? 'Your Savings deposit is confirmed. Waiting for rewards to confirm your tier.'
+              : staleRequest
+                ? 'Your tier has changed. Reopen Buy FUSE to choose a higher tier.'
+                : 'Step 1: Buy FUSE for your wallet. Step 2: Review and confirm a separate Savings deposit. Progress shown is an estimate until rewards confirms your tier.'}
+          </Text>
         </View>
 
-        <View className="min-h-[70px] flex-1" />
+        {MINIMUM_FUSE_SAVINGS_DEPOSIT > 0 && (
+          <Text className="mt-2 text-sm text-white/70">
+            Savings minimum deposit: {MINIMUM_FUSE_SAVINGS_DEPOSIT.toLocaleString('en-US')} FUSE.
+          </Text>
+        )}
+        <View className="min-h-6 flex-1" />
 
         <SwapParams label="Network fee" expandable={false} />
 
         <View className="mt-7">
-          <SwapButton label="Continue" showSecurityIcon={false} />
+          <SwapButton
+            label="Buy FUSE"
+            showSecurityIcon={false}
+            disabled={!canBuy}
+            onConfirmed={() => setPurchased(true)}
+          />
         </View>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open support"
-          onPress={() => openSupportDrawer()}
-          className="mt-6 flex-row items-center justify-center gap-2 py-2 active:opacity-70"
+          onPress={handleSupportPress}
+          className="mt-3 flex-row items-center justify-center gap-2 py-2 active:opacity-70"
         >
           <MessageCircle color="#FFFFFFB3" />
           <Text className="text-base font-medium text-white/70">Need help?</Text>

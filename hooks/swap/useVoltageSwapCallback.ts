@@ -1,18 +1,20 @@
+import { useCallback, useMemo, useState } from 'react';
+import { Percent } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
-
-import { useActivityActions } from '@/hooks/useActivityActions';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { TransactionType } from '@/lib/types';
-import { SwapCallbackState } from '@/lib/types/swap-state';
-import { Percent } from '@cryptoalgebra/fuse-sdk';
 import { Address } from 'abitype';
 import { encodeFunctionData } from 'viem';
 import { fuse } from 'viem/chains';
-import { useApproveCallbackFromVoltageTrade } from '../useApprove';
-import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
-import useUser from '../useUser';
+
+import { useActivityActions } from '@/hooks/useActivityActions';
+import { useApproveCallbackFromVoltageTrade } from '@/hooks/useApprove';
+import { TransactionSuccessInfo, useTransactionAwait } from '@/hooks/useTransactionAwait';
+import useUser from '@/hooks/useUser';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { TransactionType } from '@/lib/types';
+import { SwapCallbackState } from '@/lib/types/swap-state';
+import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
+
 import { VoltageTrade } from './useVoltageRouter';
 
 export function useVoltageSwapCallback(
@@ -28,21 +30,29 @@ export function useVoltageSwapCallback(
     allowedSlippage,
   );
 
-  // For token inputs, check if we need approval
-  const isTokenInput = trade?.inputAmount?.currency?.isToken;
-
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
   const swapCallback = useCallback(async () => {
-    if (!trade || !account || !user?.suborgId || !user?.signWith) return;
+    if (!trade) throw new Error('Unable to get a quote. Change the amount and try again.');
+    if (!account || !user?.suborgId || !user?.signWith)
+      throw new Error('Your wallet is not ready. Reopen the swap and try again.');
 
     try {
+      const accountSession = useRewardsUpgradeStore.getState().session;
+      const assertAccount = async () => {
+        if (
+          selectedRewardsUserId() !== user?.userId ||
+          useRewardsUpgradeStore.getState().session !== accountSession
+        )
+          throw new Error('Account changed. Reopen the swap for the selected account.');
+      };
+      await assertAccount();
       setIsSendingSwap(true);
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const transactions: Array<{ to: Address; data: `0x${string}`; value?: bigint }> = [];
+      const transactions: { to: Address; data: `0x${string}`; value?: bigint }[] = [];
 
       if (needAllowance && approvalConfig) {
         Sentry.addBreadcrumb({
@@ -102,6 +112,7 @@ export function useVoltageSwapCallback(
             'Voltage swap failed',
             fuse,
             onUserOpHash,
+            assertAccount,
           ),
       );
 
@@ -113,6 +124,9 @@ export function useVoltageSwapCallback(
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
+
+      if (!transaction?.transactionHash || transaction.status !== 'success')
+        throw new Error('Swap has not been confirmed');
 
       // Invalidate all balance queries immediately after successful transaction
       queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -126,6 +140,14 @@ export function useVoltageSwapCallback(
       setSwapData(result);
       return transaction;
     } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      if (
+        error === USER_CANCELLED_TRANSACTION ||
+        message.includes('user cancelled') ||
+        message.includes('user denied') ||
+        message.includes('user rejected')
+      )
+        return;
       console.error('Voltage swap failed', error);
       Sentry.captureException(error, {
         tags: {
@@ -141,6 +163,7 @@ export function useVoltageSwapCallback(
           value: trade?.value?.quotient.toString(),
         },
       });
+      throw error;
     } finally {
       setIsSendingSwap(false);
     }
@@ -160,14 +183,23 @@ export function useVoltageSwapCallback(
   // useTransactionAwait handles balance invalidation and toast notifications
   // We don't use its isLoading state since the transaction is already confirmed
   // when executeTransactions returns (it waits for receipt internally)
-  const { isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
+  const { isSuccess } = useTransactionAwait(
+    swapData?.transactionHash,
+    successInfo ? { ...successInfo, onSuccess: undefined } : undefined,
+  );
 
   return useMemo(() => {
-    if (!trade)
+    const error =
+      !account || !user?.suborgId || !user?.signWith
+        ? 'Your wallet is not ready. Reopen the swap and try again.'
+        : !trade
+          ? 'Unable to get a quote. Change the amount and try again.'
+          : undefined;
+    if (error)
       return {
         state: SwapCallbackState.INVALID,
         callback: null,
-        error: 'No trade was found',
+        error,
         isLoading: false,
         isSuccess: false,
         needAllowance,
@@ -181,5 +213,14 @@ export function useVoltageSwapCallback(
       isSuccess,
       needAllowance,
     };
-  }, [trade, swapCallback, isSuccess, isSendingSwap, needAllowance, approvalConfig]);
+  }, [
+    trade,
+    swapCallback,
+    isSuccess,
+    isSendingSwap,
+    needAllowance,
+    account,
+    user?.suborgId,
+    user?.signWith,
+  ]);
 }

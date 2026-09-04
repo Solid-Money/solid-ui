@@ -5,17 +5,18 @@ import UpgradeTierSheetContent from './UpgradeTierSheetContent';
 
 import type { UpgradeTierSheetProps } from './UpgradeTierSheet.types';
 
-const FIGMA_SHEET_HEIGHT = 412;
+const UPGRADE_SHEET_HEIGHT = 470;
 
 const UpgradeTierSheet = ({
   open,
   tier,
+  remainingFuse,
   onOpenChange,
   onDepositFuse,
   onBuyFuse,
 }: UpgradeTierSheetProps) => {
   const sheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => [FIGMA_SHEET_HEIGHT], []);
+  const snapPoints = useMemo(() => [UPGRADE_SHEET_HEIGHT], []);
 
   useEffect(() => {
     if (open) sheetRef.current?.present();
@@ -56,7 +57,12 @@ const UpgradeTierSheet = ({
       onDismiss={() => onOpenChange(false)}
     >
       <BottomSheetView>
-        <UpgradeTierSheetContent tier={tier} onDepositFuse={onDepositFuse} onBuyFuse={onBuyFuse} />
+        <UpgradeTierSheetContent
+          tier={tier}
+          remainingFuse={remainingFuse}
+          onDepositFuse={onDepositFuse}
+          onBuyFuse={onBuyFuse}
+        />
       </BottomSheetView>
     </BottomSheetModal>
   );
