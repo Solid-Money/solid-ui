@@ -15,6 +15,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_options',
     number: 2,
   },
+  OPEN_CONNECT_WALLET: {
+    name: 'open_connect_wallet',
+    number: 2.5,
+  },
   OPEN_NETWORKS: {
     name: 'open_networks',
     number: 3,

@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 
+import DepositWalletProvider from '@/components/DepositOption/DepositWalletProvider';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import useDepositOption from '@/hooks/useDepositOption';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -16,6 +17,8 @@ const DepositModalProvider = () => {
   const {
     shouldOpen,
     showBackButton,
+    compactHeader,
+    needsWalletProvider,
     disableScroll,
     fillViewportHeight,
     hideHeader,
@@ -39,27 +42,30 @@ const DepositModalProvider = () => {
   );
 
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={shouldOpen}
-      onOpenChange={handleOpenChange}
-      trigger={null}
-      title={getTitle()}
-      contentClassName={getContentClassName()}
-      containerClassName={getContainerClassName()}
-      showBackButton={showBackButton}
-      onBackPress={handleBackPress}
-      actionButton={actionButton}
-      shouldAnimate={shouldAnimate}
-      isForward={isForward}
-      contentKey={getContentKey()}
-      disableScroll={disableScroll}
-      fillViewportHeight={fillViewportHeight}
-      hideHeader={hideHeader}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <DepositWalletProvider active={needsWalletProvider}>
+      <ResponsiveModal
+        currentModal={currentModal}
+        previousModal={previousModal}
+        isOpen={shouldOpen}
+        onOpenChange={handleOpenChange}
+        trigger={null}
+        title={getTitle()}
+        contentClassName={getContentClassName()}
+        containerClassName={getContainerClassName()}
+        showBackButton={showBackButton}
+        compactHeader={compactHeader}
+        onBackPress={handleBackPress}
+        actionButton={actionButton}
+        shouldAnimate={shouldAnimate}
+        isForward={isForward}
+        contentKey={getContentKey()}
+        disableScroll={disableScroll}
+        fillViewportHeight={fillViewportHeight}
+        hideHeader={hideHeader}
+      >
+        {getContent()}
+      </ResponsiveModal>
+    </DepositWalletProvider>
   );
 };
 
