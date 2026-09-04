@@ -1369,6 +1369,11 @@ export enum CashbackStatus {
   Canceled = 'Canceled',
   Failed = 'Failed',
   PermanentlyFailed = 'PermanentlyFailed',
+  /**
+   * The purchase earns nothing because of what it was — a cash withdrawal, a
+   * money transfer, a tax payment. Terminal, and never carries an amount.
+   */
+  Ineligible = 'Ineligible',
 }
 
 export interface Cashback {
@@ -1405,6 +1410,13 @@ export interface CashbackInfo {
   amount: string | null;
   isPending: boolean;
   isEscrowed: boolean;
+  /**
+   * The purchase is excluded from the programme by its merchant category, so
+   * there is no figure and none is coming. Distinct from an absent
+   * `CashbackInfo`, which means we simply have no cashback record: this one is
+   * a definite "not eligible" the receipt can state outright.
+   */
+  isIneligible: boolean;
   /**
    * Whether the payout has actually landed. The only state that colours the
    * figure: until then it is a projection, and reads as ordinary text.
