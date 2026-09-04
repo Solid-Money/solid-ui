@@ -458,6 +458,9 @@ const VISIBLE_CASHBACK_STATUSES: CashbackStatus[] = [
   CashbackStatus.Paid,
   CashbackStatus.Escrowed,
   CashbackStatus.Pending,
+  // Visible on purpose: a purchase the programme excludes is worth stating, or
+  // the receipt looks the same as one whose cashback has not arrived yet.
+  CashbackStatus.Ineligible,
 ];
 
 // Statuses that indicate cashback is still pending
@@ -493,6 +496,18 @@ export const getCashbackAmount = (
     return null;
   }
 
+  // Excluded by merchant category. There is no amount and none is coming, so
+  // this returns before every branch that reaches for a figure or a projection.
+  if (cashback.status === CashbackStatus.Ineligible) {
+    return {
+      amount: null,
+      isPending: false,
+      isEscrowed: false,
+      isPaid: false,
+      isIneligible: true,
+    };
+  }
+
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
   const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
@@ -512,6 +527,7 @@ export const getCashbackAmount = (
       isPending: true,
       isEscrowed,
       isPaid: false,
+      isIneligible: false,
       payoutAt: cashback.payoutAt,
     };
   }
@@ -531,6 +547,7 @@ export const getCashbackAmount = (
     isPending,
     isEscrowed,
     isPaid: cashback.status === CashbackStatus.Paid,
+    isIneligible: false,
     payoutAt: cashback.payoutAt,
   };
 };

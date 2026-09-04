@@ -385,8 +385,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
     // `approved` is authorized but not yet posted. Cashback is settled once it
     // has actually paid; a transaction that earned none has nothing to wait for.
+    // An ineligible purchase is settled the moment it is recorded — nothing is
+    // coming, so a chip promising otherwise would never clear.
     const isSpendSettled = !isApproved;
-    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid;
+    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
 
     return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
   }, [cashbackInfo, isApproved, isDeclined, isReversed]);
@@ -453,11 +455,20 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         key: 'cashback',
         // The label is green on both sides of the design (Figma 21287:5858):
         // what the user earned back reads as a gain, not as another fact about
-        // the charge.
+        // the charge. Muted on an ineligible purchase, where green would
+        // advertise a gain that never happened.
         label: (
           <View className="flex-row items-center gap-1.5">
             <CashbackDiamondIcon size={14} />
-            <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
+            <Text
+              className={cn(
+                ROW_TEXT,
+                'font-medium',
+                cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand',
+              )}
+            >
+              Cashback
+            </Text>
           </View>
         ),
         // The figure earns its green only once the payout has landed. Until
@@ -466,8 +477,15 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         // money is still on its way, and saying so twice on one receipt reads
         // as a warning about the amount rather than a note about its timing.
         value: (
-          <Value className={cashbackInfo.isPaid ? 'text-brand' : undefined}>
-            {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
+          <Value
+            className={cn(
+              cashbackInfo.isPaid && 'text-brand',
+              cashbackInfo.isIneligible && 'text-white/50',
+            )}
+          >
+            {cashbackInfo.isIneligible
+              ? 'Ineligible'
+              : (cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending'))}
           </Value>
         ),
         // While the charge is still pending, the amount at the top of this
@@ -476,7 +494,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         // cardholder reads as an error. Spans the row rather than sitting under
         // the value, where a sentence this long would wrap to three lines
         // against the label.
-        caption: isApproved ? (
+        // "Ineligible" on its own invites the support ticket this row exists to
+        // prevent, so the reason comes with it. The pending-sum note is mutually
+        // exclusive: there is no amount here to reconcile against the total.
+        caption: cashbackInfo.isIneligible ? (
+          <Text className="mt-2 text-[13px] leading-4 text-white/50">
+            Cash withdrawals, money transfers and government payments don&apos;t earn cashback
+          </Text>
+        ) : isApproved ? (
           <Text className="mt-2 text-[13px] leading-4 text-white/50">
             Cashback amount is not reflected on a pending transaction sum
           </Text>
