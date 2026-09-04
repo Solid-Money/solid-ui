@@ -331,6 +331,8 @@ export const BalanceBreakdownRows = ({
     onCardAdd?: () => void;
     bankBalances?: BankBalance[];
   }) => {
+  // Empty for everyone while `BANK_BALANCES_ENABLED` in useWirexBankAccounts is
+  // off — the rows below stay wired up so re-enabling is one flag, not a revert.
   const bankRows = bankBalancesToShow(bankBalances);
 
   return (
