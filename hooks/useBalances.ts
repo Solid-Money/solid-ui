@@ -640,14 +640,19 @@ export const useBalances = (): BalanceData => {
     queryFn: () => fetchTokenBalances(user?.safeAddress!),
     enabled: !!user?.safeAddress,
     // TanStack Query handles all the manual logic:
-    staleTime: 5_000,
+    staleTime: 30_000,
     gcTime: 5 * 60 * 1000, // 5 minutes - data stays in cache for 5 minutes when unused
     retry: 3, // retry up to 3 times on failure
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // SSE handles real-time updates; polling is fallback for missed events or SSE failure
-    refetchInterval: 5_000,
+    // SSE handles real-time updates; polling is fallback for missed events or SSE
+    // failure. One run of this query is 19 parallel requests plus the token
+    // processing below, so at the previous 5s it was ~228 requests a minute per
+    // idle client — and the CPU cost landed on exactly the low-end devices that
+    // could least afford it. `useActivitySSE` invalidates `tokenBalances`
+    // directly, so a real balance change still lands immediately.
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 

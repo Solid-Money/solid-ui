@@ -182,6 +182,17 @@ const getRefreshToken = (): string | null => {
   return null;
 };
 
+/** The Solid services a request can legitimately expect to be authenticated. */
+const SOLID_API_BASE_URLS = [
+  EXPO_PUBLIC_FLASH_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
+].filter(Boolean);
+
+const isSolidApiUrl = (url: string | undefined): boolean =>
+  !!url && SOLID_API_BASE_URLS.some(base => url.startsWith(base));
+
 // Set up axios interceptor to add headers to all axios requests
 axios.interceptors.request.use(config => {
   const platformHeaders = getPlatformHeaders();
@@ -196,7 +207,12 @@ axios.interceptors.request.use(config => {
 
     if (jwtToken) {
       config.headers['Authorization'] = `Bearer ${jwtToken}`;
-    } else {
+    } else if (isSolidApiUrl(config.url)) {
+      // Only a call to one of our own services is *supposed* to carry a token,
+      // so only that case is worth reporting. Reporting every tokenless request
+      // meant public endpoints and third-party hosts — which have no business
+      // holding a Solid access token — raised a warning apiece, burying the
+      // genuine auth failures this is here to catch.
       console.error('No JWT token found');
       Sentry.captureMessage('No JWT token found', {
         level: 'warning',
@@ -2164,7 +2180,9 @@ export const getLifiQuote = async ({
   toToken = 'USDC',
   order = LifiOrder.FASTEST,
 }: GetLifiQuoteParams): Promise<LifiQuoteResponse> => {
-  const response = await axios.get<LifiQuoteResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/quote`, {
+  // externalAxios: LI.FI is a third party and must not receive the user's Solid
+  // access token, which the global instance's interceptor attaches on native.
+  const response = await externalAxios.get<LifiQuoteResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/quote`, {
     params: {
       fromAddress,
       fromChain,
@@ -2181,11 +2199,15 @@ export const getLifiQuote = async ({
 };
 
 export const checkBridgeStatus = async (bridgeTxHash: string): Promise<LifiStatusResponse> => {
-  const response = await axios.get<LifiStatusResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/status`, {
-    params: {
-      txHash: bridgeTxHash,
+  // externalAxios: third-party host, see getLifiQuote above.
+  const response = await externalAxios.get<LifiStatusResponse>(
+    `${EXPO_PUBLIC_LIFI_API_URL}/status`,
+    {
+      params: {
+        txHash: bridgeTxHash,
+      },
     },
-  });
+  );
 
   return response?.data;
 };

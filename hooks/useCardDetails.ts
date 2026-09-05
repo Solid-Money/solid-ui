@@ -30,7 +30,11 @@ export const useCardDetails = () => {
     queryFn: () => withRefreshToken(() => getCardBalance()),
     enabled: !isDummyUser && provider === CardProvider.RAIN && !!detailsQuery.data,
     retry: false,
-    refetchInterval: 5000,
+    // Rain's spending power, polled as a background freshness check rather than
+    // a live feed — this query is mounted on the home screen too, so at 5s it
+    // was 12 requests a minute from every session regardless of whether the card
+    // was on screen.
+    refetchInterval: 20_000,
   });
 
   const mergedData = useMemo((): CardDetailsResponseDto | undefined => {
