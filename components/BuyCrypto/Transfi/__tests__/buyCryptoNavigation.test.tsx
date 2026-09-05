@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import fs from 'fs';
 import path from 'path';
 
@@ -6,6 +5,8 @@ import {
   BuyCryptoNavigationProvider,
   useBuyCryptoNavigation,
 } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+
+import type { ReactNode } from 'react';
 
 // The project does not include react-dom declarations; keep this test helper typed locally.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
