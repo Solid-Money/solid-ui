@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
@@ -24,7 +24,7 @@ export const TransfiPaymentHandoff = ({
   /** The automatic open didn't happen (popup blocker), so lead with the button. */
   blocked?: boolean;
 }) => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const amount = useTransfiStore(state => state.usdcAmount);
   const currency = useTransfiStore(state => state.fiatCurrency);
 

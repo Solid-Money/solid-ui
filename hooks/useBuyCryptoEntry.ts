@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import { BuyCryptoNavigate } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
@@ -22,9 +23,10 @@ import { useDepositStore } from '@/store/useDepositStore';
  * backend reports can_share for a Sumsub applicant and for an approved Didit
  * session alike. Only genuinely unverified users are routed to a provider.
  */
-export const useBuyCryptoEntry = () => {
-  const setModal = useDepositStore(state => state.setModal);
-  const routeToKyc = useBuyCryptoKycRoute();
+export const useBuyCryptoEntry = (navigateOverride?: BuyCryptoNavigate) => {
+  const globalNavigate = useDepositStore(state => state.setModal);
+  const setModal = navigateOverride ?? globalNavigate;
+  const routeToKyc = useBuyCryptoKycRoute(setModal);
   const [isChecking, setIsChecking] = useState(false);
 
   const handleBuyCryptoPress = useCallback(async () => {

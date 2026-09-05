@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { openBrowserAsync } from 'expo-web-browser';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import {
   TransfiPaymentHandoff,
   TransfiPaymentUnavailable,
 } from '@/components/BuyCrypto/Transfi/TransfiPaymentHandoff';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
@@ -16,7 +16,7 @@ import { useTransfiStore } from '@/store/useTransfiStore';
  * and the system browser shows the user a verifiable URL.
  */
 export const TransfiPayment = () => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const payUrl = useTransfiStore(state => state.payUrl);
   const openedRef = useRef(false);
 

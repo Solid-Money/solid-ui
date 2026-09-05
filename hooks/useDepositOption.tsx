@@ -887,6 +887,9 @@ const useDepositOption = ({
     isExternalWalletOptions ||
     isBuyCryptoOptions ||
     isWalletConnector ||
+    isBuyCryptoAmount ||
+    isBuyCryptoCurrency ||
+    isBuyCryptoPaymentMethod ||
     isPublicAddress ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||

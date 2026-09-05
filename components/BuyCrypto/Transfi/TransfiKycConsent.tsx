@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { Check, ShieldCheck } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -10,7 +11,6 @@ import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useShareTransfiKyc } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { asTransfiError } from '@/lib/transfiErrors';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
@@ -32,7 +32,7 @@ const SHARED_ITEMS = [
  * document set — then we move to the pending step to await approval.
  */
 export const TransfiKycConsent = () => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
   const { mutate: share, isPending } = useShareTransfiKyc();
