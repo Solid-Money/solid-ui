@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 
+import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFlow';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
@@ -17,7 +18,12 @@ import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
-import { CardProvider } from '@/lib/types';
+import {
+  getBuyCryptoBackTarget,
+  getBuyCryptoTitle,
+  getEmbeddedBuyCryptoTarget,
+} from '@/lib/buyCryptoFlow';
+import { CardProvider, DepositModal } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -32,14 +38,6 @@ const MODAL_STATES: Record<Step, ModalState> = {
 };
 
 const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
-
-/**
- * Wait out this modal's exit animation before the buy-crypto steps open —
- * mounting the next dialog in the same commit as this one unmounts leaves the
- * closing sheet's view on top of the new one, swallowing its taps. Same delay,
- * and the same reason, as the Rain funding modal.
- */
-const HANDOFF_DELAY_MS = 260;
 
 export interface WirexCardFundModalProps {
   /** Omit (or pass null) when driving the modal with isOpen/onOpenChange. */
@@ -76,10 +74,8 @@ export default function WirexCardFundModal({
   onOpenChange,
 }: WirexCardFundModalProps) {
   const { provider } = useCardProvider();
-  const { handleBuyCryptoPress } = useBuyCryptoEntry();
   const resetTransfi = useTransfiStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
-  const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Uncontrolled by default (trigger drives it); controlled when isOpen is passed,
   // e.g. by the home "Add Funds" pill, which has no trigger of its own.
@@ -90,6 +86,7 @@ export default function WirexCardFundModal({
     current: 'options',
     previous: CLOSE_STATE,
   });
+  const [buyCryptoModal, setBuyCryptoModal] = useState<DepositModal | null>(null);
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
@@ -104,8 +101,14 @@ export default function WirexCardFundModal({
     },
   });
 
+  const baseModal = MODAL_STATES[stepState.current];
+  const currentModal = buyCryptoModal ?? baseModal;
+  const currentModalRef = useRef<ModalState>(currentModal);
+  currentModalRef.current = currentModal;
+
   const goToStep = useCallback((nextStep: Step) => {
-    setStepState(prev => ({ current: nextStep, previous: MODAL_STATES[prev.current] }));
+    setBuyCryptoModal(null);
+    setStepState({ current: nextStep, previous: currentModalRef.current });
   }, []);
 
   const handleOpenChange = useCallback(
@@ -114,12 +117,31 @@ export default function WirexCardFundModal({
       onOpenChange?.(open);
       if (!open) {
         setStepState({ current: 'options', previous: CLOSE_STATE });
+        setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
       }
     },
     [isControlled, onOpenChange],
   );
+
+  const navigateBuyCrypto = useCallback(
+    (nextModal: DepositModal) => {
+      const target = getEmbeddedBuyCryptoTarget(nextModal);
+      if (target === 'close') {
+        handleOpenChange(false);
+        return;
+      }
+      if (target === 'entry') {
+        goToStep('options');
+        return;
+      }
+      setStepState(prev => ({ ...prev, previous: currentModalRef.current }));
+      setBuyCryptoModal(target);
+    },
+    [goToStep, handleOpenChange],
+  );
+  const { handleBuyCryptoPress } = useBuyCryptoEntry(navigateBuyCrypto);
 
   const handleTokenPress = useCallback(
     (symbol: string) => {
@@ -148,9 +170,8 @@ export default function WirexCardFundModal({
   );
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
-  // buy-crypto steps live in the global deposit modal, so this closes the funding
-  // modal and hands off, letting useBuyCryptoEntry route to KYC or the amount
-  // screen. The bought USDC is delivered to this cardholder's card deposit
+  // buy-crypto steps now replace this modal's content without closing its shell.
+  // The bought USDC is delivered to this cardholder's card deposit
   // address, so it ends up spendable in their Safe — which is why the row belongs
   // in the card funding flow at all.
   const handleLocalCurrencyPress = useCallback(
@@ -162,20 +183,9 @@ export default function WirexCardFundModal({
       resetTransfi();
       setTransfiCurrency(code);
 
-      handleOpenChange(false);
-      if (handoffTimer.current) clearTimeout(handoffTimer.current);
-      handoffTimer.current = setTimeout(() => {
-        void handleBuyCryptoPress();
-      }, HANDOFF_DELAY_MS);
+      void handleBuyCryptoPress();
     },
-    [handleBuyCryptoPress, handleOpenChange, resetTransfi, setTransfiCurrency],
-  );
-
-  useEffect(
-    () => () => {
-      if (handoffTimer.current) clearTimeout(handoffTimer.current);
-    },
-    [],
+    [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
   // The webhook has seen the transfer — hand the user straight to its progress screen.
@@ -188,11 +198,20 @@ export default function WirexCardFundModal({
   );
 
   const handleBack = useCallback(() => {
+    if (buyCryptoModal) {
+      const target = getBuyCryptoBackTarget(buyCryptoModal);
+      if (target === 'entry') {
+        goToStep('options');
+      } else if (target) {
+        navigateBuyCrypto(target);
+      }
+      return;
+    }
     setStepState(prev => ({
       current: prev.current === 'address' ? 'networks' : 'options',
       previous: MODAL_STATES[prev.current],
     }));
-  }, []);
+  }, [buyCryptoModal, goToStep, navigateBuyCrypto]);
 
   // The only entry point is already Wirex-only, but this is the chokepoint they
   // all pass through: a Rain cardholder must never be sent down this flow, whose
@@ -200,17 +219,19 @@ export default function WirexCardFundModal({
   if (provider !== CardProvider.WIREX) return null;
 
   const { current: step, previous: previousModal } = stepState;
-  const currentModal = MODAL_STATES[step];
-  const canGoBack = step !== 'options';
+  const canGoBack = buyCryptoModal
+    ? getBuyCryptoBackTarget(buyCryptoModal) !== null
+    : step !== 'options';
 
   const title = (() => {
+    if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
     return 'Fund your card';
   })();
 
   const titleIcon =
-    step === 'networks' || step === 'address' ? (
+    !buyCryptoModal && (step === 'networks' || step === 'address') ? (
       <Image
         source={getCardFundTokenIcon(selectedToken)}
         style={TITLE_ICON_STYLE}
@@ -219,6 +240,9 @@ export default function WirexCardFundModal({
     ) : undefined;
 
   const content = (() => {
+    if (buyCryptoModal) {
+      return <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />;
+    }
     if (step === 'options') {
       return (
         <CardFundOptions
@@ -260,7 +284,7 @@ export default function WirexCardFundModal({
       onBackPress={handleBack}
       shouldAnimate={previousModal.name !== 'close'}
       isForward={currentModal.number > previousModal.number}
-      contentKey={step}
+      contentKey={buyCryptoModal?.name ?? step}
     >
       {content}
     </ResponsiveModal>

@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, View } from 'react-native';
 import { openBrowserAsync } from 'expo-web-browser';
 import { ExternalLink, XCircle } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -11,7 +12,6 @@ import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useRetryTransfiKyc, useShareTransfiKyc, useTransfiStatus } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { asTransfiError } from '@/lib/transfiErrors';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
@@ -28,7 +28,7 @@ const MAX_SHARE_ATTEMPTS = 3;
  * approval, or shows the rejection reason.
  */
 export const TransfiKycPending = () => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
   const { data: status } = useTransfiStatus({ poll: true });
