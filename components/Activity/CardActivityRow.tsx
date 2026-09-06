@@ -14,6 +14,7 @@ import {
   getCardFeeInfo,
   getCardMerchantLocation,
   getCardMerchantName,
+  getCardStatusPill,
   getCashbackAmount,
   isOutgoingCardTransaction,
 } from '@/lib/utils/cardHelpers';
@@ -28,13 +29,6 @@ type CardActivityRowProps = {
   isLast?: boolean;
   /** Desktop's middle date column — matches `Transaction` so merged rows align. */
   showTimestamp?: boolean;
-};
-
-/** Card statuses that get a chip of their own instead of a location line. */
-const STATUS_PILLS: Record<string, { label: string; tone: 'neutral' | 'danger' }> = {
-  pending: { label: 'Pending', tone: 'neutral' },
-  declined: { label: 'Declined', tone: 'danger' },
-  reversed: { label: 'Reversed', tone: 'neutral' },
 };
 
 /**
@@ -56,7 +50,7 @@ const CardActivityRow = ({
   const { isScreenMedium } = useDimension();
   const merchantName = getCardMerchantName(transaction);
   const merchantLocation = getCardMerchantLocation(transaction);
-  const statusPill = STATUS_PILLS[transaction.status?.toLowerCase() ?? ''];
+  const statusPill = getCardStatusPill(transaction.status);
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
   const feeInfo = getCardFeeInfo(transaction);
 

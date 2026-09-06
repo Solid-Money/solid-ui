@@ -1,3 +1,4 @@
+import { CardTransactionStatus } from '@/lib/types';
 import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
@@ -5,7 +6,12 @@ import {
   formatCardTransactionAmount,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
+  getCardStatusPill,
+  isApprovedCardTransaction,
+  isDeclinedCardTransaction,
   isOutgoingCardTransaction,
+  isReversedCardTransaction,
+  normalizeCardTransactionStatus,
 } from '@/lib/utils/cardHelpers';
 
 describe('formatCardAmount', () => {
@@ -201,5 +207,79 @@ describe('formatCardTransactionAmount', () => {
   // the magnitude is what keeps that from colliding with the sign chosen here.
   it('does not double the sign on an already-negative amount', () => {
     expect(formatCardTransactionAmount('-50.00', true)).toBe('-$50.00');
+  });
+});
+
+describe('normalizeCardTransactionStatus', () => {
+  it('passes through the four statuses the app reasons about', () => {
+    expect(normalizeCardTransactionStatus('approved')).toBe(CardTransactionStatus.APPROVED);
+    expect(normalizeCardTransactionStatus('settled')).toBe(CardTransactionStatus.SETTLED);
+    expect(normalizeCardTransactionStatus('declined')).toBe(CardTransactionStatus.DECLINED);
+    expect(normalizeCardTransactionStatus('reversed')).toBe(CardTransactionStatus.REVERSED);
+  });
+
+  /**
+   * Rain's list passes its own status through unmapped, so the same feed can
+   * carry both vocabularies for the same state.
+   */
+  it("resolves the issuer's own wording", () => {
+    expect(normalizeCardTransactionStatus('pending')).toBe(CardTransactionStatus.APPROVED);
+    expect(normalizeCardTransactionStatus('completed')).toBe(CardTransactionStatus.SETTLED);
+  });
+
+  it('ignores case and surrounding space', () => {
+    expect(normalizeCardTransactionStatus(' Declined ')).toBe(CardTransactionStatus.DECLINED);
+    expect(normalizeCardTransactionStatus('APPROVED')).toBe(CardTransactionStatus.APPROVED);
+  });
+
+  it('has no meaning for a status it does not know', () => {
+    expect(normalizeCardTransactionStatus('chargeback')).toBeUndefined();
+    expect(normalizeCardTransactionStatus('')).toBeUndefined();
+    expect(normalizeCardTransactionStatus(undefined)).toBeUndefined();
+  });
+});
+
+describe('getCardStatusPill', () => {
+  it('gives a declined purchase the red chip', () => {
+    // Figma 24781:7993 — the whole point of the chip is that a refused charge
+    // does not read as one that went through.
+    expect(getCardStatusPill('declined')).toEqual({ label: 'Declined', tone: 'danger' });
+  });
+
+  /**
+   * The bug this map replaced: the chip was keyed on `'pending'`, which no
+   * issuer sends, so every in-flight purchase went out with no chip at all.
+   */
+  it('calls an authorized-but-unsettled purchase "Pending"', () => {
+    expect(getCardStatusPill('approved')).toEqual({ label: 'Pending', tone: 'neutral' });
+    expect(getCardStatusPill('pending')).toEqual({ label: 'Pending', tone: 'neutral' });
+  });
+
+  it('marks a reversed authorization as terminal, like a declined one', () => {
+    expect(getCardStatusPill('reversed')).toEqual({ label: 'Reversed', tone: 'danger' });
+  });
+
+  it('says nothing about a settled purchase, which frees the line for its location', () => {
+    expect(getCardStatusPill('settled')).toBeNull();
+    expect(getCardStatusPill('completed')).toBeNull();
+  });
+
+  it('says nothing about a status it cannot read', () => {
+    expect(getCardStatusPill('chargeback')).toBeNull();
+    expect(getCardStatusPill(undefined)).toBeNull();
+  });
+});
+
+describe('card status predicates', () => {
+  it('read the issuer vocabularies as one', () => {
+    expect(isDeclinedCardTransaction('declined')).toBe(true);
+    expect(isDeclinedCardTransaction('settled')).toBe(false);
+
+    expect(isApprovedCardTransaction('approved')).toBe(true);
+    expect(isApprovedCardTransaction('pending')).toBe(true);
+    expect(isApprovedCardTransaction('completed')).toBe(false);
+
+    expect(isReversedCardTransaction('reversed')).toBe(true);
+    expect(isReversedCardTransaction('declined')).toBe(false);
   });
 });

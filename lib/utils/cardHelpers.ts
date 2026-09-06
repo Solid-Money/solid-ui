@@ -9,6 +9,7 @@ import {
   CardStatus,
   CardTransaction,
   CardTransactionFee,
+  CardTransactionStatus,
   Cashback,
   CashbackInfo,
   CashbackStatus,
@@ -184,6 +185,85 @@ export const getColorForTransaction = (merchantName: string): { bg: string; text
   }
   return colors[Math.abs(hash) % colors.length];
 };
+
+/**
+ * Issuer wording that means the same thing as one of our own statuses.
+ *
+ * Rain's list passes its raw status through unmapped, so `pending` and
+ * `completed` reach the app alongside the `approved`/`settled` the webhook and
+ * the Wirex mapper write. Both vocabularies can appear in one feed — the same
+ * purchase reads `settled` from our records and `completed` from Rain's — so
+ * every surface has to resolve them rather than compare strings.
+ */
+const CARD_STATUS_ALIASES: Record<string, CardTransactionStatus> = {
+  pending: CardTransactionStatus.APPROVED,
+  authorized: CardTransactionStatus.APPROVED,
+  completed: CardTransactionStatus.SETTLED,
+  posted: CardTransactionStatus.SETTLED,
+};
+
+/**
+ * A card transaction's status as one of the four the app reasons about, or
+ * undefined when the issuer sent something we have no meaning for.
+ *
+ * Undefined rather than a default, because the two plausible defaults are both
+ * wrong in a way the user sees: treating an unknown status as settled hides an
+ * in-flight purchase's chip, and treating it as approved puts "Pending" on a
+ * transaction that finished. A status we cannot read is a status not worth
+ * reporting.
+ */
+export const normalizeCardTransactionStatus = (
+  status: string | undefined | null,
+): CardTransactionStatus | undefined => {
+  const value = status?.trim().toLowerCase();
+  if (!value) return undefined;
+
+  const known = Object.values(CardTransactionStatus).find(candidate => candidate === value);
+
+  return known ?? CARD_STATUS_ALIASES[value];
+};
+
+/** The chip a card transaction's status earns on an activity row, if any. */
+export interface CardStatusPill {
+  label: string;
+  tone: 'neutral' | 'danger';
+}
+
+const CARD_STATUS_PILLS: Record<CardTransactionStatus, CardStatusPill | null> = {
+  // "Pending" is the user's word for it; `approved` is the issuer's.
+  [CardTransactionStatus.APPROVED]: { label: 'Pending', tone: 'neutral' },
+  // A settled purchase has nothing left to report, so the row spends the line
+  // on where the card was used instead.
+  [CardTransactionStatus.SETTLED]: null,
+  [CardTransactionStatus.DECLINED]: { label: 'Declined', tone: 'danger' },
+  [CardTransactionStatus.REVERSED]: { label: 'Reversed', tone: 'danger' },
+};
+
+/**
+ * The status chip for a card transaction (Figma 24781:7724 and 24781:7993), or
+ * null when there is nothing to say about it.
+ *
+ * Shared by the activity row and the transaction's own screen so a purchase
+ * cannot read "Declined" in the feed and carry no chip on the receipt — the two
+ * used to keep their own maps, and a declined charge got a red chip on one and
+ * a grey one on the other.
+ */
+export const getCardStatusPill = (status: string | undefined | null): CardStatusPill | null => {
+  const normalized = normalizeCardTransactionStatus(status);
+  return normalized ? CARD_STATUS_PILLS[normalized] : null;
+};
+
+/** Whether a card transaction was refused, and so never moved any money. */
+export const isDeclinedCardTransaction = (status: string | undefined | null): boolean =>
+  normalizeCardTransactionStatus(status) === CardTransactionStatus.DECLINED;
+
+/** Whether a card transaction is authorized but not yet settled. */
+export const isApprovedCardTransaction = (status: string | undefined | null): boolean =>
+  normalizeCardTransactionStatus(status) === CardTransactionStatus.APPROVED;
+
+/** Whether an authorization was undone before it settled. */
+export const isReversedCardTransaction = (status: string | undefined | null): boolean =>
+  normalizeCardTransactionStatus(status) === CardTransactionStatus.REVERSED;
 
 /**
  * What to call a card transaction in a list. The merchant is the name the user

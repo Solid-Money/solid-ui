@@ -5,7 +5,11 @@ import {
   CardTransactionCategory,
   TransactionType,
 } from '@/lib/types';
-import { getCardMerchantLocation, getCardMerchantName } from '@/lib/utils/cardHelpers';
+import {
+  getCardMerchantLocation,
+  getCardMerchantName,
+  isApprovedCardTransaction,
+} from '@/lib/utils/cardHelpers';
 
 /** The chips the Activity screen filters by. `PROGRESS` is not one of them. */
 export type ActivityFilter = ActivityTab.ALL | ActivityTab.WALLET | ActivityTab.CARD;
@@ -40,10 +44,9 @@ export type UnifiedActivityItem =
  * remembers making; a declined or reversed one only ever has a posting date.
  */
 export const getCardTransactionTimestamp = (transaction: CardTransaction): number => {
-  const dateStr =
-    transaction.status === 'approved'
-      ? transaction.authorized_at || transaction.posted_at
-      : transaction.posted_at || transaction.authorized_at;
+  const dateStr = isApprovedCardTransaction(transaction.status)
+    ? transaction.authorized_at || transaction.posted_at
+    : transaction.posted_at || transaction.authorized_at;
   const parsed = dateStr ? new Date(dateStr).getTime() : NaN;
   return Number.isNaN(parsed) ? Date.now() / 1000 : parsed / 1000;
 };

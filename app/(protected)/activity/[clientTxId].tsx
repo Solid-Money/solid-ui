@@ -15,9 +15,7 @@ import {
 import { mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
-import ActivityStatusPill, {
-  type ActivityStatusTone,
-} from '@/components/Activity/ActivityStatusPill';
+import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
@@ -51,6 +49,7 @@ import {
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import {
+  type CardStatusPill,
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
@@ -58,8 +57,12 @@ import {
   getCardFeeInfo,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
+  getCardStatusPill,
   getCashbackAmount,
+  isApprovedCardTransaction,
+  isDeclinedCardTransaction,
   isOutgoingCardTransaction,
+  isReversedCardTransaction,
 } from '@/lib/utils/cardHelpers';
 import {
   getDepositProgressRows,
@@ -308,9 +311,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const spend = transaction.spend_details;
   const sweepHash = spend?.sweep_tx_hash;
   const sweepUrl = cardSweepExplorerUrl(spend);
-  const isApproved = transaction.status === 'approved';
-  const isDeclined = transaction.status === 'declined';
-  const isReversed = transaction.status === 'reversed';
+  const isApproved = isApprovedCardTransaction(transaction.status);
+  const isDeclined = isDeclinedCardTransaction(transaction.status);
+  const isReversed = isReversedCardTransaction(transaction.status);
   const postedDate = useMemo(() => {
     const dateStr = isApproved
       ? transaction.authorized_at || transaction.posted_at
@@ -376,12 +379,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
    * projection until it pays, and the chip is what says so — which is what lets
    * the cashback row itself just name the figure.
    */
-  const statusPill = useMemo((): { label: string; tone: ActivityStatusTone } | null => {
+  const statusPill = useMemo((): CardStatusPill | null => {
     // A declined charge never happened, and a reversed one was undone. Both are
     // terminal, so neither is "pending" — and both change what every figure
-    // above the chip means.
-    if (isDeclined) return { label: 'Declined', tone: 'danger' };
-    if (isReversed) return { label: 'Reversed', tone: 'danger' };
+    // above the chip means. Worded by the same helper the feed row uses, so the
+    // receipt cannot label a purchase differently from the row that opened it.
+    if (isDeclined || isReversed) return getCardStatusPill(transaction.status);
 
     // `approved` is authorized but not yet posted. Cashback is settled once it
     // has actually paid; a transaction that earned none has nothing to wait for.
@@ -391,7 +394,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
 
     return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
-  }, [cashbackInfo, isApproved, isDeclined, isReversed]);
+  }, [cashbackInfo, isApproved, isDeclined, isReversed, transaction.status]);
 
   const merchantRows = useMemo(
     () =>

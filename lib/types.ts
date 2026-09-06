@@ -1882,6 +1882,27 @@ export enum CardTransactionCategory {
 }
 
 /**
+ * Where a card transaction stands, once the issuer's wording has been resolved
+ * to ours. See `normalizeCardTransactionStatus` — `CardTransaction.status` is
+ * the raw string and is not one of these.
+ *
+ * There is no `pending` here on purpose, even though that is what the user is
+ * shown: `approved` is an authorization the merchant has not claimed yet, which
+ * is the same state under the issuer's name for it. Reading `'pending'` off a
+ * transaction is what left every in-flight purchase without its chip.
+ */
+export enum CardTransactionStatus {
+  /** Authorized, not yet settled — what the app labels "Pending". */
+  APPROVED = 'approved',
+  /** Posted. The money has moved and the figures are final. */
+  SETTLED = 'settled',
+  /** Refused, by the issuer or by our own spend rules. Never happened. */
+  DECLINED = 'declined',
+  /** The authorization was undone before it settled. */
+  REVERSED = 'reversed',
+}
+
+/**
  * What our backend's own ledger knows about a card transaction, beyond what the
  * issuer reports.
  *
