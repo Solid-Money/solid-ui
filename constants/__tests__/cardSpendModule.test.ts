@@ -1,4 +1,5 @@
 import {
+  activationDailyLimit,
   DAILY_LIMIT_PRESETS_USD,
   formatDelayDuration,
   formatUsd,
@@ -138,6 +139,53 @@ describe('the limit activation registers with', () => {
     expect(offerablePresets(1_000n * ONE_USD, 10_000n * ONE_USD)).toContain(
       INITIAL_DAILY_LIMIT_USD,
     );
+  });
+});
+
+/**
+ * The cap the activation press signs with. A card that spends from the Safe is only
+ * issued once this registration lands, so what this returns decides whether a user gets
+ * a card at all — which is why the null case is a tested outcome rather than a fallback.
+ */
+describe('activationDailyLimit', () => {
+  const ceilings = (maxDailyUsd: number, maxMonthlyUsd: number) => ({
+    maxDailyLimitUsd: usdToOnChain(maxDailyUsd),
+    maxMonthlyLimitUsd: usdToOnChain(maxMonthlyUsd),
+  });
+
+  it('registers the default when the org allows it', () => {
+    expect(activationDailyLimit(ceilings(1_000, 10_000))).toBe(INITIAL_DAILY_LIMIT_USD);
+  });
+
+  // Upwards would be the org's ceiling read as an entitlement. It is a bound.
+  it('never clamps upwards, however generous the ceilings', () => {
+    expect(activationDailyLimit(ceilings(2_500, 25_000))).toBe(INITIAL_DAILY_LIMIT_USD);
+  });
+
+  // The largest offer underneath, not the nearest: a ceiling of $400 means $250, because
+  // $500 would revert with ExceedsOrgDailyCeiling and cost the user the whole activation.
+  it('clamps down to the largest preset the ceiling leaves room for', () => {
+    expect(activationDailyLimit(ceilings(500, 5_000))).toBe(500);
+    expect(activationDailyLimit(ceilings(400, 5_000))).toBe(250);
+  });
+
+  // The monthly is derived, so a cap can clear the daily ceiling and still revert with
+  // ExceedsOrgMonthlyCeiling — both bounds have to hold.
+  it('respects the monthly ceiling as well as the daily one', () => {
+    expect(activationDailyLimit(ceilings(1_000, 5_000))).toBe(500);
+  });
+
+  // Nothing to grant means nothing worth issuing: the caller blocks activation on this
+  // rather than handing over a card that declines every payment.
+  it('is null when no preset is offerable at all', () => {
+    expect(activationDailyLimit(ceilings(50, 500))).toBeNull();
+  });
+
+  // Before the ceilings are read there is nothing to clamp against. The default stands in
+  // for the screen's copy only — the press re-reads and clamps against what it gets.
+  it('falls back to the plain default before the ceilings are known', () => {
+    expect(activationDailyLimit(null)).toBe(INITIAL_DAILY_LIMIT_USD);
+    expect(activationDailyLimit(undefined)).toBe(INITIAL_DAILY_LIMIT_USD);
   });
 });
 
