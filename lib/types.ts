@@ -1527,7 +1527,23 @@ export interface RewardsUserData {
   totalPoints: number;
   nextTierPoints: number;
   nextTier: RewardsTier | null;
+  /**
+   * The cashback % this user actually earns — their tier's rate, unless support
+   * has put them on one of their own.
+   */
   cashbackRate: number;
+  /**
+   * What their tier pays by default, before any per-user rate. Absent on older
+   * backends, where `cashbackRate` is the tier rate anyway.
+   */
+  tierCashbackRate?: number;
+  /**
+   * Whether `cashbackRate` is pinned to this user rather than coming from their
+   * tier. When it is, the app must quote it rather than substituting the launch
+   * rate for their tier — see `resolveUserCashbackRate`. Absent on older
+   * backends, which is the same as false.
+   */
+  hasCustomCashbackRate?: boolean;
   cashbackThisMonth: number;
   /**
    * Cashback earned this month that is still escrowed, in USD, already trimmed

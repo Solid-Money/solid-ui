@@ -3,8 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
 import { Text } from '@/components/ui/text';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
-import { resolveTierCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
+import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { formatBalanceUSD } from '@/lib/utils';
 
@@ -25,12 +24,7 @@ import { formatBalanceUSD } from '@/lib/utils';
 const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   const { data: rewardsData } = useRewardsUserData();
 
-  const rate =
-    resolveTierCashbackRate(
-      rewardsData?.currentTier,
-      rewardsData?.cashbackRate,
-      IS_TIER_CASHBACK_HARDCODED,
-    ) || TIER_CASHBACK_RATES[RewardsTier.CORE];
+  const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
   const earnedThisMonth = rewardsData?.cashbackThisMonth ?? 0;
 
   return (

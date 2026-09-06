@@ -8,8 +8,7 @@ import {
   monthlyCashbackTotal,
   resolveCashbackProgress,
 } from '@/lib/cashbackProgress';
-import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
-import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { formatNumber } from '@/lib/utils';
 
 /**
@@ -36,11 +35,7 @@ const CardCashbackCard = ({ onPress }: CardCashbackCardProps) => {
   const cap = rewardsData?.maxCashbackMonthly ?? 0;
   // The rate this card's own sheet quotes, so "spend $X more" is the spend that
   // actually reaches the cap at the advertised rate.
-  const rate = resolveTierCashbackRate(
-    rewardsData?.currentTier,
-    rewardsData?.cashbackRate,
-    IS_TIER_CASHBACK_HARDCODED,
-  );
+  const rate = resolveUserCashbackRate(rewardsData);
 
   const earnedPct = resolveCashbackProgress(earned, cap);
   // Spend needed to reach the monthly cap. Escrowed cashback draws down the
