@@ -25,7 +25,8 @@ import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
 import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
 import useUser from '@/hooks/useUser';
-import { SwapModal, TransactionStatusModal } from '@/lib/types';
+import { getSwapFundingError } from '@/lib/swapFunding';
+import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { TradeState, TradeStateType } from '@/lib/types/trade-state';
 
@@ -42,6 +43,7 @@ interface SwapState {
   readonly lastFocusedField: SwapFieldType;
   readonly currentModal: SwapModal;
   readonly previousModal: SwapModal;
+  readonly buyFuseTier: RewardsTier | undefined;
   readonly transaction: TransactionStatusModal & {
     inputCurrencySymbol?: string;
     outputCurrencySymbol?: string;
@@ -54,6 +56,7 @@ interface SwapState {
     typeInput: (field: SwapFieldType, typedValue: string) => void;
     resetForm: () => void;
     setModal: (modal: SwapModal) => void;
+    openBuyFuse: (tier?: RewardsTier) => void;
     setTransaction: (transaction: SwapState['transaction']) => void;
   };
 }
@@ -71,6 +74,7 @@ export const useSwapState = create<SwapState>((set, get) => ({
   lastFocusedField: SwapField.INPUT,
   currentModal: SWAP_MODAL.CLOSE,
   previousModal: SWAP_MODAL.CLOSE,
+  buyFuseTier: undefined,
   transaction: {},
   actions: {
     selectCurrency: (field, currencyId) => {
@@ -120,6 +124,12 @@ export const useSwapState = create<SwapState>((set, get) => ({
       set({
         previousModal: get().currentModal,
         currentModal: modal,
+      }),
+    openBuyFuse: tier =>
+      set({
+        previousModal: get().currentModal,
+        currentModal: SWAP_MODAL.OPEN_BUY_FUSE,
+        buyFuseTier: tier,
       }),
     setTransaction: transaction => set({ transaction }),
   },
@@ -362,12 +372,19 @@ export function useDerivedSwapInfo(): {
 
   const [balanceIn, amountIn] = [
     currencyBalances[SwapField.INPUT],
-    toggledTrade?.maximumAmountIn(allowedSlippage),
+    isVoltageTrade
+      ? voltageTrade.trade?.inputAmount
+      : toggledTrade?.maximumAmountIn(allowedSlippage),
   ];
 
-  if (balanceIn && amountIn && balanceIn.lessThan(amountIn)) {
-    inputError = `Insufficient ${amountIn.currency.symbol} balance`;
-  }
+  inputError =
+    inputError ??
+    getSwapFundingError({
+      balance: balanceIn ? BigInt(balanceIn.quotient.toString()) : undefined,
+      requiredInput: amountIn ? BigInt(amountIn.quotient.toString()) : undefined,
+      hasAmount: !!parsedAmount?.greaterThan('0'),
+      symbol: inputCurrency?.symbol ?? 'funds',
+    });
 
   const isWrap =
     currencies.INPUT &&

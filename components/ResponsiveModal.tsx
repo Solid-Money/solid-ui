@@ -53,6 +53,8 @@ export interface ResponsiveModalProps {
   overlayClassName?: string;
   titleClassName?: string;
   showBackButton?: boolean;
+  /** Use the 40px controls and 20px title from compact mobile design headers. */
+  compactHeader?: boolean;
   onBackPress?: () => void;
   actionButton?: ReactNode;
 
@@ -87,6 +89,7 @@ const ResponsiveModal = ({
   overlayClassName,
   titleClassName,
   showBackButton = false,
+  compactHeader = false,
   onBackPress,
   actionButton,
   shouldAnimate = previousModal.name !== 'close',
@@ -201,13 +204,16 @@ const ResponsiveModal = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    className={cn(
+                      'h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted',
+                      compactHeader && 'h-10 w-10',
+                    )}
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 ) : (
-                  <View className="w-[50px]" />
+                  <View className={cn('w-[50px]', compactHeader && 'w-10')} />
                 )}
                 {title ? (
                   <Animated.View
@@ -219,7 +225,12 @@ const ResponsiveModal = ({
                     }
                   >
                     {titleIcon}
-                    <DialogTitle className="native:text-2xl text-xl font-semibold">
+                    <DialogTitle
+                      className={cn(
+                        'native:text-2xl text-xl font-semibold',
+                        compactHeader && 'native:text-xl',
+                      )}
+                    >
                       {title}
                     </DialogTitle>
                   </Animated.View>
@@ -228,7 +239,7 @@ const ResponsiveModal = ({
                 )}
                 <View className="flex-row items-center gap-2">
                   {hasActionButton && actionButton}
-                  <DialogCloseButton />
+                  <DialogCloseButton className={compactHeader ? 'h-10 w-10' : undefined} />
                 </View>
               </DialogHeader>
             ) : (

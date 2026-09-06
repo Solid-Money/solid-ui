@@ -33,7 +33,12 @@ import {
 import { publicClient } from '@/lib/wagmi';
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 
-const SwapParams = () => {
+interface SwapParamsProps {
+  label?: string;
+  expandable?: boolean;
+}
+
+const SwapParams = ({ label = 'Fee', expandable = true }: SwapParamsProps) => {
   const {
     tradeState,
     toggledTrade: trade,
@@ -201,11 +206,11 @@ const SwapParams = () => {
       <View className="mt-4 flex flex-row items-center justify-between px-1">
         <View className="flex-row items-center gap-2">
           <Fuel strokeWidth={1} stroke="white" size={16} />
-          <Text className="text-base font-semibold text-white/70">Fee</Text>
+          <Text className="text-base font-semibold text-white/70">{label}</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-bold">0 USDC</Text>
-          <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
+          {expandable && <ChevronDown strokeWidth={2} size={16} className="text-foreground" />}
         </View>
       </View>
     );
@@ -214,24 +219,29 @@ const SwapParams = () => {
   return (
     <View>
       <Pressable
-        className="flex w-full flex-row items-center justify-between web:hover:opacity-70"
-        onPress={() => toggleExpanded(!isExpanded)}
+        className={cn('flex w-full flex-row items-center justify-between', {
+          'web:hover:opacity-70': expandable,
+        })}
+        onPress={expandable ? () => toggleExpanded(!isExpanded) : undefined}
+        disabled={!expandable}
       >
         <View className="flex-row items-center gap-2">
           <Fuel strokeWidth={1} stroke="white" size={16} />
-          <Text className="text-base font-semibold text-white/70">Fee</Text>
+          <Text className="text-base font-semibold text-white/70">{label}</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-bold">{LPFeeString}</Text>
-          <View className={cn({ 'rotate-180': isExpanded })}>
-            <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
-          </View>
+          {expandable && (
+            <View className={cn({ 'rotate-180': isExpanded })}>
+              <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
+            </View>
+          )}
         </View>
       </Pressable>
       <View
         className={cn('overflow-hidden', {
-          'h-auto': isExpanded,
-          'h-0': !isExpanded,
+          'h-auto': expandable && isExpanded,
+          'h-0': !expandable || !isExpanded,
         })}
       >
         <View className="mt-6 flex flex-col gap-2.5 rounded-xl bg-card">

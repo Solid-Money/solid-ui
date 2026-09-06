@@ -9,7 +9,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useShareTransfiKyc } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
+import { asTransfiError } from '@/lib/transfiErrors';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
  * Deliberately source-agnostic. What actually crosses the wire differs by
@@ -31,6 +33,7 @@ const SHARED_ITEMS = [
  */
 export const TransfiKycConsent = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
   const { mutate: share, isPending } = useShareTransfiKyc();
 
@@ -59,13 +62,20 @@ export const TransfiKycConsent = () => {
         }
       },
       onError: error => {
+        const transfiError = asTransfiError(error);
         track(TRACKING_EVENTS.BUY_CRYPTO_KYC_SHARE_FAILED, {
-          error_message: error instanceof Error ? error.message : 'Unknown error',
+          error_code: transfiError.code,
+          error_message: transfiError.message,
         });
-        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+        // This is where an incomplete profile surfaces — the share can't create
+        // the TransFi user without a residential address. Sending it to the
+        // pending screen parked the user on a spinner for a decision that was
+        // never going to come; the error step offers the form instead.
+        setError(transfiError, DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_CONSENT);
+        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR);
       },
     });
-  }, [routeToKyc, share, setModal]);
+  }, [routeToKyc, setError, share, setModal]);
 
   return (
     <View className="flex-1 gap-6">

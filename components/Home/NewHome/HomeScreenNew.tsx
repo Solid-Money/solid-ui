@@ -261,12 +261,14 @@ export default function HomeScreenNew() {
             PNG bakes into each side, so the visible card lines up with the sections
             below rather than sitting inset. */}
         <View className="gap-5">
-          <HomeWalletCard
-            hasCard={userHasCard}
-            last4={cardDetails?.card_details?.last_4}
-            depositCompleted={depositCompleted}
-            hasCtaBanner={isPromptReady}
-          />
+          {!isBalanceSectionLoading && (
+            <HomeWalletCard
+              hasCard={userHasCard}
+              last4={cardDetails?.card_details?.last_4}
+              depositCompleted={depositCompleted}
+              hasCtaBanner={isPromptReady}
+            />
+          )}
           {isPromptReady && promptKey && (
             <HeroExit spec={HERO_EXIT.belowCard}>
               <HomePromptCard

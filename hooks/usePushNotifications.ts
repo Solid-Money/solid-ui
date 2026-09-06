@@ -57,6 +57,18 @@ function getNotificationRoute(data?: NotificationData): Href {
     return path.REWARDS_BENEFITS;
   }
 
+  // Two rewards pushes ask for something the rewards screen cannot do, so they
+  // land where their copy points rather than on the generic fallback below:
+  // "don't leave cashback behind" is asking for card spend, and the Fuse vault
+  // promo is asking for a deposit into that specific vault. Both match the CTA
+  // in the matching email (Brevo 228 → /card, 241 → /savings).
+  if (type === 'rewards-using-card') {
+    return path.CARD_INFO;
+  }
+  if (type === 'rewards-fuse-vault') {
+    return path.SAVINGS_FUSE;
+  }
+
   // Remaining rewards pushes (rewards-live, rewards-tier-reached, the boosted
   // APY flow, etc.) all carry a `rewards-` prefixed type and should open the
   // rewards screen.

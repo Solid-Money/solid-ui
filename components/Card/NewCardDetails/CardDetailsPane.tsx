@@ -30,8 +30,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
-import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -245,11 +244,7 @@ const CardDetailsPane = () => {
             <CashbackDetailsSheet
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
-              cashbackRate={resolveTierCashbackRate(
-                rewardsData?.currentTier,
-                rewardsData?.cashbackRate,
-                IS_TIER_CASHBACK_HARDCODED,
-              )}
+              cashbackRate={resolveUserCashbackRate(rewardsData)}
               cashbackThisMonth={cashbackThisMonth}
               cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
               maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}

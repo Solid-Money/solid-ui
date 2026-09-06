@@ -1,5 +1,8 @@
 /// <reference types="jest" />
-import { hasSkipTheLine } from '@/components/Rewards/NewRewards/skipTheLine';
+import {
+  hasSkipTheLine,
+  resolveTierUpgradeCardData,
+} from '@/components/Rewards/NewRewards/skipTheLine';
 import { RewardsTier } from '@/lib/types';
 
 import type { FuseSkipLine } from '@/lib/types';
@@ -60,5 +63,85 @@ describe('hasSkipTheLine', () => {
         }),
       ),
     ).toBe(true);
+  });
+});
+
+describe('resolveTierUpgradeCardData', () => {
+  it('shows the Prime card with launch defaults when rewards data is unavailable in preview', () => {
+    const result = resolveTierUpgradeCardData({
+      currentTier: RewardsTier.CORE,
+      allowFallback: true,
+    });
+
+    expect(result.showTierUpgradeCard).toBe(true);
+    expect(result.nextTier).toBe(RewardsTier.PRIME);
+    expect(result.targetPoints).toBe(5_000_000);
+    expect(result.skipLine?.tiers.find(tier => tier.tier === RewardsTier.PRIME)).toMatchObject({
+      requiredFuse: 50_000,
+      remainingFuse: 50_000,
+    });
+  });
+
+  it('shows the Ultra card with launch defaults for a Prime user on an older backend', () => {
+    const result = resolveTierUpgradeCardData({
+      currentTier: RewardsTier.PRIME,
+      nextTier: RewardsTier.ULTRA,
+      allowFallback: true,
+    });
+
+    expect(result.showTierUpgradeCard).toBe(true);
+    expect(result.targetPoints).toBe(35_000_000);
+    expect(result.skipLine?.tiers).toEqual([
+      expect.objectContaining({ tier: RewardsTier.ULTRA, requiredFuse: 400_000 }),
+    ]);
+  });
+
+  it('does not invent an upgrade card in production when the backend block is absent', () => {
+    const result = resolveTierUpgradeCardData({
+      currentTier: RewardsTier.CORE,
+      allowFallback: false,
+    });
+
+    expect(result.showTierUpgradeCard).toBe(false);
+  });
+
+  it('respects an explicit backend kill-switch in preview', () => {
+    const disabledSkipLine = skipLine({ enabled: false });
+    const result = resolveTierUpgradeCardData({
+      currentTier: RewardsTier.CORE,
+      nextTier: RewardsTier.PRIME,
+      targetPoints: 6_000_000,
+      skipLine: disabledSkipLine,
+      allowFallback: true,
+    });
+
+    expect(result.showTierUpgradeCard).toBe(false);
+    expect(result.skipLine).toBe(disabledSkipLine);
+  });
+
+  it('keeps backend thresholds when the live mechanic is available', () => {
+    const liveSkipLine = skipLine({
+      balanceFuse: 10_000,
+      tiers: [
+        {
+          tier: RewardsTier.PRIME,
+          requiredFuse: 60_000,
+          unlocked: false,
+          remainingFuse: 50_000,
+          progressPct: 16.67,
+        },
+      ],
+    });
+    const result = resolveTierUpgradeCardData({
+      currentTier: RewardsTier.CORE,
+      nextTier: RewardsTier.PRIME,
+      targetPoints: 6_000_000,
+      skipLine: liveSkipLine,
+      allowFallback: true,
+    });
+
+    expect(result.showTierUpgradeCard).toBe(true);
+    expect(result.targetPoints).toBe(6_000_000);
+    expect(result.skipLine).toBe(liveSkipLine);
   });
 });

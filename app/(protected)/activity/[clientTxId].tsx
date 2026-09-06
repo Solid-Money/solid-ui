@@ -15,7 +15,9 @@ import {
 import { mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
-import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
+import ActivityStatusPill, {
+  type ActivityStatusTone,
+} from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
@@ -70,6 +72,12 @@ import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 type RowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
+  /**
+   * A note about this row, on its own line beneath it and spanning the card's
+   * width. For the rare row whose value needs a caveat that will not fit
+   * right-aligned under the value itself.
+   */
+  caption?: React.ReactNode;
   className?: string;
   isLast?: boolean;
 };
@@ -95,16 +103,14 @@ type SupportSectionProps = {
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
 const CARD_DATE_FORMAT = "MMM d yyyy 'at' h:mm a";
 
-const Row = memo(function Row({ label, value, isLast }: RowProps) {
+const Row = memo(function Row({ label, value, caption, isLast }: RowProps) {
   return (
-    <View
-      className={cn(
-        'flex-row items-center justify-between border-b border-[#2C2C2E] px-6 py-5',
-        isLast && 'border-b-0',
-      )}
-    >
-      {label}
-      {value}
+    <View className={cn('border-b border-[#2C2C2E] px-6 py-5', isLast && 'border-b-0')}>
+      <View className="flex-row items-center justify-between">
+        {label}
+        {value}
+      </View>
+      {caption}
     </View>
   );
 });
@@ -217,8 +223,15 @@ type CardTransactionDetailProps = {
   cardProvider?: CardProvider | null;
 };
 
+type DetailRow = {
+  key: string;
+  label: React.ReactNode;
+  value: React.ReactNode;
+  caption?: React.ReactNode;
+};
+
 type DetailCardProps = {
-  rows: { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  rows: DetailRow[];
 };
 
 const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
@@ -227,7 +240,13 @@ const DetailCard = memo(function DetailCard({ rows }: DetailCardProps) {
   return (
     <View className="overflow-hidden rounded-twice bg-card">
       {rows.map((row, index) => (
-        <Row key={row.key} label={row.label} value={row.value} isLast={index === rows.length - 1} />
+        <Row
+          key={row.key}
+          label={row.label}
+          value={row.value}
+          caption={row.caption}
+          isLast={index === rows.length - 1}
+        />
       ))}
     </View>
   );
@@ -345,15 +364,34 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const feeInfo = getCardFeeInfo(transaction);
   const localDetails = transaction.local_transaction_details;
 
-  const statusLabel = isApproved
-    ? 'Pending'
-    : isDeclined
-      ? 'Declined'
-      : isReversed
-        ? 'Reversed'
-        : 'Confirmed';
-  // Declined never reaches this: it is drawn as a chip in the header instead.
-  const statusColor = isApproved ? 'text-yellow-500' : '';
+  /**
+   * The chip under the amount, and the only place this screen reports status.
+   *
+   * It answers one question — is anything about this purchase still in flight?
+   * — which is why there is no Status row in the card below: once the charge
+   * has posted and the cashback has been paid, there is nothing to report, and
+   * a row reading "Confirmed" on a settled receipt is a fact nobody came for.
+   *
+   * A cashback still in escrow keeps the chip up. The amount beside it is a
+   * projection until it pays, and the chip is what says so — which is what lets
+   * the cashback row itself just name the figure.
+   */
+  const statusPill = useMemo((): { label: string; tone: ActivityStatusTone } | null => {
+    // A declined charge never happened, and a reversed one was undone. Both are
+    // terminal, so neither is "pending" — and both change what every figure
+    // above the chip means.
+    if (isDeclined) return { label: 'Declined', tone: 'danger' };
+    if (isReversed) return { label: 'Reversed', tone: 'danger' };
+
+    // `approved` is authorized but not yet posted. Cashback is settled once it
+    // has actually paid; a transaction that earned none has nothing to wait for.
+    // An ineligible purchase is settled the moment it is recorded — nothing is
+    // coming, so a chip promising otherwise would never clear.
+    const isSpendSettled = !isApproved;
+    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
+
+    return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
+  }, [cashbackInfo, isApproved, isDeclined, isReversed]);
 
   const merchantRows = useMemo(
     () =>
@@ -397,13 +435,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const rows = useMemo(() => {
     const allRows = [
-      // The chip in the header already says "Declined", and louder than a row
-      // in a card of plain facts can.
-      !isDeclined && {
-        key: 'status',
-        label: <Label>Status</Label>,
-        value: <Value className={statusColor}>{statusLabel}</Value>,
-      },
+      // No Status row: the chip under the amount carries it, and says it louder
+      // than a row in a card of plain facts can. See `statusPill`.
       isDeclined &&
         transaction.declined_reason && {
           key: 'reason',
@@ -422,11 +455,20 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         key: 'cashback',
         // The label is green on both sides of the design (Figma 21287:5858):
         // what the user earned back reads as a gain, not as another fact about
-        // the charge.
+        // the charge. Muted on an ineligible purchase, where green would
+        // advertise a gain that never happened.
         label: (
           <View className="flex-row items-center gap-1.5">
             <CashbackDiamondIcon size={14} />
-            <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
+            <Text
+              className={cn(
+                ROW_TEXT,
+                'font-medium',
+                cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand',
+              )}
+            >
+              Cashback
+            </Text>
           </View>
         ),
         // The figure earns its green only once the payout has landed. Until
@@ -435,10 +477,35 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         // money is still on its way, and saying so twice on one receipt reads
         // as a warning about the amount rather than a note about its timing.
         value: (
-          <Value className={cashbackInfo.isPaid ? 'text-brand' : undefined}>
-            {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
+          <Value
+            className={cn(
+              cashbackInfo.isPaid && 'text-brand',
+              cashbackInfo.isIneligible && 'text-white/50',
+            )}
+          >
+            {cashbackInfo.isIneligible
+              ? 'Ineligible'
+              : (cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending'))}
           </Value>
         ),
+        // While the charge is still pending, the amount at the top of this
+        // screen is the authorization — the cashback is not netted off it, and
+        // two figures on one receipt that don't reconcile is the kind of thing a
+        // cardholder reads as an error. Spans the row rather than sitting under
+        // the value, where a sentence this long would wrap to three lines
+        // against the label.
+        // "Ineligible" on its own invites the support ticket this row exists to
+        // prevent, so the reason comes with it. The pending-sum note is mutually
+        // exclusive: there is no amount here to reconcile against the total.
+        caption: cashbackInfo.isIneligible ? (
+          <Text className="mt-2 text-[13px] leading-4 text-white/50">
+            Cash withdrawals, money transfers and government payments don&apos;t earn cashback
+          </Text>
+        ) : isApproved ? (
+          <Text className="mt-2 text-[13px] leading-4 text-white/50">
+            Cashback amount is not reflected on a pending transaction sum
+          </Text>
+        ) : undefined,
       },
       cashbackInfo?.isEscrowed &&
         cashbackInfo.payoutAt && {
@@ -530,7 +597,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Pressable>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
 
     return allRows;
   }, [
@@ -539,8 +606,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     localDetails,
     txHash,
     handleExplorerPress,
-    statusLabel,
-    statusColor,
+    isApproved,
     isDeclined,
     cardProvider,
     spend,
@@ -580,17 +646,22 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
                 two operators. The activity row shows the conversion bare too. */}
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
-            {/* A decline reads as a chip, the same one the activity row uses
-                (Figma 24781:7993), rather than as one more fact in the detail
-                card below. It changes what every figure above it means — the
-                money never left — so it belongs beside them, not in a list of
-                properties the user has to read to find out the purchase never
-                happened. The reason still gets its own row. */}
-            {isDeclined && (
+            {/* Status reads as a chip, the same one the activity row uses
+                (Figma 24781:7724 / 24781:7993), rather than as one more fact in
+                the detail card below. It changes what every figure above it
+                means — a declined charge never left the account — so it belongs
+                beside them, not in a list of properties the user has to read to
+                find out the purchase never happened. A decline's reason still
+                gets its own row. */}
+            {statusPill && (
               // `self-center` overrides the pill's own `self-start`: on a row it
               // hangs off the merchant's left edge, here it sits under a centred
               // amount.
-              <ActivityStatusPill label="Declined" tone="danger" className="mt-1 self-center" />
+              <ActivityStatusPill
+                label={statusPill.label}
+                tone={statusPill.tone}
+                className="mt-1 self-center"
+              />
             )}
           </View>
         </View>
@@ -733,6 +804,15 @@ export default function ActivityDetail() {
 
   const isFund = finalActivity?.type === TransactionType.FUND;
 
+  /**
+   * Wirex SEPA/ACH movements on the user's virtual account. They settle at the
+   * bank, not on chain, so none of the address/hash/explorer rows below apply —
+   * without the bank rows this screen would show a lone "Status".
+   */
+  const isWirexBank =
+    finalActivity?.type === TransactionType.WIREX_BANK_DEPOSIT ||
+    finalActivity?.type === TransactionType.WIREX_BANK_PAYOUT;
+
   const estimatedDurationSeconds = useMemo(() => {
     if (isFund) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
@@ -859,6 +939,39 @@ export default function ActivityDetail() {
         label: <Label>Status</Label>,
         value: <Value>{toTitleCase(status)}</Value>,
       },
+      isWirexBank &&
+        metadata?.rail && {
+          key: 'rail',
+          label: <Label>Method</Label>,
+          value: <Value>{metadata.rail as string}</Value>,
+        },
+      isWirexBank &&
+        (metadata?.counterpartyName || metadata?.counterpartyAccountLast4) && {
+          key: 'counterparty',
+          label: (
+            <Label>
+              {finalActivity.type === TransactionType.WIREX_BANK_DEPOSIT ? 'From' : 'To'}
+            </Label>
+          ),
+          value: (
+            <Value>
+              {[
+                metadata.counterpartyName,
+                // Only the last four are stored — a full IBAN is not needed to
+                // recognise the account, and this row is also read by support.
+                metadata.counterpartyAccountLast4 && `····${metadata.counterpartyAccountLast4}`,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            </Value>
+          ),
+        },
+      isWirexBank &&
+        metadata?.reference && {
+          key: 'reference',
+          label: <Label>Reference</Label>,
+          value: <Value>{metadata.reference as string}</Value>,
+        },
       metadata?.inputAmount &&
         metadata?.inputToken && {
           key: 'paid',
@@ -900,12 +1013,13 @@ export default function ActivityDetail() {
           label: <Label>Estimated time</Label>,
           value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     isDeposit,
     isFund,
     isBridgeDeposit,
+    isWirexBank,
     isPending,
     isDetected,
     isProcessing,
@@ -993,7 +1107,7 @@ export default function ActivityDetail() {
           </View>
         ),
       },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [finalActivity, depositDestination]);
 
   const depositStatusRows = useMemo(() => {
@@ -1053,7 +1167,7 @@ export default function ActivityDetail() {
             </Pressable>
           ),
         },
-    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+    ].filter(Boolean) as DetailRow[];
   }, [
     finalActivity,
     depositStatus,

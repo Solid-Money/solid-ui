@@ -6,6 +6,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
@@ -17,13 +18,18 @@ const useDepositBuyCryptoOptions = () => {
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
+  const { provider } = useVirtualAccountProvider();
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
+      provider,
     });
 
-    if (existingAutomation) {
+    // Wirex users go straight to the details screen: it owns activation for
+    // both rails itself, including the "no account yet" and "still
+    // provisioning" states, so there is no separate Apply step to route through.
+    if (provider === 'wirex' || existingAutomation) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
       return;
     }
@@ -32,7 +38,7 @@ const useDepositBuyCryptoOptions = () => {
     // to send the user through KYC or straight to the ToS modal based on their
     // current Rain approval status.
     setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
-  }, [existingAutomation, setModal]);
+  }, [existingAutomation, provider, setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [

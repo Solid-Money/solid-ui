@@ -72,20 +72,33 @@ export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
 ];
 
 /**
- * The token groups a savings direct deposit offers, for the flow's intent.
+ * The token groups a savings direct deposit offers, for the flow's intent and
+ * the vault being funded.
+ *
+ * Each vault now has its own savings screen, so its Deposit button offers only
+ * the tokens that mint its share token — USDC / USDT for soUSD, ETH for soETH,
+ * WFUSE for soFUSE. `vaultToken` omitted means "no vault picked": the full list,
+ * which is what the tests and any caller predating per-vault screens expect.
  *
  * `card_deposit` is the card's "Deposit at least $5" gate, which completes off
- * the soUSD balance alone — so it offers only the stablecoins that mint soUSD.
- * Were ETH or WFUSE on offer there, a user could deposit the full $5, fund
- * soETH / soFUSE instead, and leave the step stuck at "not met" with nothing
- * on screen explaining why.
+ * the soUSD balance alone — so it offers only the stablecoins that mint soUSD,
+ * whichever vault happens to be selected. Were ETH or WFUSE on offer there, a
+ * user could deposit the full $5, fund soETH / soFUSE instead, and leave the
+ * step stuck at "not met" with nothing on screen explaining why.
  */
 export const getSavingsFundTokenGroups = (
   intent: SavingsFundIntent,
-): { stablecoins: SavingsFundToken[]; crypto: SavingsFundToken[] } => ({
-  stablecoins: SAVINGS_FUND_STABLECOINS,
-  crypto: intent === 'card_deposit' ? [] : SAVINGS_FUND_CRYPTO,
-});
+  vaultToken?: string,
+): { stablecoins: SavingsFundToken[]; crypto: SavingsFundToken[] } => {
+  const targetVaultToken = intent === 'card_deposit' ? 'soUSD' : vaultToken;
+  const forVault = (tokens: SavingsFundToken[]) =>
+    targetVaultToken ? tokens.filter(token => token.vaultToken === targetVaultToken) : tokens;
+
+  return {
+    stablecoins: forVault(SAVINGS_FUND_STABLECOINS),
+    crypto: intent === 'card_deposit' ? [] : forVault(SAVINGS_FUND_CRYPTO),
+  };
+};
 
 /** Deposits are credited within roughly this window on every supported chain. */
 export const SAVINGS_FUND_ESTIMATED_TIME = '~3 min';

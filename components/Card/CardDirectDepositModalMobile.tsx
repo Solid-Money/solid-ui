@@ -19,6 +19,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { DepositModal, RainApplicationStatus } from '@/lib/types';
@@ -90,6 +91,7 @@ export default function CardDirectDepositModalMobile({
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
@@ -129,8 +131,13 @@ export default function CardDirectDepositModalMobile({
   // First-time setup stacks above this funding dialog so closing it returns to
   // "Fund your card". Existing accounts still hand off to the global details flow.
   const handleUsdPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
-    if (!existingAutomation) {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+      provider: virtualAccountProvider,
+    });
+    // A Wirex user has no Rain automation and never will, so the Rain apply
+    // dialog is not the right next step — their details screen owns activation.
+    if (virtualAccountProvider !== 'wirex' && !existingAutomation) {
       setIsVirtualAccountApplyOpen(true);
       return;
     }
@@ -140,7 +147,7 @@ export default function CardDirectDepositModalMobile({
     handoffTimer.current = setTimeout(() => {
       setWalletModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
     }, HANDOFF_DELAY_MS);
-  }, [handleOpenChange, existingAutomation, setWalletModal]);
+  }, [handleOpenChange, existingAutomation, setWalletModal, virtualAccountProvider]);
 
   const handleVirtualAccountTransition = useCallback(
     (modal: DepositModal) => {

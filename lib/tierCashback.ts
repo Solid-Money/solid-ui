@@ -1,4 +1,5 @@
-import { RewardsTier } from '@/lib/types';
+import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
+import { RewardsTier, RewardsUserData } from '@/lib/types';
 
 /**
  * The cashback % each tier advertises, held in the app instead of read from the
@@ -33,15 +34,49 @@ export const formatTierCashbackRate = (tier: RewardsTier): string =>
  *
  * A missing or non-finite API rate resolves to 0, which is what every caller
  * already coerced it to.
+ *
+ * @param hasCustomRate Whether `apiRate` is a rate pinned to this individual
+ * user rather than their tier's. Support can set one per account, and it is
+ * what their spend actually earns — so it wins over the launch table even while
+ * the flag is on, which is the one case where "quote one set of numbers
+ * everywhere" would quote a number we are not going to pay.
  */
 export const resolveTierCashbackRate = (
   tier: RewardsTier | undefined,
   apiRate: number | undefined,
   useTierRates: boolean,
+  hasCustomRate = false,
 ): number => {
   const apiFallback = typeof apiRate === 'number' && Number.isFinite(apiRate) ? apiRate : 0;
   if (!useTierRates || tier === undefined) return apiFallback;
+  // A rate pinned to this user only counts if the API actually sent one; the
+  // flag with no usable number is still better answered by the tier table.
+  if (hasCustomRate && typeof apiRate === 'number' && Number.isFinite(apiRate)) {
+    return apiRate;
+  }
 
   const tierRate: number | undefined = TIER_CASHBACK_RATES[tier];
   return typeof tierRate === 'number' && Number.isFinite(tierRate) ? tierRate : apiFallback;
 };
+
+/**
+ * The cashback % to show for the signed-in user, from their rewards data.
+ *
+ * Every surface that quotes a rate reads this rather than
+ * {@link resolveTierCashbackRate} directly: the three fields it needs travel
+ * together on one response, and passing them one at a time is how a screen ends
+ * up quoting a tier rate to somebody support has put on a different one.
+ *
+ * @param tier Overrides the tier on `rewardsData`, for a screen that has already
+ * resolved one (defaulting to Core while the request is in flight, say).
+ */
+export const resolveUserCashbackRate = (
+  rewardsData: RewardsUserData | undefined,
+  tier: RewardsTier | undefined = rewardsData?.currentTier,
+): number =>
+  resolveTierCashbackRate(
+    tier,
+    rewardsData?.cashbackRate,
+    IS_TIER_CASHBACK_HARDCODED,
+    rewardsData?.hasCustomCashbackRate,
+  );

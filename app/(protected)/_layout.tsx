@@ -20,6 +20,7 @@ import {
 import CardHeroOverlay from '@/components/Card/NewCardDetails/CardHeroOverlay';
 import { SidebarShell } from '@/components/Navbar/Sidebar';
 import NotificationPermissionSheet from '@/components/Notifications/NotificationPermissionSheet';
+import RewardsUpgradeFeedback from '@/components/Rewards/RewardsUpgradeFeedback';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -298,6 +299,7 @@ export default function ProtectedLayout() {
           screens only — stays dormant/null otherwise). Mounted above the whole
           navigator so the card can fly across the home → card/details change. */}
       <CardHeroOverlay />
+      <RewardsUpgradeFeedback />
       <NotificationPermissionSheet
         visible={showNotificationPermissionSheet}
         onDismiss={handleNotificationPermissionDismiss}

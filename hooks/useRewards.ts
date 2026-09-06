@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import { RewardsUserData } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 const REWARDS = 'rewards';
@@ -45,14 +46,37 @@ export const useReferralSummary = (options?: { refetchInterval?: number | false 
   });
 };
 
-export const useRewardsUserData = () => {
+export const useRewardsUserData = (options?: { refetchInterval?: number | false }) => {
   const userId = useSelectedUserId();
+  const hasConfirmedTier = useRewardsUpgradeStore(
+    state => state.userId === userId && !!state.confirmed,
+  );
   return useQuery({
     queryKey: [REWARDS, 'userData', userId],
     queryFn: async () => {
-      return await withRefreshToken(() => fetchRewardsUserData());
+      const session = useRewardsUpgradeStore.getState().session;
+      const assertAccount = () => {
+        if (
+          !userId ||
+          userId !== selectedRewardsUserId() ||
+          session !== useRewardsUpgradeStore.getState().session
+        )
+          throw new Error('Rewards account changed');
+      };
+      assertAccount();
+      const data = await withRefreshToken(() => {
+        assertAccount();
+        return fetchRewardsUserData();
+      });
+      assertAccount();
+      useRewardsUpgradeStore.getState().observe(userId!, session, data);
+      return data;
     },
-    staleTime: secondsToMilliseconds(30),
+    enabled: !!userId,
+    refetchInterval: options?.refetchInterval ?? false,
+    // A cached response from an earlier account session cannot establish this
+    // session's baseline. Switching back must fetch even within staleTime.
+    staleTime: hasConfirmedTier ? secondsToMilliseconds(30) : 0,
     gcTime: secondsToMilliseconds(300),
   });
 };

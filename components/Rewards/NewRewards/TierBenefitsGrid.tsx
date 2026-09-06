@@ -1,9 +1,10 @@
 import { type ReactElement } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
+import { useIsSidebarShell } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
 import { subscriptionCategoriesSentence } from './subscriptionBrands';
@@ -130,25 +131,33 @@ interface BenefitCardProps {
  * One tier benefit: icon, what the benefit is, and what it applies to. Cards
  * that open a details sheet get their `onPress` from the sheet wrapper.
  */
-const BenefitCard = ({ title, description, icon, onPress }: BenefitCardProps) => (
-  <Pressable
-    accessibilityRole={onPress ? 'button' : undefined}
-    accessibilityLabel={`${title}. ${description}`}
-    disabled={!onPress}
-    onPress={onPress}
-    className="min-h-[137px] w-full rounded-twice bg-card px-[15px] pb-[19px] pt-[19px] transition-all active:scale-95 active:opacity-80"
-  >
-    {icon}
-    {/* Titles are one line at the design's width; `min-h` rather than a fixed
-        height lets the longer ones wrap on narrow phones instead of truncating. */}
-    <Text className="mt-3 text-base font-medium leading-4 text-white" numberOfLines={2}>
-      {title}
-    </Text>
-    <Text className="mt-1.5 text-sm leading-4 text-white/70" numberOfLines={2}>
-      {description}
-    </Text>
-  </Pressable>
-);
+const BenefitCard = ({ title, description, icon, onPress }: BenefitCardProps) => {
+  const isSidebarShell = useIsSidebarShell();
+  const useDesktopSpacing = Platform.OS === 'web' && isSidebarShell;
+
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${title}. ${description}`}
+      disabled={!onPress}
+      onPress={onPress}
+      className={cn(
+        'min-h-[137px] w-full rounded-twice bg-card transition-all active:scale-95 active:opacity-80',
+        useDesktopSpacing ? 'p-6' : 'px-[15px] pb-[19px] pt-[19px]',
+      )}
+    >
+      {icon}
+      {/* Titles are one line at the design's width; `min-h` rather than a fixed
+          height lets the longer ones wrap on narrow phones instead of truncating. */}
+      <Text className="mt-3 text-base font-medium leading-4 text-white" numberOfLines={2}>
+        {title}
+      </Text>
+      <Text className="mt-1.5 text-sm leading-4 text-white/70" numberOfLines={2}>
+        {description}
+      </Text>
+    </Pressable>
+  );
+};
 
 interface TierBenefitsGridProps extends CashbackDetailsData, YieldBoostData {
   /** Cashback % the tier earns back on subscriptions; 0 hides that card. */

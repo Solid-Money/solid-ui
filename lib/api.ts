@@ -7,7 +7,18 @@ import { fuse } from 'viem/chains';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
+import {
+  WirexBankAccountType,
+  WirexBankOverviewDto,
+  WirexBankRailStatusDto,
+  WirexBankTransferDto,
+  WirexBankTransferEstimateDto,
+  WirexBankTransferEstimateRequest,
+  WirexBankTransferExecuteRequest,
+  WirexWalletLinkChallengeDto,
+} from '@/lib/types/wirex-bank';
 import { useUserStore } from '@/store/useUserStore';
 
 import {
@@ -118,6 +129,7 @@ import {
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
+  TransfiProfileInput,
   TransfiQuote,
   TransfiStatusResponse,
   UpdateActivityEvent,
@@ -1204,9 +1216,155 @@ export const createOnrampAutomation = async (
 };
 
 // -----------------------------------------------------------------------------
+// Wirex bank accounts — EUR SEPA (IBAN) and USD ACH
+// -----------------------------------------------------------------------------
+
+const WIREX_BANK_BASE = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bank-accounts`;
+
+const wirexBankHeaders = (withBody = false) => {
+  const jwt = getJWTToken();
+  return {
+    ...(withBody ? { 'Content-Type': 'application/json' } : {}),
+    ...getPlatformHeaders(),
+    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  };
+};
+
+/**
+ * Per-rail capability state plus any provisioned requisites.
+ *
+ * Always 200 — a user with no Wirex account comes back as
+ * `{ rails: [], isWirexUser: false }` rather than a 404, so the caller reads
+ * that flag instead of handling an error.
+ */
+export const getWirexBankOverview = async (): Promise<WirexBankOverviewDto> => {
+  const response = await fetch(WIREX_BANK_BASE, {
+    credentials: 'include',
+    headers: wirexBankHeaders(),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Provision a rail. Idempotent — safe to call whenever the screen opens.
+ *
+ * Throws the Response with status 409 when the rail needs the wallet-link flow
+ * instead; the body carries `activationPath: "walletLink"`.
+ */
+export const activateWirexBankAccount = async (
+  accountType: WirexBankAccountType,
+): Promise<WirexBankRailStatusDto> => {
+  const response = await fetch(`${WIREX_BANK_BASE}/activate`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: wirexBankHeaders(true),
+    body: JSON.stringify({ accountType }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Step 1 of wallet-linked activation: the challenge to sign. */
+export const initWirexWalletLink = async (): Promise<WirexWalletLinkChallengeDto> => {
+  const response = await fetch(`${WIREX_BANK_BASE}/link/init`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: wirexBankHeaders(true),
+    body: JSON.stringify({}),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Step 3 of wallet-linked activation: submit the signature.
+ *
+ * A rejected signature is terminal for that challenge — re-run init for a fresh
+ * one rather than resubmitting.
+ */
+export const completeWirexWalletLink = async (
+  signedChallenge: string,
+): Promise<WirexBankRailStatusDto> => {
+  const response = await fetch(`${WIREX_BANK_BASE}/link/complete`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: wirexBankHeaders(true),
+    body: JSON.stringify({ signedChallenge }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Price an outbound transfer, per token the user could pay with.
+ *
+ * The recipient is fully validated here — including the IBAN checksum, which
+ * Wirex itself does not check — so a mistyped digit fails before the user has
+ * confirmed anything.
+ */
+export const estimateWirexBankTransfer = async (
+  request: WirexBankTransferEstimateRequest,
+): Promise<WirexBankTransferEstimateDto> => {
+  const response = await fetch(`${WIREX_BANK_BASE}/transfers/estimate`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: wirexBankHeaders(true),
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Execute a priced transfer. The returned `id` is the Wirex activity id. */
+export const createWirexBankTransfer = async (
+  request: WirexBankTransferExecuteRequest,
+): Promise<WirexBankTransferDto> => {
+  const response = await fetch(`${WIREX_BANK_BASE}/transfers`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: wirexBankHeaders(true),
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Outbound transfer history, newest first. */
+export const getWirexBankTransfers = async (limit?: number): Promise<WirexBankTransferDto[]> => {
+  const query = limit ? `?limit=${limit}` : '';
+  const response = await fetch(`${WIREX_BANK_BASE}/transfers${query}`, {
+    credentials: 'include',
+    headers: wirexBankHeaders(),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// -----------------------------------------------------------------------------
 // TransFi buy-crypto onramp
 // -----------------------------------------------------------------------------
 
+/**
+ * TransFi calls throw a typed TransfiError rather than the raw Response every
+ * other endpoint here throws: the buy-crypto screens need the failure's `code`
+ * and `action` to decide what to show, and a Response body can only be read
+ * once — consuming it in a component is too late.
+ */
 const transfiHeaders = () => {
   const jwt = getJWTToken();
   return {
@@ -1221,7 +1379,7 @@ export const getTransfiStatus = async (): Promise<TransfiStatusResponse> => {
     credentials: 'include',
     headers: transfiHeaders(),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1232,7 +1390,7 @@ export const shareTransfiKyc = async (): Promise<TransfiStatusResponse> => {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1248,7 +1406,24 @@ export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/**
+ * Supply the address/phone TransFi needs when the verified identity didn't
+ * carry them, then re-share. Resolves with the refreshed gating status.
+ */
+export const completeTransfiProfile = async (
+  profile: TransfiProfileInput,
+): Promise<TransfiStatusResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/profile`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify(profile),
+  });
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1258,7 +1433,7 @@ export const getTransfiPaymentConfig = async (): Promise<TransfiPaymentConfig> =
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-config`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1271,7 +1446,7 @@ export const getTransfiPaymentMethods = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/payment-methods?${params.toString()}`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1289,7 +1464,7 @@ export const getTransfiQuote = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/quote?${params.toString()}`,
     { credentials: 'include', headers: transfiHeaders(), signal },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1305,7 +1480,7 @@ export const createTransfiOrder = async (
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
     body: JSON.stringify({ usdcAmount, paymentCode, currency }),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 
@@ -1315,7 +1490,7 @@ export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStat
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
     { credentials: 'include', headers: transfiHeaders() },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
 

@@ -23,6 +23,7 @@ describe('getCashbackAmount', () => {
       isPending: true,
       isEscrowed: true,
       isPaid: false,
+      isIneligible: false,
       payoutAt: '2026-09-16T09:03:23.823Z',
     });
   });
@@ -70,6 +71,23 @@ describe('getCashbackAmount', () => {
   it('reports nothing for a transaction with no cashback of its own', () => {
     expect(getCashbackAmount('tx-other', [cashback({})])).toBeNull();
     expect(getCashbackAmount('tx-1', undefined)).toBeNull();
+  });
+
+  /**
+   * The one status that will never pay and is still shown. A cash withdrawal
+   * with no cashback row looks identical to a purchase whose cashback has not
+   * arrived yet, so the receipt states the exclusion rather than leaving a gap.
+   */
+  it('surfaces an ineligible purchase instead of hiding it', () => {
+    const info = getCashbackAmount('tx-1', [cashback({ status: CashbackStatus.Ineligible })]);
+
+    expect(info).toEqual({
+      amount: null,
+      isPending: false,
+      isEscrowed: false,
+      isPaid: false,
+      isIneligible: true,
+    });
   });
 
   it('hides cashback that will never pay', () => {
