@@ -266,6 +266,7 @@ export default function HomeScreenNew() {
               hasCard={userHasCard}
               last4={cardDetails?.card_details?.last_4}
               depositCompleted={depositCompleted}
+              hasCtaBanner={isPromptReady}
             />
           )}
           {isPromptReady && promptKey && (
