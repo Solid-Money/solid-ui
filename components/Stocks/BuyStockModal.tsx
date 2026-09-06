@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useBalances } from '@/hooks/useBalances';
 import { useCowOrder, useCowQuote } from '@/hooks/useCowSwap';
+import { useStocksFee } from '@/hooks/useStocksFee';
 import { useXStocksTokens, XStockToken } from '@/hooks/useXStocksTokens';
 import { atomsToShares, USDC_MAINNET, usdToUsdcAtoms } from '@/lib/cowswap';
 
@@ -65,6 +66,13 @@ export default function BuyStockModal({ isOpen, onClose, trigger }: BuyStockModa
 
   const sellAmountAtoms = useMemo(() => usdToUsdcAtoms(amount), [amount]);
 
+  // Solid's fee comes off the USDC being spent, so CoW is quoted on the net and
+  // the total debit stays exactly what the user typed.
+  const stocksFee = useStocksFee({
+    sellAmountAtoms,
+    sellTokenAddress: USDC_MAINNET,
+  });
+
   const {
     quote,
     slippageBps,
@@ -74,12 +82,18 @@ export default function BuyStockModal({ isOpen, onClose, trigger }: BuyStockModa
   } = useCowQuote({
     sellToken: USDC_MAINNET,
     buyToken: selectedToken?.contractAddress ?? '',
-    sellAmountBeforeFee: sellAmountAtoms,
+    sellAmountBeforeFee: stocksFee.netSellAmountAtoms,
     kind: 'sell',
     enabled: isOpen && !!selectedToken && step !== 'select',
   });
 
-  const cowOrder = useCowOrder('USDC', selectedToken?.symbol ?? '');
+  const cowOrder = useCowOrder('USDC', selectedToken?.symbol ?? '', {
+    fee: stocksFee.fee,
+    feeTransaction: stocksFee.feeTransaction,
+    // The sell side is USDC, which is a dollar.
+    sellTokenPriceUsd: 1,
+    isSellingStock: false,
+  });
 
   const { ethereumTokens } = useBalances();
   const usdcBalance = useMemo(() => {

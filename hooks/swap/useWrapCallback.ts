@@ -1,15 +1,16 @@
-import { Currency, tryParseAmount, WNATIVE } from '@cryptoalgebra/fuse-sdk';
 import { useCallback, useMemo, useState } from 'react';
-import { useBalance } from 'wagmi';
+import { Currency, tryParseAmount, WNATIVE } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
+import { Address, encodeFunctionData } from 'viem';
+import { fuse } from 'viem/chains';
+import { useBalance } from 'wagmi';
 
 import { WNATIVE_EXTENDED } from '@/constants/routing';
 import { wrappedNativeAbi } from '@/generated/wagmi';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-import { useActivityActions } from '@/hooks/useActivityActions';
-import { Address, encodeFunctionData } from 'viem';
-import { fuse } from 'viem/chains';
+
 import { useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';
 

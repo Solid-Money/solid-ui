@@ -1,7 +1,9 @@
-import { useUserState } from '@/store/userStore';
+import { useMemo } from 'react';
 import { Currency, Percent, SwapRouter, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
-import { useMemo } from 'react';
+
+import { useUserState } from '@/store/userStore';
+
 import useUser from '../useUser';
 
 export function useSwapCallArguments(

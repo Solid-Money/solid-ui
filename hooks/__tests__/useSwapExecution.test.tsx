@@ -21,6 +21,11 @@ jest.mock('@/generated/wagmi', () => ({
 jest.mock('@/hooks/swap/useSwapCallArguments', () => ({
   useSwapCallArguments: () => mockCalls,
 }));
+// A null fee transaction is the no-fee path: the batch these tests assert on is
+// the swap alone. Fee sizing and collection are covered by swapFee's own tests.
+jest.mock('@/hooks/swap/useSwapFeeCollection', () => ({
+  useSwapFeeCollection: () => ({ feeTransaction: null, reportCollectedFee: jest.fn() }),
+}));
 jest.mock('@/hooks/useApprove', () => ({
   useApproveCallbackFromTrade: () => ({ needAllowance: false }),
   useApproveCallbackFromVoltageTrade: () => ({ needAllowance: false }),

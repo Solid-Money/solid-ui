@@ -24,11 +24,13 @@ import { useBestTradeExactIn, useBestTradeExactOut } from '@/hooks/swap/useBestT
 import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
 import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
+import { useSwapFeeRate } from '@/hooks/useProductFees';
 import useUser from '@/hooks/useUser';
 import { getSwapFundingError } from '@/lib/swapFunding';
 import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { TradeState, TradeStateType } from '@/lib/types/trade-state';
+import { computeSwapFee, noSwapFee, SwapFee, SwapFeeBasis } from '@/lib/utils/swapFee';
 
 interface SwapState {
   readonly independentField: SwapFieldType;
@@ -212,6 +214,16 @@ export function useDerivedSwapInfo(): {
   tick: number | undefined;
   tickSpacing: number | undefined;
   poolAddress: Address | undefined;
+  /**
+   * Solid's fee on this swap, sized from the user's tier.
+   *
+   * `swapAmount` is what the route was quoted on, so the output shown already
+   * accounts for the fee; `feeAmount` is what the batch transfers to the revenue
+   * wallet. Both are zero for a tier that pays nothing.
+   */
+  swapFee: SwapFee;
+  /** Where the fee must be sent. Undefined means "don't collect one". */
+  revenueWalletAddress: string | undefined;
 } {
   const { user } = useUser();
   const account = user?.safeAddress;
@@ -234,13 +246,42 @@ export function useDerivedSwapInfo(): {
     [typedValue, isExactIn, inputCurrency, outputCurrency],
   );
 
+  const { rate: swapFeeRate, revenueWalletAddress } = useSwapFeeRate();
+
+  /**
+   * The fee carved out of an exact-in swap, and the amount left to route.
+   *
+   * Sized before quoting so the route is priced on what will actually be
+   * swapped: quoting the full amount and transferring the fee on top would show
+   * an output the user cannot receive, and would need funds beyond what they
+   * typed (breaking a max-balance swap outright).
+   *
+   * Exact-out is the other way round — the input is whatever the route needs, so
+   * its fee is added on top once the trade resolves, below.
+   */
+  const inputSideFee = useMemo(() => {
+    if (!isExactIn || !parsedAmount) return undefined;
+    return computeSwapFee({
+      amount: BigInt(parsedAmount.quotient.toString()),
+      rate: swapFeeRate,
+      basis: SwapFeeBasis.DeductedFromInput,
+    });
+  }, [isExactIn, parsedAmount, swapFeeRate]);
+
+  /** What the routers quote: the net amount on exact-in, the target on exact-out. */
+  const amountToRoute = useMemo(() => {
+    if (!parsedAmount) return undefined;
+    if (!inputSideFee || inputSideFee.feeAmount <= 0n) return parsedAmount;
+    return CurrencyAmount.fromRawAmount(parsedAmount.currency, inputSideFee.swapAmount.toString());
+  }, [parsedAmount, inputSideFee]);
+
   const bestTradeExactIn = useBestTradeExactIn(
-    isExactIn ? parsedAmount : undefined,
+    isExactIn ? amountToRoute : undefined,
     outputCurrency ?? undefined,
   );
   const bestTradeExactOut = useBestTradeExactOut(
     inputCurrency ?? undefined,
-    !isExactIn ? parsedAmount : undefined,
+    !isExactIn ? amountToRoute : undefined,
   );
 
   const currentTrade = useMemo(
@@ -252,7 +293,7 @@ export function useDerivedSwapInfo(): {
   const voltageTrade = useVoltageRouter(
     inputCurrency,
     outputCurrency,
-    parsedAmount,
+    amountToRoute,
     isExactIn,
     slippage.toFixed(),
   );
@@ -370,6 +411,28 @@ export function useDerivedSwapInfo(): {
 
   const allowedSlippage = useSwapSlippageTolerance(toggledTrade);
 
+  /**
+   * The fee on this swap, whichever side it comes from.
+   *
+   * Exact-in already carved it out before quoting. Exact-out adds it on top of
+   * the input the route settled on, so it can only be sized now — the trade is
+   * what says how much input the pinned output costs.
+   */
+  const swapFee = useMemo((): SwapFee => {
+    if (isExactIn) {
+      return inputSideFee ?? noSwapFee(0n);
+    }
+
+    const tradeInput = toggledTrade?.inputAmount ?? voltageTrade.trade?.inputAmount;
+    if (!tradeInput) return noSwapFee(0n);
+
+    return computeSwapFee({
+      amount: BigInt(tradeInput.quotient.toString()),
+      rate: swapFeeRate,
+      basis: SwapFeeBasis.AddedToInput,
+    });
+  }, [isExactIn, inputSideFee, toggledTrade, voltageTrade.trade, swapFeeRate]);
+
   const [balanceIn, amountIn] = [
     currencyBalances[SwapField.INPUT],
     isVoltageTrade
@@ -377,11 +440,23 @@ export function useDerivedSwapInfo(): {
       : toggledTrade?.maximumAmountIn(allowedSlippage),
   ];
 
+  // The fee leaves the same wallet in the same batch, so the balance has to
+  // cover it too. On exact-in it is already inside the typed amount and adds
+  // nothing here; on exact-out it is genuinely extra, and a check that ignored
+  // it would let a batch through that reverts on the transfer.
+  const requiredIn = useMemo(() => {
+    if (!amountIn) return undefined;
+    const routeInput = BigInt(amountIn.quotient.toString());
+    return swapFee.basis === SwapFeeBasis.AddedToInput
+      ? routeInput + swapFee.feeAmount
+      : routeInput;
+  }, [amountIn, swapFee]);
+
   inputError =
     inputError ??
     getSwapFundingError({
       balance: balanceIn ? BigInt(balanceIn.quotient.toString()) : undefined,
-      requiredInput: amountIn ? BigInt(amountIn.quotient.toString()) : undefined,
+      requiredInput: requiredIn,
       hasAmount: !!parsedAmount?.greaterThan('0'),
       symbol: inputCurrency?.symbol ?? 'funds',
     });
@@ -431,5 +506,7 @@ export function useDerivedSwapInfo(): {
     tick: globalState && globalState[1],
     tickSpacing: tickSpacing,
     poolAddress,
+    swapFee,
+    revenueWalletAddress,
   };
 }

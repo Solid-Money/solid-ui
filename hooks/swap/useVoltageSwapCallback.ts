@@ -15,12 +15,14 @@ import { TransactionType } from '@/lib/types';
 import { SwapCallbackState } from '@/lib/types/swap-state';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 
+import { SwapFeeCollection, useSwapFeeCollection } from './useSwapFeeCollection';
 import { VoltageTrade } from './useVoltageRouter';
 
 export function useVoltageSwapCallback(
   trade: VoltageTrade | undefined,
   allowedSlippage: Percent,
   successInfo?: TransactionSuccessInfo,
+  swapFee?: SwapFeeCollection,
 ) {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
@@ -33,6 +35,11 @@ export function useVoltageSwapCallback(
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
+
+  const { feeTransaction, reportCollectedFee } = useSwapFeeCollection(
+    swapFee,
+    trade?.inputAmount?.currency,
+  );
 
   const swapCallback = useCallback(async () => {
     if (!trade) throw new Error('Unable to get a quote. Change the amount and try again.');
@@ -84,6 +91,14 @@ export function useVoltageSwapCallback(
         value: BigInt(trade?.value?.quotient.toString() || '0'),
       });
 
+      // Solid's fee, in the same batch so the user signs once. Appended after
+      // the swap rather than before it: on a native-currency swap the value the
+      // router needs is still in the wallet at this point, and taking the fee
+      // first could leave the swap itself short.
+      if (feeTransaction) {
+        transactions.push(feeTransaction);
+      }
+
       const result = await trackTransaction(
         {
           type: TransactionType.SWAP,
@@ -127,6 +142,16 @@ export function useVoltageSwapCallback(
 
       if (!transaction?.transactionHash || transaction.status !== 'success')
         throw new Error('Swap has not been confirmed');
+
+      // Reported only past the confirmation guard, so we never book a fee for a
+      // swap that did not land. The hash lives on the result object, not on the
+      // unwrapped `transaction` (which is the receipt); narrowed with `in`
+      // because TransactionResult is a union with the user-cancelled symbol.
+      reportCollectedFee(
+        result && typeof result === 'object' && 'transactionHash' in result
+          ? result.transactionHash
+          : undefined,
+      );
 
       // Invalidate all balance queries immediately after successful transaction
       queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -178,6 +203,8 @@ export function useVoltageSwapCallback(
     successInfo,
     trackTransaction,
     queryClient,
+    feeTransaction,
+    reportCollectedFee,
   ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications

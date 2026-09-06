@@ -1,4 +1,4 @@
-import { useUserState } from '@/store/userStore';
+import { useMemo } from 'react';
 import {
   ADDRESS_ZERO,
   Currency,
@@ -7,9 +7,11 @@ import {
   Route,
   Token,
 } from '@cryptoalgebra/fuse-sdk';
-import { useMemo } from 'react';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
+
+import { useUserState } from '@/store/userStore';
+
 import { useSwapPools } from './useSwapPools';
 
 /**
