@@ -26,8 +26,8 @@ export const DAILY_LIMIT_PRESETS_USD = [100, 250, 500, 1_000, 2_500] as const;
 /**
  * The daily limit card activation registers with, in whole dollars.
  *
- * The activation button enables the module in the same signature that creates the card,
- * so it cannot stop to ask, and the two directions of a later change are not symmetric:
+ * The activation button enables the module in the press that creates the card, so it
+ * cannot stop to ask, and the two directions of a later change are not symmetric:
  * lowering this is immediate and entirely in the user's hands, while raising it waits out
  * `limitRaiseDelay`. Starting low would therefore lock a new cardholder out of their own
  * card for a day the first time they spend more than the amount nobody asked them about
@@ -143,6 +143,32 @@ export const offerableDailyPresets = (limits: {
       daily * MONTHLY_LIMIT_MULTIPLIER <= limits.maxMonthlyLimitUsd
     );
   });
+
+/**
+ * The daily cap card activation registers with, clamped to what the org actually allows.
+ *
+ * {@link INITIAL_DAILY_LIMIT_USD} clamped *downwards* — never upwards. A ceiling below
+ * the default is the org saying this account may not have that much, so the answer is
+ * the largest offer underneath it rather than the nearest one; overshooting would only
+ * revert with `ExceedsOrgDailyCeiling`.
+ *
+ * `null` means no preset is open that the module would accept — and for a card that
+ * spends from the Safe, nothing to grant means nothing worth issuing. Before the
+ * ceilings have been read there is nothing to clamp against, so the plain default stands
+ * in; the activation path re-reads them before it signs, so that copy only ever decides
+ * what the screen says.
+ *
+ * Shared by the screen that previews the cap and the press that registers it, so the
+ * number shown is the number sent.
+ */
+export const activationDailyLimit = (
+  limits: { maxDailyLimitUsd: bigint; maxMonthlyLimitUsd: bigint } | null | undefined,
+): number | null =>
+  !limits
+    ? INITIAL_DAILY_LIMIT_USD
+    : (offerableDailyPresets(limits)
+        .filter(dollars => dollars <= INITIAL_DAILY_LIMIT_USD)
+        .at(-1) ?? null);
 
 /**
  * Formats a 6-decimal USD amount for display, without cents when it is a round dollar.
