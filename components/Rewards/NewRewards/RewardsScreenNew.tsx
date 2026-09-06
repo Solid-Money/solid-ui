@@ -18,8 +18,8 @@ import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hoo
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
-import { IS_TIER_CASHBACK_HARDCODED, isDevFeatureEnabled } from '@/lib/config';
-import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { isDevFeatureEnabled } from '@/lib/config';
+import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -191,11 +191,7 @@ export default function RewardsScreenNew() {
   const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackSettled);
   // Both the benefit card's "N% Cashback" title and the cashback sheet's "Your
   // cashback rate" row read this, so they can't disagree with each other.
-  const cashbackRate = resolveTierCashbackRate(
-    currentTier,
-    rewardsData?.cashbackRate,
-    IS_TIER_CASHBACK_HARDCODED,
-  );
+  const cashbackRate = resolveUserCashbackRate(rewardsData, currentTier);
 
   // Core grants neither the yield boost nor subscription cashback, so on a
   // Core test account both cards correctly disappear — which leaves nothing to
