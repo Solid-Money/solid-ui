@@ -30,8 +30,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
-import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -71,6 +70,10 @@ const CardDetailsPane = () => {
   const isOpen = useCardPaneStore(state => state.isOpen);
   const originRect = useCardPaneStore(state => state.originRect);
   const closePane = useCardPaneStore(state => state.close);
+  // Set by a `?wallet=apple|google` link (the home "Add to Apple Pay" banner),
+  // which asks for the guide rather than merely for this pane.
+  const walletGuide = useCardPaneStore(state => state.walletGuide);
+  const dismissWalletGuide = useCardPaneStore(state => state.dismissWalletGuide);
   const startFlight = useCardHeroStore(state => state.start);
 
   // Shown here rather than on the old details route: card issuance sets this flag
@@ -241,11 +244,7 @@ const CardDetailsPane = () => {
             <CashbackDetailsSheet
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
-              cashbackRate={resolveTierCashbackRate(
-                rewardsData?.currentTier,
-                rewardsData?.cashbackRate,
-                IS_TIER_CASHBACK_HARDCODED,
-              )}
+              cashbackRate={resolveUserCashbackRate(rewardsData)}
               cashbackThisMonth={cashbackThisMonth}
               cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
               maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
@@ -265,8 +264,14 @@ const CardDetailsPane = () => {
       />
       <AddToWalletModal
         trigger={null}
-        isOpen={isAddToWalletOpen}
-        onOpenChange={setIsAddToWalletOpen}
+        isOpen={isAddToWalletOpen || (isOpen && walletGuide !== null)}
+        onOpenChange={open => {
+          setIsAddToWalletOpen(open);
+          // Closing has to clear the link's request as well, or the guide would
+          // immediately re-open from it.
+          if (!open) dismissWalletGuide();
+        }}
+        initialWallet={walletGuide ?? undefined}
       />
     </View>
   );

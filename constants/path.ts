@@ -1,11 +1,24 @@
 import { Href, Route } from 'expo-router';
 
+import { DigitalWalletType } from '@/constants/digital-wallet';
+
 /**
  * Value of the wallet screen's `screen` query param that opens the card details
  * pane — i.e. `/?screen=card-info`. Exported so the wallet screen matches on the
  * same constant the links are built from.
  */
 export const CARD_INFO_SCREEN = 'card-info';
+
+/**
+ * Name of the query param that, alongside `screen=card-info`, opens the
+ * "Add to Wallet" guide on the card details pane with the right tab selected —
+ * i.e. `/?screen=card-info&wallet=apple`.
+ *
+ * It exists so a link can land on the guide, not merely near it: the home
+ * "Add to Apple Pay" banner is a redirect and nothing else, so the popup it
+ * promises has to be openable from the URL rather than from a tap handler.
+ */
+export const CARD_INFO_WALLET_PARAM = 'wallet';
 
 type Path = {
   ONBOARDING: Href;
@@ -163,6 +176,20 @@ export const path: Path = {
  * time the cardholder does not have. Undefined fields are dropped rather than
  * passed, so they never reach the URL as the string "undefined".
  */
+/**
+ * The card details surface with the "Add to Wallet" guide already open on
+ * `wallet`'s tab — `CARD_INFO` plus {@link CARD_INFO_WALLET_PARAM}.
+ *
+ * A function rather than a constant because the tab is the whole point: an iOS
+ * user asked to add the card to Apple Pay must not land on Google's
+ * instructions.
+ */
+export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
+  ({
+    pathname: '/',
+    params: { screen: CARD_INFO_SCREEN, [CARD_INFO_WALLET_PARAM]: wallet },
+  }) as Href;
+
 export const cardThreeDsRequestPath = (
   transactionId: string,
   preview?: {

@@ -1,22 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 
 interface AddToWalletModalProps {
   trigger: React.ReactNode;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Tab to show first. Apple by default, as before; an Android user sent here by
+   * the home "Add to Google Wallet" banner needs Google's steps, not Apple's.
+   */
+  initialWallet?: DigitalWalletType;
 }
 
 const MODAL_STATE: ModalState = { name: 'add-to-wallet', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 
-export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddToWalletModalProps) {
-  const [activeTab, setActiveTab] = useState('apple');
+export default function AddToWalletModal({
+  trigger,
+  isOpen,
+  onOpenChange,
+  initialWallet = DigitalWalletType.Apple,
+}: AddToWalletModalProps) {
+  const [activeTab, setActiveTab] = useState<DigitalWalletType>(initialWallet);
+
+  // The modal is mounted for the life of the screen, so the requested tab has to
+  // be applied on each open rather than only at mount — otherwise the second
+  // visit shows whichever tab the user last browsed to.
+  useEffect(() => {
+    if (isOpen) setActiveTab(initialWallet);
+  }, [isOpen, initialWallet]);
 
   return (
     <ResponsiveModal
@@ -34,22 +52,28 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
       <View className="p-6">
         {/* Tab buttons with underline indicator */}
         <View className="mb-8 flex-row">
-          <Pressable className="relative flex-1 pb-4" onPress={() => setActiveTab('apple')}>
+          <Pressable
+            className="relative flex-1 pb-4"
+            onPress={() => setActiveTab(DigitalWalletType.Apple)}
+          >
             <Text className="text-center text-base font-medium text-white">Apple Wallet</Text>
-            {activeTab === 'apple' && (
+            {activeTab === DigitalWalletType.Apple && (
               <View className="absolute bottom-0 left-[20%] right-[20%] h-1 rounded-sm bg-[#94F27F]" />
             )}
           </Pressable>
-          <Pressable className="relative flex-1 pb-4" onPress={() => setActiveTab('google')}>
+          <Pressable
+            className="relative flex-1 pb-4"
+            onPress={() => setActiveTab(DigitalWalletType.Google)}
+          >
             <Text className="text-center text-base font-medium text-white">Google Wallet</Text>
-            {activeTab === 'google' && (
+            {activeTab === DigitalWalletType.Google && (
               <View className="absolute bottom-0 left-[20%] right-[20%] h-1 rounded-sm bg-[#94F27F]" />
             )}
           </Pressable>
         </View>
 
         {/* Tab content */}
-        {activeTab === 'apple' && (
+        {activeTab === DigitalWalletType.Apple && (
           <View>
             <Text className="mb-8 text-2xl font-normal text-[#94F27F]">
               Add card to Apple Wallet
@@ -97,7 +121,7 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
           </View>
         )}
 
-        {activeTab === 'google' && (
+        {activeTab === DigitalWalletType.Google && (
           <View>
             <Text className="mb-8 text-2xl font-normal text-[#94F27F]">
               Add card to Google Wallet

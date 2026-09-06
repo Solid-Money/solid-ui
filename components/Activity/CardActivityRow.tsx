@@ -97,7 +97,9 @@ const CardActivityRow = ({
           <Text className="text-base font-medium web:text-lg" numberOfLines={1}>
             {merchantName}
           </Text>
-          {cashbackInfo && (
+          {/* An ineligible purchase earns nothing, and a diamond on the row
+              would advertise the opposite. The receipt says why. */}
+          {cashbackInfo && !cashbackInfo.isIneligible && (
             <View className="flex-row items-center gap-1">
               <Diamond width={12} height={12} />
               <Text className="text-sm font-medium text-muted-foreground">{cashbackLabel}</Text>
@@ -145,8 +147,14 @@ const CardActivityRow = ({
           )}
         </Text>
         {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
-        {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
-          <Text className="text-sm font-medium text-brand">{cashbackInfo.amount}</Text>
+        {/* Green once the payout has landed; ordinary text while it is still a
+            projection of what this purchase will earn. The label on the left
+            already carries the escrow status, so the figure does not repeat
+            it. */}
+        {cashbackInfo?.amount && (
+          <Text className={cn('text-sm font-medium', cashbackInfo.isPaid && 'text-brand')}>
+            {cashbackInfo.amount}
+          </Text>
         )}
         {feeInfo && (
           <Text

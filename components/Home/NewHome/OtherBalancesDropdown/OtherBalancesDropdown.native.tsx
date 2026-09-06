@@ -5,6 +5,7 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Text } from '@/components/ui/text';
+import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
 
 import {
   BalanceBreakdownRows,
@@ -32,6 +33,9 @@ const OtherBalancesDropdown = ({
   // A Wirex card has no balance of its own, so it gets a Spendable row and no
   // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
   const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
+  // Money received by SEPA/ACH and still sitting at Wirex. Empty for everyone
+  // without a Wirex bank account, so the rows simply do not appear.
+  const { balances: bankBalances } = useWirexUnifiedBalances();
 
   const present = useCallback(() => bottomSheetModalRef.current?.present(), []);
   const dismiss = useCallback(() => bottomSheetModalRef.current?.dismiss(), []);
@@ -84,6 +88,7 @@ const OtherBalancesDropdown = ({
             cardHoldsOwnBalance={cardHoldsOwnBalance}
             canAddToCard={canAddToCard}
             spendableBalance={spendableBalance}
+            bankBalances={bankBalances}
           />
         </BottomSheetView>
       </BottomSheetModal>

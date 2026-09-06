@@ -164,6 +164,56 @@ export function useCardSteps(
         kycProvider,
         countryCode,
       });
+
+      if (kycProvider === KycProvider.SUMSUB) {
+        /**
+         * A verification that has already been submitted must not be restarted.
+         * Sumsub GREEN hands off to Wirex, which then adjudicates, so an
+         * UNDER_REVIEW user is mid-hand-off — and if that forward stalled (a
+         * Wirex outage; see the admin retry endpoint) they would sit here
+         * pressing a button that opens a brand new session, hit the country
+         * gate on it, and be told to confirm a country to redo work they had
+         * already finished. The Bridge branch below has always guarded this;
+         * the Sumsub path did not.
+         *
+         * `kycStatus`, not `uiKycStatus`: the latter can be an optimistic
+         * post-submit window, while this needs the backend's own answer — and
+         * for a Wirex user there is no Bridge kycLink, so it is exactly what
+         * /cards/status reported.
+         */
+        if (kycStatus === KycStatus.UNDER_REVIEW) {
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'already_under_review',
+            kycProvider,
+          });
+          router.push(path.CARD_PENDING as any);
+          return;
+        }
+
+        /**
+         * Sumsub card sessions REQUIRE a country the user declared themselves —
+         * an IP guess is refused server-side, because `user.country` pins which
+         * issuer serves them and nothing writes it back. Ask here rather than
+         * letting the session fail: this is the entry point the home setup step
+         * uses (`useHomeSetupSteps` calls this action directly rather than
+         * `startCardOnboarding`), so it is reached with no gate having run at
+         * all, and `resolveKycProvider` deliberately does not persist the
+         * country it routes on.
+         *
+         * The selection screen writes `source: 'manual'` and re-enters the flow
+         * via `/card/activate?countryConfirmed=true`, so this asks once.
+         */
+        if (useCountryStore.getState().countryInfo?.source !== 'manual') {
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'country_selection_required',
+            kycProvider,
+            countryCode,
+          });
+          router.push(path.CARD_COUNTRY_SELECTION as any);
+          return;
+        }
+      }
+
       router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
       return;
     }
@@ -232,6 +282,7 @@ export function useCardSteps(
   }, [
     router,
     kycLinkId,
+    kycStatus,
     uiKycStatus,
     processingUntil,
     countryStore,

@@ -1,9 +1,10 @@
 import {
   formatTierCashbackRate,
   resolveTierCashbackRate,
+  resolveUserCashbackRate,
   TIER_CASHBACK_RATES,
 } from '@/lib/tierCashback';
-import { RewardsTier } from '@/lib/types';
+import { RewardsTier, RewardsUserData } from '@/lib/types';
 
 /**
  * The rewards API still reports the pre-launch cashback rates, so until the
@@ -45,6 +46,64 @@ describe('resolveTierCashbackRate', () => {
     // The rewards screen renders Core defaults while the request is in flight;
     // "3%" is the right number to show there, not "0%".
     expect(resolveTierCashbackRate(RewardsTier.CORE, undefined, true)).toBe(3);
+  });
+});
+
+/**
+ * Support can put one account on a rate of its own. That rate is what their
+ * spend actually earns, so it has to survive the launch-rate override — the one
+ * case where quoting the same number everywhere would quote a number we are not
+ * going to pay.
+ *
+ * These run with the override on, which is its default.
+ */
+describe('resolveUserCashbackRate', () => {
+  const rewards = (data: Partial<RewardsUserData>) => data as RewardsUserData;
+
+  it('quotes a rate pinned to this user over the launch rate for their tier', () => {
+    expect(
+      resolveUserCashbackRate(
+        rewards({ currentTier: RewardsTier.CORE, cashbackRate: 8, hasCustomCashbackRate: true }),
+      ),
+    ).toBe(8);
+  });
+
+  it('quotes the launch rate when nothing is pinned to them', () => {
+    expect(
+      resolveUserCashbackRate(
+        rewards({ currentTier: RewardsTier.CORE, cashbackRate: 2, hasCustomCashbackRate: false }),
+      ),
+    ).toBe(3);
+  });
+
+  it('quotes the launch rate against a backend that does not report the flag', () => {
+    // The field is absent on older backends, where `cashbackRate` is the tier
+    // rate anyway — so the pre-existing behaviour has to be what absence means.
+    expect(
+      resolveUserCashbackRate(rewards({ currentTier: RewardsTier.PRIME, cashbackRate: 3 })),
+    ).toBe(4);
+  });
+
+  it('quotes a pinned zero, which is a decision and not an absence', () => {
+    expect(
+      resolveUserCashbackRate(
+        rewards({ currentTier: RewardsTier.ULTRA, cashbackRate: 0, hasCustomCashbackRate: true }),
+      ),
+    ).toBe(0);
+  });
+
+  it('falls back to the tier when the flag arrives without a usable rate', () => {
+    expect(
+      resolveUserCashbackRate(
+        rewards({ currentTier: RewardsTier.PRIME, hasCustomCashbackRate: true }),
+      ),
+    ).toBe(4);
+  });
+
+  it('takes the caller’s tier when it has already resolved one', () => {
+    // The rewards screen defaults to Core while the request is in flight.
+    expect(resolveUserCashbackRate(undefined, RewardsTier.ULTRA)).toBe(5);
+    expect(resolveUserCashbackRate(undefined)).toBe(0);
   });
 });
 

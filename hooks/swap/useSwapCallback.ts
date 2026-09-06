@@ -7,13 +7,13 @@ import { fuse } from 'viem/chains';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
 import { useActivityActions } from '@/hooks/useActivityActions';
+import { useApproveCallbackFromTrade } from '@/hooks/useApprove';
+import { TransactionSuccessInfo, useTransactionAwait } from '@/hooks/useTransactionAwait';
+import useUser from '@/hooks/useUser';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 import { SwapCallbackState } from '@/lib/types/swap-state';
-
-import { useApproveCallbackFromTrade } from '../useApprove';
-import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
-import useUser from '../useUser';
+import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 
 import { useSwapCallArguments } from './useSwapCallArguments';
 import { SwapFeeCollection, useSwapFeeCollection } from './useSwapFeeCollection';
@@ -125,11 +125,21 @@ export function useSwapCallback(
   }, [bestCall, actualRouterAddress]);
 
   const swapCallback = useCallback(async () => {
-    if (!trade || !swapConfig || !account || !user?.suborgId || !user?.signWith) {
-      return;
-    }
+    if (!trade || !swapConfig)
+      throw new Error('Unable to prepare the quote. Change the amount and try again.');
+    if (!account || !user?.suborgId || !user?.signWith)
+      throw new Error('Your wallet is not ready. Reopen the swap and try again.');
 
     try {
+      const accountSession = useRewardsUpgradeStore.getState().session;
+      const assertAccount = async () => {
+        if (
+          selectedRewardsUserId() !== user?.userId ||
+          useRewardsUpgradeStore.getState().session !== accountSession
+        )
+          throw new Error('Account changed. Reopen the swap for the selected account.');
+      };
+      await assertAccount();
       setIsSendingSwap(true);
 
       const transactions: { to: Address; data: `0x${string}`; value: bigint }[] = [];
@@ -246,7 +256,14 @@ export function useSwapCallback(
           },
         },
         onUserOpHash =>
-          executeTransactions(smartAccountClient, transactions, 'Swap failed', fuse, onUserOpHash),
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Swap failed',
+            fuse,
+            onUserOpHash,
+            assertAccount,
+          ),
       );
 
       const transaction =
@@ -277,6 +294,9 @@ export function useSwapCallback(
         },
       });
 
+      if (!transaction?.transactionHash || transaction.status !== 'success')
+        throw new Error('Swap has not been confirmed');
+
       // Invalidate all balance queries immediately after successful transaction
       // This ensures TokenCard balances refresh without waiting for useTransactionAwait
       queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -291,6 +311,7 @@ export function useSwapCallback(
 
       // Set swap data for useTransactionAwait to handle toast notifications
       setSwapData(result);
+      return transaction;
     } catch (error: any) {
       console.error('Swap execution failed:', error);
 
@@ -344,6 +365,7 @@ export function useSwapCallback(
     successInfo,
     trackTransaction,
     queryClient,
+    actualRouterAddress,
     feeTransaction,
     reportCollectedFee,
   ]);
@@ -351,14 +373,23 @@ export function useSwapCallback(
   // useTransactionAwait handles balance invalidation and toast notifications
   // We don't use its isLoading state since the transaction is already confirmed
   // when executeTransactions returns (it waits for receipt internally)
-  useTransactionAwait(swapData?.transactionHash, successInfo);
+  useTransactionAwait(
+    swapData?.transactionHash,
+    successInfo ? { ...successInfo, onSuccess: undefined } : undefined,
+  );
 
   return useMemo(() => {
-    if (!trade || !swapConfig) {
+    const error =
+      !account || !user?.suborgId || !user?.signWith
+        ? 'Your wallet is not ready. Reopen the swap and try again.'
+        : !trade || !swapConfig
+          ? 'Unable to prepare the quote. Change the amount and try again.'
+          : undefined;
+    if (error) {
       return {
         state: SwapCallbackState.INVALID,
         callback: undefined,
-        error: 'Missing trade or configuration',
+        error,
         isLoading: false,
         needAllowance,
       };
@@ -371,5 +402,14 @@ export function useSwapCallback(
       isLoading: isSendingSwap,
       needAllowance,
     };
-  }, [trade, swapConfig, swapCallback, isSendingSwap, needAllowance]);
+  }, [
+    trade,
+    swapConfig,
+    swapCallback,
+    isSendingSwap,
+    needAllowance,
+    account,
+    user?.suborgId,
+    user?.signWith,
+  ]);
 }

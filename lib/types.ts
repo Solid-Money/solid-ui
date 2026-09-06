@@ -641,7 +641,14 @@ export interface DiditVerificationStatusResponse {
  * 'onramp' is buy-crypto (TransFi). The backend uses this to decide what it
  * records on the card customer — the SDK experience is identical.
  */
-export type SumsubSessionFlow = 'card' | 'onramp';
+/**
+ * Which product asked for a Sumsub session. Mirrors the backend enum.
+ *
+ * `virtual_account` is gated on Wirex's BANK availability rather than the card
+ * list and is not silenced by the card switch — routing is per feature, so a
+ * user can be a Wirex bank customer in a country whose card goes to Rain.
+ */
+export type SumsubSessionFlow = 'card' | 'onramp' | 'virtual_account';
 
 /** Response from POST /accounts/v1/sumsub/session. Access token for the WebSDK. */
 export interface SumsubSessionResponse {
@@ -1067,6 +1074,16 @@ export enum TransactionType {
   CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
+  /**
+   * Wirex bank rails (EUR SEPA / USD ACH) on the user's own virtual account.
+   *
+   * Separate from BANK_TRANSFER, which is the Bridge rail: a tap on that type
+   * opens the Bridge transfer-preview modal (see ActivityTransactions), which
+   * has no Wirex equivalent, and it is hard-coded inbound so a payout under it
+   * would render with the wrong sign.
+   */
+  WIREX_BANK_DEPOSIT = 'wirex_bank_deposit',
+  WIREX_BANK_PAYOUT = 'wirex_bank_payout',
   CARD_TRANSACTION = 'card_transaction',
   CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',
@@ -1100,6 +1117,7 @@ export enum TransactionCategory {
   WALLET_TRANSFER = 'Wallet transfer',
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
+  BANK_WITHDRAWAL = 'Bank withdraw',
   CARD_DEPOSIT = 'Card deposit',
   CARD_WITHDRAWAL = 'Card withdraw',
   REWARD = 'Reward',
@@ -1351,6 +1369,11 @@ export enum CashbackStatus {
   Canceled = 'Canceled',
   Failed = 'Failed',
   PermanentlyFailed = 'PermanentlyFailed',
+  /**
+   * The purchase earns nothing because of what it was — a cash withdrawal, a
+   * money transfer, a tax payment. Terminal, and never carries an amount.
+   */
+  Ineligible = 'Ineligible',
 }
 
 export interface Cashback {
@@ -1366,13 +1389,39 @@ export interface Cashback {
   fiatAmount?: string;
   fiatCurrency?: string;
   payoutAt?: string;
+  /**
+   * USD this row is projected to pay out when its escrow matures.
+   *
+   * An escrowed row has no payout amount yet — `soUsdAmount` is written when it
+   * matures — so this is what lets a receipt name a figure on the day of the
+   * purchase. Only sent for rows still awaiting payout, and absent on backends
+   * that predate the projection.
+   */
+  projectedUsdValue?: number;
   createdAt: string;
 }
 
 export interface CashbackInfo {
-  amount: string;
+  /**
+   * The figure to print, already formatted (e.g. "+$5.77"). Null when neither a
+   * payout nor a projection is available, which is what makes a surface fall
+   * back to naming the status instead of a number.
+   */
+  amount: string | null;
   isPending: boolean;
   isEscrowed: boolean;
+  /**
+   * The purchase is excluded from the programme by its merchant category, so
+   * there is no figure and none is coming. Distinct from an absent
+   * `CashbackInfo`, which means we simply have no cashback record: this one is
+   * a definite "not eligible" the receipt can state outright.
+   */
+  isIneligible: boolean;
+  /**
+   * Whether the payout has actually landed. The only state that colours the
+   * figure: until then it is a projection, and reads as ordinary text.
+   */
+  isPaid: boolean;
   payoutAt?: string;
 }
 
@@ -1478,7 +1527,23 @@ export interface RewardsUserData {
   totalPoints: number;
   nextTierPoints: number;
   nextTier: RewardsTier | null;
+  /**
+   * The cashback % this user actually earns — their tier's rate, unless support
+   * has put them on one of their own.
+   */
   cashbackRate: number;
+  /**
+   * What their tier pays by default, before any per-user rate. Absent on older
+   * backends, where `cashbackRate` is the tier rate anyway.
+   */
+  tierCashbackRate?: number;
+  /**
+   * Whether `cashbackRate` is pinned to this user rather than coming from their
+   * tier. When it is, the app must quote it rather than substituting the launch
+   * rate for their tier — see `resolveUserCashbackRate`. Absent on older
+   * backends, which is the same as false.
+   */
+  hasCustomCashbackRate?: boolean;
   cashbackThisMonth: number;
   /**
    * Cashback earned this month that is still escrowed, in USD, already trimmed
@@ -2477,6 +2542,21 @@ export interface TransfiStatusResponse {
  */
 export interface TransfiKycRetryResponse extends TransfiStatusResponse {
   kycUrl?: string;
+}
+
+/**
+ * Address/phone a user fills in to unblock TRANSFI_PROFILE_DATA_INCOMPLETE.
+ * Only the fields they were told were missing need to be sent.
+ */
+export interface TransfiProfileInput {
+  street?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  /** National number, digits only. */
+  phone?: string;
+  /** Calling code, e.g. '+972'. */
+  phoneCode?: string;
 }
 
 export interface TransfiPaymentMethodOption {

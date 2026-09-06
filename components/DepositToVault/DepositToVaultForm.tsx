@@ -48,6 +48,7 @@ import { showTextInputFromStart } from '@/lib/utils/textInput';
 import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
+import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 
 function getGaslessText(
   minAmount: string,
@@ -500,6 +501,8 @@ function DepositToVaultForm() {
   };
 
   const onSubmit = async (data: DepositFormData) => {
+    const depositUserId = selectedRewardsUserId();
+    const depositSession = useRewardsUpgradeStore.getState().session;
     // Capture attribution for conversion funnel tracking
     const attributionData = useAttributionStore.getState().getAttributionForEvent();
     const attributionChannel = getAttributionChannel(attributionData);
@@ -526,6 +529,12 @@ function DepositToVaultForm() {
       });
 
       const trackingId = await depositFn(data.amount);
+      if (
+        !trackingId ||
+        selectedRewardsUserId() !== depositUserId ||
+        useRewardsUpgradeStore.getState().session !== depositSession
+      )
+        return;
       setTransaction({
         amount: Number(data.amount),
         trackingId,

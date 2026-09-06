@@ -24,6 +24,14 @@ export const CARD_FUND_TOKENS: CardFundToken[] = [
 
 export const CARD_FUND_USD_ICON = getAsset('images/deposit-cash-us.png');
 
+/**
+ * Cash-deposit rows shown before the "Show more" footer takes over. The list of
+ * local currencies grows as onramp corridors are added, so the group is capped
+ * to keep the first screen of "Fund your card" scannable — every method is
+ * still one tap away behind the footer.
+ */
+export const CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS = 4;
+
 /** Deposits land on the card wallet within roughly the same window on every chain. */
 export const CARD_FUND_ESTIMATED_TIME = '~3 min';
 

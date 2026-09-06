@@ -1,4 +1,5 @@
 import {
+  bankBalancesToShow,
   getTotalBalance,
   shouldShowCard,
   shouldShowSpendable,
@@ -77,5 +78,57 @@ describe('the Card / Spendable slot', () => {
   // Testers whose card status hasn't flipped to ACTIVE still have a real balance.
   it('still shows a Card row for a balance without an active card', () => {
     expect(shouldShowCard({ cardBalance: 12, userHasCard: false })).toBe(true);
+  });
+});
+
+/**
+ * The Wirex bank balance is the first pot here that is not USD, and the first
+ * that Solid cannot move. Both facts keep it out of the headline and give it its
+ * own rows.
+ */
+describe('the Bank rows', () => {
+  it('shows a currency the user actually holds', () => {
+    expect(bankBalancesToShow([{ tokenSymbol: 'WEUR', amount: 55.93, currency: 'EUR' }])).toEqual([
+      { tokenSymbol: 'WEUR', amount: 55.93, currency: 'EUR' },
+    ]);
+  });
+
+  it('drops a zero rail, so it does not read as money lost', () => {
+    // Both rails report a balance once either is provisioned, so a funded EUR
+    // row would otherwise sit beside an empty USD one.
+    expect(
+      bankBalancesToShow([
+        { tokenSymbol: 'WEUR', amount: 55.93, currency: 'EUR' },
+        { tokenSymbol: 'WUSD', amount: 0, currency: 'USD' },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it('keeps both when both are funded', () => {
+    expect(
+      bankBalancesToShow([
+        { tokenSymbol: 'WEUR', amount: 10, currency: 'EUR' },
+        { tokenSymbol: 'WUSD', amount: 20, currency: 'USD' },
+      ]),
+    ).toHaveLength(2);
+  });
+
+  it('shows nothing for a user with no bank account', () => {
+    expect(bankBalancesToShow([])).toEqual([]);
+    expect(bankBalancesToShow()).toEqual([]);
+  });
+
+  it('drops a non-finite amount rather than rendering NaN', () => {
+    expect(
+      bankBalancesToShow([{ tokenSymbol: 'WEUR', amount: Number.NaN, currency: 'EUR' }]),
+    ).toEqual([]);
+  });
+
+  it('never enters the headline total', () => {
+    // EUR cannot be added to a USD total without a live rate, and this money is
+    // in Wirex's custody — the headline would overstate both the amount and what
+    // the user can do from here. The rows say it instead, in its own currency.
+    const args = { walletBalance: 100, cardBalance: 0, savingsBalance: 50, userHasCard: false };
+    expect(getTotalBalance(args)).toBe(150);
   });
 });

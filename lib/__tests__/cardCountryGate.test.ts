@@ -75,7 +75,10 @@ describe('resolveCardCountry', () => {
     expect(mockCheckCardAccess).not.toHaveBeenCalled();
   });
 
-  it('proceeds when the detected country has card access, and stores it', async () => {
+  // An IP hit says where the phone is, not where the user lives, and the backend
+  // refuses to open a Sumsub card session on a guess. Passing the gate on one is
+  // what let users reach KYC and die on COUNTRY_REQUIRED with nothing to tap.
+  it('still asks when the detected country has card access, but stores it to preselect', async () => {
     mockDetectGeo.mockResolvedValue({
       ip: '1.2.3.4',
       countryCode: 'US',
@@ -84,13 +87,27 @@ describe('resolveCardCountry', () => {
     });
     mockCheckCardAccess.mockResolvedValue({ hasAccess: true, countryCode: 'US' });
 
-    await expect(resolveCardCountry()).resolves.toBe('supported');
+    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
     expect(useCountryStore.getState().countryInfo).toMatchObject({
       countryCode: 'US',
       isAvailable: true,
       state: 'California',
       source: 'ip',
     });
+  });
+
+  // Visiting any card entry point persists the IP country. That must not then
+  // make every later gate pass without the user ever being asked.
+  it('keeps asking on a stored IP country, however supported it is', async () => {
+    useCountryStore.getState().setCountryInfo({
+      countryCode: 'DE',
+      countryName: 'Germany',
+      isAvailable: true,
+      source: 'ip',
+    });
+    mockCheckCardAccess.mockResolvedValue({ hasAccess: true, countryCode: 'DE' });
+
+    await expect(resolveCardCountry()).resolves.toBe('needs_selection');
   });
 
   it('asks for a country when the detected country has no card access', async () => {

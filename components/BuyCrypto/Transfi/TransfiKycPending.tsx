@@ -10,7 +10,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
 import { useRetryTransfiKyc, useShareTransfiKyc, useTransfiStatus } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
+import { asTransfiError } from '@/lib/transfiErrors';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
  * How many times to auto-fire the share before giving the user a manual retry.
@@ -27,6 +29,7 @@ const MAX_SHARE_ATTEMPTS = 3;
  */
 export const TransfiKycPending = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
   const { data: status } = useTransfiStatus({ poll: true });
   const { mutate: share, isPending: isSharing } = useShareTransfiKyc();
@@ -52,8 +55,18 @@ export const TransfiKycPending = () => {
       return;
     }
     attemptsRef.current += 1;
-    share();
-  }, [status?.status, isSharing, share]);
+    share(undefined, {
+      onError: error => {
+        const transfiError = asTransfiError(error);
+        // A transient failure is what the attempt budget is for. A refusal with
+        // a verdict — an incomplete profile, a country TransFi won't serve — is
+        // not going to change on the third try, so show it instead of spinning.
+        if (transfiError.action === 'retry') return;
+        setError(transfiError, DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR);
+      },
+    });
+  }, [status?.status, isSharing, share, setError, setModal]);
 
   useEffect(() => {
     if (status?.status === 'ready') {

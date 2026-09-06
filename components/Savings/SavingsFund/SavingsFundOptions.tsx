@@ -12,6 +12,10 @@ import {
   getSavingsFundNetworkChips,
   getSavingsFundTokenGroups,
 } from '@/components/Savings/SavingsFund/constants';
+import SavingsFundConnectWalletRow from '@/components/Savings/SavingsFund/SavingsFundConnectWalletRow';
+import { useDimension } from '@/hooks/useDimension';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
+import { useVaultWalletFunds } from '@/hooks/useVaultWalletFunds';
 
 import type { SavingsFundIntent } from '@/lib/types';
 
@@ -37,21 +41,38 @@ const SavingsFundOptions = ({
   isExternalWalletLoading,
   intent = 'savings',
 }: SavingsFundOptionsProps) => {
-  const { stablecoins, crypto } = getSavingsFundTokenGroups(intent);
+  const { isDesktop } = useDimension();
+  // Each vault has its own savings screen, and its Deposit button preselects it
+  // (see StartEarningButton / SavingsFundedActions), so this offers only the
+  // tokens that fund the vault the user opened.
+  const { vault, depositConfig } = useVaultDepositConfig();
+  const { stablecoins, crypto } = getSavingsFundTokenGroups(intent, vault.vaultToken);
+  const { hasFunds: hasWalletFunds, isLoading: isLoadingWalletFunds } = useVaultWalletFunds(vault);
+
+  // Nothing to move when the wallet holds none of this vault's tokens. Held back
+  // while balances load so the row doesn't appear and then vanish.
+  const showMoveFromWallet = hasWalletFunds && !isLoadingWalletFunds;
+  // Desktop connects a wallet from this screen; mobile keeps the sub-screen,
+  // which also carries the QR and buy-crypto options that aren't gated on
+  // 'wallet'. A vault that takes no external-wallet deposit shows neither.
+  const showConnectWallet = isDesktop && depositConfig.methods.includes('wallet');
+  const showOther = showMoveFromWallet || showConnectWallet || !isDesktop;
 
   return (
     <View className="gap-y-8">
-      <CardFundGroup label="Stablecoins">
-        {stablecoins.map(token => (
-          <CardFundRow
-            key={token.symbol}
-            icon={<Image source={token.icon} style={TOKEN_ICON_STYLE} contentFit="cover" />}
-            title={token.symbol}
-            chips={getSavingsFundNetworkChips(token.symbol)}
-            onPress={() => onTokenPress(token.symbol)}
-          />
-        ))}
-      </CardFundGroup>
+      {stablecoins.length > 0 ? (
+        <CardFundGroup label="Stablecoins">
+          {stablecoins.map(token => (
+            <CardFundRow
+              key={token.symbol}
+              icon={<Image source={token.icon} style={TOKEN_ICON_STYLE} contentFit="cover" />}
+              title={token.symbol}
+              chips={getSavingsFundNetworkChips(token.symbol)}
+              onPress={() => onTokenPress(token.symbol)}
+            />
+          ))}
+        </CardFundGroup>
+      ) : null}
 
       {crypto.length > 0 ? (
         <CardFundGroup label="Crypto">
@@ -68,21 +89,28 @@ const SavingsFundOptions = ({
         </CardFundGroup>
       ) : null}
 
-      <CardFundGroup label="Other">
-        <CardFundRow
-          icon={<FundMoveSavings width={22} height={25} />}
-          title="Move from wallet or savings"
-          subtitle="Use funds you already hold in Solid"
-          onPress={onMoveFromWalletPress}
-        />
-        <CardFundRow
-          icon={<FundExternalWallet width={26} height={26} />}
-          title="Deposit from an external wallet"
-          subtitle="Send from any supported network"
-          onPress={onExternalWalletPress}
-          isLoading={isExternalWalletLoading}
-        />
-      </CardFundGroup>
+      {showOther ? (
+        <CardFundGroup label="Other">
+          {showMoveFromWallet ? (
+            <CardFundRow
+              icon={<FundMoveSavings width={22} height={25} />}
+              title="Move from wallet"
+              subtitle="Use funds you already hold in Solid"
+              onPress={onMoveFromWalletPress}
+            />
+          ) : null}
+          {showConnectWallet ? <SavingsFundConnectWalletRow /> : null}
+          {!isDesktop ? (
+            <CardFundRow
+              icon={<FundExternalWallet width={26} height={26} />}
+              title="Deposit from an external wallet"
+              subtitle="Send from any supported network"
+              onPress={onExternalWalletPress}
+              isLoading={isExternalWalletLoading}
+            />
+          ) : null}
+        </CardFundGroup>
+      ) : null}
 
       <View className="items-center">
         <NeedHelp />

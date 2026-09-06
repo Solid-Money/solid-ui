@@ -228,6 +228,7 @@ export default function SignupCreating() {
       // Store user in local state
       const selectedUser: User = {
         safeAddress,
+        walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
         signWith: user.walletAddress,
