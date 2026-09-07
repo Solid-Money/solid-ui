@@ -471,18 +471,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </Text>
           </View>
         ),
-        // The figure earns its green only once the payout has landed. Until
-        // then it is a projection, and it carries no "(Escrowed)" or
-        // "(Pending)" of its own — the "Releases in" row below already says the
-        // money is still on its way, and saying so twice on one receipt reads
-        // as a warning about the amount rather than a note about its timing.
+        // Green like its label, paid or not: the figure is money coming back
+        // either way. It carries no "(Escrowed)" or "(Pending)" of its own —
+        // the "Releases in" row below already says the money is still on its
+        // way, and saying so twice on one receipt reads as a warning about the
+        // amount rather than a note about its timing. Muted only when the
+        // purchase earned nothing at all.
         value: (
-          <Value
-            className={cn(
-              cashbackInfo.isPaid && 'text-brand',
-              cashbackInfo.isIneligible && 'text-white/50',
-            )}
-          >
+          <Value className={cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand'}>
             {cashbackInfo.isIneligible
               ? 'Ineligible'
               : (cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending'))}
