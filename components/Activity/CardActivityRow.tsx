@@ -1,9 +1,9 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
-import Diamond from '@/assets/images/diamond';
 import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
+import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { CardProvider, CardTransaction, Cashback } from '@/lib/types';
@@ -11,8 +11,6 @@ import { cn } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
 import {
   formatCardTransactionAmount,
-  getCardFeeInfo,
-  getCardMerchantLocation,
   getCardMerchantName,
   getCashbackAmount,
   isOutgoingCardTransaction,
@@ -30,7 +28,7 @@ type CardActivityRowProps = {
   showTimestamp?: boolean;
 };
 
-/** Card statuses that get a chip of their own instead of a location line. */
+/** Card statuses worth a chip on the row. Anything settled gets none. */
 const STATUS_PILLS: Record<string, { label: string; tone: 'neutral' | 'danger' }> = {
   pending: { label: 'Pending', tone: 'neutral' },
   declined: { label: 'Declined', tone: 'danger' },
@@ -55,10 +53,8 @@ const CardActivityRow = ({
 }: CardActivityRowProps) => {
   const { isScreenMedium } = useDimension();
   const merchantName = getCardMerchantName(transaction);
-  const merchantLocation = getCardMerchantLocation(transaction);
   const statusPill = STATUS_PILLS[transaction.status?.toLowerCase() ?? ''];
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
-  const feeInfo = getCardFeeInfo(transaction);
 
   // A purchase takes money, so it reads with a minus — the stored sign is the
   // ledger's and says the opposite. See `isOutgoingCardTransaction`.
@@ -101,31 +97,21 @@ const CardActivityRow = ({
               would advertise the opposite. The receipt says why. */}
           {cashbackInfo && !cashbackInfo.isIneligible && (
             <View className="flex-row items-center gap-1">
-              <Diamond width={12} height={12} />
-              <Text className="text-sm font-medium text-muted-foreground">{cashbackLabel}</Text>
+              {/* Green, glyph and label both, like the figure they name on the
+                  right: what the purchase earned back reads as a gain rather
+                  than as another fact about the charge. The receipt's own
+                  diamond, so a tapped row and the screen it opens agree. */}
+              <CashbackDiamondIcon size={13} />
+              <Text className="text-sm font-medium text-brand">{cashbackLabel}</Text>
             </View>
           )}
-          {feeInfo && (
-            <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-              {feeInfo.isWaived
-                ? `${feeInfo.label} · ${feeInfo.waivedNote}`
-                : feeInfo.isPending
-                  ? `${feeInfo.label} (Pending)`
-                  : `${feeInfo.label} · ${feeInfo.rate}`}
-            </Text>
-          )}
-          {/* The chip stands in for the location line rather than joining it —
-              where a purchase happened matters once it has actually gone
-              through. */}
-          {statusPill ? (
-            <ActivityStatusPill label={statusPill.label} tone={statusPill.tone} />
-          ) : (
-            merchantLocation && (
-              <Text className="text-sm text-white/70" numberOfLines={1}>
-                {merchantLocation}
-              </Text>
-            )
-          )}
+          {/* Neither fee nor location here: how a charge was priced and where it
+              happened are details of that one purchase, and the receipt carries
+              both in full. A row is what the user scans, and a line for each of
+              them crowded out the two things they are scanning for. The chip is
+              for status alone — something still in flight, which is the one
+              thing about a purchase a feed has to say before it is opened. */}
+          {statusPill && <ActivityStatusPill label={statusPill.label} tone={statusPill.tone} />}
         </View>
       </View>
 
@@ -147,24 +133,11 @@ const CardActivityRow = ({
           )}
         </Text>
         {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
-        {/* Green once the payout has landed; ordinary text while it is still a
-            projection of what this purchase will earn. The label on the left
-            already carries the escrow status, so the figure does not repeat
-            it. */}
+        {/* Green whether or not the payout has landed: it is money coming back
+            either way, and the label on the left already carries the escrow
+            status, so the figure does not repeat it. */}
         {cashbackInfo?.amount && (
-          <Text className={cn('text-sm font-medium', cashbackInfo.isPaid && 'text-brand')}>
-            {cashbackInfo.amount}
-          </Text>
-        )}
-        {feeInfo && (
-          <Text
-            className={cn(
-              'text-sm font-medium',
-              feeInfo.isWaived ? 'text-brand' : 'text-muted-foreground',
-            )}
-          >
-            {feeInfo.amount}
-          </Text>
+          <Text className="text-sm font-medium text-brand">{cashbackInfo.amount}</Text>
         )}
       </View>
     </Pressable>
