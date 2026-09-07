@@ -8,6 +8,9 @@ import Trash from '@/assets/images/trash';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
+import { OnramperAmount } from '@/components/BuyCrypto/Onramper/OnramperAmount';
+import { OnramperAssetSelector } from '@/components/BuyCrypto/Onramper/OnramperAssetSelector';
+import { OnramperCurrencySelector } from '@/components/BuyCrypto/Onramper/OnramperCurrencySelector';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
 import { TransfiError } from '@/components/BuyCrypto/Transfi/TransfiError';
@@ -154,6 +157,9 @@ const useDepositOption = ({
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isBuyCryptoProfile = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name;
   const isBuyCryptoError = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name;
+  const isOnramperAmount = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_AMOUNT.name;
+  const isOnramperCurrency = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_CURRENCY.name;
+  const isOnramperAsset = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_ASSET.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -318,6 +324,18 @@ const useDepositOption = ({
       return <TransfiError />;
     }
 
+    if (isOnramperAmount) {
+      return <OnramperAmount />;
+    }
+
+    if (isOnramperCurrency) {
+      return <OnramperCurrencySelector />;
+    }
+
+    if (isOnramperAsset) {
+      return <OnramperAssetSelector />;
+    }
+
     if (isPublicAddress) {
       return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
@@ -409,6 +427,9 @@ const useDepositOption = ({
     if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isBuyCryptoProfile) return 'buy-crypto-profile';
     if (isBuyCryptoError) return 'buy-crypto-error';
+    if (isOnramperAmount) return 'onramper-amount';
+    if (isOnramperCurrency) return 'onramper-currency';
+    if (isOnramperAsset) return 'onramper-asset';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -451,6 +472,9 @@ const useDepositOption = ({
     // The error screen carries its own headline and icon; a second title above
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
+    if (isOnramperAmount) return 'Buy crypto';
+    if (isOnramperCurrency) return 'Select currency';
+    if (isOnramperAsset) return 'Select asset';
     if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -740,6 +764,10 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+    } else if (isOnramperAmount) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+    } else if (isOnramperCurrency || isOnramperAsset) {
+      setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_AMOUNT);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
@@ -904,11 +932,17 @@ const useDepositOption = ({
 
   // The virtual account details screen owns its ScrollView so it can overlay the
   // top/bottom fade gradients; fillViewportHeight gives it a bounded height on web.
+  // The Onramper pickers own a ScrollView so their lists can fill the sheet and
+  // keep the search box pinned. They differ from the TransFi pickers next door,
+  // which look identical but only ever render on web and Android — Onramper is
+  // iOS-only, where a ScrollView inside a ScrollView fights the gesture.
   const disableScroll =
     (Platform.OS !== 'web' && isDepositDirectlyAddress) ||
     isWalletConnector ||
     isVirtualAccountDetails ||
-    isVirtualAccountApply;
+    isVirtualAccountApply ||
+    isOnramperCurrency ||
+    isOnramperAsset;
   const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
   const hideHeader = isVirtualAccountApply;
 

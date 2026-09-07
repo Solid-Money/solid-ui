@@ -158,6 +158,24 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_profile',
     number: 27,
   },
+  /**
+   * Onramper buy-crypto steps (iOS only). A separate flow from the TransFi one
+   * above rather than more steps in it: Onramper prices from the fiat side,
+   * settles on a chain the user picks, and owns its own checkout via a native
+   * Apple Pay button, so it shares no screen with TransFi beyond the entry row.
+   */
+  OPEN_ONRAMPER_AMOUNT: {
+    name: 'open_onramper_amount',
+    number: 28,
+  },
+  OPEN_ONRAMPER_CURRENCY: {
+    name: 'open_onramper_currency',
+    number: 28.3,
+  },
+  OPEN_ONRAMPER_ASSET: {
+    name: 'open_onramper_asset',
+    number: 28.6,
+  },
 };
 
 export const SEND_MODAL = {

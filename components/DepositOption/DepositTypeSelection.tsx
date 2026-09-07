@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Minus, Plus } from 'lucide-react-native';
+import { CreditCard, Minus, Plus } from 'lucide-react-native';
 
 import FundExternalWallet from '@/assets/images/fund-external-wallet';
 import HomeQR from '@/assets/images/home-qr';
@@ -20,12 +20,13 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import useOnramperAvailability from '@/hooks/useOnramperAvailability';
 import { track } from '@/lib/analytics';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useOnramperStore } from '@/store/useOnramperStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-import OnRamperDepositType from './OnRamperDepositType';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
@@ -42,6 +43,7 @@ const DepositTypeSelection = () => {
   const { isDesktop } = useDimension();
   const setModal = useDepositStore(state => state.setModal);
   const resetTransfi = useTransfiStore(state => state.reset);
+  const resetOnramper = useOnramperStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
   const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
@@ -50,6 +52,7 @@ const DepositTypeSelection = () => {
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
+  const { isAvailable: isOnramperAvailable } = useOnramperAvailability();
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -78,6 +81,17 @@ const DepositTypeSelection = () => {
   const handleConnectWalletPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'wallet' });
     setModal(DEPOSIT_MODAL.OPEN_CONNECT_WALLET);
+  };
+
+  const handleOnramperPress = () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+      provider: 'onramper',
+    });
+    // Start clean, as the local-currency rows do: a currency or amount left
+    // over from a previous visit would quote something the user didn't ask for.
+    resetOnramper();
+    setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_AMOUNT);
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -162,9 +176,25 @@ const DepositTypeSelection = () => {
             </Text>
           </Pressable>
         </CardFundGroup>
-      </View>
 
-      <OnRamperDepositType />
+        {/* Onramper's checkout is a native iOS Apple Pay flow, and it only
+            prices for a few countries — `useOnramperAvailability` gates on both,
+            so this group is absent rather than empty everywhere else. */}
+        {isOnramperAvailable ? (
+          <CardFundGroup label="Other">
+            <CardFundRow
+              icon={
+                <CryptoIcon>
+                  <CreditCard color="white" size={22} strokeWidth={1.5} />
+                </CryptoIcon>
+              }
+              title="Buy crypto"
+              subtitle="Buy USDC with Apple Pay"
+              onPress={handleOnramperPress}
+            />
+          </CardFundGroup>
+        ) : null}
+      </View>
 
       <VirtualAccountApplyDialog
         isOpen={isVirtualAccountApplyOpen}

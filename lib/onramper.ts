@@ -1,8 +1,6 @@
 import { Platform } from 'react-native';
-import { OnramperClient } from '@onramper/onramper-react-native';
 
-import { fetchOnramperSession } from './api';
-import { EXPO_PUBLIC_ONRAMPER_API_KEY, EXPO_PUBLIC_ONRAMPER_CLIENT_ID } from './config';
+import type { OnramperClient } from '@onramper/onramper-react-native';
 
 // Platform-specific resolution target for TypeScript, and the runtime fallback for
 // every platform except iOS. Metro loads lib/onramper.ios.ts on iOS and this file
@@ -28,28 +26,19 @@ export function getOnramperClient(): OnramperClient {
   throw unsupported();
 }
 
-export async function initOnramper(): Promise<OnramperClient> {
-  const client = new OnramperClient({
-    apiKey: EXPO_PUBLIC_ONRAMPER_API_KEY,
-    clientId: EXPO_PUBLIC_ONRAMPER_CLIENT_ID,
-    environment: 'development',
-    theme: 'system',
-    logLevel: 'off',
-
-    onSessionExpired: () => {
-      return fetchOnramperSession();
-    },
-  });
-
-  const { sessionId, sessionToken } = await fetchOnramperSession();
-
-  try {
-    await client.initialize({ sessionId, sessionToken });
-  } catch (e) {
-    throw new Error(`Failed to initialize Onramper client: ${e}`);
-  }
-
-  return client;
+/**
+ * Rejects rather than constructing anything.
+ *
+ * `useOnramperClient` deliberately doesn't gate on platform — it lets the
+ * bootstrap fail and surfaces the error — so this is the error it surfaces, and
+ * it has to say why. Constructing a client here instead would defeat that: on
+ * web the module is stubbed to empty, so `new OnramperClient()` raises
+ * "OnramperClient is not a constructor", and on Android it reaches a Nitro
+ * module with no native implementation behind it. Both are the same fact told
+ * badly.
+ */
+export function initOnramper(): Promise<OnramperClient> {
+  return Promise.reject(unsupported());
 }
 
 export function destroyOnramper(): void {

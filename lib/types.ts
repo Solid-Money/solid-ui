@@ -2643,6 +2643,66 @@ export interface TransfiOrderStatusResponse {
   feeData?: TransfiFeeData;
 }
 
+/**
+ * Onramper buy-crypto (iOS only).
+ *
+ * The SDK owns checkout — `getCheckoutRequirements()` hands back the native
+ * Apple Pay button and its quote — so these types cover only what it does *not*
+ * tell us: which currencies to offer, which assets we can actually deliver, and
+ * what each pair's limits are. All of it comes from our backend, which
+ * intersects Onramper's catalogue with the chains a Solid Safe can be credited
+ * on. See lib/onramper.ts.
+ */
+
+/** A fiat currency the user can pay with. `id` is a checkout's `source`. */
+export interface OnramperFiat {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  icon?: string;
+}
+
+/** An asset we can buy *and* deliver. `id` is a checkout's `destination`. */
+export interface OnramperAsset {
+  id: string;
+  code: string;
+  name: string;
+  /** Onramper's network slug — this is `wallet.network` on a checkout. */
+  network: string;
+  networkName: string;
+  chainId: number;
+  decimals: number;
+  icon?: string;
+  /** Purchase limits in the paying currency, when Onramper reported any. */
+  limits?: { min?: number; max?: number };
+}
+
+/** `id` is a checkout's `paymentMethod` (today always `applepay`). */
+export interface OnramperPaymentMethod {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
+export interface OnramperConfig {
+  /**
+   * Whether a buy can actually complete from the country asked about. Derived
+   * server-side from a live price enquiry, so a region turning on upstream needs
+   * no client release — see `lib/onramperAvailability`.
+   */
+  isSupported: boolean;
+  currencies: OnramperFiat[];
+  defaultCurrency: string;
+  /** Asset symbols the flow is scoped to, e.g. `['USDC']`. */
+  deliverableSymbols: string[];
+}
+
+export interface OnramperAssets {
+  assets: OnramperAsset[];
+  paymentMethods: OnramperPaymentMethod[];
+}
+
 export interface VaultDepositConfig {
   methods: DepositMethod[];
   supportedChains: number[];

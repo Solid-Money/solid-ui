@@ -95,6 +95,8 @@ import {
   MppCredentialsResponse,
   OnrampAutomationRail,
   OnrampAutomationResponseDto,
+  OnramperAssets,
+  OnramperConfig,
   Points,
   ProductFeeQuote,
   ProductFeeRates,
@@ -2050,6 +2052,70 @@ export const fetchOnramperSession = async (): Promise<OnramperSession> => {
   const data = await response.json();
 
   return data;
+};
+
+/**
+ * Fiat currencies the Onramper buy flow can offer, and which to preselect.
+ *
+ * `country` only steers the preselection — the list itself is Onramper's whole
+ * catalogue, because currency availability is really a function of the country
+ * (see `fetchOnramperAssets`, which is the actual gate).
+ */
+export const fetchOnramperConfig = async (country?: string): Promise<OnramperConfig> => {
+  const jwt = getJWTToken();
+  const params = new URLSearchParams(country ? { country } : {});
+  const query = params.toString();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/config${query ? `?${query}` : ''}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Assets buyable with `source` that we can deliver to `wallet`, plus the
+ * payment methods available in `country`.
+ *
+ * Both lists come back empty where Onramper won't serve the country — that is
+ * the answer, not a failure, so callers render "not available here" rather than
+ * an error. `wallet` is the user's Safe: the backend passes it to Onramper's
+ * price enquiry so ramps that refuse to quote without a destination still
+ * report their limits.
+ */
+export const fetchOnramperAssets = async (
+  source: string,
+  country?: string,
+  wallet?: string,
+): Promise<OnramperAssets> => {
+  const jwt = getJWTToken();
+  const params = new URLSearchParams({ source });
+  if (country) params.set('country', country);
+  if (wallet) params.set('wallet', wallet);
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/assets?${params.toString()}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
 
 export const bridgeDeposit = async (
