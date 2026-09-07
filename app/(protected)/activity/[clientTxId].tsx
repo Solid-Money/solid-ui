@@ -55,7 +55,6 @@ import {
   cardTransactionExplorerUrl,
   formatCardAmount,
   formatCardTransactionAmount,
-  getCardFeeInfo,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
   getCashbackAmount,
@@ -361,7 +360,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   }, [merchantPlace, transaction.merchant_name]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
-  const feeInfo = getCardFeeInfo(transaction);
   const localDetails = transaction.local_transaction_details;
 
   /**
@@ -521,8 +519,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Value>
         ),
       },
-      // What the merchant actually charged, shown right above the FX fee so the
-      // fee has a visible cause rather than looking like an unexplained charge.
+      // What the merchant actually charged, in their own currency — the figure
+      // the user will recognise from the till, against the dollars they were
+      // billed at the top of this screen.
       localDetails?.amount &&
         localDetails.currency && {
           key: 'local-amount',
@@ -533,24 +532,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </Value>
           ),
         },
-      feeInfo && {
-        key: 'card-fee',
-        label: (
-          <Label>
-            {feeInfo.label}
-            {feeInfo.rate ? ` (${feeInfo.rate})` : ''}
-          </Label>
-        ),
-        value: (
-          <Value className={feeInfo.isWaived ? 'text-brand' : ''}>
-            {feeInfo.isWaived
-              ? feeInfo.waivedNote || 'Free'
-              : feeInfo.isPending
-                ? `${feeInfo.amount} (Pending)`
-                : feeInfo.amount}
-          </Value>
-        ),
-      },
+      // No fee row. An FX fee is swept as its own charge rather than folded
+      // into this purchase, so it is a movement in its own right and not a term
+      // of the figure at the top of this screen — which is what a row in among
+      // these made it look like.
       // What the purchase actually cost the user in their own asset. The figure
       // above is what the merchant charged; this is what left the wallet to
       // cover it, and the two are in different units.
@@ -598,7 +583,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return allRows;
   }, [
     cashbackInfo,
-    feeInfo,
     localDetails,
     txHash,
     handleExplorerPress,
