@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -81,6 +80,12 @@ interface CardActionsRowProps {
   onFreezeToggle: () => void;
   onMorePress: () => void;
   /**
+   * Opens the card-spending sheet. The sheet itself lives on the pane rather than in
+   * this row, because a blocked "Show details" tap opens the same one — and it has to
+   * stay reachable when this row hides its own button (a frozen card).
+   */
+  onSpendPress: () => void;
+  /**
    * Whether funds can move onto the card: not frozen, and KYC not paused or
    * offboarded. Derived by the parent (`canAddFundsToCard`) rather than here, so
    * this row and the freeze state it renders come from one reading of the card.
@@ -115,6 +120,7 @@ const CardActionsRow = ({
   isFreezing,
   onFreezeToggle,
   onMorePress,
+  onSpendPress,
   canAddFunds,
   canWithdraw,
 }: CardActionsRowProps) => {
@@ -136,17 +142,16 @@ const CardActionsRow = ({
     <View className="flex-row items-start justify-center">
       {showRegister && (
         <View style={styles.item}>
-          <RegisterSpendAction
-            trigger={
-              <CircleAction label={isRevoked ? 'Paused' : isRegistered ? 'Spending' : 'Set up'}>
-                <Image
-                  source={getAsset('images/card-action-add-funds.png')}
-                  style={styles.actionIcon}
-                  contentFit="contain"
-                />
-              </CircleAction>
-            }
-          />
+          <CircleAction
+            label={isRevoked ? 'Paused' : isRegistered ? 'Spending' : 'Set up'}
+            onPress={onSpendPress}
+          >
+            <Image
+              source={getAsset('images/card-action-add-funds.png')}
+              style={styles.actionIcon}
+              contentFit="contain"
+            />
+          </CircleAction>
         </View>
       )}
       {showDeposit && (

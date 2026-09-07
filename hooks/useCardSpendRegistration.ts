@@ -37,8 +37,16 @@ const SENTINEL_MODULES = '0x0000000000000000000000000000000000000001' as Address
 /** Enough to cover any real Safe's module list in one read. */
 const MODULE_PAGE_SIZE = 50n;
 
-/** Where a registration or limit change was started from, for the funnel. */
-export type CardSpendRegistrationSource = 'spending_sheet' | 'card_activation';
+/**
+ * Where a registration or limit change was started from, for the funnel.
+ *
+ * `card_reveal` is the gate on the card-details reveal: a card whose Safe cannot be
+ * debited declines every payment, so "Show details" opens the spending sheet instead of
+ * handing over the PAN. Worth telling apart from `spending_sheet` — someone who came
+ * looking for their card number is being asked a question they did not go there to
+ * answer, and how many of them finish it is the thing to watch.
+ */
+export type CardSpendRegistrationSource = 'spending_sheet' | 'card_activation' | 'card_reveal';
 
 /** The Safe's live limit state, with every matured transition already applied. */
 export interface CardSpendLimit {
