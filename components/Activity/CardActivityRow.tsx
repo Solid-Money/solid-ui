@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
 import {
   formatCardTransactionAmount,
-  getCardMerchantLocation,
   getCardMerchantName,
   getCashbackAmount,
   isOutgoingCardTransaction,
@@ -29,7 +28,7 @@ type CardActivityRowProps = {
   showTimestamp?: boolean;
 };
 
-/** Card statuses that get a chip of their own instead of a location line. */
+/** Card statuses worth a chip on the row. Anything settled gets none. */
 const STATUS_PILLS: Record<string, { label: string; tone: 'neutral' | 'danger' }> = {
   pending: { label: 'Pending', tone: 'neutral' },
   declined: { label: 'Declined', tone: 'danger' },
@@ -54,7 +53,6 @@ const CardActivityRow = ({
 }: CardActivityRowProps) => {
   const { isScreenMedium } = useDimension();
   const merchantName = getCardMerchantName(transaction);
-  const merchantLocation = getCardMerchantLocation(transaction);
   const statusPill = STATUS_PILLS[transaction.status?.toLowerCase() ?? ''];
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
@@ -107,19 +105,13 @@ const CardActivityRow = ({
               <Text className="text-sm font-medium text-brand">{cashbackLabel}</Text>
             </View>
           )}
-          {/* No fee here, on either side of the row: how a charge was priced is
-              a detail of that one purchase, and the receipt carries it in full.
-              A row is what the user scans, and a fee on every line of it
-              crowded out the two things they are scanning for. */}
-          {/* The chip stands in for the location line rather than joining it —
-              where a purchase happened matters once it has actually gone
-              through. Location wears the same chip as a status, so the third
-              line of a row is one shape however it is filled. */}
-          {statusPill ? (
-            <ActivityStatusPill label={statusPill.label} tone={statusPill.tone} />
-          ) : (
-            merchantLocation && <ActivityStatusPill label={merchantLocation} numberOfLines={1} />
-          )}
+          {/* Neither fee nor location here: how a charge was priced and where it
+              happened are details of that one purchase, and the receipt carries
+              both in full. A row is what the user scans, and a line for each of
+              them crowded out the two things they are scanning for. The chip is
+              for status alone — something still in flight, which is the one
+              thing about a purchase a feed has to say before it is opened. */}
+          {statusPill && <ActivityStatusPill label={statusPill.label} tone={statusPill.tone} />}
         </View>
       </View>
 
