@@ -5,6 +5,7 @@ import { Currency, CurrencyAmount, Price, tryParseAmount } from '@cryptoalgebra/
 import { STABLECOINS_TOKENS } from '@/constants/tokens';
 import { getAlgebraInfoClient } from '@/graphql/clients';
 import { NativePriceDocument, SingleTokenDocument } from '@/graphql/generated/algebra-info';
+import { buildTokenUsdPrice } from '@/lib/utils/tokenUsdPrice';
 
 export function useUSDCPrice(currency: Currency | undefined) {
   const { data: bundles } = useQuery(NativePriceDocument, {
@@ -38,12 +39,11 @@ export function useUSDCPrice(currency: Currency | undefined) {
 
     if (usdAmount) {
       return {
-        price: new Price(
-          currency,
-          STABLECOINS_TOKENS.USDT_V2,
-          usdAmount.denominator,
-          usdAmount.numerator,
-        ),
+        // Built from the raw-units ratio rather than from `usdAmount`'s own
+        // numerator/denominator. `Price` multiplies RAW amounts, so feeding it
+        // a CurrencyAmount's fraction inflates every `quote()` by
+        // 10^(2 * decimals - 6) — see buildTokenUsdPrice.
+        price: buildTokenUsdPrice(currency, tokenUSDValue, STABLECOINS_TOKENS.USDT_V2),
         formatted: Number(usdAmount.toSignificant()),
       };
     }
