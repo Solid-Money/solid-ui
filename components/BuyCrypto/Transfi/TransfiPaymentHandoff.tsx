@@ -72,7 +72,7 @@ export const TransfiPaymentHandoff = ({
 
       <View className="mt-auto gap-3">
         <Button
-          className="h-14 rounded-2xl"
+          className="h-14 rounded-full"
           variant={blocked ? 'brand' : 'secondary'}
           onPress={onOpen}
         >
@@ -80,14 +80,14 @@ export const TransfiPaymentHandoff = ({
             className={
               blocked
                 ? 'text-base font-bold text-primary-foreground'
-                : 'text-base font-semibold text-primary'
+                : 'text-base font-semibold text-white'
             }
           >
             {blocked ? 'Open payment page' : 'Reopen payment page'}
           </Text>
         </Button>
         <Button
-          className="h-14 rounded-2xl"
+          className="h-14 rounded-full"
           variant={blocked ? 'secondary' : 'brand'}
           onPress={() => {
             track(TRACKING_EVENTS.BUY_CRYPTO_PAYMENT_CONFIRMED_BY_USER, {
@@ -100,7 +100,7 @@ export const TransfiPaymentHandoff = ({
           <Text
             className={
               blocked
-                ? 'text-base font-semibold text-primary'
+                ? 'text-base font-semibold text-white'
                 : 'text-base font-bold text-primary-foreground'
             }
           >

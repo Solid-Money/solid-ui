@@ -163,10 +163,6 @@ export const TransfiAmount = () => {
     !!activePaymentCode &&
     !!currency;
   const continueDisabled = !isValid || creatingOrder;
-  const usdEquivalent =
-    Number.isFinite(amountNum) && amountNum > 0
-      ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(amountNum)
-      : '0';
 
   // Reported once per amount that lands out of range, not per keystroke: the
   // limits being wrong for a market is the signal, not how fast someone types.
@@ -258,7 +254,6 @@ export const TransfiAmount = () => {
               className="p-0 text-3xl font-semibold text-white web:outline-none"
               style={{ fontFamily: 'MonaSans_600SemiBold' }}
             />
-            <Text className="text-base font-medium text-white/50">${usdEquivalent}</Text>
           </View>
           <View className="h-12 shrink-0 flex-row items-center gap-[7px] rounded-full bg-white/10 px-3">
             {/* Our own USDC mark, not TransFi's: theirs badges the delivery
@@ -365,7 +360,9 @@ export const TransfiAmount = () => {
           disabled={continueDisabled}
         >
           <Text
-            className={continueDisabled ? 'text-base font-bold text-white' : 'text-base font-bold'}
+            className={
+              continueDisabled ? 'text-base font-bold text-white' : 'text-base font-bold text-black'
+            }
           >
             {creatingOrder
               ? 'Creating order…'

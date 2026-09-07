@@ -442,7 +442,7 @@ const useDepositOption = ({
     if (isBuyCryptoOptions) return 'Buy crypto';
     if (isBuyCryptoKycConsent) return 'Verify to continue';
     if (isBuyCryptoKycPending) return 'Verifying';
-    if (isBuyCryptoAmount) return 'Buy crypto';
+    if (isBuyCryptoAmount) return 'Buy USDC';
     if (isBuyCryptoCurrency) return 'Select currency';
     if (isBuyCryptoPaymentMethod) return 'Payment method';
     if (isBuyCryptoPayment) return 'Complete payment';
