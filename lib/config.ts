@@ -16,6 +16,19 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
+/**
+ * Two-letter country to run the Onramper buy flow as, instead of the one geo
+ * detects. For testing from a country Onramper does not serve — without it the
+ * "Buy crypto" row is correctly hidden and there is nothing to exercise.
+ *
+ * Substitutes the country only, never the verdict: the backend still decides
+ * whether buys complete there, and config, assets, quotes and limits are all
+ * fetched for real. Forcing the verdict instead would show the row and then a
+ * dead screen, because the asset list for the real country is empty.
+ *
+ * Ignored in production builds. Never set in prod.
+ */
+export const EXPO_PUBLIC_ONRAMPER_COUNTRY = process.env.EXPO_PUBLIC_ONRAMPER_COUNTRY ?? '';
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined
 // into the JS bundle, so only ever put a publishable key here, never a secret.

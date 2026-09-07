@@ -1,3 +1,27 @@
+/**
+ * The country to run the buy flow as, honouring a testing override.
+ *
+ * Substituting the country rather than the verdict is deliberate: the backend
+ * still decides whether buys complete there, so config, assets, quotes and
+ * limits are all fetched for real and the whole chain is exercised. Overriding
+ * `isSupported` instead would surface the entry row and then a dead screen,
+ * because the asset list for the real country is legitimately empty.
+ *
+ * Returns `undefined` unless a well-formed override is set on a non-production
+ * build — a malformed value is ignored rather than sent upstream, where
+ * Onramper would reject it and the flow would look broken for the wrong reason.
+ */
+export const resolveOnramperCountryOverride = (
+  raw: string | undefined,
+  isProductionBuild: boolean,
+): string | undefined => {
+  if (isProductionBuild) return undefined;
+
+  const code = (raw ?? '').trim().toUpperCase();
+
+  return /^[A-Z]{2}$/.test(code) ? code : undefined;
+};
+
 export interface OnramperAvailability {
   /** True only when this platform and this country can both complete a buy. */
   isAvailable: boolean;
@@ -6,6 +30,8 @@ export interface OnramperAvailability {
   countryCode: string;
   isPlatformSupported: boolean;
   isCountrySupported: boolean;
+  /** True when `countryCode` came from the testing override, not from geo. */
+  isCountryOverridden: boolean;
 }
 
 /**
@@ -34,23 +60,40 @@ export interface OnramperAvailability {
 export const resolveOnramperAvailability = ({
   isPlatformSupported,
   countryCode,
+  countryOverride,
   isCountryServiceable,
-  isLoading,
+  isGeoLoading,
+  isVerdictLoading,
 }: {
   isPlatformSupported: boolean;
+  /** Country from geo. Ignored when `countryOverride` is set. */
   countryCode: string;
-  /** Backend verdict for `countryCode`; undefined until it resolves. */
+  /** Testing override from `resolveOnramperCountryOverride`. */
+  countryOverride?: string;
+  /** Backend verdict for the effective country; undefined until it resolves. */
   isCountryServiceable: boolean | undefined;
-  isLoading: boolean;
+  /** The IP lookup is still running. Irrelevant once overridden. */
+  isGeoLoading: boolean;
+  /** The backend verdict is still in flight. Never skippable — the answer is
+   *  what decides availability, override or not. */
+  isVerdictLoading: boolean;
 }): OnramperAvailability => {
-  const normalized = countryCode.toUpperCase();
+  const isCountryOverridden = !!countryOverride;
+  const normalized = countryOverride ?? countryCode.toUpperCase();
   const isCountrySupported = isCountryServiceable === true;
 
+  // An override makes the IP lookup irrelevant, so it must not still be waited
+  // on — otherwise a tester in a country the lookup is slow or failing for
+  // can't reach the flow they overrode their way into. The verdict is a
+  // different matter and is always awaited.
+  const waiting = (isCountryOverridden ? false : isGeoLoading) || isVerdictLoading;
+
   return {
-    isAvailable: isPlatformSupported && !isLoading && isCountrySupported,
-    isLoading,
+    isAvailable: isPlatformSupported && !waiting && isCountrySupported,
+    isLoading: waiting,
     countryCode: normalized,
     isPlatformSupported,
     isCountrySupported,
+    isCountryOverridden,
   };
 };

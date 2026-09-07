@@ -1,4 +1,7 @@
-import { resolveOnramperAvailability } from '@/lib/onramperAvailability';
+import {
+  resolveOnramperAvailability,
+  resolveOnramperCountryOverride,
+} from '@/lib/onramperAvailability';
 
 /**
  * The gate on the "Buy crypto" row. Both halves are easy to get wrong in a way
@@ -12,7 +15,8 @@ describe('resolveOnramperAvailability', () => {
       isPlatformSupported: true,
       countryCode: 'US',
       isCountryServiceable: true,
-      isLoading: false,
+      isGeoLoading: false,
+      isVerdictLoading: false,
       ...overrides,
     });
 
@@ -54,7 +58,7 @@ describe('resolveOnramperAvailability', () => {
 
   it('withholds the flow while the verdict is still unknown', () => {
     // Appearing and then vanishing reads as a bug; the lookup settles quickly.
-    expect(resolve({ isCountryServiceable: undefined, isLoading: true })).toMatchObject({
+    expect(resolve({ isCountryServiceable: undefined, isVerdictLoading: true })).toMatchObject({
       isAvailable: false,
       isLoading: true,
     });
@@ -67,7 +71,49 @@ describe('resolveOnramperAvailability', () => {
   });
 
   it('stays unavailable for a serviceable country that has not resolved yet', () => {
-    expect(resolve({ isLoading: true }).isAvailable).toBe(false);
+    expect(resolve({ isGeoLoading: true }).isAvailable).toBe(false);
+  });
+
+  it('runs as the overridden country and flags that it did', () => {
+    const result = resolve({ countryCode: 'ZM', countryOverride: 'US' });
+
+    expect(result).toMatchObject({
+      countryCode: 'US',
+      isCountryOverridden: true,
+      isAvailable: true,
+    });
+  });
+
+  it('stops waiting on the IP lookup once a country is overridden', () => {
+    // The tester already said which country to use. Blocking on a lookup whose
+    // answer is discarded would keep them out of the flow they overrode into.
+    expect(resolve({ countryCode: '', countryOverride: 'US', isGeoLoading: true })).toMatchObject({
+      isAvailable: true,
+      isLoading: false,
+    });
+  });
+
+  it('still waits for the backend verdict when overridden', () => {
+    // The override substitutes the country, never the answer about it.
+    expect(
+      resolve({
+        countryOverride: 'US',
+        isCountryServiceable: undefined,
+        isVerdictLoading: true,
+      }),
+    ).toMatchObject({ isAvailable: false, isLoading: true });
+  });
+
+  it('still hides the flow when the overridden country is not served', () => {
+    // Overriding to Germany must not conjure a buy that cannot complete.
+    expect(resolve({ countryOverride: 'DE', isCountryServiceable: false })).toMatchObject({
+      isAvailable: false,
+      isCountryOverridden: true,
+    });
+  });
+
+  it('reports no override when none is set', () => {
+    expect(resolve().isCountryOverridden).toBe(false);
   });
 
   it('normalises the country code, since Onramper expects it upper-cased', () => {
@@ -75,5 +121,33 @@ describe('resolveOnramperAvailability', () => {
 
     expect(result.countryCode).toBe('US');
     expect(result.isAvailable).toBe(true);
+  });
+});
+
+describe('resolveOnramperCountryOverride', () => {
+  it('accepts a two-letter code on a non-production build', () => {
+    expect(resolveOnramperCountryOverride('US', false)).toBe('US');
+  });
+
+  it('upper-cases and trims what the env gives it', () => {
+    expect(resolveOnramperCountryOverride('  us  ', false)).toBe('US');
+  });
+
+  it('ignores the override entirely in production', () => {
+    // The guard is the whole reason this is safe to ship: a value that leaks
+    // into a prod build must do nothing.
+    expect(resolveOnramperCountryOverride('US', true)).toBeUndefined();
+  });
+
+  it('ignores a malformed value rather than sending it upstream', () => {
+    // Onramper rejects a bad country, and the flow would look broken for a
+    // reason that has nothing to do with the flow.
+    for (const bad of ['', '   ', 'USA', 'U', '12', 'United States']) {
+      expect(resolveOnramperCountryOverride(bad, false)).toBeUndefined();
+    }
+  });
+
+  it('ignores an unset env var', () => {
+    expect(resolveOnramperCountryOverride(undefined, false)).toBeUndefined();
   });
 });

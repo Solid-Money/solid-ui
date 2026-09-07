@@ -40,7 +40,7 @@ export const OnramperAmount = () => {
   const setModal = useBuyCryptoNavigation();
   const closeDeposit = useDepositStore(state => state.setModal);
   const { user } = useUser();
-  const { countryCode, isAvailable } = useOnramperAvailability();
+  const { countryCode, isAvailable, isCountryOverridden } = useOnramperAvailability();
 
   const fiatAmount = useOnramperStore(state => state.fiatAmount);
   const fiatCurrency = useOnramperStore(state => state.fiatCurrency);
@@ -242,6 +242,18 @@ export const OnramperAmount = () => {
 
   return (
     <View className="shrink-0 gap-6">
+      {/* A forced country produces a flow that works here but would not for a
+          real user in this region — say so, or a successful test read as proof
+          the region is live. */}
+      {isCountryOverridden ? (
+        <View className="rounded-[10px] border border-amber-400/40 bg-amber-400/10 px-3 py-2">
+          <Text className="text-xs font-medium leading-[17px] text-amber-300">
+            Testing as {countryCode}. Your real region is not served — set
+            EXPO_PUBLIC_ONRAMPER_COUNTRY to change or unset it.
+          </Text>
+        </View>
+      ) : null}
+
       <View className="gap-2.5">
         <Text className="text-base font-medium text-white/70">You pay</Text>
         <View className="h-[80px] flex-row items-center justify-between rounded-[15px] bg-[#1C1C1C] pl-4 pr-3.5">
