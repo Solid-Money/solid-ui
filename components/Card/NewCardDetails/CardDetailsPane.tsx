@@ -21,17 +21,19 @@ import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHer
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
+import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { CardSpendRegistrationSource } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { CardStatus } from '@/lib/types';
+import { CardProvider, CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
   canToggleCardFreeze,
@@ -90,6 +92,19 @@ const CardDetailsPane = () => {
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
+  // The card-spending sheet is owned here rather than by the action row, because two
+  // things open it: the row's own "Set up"/"Spending" button, and a "Show details" tap
+  // on a card that cannot spend yet. One instance above both also keeps it reachable
+  // when the row hides its button (a frozen card) — which is exactly when a blocked
+  // reveal still needs somewhere to send the user. `null` is closed; the value it holds
+  // is which entry point opened it, for the registration funnel.
+  const [spendSheetSource, setSpendSheetSource] = useState<CardSpendRegistrationSource | null>(
+    null,
+  );
+  // Stable identities: the reveal section folds its opener into the memoised toggle
+  // handler, which would be rebuilt on every render of this pane otherwise.
+  const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
+  const openSpendSheetFromReveal = useCallback(() => setSpendSheetSource('card_reveal'), []);
   // Held true through the dismissal, so the sections have something to animate out
   // of; without it `isOpen` going false would yank the pane off screen instantly.
   const [isSettling, setIsSettling] = useState(false);
@@ -114,6 +129,10 @@ const CardDetailsPane = () => {
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       return;
     }
+    // A dismissed pane must not leave its spending sheet floating over the wallet: the
+    // dialog is portalled, so it outlives the layer that opened it. Clearing the source
+    // rather than merely hiding it also stops the sheet reappearing on the next visit.
+    setSpendSheetSource(null);
     // Nothing to settle if it was never opened, or the pane would sit visible for the
     // settle window on startup.
     if (!hasOpened.current) return;
@@ -225,6 +244,7 @@ const CardDetailsPane = () => {
             last4={cardDetails?.card_details?.last_4}
             cardholderName={cardDetails?.cardholder_name}
             provider={provider}
+            onRequireSpendSetup={openSpendSheetFromReveal}
             // The card's own issuing country, falling back to the KYC residence
             // country the status endpoint reports (it's absent for test overrides).
             issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
@@ -236,6 +256,7 @@ const CardDetailsPane = () => {
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
               onMorePress={() => setIsAddToWalletOpen(true)}
+              onSpendPress={openSpendSheet}
               canAddFunds={canAddFundsToCard(fundsAccess)}
               canWithdraw={canWithdrawFromCard(fundsAccess)}
             />
@@ -262,6 +283,16 @@ const CardDetailsPane = () => {
         isOpen={isOpen && shouldShowWelcomePopup}
         onClose={() => setShouldShowWelcomePopup(false)}
       />
+      {/* Wirex only — a Rain card prefunds itself and has no module to enable. Mounted
+          on the issuer rather than on the action row's own visibility, so the reveal
+          gate above always has a sheet to open. */}
+      {provider === CardProvider.WIREX && (
+        <RegisterSpendAction
+          isOpen={spendSheetSource !== null}
+          onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
+          source={spendSheetSource ?? 'spending_sheet'}
+        />
+      )}
       <AddToWalletModal
         trigger={null}
         isOpen={isAddToWalletOpen || (isOpen && walletGuide !== null)}

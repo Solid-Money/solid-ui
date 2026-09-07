@@ -1,9 +1,8 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Check, Clock, ShieldCheck } from 'lucide-react-native';
+import { Check, Clock, Eye, ShieldCheck } from 'lucide-react-native';
 
-import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,11 +21,20 @@ import {
   onChainToUsd,
   usdToOnChain,
 } from '@/constants/cardSpendModule';
-import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import {
+  CardSpendRegistrationSource,
+  useCardSpendRegistration,
+} from '@/hooks/useCardSpendRegistration';
 
 interface RegisterSpendActionProps {
-  /** The circular action rendered in the card's action row. */
-  trigger: ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  /**
+   * What opened the sheet. Reported on the registration funnel, and `card_reveal` also
+   * decides whether the sheet explains itself: that entry point went looking for the
+   * card number and got this instead.
+   */
+  source?: CardSpendRegistrationSource;
 }
 
 /**
@@ -65,9 +73,20 @@ interface RegisterSpendActionProps {
  * The button says which of the two is about to happen, because "your limit is now $500"
  * would be false for the next day on the raise path — and a user who believed it would
  * find their card declining at the till.
+ *
+ * ## Why it is controlled from outside
+ *
+ * Two things open this sheet: the card action row's own "Set up"/"Spending" button, and
+ * a blocked "Show details" tap — the card's numbers are worth nothing while the module
+ * cannot debit the Safe. So the open state and the single instance live on the pane
+ * above both, which is also what keeps the sheet reachable when the action row hides its
+ * button (a frozen card) and a blocked reveal still needs somewhere to send the user.
  */
-const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+const RegisterSpendAction = ({
+  isOpen,
+  onOpenChange,
+  source = 'spending_sheet',
+}: RegisterSpendActionProps) => {
   const [selectedDaily, setSelectedDaily] = useState<number | null>(null);
   // Turning spending off declines the card at the till, so the destructive button asks
   // once before it signs. Local to the sheet, and cleared whenever it closes, so a
@@ -83,6 +102,8 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
     isCancellingIncrease,
     canDisable,
     isDisabling,
+    isLoading: isLoadingRegistration,
+    refetch,
     limit,
     pendingIncrease,
     error,
@@ -137,7 +158,7 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
   );
 
   const closeSheet = () => {
-    setIsOpen(false);
+    onOpenChange(false);
     setIsConfirmingDisable(false);
     // The picker is an edit of on-chain state, so it must not carry a choice across
     // openings — a stale selection would show a limit the card does not have.
@@ -149,7 +170,7 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
     try {
       // False means the user dismissed the signature prompt — nothing was enabled, so
       // saying "set up" would be a lie. Leave the sheet open and say nothing.
-      if (!(await register(daily))) return;
+      if (!(await register(daily, source))) return;
       Toast.show({
         type: 'success',
         text1: isRevoked ? 'Card spending re-enabled' : 'Card spending is set up',
@@ -222,269 +243,298 @@ const RegisterSpendAction = ({ trigger }: RegisterSpendActionProps) => {
       : 'Set up card spending';
 
   return (
-    <>
-      {/* SlotTrigger, not DialogTrigger asChild: the trigger is a CircleAction whose own
-          padding/label styling lives on its root Pressable, and the asChild Slot chain
-          drops those classes. SlotTrigger clones and merges onPress instead. */}
-      <SlotTrigger onPress={() => setIsOpen(true)}>{trigger}</SlotTrigger>
-      <Dialog
-        open={isOpen}
-        onOpenChange={next => {
-          if (next) setIsOpen(true);
-          else closeSheet();
-        }}
-      >
-        <DialogContent className="border-0 bg-[#1C1C1C] sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-white">{title}</DialogTitle>
-            <DialogDescription className="text-base leading-tight text-[#ACACAC]">
-              {isRegistered
-                ? 'Your card spends straight from savings, inside the limits below. Change them or turn spending off whenever you like.'
-                : isRevoked
-                  ? 'You turned card spending off, so payments will be declined. Your limits are still saved — turning it back on restores them.'
-                  : 'Your savings are your card balance. Set a daily limit and your card can spend up to it without asking again — nothing moves until you pay with the card.'}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog
+      open={isOpen}
+      onOpenChange={next => {
+        if (next) onOpenChange(true);
+        else closeSheet();
+      }}
+    >
+      <DialogContent className="border-0 bg-[#1C1C1C] sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-white">{title}</DialogTitle>
+          <DialogDescription className="text-base leading-tight text-[#ACACAC]">
+            {isRegistered
+              ? 'Your card spends straight from savings, inside the limits below. Change them or turn spending off whenever you like.'
+              : isRevoked
+                ? 'You turned card spending off, so payments will be declined. Your limits are still saved — turning it back on restores them.'
+                : 'Your savings are your card balance. Set a daily limit and your card can spend up to it without asking again — nothing moves until you pay with the card.'}
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Scrolls because the registered state stacks a picker, a summary, a pending
-              change and the off switch — more than a short phone fits. */}
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            {isPaused ? (
-              <View className="mt-3 rounded-2xl bg-[#2A2119] p-4">
-                <Text className="text-sm text-[#E8A33D]">
-                  Card spending is paused on your account right now. Please contact support before
-                  setting up.
+        {/* Scrolls because the registered state stacks a picker, a summary, a pending
+            change and the off switch — more than a short phone fits. */}
+        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+          {/* Why the user is looking at a spending sheet when they asked for their card
+              number. Only while that is still the reason: once spending is on, the
+              reveal works and this is just the limits screen. */}
+          {source === 'card_reveal' && !isRegistered ? (
+            <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#252525] p-4">
+              <Eye size={18} color="#94F27F" style={styles.noticeIcon} />
+              <Text className="flex-1 text-sm leading-snug text-[#ACACAC]">
+                Your card number, expiry and security code stay hidden until the card can spend.{' '}
+                {isRevoked ? 'Turn spending back on' : 'Set a daily limit'} to see them — until then
+                every payment would be declined anyway.
+              </Text>
+            </View>
+          ) : null}
+
+          {isPaused ? (
+            <View className="mt-3 rounded-2xl bg-[#2A2119] p-4">
+              <Text className="text-sm text-[#E8A33D]">
+                Card spending is paused on your account right now. Please contact support before
+                setting up.
+              </Text>
+            </View>
+          ) : null}
+
+          {/* A raise that has not matured yet. Shown before the picker because it
+              changes what the numbers underneath mean: the limits below are still the
+              ones in force, and this is what replaces them and when. */}
+          {pendingIncrease ? (
+            <View className="mt-4 flex-row gap-2 rounded-2xl bg-[#241F14] p-4">
+              <Clock size={18} color="#E8A33D" style={styles.noticeIcon} />
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-[#E8A33D]">
+                  {formatUsd(pendingIncrease.dailyLimitUsd)} a day starts{' '}
+                  {formatActivationTime(pendingIncrease.activatesAt)}
                 </Text>
-              </View>
-            ) : null}
-
-            {/* A raise that has not matured yet. Shown before the picker because it
-                changes what the numbers underneath mean: the limits below are still the
-                ones in force, and this is what replaces them and when. */}
-            {pendingIncrease ? (
-              <View className="mt-4 flex-row gap-2 rounded-2xl bg-[#241F14] p-4">
-                <Clock size={18} color="#E8A33D" style={styles.noticeIcon} />
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold text-[#E8A33D]">
-                    {formatUsd(pendingIncrease.dailyLimitUsd)} a day starts{' '}
-                    {formatActivationTime(pendingIncrease.activatesAt)}
+                <Text className="mt-1 text-xs leading-snug text-[#ACACAC]">
+                  Higher limits wait before they take effect, so an increase you did not ask for can
+                  be stopped. Until then your current limit applies.
+                </Text>
+                <Pressable
+                  className="mt-2 self-start"
+                  disabled={isBusy}
+                  onPress={handleCancelIncrease}
+                >
+                  <Text className="text-sm font-semibold text-white underline">
+                    {isCancellingIncrease ? 'Cancelling…' : 'Cancel this change'}
                   </Text>
-                  <Text className="mt-1 text-xs leading-snug text-[#ACACAC]">
-                    Higher limits wait before they take effect, so an increase you did not ask for
-                    can be stopped. Until then your current limit applies.
-                  </Text>
-                  <Pressable
-                    className="mt-2 self-start"
-                    disabled={isBusy}
-                    onPress={handleCancelIncrease}
-                  >
-                    <Text className="text-sm font-semibold text-white underline">
-                      {isCancellingIncrease ? 'Cancelling…' : 'Cancel this change'}
-                    </Text>
-                  </Pressable>
-                </View>
+                </Pressable>
               </View>
-            ) : null}
+            </View>
+          ) : null}
 
-            {/* The picker: first-time setup, or an edit of a live registration. Hidden in
-                the revoked state, where the saved limits are restored as they were and
-                the only decision is whether to turn spending back on. */}
-            {!isRevoked && presets.length > 0 ? (
-              <View className="mt-4">
-                <Text className="mb-2 text-sm font-medium text-[#ACACAC]">Daily limit</Text>
-                <View style={styles.presetRow}>
-                  {presets.map(dollars => {
-                    const isSelected = dollars === daily;
-                    return (
-                      <Pressable
-                        key={dollars}
-                        accessibilityLabel={`Daily limit ${formatUsd(usdToOnChain(dollars))}`}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                        disabled={isBusy}
-                        onPress={() => setSelectedDaily(dollars)}
-                        style={[styles.preset, isSelected ? styles.presetSelected : null]}
-                        className="transition-all active:scale-95"
+          {/* The picker: first-time setup, or an edit of a live registration. Hidden in
+              the revoked state, where the saved limits are restored as they were and
+              the only decision is whether to turn spending back on. */}
+          {!isRevoked && presets.length > 0 ? (
+            <View className="mt-4">
+              <Text className="mb-2 text-sm font-medium text-[#ACACAC]">Daily limit</Text>
+              <View style={styles.presetRow}>
+                {presets.map(dollars => {
+                  const isSelected = dollars === daily;
+                  return (
+                    <Pressable
+                      key={dollars}
+                      accessibilityLabel={`Daily limit ${formatUsd(usdToOnChain(dollars))}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      disabled={isBusy}
+                      onPress={() => setSelectedDaily(dollars)}
+                      style={[styles.preset, isSelected ? styles.presetSelected : null]}
+                      className="transition-all active:scale-95"
+                    >
+                      <Text
+                        className={
+                          isSelected
+                            ? 'text-sm font-bold text-black'
+                            : 'text-sm font-semibold text-white'
+                        }
                       >
-                        <Text
-                          className={
-                            isSelected
-                              ? 'text-sm font-bold text-black'
-                              : 'text-sm font-semibold text-white'
-                          }
-                        >
-                          {formatUsd(usdToOnChain(dollars))}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {isChangingLimit ? (
-                  <Text className="mt-2 text-xs leading-snug text-[#ACACAC]">
-                    {isRaisingLimit
-                      ? `Higher limits take effect after ${formatDelayDuration(
-                          registration?.limitRaiseDelaySeconds ?? 0,
-                        )}. Your current limit applies until then.`
-                      : pendingIncrease
-                        ? // The contract drops a pending raise on any decrease, so the
-                          // user is agreeing to two things with one button.
-                          'Lowering takes effect straight away, and drops the increase waiting above.'
-                        : 'Lower limits take effect straight away.'}
-                  </Text>
-                ) : null}
+                        {formatUsd(usdToOnChain(dollars))}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-            ) : null}
-
-            <View className="mt-4 gap-3 rounded-2xl bg-[#252525] p-4">
-              {/* In the revoked state the picker is hidden, so these are the saved
-                  on-chain caps that turning spending back on restores — not a choice. */}
-              {daily !== null && (
-                <Row
-                  label={isChangingLimit ? 'New daily limit' : 'Daily limit'}
-                  value={formatUsd(usdToOnChain(daily))}
-                />
-              )}
-              {monthly !== null && (
-                <Row
-                  label={isChangingLimit ? 'New monthly limit' : 'Monthly limit'}
-                  value={formatUsd(monthly)}
-                />
-              )}
-              {isRegistered && limit ? (
-                <Row label="Spent today" value={formatUsd(limit.spentTodayUsd)} />
-              ) : null}
-              {registration ? (
-                <Row label="Max per payment" value={formatUsd(registration.maxPerTxUsd)} />
+              {isChangingLimit ? (
+                <Text className="mt-2 text-xs leading-snug text-[#ACACAC]">
+                  {isRaisingLimit
+                    ? `Higher limits take effect after ${formatDelayDuration(
+                        registration?.limitRaiseDelaySeconds ?? 0,
+                      )}. Your current limit applies until then.`
+                    : pendingIncrease
+                      ? // The contract drops a pending raise on any decrease, so the
+                        // user is agreeing to two things with one button.
+                        'Lowering takes effect straight away, and drops the increase waiting above.'
+                      : 'Lower limits take effect straight away.'}
+                </Text>
               ) : null}
             </View>
+          ) : null}
 
-            {/* Stated up front, not buried: this grant lets funds leave the Safe without a
-                further signature. The caps and the off-switch are what make that
-                acceptable, so they are named in the same breath. */}
-            {!isRegistered ? (
-              <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#1F2419] p-3">
-                <ShieldCheck size={18} color="#94F27F" style={styles.noticeIcon} />
-                <Text className="flex-1 text-xs leading-snug text-[#ACACAC]">
-                  Your card can take stablecoins and savings from your Safe up to these limits
-                  without asking again. Nothing else can — payments only ever go to Solid&apos;s
-                  settlement account. Turn it off any time and it stops immediately.
-                </Text>
-              </View>
+          <View className="mt-4 gap-3 rounded-2xl bg-[#252525] p-4">
+            {/* In the revoked state the picker is hidden, so these are the saved
+                on-chain caps that turning spending back on restores — not a choice. */}
+            {daily !== null && (
+              <Row
+                label={isChangingLimit ? 'New daily limit' : 'Daily limit'}
+                value={formatUsd(usdToOnChain(daily))}
+              />
+            )}
+            {monthly !== null && (
+              <Row
+                label={isChangingLimit ? 'New monthly limit' : 'Monthly limit'}
+                value={formatUsd(monthly)}
+              />
+            )}
+            {isRegistered && limit ? (
+              <Row label="Spent today" value={formatUsd(limit.spentTodayUsd)} />
             ) : null}
+            {registration ? (
+              <Row label="Max per payment" value={formatUsd(registration.maxPerTxUsd)} />
+            ) : null}
+          </View>
 
-            {registration && presets.length === 0 && !isRegistered && !isRevoked ? (
-              <Text className="mt-3 text-sm text-[#E8A33D]">
-                Card spending limits are not open on your account yet. Please try again later.
+          {/* Stated up front, not buried: this grant lets funds leave the Safe without a
+              further signature. The caps and the off-switch are what make that
+              acceptable, so they are named in the same breath. */}
+          {!isRegistered ? (
+            <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#1F2419] p-3">
+              <ShieldCheck size={18} color="#94F27F" style={styles.noticeIcon} />
+              <Text className="flex-1 text-xs leading-snug text-[#ACACAC]">
+                Your card can take stablecoins and savings from your Safe up to these limits without
+                asking again. Nothing else can — payments only ever go to Solid&apos;s settlement
+                account. Turn it off any time and it stops immediately.
               </Text>
-            ) : null}
+            </View>
+          ) : null}
 
-            {error ? <Text className="mt-3 text-sm text-red-400">{error}</Text> : null}
+          {registration && presets.length === 0 && !isRegistered && !isRevoked ? (
+            <Text className="mt-3 text-sm text-[#E8A33D]">
+              Card spending limits are not open on your account yet. Please try again later.
+            </Text>
+          ) : null}
 
-            {isRegistered ? (
-              <>
-                {isAlreadyRequested ? (
-                  <Text className="mt-5 text-center text-sm text-[#ACACAC]">
-                    That change is already requested — it takes effect on{' '}
-                    {formatActivationTime(pendingIncrease!.activatesAt)}.
-                  </Text>
-                ) : isChangingLimit ? (
+          {/* Everything above is one on-chain read, and a blocked reveal is now sent
+              here — so neither waiting for that read nor failing it may leave the user
+              staring at a disabled button with nothing to act on. */}
+          {isLoadingRegistration ? (
+            <View className="mt-3 flex-row items-center gap-2">
+              <ActivityIndicator size="small" color="#ACACAC" />
+              <Text className="text-sm text-[#ACACAC]">Checking your card spending…</Text>
+            </View>
+          ) : null}
+
+          {!registration && !isLoadingRegistration ? (
+            <View className="mt-3 flex-row items-center gap-3 rounded-2xl bg-[#2A2119] p-4">
+              <Text className="flex-1 text-sm text-[#E8A33D]">
+                Could not read your card spending settings.
+              </Text>
+              <Pressable onPress={() => void refetch()}>
+                <Text className="text-sm font-semibold text-white underline">Try again</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {error ? <Text className="mt-3 text-sm text-red-400">{error}</Text> : null}
+
+          {isRegistered ? (
+            <>
+              {isAlreadyRequested ? (
+                <Text className="mt-5 text-center text-sm text-[#ACACAC]">
+                  That change is already requested — it takes effect on{' '}
+                  {formatActivationTime(pendingIncrease!.activatesAt)}.
+                </Text>
+              ) : isChangingLimit ? (
+                <Button
+                  variant="brand"
+                  className="mt-5 h-12 w-full rounded-xl border-0"
+                  disabled={isBusy}
+                  onPress={handleUpdateLimit}
+                >
+                  {isUpdatingLimit ? (
+                    <ActivityIndicator size="small" color="black" />
+                  ) : (
+                    <Text className="text-base font-bold text-black">
+                      {isRaisingLimit
+                        ? `Request ${formatUsd(usdToOnChain(daily))} a day`
+                        : `Lower to ${formatUsd(usdToOnChain(daily))} a day`}
+                    </Text>
+                  )}
+                </Button>
+              ) : (
+                <View className="mt-5 flex-row items-center justify-center gap-2">
+                  <Check size={18} color="#94F27F" />
+                  <Text className="text-base font-bold text-[#94F27F]">Spending is on</Text>
+                </View>
+              )}
+              {/* Only when the module is actually live. In the revoked state it is already
+                  off and the action above is "turn it back on", so an off switch there
+                  would be a button that cannot do anything. */}
+              {canDisable ? (
+                <>
+                  {isConfirmingDisable ? (
+                    <Text className="mt-4 text-center text-sm text-[#ACACAC]">
+                      Your card will decline every payment until you turn spending back on. Your
+                      daily limit stays saved.
+                    </Text>
+                  ) : null}
                   <Button
-                    variant="brand"
-                    className="mt-5 h-12 w-full rounded-xl border-0"
+                    variant={isConfirmingDisable ? 'destructive' : 'outline'}
+                    className="mt-4 h-12 w-full rounded-xl"
                     disabled={isBusy}
-                    onPress={handleUpdateLimit}
+                    onPress={
+                      isConfirmingDisable ? handleDisable : () => setIsConfirmingDisable(true)
+                    }
                   >
-                    {isUpdatingLimit ? (
-                      <ActivityIndicator size="small" color="black" />
+                    {isDisabling ? (
+                      <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <Text className="text-base font-bold text-black">
-                        {isRaisingLimit
-                          ? `Request ${formatUsd(usdToOnChain(daily))} a day`
-                          : `Lower to ${formatUsd(usdToOnChain(daily))} a day`}
+                      <Text className="text-base font-bold text-white">
+                        {isConfirmingDisable
+                          ? 'Yes, turn card spending off'
+                          : 'Turn card spending off'}
                       </Text>
                     )}
                   </Button>
-                ) : (
-                  <View className="mt-5 flex-row items-center justify-center gap-2">
-                    <Check size={18} color="#94F27F" />
-                    <Text className="text-base font-bold text-[#94F27F]">Spending is on</Text>
-                  </View>
-                )}
-                {/* Only when the module is actually live. In the revoked state it is already
-                    off and the action above is "turn it back on", so an off switch there
-                    would be a button that cannot do anything. */}
-                {canDisable ? (
-                  <>
-                    {isConfirmingDisable ? (
-                      <Text className="mt-4 text-center text-sm text-[#ACACAC]">
-                        Your card will decline every payment until you turn spending back on. Your
-                        daily limit stays saved.
-                      </Text>
-                    ) : null}
-                    <Button
-                      variant={isConfirmingDisable ? 'destructive' : 'outline'}
-                      className="mt-4 h-12 w-full rounded-xl"
-                      disabled={isBusy}
-                      onPress={
-                        isConfirmingDisable ? handleDisable : () => setIsConfirmingDisable(true)
-                      }
+                  {isConfirmingDisable ? (
+                    <Pressable
+                      className="mt-2 self-center px-3 py-2"
+                      disabled={isDisabling}
+                      onPress={() => setIsConfirmingDisable(false)}
                     >
-                      {isDisabling ? (
-                        <ActivityIndicator size="small" color="white" />
-                      ) : (
-                        <Text className="text-base font-bold text-white">
-                          {isConfirmingDisable
-                            ? 'Yes, turn card spending off'
-                            : 'Turn card spending off'}
-                        </Text>
-                      )}
-                    </Button>
-                    {isConfirmingDisable ? (
-                      <Pressable
-                        className="mt-2 self-center px-3 py-2"
-                        disabled={isDisabling}
-                        onPress={() => setIsConfirmingDisable(false)}
-                      >
-                        <Text className="text-sm text-[#ACACAC]">Keep it on</Text>
-                      </Pressable>
-                    ) : null}
-                    <Text className="mt-3 text-center text-xs text-[#6F6F6F]">
-                      One signature removes the module from your Safe. Nothing can be taken from
-                      your savings by the card after that.
-                    </Text>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              <Button
-                variant="brand"
-                className="mt-5 h-12 w-full rounded-xl border-0"
-                disabled={isBusy || isPaused || daily === null}
-                onPress={handleRegister}
-              >
-                {isRegistering ? (
-                  <ActivityIndicator size="small" color="black" />
-                ) : (
-                  <Text className="text-base font-bold text-black">
-                    {isRevoked
-                      ? 'Turn card spending back on'
-                      : daily === null
-                        ? 'Set up card spending'
-                        : `Enable ${formatUsd(usdToOnChain(daily))} a day`}
+                      <Text className="text-sm text-[#ACACAC]">Keep it on</Text>
+                    </Pressable>
+                  ) : null}
+                  <Text className="mt-3 text-center text-xs text-[#6F6F6F]">
+                    One signature removes the module from your Safe. Nothing can be taken from your
+                    savings by the card after that.
                   </Text>
-                )}
-              </Button>
-            )}
+                </>
+              ) : null}
+            </>
+          ) : (
+            <Button
+              variant="brand"
+              className="mt-5 h-12 w-full rounded-xl border-0"
+              disabled={isBusy || isPaused || daily === null}
+              onPress={handleRegister}
+            >
+              {isRegistering ? (
+                <ActivityIndicator size="small" color="black" />
+              ) : (
+                <Text className="text-base font-bold text-black">
+                  {isRevoked
+                    ? 'Turn card spending back on'
+                    : daily === null
+                      ? 'Set up card spending'
+                      : `Enable ${formatUsd(usdToOnChain(daily))} a day`}
+                </Text>
+              )}
+            </Button>
+          )}
 
-            {!isRegistered && !isRevoked ? (
-              <Text className="mt-3 text-center text-xs text-[#6F6F6F]">
-                One signature enables the module and saves your limits.
-              </Text>
-            ) : null}
-          </ScrollView>
-        </DialogContent>
-      </Dialog>
-    </>
+          {!isRegistered && !isRevoked ? (
+            <Text className="mt-3 text-center text-xs text-[#6F6F6F]">
+              One signature enables the module and saves your limits.
+            </Text>
+          ) : null}
+        </ScrollView>
+      </DialogContent>
+    </Dialog>
   );
 };
 

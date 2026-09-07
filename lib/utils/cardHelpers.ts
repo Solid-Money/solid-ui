@@ -140,6 +140,40 @@ export const cardHoldsBalance = (provider: CardProvider | null | undefined): boo
   canDepositToCard(provider);
 
 /**
+ * Whether the cardholder may be shown their card number, expiry and security code.
+ *
+ * Only ever false on a Wirex card, and for one reason: those cards hold no balance.
+ * Wirex pays the merchant and our backend debits the user's Safe afterwards through
+ * `SolidCashModule`, so with the module disabled — or the Safe never registered — there
+ * is nothing to debit and every payment on those numbers is declined. Handing them over
+ * is handing over a card that looks like it works, which is the same mistake as flipping
+ * the card onto placeholder digits after a failed reveal.
+ *
+ * So the reveal is a spending decision, and `canCardSpend` is the module's own answer
+ * (`isRegistered` on `useCardSpendRegistration` — module enabled *and* Safe registered,
+ * both halves). Anything short of a positive reading blocks: a chain read still in
+ * flight or one that failed is not permission, it is not knowing.
+ *
+ * A Rain card is unaffected. It is prefunded and has no module to enable, so there is no
+ * such thing as a Rain card whose details are worth less than the card itself. An
+ * unresolved issuer is treated as Rain here, matching {@link canDepositToCard} — a card
+ * with no `SolidCashModule` behind it cannot be blocked on one.
+ *
+ * Note this is not about a card that merely *cannot spend right now*: a freeze, or a
+ * guardian pause, is temporary and outside the cardholder's hands, and the numbers are
+ * still theirs to read. This is about the permission the app asked them for and has not
+ * got.
+ */
+export const canRevealCardDetails = ({
+  provider,
+  canCardSpend,
+}: {
+  provider: CardProvider | null | undefined;
+  /** The module's live verdict: enabled on the Safe and the Safe registered. */
+  canCardSpend: boolean;
+}): boolean => provider !== CardProvider.WIREX || canCardSpend;
+
+/**
  * Get initials from merchant/person name for avatar display
  */
 export const getInitials = (name: string): string => {
