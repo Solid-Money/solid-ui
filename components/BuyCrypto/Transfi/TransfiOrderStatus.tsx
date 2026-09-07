@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Check, CircleDot, XCircle } from 'lucide-react-native';
+import { Check, XCircle } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import DepositStepper from '@/components/DepositStepper';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -10,13 +12,13 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTransfiOrder } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
-import { useDepositStore } from '@/store/useDepositStore';
+import { DepositProgressRow } from '@/lib/utils/deposit-steps';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 const STEPS = [
-  { key: 'pending_payment', label: 'Payment received' },
-  { key: 'processing', label: 'Converting to USDC' },
-  { key: 'completed', label: 'USDC on its way' },
+  { key: 'received', label: 'Payment received' },
+  { key: 'confirmed', label: 'Converting to USDC' },
+  { key: 'depositing', label: 'USDC on its way' },
 ] as const;
 
 const PHASE_ORDER: Record<string, number> = {
@@ -28,7 +30,7 @@ const PHASE_ORDER: Record<string, number> = {
 
 export const TransfiOrderStatus = () => {
   const router = useRouter();
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const reset = useTransfiStore(state => state.reset);
   const orderId = useTransfiStore(state => state.orderId);
   const { data: order } = useTransfiOrder(orderId ?? undefined);
@@ -37,6 +39,15 @@ export const TransfiOrderStatus = () => {
   const activeIndex = PHASE_ORDER[phase] ?? 0;
   const isFailed = phase === 'failed';
   const isCompleted = phase === 'completed';
+  const progressRows: DepositProgressRow[] = STEPS.map((step, index) => ({
+    ...step,
+    state:
+      isCompleted || index < activeIndex
+        ? 'complete'
+        : index === activeIndex
+          ? 'active'
+          : 'pending',
+  }));
 
   // The order is polled, so the terminal event is fired once per screen rather
   // than on every poll that comes back in the same phase.
@@ -104,28 +115,7 @@ export const TransfiOrderStatus = () => {
         ) : null}
       </View>
 
-      <View className="gap-4 rounded-2xl bg-card p-5">
-        {STEPS.map((step, i) => {
-          const done = i < activeIndex || isCompleted;
-          const current = i === activeIndex && !isCompleted;
-          return (
-            <View key={step.key} className="flex-row items-center gap-3">
-              {done ? (
-                <Check size={18} color="#94F27F" />
-              ) : (
-                <CircleDot size={18} color={current ? '#94F27F' : '#4B5563'} />
-              )}
-              <Text
-                className={
-                  done || current ? 'text-base text-primary' : 'text-base text-muted-foreground'
-                }
-              >
-                {step.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+      <DepositStepper rows={progressRows} />
 
       {order?.orderId ? (
         <Text className="px-1 text-xs text-muted-foreground">Order ID: {order.orderId}</Text>

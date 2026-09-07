@@ -1,13 +1,16 @@
 import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 
+import {
+  BuyCryptoNavigate,
+  useBuyCryptoNavigation,
+} from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { KycProvider } from '@/lib/types';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
 /**
@@ -22,8 +25,9 @@ import { useKycStore } from '@/store/useKycStore';
  * Shared by the entry point and by the mid-flow recovery paths — TransFi can
  * reject a share as needs_kyc if the verification it received was incomplete.
  */
-export const useBuyCryptoKycRoute = () => {
-  const setModal = useDepositStore(state => state.setModal);
+export const useBuyCryptoKycRoute = (navigateOverride?: BuyCryptoNavigate) => {
+  const contextNavigate = useBuyCryptoNavigation();
+  const setModal = navigateOverride ?? contextNavigate;
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const setKycProvider = useKycStore(state => state.setKycProvider);
   const router = useRouter();

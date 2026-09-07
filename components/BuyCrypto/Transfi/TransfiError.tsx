@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AlertTriangle, Clock, LifeBuoy, ShieldAlert, XCircle } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -15,7 +16,6 @@ import {
   type TransfiError as TransfiErrorType,
   transfiErrorTitle,
 } from '@/lib/transfiErrors';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 const SUPPORT_EMAIL = 'support@solid.xyz';
@@ -47,7 +47,7 @@ const formatFiat = (value: number | undefined, currency: string) =>
  */
 export const TransfiError = () => {
   const router = useRouter();
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const error = useTransfiStore(state => state.error);
   const errorOrigin = useTransfiStore(state => state.errorOrigin);
   const reset = useTransfiStore(state => state.reset);
