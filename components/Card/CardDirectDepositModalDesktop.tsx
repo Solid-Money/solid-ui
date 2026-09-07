@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFlow';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
 import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
@@ -27,6 +28,11 @@ import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
+import {
+  getBuyCryptoBackTarget,
+  getBuyCryptoTitle,
+  getEmbeddedBuyCryptoTarget,
+} from '@/lib/buyCryptoFlow';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -78,6 +84,7 @@ export default function CardDirectDepositModal({
     current: 'options',
     previous: CLOSE_STATE,
   });
+  const [buyCryptoModal, setBuyCryptoModal] = useState<DepositModal | null>(null);
   // Token + chain picked in the direct-deposit flow (Stablecoins section).
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
@@ -100,7 +107,6 @@ export default function CardDirectDepositModal({
     })),
   );
 
-  const { handleBuyCryptoPress } = useBuyCryptoEntry();
   const resetTransfi = useTransfiStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
 
@@ -124,8 +130,14 @@ export default function CardDirectDepositModal({
     },
   });
 
+  const baseModal = MODAL_STATES[stepState.current];
+  const currentModal = buyCryptoModal ?? baseModal;
+  const currentModalRef = useRef<ModalState>(currentModal);
+  currentModalRef.current = currentModal;
+
   const goToStep = useCallback((nextStep: Step) => {
-    setStepState(prev => ({ current: nextStep, previous: MODAL_STATES[prev.current] }));
+    setBuyCryptoModal(null);
+    setStepState({ current: nextStep, previous: currentModalRef.current });
   }, []);
 
   const handleOpenChange = useCallback(
@@ -136,12 +148,31 @@ export default function CardDirectDepositModal({
       if (!open) {
         setIsVirtualAccountApplyOpen(false);
         setStepState({ current: 'options', previous: CLOSE_STATE });
+        setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
       }
     },
     [isControlled, onOpenChange],
   );
+
+  const navigateBuyCrypto = useCallback(
+    (nextModal: DepositModal) => {
+      const target = getEmbeddedBuyCryptoTarget(nextModal);
+      if (target === 'close') {
+        handleOpenChange(false);
+        return;
+      }
+      if (target === 'entry') {
+        goToStep('options');
+        return;
+      }
+      setStepState(prev => ({ ...prev, previous: currentModalRef.current }));
+      setBuyCryptoModal(target);
+    },
+    [goToStep, handleOpenChange],
+  );
+  const { handleBuyCryptoPress } = useBuyCryptoEntry(navigateBuyCrypto);
 
   useEffect(
     () => () => {
@@ -182,8 +213,7 @@ export default function CardDirectDepositModal({
   );
 
   // A local currency (BRL, BDT…) starts a fresh onramp preseeded with it. The
-  // buy-crypto steps live in the global deposit modal, so hand off the same way
-  // the USD row does and let useBuyCryptoEntry route to KYC or the amount screen.
+  // buy-crypto steps replace this modal's content without closing its shell.
   // The bought USDC is delivered to the card funding address, so it arrives as
   // card balance — which is why this belongs in the card funding flow at all.
   const handleLocalCurrencyPress = useCallback(
@@ -195,13 +225,9 @@ export default function CardDirectDepositModal({
       resetTransfi();
       setTransfiCurrency(code);
 
-      handleOpenChange(false);
-      if (handoffTimer.current) clearTimeout(handoffTimer.current);
-      handoffTimer.current = setTimeout(() => {
-        void handleBuyCryptoPress();
-      }, HANDOFF_DELAY_MS);
+      void handleBuyCryptoPress();
     },
-    [handleBuyCryptoPress, handleOpenChange, resetTransfi, setTransfiCurrency],
+    [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
   // "Deposit from an external wallet" — connect a crypto wallet, then send.
@@ -298,6 +324,15 @@ export default function CardDirectDepositModal({
   );
 
   const handleBack = useCallback(() => {
+    if (buyCryptoModal) {
+      const target = getBuyCryptoBackTarget(buyCryptoModal);
+      if (target === 'entry') {
+        goToStep('options');
+      } else if (target) {
+        navigateBuyCrypto(target);
+      }
+      return;
+    }
     setStepState(prev => {
       const backStep: Step = (() => {
         if (prev.current === 'address') return 'networks';
@@ -306,20 +341,22 @@ export default function CardDirectDepositModal({
       })();
       return { current: backStep, previous: MODAL_STATES[prev.current] };
     });
-  }, []);
+  }, [buyCryptoModal, goToStep, navigateBuyCrypto]);
 
   const { current: step, previous: previousModal } = stepState;
-  const currentModal = MODAL_STATES[step];
-  const canGoBack = step !== 'options';
+  const canGoBack = buyCryptoModal
+    ? getBuyCryptoBackTarget(buyCryptoModal) !== null
+    : step !== 'options';
 
   const title = (() => {
+    if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
     return 'Fund your card';
   })();
 
   const titleIcon =
-    step === 'networks' || step === 'address' ? (
+    !buyCryptoModal && (step === 'networks' || step === 'address') ? (
       <Image
         source={getCardFundTokenIcon(selectedToken)}
         style={TITLE_ICON_STYLE}
@@ -328,6 +365,9 @@ export default function CardDirectDepositModal({
     ) : undefined;
 
   const content = (() => {
+    if (buyCryptoModal) {
+      return <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />;
+    }
     if (step === 'options') {
       return (
         <CardFundOptions
@@ -420,7 +460,7 @@ export default function CardDirectDepositModal({
         onBackPress={handleBack}
         shouldAnimate={previousModal.name !== 'close'}
         isForward={currentModal.number > previousModal.number}
-        contentKey={step}
+        contentKey={buyCryptoModal?.name ?? step}
       >
         {content}
       </ResponsiveModal>

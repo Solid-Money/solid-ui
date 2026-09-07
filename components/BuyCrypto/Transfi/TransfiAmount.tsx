@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -18,7 +20,6 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { asTransfiError, TransfiError } from '@/lib/transfiErrors';
 import { formatUsdcBound, resolveAmountLimits } from '@/lib/transfiLimits';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /** Wait for typing to settle before quoting — each amount is a TransFi call. */
@@ -28,7 +29,7 @@ const TOKEN_PILL_ICON_STYLE = { width: 20, height: 20 };
 
 const formatFiat = (value: number | undefined, currency: string) =>
   value == null
-    ? '—'
+    ? 'Not available'
     : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)} ${currency}`;
 
 /**
@@ -44,7 +45,7 @@ const formatRate = (usdcPerFiat: number | undefined, currency: string) =>
     ? `1 USDC ≈ ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(
         1 / usdcPerFiat,
       )} ${currency}`
-    : '—';
+    : 'Not available';
 
 /**
  * Primary buy-crypto screen: enter a USDC amount, then pick the fiat currency
@@ -53,7 +54,7 @@ const formatRate = (usdcPerFiat: number | undefined, currency: string) =>
  * useTransfiStore so it survives the step transitions.
  */
 export const TransfiAmount = () => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
 
   useEffect(() => {
     track(TRACKING_EVENTS.BUY_CRYPTO_AMOUNT_VIEWED);
@@ -161,6 +162,11 @@ export const TransfiAmount = () => {
     !aboveMax &&
     !!activePaymentCode &&
     !!currency;
+  const continueDisabled = !isValid || creatingOrder;
+  const usdEquivalent =
+    Number.isFinite(amountNum) && amountNum > 0
+      ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(amountNum)
+      : '0';
 
   // Reported once per amount that lands out of range, not per keystroke: the
   // limits being wrong for a market is the signal, not how fast someone types.
@@ -237,92 +243,93 @@ export const TransfiAmount = () => {
   }
 
   return (
-    <View className="flex-1 gap-3">
-      {/* Amount input (swap-style: number left, fixed USDC pill right) */}
-      <View className="rounded-2xl bg-card p-5">
-        <Text className="mb-2 text-sm text-muted-foreground">You buy</Text>
-        <View className="flex-row items-center justify-between gap-3">
-          <TextInput
-            value={amount}
-            onChangeText={t => setAmount(t.replace(/[^0-9.]/g, ''))}
-            keyboardType="decimal-pad"
-            placeholder="0"
-            placeholderTextColor="#6B7280"
-            // w-0/min-w-0 so the input yields to the token pill instead of
-            // pushing it out of the row (a web <input> won't shrink past its
-            // intrinsic width on flex-1 alone); no focus ring on web.
-            className="w-0 min-w-0 flex-1 bg-transparent text-4xl font-bold text-primary web:outline-none"
-          />
-          <View className="shrink-0 flex-row items-center gap-2 rounded-full border border-border px-3 py-2">
+    <View className="shrink-0 gap-6">
+      <View className="gap-2.5">
+        <Text className="text-base font-medium text-white/70">Amount</Text>
+        <View className="h-[80px] flex-row items-center justify-between rounded-[15px] bg-[#1C1C1C] pl-4 pr-3.5">
+          <View className="mr-3 flex-1">
+            <TextInput
+              accessibilityLabel="USDC amount"
+              value={amount}
+              onChangeText={t => setAmount(t.replace(/[^0-9.]/g, ''))}
+              keyboardType="decimal-pad"
+              placeholder="0.0"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              className="p-0 text-3xl font-semibold text-white web:outline-none"
+              style={{ fontFamily: 'MonaSans_600SemiBold' }}
+            />
+            <Text className="text-base font-medium text-white/50">${usdEquivalent}</Text>
+          </View>
+          <View className="h-12 shrink-0 flex-row items-center gap-[7px] rounded-full bg-white/10 px-3">
             {/* Our own USDC mark, not TransFi's: theirs badges the delivery
                 network onto the coin, so the pill read USDC-on-Ethereum. The
                 network belongs in the line below, once, not on the icon. */}
             <Image
               source={getAsset('images/usdc-4x.png')}
-              style={TOKEN_PILL_ICON_STYLE}
+              style={{ width: 24, height: 24 }}
               contentFit="contain"
             />
-            <Text className="text-base font-semibold text-primary">
+            <Text className="text-lg font-semibold text-white">
               {config?.tokenSymbol ?? 'USDC'}
             </Text>
           </View>
         </View>
-        <Text className="mt-2 text-sm text-muted-foreground">{receiveLine}</Text>
+        <Text className="text-sm font-medium leading-5 text-white/70">{receiveLine}</Text>
       </View>
 
-      {/* Pay in — currency selector (opens a step) */}
-      <SelectorRow
-        label="Pay in"
-        value={currency ?? 'Select currency'}
-        logoUrl={selectedCurrency?.logoUrl}
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY)}
-      />
-
-      {/* Pay with — payment method selector (opens a step) */}
-      <SelectorRow
-        label="Pay with"
-        value={selectedMethod?.paymentName ?? selectedMethod?.paymentCode ?? 'Select method'}
-        logoUrl={selectedMethod?.logo}
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD)}
-        disabled={!currency}
-      />
-
-      {/* Quote breakdown */}
-      <View className="gap-3 rounded-2xl bg-card p-4">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-semibold text-muted-foreground">Quote</Text>
-          {isQuotePending ? (
-            <View className="flex-row items-center gap-2">
-              <ActivityIndicator size="small" color="#94F27F" />
-              <Text className="text-xs text-muted-foreground">Updating…</Text>
-            </View>
-          ) : null}
+      <View className="gap-2.5">
+        <View className="flex-row gap-3">
+          <SelectorField
+            label="Pay in"
+            value={currency ?? 'Select currency'}
+            logoUrl={selectedCurrency?.logoUrl}
+            onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY)}
+          />
+          <SelectorField
+            label="Pay with"
+            value={selectedMethod?.paymentName ?? selectedMethod?.paymentCode ?? 'Select method'}
+            logoUrl={selectedMethod?.logo}
+            onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD)}
+            disabled={!currency}
+          />
         </View>
-        <QuoteRow
-          label="Rate"
-          pending={isQuotePending}
-          value={formatRate(liveQuote?.exchangeRate, currency ?? '')}
-        />
-        <QuoteRow
-          label="Fees"
-          pending={isQuotePending}
-          value={formatFiat(liveQuote?.totalFee, currency ?? '')}
-        />
-        <View className="h-px bg-border" />
-        <QuoteRow
-          label="Total you pay"
-          pending={isQuotePending}
-          value={formatFiat(liveQuote?.fiatAmount, currency ?? '')}
-          emphasize
-        />
-        {/* Limits depend only on the currency + method, so they are shown from
-            the payment method before the first quote and stay accurate while a
-            new amount's quote is in flight. */}
         {minLimit != null || maxLimit != null ? (
-          <Text className="text-xs text-muted-foreground">
+          <Text className="text-xs font-medium leading-[18px] text-white/50">
             Limits: {formatFiat(minLimit, currency ?? '')} – {formatFiat(maxLimit, currency ?? '')}
           </Text>
         ) : null}
+      </View>
+
+      {/* Quote breakdown */}
+      <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
+        <Text className="text-base font-semibold leading-[22px] text-white">Your quote</Text>
+        {!liveQuote ? (
+          <View className="min-h-10 justify-center">
+            {isQuotePending ? (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#94F27F" />
+                <Text className="text-sm font-medium leading-5 text-white/70">
+                  Getting your rate, fees, and total…
+                </Text>
+              </View>
+            ) : !quoteError ? (
+              <Text className="text-sm font-medium leading-5 text-white/70">
+                Enter an amount to see your rate,{`\n`}fees, and total.
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <View className="gap-2.5">
+            <QuoteRow label="Rate" value={formatRate(liveQuote.exchangeRate, currency ?? '')} />
+            <QuoteRow label="Fees" value={formatFiat(liveQuote.totalFee, currency ?? '')} />
+            <View className="h-px bg-white/10" />
+            <QuoteRow
+              label="Total you pay"
+              value={formatFiat(liveQuote.fiatAmount, currency ?? '')}
+              emphasize
+            />
+          </View>
+        )}
         {belowMin ? (
           <Text className="text-xs text-red-500">
             Enter at least {formatFiat(minLimit, currency ?? '')}
@@ -345,31 +352,38 @@ export const TransfiAmount = () => {
         ) : null}
       </View>
 
-      <Text className="px-1 text-xs text-muted-foreground">
-        Crypto purchases are provided by TransFi. Rates and fees are set by TransFi and may change.
-      </Text>
-
-      <Button
-        className="mt-auto h-14 rounded-2xl"
-        variant="brand"
-        onPress={handleContinue}
-        disabled={!isValid || creatingOrder}
-      >
-        <Text className="text-base font-bold text-primary-foreground">
-          {creatingOrder
-            ? 'Creating order…'
-            : belowMin || aboveMax || limitError
-              ? 'Amount out of limits'
-              : isQuotePending
-                ? 'Getting quote…'
-                : 'Continue to payment'}
+      <View className="gap-[18px]">
+        <Text className="text-xs font-medium leading-[17px] text-white/50">
+          Crypto purchases are provided by TransFi. Rates and fees are set by TransFi and may
+          change.
         </Text>
-      </Button>
+
+        <Button
+          className={`h-12 rounded-full ${continueDisabled ? 'bg-white/20 active:scale-100 active:opacity-100 web:hover:bg-white/20' : ''}`}
+          variant="brand"
+          onPress={handleContinue}
+          disabled={continueDisabled}
+        >
+          <Text
+            className={continueDisabled ? 'text-base font-bold text-white' : 'text-base font-bold'}
+          >
+            {creatingOrder
+              ? 'Creating order…'
+              : belowMin || aboveMax || limitError
+                ? 'Amount out of limits'
+                : isQuotePending
+                  ? 'Getting quote…'
+                  : 'Continue to payment'}
+          </Text>
+        </Button>
+
+        <NeedHelp />
+      </View>
     </View>
   );
 };
 
-const SelectorRow = ({
+const SelectorField = ({
   label,
   value,
   logoUrl,
@@ -382,36 +396,37 @@ const SelectorRow = ({
   onPress: () => void;
   disabled?: boolean;
 }) => (
-  <Pressable
-    className="flex-row items-center justify-between rounded-2xl bg-card p-4"
-    onPress={onPress}
-    disabled={disabled}
-    style={{ opacity: disabled ? 0.5 : 1 }}
-  >
-    <View className="flex-1">
-      <Text className="text-sm text-muted-foreground">{label}</Text>
-      <View className="mt-0.5 flex-row items-center gap-2">
+  <View className="flex-1 gap-2.5">
+    <Text className="text-base font-medium leading-[22px] text-white/70">{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
+      className="h-[54px] flex-row items-center justify-between rounded-[15px] bg-[#1C1C1C] px-3.5 active:opacity-80"
+      onPress={onPress}
+      disabled={disabled}
+      style={{ opacity: disabled ? 0.5 : 1 }}
+    >
+      <View className="min-w-0 flex-1 flex-row items-center gap-2">
         {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={{ width: 18, height: 18 }} contentFit="contain" />
+          <Image source={{ uri: logoUrl }} style={TOKEN_PILL_ICON_STYLE} contentFit="contain" />
         ) : null}
-        <Text className="text-base font-semibold text-primary">{value}</Text>
+        <Text className="flex-1 text-base font-medium text-white" numberOfLines={1}>
+          {value}
+        </Text>
       </View>
-    </View>
-    <ChevronRight size={20} color="#9CA3AF" />
-  </Pressable>
+      <ChevronDown size={18} color="#FFFFFF" />
+    </Pressable>
+  </View>
 );
 
 const QuoteRow = ({
   label,
   value,
   emphasize,
-  pending,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
-  /** A newer quote is in flight — dim the value rather than showing it as final. */
-  pending?: boolean;
 }) => (
   <View className="flex-row items-center justify-between">
     <Text
@@ -421,11 +436,8 @@ const QuoteRow = ({
     >
       {label}
     </Text>
-    <Text
-      className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}
-      style={{ opacity: pending ? 0.4 : 1 }}
-    >
-      {pending ? '—' : value}
+    <Text className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}>
+      {value}
     </Text>
   </View>
 );

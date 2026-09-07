@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
@@ -11,7 +12,6 @@ import { useCompleteTransfiProfile } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { asTransfiError } from '@/lib/transfiErrors';
 import { TransfiProfileInput } from '@/lib/types';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 /**
@@ -25,7 +25,7 @@ import { useTransfiStore } from '@/store/useTransfiStore';
  * turning a dead end into one screen.
  */
 export const TransfiProfileForm = () => {
-  const setModal = useDepositStore(state => state.setModal);
+  const setModal = useBuyCryptoNavigation();
   const error = useTransfiStore(state => state.error);
   const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
