@@ -1,5 +1,8 @@
 import {
+  buildRecoveryPasskeyName,
   isPasskeyPromptError,
+  isTurnkeySessionError,
+  isValidTurnkeyPasskeyName,
   mergeCredentialIds,
   tryBase64urlToUint8Array,
 } from '@/lib/utils/passkey';
@@ -100,5 +103,100 @@ describe('tryBase64urlToUint8Array', () => {
 
   it('returns undefined for a value that is not base64url', () => {
     expect(tryBase64urlToUint8Array('not valid !!')).toBeUndefined();
+  });
+});
+
+/**
+ * Turnkey rejects an authenticator name outside its ASCII pattern before the
+ * passkey prompt is ever shown, and rejects a name the account already holds.
+ * The name the recovery flow sends therefore has to be locale-independent and
+ * different on every attempt.
+ */
+describe('buildRecoveryPasskeyName', () => {
+  it('produces a name Turnkey accepts', () => {
+    expect(isValidTurnkeyPasskeyName(buildRecoveryPasskeyName(new Date(0)))).toBe(true);
+  });
+
+  it('stays within the 64 character limit', () => {
+    expect(buildRecoveryPasskeyName(new Date(0)).length).toBeLessThanOrEqual(64);
+  });
+
+  it('is unique per attempt, not per day', () => {
+    // Day granularity meant a second attempt on the same date re-sent a name
+    // the account already had, which Turnkey refuses.
+    const first = buildRecoveryPasskeyName(new Date('2026-09-07T09:51:00.123Z'));
+    const second = buildRecoveryPasskeyName(new Date('2026-09-07T09:51:00.124Z'));
+    expect(first).not.toEqual(second);
+  });
+
+  it('does not follow the device locale', () => {
+    // `toLocaleDateString()` on an Arabic, Persian or Bengali device returns
+    // non-Latin digits and embedded RTL marks, which the pattern rejects.
+    const name = buildRecoveryPasskeyName(new Date('2026-09-07T09:51:00.000Z'));
+    expect(name).toBe('Recovery Passkey - 2026-09-07T09:51:00.000Z');
+    expect(name).not.toMatch(/[^\x20-\x7E]/);
+  });
+});
+
+describe('isValidTurnkeyPasskeyName', () => {
+  it('rejects the Arabic-locale date the flow used to send', () => {
+    // ar-EG `toLocaleDateString()`: Arabic-Indic digits plus U+200F RTL marks.
+    expect(isValidTurnkeyPasskeyName('Recovery Passkey - ٧‏/٩‏/٢٠٢٦')).toBe(false);
+  });
+
+  it('accepts the en-US date the flow used to send', () => {
+    // Which is why this only ever failed for some users.
+    expect(isValidTurnkeyPasskeyName('Recovery Passkey - 9/7/2026')).toBe(true);
+  });
+
+  it('rejects a name longer than 64 characters', () => {
+    expect(isValidTurnkeyPasskeyName('a'.repeat(65))).toBe(false);
+  });
+});
+
+/**
+ * A recovery session is minted from a single-use code and cannot be renewed
+ * from the add-passkey screen, so a lapsed session has to be told apart from a
+ * failure that a retry could clear.
+ */
+describe('isTurnkeySessionError', () => {
+  it.each([
+    ['the SDK session code', { code: 'SESSION_EXPIRED', message: 'Session API key has expired' }],
+    ['a missing session', { code: 'NO_SESSION_FOUND', message: 'No active session found.' }],
+    ['an expired api key', { message: 'Unauthenticated desc = expired api key publicKey 02ab' }],
+    ['an unknown public key', { message: 'could not find public key in organization' }],
+  ])('recognises %s', (_label, error) => {
+    expect(isTurnkeySessionError(error)).toBe(true);
+  });
+
+  it('finds the session failure the SDK hid behind its own message', () => {
+    // `addPasskey` wraps everything downstream of the prompt in a bare
+    // "Failed to add passkey" and leaves the real error on `cause`.
+    expect(
+      isTurnkeySessionError({
+        code: 'ADD_PASSKEY_ERROR',
+        message: 'Failed to add passkey',
+        cause: { message: 'Unauthenticated desc = expired api key publicKey 02ab' },
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'a duplicate name',
+      { code: 'ADD_PASSKEY_ERROR', message: 'authenticator name already exists' },
+    ],
+    ['a cancelled prompt', { code: 'SELECT_PASSKEY_CANCELLED', message: 'cancelled by the user' }],
+    ['a network failure', { name: 'TypeError', message: 'Network request failed' }],
+  ])('leaves %s to the retry path', (_label, error) => {
+    // These can clear on retry, so they must not throw away the session.
+    expect(isTurnkeySessionError(error)).toBe(false);
+  });
+
+  it('handles a missing error and a cyclic cause without hanging', () => {
+    expect(isTurnkeySessionError(null)).toBe(false);
+    const cyclic: { message: string; cause?: unknown } = { message: 'boom' };
+    cyclic.cause = cyclic;
+    expect(isTurnkeySessionError(cyclic)).toBe(false);
   });
 });

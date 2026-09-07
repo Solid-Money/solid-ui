@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { z } from 'zod';
 
@@ -19,6 +20,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
 import { useUserStore } from '@/store/useUserStore';
 
 // Validation schemas
@@ -45,10 +47,22 @@ const STEPS = {
 
 type Step = (typeof STEPS)[keyof typeof STEPS];
 
+/**
+ * The recovery session is minted from a single-use code and cannot be renewed
+ * from the add-passkey screen, so it is checked before the passkey prompt
+ * rather than after. The margin covers the prompt itself: creating a passkey
+ * involves the platform sheet, biometrics and the password manager's own flow,
+ * and a session that lapses midway leaves an orphaned passkey on the device
+ * that Turnkey never registers.
+ */
+const SESSION_MARGIN_MS = 60 * 1000;
+
+const SESSION_EXPIRED_MESSAGE = 'Your recovery session expired. Request a new code to continue.';
+
 export default function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
-  const { createApiKeyPair, addPasskey, storeSession, httpClient } = useTurnkey();
+  const { createApiKeyPair, addPasskey, storeSession, httpClient, session } = useTurnkey();
   const setCredentialIdsForIdentity = useUserStore(state => state.setCredentialIdsForIdentity);
 
   const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
@@ -61,6 +75,7 @@ export default function RecoveryPasskey() {
     credentialBundle: string;
     userId: string;
     organizationId: string;
+    expiresAt?: number;
   } | null>(null);
 
   // Step 1: Send OTP to user's email via backend
@@ -147,18 +162,50 @@ export default function RecoveryPasskey() {
     [httpClient],
   );
 
+  // When the recovery session is gone, no retry on this screen can succeed —
+  // the code that minted it was single-use. Send the user back to the OTP step,
+  // where "Resend code" issues a fresh one, instead of leaving them tapping a
+  // button that fails identically every time.
+  const sendBackForNewCode = useCallback((message = SESSION_EXPIRED_MESSAGE) => {
+    setRecoveryData(null);
+    setApiError(message);
+    setStep(STEPS.OTP_VERIFY);
+  }, []);
+
+  /**
+   * Whether the session that has to stamp the add-passkey request is still good
+   * for long enough to finish it. Prefers the SDK's own session (that is the
+   * key doing the stamping) and falls back to the expiry the backend reported.
+   */
+  const hasUsableSession = useCallback(
+    (expiresAt?: number) => {
+      const deadline = session?.expiry ? session.expiry * 1000 : expiresAt;
+      if (!deadline) return true; // Nothing to go on - let the request decide.
+      return deadline - Date.now() > SESSION_MARGIN_MS;
+    },
+    [session],
+  );
+
   // Step 3: Add new passkey
   const handleAddPasskey = useCallback(async () => {
+    if (!recoveryData) {
+      sendBackForNewCode('Recovery session not found. Request a new code to continue.');
+      return;
+    }
+
+    // Checked before the prompt, not after: a passkey created against a dead
+    // session is one Turnkey never registers, and it stays on the device.
+    if (!hasUsableSession(recoveryData.expiresAt)) {
+      sendBackForNewCode();
+      return;
+    }
+
     setLoading(true);
     setApiError('');
 
     try {
-      if (!recoveryData) {
-        throw new Error('Recovery data not found');
-      }
-
       await addPasskey({
-        name: `Recovery Passkey - ${new Date().toLocaleDateString()}`,
+        name: buildRecoveryPasskeyName(),
         userId: recoveryData.userId,
         organizationId: recoveryData.organizationId,
       });
@@ -176,11 +223,42 @@ export default function RecoveryPasskey() {
       setStep(STEPS.SUCCESS);
     } catch (err: any) {
       console.error('Failed to add passkey:', err);
+
+      // `addPasskey` reports every failure downstream of the passkey prompt as
+      // a bare "Failed to add passkey" - the underlying Turnkey error only
+      // exists on `cause`. Report it, or this step stays undiagnosable: the
+      // signup passkey flow is instrumented and this one was not, so none of
+      // these failures reached Sentry at all.
+      Sentry.captureException(err, {
+        tags: { type: 'recovery_passkey_creation_error', turnkey_error_code: err?.code },
+        extra: {
+          email,
+          turnkeyUserId: recoveryData.userId,
+          organizationId: recoveryData.organizationId,
+          cause: err?.cause?.message,
+          sessionExpiry: session?.expiry,
+        },
+      });
+
+      if (isTurnkeySessionError(err)) {
+        sendBackForNewCode();
+        return;
+      }
+
       setApiError(err?.message || 'Failed to create passkey. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [addPasskey, recoveryData, readCredentialIds, setCredentialIdsForIdentity, email]);
+  }, [
+    addPasskey,
+    recoveryData,
+    readCredentialIds,
+    setCredentialIdsForIdentity,
+    email,
+    hasUsableSession,
+    sendBackForNewCode,
+    session,
+  ]);
 
   // Resend OTP
   const handleResendOtp = useCallback(async () => {
