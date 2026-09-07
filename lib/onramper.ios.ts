@@ -6,6 +6,7 @@ import {
   EXPO_PUBLIC_ONRAMPER_CLIENT_ID,
   isProduction,
 } from '@/lib/config';
+import { describeOnramperError } from '@/lib/onramperErrors';
 import { withRefreshToken } from '@/lib/utils';
 
 // Real implementation, loaded by Metro only on iOS. Android and web get
@@ -27,8 +28,7 @@ let initialization: Promise<OnramperClient> | null = null;
  * SDK's `onSessionExpired` handler — the SDK refreshes proactively and on 401, so
  * this normally only fires when the refresh token itself was revoked or rotated.
  */
-const mintSession = (): Promise<OnramperSession> =>
-  withRefreshToken(() => fetchOnramperSession());
+const mintSession = (): Promise<OnramperSession> => withRefreshToken(() => fetchOnramperSession());
 
 /**
  * The initialized client, or `null` if `initOnramper()` hasn't completed yet.
@@ -50,15 +50,25 @@ export function initOnramper(): Promise<OnramperClient> {
 
   initialization = (async () => {
     if (!EXPO_PUBLIC_ONRAMPER_API_KEY || !EXPO_PUBLIC_ONRAMPER_CLIENT_ID) {
-      throw new Error(
-        'Missing EXPO_PUBLIC_ONRAMPER_API_KEY or EXPO_PUBLIC_ONRAMPER_CLIENT_ID.',
-      );
+      throw new Error('Missing EXPO_PUBLIC_ONRAMPER_API_KEY or EXPO_PUBLIC_ONRAMPER_CLIENT_ID.');
     }
 
     // Mint the session before constructing, so a backend failure doesn't leave an
     // orphaned native client behind.
-    const session = await mintSession();
+    let session: OnramperSession;
+    try {
+      session = await mintSession();
+    } catch (error) {
+      // Named separately from the native failures below: the screen shows one
+      // message for the whole bootstrap, so the log is the only thing that says
+      // which half of it broke.
+      console.error(`[Onramper] session mint failed: ${describeOnramperError(error)}`);
+      throw error;
+    }
 
+    // The constructor creates the native Nitro object and can throw on its own
+    // (a missing key, an unsupported device), so it is inside the memoized body
+    // and its failure is reported like any other.
     const instance = new OnramperClient({
       apiKey: EXPO_PUBLIC_ONRAMPER_API_KEY,
       clientId: EXPO_PUBLIC_ONRAMPER_CLIENT_ID,
@@ -73,6 +83,12 @@ export function initOnramper(): Promise<OnramperClient> {
     } catch (error) {
       // configure() or initialize() failed — release the native object rather than
       // stranding it, then let the caller surface the error.
+      //
+      // Logged with its code, because that is the diagnosis: `attestationFailed`
+      // is a provisioning problem, `deviceBlocked` and `configurationError` are
+      // account-side, `networkError` is neither. The message alone
+      // ("Failed to initialize") separates none of them.
+      console.error(`[Onramper] initialize failed: ${describeOnramperError(error)}`);
       instance.destroy();
       throw error;
     }

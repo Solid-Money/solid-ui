@@ -17,6 +17,8 @@ import useOnramperCheckout from '@/hooks/useOnramperCheckout';
 import useOnramperClient from '@/hooks/useOnramperClient';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { isDevFeatureEnabled } from '@/lib/config';
+import { describeOnramperError } from '@/lib/onramperErrors';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOnramperStore } from '@/store/useOnramperStore';
 
@@ -206,6 +208,18 @@ export const OnramperAmount = () => {
           <Text className="text-sm font-medium leading-5 text-white/70">
             We couldn&apos;t reach our payment provider. Check your connection and try again.
           </Text>
+          {/* The sentence above is all a real user can act on. On qa/preview
+              builds the code is what someone debugging actually needs, and
+              reading it here beats tailing the bundler on a physical device. */}
+          {isDevFeatureEnabled ? (
+            <Text
+              selectable
+              className="mt-1 text-xs leading-[17px] text-amber-300"
+              style={{ fontFamily: 'monospace' }}
+            >
+              {describeOnramperError(clientError)}
+            </Text>
+          ) : null}
         </View>
         <Button className="h-12 rounded-full" variant="brand" onPress={retry}>
           <Text className="text-base font-bold text-black">Try again</Text>

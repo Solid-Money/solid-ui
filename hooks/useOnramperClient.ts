@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import useUser from '@/hooks/useUser';
 import { initOnramper, isOnramperSupported } from '@/lib/onramper';
+import { describeOnramperError } from '@/lib/onramperErrors';
 
 import type { OnramperClient } from '@onramper/onramper-react-native';
 
@@ -59,6 +60,9 @@ export default function useOnramperClient(): UseOnramperClientReturn {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
+        // The screen has room for one sentence; this is where the code and any
+        // info bag actually reach someone who can act on them.
+        console.error(`[Onramper] bootstrap failed: ${describeOnramperError(e)}`);
         setError(e instanceof Error ? e : new Error(String(e)));
       })
       .finally(() => {

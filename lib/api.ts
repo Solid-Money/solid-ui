@@ -7,6 +7,7 @@ import { fuse } from 'viem/chains';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { OnramperSessionError } from '@/lib/onramperErrors';
 import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import {
@@ -2047,11 +2048,16 @@ export const fetchOnramperSession = async (): Promise<OnramperSession> => {
     },
   );
 
-  if (!response.ok) throw response;
+  if (!response.ok) {
+    // A real Error, unlike the raw Response the endpoints around this one
+    // throw: a failed mint and a failed native init both surface as the same
+    // "Couldn't start checkout" screen, and `String(response)` renders as
+    // "[object Response]" — which cannot tell them apart. `status` is kept so
+    // `withRefreshToken` still recognises a 401 and retries.
+    throw new OnramperSessionError(response.status, await response.text().catch(() => undefined));
+  }
 
-  const data = await response.json();
-
-  return data;
+  return response.json();
 };
 
 /**
