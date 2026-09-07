@@ -3534,7 +3534,17 @@ export const verifyRecoveryOtp = async (
   otpCode: string,
   email: string,
   publicKey: string,
-): Promise<{ credentialBundle: string; userId: string; organizationId: string }> => {
+): Promise<{
+  credentialBundle: string;
+  userId: string;
+  organizationId: string;
+  /**
+   * When the session minted here stops being able to act, as epoch ms. The
+   * add-passkey step that follows cannot renew it, so it checks this rather
+   * than offering a retry that cannot succeed.
+   */
+  expiresAt?: number;
+}> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-recovery-otp`,
     {

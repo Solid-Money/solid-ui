@@ -72,6 +72,87 @@ export const mergeCredentialIds = (
   return merged;
 };
 
+/**
+ * Turnkey's own validation for an authenticator name, mirrored here so a name
+ * this app builds can be checked before it reaches the SDK.
+ *
+ * See `isValidPasskeyName` in @turnkey/core: React Native is capped at 64
+ * characters, and both platforms allow only these ASCII characters.
+ */
+const TURNKEY_PASSKEY_NAME_PATTERN = /^[a-zA-Z0-9 _\-:/.]{1,64}$/;
+
+export const isValidTurnkeyPasskeyName = (name: string): boolean =>
+  TURNKEY_PASSKEY_NAME_PATTERN.test(name);
+
+/**
+ * Name for the passkey that a recovery adds to the account.
+ *
+ * Turnkey requires the name to match {@link TURNKEY_PASSKEY_NAME_PATTERN} and
+ * treats names as unique per resource, so it has to be ASCII *and* different on
+ * every attempt. A locale-formatted date satisfied neither:
+ *
+ * - `toLocaleDateString()` follows the device locale, so on an Arabic, Persian
+ *   or Bengali device it returns non-Latin digits and embedded RTL marks
+ *   (`ar-EG` gives `٧‏/٩‏/٢٠٢٦`). Those fail the pattern, and the SDK rejects
+ *   the name before it ever shows the passkey prompt.
+ * - Its granularity is one day, so a second attempt on the same date re-sent a
+ *   name the account already had, which Turnkey refuses.
+ *
+ * An ISO timestamp is ASCII by construction, passes the pattern as-is, and is
+ * unique per millisecond — the same approach the SDK takes when no name is
+ * given (`Turnkey Passkey-${Date.now()}`).
+ */
+export const buildRecoveryPasskeyName = (now: Date = new Date()): string =>
+  `Recovery Passkey - ${now.toISOString()}`;
+
+/**
+ * Turnkey error codes that mean "this session can no longer act", as opposed to
+ * a failure of the passkey prompt or of the activity itself.
+ */
+const TURNKEY_SESSION_ERROR_CODES = ['SESSION_EXPIRED', 'NO_SESSION_FOUND'];
+
+/**
+ * Message fragments Turnkey returns for a lapsed session. The SDK only
+ * translates two exact strings into `SESSION_EXPIRED`, so anything else arrives
+ * wrapped in the calling method's generic message (for `addPasskey`, a bare
+ * "Failed to add passkey") and has to be recognised from the text.
+ */
+const TURNKEY_SESSION_ERROR_PATTERNS = [
+  /session (?:has )?expired/i,
+  /expired api key/i,
+  /could not find public key/i,
+  /no active session/i,
+  /unauthenticated/i,
+];
+
+/**
+ * Whether a failure means the Turnkey session is gone rather than that the
+ * passkey step itself failed.
+ *
+ * This is the difference between a retry that can work and one that cannot: a
+ * recovery session is minted from a single-use code, so once it lapses no
+ * number of retries on the same screen will succeed — the user needs a new
+ * code. Errors are inspected recursively because the SDK wraps the underlying
+ * failure in its own `TurnkeyError` and only exposes it via `cause`.
+ */
+export const isTurnkeySessionError = (error: unknown, depth = 0): boolean => {
+  const err = error as { code?: unknown; message?: unknown; cause?: unknown } | null;
+  if (!err || depth > 4) return false;
+
+  if (typeof err.code === 'string' && TURNKEY_SESSION_ERROR_CODES.includes(err.code)) {
+    return true;
+  }
+
+  if (
+    typeof err.message === 'string' &&
+    TURNKEY_SESSION_ERROR_PATTERNS.some(pattern => pattern.test(err.message as string))
+  ) {
+    return true;
+  }
+
+  return isTurnkeySessionError(err.cause, depth + 1);
+};
+
 /** WebAuthn / Credential Manager DOMException names raised by a failed prompt. */
 const PASSKEY_ERROR_NAMES = ['NotAllowedError', 'AbortError', 'InvalidStateError'];
 
