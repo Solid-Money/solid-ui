@@ -36,7 +36,7 @@ describe('embedded Buy crypto navigation', () => {
   });
 
   it('keeps the embedded header titles aligned with the global flow', () => {
-    expect(getBuyCryptoTitle(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT)).toBe('Buy crypto');
+    expect(getBuyCryptoTitle(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT)).toBe('Buy USDC');
     expect(getBuyCryptoTitle(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY)).toBe('Select currency');
     expect(getBuyCryptoTitle(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD)).toBe('Payment method');
   });

@@ -19,7 +19,7 @@ export const getBuyCryptoTitle = (modal: DepositModal) => {
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING.name:
       return 'Verifying';
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT.name:
-      return 'Buy crypto';
+      return 'Buy USDC';
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY.name:
       return 'Select currency';
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD.name:

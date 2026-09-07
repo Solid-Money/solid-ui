@@ -8,7 +8,10 @@ import HomeQR from '@/assets/images/home-qr';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { CARD_FUND_USD_ICON } from '@/components/Card/CardFund/constants';
-import { CARD_FUND_LOCAL_CURRENCIES } from '@/components/Card/CardFund/localCurrencies';
+import {
+  CARD_FUND_LOCAL_CURRENCIES,
+  getCardFundLocalPaymentMethods,
+} from '@/components/Card/CardFund/localCurrencies';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -17,13 +20,11 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
-import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-import { getPaymentMethodChips } from './depositPaymentMethods';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
@@ -48,23 +49,6 @@ const DepositTypeSelection = () => {
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
-
-  const { data: brlPaymentMethods } = useTransfiPaymentMethods('BRL');
-  const { data: bdtPaymentMethods } = useTransfiPaymentMethods('BDT');
-  const { data: phpPaymentMethods } = useTransfiPaymentMethods('PHP');
-  const { data: mxnPaymentMethods } = useTransfiPaymentMethods(
-    showAllCurrencies ? 'MXN' : undefined,
-  );
-
-  const paymentMethodChips = useMemo(
-    () => ({
-      BRL: getPaymentMethodChips(brlPaymentMethods),
-      BDT: getPaymentMethodChips(bdtPaymentMethods),
-      PHP: getPaymentMethodChips(phpPaymentMethods),
-      MXN: getPaymentMethodChips(mxnPaymentMethods),
-    }),
-    [bdtPaymentMethods, brlPaymentMethods, mxnPaymentMethods, phpPaymentMethods],
-  );
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -159,7 +143,7 @@ const DepositTypeSelection = () => {
               className="min-h-[93px]"
               icon={currency.icon}
               title={currency.code}
-              chips={paymentMethodChips[currency.code as keyof typeof paymentMethodChips]}
+              chips={getCardFundLocalPaymentMethods(currency.code)}
               onPress={() => handleLocalCurrencyPress(currency.code)}
             />
           ))}
