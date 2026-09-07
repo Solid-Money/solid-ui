@@ -140,6 +140,8 @@ export function useRecordStocksFee() {
           feeTokenAddress: sellTokenAddress,
           feeTokenSymbol: sellTokenSymbol,
           feeTokenAmount: fee.feeAmount.toString(),
+          // Priced server-side from this pair; see useSwapFeeCollection.
+          baseTokenAmount: fee.swapAmount.toString(),
           feeAmountUsd: toUsd(fee.feeAmount),
           percentage: fee.rate,
         },

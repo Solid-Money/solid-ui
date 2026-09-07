@@ -90,6 +90,9 @@ export function useSwapFeeCollection(
             : inputCurrency.wrapped.address,
           feeTokenSymbol: inputCurrency.symbol,
           feeTokenAmount: fee.feeAmount.toString(),
+          // The amount the fee came out of, so the server can price it itself
+          // and derive the rate from the pair rather than trusting ours.
+          baseTokenAmount: fee.swapAmount.toString(),
           feeAmountUsd,
           percentage: fee.rate,
         },

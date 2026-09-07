@@ -1823,6 +1823,13 @@ export interface RecordSwapFeeParams {
   feeTokenAddress: string;
   feeTokenSymbol?: string;
   feeTokenAmount: string;
+  /**
+   * Raw amount the fee came out of, in the same token and unit.
+   *
+   * Lets the server derive the applied rate exactly from the two on-chain
+   * amounts, with no price involved, and value the base itself.
+   */
+  baseTokenAmount?: string;
   feeAmountUsd: number;
   percentage?: number;
 }
@@ -1835,6 +1842,13 @@ export interface RecordStocksFeeParams {
   feeTokenAddress: string;
   feeTokenSymbol?: string;
   feeTokenAmount: string;
+  /**
+   * Raw amount the fee came out of, in the same token and unit.
+   *
+   * Lets the server derive the applied rate exactly from the two on-chain
+   * amounts, with no price involved, and value the base itself.
+   */
+  baseTokenAmount?: string;
   feeAmountUsd: number;
   percentage?: number;
 }
