@@ -32,6 +32,20 @@ const formatUsdCompact = (value: number) => {
   return Number.isInteger(amount) ? formatUsdWhole(amount) : formatUsd(amount);
 };
 
+/**
+ * What actually landed in the wallet — "3,719.31 FUSE".
+ *
+ * The reward is agreed in dollars and settled in a token, so a paid row that
+ * only says "+$15" leaves the user unable to match it against the transfer they
+ * can see on chain. Absent on rewards paid by a backend that predates the
+ * FUSE switch, in which case the row just doesn't show this line.
+ */
+const formatPayoutToken = (item: ReferralRewardListItem) => {
+  const amount = Number(item.payoutTokenAmount);
+  if (!item.payoutToken || !Number.isFinite(amount) || amount <= 0) return null;
+  return `${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${item.payoutToken}`;
+};
+
 const formatJoined = (iso: string) => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
@@ -246,6 +260,10 @@ export default function ReferralFriendRow({
       ? `${formatUsdCompact(item.spendUsd)} spent`
       : `${formatUsdCompact(item.spendUsd)}/${formatUsdWhole(spendTargetUsd)} spent · ${item.merchantCount}/${merchantTarget} merchants`;
 
+  // Only on a paid row: the dollar figure above is the promise, this is what
+  // was sent.
+  const paidLine = item.stage === ReferralFriendStage.PAID ? formatPayoutToken(item) : null;
+
   const detailChip = presentation.detail ? (
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>
   ) : null;
@@ -296,6 +314,9 @@ export default function ReferralFriendRow({
               {formatJoined(item.signupAt)}
             </Text>
             <Text className="text-xs leading-[14px] text-white/50">{spentLine}</Text>
+            {paidLine ? (
+              <Text className="text-xs leading-[14px] text-white/50">Paid {paidLine}</Text>
+            ) : null}
 
             {presentation.showProgress ? (
               <SpendProgress

@@ -131,6 +131,10 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const windowDays = summary?.qualification.windowDays ?? 30;
   const hasActiveCard = summary?.hasActiveCard ?? false;
   const referrals = summary?.referrals ?? [];
+  // The reward is quoted in dollars but settled in a token; name it rather than
+  // leaving the user to infer it from the transfer. Omitted on backends that
+  // don't report it.
+  const payoutToken = summary?.rewards.payoutToken;
 
   const handleInvite = useCallback(async () => {
     const message = `Join me on Solid — order a card, spend, and we both earn. Use my link: ${referralLink}`;
@@ -272,8 +276,9 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
             • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants.
           </Text>
           <Text className="text-sm text-white/70">
-            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about 40
-            days after they qualify. One reward per friend, no cap.
+            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}
+            {payoutToken ? ` in ${payoutToken}` : ''}, credited about 40 days after they qualify.
+            One reward per friend, no cap.
           </Text>
         </View>
       )}

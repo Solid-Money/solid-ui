@@ -115,6 +115,10 @@ export default function ReferralProgramContentNew({
   const payoutDelayDays = summary?.qualification.payoutDelayDays ?? 30;
   const referrals = summary?.referrals ?? [];
   const totalRewardedUsd = summary?.totalRewardedUsd ?? 0;
+  // The reward is quoted in dollars but settled in a token, so the "how it
+  // works" copy names it — a user promised $15 and sent FUSE should not have to
+  // work that out from the transfer. Omitted on backends that don't report it.
+  const payoutToken = summary?.rewards.payoutToken;
 
   const handleWhatsApp = useCallback(async () => {
     const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
@@ -364,10 +368,10 @@ export default function ReferralProgramContentNew({
               • Spend {formatUsdWhole(spendTarget)} across {merchantTarget}+ different merchants.
             </Text>
             <Text className="text-sm text-white/70">
-              You get {formatUsdWhole(referrerUsd)} and they get {formatUsdWhole(newUserUsd)},
-              credited {payoutDelayDays} days after they qualify — that window covers refunds and
-              disputes. You&apos;ll see the exact unlock date on each friend above. One reward per
-              friend, no cap.
+              You get {formatUsdWhole(referrerUsd)} and they get {formatUsdWhole(newUserUsd)}
+              {payoutToken ? ` in ${payoutToken}` : ''}, credited {payoutDelayDays} days after they
+              qualify — that window covers refunds and disputes. You&apos;ll see the exact unlock
+              date on each friend above. One reward per friend, no cap.
             </Text>
           </View>
         )}

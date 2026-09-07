@@ -2744,14 +2744,33 @@ export interface ReferralRewardListItem {
   merchantCount: number;
   hasActiveCard: boolean;
   rewardUsd: number;
+  /**
+   * Asset this reward settles in, frozen when it qualified. Rows either side of
+   * the soUSD → FUSE switch can differ, so this is per-row rather than a single
+   * program-level value. Absent on backends that predate the switch.
+   */
+  payoutToken?: ReferralPayoutToken;
+  /** Token units actually paid to the referrer, once that leg is on chain. */
+  payoutTokenAmount?: string;
   /** Explorer link for the referrer's payout, once that leg is on chain. */
   payoutTxUrl?: string;
+}
+
+/**
+ * What a referral reward is settled in. The reward itself is always quoted in
+ * USD; this is only the token that lands in the user's wallet.
+ */
+export enum ReferralPayoutToken {
+  SOUSD = 'soUSD',
+  FUSE = 'FUSE',
 }
 
 export interface ReferralSummary {
   rewards: {
     referrerUsd: number;
     newUserUsd: number;
+    /** Asset a reward earned right now would be paid in. */
+    payoutToken?: ReferralPayoutToken;
   };
   qualification: {
     spendTargetUsd: number;
