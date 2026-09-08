@@ -9,9 +9,15 @@ import CardFundNetworks from '@/components/Card/CardFund/CardFundNetworks';
 import CardFundOptions from '@/components/Card/CardFund/CardFundOptions';
 import {
   CARD_FUND_DESTINATION_TYPE,
+  CARD_FUND_MOVE_COPY,
   getCardFundTokenIcon,
   WIREX_CARD_FUND_SECTIONS,
 } from '@/components/Card/CardFund/constants';
+import {
+  useMovableHoldings,
+  WirexMoveAmount,
+  WirexMoveHoldings,
+} from '@/components/Card/CardFund/WirexMoveFromWallet';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
@@ -25,9 +31,10 @@ import {
 } from '@/lib/buyCryptoFlow';
 import { CardProvider, DepositModal } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { MovableHolding } from '@/lib/utils/cardFundMove';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-type Step = 'options' | 'networks' | 'address';
+type Step = 'options' | 'networks' | 'address' | 'moveHoldings' | 'moveAmount';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
@@ -35,6 +42,19 @@ const MODAL_STATES: Record<Step, ModalState> = {
   options: { name: 'options', number: 0 },
   networks: { name: 'networks', number: 1 },
   address: { name: 'address', number: 2 },
+  // A parallel branch off `options`, numbered alongside the deposit steps it
+  // never interleaves with: what the numbers drive is the slide direction, and
+  // both branches only ever move one step further from, or back towards, options.
+  moveHoldings: { name: 'moveHoldings', number: 1 },
+  moveAmount: { name: 'moveAmount', number: 2 },
+};
+
+/** Which step "back" returns to, for the steps that are not the first. */
+const BACK_STEP: Partial<Record<Step, Step>> = {
+  networks: 'options',
+  address: 'networks',
+  moveHoldings: 'options',
+  moveAmount: 'moveHoldings',
 };
 
 const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
@@ -90,6 +110,8 @@ export default function WirexCardFundModal({
   const [selectedToken, setSelectedToken] = useState('USDC');
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
+  const [selectedHolding, setSelectedHolding] = useState<MovableHolding | undefined>(undefined);
+  const { holdings, isLoading: areHoldingsLoading } = useMovableHoldings();
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
@@ -120,6 +142,7 @@ export default function WirexCardFundModal({
         setBuyCryptoModal(null);
         setDepositAddress(undefined);
         setSelectedChainId(undefined);
+        setSelectedHolding(undefined);
       }
     },
     [isControlled, onOpenChange],
@@ -188,6 +211,28 @@ export default function WirexCardFundModal({
     [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
+  const handleMoveFromWalletPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'wirex_move_from_wallet',
+    });
+    setSelectedHolding(undefined);
+    goToStep('moveHoldings');
+  }, [goToStep]);
+
+  const handleHoldingSelect = useCallback(
+    (holding: MovableHolding) => {
+      setSelectedHolding(holding);
+      goToStep('moveAmount');
+    },
+    [goToStep],
+  );
+
+  // The transfer is out; the pipeline's own "Card deposit" activity takes over
+  // from here, so there is nothing left for this modal to show.
+  const handleMoveSubmitted = useCallback(() => {
+    handleOpenChange(false);
+  }, [handleOpenChange]);
+
   // The webhook has seen the transfer — hand the user straight to its progress screen.
   const handleDepositDetected = useCallback(
     (clientTxId: string) => {
@@ -208,7 +253,7 @@ export default function WirexCardFundModal({
       return;
     }
     setStepState(prev => ({
-      current: prev.current === 'address' ? 'networks' : 'options',
+      current: BACK_STEP[prev.current] ?? 'options',
       previous: MODAL_STATES[prev.current],
     }));
   }, [buyCryptoModal, goToStep, navigateBuyCrypto]);
@@ -227,6 +272,8 @@ export default function WirexCardFundModal({
     if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
+    if (step === 'moveHoldings') return CARD_FUND_MOVE_COPY.wirex.title;
+    if (step === 'moveAmount') return `Move ${selectedHolding?.symbol ?? ''}`.trim();
     return 'Fund your card';
   })();
 
@@ -248,13 +295,63 @@ export default function WirexCardFundModal({
         <CardFundOptions
           onTokenPress={handleTokenPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
+          onMoveFromSavingsPress={handleMoveFromWalletPress}
           sections={WIREX_CARD_FUND_SECTIONS}
+          moveFromSolidCopy={CARD_FUND_MOVE_COPY.wirex}
         />
       );
     }
 
     if (step === 'networks') {
       return <CardFundNetworks symbol={selectedToken} onSelect={handleNetworkSelect} />;
+    }
+
+    if (step === 'moveHoldings') {
+      return (
+        <WirexMoveHoldings
+          holdings={holdings}
+          isLoading={areHoldingsLoading}
+          onSelect={handleHoldingSelect}
+        />
+      );
+    }
+
+    if (step === 'moveAmount') {
+      // Balances poll under the sheet, so the form is fed the freshest reading of
+      // the holding it was opened on — but it falls back to that opening reading
+      // rather than unmounting when the row goes away. A transfer is in flight
+      // for most of the time this screen is up, and dropping the component that
+      // owns it mid-send loses the confirmation for a transaction that still
+      // happens. A balance that has genuinely moved on fails at the chain
+      // instead, with an error the user can read.
+      const holding =
+        (selectedHolding &&
+          holdings.find(
+            candidate =>
+              candidate.chainId === selectedHolding.chainId &&
+              candidate.tokenAddress === selectedHolding.tokenAddress,
+          )) ||
+        selectedHolding;
+
+      if (!holding) {
+        return (
+          <WirexMoveHoldings
+            holdings={holdings}
+            isLoading={areHoldingsLoading}
+            onSelect={handleHoldingSelect}
+          />
+        );
+      }
+
+      return (
+        // Keyed so picking a different holding starts with an empty amount rather
+        // than one validated against the previous token's balance.
+        <WirexMoveAmount
+          key={`${holding.chainId}:${holding.tokenAddress}`}
+          holding={holding}
+          onDone={handleMoveSubmitted}
+        />
+      );
     }
 
     return (
