@@ -12,6 +12,7 @@ import {
   Cashback,
   CashbackInfo,
   CashbackStatus,
+  CashbackType,
   CryptoTransactionDetails,
   FreezeInitiator,
   KycStatus,
@@ -530,6 +531,19 @@ export const getCashbackAmount = (
     return null;
   }
 
+  // Which programme paid the row, carried through every branch below so the
+  // receipt can name subscription cashback as such. A charge earns the tier rate
+  // or the subscription perk, never both, so this labels the one row rather than
+  // implying a second is missing. Rows written before the field existed are all
+  // regular cashback.
+  const subscription =
+    cashback.type === CashbackType.SubscriptionDiscount
+      ? {
+          isSubscriptionDiscount: true,
+          subscriptionCategory: cashback.subscriptionCategory,
+        }
+      : {};
+
   // Excluded by merchant category. There is no amount and none is coming, so
   // this returns before every branch that reaches for a figure or a projection.
   if (cashback.status === CashbackStatus.Ineligible) {
@@ -539,6 +553,7 @@ export const getCashbackAmount = (
       isEscrowed: false,
       isPaid: false,
       isIneligible: true,
+      ...subscription,
     };
   }
 
@@ -563,6 +578,7 @@ export const getCashbackAmount = (
       isPaid: false,
       isIneligible: false,
       payoutAt: cashback.payoutAt,
+      ...subscription,
     };
   }
 
@@ -583,6 +599,7 @@ export const getCashbackAmount = (
     isPaid: cashback.status === CashbackStatus.Paid,
     isIneligible: false,
     payoutAt: cashback.payoutAt,
+    ...subscription,
   };
 };
 

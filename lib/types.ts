@@ -1376,10 +1376,32 @@ export enum CashbackStatus {
   Ineligible = 'Ineligible',
 }
 
+/** What a cashback row was earned as. Mirrors the backend's `CashbackType`. */
+export enum CashbackType {
+  /** Regular tier-based cashback on any card purchase. */
+  Cashback = 'Cashback',
+  /** Category-based subscription cashback — a Prime/Ultra perk. */
+  SubscriptionDiscount = 'SubscriptionDiscount',
+}
+
 export interface Cashback {
   _id: string;
   transactionId: string;
   status: CashbackStatus;
+  /**
+   * Which programme paid this row.
+   *
+   * Absent on rows written before the field existed, which are all regular
+   * cashback — so treat a missing value as {@link CashbackType.Cashback} rather
+   * than as unknown.
+   */
+  type?: CashbackType;
+  /**
+   * For a subscription row, the category it was billed under ("ai",
+   * "streaming", "music", "gaming"). The set is configured server-side and can
+   * grow, so never assume a key is one the app knows about.
+   */
+  subscriptionCategory?: string;
   /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
   soUsdAmount?: string;
   soUsdRate?: string;
@@ -1422,6 +1444,19 @@ export interface CashbackInfo {
    * figure: until then it is a projection, and reads as ordinary text.
    */
   isPaid: boolean;
+  /**
+   * This row is subscription cashback (the Prime/Ultra perk), not the tier rate
+   * on the charge.
+   *
+   * Worth naming on the receipt because the two figures are wildly different —
+   * 25% or 50% against 3–5% — and a row labelled only "Cashback" on a $200
+   * subscription reads as the tier rate having been applied and the perk having
+   * been missed. A charge earns one or the other, never both, so this
+   * distinguishes the row rather than adding a second one.
+   */
+  isSubscriptionDiscount?: boolean;
+  /** The category a subscription row was billed under, when it is one. */
+  subscriptionCategory?: string;
   payoutAt?: string;
 }
 
@@ -1728,7 +1763,11 @@ export interface SubscriptionDiscountConfig {
   /** @deprecated Legacy flat service list; detection uses categories. */
   eligibleServices: string[];
   categories: SubscriptionDiscountCategory[];
-  /** First N dollars of an eligible charge that earn the discount. */
+  /**
+   * Most subscription cashback one eligible service can earn in a month, in USD
+   * (Rewards Terms §5). Caps the cashback, not the charge it is earned on; the
+   * name is left from an earlier reading and is what the API still sends.
+   */
   eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
