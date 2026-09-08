@@ -157,3 +157,20 @@ export const scaleBrandGlyph = (glyph: { width: number; height: number }, badgeS
 /** Comma-joined category names for mid-sentence copy: "AI, streaming, music". */
 export const subscriptionCategoriesSentence = () =>
   SUBSCRIPTION_CATEGORIES.map(category => category.sentenceLabel).join(', ');
+
+/**
+ * Display name for a category key a cashback row was billed under ("ai" → "AI").
+ *
+ * Falls back to title-casing the key rather than returning null: the eligible
+ * categories live in server config and this list is the curated marketing one,
+ * so a key it has never heard of ("gaming") is expected, not a bug, and a
+ * receipt that names it imperfectly beats one that names nothing.
+ */
+export const subscriptionCategoryLabel = (key: string | undefined): string | undefined => {
+  if (!key) return undefined;
+
+  const known = SUBSCRIPTION_CATEGORIES.find(category => category.key === key);
+  if (known) return known.label;
+
+  return key.charAt(0).toUpperCase() + key.slice(1);
+};

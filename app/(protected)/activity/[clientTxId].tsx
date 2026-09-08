@@ -26,6 +26,7 @@ import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { subscriptionCategoryLabel } from '@/components/Rewards/NewRewards/subscriptionBrands';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -432,6 +433,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   );
 
   const rows = useMemo(() => {
+    // "AI", "Streaming" — the category a subscription row was billed under, for
+    // the note under the figure. Undefined on a regular cashback row.
+    const subscriptionCategory = cashbackInfo?.isSubscriptionDiscount
+      ? subscriptionCategoryLabel(cashbackInfo.subscriptionCategory)
+      : undefined;
+
     const allRows = [
       // No Status row: the chip under the amount carries it, and says it louder
       // than a row in a card of plain facts can. See `statusPill`.
@@ -465,7 +472,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
                 cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand',
               )}
             >
-              Cashback
+              {cashbackInfo.isSubscriptionDiscount ? 'Subscription cashback' : 'Cashback'}
             </Text>
           </View>
         ),
@@ -491,14 +498,28 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         // "Ineligible" on its own invites the support ticket this row exists to
         // prevent, so the reason comes with it. The pending-sum note is mutually
         // exclusive: there is no amount here to reconcile against the total.
+        // A subscription row is worth explaining even when the pending-sum note
+        // also applies, so the two stack rather than one winning: the perk pays
+        // instead of the tier rate, and a cardholder who knows the rate is 25%
+        // but sees one figure has no way to tell which of the two they got.
         caption: cashbackInfo.isIneligible ? (
           <Text className="mt-2 text-[13px] leading-4 text-white/50">
             Cash withdrawals, money transfers and government payments don&apos;t earn cashback
           </Text>
-        ) : isApproved ? (
-          <Text className="mt-2 text-[13px] leading-4 text-white/50">
-            Cashback amount is not reflected on a pending transaction sum
-          </Text>
+        ) : subscriptionCategory || isApproved ? (
+          <View className="mt-2 gap-1">
+            {subscriptionCategory ? (
+              <Text className="text-[13px] leading-4 text-white/50">
+                Your {subscriptionCategory} subscription perk, paid instead of standard card
+                cashback on this charge
+              </Text>
+            ) : null}
+            {isApproved ? (
+              <Text className="text-[13px] leading-4 text-white/50">
+                Cashback amount is not reflected on a pending transaction sum
+              </Text>
+            ) : null}
+          </View>
         ) : undefined,
       },
       cashbackInfo?.isEscrowed &&
