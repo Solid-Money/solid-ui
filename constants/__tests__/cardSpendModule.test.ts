@@ -81,19 +81,29 @@ describe('usd conversion', () => {
 });
 
 describe('preset filtering against live org ceilings', () => {
-  // The ceilings actually deployed on Fuse: $1,000 daily / $10,000 monthly.
-  const MAX_DAILY = 1_000n * ONE_USD;
-  const MAX_MONTHLY = 10_000n * ONE_USD;
+  // The ceilings actually deployed on Fuse: $25,000 daily / $250,000 monthly.
+  const MAX_DAILY = 25_000n * ONE_USD;
+  const MAX_MONTHLY = 250_000n * ONE_USD;
 
-  it('offers only limits the module would accept', () => {
-    // $2,500 is dropped by the daily ceiling. Offering it would surface as
-    // ExceedsOrgDailyCeiling, which a user cannot act on.
-    expect(offerablePresets(MAX_DAILY, MAX_MONTHLY)).toEqual([100, 250, 500, 1_000]);
+  // The monthly ceiling is deployed at exactly 10x the daily one, which is the *only*
+  // reason the top rung survives its own derived monthly. Setting it any lower does not
+  // cap the month — it deletes the top options from the picker with nothing to explain
+  // why, so the whole ladder being offered is the thing worth asserting.
+  it('offers the entire ladder under the deployed ceilings', () => {
+    expect(offerablePresets(MAX_DAILY, MAX_MONTHLY)).toEqual([...DAILY_LIMIT_PRESETS_USD]);
   });
 
   it('drops a preset whose derived monthly would breach the monthly ceiling', () => {
-    // Daily alone would allow $500; 10x monthly would not.
-    expect(offerablePresets(MAX_DAILY, 2_500n * ONE_USD)).toEqual([100, 250]);
+    // The daily ceiling alone would allow every rung; a $10,000 monthly leaves only the
+    // floor, because $5,000 derives a $50,000 monthly.
+    expect(offerablePresets(MAX_DAILY, 10_000n * ONE_USD)).toEqual([1_000]);
+  });
+
+  // The ladder starts at $1,000, so a ceiling under it offers nothing at all rather than
+  // a smaller option. That makes a sub-$1,000 ceiling unusable as a rollout throttle: it
+  // does not tighten activation, it blocks it. Asserted so the trade is deliberate.
+  it('offers nothing at all under a ceiling below the ladder floor', () => {
+    expect(offerablePresets(500n * ONE_USD, 5_000n * ONE_USD)).toEqual([]);
   });
 
   it('offers nothing when the ceilings are closed, so the sheet can say so', () => {
@@ -136,7 +146,7 @@ describe('the limit activation registers with', () => {
   // unreachable under the deployed ceilings then every activation silently falls back,
   // which is worth failing a test over rather than discovering in the funnel.
   it('is reachable under the deployed ceilings', () => {
-    expect(offerablePresets(1_000n * ONE_USD, 10_000n * ONE_USD)).toContain(
+    expect(offerablePresets(25_000n * ONE_USD, 250_000n * ONE_USD)).toContain(
       INITIAL_DAILY_LIMIT_USD,
     );
   });
@@ -154,30 +164,42 @@ describe('activationDailyLimit', () => {
   });
 
   it('registers the default when the org allows it', () => {
-    expect(activationDailyLimit(ceilings(1_000, 10_000))).toBe(INITIAL_DAILY_LIMIT_USD);
+    expect(activationDailyLimit(ceilings(25_000, 250_000))).toBe(INITIAL_DAILY_LIMIT_USD);
   });
 
   // Upwards would be the org's ceiling read as an entitlement. It is a bound.
   it('never clamps upwards, however generous the ceilings', () => {
-    expect(activationDailyLimit(ceilings(2_500, 25_000))).toBe(INITIAL_DAILY_LIMIT_USD);
+    expect(activationDailyLimit(ceilings(50_000, 500_000))).toBe(INITIAL_DAILY_LIMIT_USD);
   });
 
-  // The largest offer underneath, not the nearest: a ceiling of $400 means $250, because
-  // $500 would revert with ExceedsOrgDailyCeiling and cost the user the whole activation.
+  // The ceiling a Safe registered under before the caps were raised. Worth its own case:
+  // it is what every activation silently fell back to while the app shipped ahead of the
+  // owner transaction, and it must be the rung below rather than a revert.
+  it('clamps to the old ceiling while the raise has not landed yet', () => {
+    expect(activationDailyLimit(ceilings(1_000, 10_000))).toBe(1_000);
+  });
+
+  // The largest offer underneath, not the nearest: a ceiling of $4,000 means $1,000,
+  // because $5,000 would revert with ExceedsOrgDailyCeiling and cost the user the whole
+  // activation.
   it('clamps down to the largest preset the ceiling leaves room for', () => {
-    expect(activationDailyLimit(ceilings(500, 5_000))).toBe(500);
-    expect(activationDailyLimit(ceilings(400, 5_000))).toBe(250);
+    expect(activationDailyLimit(ceilings(5_000, 250_000))).toBe(5_000);
+    expect(activationDailyLimit(ceilings(4_000, 250_000))).toBe(1_000);
   });
 
   // The monthly is derived, so a cap can clear the daily ceiling and still revert with
-  // ExceedsOrgMonthlyCeiling — both bounds have to hold.
+  // ExceedsOrgMonthlyCeiling — both bounds have to hold. Here the daily ceiling alone
+  // would allow $25,000 and the monthly cuts it to $5,000.
   it('respects the monthly ceiling as well as the daily one', () => {
-    expect(activationDailyLimit(ceilings(1_000, 5_000))).toBe(500);
+    expect(activationDailyLimit(ceilings(25_000, 50_000))).toBe(5_000);
   });
 
   // Nothing to grant means nothing worth issuing: the caller blocks activation on this
-  // rather than handing over a card that declines every payment.
+  // rather than handing over a card that declines every payment. With the ladder starting
+  // at $1,000 this is now reachable from any ceiling below the floor, not just a
+  // pathological one — which is the cost of removing the small rungs.
   it('is null when no preset is offerable at all', () => {
+    expect(activationDailyLimit(ceilings(500, 5_000))).toBeNull();
     expect(activationDailyLimit(ceilings(50, 500))).toBeNull();
   });
 
@@ -204,9 +226,10 @@ describe('monthlyLimitFor', () => {
     expect(monthlyLimitFor(usd(100), current)).toBe(usd(1_000));
   });
 
-  // A Safe that took the org defaults ($100 daily / $5,000 monthly) is the case the
-  // clamp exists for: the derived monthly for $250 is $2,500, which is *below* the
-  // stored monthly, and sending that with a raised daily reverts NotAnIncrease.
+  // A Safe whose stored pair are *not* ten times apart is the case the clamp exists for:
+  // with $100 daily / $5,000 monthly stored, the derived monthly for $250 is $2,500, which
+  // is *below* the stored monthly, and sending that with a raised daily reverts
+  // NotAnIncrease.
   it('never lets the monthly cross the stored one against the daily', () => {
     const defaults = { dailyLimitUsd: usd(100), monthlyLimitUsd: usd(5_000) };
 
@@ -239,7 +262,11 @@ describe('monthlyLimitFor', () => {
 });
 
 describe('formatDelayDuration', () => {
-  it('reads the deployed 24-hour raise delay as hours', () => {
+  it('reads the deployed one-hour raise delay as an hour', () => {
+    expect(formatDelayDuration(60 * 60)).toBe('1 hour');
+  });
+
+  it('still reads a 24-hour delay as hours rather than a day', () => {
     expect(formatDelayDuration(24 * 60 * 60)).toBe('24 hours');
   });
 

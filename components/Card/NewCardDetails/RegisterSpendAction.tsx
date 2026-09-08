@@ -383,7 +383,12 @@ const RegisterSpendAction = ({
             {isRegistered && limit ? (
               <Row label="Spent today" value={formatUsd(limit.spentTodayUsd)} />
             ) : null}
-            {registration ? (
+            {/* The module still enforces a per-transaction cap, but it is configured equal to
+                the org's daily ceiling so it cannot bind before the daily limit does — and a
+                second cap that never applies only invites the question of which one is real.
+                Shown only if ops has tightened it below the daily limit, i.e. only when it
+                is genuinely the number that would decline a payment. */}
+            {registration && daily !== null && registration.maxPerTxUsd < usdToOnChain(daily) ? (
               <Row label="Max per payment" value={formatUsd(registration.maxPerTxUsd)} />
             ) : null}
           </View>

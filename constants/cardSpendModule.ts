@@ -20,8 +20,18 @@ export const ONE_USD = 1_000_000n;
  * `monthly <= maxMonthlyLimitUsd`), and a typo that trips one of them costs the user
  * a failed transaction. The list is filtered against the live org ceilings before
  * being shown, so an option that would revert is never offered.
+ *
+ * $1,000 is the floor by choice, and it has two consequences worth knowing:
+ *
+ *  - A cardholder at or above it cannot pick a *tighter* cap here. Lowering is the
+ *    risk-reducing direction and the one the module lets a user take unilaterally and
+ *    instantly, so the picker no longer exposes all of it. Anyone already stored below
+ *    the floor keeps their own rung, which `RegisterSpendAction` injects into the list.
+ *  - An org daily ceiling under $1,000 now leaves *nothing* offerable, and
+ *    {@link activationDailyLimit} returning null blocks card activation outright. A
+ *    sub-$1,000 ceiling is therefore no longer usable as a staged-rollout throttle.
  */
-export const DAILY_LIMIT_PRESETS_USD = [100, 250, 500, 1_000, 2_500] as const;
+export const DAILY_LIMIT_PRESETS_USD = [1_000, 5_000, 10_000, 25_000] as const;
 
 /**
  * The daily limit card activation registers with, in whole dollars.
@@ -36,8 +46,16 @@ export const DAILY_LIMIT_PRESETS_USD = [100, 250, 500, 1_000, 2_500] as const;
  *
  * Clamped by the caller against the live org ceilings, which are the real bound on what
  * a Safe may ever grant.
+ *
+ * Deliberately the *top* of {@link DAILY_LIMIT_PRESETS_USD} rather than a middle rung. Be
+ * clear about what that trades: one activation signature grants the module this much a day
+ * from the user's Safe, without them having picked the number. It buys the thing the raise
+ * path cannot — a cardholder never meets a wall they have to sign and wait to move — and
+ * the two directions are not symmetric, so the mistake worth avoiding is the one that is
+ * slow to fix. Lowering is instant and entirely theirs; raising costs a signature plus
+ * `limitRaiseDelay`.
  */
-export const INITIAL_DAILY_LIMIT_USD = 1_000;
+export const INITIAL_DAILY_LIMIT_USD = 25_000;
 
 /**
  * Monthly limit as a multiple of the chosen daily limit.

@@ -92,7 +92,13 @@ export interface CardSpendRegistration {
   maxMonthlyLimitUsd: bigint;
   defaultDailyLimitUsd: bigint;
   defaultMonthlyLimitUsd: bigint;
-  /** Hard cap on one card transaction, independent of the rolling windows. */
+  /**
+   * Hard cap on one card transaction, independent of the rolling windows.
+   *
+   * Configured equal to the org's daily ceiling, so in normal operation it cannot bind
+   * before the daily limit does and the sheet does not name it. Still read on every load:
+   * lowering it is a live ops throttle, and a cap that does bind has to be visible.
+   */
   maxPerTxUsd: bigint;
   /** Global guardian pause — spending is off for everyone while true. */
   modulePaused: boolean;
