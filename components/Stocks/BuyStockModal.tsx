@@ -52,12 +52,25 @@ type BuyStockModalProps = {
   isOpen: boolean;
   onClose: () => void;
   trigger: React.ReactNode;
+  /**
+   * Pre-selects a stock so the flow opens on the amount step instead of the
+   * picker — used when the user already named one by tapping its row. Callers
+   * must key the modal on the token so a different pick re-seeds these
+   * initial states; the modal stays mounted between opens.
+   */
+  initialToken?: XStockToken | null;
 };
 
-export default function BuyStockModal({ isOpen, onClose, trigger }: BuyStockModalProps) {
-  const [step, setStep] = useState<BuyStep>('select');
+export default function BuyStockModal({
+  isOpen,
+  onClose,
+  trigger,
+  initialToken = null,
+}: BuyStockModalProps) {
+  const initialStep: BuyStep = initialToken ? 'input' : 'select';
+  const [step, setStep] = useState<BuyStep>(initialStep);
   const [previousStep, setPreviousStep] = useState<BuyStep>('select');
-  const [selectedToken, setSelectedToken] = useState<XStockToken | null>(null);
+  const [selectedToken, setSelectedToken] = useState<XStockToken | null>(initialToken);
   const [amount, setAmount] = useState('50');
 
   const currentModal: ModalState = { name: step, number: STEP_NUMBERS[step] };
@@ -114,9 +127,11 @@ export default function BuyStockModal({ isOpen, onClose, trigger }: BuyStockModa
   }
 
   function handleClose() {
-    setStep('select');
+    // Reset to how this modal was opened, not to the picker: reopening a
+    // pre-selected stock should land on its amount step again.
+    setStep(initialStep);
     setPreviousStep('select');
-    setSelectedToken(null);
+    setSelectedToken(initialToken);
     setAmount('50');
     cowOrder.reset();
     onClose();
