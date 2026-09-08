@@ -10,7 +10,7 @@ const tokenValueUSD = (token: TokenBalance): number => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 
-const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): boolean => {
+export const matchesAsset = (token: TokenBalance, asset: CardSpendableAsset): boolean => {
   if (asset.chainIds && !asset.chainIds.includes(token.chainId)) return false;
 
   // Address wins outright where one is configured, and the ticker is not consulted at
@@ -42,5 +42,16 @@ export const sumCardSpendableUSD = (
   assets: CardSpendableAsset[],
 ): number =>
   (tokens ?? [])
-    .filter(token => assets.some(asset => matchesAsset(token, asset)))
+    .filter(token => isCardSpendable(token, assets))
     .reduce((total, token) => total + tokenValueUSD(token), 0);
+
+/**
+ * Whether this exact holding is one the card can already settle from.
+ *
+ * The same predicate the total is built on, named so the move-to-card flow can ask
+ * the inverse question. Both have to agree: offering to move something the
+ * "Spendable" row is already counting would take the user's money on a bridge
+ * round trip to arrive at the balance it started in.
+ */
+export const isCardSpendable = (token: TokenBalance, assets: CardSpendableAsset[]): boolean =>
+  assets.some(asset => matchesAsset(token, asset));
