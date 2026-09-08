@@ -50,6 +50,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
+import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
 import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
@@ -317,6 +318,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return dateStr ? new Date(dateStr) : new Date();
   }, [isApproved, transaction.authorized_at, transaction.posted_at]);
 
+  // Why we refused the charge, in the most specific terms we have — our own
+  // decline code where it says more than the issuer's reason, which collapses
+  // several distinct causes onto "insufficient funds".
+  const declineReason = useMemo(() => cardDeclineReason(transaction), [transaction]);
+
   // Support needs the ledger side to trace a purchase whose sweep is stuck or
   // failed; none of it is worth a row on screen, but all of it belongs in the
   // message the user sends.
@@ -326,6 +332,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       transaction.usd_amount && `USD value: ${transaction.usd_amount}`,
       spend.so_usd_amount && `soUSD: ${spend.so_usd_amount}`,
       spend.state && `Settlement: ${spend.state}`,
+      // The raw code, not the sentence the row shows: support is triaging
+      // against the ledger, where EXCEEDS_PER_TX_LIMIT and INSUFFICIENT_FUNDS
+      // are different findings that our cardholder copy deliberately softens.
+      spend.decline_reason && `Decline code: ${spend.decline_reason}`,
       sweepHash && `Sweep: ${sweepHash}`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
@@ -436,18 +446,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       // No Status row: the chip under the amount carries it, and says it louder
       // than a row in a card of plain facts can. See `statusPill`.
       isDeclined &&
-        transaction.declined_reason && {
+        declineReason && {
           key: 'reason',
           label: <Label>Reason</Label>,
           // Wraps rather than truncates — a decline reason is the one value on
           // this screen the user has to read in full. No size of its own: it
           // used to step down from `text-lg` to `text-base`, and now every value
           // on the card is already the 16px that step was reaching for.
-          value: (
-            <Value className="max-w-[60%] text-right">
-              {toTitleCase(transaction.declined_reason)}
-            </Value>
-          ),
+          value: <Value className="max-w-[60%] text-right">{declineReason}</Value>,
         },
       cashbackInfo && {
         key: 'cashback',
@@ -594,7 +600,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     sweepHash,
     handleSweepPress,
     transaction.currency,
-    transaction.declined_reason,
+    declineReason,
     transaction.refunded_amount,
   ]);
 
