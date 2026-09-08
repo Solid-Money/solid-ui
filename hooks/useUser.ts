@@ -27,7 +27,7 @@ import {
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
-import { destroyOnramper } from '@/lib/onramper';
+import { signOutOnramper } from '@/lib/onramper';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
@@ -548,9 +548,12 @@ const useUser = (): UseUserReturn => {
     useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
-    // The Onramper session is minted against this user's JWT; release the native
-    // client so it can't carry over into the next account.
-    destroyOnramper();
+    // The Onramper session is minted against this user's JWT, and the
+    // OnramperID login is stored on the device rather than on the client — so
+    // releasing the client is not enough on its own, or the next account would
+    // transact as this one. `signOutOnramper` clears the login and releases the
+    // client; it never rejects, and logout does not wait on it.
+    void signOutOnramper();
 
     const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 
@@ -715,9 +718,12 @@ const useUser = (): UseUserReturn => {
     useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
-    // The Onramper session is minted against this user's JWT; release the native
-    // client so it can't carry over into the next account.
-    destroyOnramper();
+    // The Onramper session is minted against this user's JWT, and the
+    // OnramperID login is stored on the device rather than on the client — so
+    // releasing the client is not enough on its own, or the next account would
+    // transact as this one. `signOutOnramper` clears the login and releases the
+    // client; it never rejects, and logout does not wait on it.
+    void signOutOnramper();
 
     const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 

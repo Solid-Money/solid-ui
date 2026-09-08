@@ -18,6 +18,7 @@ import useOnramperClient from '@/hooks/useOnramperClient';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { isDevFeatureEnabled } from '@/lib/config';
+import { signOutOnramper } from '@/lib/onramper';
 import { describeOnramperError } from '@/lib/onramperErrors';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOnramperStore } from '@/store/useOnramperStore';
@@ -224,6 +225,23 @@ export const OnramperAmount = () => {
         <Button className="h-12 rounded-full" variant="brand" onPress={retry}>
           <Text className="text-base font-bold text-black">Try again</Text>
         </Button>
+        {/* A stale stored OnramperID login can be what the bootstrap trips on,
+            and it survives reinstalls of the JS bundle because it lives in the
+            native keychain. Clearing it is a diagnostic step, not something to
+            offer a real user, so it is qa/preview only. */}
+        {isDevFeatureEnabled ? (
+          <Pressable
+            accessibilityRole="button"
+            className="h-11 items-center justify-center rounded-full border border-white/20 active:opacity-70"
+            onPress={() => {
+              void signOutOnramper().then(retry);
+            }}
+          >
+            <Text className="text-sm font-semibold text-white/70">
+              Clear Onramper login and retry
+            </Text>
+          </Pressable>
+        ) : null}
         <NeedHelp />
       </View>
     );

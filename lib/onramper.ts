@@ -44,3 +44,12 @@ export function initOnramper(): Promise<OnramperClient> {
 export function destroyOnramper(): void {
   // Nothing is ever constructed off-iOS, so there is nothing to tear down.
 }
+
+/**
+ * No-op off iOS: there is no SDK to hold an OnramperID login, so there is
+ * nothing to sign out of. Resolves rather than rejecting — logout calls this and
+ * must not be blocked by a platform that never had the flow.
+ */
+export function signOutOnramper(): Promise<void> {
+  return Promise.resolve();
+}

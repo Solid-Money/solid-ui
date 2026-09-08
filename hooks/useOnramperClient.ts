@@ -29,7 +29,8 @@ interface UseOnramperClientReturn {
  *
  * Teardown is not on unmount — the client is a module singleton that may be shared by
  * sibling screens, so unmounting one must not release it from under another. It is
- * released on logout via `destroyOnramper()` in useUser's handleLogout.
+ * released on logout via `signOutOnramper()` in useUser's handleLogout, which
+ * also clears the stored OnramperID login.
  */
 export default function useOnramperClient(): UseOnramperClientReturn {
   const { user } = useUser();

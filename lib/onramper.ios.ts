@@ -72,7 +72,7 @@ export function initOnramper(): Promise<OnramperClient> {
     const instance = new OnramperClient({
       apiKey: EXPO_PUBLIC_ONRAMPER_API_KEY,
       clientId: EXPO_PUBLIC_ONRAMPER_CLIENT_ID,
-      environment: isProduction ? 'production' : 'development',
+      environment: 'production',
       theme: 'system',
       logLevel: isProduction ? 'off' : 'error',
       onSessionExpired: mintSession,
@@ -107,11 +107,73 @@ export function initOnramper(): Promise<OnramperClient> {
 }
 
 /**
- * Releases the native client and resets module state. Call on logout — the session
- * is scoped to the signed-in user, so it must not survive into the next account.
+ * Releases the native client and resets module state.
+ *
+ * Note what this does *not* do: `destroy()` frees the native object but leaves
+ * the stored OnramperID (OIDC) tokens on the device, so the login itself
+ * survives. Logout wants `signOutOnramper()` for that reason.
  */
 export function destroyOnramper(): void {
   client?.destroy();
   client = null;
   initialization = null;
+}
+
+/**
+ * Clears the stored OnramperID login, then releases the client. Call on logout.
+ *
+ * `destroyOnramper()` alone is not enough: the OIDC tokens live on the device
+ * rather than on the client instance, so releasing the instance leaves the
+ * previous user signed in to Onramper. The next account on the same device
+ * would then reach a checkout that needs `user_info` and never be asked to log
+ * in — it would transact as whoever used the app last.
+ *
+ * Works even when `initOnramper()` failed: `signOut()` only awaits the
+ * constructor's `configure()`, not `initialize()`. When nothing is live a
+ * throwaway client is configured purely to reach the stored tokens, because
+ * "init failed" is exactly the state where a stale login is the likely cause.
+ *
+ * Never rejects. Logout must not be blocked by an onramp, and a device with no
+ * stored login is the common case rather than an error.
+ */
+export async function signOutOnramper(): Promise<void> {
+  // Detach module state first, so a caller mid-logout cannot pick up an
+  // instance that is about to be torn down.
+  const live = client;
+  client = null;
+  initialization = null;
+
+  let instance = live;
+
+  if (!instance) {
+    if (!EXPO_PUBLIC_ONRAMPER_API_KEY || !EXPO_PUBLIC_ONRAMPER_CLIENT_ID) return;
+
+    try {
+      instance = new OnramperClient({
+        apiKey: EXPO_PUBLIC_ONRAMPER_API_KEY,
+        clientId: EXPO_PUBLIC_ONRAMPER_CLIENT_ID,
+        environment: isProduction ? 'production' : 'development',
+        theme: 'system',
+        logLevel: isProduction ? 'off' : 'error',
+        // Never called: signing out needs no partner session, and handing it a
+        // mint would have it fetch one on the way out.
+        onSessionExpired: mintSession,
+      });
+    } catch (error) {
+      console.error(
+        `[Onramper] signOut could not configure a client: ${describeOnramperError(error)}`,
+      );
+      return;
+    }
+  }
+
+  try {
+    await instance.signOut();
+  } catch (error) {
+    console.error(`[Onramper] signOut failed: ${describeOnramperError(error)}`);
+  } finally {
+    // Released either way: a throwaway existed only for this call, and a live
+    // one is being torn down as part of the same logout.
+    instance.destroy();
+  }
 }
