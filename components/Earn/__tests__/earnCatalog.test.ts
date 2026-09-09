@@ -2,6 +2,7 @@ import {
   EARN_PREVIEW_COUNT,
   formatAssetName,
   getAssetSector,
+  searchTokens,
   selectCategoryTokens,
 } from '@/components/Earn/earnCatalog';
 import { XStockToken } from '@/hooks/useXStocksTokens';
@@ -66,5 +67,47 @@ describe('selectCategoryTokens', () => {
 
   it('previews five rows by default', () => {
     expect(EARN_PREVIEW_COUNT).toBe(5);
+  });
+});
+
+describe('searchTokens', () => {
+  const tokens = [
+    token('NVDAx', 'NVIDIA xStock'),
+    token('TSLAx', 'Tesla xStock'),
+    token('VTIx', 'Vanguard xStock'),
+    token('SPYx', 'SP 500 xStock'),
+  ];
+
+  it('matches on ticker', () => {
+    expect(searchTokens(tokens, 'nvda').map(t => t.symbol)).toEqual(['NVDAx']);
+  });
+
+  it('matches on display name, case-insensitively', () => {
+    expect(searchTokens(tokens, 'tesla').map(t => t.symbol)).toEqual(['TSLAx']);
+  });
+
+  it('searches the curated name, not the issuer name', () => {
+    // VTIx is "Vanguard xStock" upstream but shown as "Total Market ETF".
+    expect(searchTokens(tokens, 'total market').map(t => t.symbol)).toEqual(['VTIx']);
+  });
+
+  it('ranks a ticker prefix above a mid-name match', () => {
+    const [first] = searchTokens(
+      [token('SPCXx', 'SpaceX xStock'), token('SPYx', 'SP 500 xStock')],
+      'sp',
+    );
+    expect(first.symbol).toBe('SPCXx');
+  });
+
+  it('returns nothing for a blank query', () => {
+    expect(searchTokens(tokens, '   ')).toEqual([]);
+  });
+
+  it('returns nothing when there is no match', () => {
+    expect(searchTokens(tokens, 'zzzz')).toEqual([]);
+  });
+
+  it('caps results at the limit', () => {
+    expect(searchTokens(tokens, 'x', 2)).toHaveLength(2);
   });
 });

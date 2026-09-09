@@ -2,7 +2,7 @@ import { VaultType } from '@/lib/types';
 
 export type VaultAmounts = Record<VaultType, number>;
 
-export const formatVaultApyLabel = (apy: number) => `${apy.toFixed(1)}% APY`;
+export const formatVaultApyLabel = (apy: number) => `${apy.toFixed(1)} APY`;
 
 /** Keep vaults visible while APY loads, then hide any vault with no positive yield. */
 export const shouldShowEarnVaultCard = (apy: number, isApyLoading: boolean) =>

@@ -6,7 +6,7 @@ import BarChart from '@/components/BarChart';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useAPYs, useHistoricalAPY } from '@/hooks/useAnalytics';
+import { DEFAULT_HISTORICAL_APY_DAYS, useAPYs, useHistoricalAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { APYs, VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -24,8 +24,11 @@ type ApyPeriod = {
   valueKey: keyof Pick<APYs, 'sevenDay' | 'fifteenDay' | 'thirtyDay'>;
 };
 
+// The first entry is what the card opens on, and therefore what Earn prefetches
+// (see useVaultDetailPrefetch). Reordering these without moving
+// DEFAULT_HISTORICAL_APY_DAYS makes that prefetch miss, silently.
 const APY_PERIODS: ApyPeriod[] = [
-  { days: '7', label: '7D', title: '7 Day APY', valueKey: 'sevenDay' },
+  { days: DEFAULT_HISTORICAL_APY_DAYS, label: '7D', title: '7 Day APY', valueKey: 'sevenDay' },
   { days: '15', label: '15D', title: '15 Day APY', valueKey: 'fifteenDay' },
   { days: '30', label: '30D', title: '30 Day APY', valueKey: 'thirtyDay' },
 ];
