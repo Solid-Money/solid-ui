@@ -15,11 +15,7 @@ import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 
 import { EarnInvestSection } from './EarnInvestSection';
-import {
-  calculateEstimatedDailyEarnings,
-  shouldShowEarnVaultCard,
-  type VaultAmounts,
-} from './earnPortfolio';
+import { calculateEstimatedDailyEarnings, type VaultAmounts } from './earnPortfolio';
 import { EarnVaultTile } from './EarnVaultTile';
 import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 
@@ -90,9 +86,10 @@ export default function EarnScreen() {
     ? calculateEstimatedDailyEarnings(valuesByVault, apyByVault)
     : 0;
 
-  const tiles = VAULT_TILES.filter(vault =>
-    shouldShowEarnVaultCard(apyByVault[vault.type], apyLoadingByVault[vault.type]),
-  ).map(vault => (
+  // Every vault gets a tile regardless of its rate — a vault at 0% is still
+  // somewhere to deposit, and a grid that changes shape with the rates is
+  // harder to build muscle memory for than one that doesn't.
+  const tiles = VAULT_TILES.map(vault => (
     <EarnVaultTile
       key={vault.type}
       assetName={vault.assetName}
