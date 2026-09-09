@@ -125,10 +125,14 @@ export const EarnInvestSection = () => {
                     isActive ? 'bg-white' : 'bg-[#1C1C1C]'
                   }`}
                 >
+                  {/* Colour set inline, not by class: `Text` merges its own
+                      base `text-foreground` with this one, and that resolution
+                      has bitten this codebase before — see the `brand` note in
+                      ui/button.tsx, where the label intermittently came out
+                      white on a light background. A style wins outright. */}
                   <Text
-                    className={`text-[14px] font-medium leading-4 ${
-                      isActive ? 'text-black' : 'text-white/60'
-                    }`}
+                    className="text-[14px] font-medium leading-4"
+                    style={{ color: isActive ? '#000000' : 'rgba(255, 255, 255, 0.6)' }}
                   >
                     {category.label}
                   </Text>
