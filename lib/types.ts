@@ -279,6 +279,20 @@ export type TokenPriceUsd = {
   }[];
 };
 
+/** Alchemy Prices API `tokens/by-address` response. */
+export type TokenPriceByAddress = {
+  data: {
+    network: string;
+    address: string;
+    prices: {
+      currency: string;
+      value: string;
+      lastUpdatedAt: string;
+    }[];
+    error?: string | null;
+  }[];
+};
+
 export enum RainConsumerType {
   US = 'us',
   INTERNATIONAL = 'international',

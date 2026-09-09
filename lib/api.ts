@@ -4,6 +4,11 @@ import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
 
+import {
+  ALCHEMY_NETWORKS,
+  ALCHEMY_PRICE_BATCH_SIZE,
+  ALCHEMY_PRICES_URL,
+} from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -22,7 +27,6 @@ import {
 import { useUserStore } from '@/store/useUserStore';
 
 import {
-  EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
   EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
@@ -128,6 +132,7 @@ import {
   SyncActivitiesResponse,
   TierBenefits,
   ToCurrency,
+  TokenPriceByAddress,
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
@@ -440,9 +445,70 @@ export const fetchTokenPriceUsd = async (token: string) => {
   // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
   // attached, which zeroes out every price on native builds.
   const response = await externalAxios.get<TokenPriceUsd>(
-    `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`,
+    `${ALCHEMY_PRICES_URL}/by-symbol?symbols=${token}`,
   );
   return response?.data?.data[0]?.prices[0]?.value;
+};
+
+/**
+ * USD prices for ERC-20s from Alchemy's Prices API, keyed by
+ * `${chainId}:${lowercased address}`.
+ *
+ * Preferred over {@link fetchTokenPriceUsd} for ERC-20s: a contract address
+ * identifies a token exactly, where a symbol does not (every chain has its own
+ * "USDC", and plenty of scam tokens borrow a real ticker), and one POST covers
+ * a whole batch instead of a request per symbol. Alchemy's own token balances
+ * carry no price, so without this every Alchemy-sourced ERC-20 arrives at
+ * quoteRate 0.
+ *
+ * Never throws: a failed batch resolves to no prices for that batch so the
+ * remaining price sources still get their turn.
+ */
+export const fetchTokenPricesByAddress = async (
+  tokens: { chainId: number; address: string }[],
+): Promise<Record<string, number>> => {
+  const pairs = [
+    ...new Map(
+      tokens
+        .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
+        .map(({ chainId, address }) => [
+          `${chainId}:${address.toLowerCase()}`,
+          { chainId, network: ALCHEMY_NETWORKS[chainId], address: address.toLowerCase() },
+        ]),
+    ).values(),
+  ];
+  if (pairs.length === 0) return {};
+
+  const batches: (typeof pairs)[] = [];
+  for (let i = 0; i < pairs.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+    batches.push(pairs.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+  }
+
+  const responses = await Promise.allSettled(
+    batches.map(batch =>
+      externalAxios.post<TokenPriceByAddress>(`${ALCHEMY_PRICES_URL}/by-address`, {
+        addresses: batch.map(({ network, address }) => ({ network, address })),
+      }),
+    ),
+  );
+
+  const prices: Record<string, number> = {};
+  responses.forEach((response, i) => {
+    if (response.status !== 'fulfilled') return;
+    // Alchemy echoes the network slug back, not the chain id, so map the
+    // response entries onto the batch we sent to recover the chain id.
+    const chainIdByNetwork = new Map(batches[i].map(({ network, chainId }) => [network, chainId]));
+    for (const entry of response.value.data?.data ?? []) {
+      const chainId = chainIdByNetwork.get(entry.network);
+      const value = Number(entry.prices?.find(price => price.currency === 'usd')?.value);
+      if (chainId === undefined || !entry.address || !Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+      prices[`${chainId}:${entry.address.toLowerCase()}`] = value;
+    }
+  });
+
+  return prices;
 };
 
 export const createKycLink = async (
