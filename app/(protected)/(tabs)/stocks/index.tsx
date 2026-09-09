@@ -48,6 +48,10 @@ function StocksPageContent() {
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
   // Which stock the buy flow should open on. Null means "let the user pick".
   const [buyToken, setBuyToken] = useState<XStockToken | null>(null);
+  // True when the buy flow was opened by a deep link rather than by browsing
+  // this screen — leaving it should return the user where they came from
+  // instead of stranding them on a Stocks tab they never chose to open.
+  const [cameFromDeepLink, setCameFromDeepLink] = useState(false);
 
   // Open the buy flow straight onto a stock from a `/stocks?ticker=TSLAx`
   // deep link (the Earn catalog uses it), then clear the param so closing the
@@ -60,12 +64,14 @@ function StocksPageContent() {
     if (token) {
       setBuyToken(token);
       setBuyModalOpen(true);
+      setCameFromDeepLink(true);
     }
     router.setParams({ ticker: undefined });
   }, [tickerParam]);
 
   function handleBuyPress() {
     setBuyToken(null);
+    setCameFromDeepLink(false);
     setBuyModalOpen(true);
   }
 
@@ -78,7 +84,18 @@ function StocksPageContent() {
 
   function handleStockPress(token: XStockToken) {
     setBuyToken(token);
+    setCameFromDeepLink(false);
     setBuyModalOpen(true);
+  }
+
+  // Leaving a deep-linked buy flow returns to the screen that opened it (the
+  // Earn catalog); leaving one started here just closes the modal.
+  function handleBuyClose() {
+    setBuyModalOpen(false);
+    if (cameFromDeepLink && router.canGoBack()) {
+      setCameFromDeepLink(false);
+      router.back();
+    }
   }
 
   function handleHoldingPress(holding: Holding) {
@@ -112,7 +129,7 @@ function StocksPageContent() {
         sellModalOpen={sellModalOpen}
         selectedHolding={selectedHolding}
         selectedStockPrice={selectedStockPrice}
-        onBuyClose={() => setBuyModalOpen(false)}
+        onBuyClose={handleBuyClose}
         onSellClose={() => setSellModalOpen(false)}
       />
     );
@@ -169,7 +186,8 @@ function StocksPageContent() {
         key={buyToken?.symbol ?? 'picker'}
         isOpen={buyModalOpen}
         initialToken={buyToken}
-        onClose={() => setBuyModalOpen(false)}
+        onClose={handleBuyClose}
+        onExit={handleBuyClose}
         trigger={null}
       />
 
@@ -267,6 +285,7 @@ function DesktopLayout({
         isOpen={buyModalOpen}
         initialToken={buyToken}
         onClose={onBuyClose}
+        onExit={onBuyClose}
         trigger={null}
       />
 

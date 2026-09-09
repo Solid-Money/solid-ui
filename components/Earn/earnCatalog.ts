@@ -110,3 +110,36 @@ export const selectCategoryTokens = (
     .filter((token): token is XStockToken => !!token)
     .slice(0, limit);
 };
+
+/**
+ * Free-text search across the whole catalog, not just the active category.
+ * Ticker matches rank above name matches, and a prefix match above a match
+ * buried mid-string, so typing "NV" surfaces NVDAx rather than every name
+ * that happens to contain those letters.
+ */
+export const searchTokens = (
+  tokens: XStockToken[],
+  query: string,
+  limit = EARN_PREVIEW_COUNT,
+): XStockToken[] => {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+
+  const scored = tokens
+    .map(token => {
+      const symbol = token.symbol.toLowerCase();
+      const name = formatAssetName(token.symbol, token.name).toLowerCase();
+
+      if (symbol.startsWith(needle)) return { token, score: 0 };
+      if (name.startsWith(needle)) return { token, score: 1 };
+      if (symbol.includes(needle)) return { token, score: 2 };
+      if (name.includes(needle)) return { token, score: 3 };
+      return null;
+    })
+    .filter((match): match is { token: XStockToken; score: number } => !!match);
+
+  return scored
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit)
+    .map(match => match.token);
+};

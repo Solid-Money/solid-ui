@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { Image } from 'expo-image';
 import { Href, router } from 'expo-router';
 
-import BitcoinCoin from '@/assets/images/bitcoin-coin';
 import { BalanceHeadline, BalancePillRow } from '@/components/BalanceHeadline';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
@@ -12,33 +10,43 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
-import { type AssetPath, getAsset } from '@/lib/assets';
+import { type AssetPath } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 
-import { EarnAssetCard } from './EarnAssetCard';
-import { EarnMoreSection } from './EarnMoreSection';
+import { EarnInvestSection } from './EarnInvestSection';
 import {
   calculateEstimatedDailyEarnings,
   shouldShowEarnVaultCard,
   type VaultAmounts,
 } from './earnPortfolio';
+import { EarnVaultTile } from './EarnVaultTile';
 
-const ICON_SIZE = 26;
-
-const VaultIcon = ({ source }: { source: AssetPath }) => (
-  <Image
-    source={getAsset(source)}
-    contentFit="contain"
-    style={{ width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2 }}
-  />
-);
-
-const VAULT_CARDS = [
-  { type: VaultType.USDC, assetName: 'USD', icon: 'images/usdc-4x.png' },
-  { type: VaultType.ETH, assetName: 'ETH', icon: 'images/eth.png' },
-  { type: VaultType.FUSE, assetName: 'FUSE', icon: 'images/fuse-4x.png' },
-] as const satisfies readonly { type: VaultType; assetName: string; icon: AssetPath }[];
+const VAULT_TILES = [
+  {
+    type: VaultType.USDC,
+    assetName: 'USD',
+    background: 'images/earn-usd-tile-background.png',
+    icon: 'images/earn-usd-icon.png',
+  },
+  {
+    type: VaultType.ETH,
+    assetName: 'ETH',
+    background: 'images/earn-eth-tile-background.png',
+    icon: 'images/earn-eth-icon.png',
+  },
+  {
+    type: VaultType.FUSE,
+    assetName: 'FUSE',
+    background: 'images/earn-fuse-tile-background.png',
+    icon: 'images/earn-fuse-icon.png',
+  },
+] as const satisfies readonly {
+  type: VaultType;
+  assetName: string;
+  background: AssetPath;
+  icon: AssetPath;
+}[];
 
 const openVault = (vaultType: VaultType) =>
   router.push({ pathname: '/savings', params: { vault: vaultType } } as Href);
@@ -49,7 +57,7 @@ const formatDailyEarnings = (value: number) =>
     maximumFractionDigits: 2,
   });
 
-/** Splits the asset grid into rows so a half-width tile keeps its width when it is alone. */
+/** Splits the tiles into rows so a half-width tile keeps its width when it is alone. */
 const chunkIntoRows = <T,>(items: T[], perRow = 2): T[][] =>
   items.reduce<T[][]>((rows, item, index) => {
     if (index % perRow === 0) rows.push([]);
@@ -80,23 +88,19 @@ export default function EarnScreen() {
     ? calculateEstimatedDailyEarnings(valuesByVault, apyByVault)
     : 0;
 
-  const visibleVaults = VAULT_CARDS.filter(vault =>
+  const tiles = VAULT_TILES.filter(vault =>
     shouldShowEarnVaultCard(apyByVault[vault.type], apyLoadingByVault[vault.type]),
-  );
-
-  const assetTiles = [
-    ...visibleVaults.map(vault => (
-      <EarnAssetCard
-        key={vault.type}
-        assetName={vault.assetName}
-        icon={<VaultIcon source={vault.icon} />}
-        apy={apyByVault[vault.type]}
-        isApyLoading={apyLoadingByVault[vault.type]}
-        onPress={() => openVault(vault.type)}
-      />
-    )),
-    <EarnAssetCard key="btc" assetName="BTC" icon={<BitcoinCoin size={ICON_SIZE} />} />,
-  ];
+  ).map(vault => (
+    <EarnVaultTile
+      key={vault.type}
+      assetName={vault.assetName}
+      apy={apyByVault[vault.type]}
+      isApyLoading={apyLoadingByVault[vault.type]}
+      background={vault.background}
+      icon={vault.icon}
+      onPress={() => openVault(vault.type)}
+    />
+  ));
 
   return (
     <PageLayout
@@ -130,27 +134,22 @@ export default function EarnScreen() {
 
           <BalancePillRow>
             {isLoading || areApysLoading ? (
-              <Skeleton className="h-[35px] w-[137px] rounded-full bg-white/10" />
+              <Skeleton className="h-6 w-[120px] rounded-full bg-white/10" />
             ) : (
-              <View className="h-[35px] justify-center rounded-full bg-[#1C1C1C] px-4">
-                <Text className="text-[16px] leading-[18px] text-[#94F27F]">
-                  +${formatDailyEarnings(estimatedToday)} today
-                </Text>
-              </View>
+              <Text className="text-[16px] leading-5 text-[#94F27F]">
+                +${formatDailyEarnings(estimatedToday)} today
+              </Text>
             )}
           </BalancePillRow>
         </View>
 
-        <Text className="mt-[27px] text-[18px] font-semibold leading-6 text-white">
-          Earn on your assets
-        </Text>
-        <Text className="mb-4 mt-1 text-[14px] leading-5 text-white/50">
-          Automated rewards, Withdraw anytime
+        <Text className="mb-[14px] mt-[27px] text-[16px] leading-5 text-white/50">
+          Earn interest, Withdraw anytime
         </Text>
 
-        <View className="gap-3">
-          {chunkIntoRows(assetTiles).map((row, index) => (
-            <View key={index} className="flex-row gap-3">
+        <View className="gap-4">
+          {chunkIntoRows(tiles).map((row, index) => (
+            <View key={index} className="flex-row gap-4">
               {row}
               {row.length === 1 && <View className="flex-1" />}
             </View>
@@ -160,7 +159,7 @@ export default function EarnScreen() {
         {/* Tokenized assets are still an in-development feature (the Stocks
             screen itself redirects in production), so the catalog stays out of
             production builds until it ships. */}
-        {isDevFeatureEnabled && <EarnMoreSection />}
+        {isDevFeatureEnabled && <EarnInvestSection />}
       </View>
     </PageLayout>
   );

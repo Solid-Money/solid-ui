@@ -59,6 +59,12 @@ type BuyStockModalProps = {
    * initial states; the modal stays mounted between opens.
    */
   initialToken?: XStockToken | null;
+  /**
+   * Where "back" goes from the first step when `initialToken` skipped the
+   * picker — there is no picker behind it, so the caller decides (typically
+   * returning to the screen the stock was tapped on). Falls back to closing.
+   */
+  onExit?: () => void;
 };
 
 export default function BuyStockModal({
@@ -66,6 +72,7 @@ export default function BuyStockModal({
   onClose,
   trigger,
   initialToken = null,
+  onExit,
 }: BuyStockModalProps) {
   const initialStep: BuyStep = initialToken ? 'input' : 'select';
   const [step, setStep] = useState<BuyStep>(initialStep);
@@ -126,6 +133,14 @@ export default function BuyStockModal({
     setStep(next);
   }
 
+  function handleBackPress() {
+    if (step === 'review') return navigate('input');
+    // 'input' was reached directly from a pre-selected stock, so there is no
+    // picker behind it — leave the flow the way the user came in.
+    if (initialToken) return onExit ? onExit() : handleClose();
+    navigate('select');
+  }
+
   function handleClose() {
     // Reset to how this modal was opened, not to the picker: reopening a
     // pre-selected stock should land on its amount step again.
@@ -173,7 +188,7 @@ export default function BuyStockModal({
       title={stepTitle[step]}
       contentKey={step}
       showBackButton={step === 'input' || step === 'review'}
-      onBackPress={() => navigate(step === 'input' ? 'select' : 'input')}
+      onBackPress={handleBackPress}
       hideHeader={step === 'pending'}
     >
       {step === 'select' && <SelectTokenStep onTokenSelect={handleTokenSelect} />}
