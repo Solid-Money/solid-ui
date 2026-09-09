@@ -40,11 +40,16 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
   const { steps: cardSteps } = useCardSteps(cardStatus?.kycStatus, cardStatus);
 
   return useMemo(() => {
-    // Look these up by key, not index: for deposit-required (BD) users the card
-    // flow now leads with a "deposit first" step, so KYC/activate aren't at
-    // fixed positions anymore.
+    // Look these up by key, not index: the card flow leads with a "deposit
+    // first" step for gated applicants and can grow a "deposit and hold" step
+    // after it, so KYC/activate aren't at fixed positions anymore.
     const kycStep = cardSteps.find(step => step.key === 'kyc');
     const cardStep = cardSteps.find(step => step.key === 'activate');
+    // Present only while an approved verification is waiting on the applicant's
+    // deposit. Its action (deposit, or submit the application) works from here
+    // as well as it does on the activation screen, so this card can offer it
+    // directly instead of restarting onboarding they have already been through.
+    const holdStep = cardSteps.find(step => step.key === 'hold');
 
     const openDeposit = () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     // Card onboarding starts at country selection (same entry ReserveCardButton and
@@ -68,8 +73,10 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         description: 'Global payments, cashback and more',
         cta: 'Get your card',
         completed: Boolean(cardStep?.completed),
-        // No activate action means KYC isn't done yet, so send them to that instead.
-        onPress: cardStep?.onPress ?? kycStep?.onPress ?? startCardOnboarding,
+        // No activate action means KYC isn't done yet, so send them to that
+        // instead — or, for an applicant whose approved verification is waiting
+        // on their deposit, straight to the action that unblocks it.
+        onPress: cardStep?.onPress ?? holdStep?.onPress ?? kycStep?.onPress ?? startCardOnboarding,
       },
       {
         key: 'deposit',

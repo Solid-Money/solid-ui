@@ -13,7 +13,10 @@ import {
   KycWarning,
   RainApplicationStatus,
 } from '@/lib/types';
-import { hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils';
+// Imported from the leaf module rather than the `@/lib/utils` barrel: the
+// barrel pulls in AsyncStorage and the API client, neither of which loads under
+// jest-expo, and this function is covered by buildCardSteps' own tests.
+import { hasMetCardDeposit } from '@/lib/utils/cardDepositGate';
 
 import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';
@@ -36,14 +39,29 @@ export function buildCardSteps(
     kycStatus?: KycStatus | null;
     kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
-    /** Residence country (ISO alpha-2); enables the BD minimum-deposit step. */
-    country?: string | null;
-    /** Total collateral deposited to the card, in cents (legacy BD card-fund flow). */
+    /**
+     * Whether to show the deposit steps at all. Already resolved by the caller
+     * (see `requiresCardDeposit`), which prefers the backend's own answer and
+     * falls back to the resolved issuer only while there is none.
+     */
+    depositRequired?: boolean;
+    /** The savings minimum to ask for, in USD. Defaults to the app constant. */
+    minimumDepositUsd?: number | null;
+    /** Total collateral deposited to the card, in cents (legacy card-fund flow). */
     cardCollateralDeposited?: number | null;
-    /** Whether the user holds at least the $5 minimum in the savings (soUSD) vault. */
+    /** Whether the user holds at least the minimum in the savings (soUSD) vault. */
     savingsDepositMet?: boolean;
-    /** Opens the deposit-to-savings (soUSD) flow used by the BD first step. */
+    /** Opens the deposit-to-savings (soUSD) flow used by the deposit steps. */
     openSavingsDepositModal?: () => void;
+    /**
+     * Verification passed but the application was parked because the deposit is
+     * no longer held. Renders the `hold` step.
+     */
+    rainForwardPendingDeposit?: boolean;
+    /** Submits the parked application (re-checks the balance server-side). */
+    submitPendingApplication?: () => void;
+    /** Whether {@link submitPendingApplication} is in flight. */
+    isSubmittingPendingApplication?: boolean;
   },
 ): Step[] {
   const stepOptions =
@@ -88,29 +106,61 @@ export function buildCardSteps(
       ? options.handleRainKYCPress
       : handleProceedToKyc;
 
-  // Bangladesh users must deposit before they can start KYC or activate a card,
-  // so this step is placed FIRST — ahead of KYC and activation. That way we
-  // never pay for a Didit/Rain KYC or issue a card for someone who hasn't funded
-  // anything. No card exists at this point, so the money goes into the savings
-  // (soUSD) vault; the user moves it onto the card later via "Deposit to card".
+  // Every applicant on the Rain flow must deposit before they can start KYC or
+  // activate a card, so this step is placed FIRST — ahead of KYC and activation.
+  // That way we never pay for a Didit (~$1) or Rain (~$2.50) verification, nor
+  // issue a card, for someone who has funded nothing. No card exists at this
+  // point, so the money goes into the savings (soUSD) vault; the user moves it
+  // onto the card later via "Deposit to card".
+  //
   // The step completes once the savings minimum is met and stays complete
   // afterwards (card activated, or legacy card collateral funded) so later
-  // moving funds out to the card doesn't reopen it.
-  const showDepositStep = requiresCardDeposit(options?.country);
+  // moving funds out to the card doesn't reopen it. What DOES reopen the
+  // requirement is the `hold` step below, and only in the window where it
+  // matters: between verification passing and the application being submitted.
+  const minimumDepositUsd = options?.minimumDepositUsd ?? MINIMUM_CARD_DEPOSIT_USD;
+  const showDepositStep = Boolean(options?.depositRequired);
+  // The applicant deposited, cleared step one, and then sent or withdrew the
+  // money before their verification came back — so the application was never
+  // submitted. This step asks them to put it back and hold it, and its action is
+  // what submits the application. It exists only while that is true: the backend
+  // sets `rainForwardPendingDeposit` and clears it the moment a submission
+  // lands, so this cannot linger for someone who is already through.
+  const showHoldStep = showDepositStep && Boolean(options?.rainForwardPendingDeposit);
+  const holdSatisfied = Boolean(options?.savingsDepositMet);
+
+  // Reaching the parked state is itself proof the first step was cleared —
+  // nothing gets a verification session without passing this gate server-side.
+  // So the first step stays done and the live "put it back" ask lives in the
+  // `hold` step alone, rather than two steps asking for the same deposit and the
+  // reopened first one disabling the second one's button.
   const depositMet =
     Boolean(options?.savingsDepositMet) ||
+    showHoldStep ||
     cardActivated ||
     hasMetCardDeposit(options?.cardCollateralDeposited);
+
+  // While the application is parked, the ID check itself is DONE — what is
+  // outstanding is the deposit, and the `hold` step below is where the user acts
+  // on it. Showing this step as still open would be wrong twice over: it reads
+  // as "your ID check failed", and its button offers to start verification
+  // again, which restarts a Didit session we would be charged for a second time.
+  //
+  // Deliberately kept apart from `isKycComplete`, which still gates activation:
+  // the issuer has not approved anything yet, so "Activate card" must stay shut.
+  const kycStepComplete = isKycComplete || cardActivated || showHoldStep;
 
   const kycStep: Omit<Step, 'id'> = {
     key: 'kyc',
     title: 'Complete KYC',
-    description,
-    completed: isKycComplete || cardActivated,
-    status: isKycComplete || cardActivated ? 'completed' : 'pending',
+    description: showHoldStep
+      ? 'Your ID check passed. One thing left before we submit your application — see below.'
+      : description,
+    completed: kycStepComplete,
+    status: kycStepComplete ? 'completed' : 'pending',
     endorsementStatus: cardsEndorsement?.status,
-    buttonText,
-    onPress: isButtonDisabled ? undefined : kycStepOnPress,
+    buttonText: showHoldStep ? undefined : buttonText,
+    onPress: showHoldStep || isButtonDisabled ? undefined : kycStepOnPress,
   };
 
   const activateStep: Omit<Step, 'id'> = {
@@ -128,10 +178,10 @@ export function buildCardSteps(
   if (showDepositStep) {
     steps.push({
       key: 'deposit',
-      title: `Deposit at least $${MINIMUM_CARD_DEPOSIT_USD}`,
+      title: `Deposit at least $${minimumDepositUsd}`,
       description: depositMet
-        ? `Your $${MINIMUM_CARD_DEPOSIT_USD}+ is safe in savings (soUSD). When your card is ready you can move it over with “Deposit to card”.`
-        : `Add at least $${MINIMUM_CARD_DEPOSIT_USD} to continue. Your card isn’t created yet, so these funds go into your savings vault (soUSD) — not onto the card. Once the card is ready you can move them over anytime with “Deposit to card”.`,
+        ? `Your $${minimumDepositUsd}+ is safe in savings (soUSD). When your card is ready you can move it over with “Deposit to card”.`
+        : `Add at least $${minimumDepositUsd} to continue. Your card isn’t created yet, so these funds go into your savings vault (soUSD) — not onto the card. Once the card is ready you can move them over anytime with “Deposit to card”.`,
       completed: depositMet,
       status: depositMet ? 'completed' : 'pending',
       // Deposits go to savings, which needs no card, so the action is available
@@ -144,7 +194,28 @@ export function buildCardSteps(
   // KYC and activation follow the deposit gate. Sequential step navigation
   // (useStepNavigation) only enables a step's button once every preceding step
   // is complete, so placing deposit first blocks KYC/activation until it's met.
-  steps.push(kycStep, activateStep);
+  steps.push(kycStep);
+
+  if (showHoldStep) {
+    steps.push({
+      key: 'hold',
+      title: `Top up and hold your $${minimumDepositUsd}`,
+      description: holdSatisfied
+        ? `Your savings are back above $${minimumDepositUsd}. Submit your application to continue — we’ll check your balance one more time as we send it.`
+        : `Your ID check passed, but your savings dropped below $${minimumDepositUsd} before we could submit your application. Deposit again and keep it in savings (soUSD) — it stays yours and earns yield, and you can move it onto the card once it’s ready.`,
+      // Never "completed": this step exists only while the application is still
+      // parked, and disappears once the backend reports it submitted. Marking it
+      // done while it is still showing would let the activation step below open
+      // behind an application that was never sent.
+      completed: false,
+      status: 'pending',
+      buttonText: holdSatisfied ? 'Submit application' : 'Deposit',
+      onPress: holdSatisfied ? options?.submitPendingApplication : options?.openSavingsDepositModal,
+      isLoading: options?.isSubmittingPendingApplication,
+    });
+  }
+
+  steps.push(activateStep);
 
   steps.push({
     key: 'spend',

@@ -552,17 +552,47 @@ export interface CardStatusResponse {
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**
-   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Drives the
-   * country-specific issuance steps (the Bangladesh deposit-first step).
+   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
+   * Didit decision, which runs proof of address, so it is evidenced rather than
+   * an IP guess.
    */
   country?: string;
   /**
    * Total Rain collateral the user has deposited to their card, in cents. The
-   * Bangladesh deposit-first step now completes from the savings (soUSD) balance
-   * instead; this remains as a backward-compatible fallback so users who funded
-   * a card under the old flow still count as having met the deposit.
+   * deposit step completes from the savings (soUSD) balance instead; this
+   * remains as a backward-compatible fallback so users who funded a card under
+   * the old flow still count as having met the deposit.
    */
   cardCollateralDeposited?: number;
+  /**
+   * Whether this applicant has to deposit before their card application is
+   * paid for. True for every Rain applicant, in every jurisdiction Rain serves;
+   * false for Wirex and the deprecated bridge.xyz card. Server-authoritative —
+   * a client that decides for itself is a client a VPN can talk out of it.
+   */
+  depositRequired?: boolean;
+  /** The savings (soUSD) minimum the deposit step asks for, in USD. */
+  minimumDepositUsd?: number;
+  /**
+   * Identity verification passed, but the application has NOT been sent to the
+   * issuer because the applicant is no longer holding the minimum — typically
+   * they deposited to clear the first step and then moved the funds straight
+   * out. Renders the "deposit and hold" step, which submits the application via
+   * `resumeRainKycForward` once the money is back.
+   */
+  rainForwardPendingDeposit?: boolean;
+}
+
+/** Outcome of {@link resumeRainKycForward}. */
+export interface ResumeRainForwardResponse {
+  status: 'forwarded' | 'already_forwarded' | 'deposit_required' | 'not_ready' | 'failed';
+  reason?: string;
+  /** The soUSD position the server read, in USD. Present on `deposit_required`. */
+  balanceUsd?: number;
+  minimumUsd: number;
+  providerCustomerId?: string;
+  kycStatus?: KycStatus;
+  rainApplicationStatus?: string;
 }
 
 export interface SubmitPersonaKycRequest {
@@ -1191,9 +1221,9 @@ export type DepositFromSafeAccountModal =
 /**
  * Why the savings direct-deposit flow was opened.
  *
- * `card_deposit` is the Bangladesh card gate ("Deposit at least $5"), which
- * completes off the soUSD balance alone — so that entry point only offers the
- * stablecoins that mint soUSD.
+ * `card_deposit` is the card minimum-deposit gate ("Deposit at least $10"),
+ * which completes off the soUSD balance alone — so that entry point only offers
+ * the stablecoins that mint soUSD.
  */
 export type SavingsFundIntent = 'savings' | 'card_deposit';
 
