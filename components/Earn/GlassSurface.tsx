@@ -35,12 +35,20 @@ export const GlassSurface = ({ radius, children, style, className }: GlassSurfac
       style,
     ]}
   >
+    {/* A dark material, not a light one: these sit on near-black art, and a
+        light tint blurs it to an opaque grey that washes out the surface and
+        the green APY text with it. The rim below carries the glass instead. */}
     {Platform.OS === 'ios' && (
-      <BlurView intensity={24} tint="light" pointerEvents="none" style={StyleSheet.absoluteFill} />
+      <BlurView
+        intensity={40}
+        tint="systemUltraThinMaterialDark"
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />
     )}
 
     <LinearGradient
-      colors={['rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.05)']}
+      colors={['rgba(255, 255, 255, 0.10)', 'rgba(255, 255, 255, 0.02)']}
       start={{ x: 0.2, y: 0 }}
       end={{ x: 0.8, y: 1 }}
       pointerEvents="none"
@@ -57,8 +65,8 @@ export const GlassSurface = ({ radius, children, style, className }: GlassSurfac
           borderRadius: radius,
           borderTopWidth: 1,
           borderLeftWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.40)',
-          borderLeftColor: 'rgba(255, 255, 255, 0.22)',
+          borderTopColor: 'rgba(255, 255, 255, 0.45)',
+          borderLeftColor: 'rgba(255, 255, 255, 0.25)',
           borderRightColor: 'transparent',
           borderBottomColor: 'transparent',
         },
