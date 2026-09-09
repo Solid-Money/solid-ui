@@ -1,13 +1,11 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import { SettingsAsteriskIcon } from '@/components/Card/NewCardDetails/icons';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
@@ -80,9 +78,9 @@ interface CardActionsRowProps {
   onFreezeToggle: () => void;
   onMorePress: () => void;
   /**
-   * Opens the card-spending sheet. The sheet itself lives on the pane rather than in
-   * this row, because a blocked "Show details" tap opens the same one — and it has to
-   * stay reachable when this row hides its own button (a frozen card).
+   * Opens the manage-card sheet. The sheet itself lives on the pane rather than in this
+   * row, because a blocked "Show details" tap opens the same one — and it has to stay
+   * reachable when this row hides its own button.
    */
   onSpendPress: () => void;
   /**
@@ -107,12 +105,20 @@ interface CardActionsRowProps {
  *
  *  - **Rain** cards are prefunded, so it is "Add funds" — move soUSD onto the card.
  *  - **Wirex** cards hold no balance (Wirex pays the merchant and we debit the user's
- *    Safe afterwards), so there is nothing to fund. It is "Set up"/"Spending"
- *    instead: registering the Safe with `SolidCashModule`, which is what gives the
- *    card permission to spend and sets the on-chain limits it may spend within.
+ *    Safe afterwards), so there is nothing to fund. It is "Set up"/"Manage" instead:
+ *    registering the Safe with `SolidCashModule`, which is what gives the card
+ *    permission to spend and sets the on-chain limits it may spend within, and
+ *    afterwards the sheet that holds the limits, the wallet guide and the 3DS approvals
+ *    queue.
  *
  * Offering "Add funds" on a Wirex card would be offering a transfer with no
  * destination.
+ *
+ * 3DS approvals used to have a circle of their own here. It is a queue that is empty
+ * almost all the time, so it moved inside the manage sheet — but the count did not: a
+ * merchant is holding each challenge on a clock, so it stays on this row as a badge on
+ * "Manage", which is the one thing that would otherwise make it less visible than a
+ * dedicated circle was.
  */
 const CardActionsRow = ({
   isCardFrozen,
@@ -128,29 +134,42 @@ const CardActionsRow = ({
   // The hook's `isAvailable` already accounts for the card's issuer, so no provider
   // check is needed here — it is the single place that decision lives.
   const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
-  // Wirex-only, and gated inside the hook on the issuer rather than here. The
-  // count is the point of reading it from this row: a challenge whose push never
-  // arrived is otherwise invisible until the user goes looking for it.
-  const { requests: threeDsRequests, isSupported: hasThreeDs } = useWirexThreeDs();
+  // Wirex-only, and gated inside the hook on the issuer rather than here. The count is
+  // the point of reading it from this row: a challenge whose push never arrived is
+  // otherwise invisible until the user goes looking for it, and the queue itself now sits
+  // a tap deeper inside the manage sheet.
+  const { requests: threeDsRequests } = useWirexThreeDs();
   // Two independent questions, deliberately not one flag. `canDepositToCard` is
   // false for a Wirex card whatever else is true — depositing has no destination —
   // and `canRegisterSpend` is false for a Rain one, which has nothing to register.
   const showDeposit = canAddFunds && canDepositToCard(provider);
-  const showRegister = canAddFunds && canRegisterSpend;
+  // Once spending is set up this is a settings surface — limits, the wallet guide, the
+  // approvals queue — and none of that is "adding funds", so a frozen card still gets it.
+  // That also keeps the approvals queue reachable on a frozen card, which it was while it
+  // had a circle of its own. Before setup it *is* the funding-shaped action it used to be,
+  // and stays gated the way it was: an offboarded customer is not asked to grant a module.
+  const showManage = canRegisterSpend && (isRegistered || canAddFunds);
 
   return (
     <View className="flex-row items-start justify-center">
-      {showRegister && (
+      {showManage && (
         <View style={styles.item}>
           <CircleAction
-            label={isRevoked ? 'Paused' : isRegistered ? 'Spending' : 'Set up'}
+            label={isRevoked ? 'Paused' : isRegistered ? 'Manage' : 'Set up'}
+            badgeCount={threeDsRequests.length}
             onPress={onSpendPress}
           >
-            <Image
-              source={getAsset('images/card-action-add-funds.png')}
-              style={styles.actionIcon}
-              contentFit="contain"
-            />
+            {/* A plus for the press that creates the grant, the Figma settings glyph
+                (20095:5554) once there is something to manage instead. */}
+            {isRegistered ? (
+              <SettingsAsteriskIcon />
+            ) : (
+              <Image
+                source={getAsset('images/card-action-add-funds.png')}
+                style={styles.actionIcon}
+                contentFit="contain"
+              />
+            )}
           </CircleAction>
         </View>
       )}
@@ -205,20 +224,6 @@ const CardActionsRow = ({
                 contentFit="contain"
               />
             )}
-          </CircleAction>
-        </View>
-      )}
-      {/* Wirex only: Rain never asks the cardholder to answer a 3DS challenge, so
-          the action would open a screen that is empty by construction. */}
-      {hasThreeDs && (
-        <View style={styles.item}>
-          <CircleAction
-            label="Approvals"
-            circleBackground="#2A2A2A"
-            badgeCount={threeDsRequests.length}
-            onPress={() => router.push(path.CARD_3DS)}
-          >
-            <ShieldCheck color="white" size={24} />
           </CircleAction>
         </View>
       )}

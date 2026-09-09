@@ -1,4 +1,4 @@
-import Svg, { G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 /**
  * Icons for the redesigned card-details screen, transcribed verbatim from the
@@ -200,6 +200,95 @@ export const SupportRowIcon = () => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+  </Svg>
+);
+
+/** Figma 25601:2480 — the "Edit limit" row's sliders glyph on the manage-card sheet. */
+export const EditLimitRowIcon = () => (
+  <Svg width={23.1004} height={19.8624} viewBox="0 0 23.1004 19.8624" fill="none">
+    <G stroke="white" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <Path d="M11.5498 5.07422H22.3498" />
+      <Path d="M0.75 5.07422H2.91" />
+      <Path d="M20.1904 14.7869H22.3504" />
+      <Path d="M0.75 14.7869H11.55" />
+      <Path d="M7.23 9.38999C9.61583 9.38999 11.55 7.45582 11.55 5.07C11.55 2.68413 9.61583 0.75 7.23 0.75C4.84413 0.75 2.91 2.68413 2.91 5.07C2.91 7.45582 4.84413 9.38999 7.23 9.38999Z" />
+      <Path d="M15.8698 19.1124C18.2556 19.1124 20.1898 17.1782 20.1898 14.7924C20.1898 12.4066 18.2556 10.4724 15.8698 10.4724C13.484 10.4724 11.5498 12.4066 11.5498 14.7924C11.5498 17.1782 13.484 19.1124 15.8698 19.1124Z" />
+    </G>
+  </Svg>
+);
+
+/**
+ * Figma 25601:2724 — the "Approvals" row's circled tick. Two assets in the export
+ * (circle and tick), composed here at the offsets the design places them at so the pair
+ * scales as one glyph.
+ */
+export const ApprovalsRowIcon = () => (
+  <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
+    <Circle cx={11} cy={11} r={10.25} stroke="white" strokeWidth={1.5} />
+    <Path
+      d="M6.75 11.75L10.25 15.25L17.75 7.75"
+      stroke="white"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+/**
+ * Figma 25601:2489 — the Apple Wallet mark on the "Add to Apple Wallet" row.
+ *
+ * The export's four inner drop shadows are `feGaussianBlur` filters, which
+ * `react-native-svg` does not implement; they are omitted rather than approximated. At
+ * 26×19 they only soften the boundary between the coloured bands, which are all here.
+ */
+export const AppleWalletRowIcon = () => (
+  <Svg width={26} height={19} viewBox="0 0 26 19" fill="none">
+    <Defs>
+      <LinearGradient
+        id="appleWalletLeftLip"
+        x1="0"
+        y1="9.48452"
+        x2="0"
+        y2="8.68063"
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#CBC9BE" />
+        <Stop offset="1" stopColor="#C8C5BB" stopOpacity={0} />
+      </LinearGradient>
+      <LinearGradient
+        id="appleWalletRightLip"
+        x1="24.918"
+        y1="9.48455"
+        x2="24.918"
+        y2="8.68066"
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#CBC9BE" />
+        <Stop offset="1" stopColor="#C8C5BB" stopOpacity={0} />
+      </LinearGradient>
+    </Defs>
+    <Path
+      d="M2.67015 0C0.919478 0 0 1.03971 0 2.59867V16.4013C0 17.9603 0.919478 19 2.67015 19H23.3299C25.0805 19 26 17.9603 26 16.4013V2.59867C26 1.03971 25.0805 0 23.3299 0H2.67015Z"
+      fill="#D9D6CC"
+    />
+    <Path
+      d="M2.88092 1.06534C1.49521 1.06534 1.08252 1.87357 1.08252 2.87754V9.48452L7.19801 9.49552C8.83183 9.49847 9.50082 10.1382 10.1816 11.0333C10.355 11.2612 10.566 11.5702 10.7719 11.7708C11.387 12.37 12.1935 12.6693 13 12.6693C13.8065 12.6693 14.613 12.37 15.2281 11.7708C15.434 11.5702 15.645 11.2612 15.8184 11.0333C16.4992 10.1382 17.1682 9.49846 18.802 9.49552L24.9175 9.48452V2.87754C24.9175 1.87357 24.5048 1.06534 23.1191 1.06534H2.88092Z"
+      fill="#F16D5E"
+    />
+    <Path
+      d="M2.88092 1.06534C1.49521 1.06534 1.08252 1.87356 1.08252 2.87754V4.99432C1.08252 3.99035 1.49521 3.18212 2.88092 3.18212H23.1191C24.5048 3.18212 24.9175 3.99035 24.9175 4.99432V2.87754C24.9175 1.87356 24.5048 1.06534 23.1191 1.06534H2.88092Z"
+      fill="#3295C9"
+    />
+    <Path
+      d="M2.88092 3.18212C1.49521 3.18212 1.08252 3.99035 1.08252 4.99432V7.1111C1.08252 6.10713 1.49521 5.2989 2.88092 5.2989H23.1191C24.5048 5.2989 24.9175 6.10713 24.9175 7.1111V4.99432C24.9175 3.99035 24.5048 3.18212 23.1191 3.18212H2.88092Z"
+      fill="#FCAD00"
+    />
+    <Path
+      d="M2.88092 5.2989C1.49521 5.2989 1.08252 6.10713 1.08252 7.1111V9.22789C1.08252 8.22391 1.49521 7.41569 2.88092 7.41569H23.1191C24.5048 7.41569 24.9175 8.22391 24.9175 9.22789V7.1111C24.9175 6.10713 24.5048 5.2989 23.1191 5.2989H2.88092Z"
+      fill="#50BE3D"
+    />
+    <Path d="M0 7.93356H1.08252V9.48452H0V7.93356Z" fill="url(#appleWalletLeftLip)" />
+    <Path d="M24.918 7.93359H26.0005V9.48455H24.918V7.93359Z" fill="url(#appleWalletRightLip)" />
   </Svg>
 );
 

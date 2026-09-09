@@ -7,7 +7,8 @@ import {
   CASH_USD_DECIMALS,
   getDeviceTimezoneOffsetSeconds,
   MONTHLY_LIMIT_MULTIPLIER,
-  monthlyLimitFor,
+  onChainToUsd,
+  spendLimitRejection,
   usdToOnChain,
 } from '@/constants/cardSpendModule';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -54,8 +55,26 @@ export interface CardSpendLimit {
   monthlyLimitUsd: bigint;
   spentTodayUsd: bigint;
   spentThisMonthUsd: bigint;
+  /**
+   * Unix seconds the daily window resets on, at which point `spentTodayUsd` goes back to
+   * zero. Recomputed by the module on every read, so it is always the *next* reset.
+   */
+  dailyRenewalTimestamp: bigint;
+  /** Unix seconds the monthly window resets on. */
+  monthlyRenewalTimestamp: bigint;
   /** The offset the rolling windows reset on. Written at registration, no setter. */
   timezoneOffset: number;
+}
+
+/**
+ * A move of a Safe's caps, in whole dollars.
+ *
+ * Both halves are optional, and an omitted one is left exactly as stored: the caps are
+ * independent decisions, so editing one never moves the other.
+ */
+export interface CardSpendLimitChange {
+  dailyLimitUsd?: number;
+  monthlyLimitUsd?: number;
 }
 
 /**
@@ -162,6 +181,20 @@ const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpen
     ],
   });
 
+  // `applicableSpendingLimit` matures a pending increase only once a block's timestamp has
+  // gone *past* the activation time, so a raise signed while `limitRaiseDelay` is zero
+  // still reads as pending until the chain ticks past the block it landed in. Read back
+  // straight after the write — which is exactly when this runs — that means reporting the
+  // cap the user has just replaced, for a whole block time, with no further refetch due.
+  //
+  // So a raise whose activation instant has already passed in wall-clock terms is folded
+  // in here: the only reason the reader still calls it pending is that no block has been
+  // mined since, the chain agrees within one, and nothing can be spent in between that the
+  // new cap would not have allowed anyway.
+  const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
+  const activatesAt = limit.dailyLimitActivationTime;
+  const isRaiseEffective = activatesAt > 0n && activatesAt <= nowSeconds;
+
   return {
     // Deliberately an AND. Registered-but-revoked is a real state (the user turned
     // the module off in a Safe client) and it must read as not set up, because the
@@ -177,20 +210,22 @@ const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpen
     modulePaused,
     safePaused,
     limit: {
-      dailyLimitUsd: limit.dailyLimit,
-      monthlyLimitUsd: limit.monthlyLimit,
+      dailyLimitUsd: isRaiseEffective ? limit.pendingDailyLimit : limit.dailyLimit,
+      monthlyLimitUsd: isRaiseEffective ? limit.pendingMonthlyLimit : limit.monthlyLimit,
       spentTodayUsd: limit.spentToday,
       spentThisMonthUsd: limit.spentThisMonth,
+      dailyRenewalTimestamp: limit.dailyRenewalTimestamp,
+      monthlyRenewalTimestamp: limit.monthlyRenewalTimestamp,
       timezoneOffset: Number(limit.timezoneOffset),
     },
     // The daily and monthly halves of a raise are armed together with one activation
     // time, so the daily one answers for both.
     pendingIncrease:
-      limit.dailyLimitActivationTime > 0n
+      activatesAt > 0n && !isRaiseEffective
         ? {
             dailyLimitUsd: limit.pendingDailyLimit,
             monthlyLimitUsd: limit.pendingMonthlyLimit,
-            activatesAt: limit.dailyLimitActivationTime,
+            activatesAt,
           }
         : null,
     limitRaiseDelaySeconds: Number(limitRaiseDelay),
@@ -336,26 +371,37 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   );
 
   const mutation = useMutation({
-    mutationFn: async ({ dailyLimitUsd }: { dailyLimitUsd: number }) => {
+    mutationFn: async ({ dailyLimitUsd, monthlyLimitUsd }: CardSpendLimitChange) => {
       if (!user?.suborgId || !user?.signWith || !safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
+      if (dailyLimitUsd === undefined) throw new Error('Pick a daily limit first.');
 
       const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
       if (fresh.registered) throw new Error('Card spending is already set up.');
 
       const daily = usdToOnChain(dailyLimitUsd);
-      const monthly = daily * MONTHLY_LIMIT_MULTIPLIER;
+      // Ten times the daily unless the caller named one, which the limit editor does when
+      // the monthly row is the one the user filled in: `registerSafe` writes both caps and
+      // whichever they typed is the one to write verbatim.
+      const monthly =
+        monthlyLimitUsd === undefined
+          ? daily * MONTHLY_LIMIT_MULTIPLIER
+          : usdToOnChain(monthlyLimitUsd);
 
-      // Checked here as well as on-chain so a bad choice costs a toast rather than a
-      // failed user operation. The contract reverts with ExceedsOrgDailyCeiling /
-      // ExceedsOrgMonthlyCeiling, which the user cannot act on. Skipped when
-      // re-enabling, where the limits are already set and are not being sent.
-      if (!fresh.registeredOnChain && daily > fresh.maxDailyLimitUsd) {
-        throw new Error('That daily limit is above the current maximum. Pick a lower one.');
-      }
-      if (!fresh.registeredOnChain && monthly > fresh.maxMonthlyLimitUsd) {
-        throw new Error('That monthly limit is above the current maximum. Pick a lower one.');
+      // Checked here as well as on-chain so a bad choice costs a message rather than a
+      // failed user operation: the contract reverts with ExceedsOrgDailyCeiling /
+      // ExceedsOrgMonthlyCeiling, which the user cannot act on. Same helper the limit
+      // field validates with — an unregistered Safe's stored caps are zeros, so every
+      // value is a raise and both ceilings bind. Skipped when re-enabling, where the caps
+      // are already stored and are not being sent.
+      if (!fresh.registeredOnChain) {
+        const rejection = spendLimitRejection(
+          { dailyLimitUsd: 0n, monthlyLimitUsd: 0n },
+          { dailyLimitUsd: daily, monthlyLimitUsd: monthly },
+          fresh,
+        );
+        if (rejection) throw new Error(rejection);
       }
 
       const timezoneOffset = getDeviceTimezoneOffsetSeconds();
@@ -444,13 +490,18 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   /**
    * Move the caps on a Safe that is already registered.
    *
-   * One entry point for both directions because the user is answering one question —
-   * "what should my daily limit be" — and which contract call that becomes is a detail
-   * of how the module protects them, not a choice to put in front of them. The monthly
-   * cap follows the daily one, as it does at registration.
+   * One entry point for both caps and both directions, because which contract call a
+   * change becomes — `decreaseSpendingLimit` or `requestSpendingLimitIncrease` — is a
+   * detail of how the module protects the user rather than a choice to put in front of
+   * them.
+   *
+   * A cap the caller does not name stays exactly as stored. That keeps both on the same
+   * side of the stored pair, which the contract requires (`decrease` reverts if either
+   * went up, `requestIncrease` if either went down): the untouched one is equal, and
+   * equal satisfies both.
    */
   const updateMutation = useMutation({
-    mutationFn: async ({ dailyLimitUsd }: { dailyLimitUsd: number }) => {
+    mutationFn: async ({ dailyLimitUsd, monthlyLimitUsd }: CardSpendLimitChange) => {
       if (!user?.suborgId || !user?.signWith || !safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
@@ -458,26 +509,33 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
       if (!fresh.registeredOnChain) throw new Error('Set up card spending first.');
 
+      // A cap the caller did not name is left exactly where it was. The two are stored
+      // independently and each is a separate decision, so an edit of one must not move the
+      // other — the contract only insists they stay ordered, which the rejection below
+      // checks and reports rather than silently fixing.
       const current = fresh.limit;
-      const nextDaily = usdToOnChain(dailyLimitUsd);
-      if (nextDaily === current.dailyLimitUsd) {
-        throw new Error('That is already your daily limit.');
+      const nextDaily =
+        dailyLimitUsd === undefined ? current.dailyLimitUsd : usdToOnChain(dailyLimitUsd);
+      const nextMonthly =
+        monthlyLimitUsd === undefined ? current.monthlyLimitUsd : usdToOnChain(monthlyLimitUsd);
+
+      if (nextDaily === current.dailyLimitUsd && nextMonthly === current.monthlyLimitUsd) {
+        throw new Error('Those are already your limits.');
       }
 
-      const isIncrease = nextDaily > current.dailyLimitUsd;
-      const nextMonthly = monthlyLimitFor(nextDaily, current);
+      // Checked against the caps read a moment ago rather than the ones the sheet
+      // rendered with, so a ceiling the org moved in between costs a message instead of a
+      // failed user operation. Same helper the field validates with, so the user never
+      // meets a second, differently worded refusal after pressing Confirm.
+      const rejection = spendLimitRejection(
+        current,
+        { dailyLimitUsd: nextDaily, monthlyLimitUsd: nextMonthly },
+        fresh,
+        monthlyLimitUsd === undefined ? 'daily' : 'monthly',
+      );
+      if (rejection) throw new Error(rejection);
 
-      if (isIncrease) {
-        // Caught here so a raise the org would refuse costs a message rather than a
-        // failed user operation. Reachable without the user picking anything silly: the
-        // org can lower a ceiling below a limit that was already granted.
-        if (nextDaily > fresh.maxDailyLimitUsd) {
-          throw new Error('That daily limit is above the current maximum. Pick a lower one.');
-        }
-        if (nextMonthly > fresh.maxMonthlyLimitUsd) {
-          throw new Error('That limit is above the current monthly maximum. Pick a lower one.');
-        }
-      }
+      const isIncrease = nextDaily > current.dailyLimitUsd || nextMonthly > current.monthlyLimitUsd;
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
       const result = await executeTransactions(
@@ -498,30 +556,32 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
 
       if (result === USER_CANCELLED_TRANSACTION) {
         track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_CANCELLED, {
-          daily_limit_usd: dailyLimitUsd,
+          daily_limit_usd: onChainToUsd(nextDaily),
+          monthly_limit_usd: onChainToUsd(nextMonthly),
           is_increase: isIncrease,
         });
         return null;
       }
 
+      // What the module will be enforcing by the time the backend cross-checks this
+      // against the chain — a record saying the card may spend more than the module
+      // allows is the wrong record. A decrease is in force immediately; a raise is in
+      // force on the first block past `limitRaiseDelay`, which at the delay's configured
+      // zero is the next one, so only a delay someone has actually turned on leaves the
+      // old caps true for long enough to be worth reporting.
+      const isRaiseStillWaiting = isIncrease && fresh.limitRaiseDelaySeconds > 0;
       await confirmWithBackend({
         transactionHash: result.transactionHash,
-        // What the chain enforces *now*, which for a raise is still the old caps — the
-        // backend cross-checks this against the chain and logs a mismatch, and a record
-        // saying the card may spend more than the module allows is the wrong record.
-        dailyLimitUsd: isIncrease ? current.dailyLimitUsd : nextDaily,
-        monthlyLimitUsd: isIncrease ? current.monthlyLimitUsd : nextMonthly,
+        dailyLimitUsd: isRaiseStillWaiting ? current.dailyLimitUsd : nextDaily,
+        monthlyLimitUsd: isRaiseStillWaiting ? current.monthlyLimitUsd : nextMonthly,
         timezoneOffset: current.timezoneOffset,
       });
 
       return {
         transactionHash: result.transactionHash,
-        dailyLimitUsd,
+        dailyLimitUsd: onChainToUsd(nextDaily),
+        monthlyLimitUsd: onChainToUsd(nextMonthly),
         isIncrease,
-        /** Unix seconds a raise takes effect; undefined for a decrease, which is now. */
-        activatesAt: isIncrease
-          ? Math.floor(Date.now() / 1000) + fresh.limitRaiseDelaySeconds
-          : undefined,
       };
     },
     onSuccess: result => {
@@ -529,6 +589,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       invalidateAfterWrite();
       track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_COMPLETED, {
         daily_limit_usd: result.dailyLimitUsd,
+        monthly_limit_usd: result.monthlyLimitUsd,
         is_increase: result.isIncrease,
         transaction_hash: result.transactionHash,
       });
@@ -682,33 +743,44 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
     async (
       dailyLimitUsd: number,
       source: CardSpendRegistrationSource = 'spending_sheet',
+      /** Ten times the daily cap when omitted, as the activation press wants. */
+      monthlyLimitUsd?: number,
     ): Promise<boolean> => {
       setError(null);
       track(TRACKING_EVENTS.CARD_SPEND_REGISTER_PRESSED, {
         daily_limit_usd: dailyLimitUsd,
+        monthly_limit_usd: monthlyLimitUsd,
         source,
       });
-      const result = await mutation.mutateAsync({ dailyLimitUsd });
+      const result = await mutation.mutateAsync({ dailyLimitUsd, monthlyLimitUsd });
       return result !== null;
     },
     [mutation],
   );
 
   /**
-   * Change the daily limit on an existing registration.
+   * Change the caps on an existing registration.
    *
-   * Resolves with what happened, so the caller can say the one thing the user needs to
-   * hear next — a decrease is already in force, a raise is only booked — or `null` when
-   * the signature prompt was dismissed and nothing changed at all.
+   * Resolves with the pair now in force, so the caller can name the number the user just
+   * set rather than the one it derived, or `null` when the signature prompt was dismissed
+   * and nothing changed at all.
    */
   const updateLimit = useCallback(
     async (
-      dailyLimitUsd: number,
-    ): Promise<{ isIncrease: boolean; activatesAt?: number } | null> => {
+      change: CardSpendLimitChange,
+    ): Promise<{ dailyLimitUsd: number; monthlyLimitUsd: number } | null> => {
       setError(null);
-      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_PRESSED, { daily_limit_usd: dailyLimitUsd });
-      const result = await updateMutation.mutateAsync({ dailyLimitUsd });
-      return result && { isIncrease: result.isIncrease, activatesAt: result.activatesAt };
+      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_PRESSED, {
+        daily_limit_usd: change.dailyLimitUsd,
+        monthly_limit_usd: change.monthlyLimitUsd,
+      });
+      const result = await updateMutation.mutateAsync(change);
+      return (
+        result && {
+          dailyLimitUsd: result.dailyLimitUsd,
+          monthlyLimitUsd: result.monthlyLimitUsd,
+        }
+      );
     },
     [updateMutation],
   );
