@@ -21,9 +21,10 @@ import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHer
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
-import RegisterSpendAction from '@/components/Card/NewCardDetails/RegisterSpendAction';
+import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -92,12 +93,16 @@ const CardDetailsPane = () => {
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
-  // The card-spending sheet is owned here rather than by the action row, because two
-  // things open it: the row's own "Set up"/"Spending" button, and a "Show details" tap
-  // on a card that cannot spend yet. One instance above both also keeps it reachable
-  // when the row hides its button (a frozen card) — which is exactly when a blocked
-  // reveal still needs somewhere to send the user. `null` is closed; the value it holds
-  // is which entry point opened it, for the registration funnel.
+  // Which wallet the guide should open on when it was reached from the manage sheet,
+  // whose row names the wallet this device actually has. Undefined lets the guide keep
+  // its own default, which is what the "More" circle wants.
+  const [walletFromManage, setWalletFromManage] = useState<DigitalWalletType | undefined>();
+  // The manage-card sheet is owned here rather than by the action row, because two things
+  // open it: the row's own "Set up"/"Manage" button, and a "Show details" tap on a card
+  // that cannot spend yet. One instance above both also keeps it reachable when the row
+  // hides its button — which is exactly when a blocked reveal still needs somewhere to
+  // send the user. `null` is closed; the value it holds is which entry point opened it,
+  // for the registration funnel.
   const [spendSheetSource, setSpendSheetSource] = useState<CardSpendRegistrationSource | null>(
     null,
   );
@@ -255,7 +260,10 @@ const CardDetailsPane = () => {
               canToggleFreeze={canToggleFreeze}
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
-              onMorePress={() => setIsAddToWalletOpen(true)}
+              onMorePress={() => {
+                setWalletFromManage(undefined);
+                setIsAddToWalletOpen(true);
+              }}
               onSpendPress={openSpendSheet}
               canAddFunds={canAddFundsToCard(fundsAccess)}
               canWithdraw={canWithdrawFromCard(fundsAccess)}
@@ -287,10 +295,14 @@ const CardDetailsPane = () => {
           on the issuer rather than on the action row's own visibility, so the reveal
           gate above always has a sheet to open. */}
       {provider === CardProvider.WIREX && (
-        <RegisterSpendAction
+        <ManageCardSheet
           isOpen={spendSheetSource !== null}
           onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
           source={spendSheetSource ?? 'spending_sheet'}
+          onAddToWallet={wallet => {
+            setWalletFromManage(wallet);
+            setIsAddToWalletOpen(true);
+          }}
         />
       )}
       <AddToWalletModal
@@ -302,7 +314,7 @@ const CardDetailsPane = () => {
           // immediately re-open from it.
           if (!open) dismissWalletGuide();
         }}
-        initialWallet={walletGuide ?? undefined}
+        initialWallet={walletGuide ?? walletFromManage}
       />
     </View>
   );
