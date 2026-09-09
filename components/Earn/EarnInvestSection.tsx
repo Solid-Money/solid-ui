@@ -139,7 +139,9 @@ export const EarnInvestSection = () => {
         </View>
       )}
 
-      <View>
+      {/* The rows group into one panel so the list reads as a single surface
+          rather than five items floating on the page background. */}
+      <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
         {visibleTokens.map(token => (
           <EarnAssetRow
             key={token.symbol}
@@ -153,7 +155,7 @@ export const EarnInvestSection = () => {
         ))}
 
         {visibleTokens.length === 0 && (
-          <View className="items-center py-8">
+          <View className="items-center py-6">
             <Text className="text-[14px] text-white/50">No assets match “{query.trim()}”</Text>
           </View>
         )}
