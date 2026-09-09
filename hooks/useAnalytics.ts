@@ -559,14 +559,18 @@ export const useTVL = () => {
   });
 };
 
+// Shared so the Earn screen can prefetch this on exactly the same key the
+// vault detail screen will read it from.
+export const vaultBreakdownQueryOptions = (vault?: string) => ({
+  queryKey: [ANALYTICS, 'vaultBreakdown', vault ?? 'usdc'],
+  queryFn: async () => {
+    const vaultBreakdown = await fetchVaultBreakdown(vault);
+    return formatVaultBreakdown(vaultBreakdown);
+  },
+});
+
 export const useVaultBreakdown = (vault?: string) => {
-  return useQuery({
-    queryKey: [ANALYTICS, 'vaultBreakdown', vault ?? 'usdc'],
-    queryFn: async () => {
-      const vaultBreakdown = await fetchVaultBreakdown(vault);
-      return formatVaultBreakdown(vaultBreakdown);
-    },
-  });
+  return useQuery(vaultBreakdownQueryOptions(vault));
 };
 
 // Query options for prefetching APYs
@@ -663,10 +667,19 @@ export const useCoinHistoricalChart = (
   });
 };
 
-export const useHistoricalAPY = (days: string = '30', vault?: VaultType) => {
-  const vaultKey = getAnalyticsVaultKey(vault);
-  return useQuery({
-    queryKey: [ANALYTICS, 'historicalAPY', days, vaultKey],
-    queryFn: async () => fetchHistoricalAPY(days, vault),
-  });
-};
+/**
+ * The period the vault detail chart opens on. Lives here rather than in the
+ * card so a prefetch keyed on it cannot silently drift from what the card
+ * actually requests — a mismatch just wastes the fetch, invisibly.
+ */
+export const DEFAULT_HISTORICAL_APY_DAYS = '7';
+
+// Shared so the Earn screen can prefetch this on exactly the same key the
+// vault detail screen will read it from.
+export const historicalApyQueryOptions = (days: string = '30', vault?: VaultType) => ({
+  queryKey: [ANALYTICS, 'historicalAPY', days, getAnalyticsVaultKey(vault)],
+  queryFn: async () => fetchHistoricalAPY(days, vault),
+});
+
+export const useHistoricalAPY = (days: string = '30', vault?: VaultType) =>
+  useQuery(historicalApyQueryOptions(days, vault));

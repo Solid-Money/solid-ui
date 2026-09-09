@@ -21,6 +21,7 @@ import {
   type VaultAmounts,
 } from './earnPortfolio';
 import { EarnVaultTile } from './EarnVaultTile';
+import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 
 const VAULT_TILES = [
   {
@@ -68,6 +69,7 @@ const chunkIntoRows = <T,>(items: T[], perRow = 2): T[][] =>
 /** Figma 24766:2010 — the portfolio-level entry page for every savings vault. */
 export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  useVaultDetailPrefetch();
   const { data: portfolioTotal, valuesByVault, isLoading } = useTotalSavingsUSD();
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
