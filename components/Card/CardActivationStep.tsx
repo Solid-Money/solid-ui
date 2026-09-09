@@ -15,12 +15,14 @@ interface Step {
   onPress?: () => void;
   status?: 'pending' | 'completed';
   kycStatus?: string;
+  /** This step's own action is in flight (e.g. submitting the application). */
+  isLoading?: boolean;
 }
 
 // Type that matches what AnimatedStepContent expects
 type StepForContent = Pick<
   Step,
-  'id' | 'title' | 'description' | 'completed' | 'buttonText' | 'onPress'
+  'id' | 'title' | 'description' | 'completed' | 'buttonText' | 'onPress' | 'isLoading'
 >;
 
 interface CardActivationStepProps {

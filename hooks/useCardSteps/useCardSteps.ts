@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
+import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
+import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
-import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
+import { getCustomerFromBridge, getKycLinkFromBridge, resumeRainKycForward } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
-import { hasMetSavingsDeposit, withRefreshToken } from '@/lib/utils';
+import { hasMetSavingsDeposit, requiresCardDeposit, withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -112,8 +115,8 @@ export function useCardSteps(
   const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
     useCardActivation(router);
 
-  // Opens the deposit-to-savings (soUSD) flow used by the BD "deposit first"
-  // step. The global DepositModalProvider is mounted app-wide, so this works
+  // Opens the deposit-to-savings (soUSD) flow used by the minimum-deposit
+  // steps. The global DepositModalProvider is mounted app-wide, so this works
   // from the card activation screen without mounting a modal locally.
   //
   // See openCardSavingsDeposit: this is the savings direct-deposit flow (token →
@@ -125,10 +128,88 @@ export function useCardSteps(
     [openDepositFlow],
   );
 
-  // The BD minimum-deposit step now completes from the savings (soUSD) balance,
-  // not card collateral — the card doesn't exist yet when the deposit happens.
+  // Whether to show the minimum-deposit steps at all.
+  //
+  // `/cards/status.depositRequired` is the answer — it comes from the same
+  // server-side rule that enforces the gate. It only exists once a card customer
+  // does, though, and the screen has to decide before that; so for that window
+  // we ask the routing endpoint which issuer would serve this user. Deliberately
+  // NOT decided from the client's country: on this side that is an IP guess, and
+  // deciding a money gate on one is how the previous gate ended up optional
+  // behind a VPN.
+  const { issuer: prospectiveIssuer } = useProspectiveCardIssuer({
+    enabled: cardStatusResponse?.depositRequired == null,
+  });
+  const depositRequired = requiresCardDeposit({
+    depositRequired: cardStatusResponse?.depositRequired,
+    issuer: cardStatusResponse?.provider ?? prospectiveIssuer,
+  });
+
+  // The minimum-deposit step completes from the savings (soUSD) balance, not
+  // card collateral — the card doesn't exist yet when the deposit happens. The
+  // bar comes from the backend so it can move without an app release.
   const { totalSoUSD } = useBalances();
-  const savingsDepositMet = hasMetSavingsDeposit(totalSoUSD);
+  const savingsDepositMet = hasMetSavingsDeposit(
+    totalSoUSD,
+    cardStatusResponse?.minimumDepositUsd ?? undefined,
+  );
+
+  /**
+   * Submits an application that was parked because the applicant stopped
+   * holding their deposit — the "hold" step's action.
+   *
+   * The balance shown here is a client-side read and is only what decides
+   * whether the button is offered. The server re-reads the position on-chain as
+   * it submits, so a stale or optimistic local balance cannot get an unfunded
+   * application through; it can only produce the `deposit_required` answer
+   * handled below.
+   */
+  const queryClient = useQueryClient();
+  const { mutate: runSubmitPendingApplication, isPending: isSubmittingPendingApplication } =
+    useMutation({
+      mutationFn: () => withRefreshToken(() => resumeRainKycForward()),
+      onSuccess: result => {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'deposit_hold_resume',
+          resumeStatus: result?.status,
+          balanceUsd: result?.balanceUsd,
+        });
+
+        if (result?.status === 'deposit_required') {
+          Toast.show({
+            type: 'error',
+            text1: 'Deposit not received yet',
+            text2:
+              result.reason ?? `Keep at least $${result.minimumUsd} in savings, then try again.`,
+            props: { badgeText: '' },
+          });
+        } else if (result?.status === 'failed' || result?.status === 'not_ready') {
+          Toast.show({
+            type: 'error',
+            text1: 'Could not submit your application',
+            text2: result.reason ?? 'Please try again shortly or contact support.',
+            props: { badgeText: '' },
+          });
+        }
+
+        // Refetch either way: a successful submit clears the step, and a refusal
+        // may still have moved the balance the server reported.
+        void queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      },
+      onError: () => {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not submit your application',
+          text2: 'Please try again shortly or contact support.',
+          props: { badgeText: '' },
+        });
+      },
+    });
+  // Wrapped so the step's press event isn't handed to `mutate` as its variables.
+  const submitPendingApplication = useCallback(
+    () => runSubmitPendingApplication(),
+    [runSubmitPendingApplication],
+  );
 
   // Sync card activation state with server
   useEffect(() => {
@@ -364,13 +445,14 @@ export function useCardSteps(
           kycStatus: cardStatusResponse?.kycStatus,
           kycWarnings: cardStatusResponse?.kycWarnings,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
-          // Prefer the KYC residence country from the backend, but fall back to
-          // the client-detected/selected country so the deposit step shows for a
-          // BD user before they have a card customer (getCardStatus 404s then).
-          country: cardStatusResponse?.country ?? countryStore.countryInfo?.countryCode,
+          depositRequired,
+          minimumDepositUsd: cardStatusResponse?.minimumDepositUsd,
           cardCollateralDeposited: cardStatusResponse?.cardCollateralDeposited,
           savingsDepositMet,
           openSavingsDepositModal,
+          rainForwardPendingDeposit: cardStatusResponse?.rainForwardPendingDeposit,
+          submitPendingApplication,
+          isSubmittingPendingApplication,
         },
       ),
     [
@@ -382,9 +464,10 @@ export function useCardSteps(
       cardStatusResponse?.rainApplicationStatus,
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,
-      cardStatusResponse?.country,
+      depositRequired,
+      cardStatusResponse?.minimumDepositUsd,
       cardStatusResponse?.cardCollateralDeposited,
-      countryStore.countryInfo?.countryCode,
+      cardStatusResponse?.rainForwardPendingDeposit,
       savingsDepositMet,
       handleProceedToKyc,
       pushCardReady,
@@ -392,6 +475,8 @@ export function useCardSteps(
       cardIssuer,
       handleRainKYCPress,
       openSavingsDepositModal,
+      submitPendingApplication,
+      isSubmittingPendingApplication,
     ],
   );
 

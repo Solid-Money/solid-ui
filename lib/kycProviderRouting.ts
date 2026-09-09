@@ -1,6 +1,6 @@
 import { getProviderRouting } from '@/lib/api';
 import { detectGeo } from '@/lib/geo';
-import { KycProvider } from '@/lib/types';
+import { CardProvider, KycProvider } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -73,5 +73,34 @@ export const resolveKycProvider = async (
   } catch {
     // backend unavailable → keep the fallback
     return { kycProvider: fallbackProvider, countryCode };
+  }
+};
+
+/**
+ * Which issuer would serve this user's card application, before one exists.
+ *
+ * `/cards/status` names the issuer only once a card customer does, and it 404s
+ * before that — so a user opening the activation screen for the first time has
+ * no issuer at all. That window is exactly when the deposit steps have to
+ * decide whether to render, and getting it wrong asks a Wirex applicant for
+ * collateral their card never takes.
+ *
+ * Same routing call `resolveKycProvider` uses, read for its card answer instead
+ * of its KYC one. The backend decides per user from the JWT (the country is only
+ * its fallback), so this is a server answer rather than a client guess — and it
+ * must not be cached across accounts.
+ *
+ * Returns null when the answer isn't available, which callers read as "unknown"
+ * rather than as any particular issuer.
+ */
+export const resolveProspectiveCardIssuer = async (): Promise<CardProvider | null> => {
+  const countryCode = await resolveRoutingCountry();
+  if (!countryCode) return null;
+
+  try {
+    const routing = await withRefreshToken(() => getProviderRouting(countryCode, 'card'));
+    return routing?.cardProvider ?? null;
+  } catch {
+    return null;
   }
 };

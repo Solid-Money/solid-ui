@@ -173,7 +173,14 @@ export function useDiditSession() {
       // The TransFi buy-crypto flow reuses the standard 'card' identity
       // workflow — only 'va' has its own Didit workflow. We later forward the
       // completed session to TransFi regardless of which workflow ran.
-      const diditFlow = kycFlow === 'va' ? 'va' : 'card';
+      //
+      // It is still sent as 'onramp' rather than 'card', because the backend
+      // gates the two differently: a card session is refused without the
+      // minimum savings deposit, and applying that to buy-crypto would deadlock
+      // a fiat-only user — buying crypto is how they would fund that balance.
+      // Their card application stays gated regardless: the hand-off to the
+      // issuer re-checks the deposit whichever flow started the session.
+      const diditFlow = kycFlow === 'va' ? 'va' : kycFlow === 'transfi' ? 'onramp' : 'card';
       const res = await withRefreshToken(() => createDiditSession(undefined, diditFlow));
       if (!res) {
         setSession({
@@ -216,10 +223,35 @@ export function useDiditSession() {
         }
         return;
       }
+      // CARD_DEPOSIT_REQUIRED (400): the applicant is not holding the minimum
+      // savings deposit, so the backend refuses to start a verification we would
+      // be charged for. This is not an error state — it is the first step of the
+      // flow, still outstanding — so send them back to the activation screen,
+      // where the deposit step and its action live, rather than dead-ending them
+      // on a red page for something they can fix in a minute.
+      if (e?.code === 'CARD_DEPOSIT_REQUIRED') {
+        track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, {
+          mode: 'didit',
+          outcome: 'deposit_required',
+        });
+        Toast.show({
+          type: 'error',
+          text1: 'Deposit required first',
+          text2: e?.message || 'Add funds to your savings to start verification.',
+          props: { badgeText: '' },
+        });
+        router.replace(String(path.CARD_ACTIVATE) as any);
+        return;
+      }
       // VERIFICATION_UNAVAILABLE (503): the org-wide Didit credit balance is
       // depleted, so no session can be created for anyone. Surface a calm,
       // branded "temporarily unavailable" page rather than the red hard-error
       // state + toast — it's transient and not the user's fault.
+      //
+      // DEPOSIT_CHECK_UNAVAILABLE is also a 503 and lands here by design: we
+      // could not read the applicant's balance, and refusing rather than
+      // assuming is what keeps "break the balance read" from being the way past
+      // the gate. Its own message says so.
       const isUnavailable =
         e?.code === 'VERIFICATION_UNAVAILABLE' || e?.status === 503 || e?.statusCode === 503;
       if (isUnavailable) {
@@ -235,7 +267,7 @@ export function useDiditSession() {
       setSession({ phase: 'error', message });
       Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
-  }, [debugState, kycFlow, redirectBasedOnKycStatus]);
+  }, [debugState, kycFlow, redirectBasedOnKycStatus, router]);
 
   const markStarted = useCallback(() => {
     // Persisted so the home screen can tell "started verification and walked

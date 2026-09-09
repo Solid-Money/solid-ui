@@ -112,6 +112,7 @@ import {
   RecordSwapFeeParams,
   ReferralSummary,
   RegionInterestPayload,
+  ResumeRainForwardResponse,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
@@ -665,10 +666,20 @@ export const toApiError = async (
   return new ApiError(response.status, message ?? fallbackMessage, code);
 };
 
-/** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
+/**
+ * Create a Didit verification session. Backend creates the session and returns
+ * session_id, session_token, verification_url.
+ *
+ * `flow` says which product is asking, and the backend gates on it: a `card`
+ * session is the first paid step of a card application and is refused unless the
+ * applicant holds the minimum savings deposit. `onramp` runs the same workflow
+ * ungated — buying crypto with fiat is how a fiat-only user funds their savings
+ * in the first place, so requiring a balance to verify for it would leave them
+ * unable to fund the balance it requires. `va` is the virtual-account workflow.
+ */
 export const createDiditSession = async (
   callback?: string,
-  flow: 'card' | 'va' = 'card',
+  flow: 'card' | 'va' | 'onramp' = 'card',
 ): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
@@ -683,6 +694,36 @@ export const createDiditSession = async (
   });
   if (!response.ok) {
     throw await toApiError(response, 'Failed to create verification session');
+  }
+  return response.json();
+};
+
+/**
+ * Submit an already-approved identity verification to the card issuer, now that
+ * the applicant is holding the minimum savings deposit again.
+ *
+ * Backs the "deposit and hold" step: verification passed, but the application
+ * was parked because the deposit that cleared step one had been moved out. The
+ * server re-reads the savings balance on-chain — once, at the moment of the
+ * decision, never from a cache — and only submits if the money is really there.
+ *
+ * Resolves rather than throwing when the applicant is still short: the answer
+ * comes back as `status: 'deposit_required'` with the balance the server read,
+ * which the step renders as its own state.
+ */
+export const resumeRainKycForward = async (): Promise<ResumeRainForwardResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/rain-forward`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    throw await toApiError(response, 'Failed to submit your application');
   }
   return response.json();
 };

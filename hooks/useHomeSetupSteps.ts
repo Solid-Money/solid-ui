@@ -40,11 +40,28 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
   const { steps: cardSteps } = useCardSteps(cardStatus?.kycStatus, cardStatus);
 
   return useMemo(() => {
-    // Look these up by key, not index: for deposit-required (BD) users the card
-    // flow now leads with a "deposit first" step, so KYC/activate aren't at
-    // fixed positions anymore.
+    // Look these up by key, not index: the card flow leads with a "deposit
+    // first" step for gated applicants and can grow a "deposit and hold" step
+    // after it, so KYC/activate aren't at fixed positions anymore.
     const kycStep = cardSteps.find(step => step.key === 'kyc');
     const cardStep = cardSteps.find(step => step.key === 'activate');
+    // Whether the card flow is currently blocked on the minimum savings deposit
+    // — either the first step is unmet, or an approved verification is parked
+    // waiting for the money to come back.
+    //
+    // This card is a side entrance: it invokes each step's action directly and
+    // so does NOT inherit the activation screen's sequential gating, which is
+    // what stops KYC being started before the deposit is in. Without this check,
+    // "Verify your identity" from here opens a verification the backend refuses,
+    // and the user meets the requirement as an error rather than as a step.
+    //
+    // These CTAs deliberately route into the card flow rather than firing the
+    // deposit action from here: the step's own copy is what explains why money
+    // is being asked for, and a bare deposit sheet under a button labelled
+    // "Verify your identity" explains nothing.
+    const blockedOnDeposit = cardSteps.some(
+      step => (step.key === 'deposit' || step.key === 'hold') && !step.completed,
+    );
 
     const openDeposit = () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     // Card onboarding starts at country selection (same entry ReserveCardButton and
@@ -60,7 +77,7 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         description: '3 min to unlock all features',
         cta: 'Verify your identity',
         completed: Boolean(kycStep?.completed),
-        onPress: kycStep?.onPress ?? startCardOnboarding,
+        onPress: (blockedOnDeposit ? undefined : kycStep?.onPress) ?? startCardOnboarding,
       },
       {
         key: 'card',
@@ -69,7 +86,10 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         cta: 'Get your card',
         completed: Boolean(cardStep?.completed),
         // No activate action means KYC isn't done yet, so send them to that instead.
-        onPress: cardStep?.onPress ?? kycStep?.onPress ?? startCardOnboarding,
+        onPress:
+          cardStep?.onPress ??
+          (blockedOnDeposit ? undefined : kycStep?.onPress) ??
+          startCardOnboarding,
       },
       {
         key: 'deposit',
