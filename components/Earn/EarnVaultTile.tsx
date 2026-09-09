@@ -6,7 +6,6 @@ import { Text } from '@/components/ui/text';
 import { type AssetPath, getAsset } from '@/lib/assets';
 
 import { formatVaultApyLabel } from './earnPortfolio';
-import { GlassSurface } from './GlassSurface';
 
 interface EarnVaultTileProps {
   assetName: string;
@@ -46,22 +45,22 @@ export const EarnVaultTile = ({
         {isApyLoading ? (
           <Skeleton className="h-[26px] w-[72px] rounded-full bg-white/10" />
         ) : (
-          <GlassSurface radius={13} className="h-[26px] justify-center px-[10px]">
+          <View className="h-[26px] justify-center rounded-full border border-[#94F27F]/15 bg-[#94F27F]/10 px-[10px]">
             <Text className="text-[14px] font-medium leading-4 text-[#94F27F]">
               {formatVaultApyLabel(apy)}
             </Text>
-          </GlassSurface>
+          </View>
         )}
       </View>
 
-      <GlassSurface radius={26} className="size-[52px] items-center justify-center">
+      <View className="size-[52px] items-center justify-center rounded-full border border-white/10 bg-white/10">
         <Image
           source={getAsset(icon)}
           contentFit="contain"
           style={{ width: 26, height: 26 }}
           alt={`${assetName} icon`}
         />
-      </GlassSurface>
+      </View>
     </View>
   </Pressable>
 );
