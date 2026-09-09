@@ -7,27 +7,28 @@ import { Text } from '@/components/ui/text';
 interface EarnAssetRowProps {
   ticker: string;
   name: string;
-  sector: string;
+  /** Secondary line: the asset's sector when browsing, the holding size when held. */
+  caption: string;
   logoUrl?: string;
-  /** Undefined until the live USD price lands. */
-  price?: number;
+  /** The unit price when browsing, the position's worth when held. Undefined until it lands. */
+  value?: number;
   onPress: () => void;
 }
 
-const formatPrice = (price: number) =>
-  `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatUsd = (value: number) =>
+  `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-/** One tokenized asset in the Earn "Earn more" list. */
+/** One tokenized asset row, in either the positions list or the catalog. */
 export const EarnAssetRow = ({
   ticker,
   name,
-  sector,
+  caption,
   logoUrl,
-  price,
+  value,
   onPress,
 }: EarnAssetRowProps) => (
   <Pressable
-    accessibilityLabel={`${name}, ${sector}`}
+    accessibilityLabel={`${name}, ${caption}`}
     accessibilityRole="button"
     onPress={onPress}
     className="flex-row items-center gap-3 rounded-2xl py-2.5 transition-all active:opacity-70"
@@ -39,14 +40,14 @@ export const EarnAssetRow = ({
         {name}
       </Text>
       <Text className="text-[13px] leading-4 text-white/50" numberOfLines={1}>
-        {sector}
+        {caption}
       </Text>
     </View>
 
-    {price === undefined ? (
+    {value === undefined ? (
       <Skeleton className="h-5 w-20 rounded-full bg-white/10" />
     ) : (
-      <Text className="text-[15px] font-semibold leading-5 text-white">{formatPrice(price)}</Text>
+      <Text className="text-[15px] font-semibold leading-5 text-white">{formatUsd(value)}</Text>
     )}
   </Pressable>
 );

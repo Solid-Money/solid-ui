@@ -143,3 +143,9 @@ export const searchTokens = (
     .slice(0, limit)
     .map(match => match.token);
 };
+
+/** "4.21 shares" — the secondary line on a held position. */
+export const formatShares = (shares: number) =>
+  `${shares.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${
+    shares === 1 ? 'share' : 'shares'
+  }`;

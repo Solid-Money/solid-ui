@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useXStockHoldings } from '@/hooks/useXStockHoldings';
 import { useXStockPrices } from '@/hooks/useXStockPrices';
 import { useXStocksTokens, XStockToken } from '@/hooks/useXStocksTokens';
 
@@ -14,6 +15,7 @@ import {
   EARN_PREVIEW_COUNT,
   type EarnCategoryKey,
   formatAssetName,
+  formatShares,
   getAssetSector,
   searchTokens,
   selectCategoryTokens,
@@ -40,6 +42,10 @@ export const EarnInvestSection = () => {
   const inputRef = useRef<TextInput>(null);
 
   const { tokens } = useXStocksTokens();
+  const { holdings } = useXStockHoldings();
+
+  // Holdings carry no logo of their own, so they borrow the catalog's.
+  const tokensBySymbol = useMemo(() => new Map(tokens.map(t => [t.symbol, t])), [tokens]);
 
   // Searching scans the whole catalog; browsing stays within the active
   // category's curated picks.
@@ -51,7 +57,11 @@ export const EarnInvestSection = () => {
     [tokens, isSearching, query, activeCategory],
   );
 
-  const prices = useXStockPrices(visibleTokens.map(token => token.symbol));
+  const pricedSymbols = useMemo(
+    () => [...new Set([...visibleTokens.map(t => t.symbol), ...holdings.map(h => h.ticker)])],
+    [visibleTokens, holdings],
+  );
+  const prices = useXStockPrices(pricedSymbols);
 
   const openSearch = () => {
     setIsSearching(true);
@@ -67,7 +77,32 @@ export const EarnInvestSection = () => {
   return (
     <View className="mt-8">
       <Text className="text-[18px] font-semibold leading-6 text-white">Invest</Text>
-      <Text className="mt-1 text-[14px] leading-5 text-white/50">
+
+      {/* What the user already holds, above the catalog they'd buy more from.
+          Absent entirely when they hold nothing — an empty panel would just be
+          a hole between the heading and the catalog. */}
+      {holdings.length > 0 && (
+        <View className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
+          {holdings.map(holding => {
+            const token = tokensBySymbol.get(holding.ticker);
+            const price = prices[holding.ticker];
+
+            return (
+              <EarnAssetRow
+                key={holding.ticker}
+                ticker={holding.ticker}
+                name={formatAssetName(holding.ticker, holding.name)}
+                caption={formatShares(holding.shares)}
+                logoUrl={token?.logoUrl}
+                value={price === undefined ? undefined : holding.shares * price}
+                onPress={() => token && openStocks(token)}
+              />
+            );
+          })}
+        </View>
+      )}
+
+      <Text className="mt-4 text-[14px] leading-5 text-white/50">
         Buy, sell and use as collateral
       </Text>
 
@@ -151,9 +186,9 @@ export const EarnInvestSection = () => {
             key={token.symbol}
             ticker={token.symbol}
             name={formatAssetName(token.symbol, token.name)}
-            sector={getAssetSector(token.symbol)}
+            caption={getAssetSector(token.symbol)}
             logoUrl={token.logoUrl}
-            price={prices[token.symbol]}
+            value={prices[token.symbol]}
             onPress={() => openStocks(token)}
           />
         ))}

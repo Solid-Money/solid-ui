@@ -1,6 +1,7 @@
 import {
   EARN_PREVIEW_COUNT,
   formatAssetName,
+  formatShares,
   getAssetSector,
   searchTokens,
   selectCategoryTokens,
@@ -109,5 +110,24 @@ describe('searchTokens', () => {
 
   it('caps results at the limit', () => {
     expect(searchTokens(tokens, 'x', 2)).toHaveLength(2);
+  });
+});
+
+describe('formatShares', () => {
+  it('always shows two decimals, so a column of holdings aligns', () => {
+    expect(formatShares(4.2)).toBe('4.20 shares');
+    expect(formatShares(14.2)).toBe('14.20 shares');
+  });
+
+  it('groups thousands', () => {
+    expect(formatShares(1234.5)).toBe('1,234.50 shares');
+  });
+
+  it('rounds beyond two decimals rather than overflowing the row', () => {
+    expect(formatShares(0.123456)).toBe('0.12 shares');
+  });
+
+  it('singularises exactly one share', () => {
+    expect(formatShares(1)).toBe('1.00 share');
   });
 });
