@@ -2801,7 +2801,14 @@ export interface ReferralRewardListItem {
  */
 export enum ReferralPayoutToken {
   SOUSD = 'soUSD',
+  /** Legacy: paid to a handful of rewards before the vault share was chosen. */
   FUSE = 'FUSE',
+  /**
+   * The FUSE vault share, and the current payout asset. It arrives as a savings
+   * position — earning vault yield, and counting towards the FUSE holding that
+   * unlocks a tier — rather than as a loose balance.
+   */
+  SOFUSE = 'soFUSE',
 }
 
 export interface ReferralSummary {

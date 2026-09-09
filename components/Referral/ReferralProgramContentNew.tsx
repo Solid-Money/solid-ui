@@ -16,7 +16,7 @@ import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { SOLID_WEBSITE_URL } from '@/lib/config';
-import { ReferralFriendStage } from '@/lib/types';
+import { ReferralFriendStage, ReferralPayoutToken } from '@/lib/types';
 
 import ReferralFriendRow, { formatUsdWhole, REFERRAL_SUCCESS_COLOR } from './ReferralFriendRow';
 import ReferralHeroAnimation from './ReferralHeroAnimation';
@@ -116,9 +116,15 @@ export default function ReferralProgramContentNew({
   const referrals = summary?.referrals ?? [];
   const totalRewardedUsd = summary?.totalRewardedUsd ?? 0;
   // The reward is quoted in dollars but settled in a token, so the "how it
-  // works" copy names it — a user promised $15 and sent FUSE should not have to
-  // work that out from the transfer. Omitted on backends that don't report it.
+  // works" copy names it — someone promised $15 and sent a token amount should
+  // not have to work that out from the transfer. Omitted on backends that don't
+  // report it.
   const payoutToken = summary?.rewards.payoutToken;
+  // soFUSE is not just a different ticker: the reward lands as a savings
+  // position that keeps earning and counts towards a tier unlock, and turning
+  // it into dollars is a swap the user chooses to make. That is worth a line of
+  // its own, and only when it is actually what they'll be paid.
+  const paysVaultShare = payoutToken === ReferralPayoutToken.SOFUSE;
 
   const handleWhatsApp = useCallback(async () => {
     const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
@@ -373,6 +379,12 @@ export default function ReferralProgramContentNew({
               qualify — that window covers refunds and disputes. You&apos;ll see the exact unlock
               date on each friend above. One reward per friend, no cap.
             </Text>
+            {paysVaultShare && (
+              <Text className="text-sm text-white/70">
+                Rewards land in your FUSE savings, so they keep earning yield and count towards your
+                FUSE holding for a tier unlock. Swap them for dollars any time.
+              </Text>
+            )}
           </View>
         )}
 
