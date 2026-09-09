@@ -666,10 +666,20 @@ export const toApiError = async (
   return new ApiError(response.status, message ?? fallbackMessage, code);
 };
 
-/** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
+/**
+ * Create a Didit verification session. Backend creates the session and returns
+ * session_id, session_token, verification_url.
+ *
+ * `flow` says which product is asking, and the backend gates on it: a `card`
+ * session is the first paid step of a card application and is refused unless the
+ * applicant holds the minimum savings deposit. `onramp` runs the same workflow
+ * ungated — buying crypto with fiat is how a fiat-only user funds their savings
+ * in the first place, so requiring a balance to verify for it would leave them
+ * unable to fund the balance it requires. `va` is the virtual-account workflow.
+ */
 export const createDiditSession = async (
   callback?: string,
-  flow: 'card' | 'va' = 'card',
+  flow: 'card' | 'va' | 'onramp' = 'card',
 ): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
