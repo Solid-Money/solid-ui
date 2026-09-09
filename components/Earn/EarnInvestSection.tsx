@@ -204,7 +204,7 @@ export const EarnInvestSection = () => {
         accessibilityLabel={`Browse all ${tokens.length} assets`}
         accessibilityRole="button"
         onPress={() => openStocks()}
-        className="mt-4 h-[52px] items-center justify-center rounded-2xl bg-[#1C1C1C] transition-all active:scale-[0.98] active:opacity-90"
+        className="mt-4 h-[52px] items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-[0.98] active:opacity-90"
       >
         <Text className="text-[15px] font-medium leading-5 text-white">
           Browse all {tokens.length} assets
