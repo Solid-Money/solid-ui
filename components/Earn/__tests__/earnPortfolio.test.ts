@@ -1,7 +1,6 @@
 import {
   calculateEstimatedDailyEarnings,
   formatVaultApyLabel,
-  shouldShowEarnVaultCard,
   type VaultAmounts,
 } from '@/components/Earn/earnPortfolio';
 import { VaultType } from '@/lib/types';
@@ -35,20 +34,6 @@ describe('calculateEstimatedDailyEarnings', () => {
     };
 
     expect(calculateEstimatedDailyEarnings(values, apys)).toBe(0);
-  });
-});
-
-describe('shouldShowEarnVaultCard', () => {
-  it('shows a vault with positive APY', () => {
-    expect(shouldShowEarnVaultCard(4.5, false)).toBe(true);
-  });
-
-  it('keeps the vault visible while APY is loading', () => {
-    expect(shouldShowEarnVaultCard(0, true)).toBe(true);
-  });
-
-  it.each([0, -0.1])('hides a vault with %s APY', apy => {
-    expect(shouldShowEarnVaultCard(apy, false)).toBe(false);
   });
 });
 
