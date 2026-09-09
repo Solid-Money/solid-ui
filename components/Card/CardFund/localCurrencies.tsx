@@ -66,19 +66,19 @@ export const getCardFundLocalPaymentMethods = (code: string): string[] =>
  * instead of centre-cropping them. `flagImage` rounds them at render time, so the
  * source PNGs are square and need no circular mask of their own.
  *
- * The leading three are the design's, not alphabetical: the "Cash deposit" group
- * shows only `CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS` rows before its "Show more"
- * footer, so the corridors the design puts on the first screen lead and the rest
- * follow alphabetically behind it.
+ * The leading four are ordered for the product, not alphabetically: the "Cash
+ * deposit" group shows only `CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS` rows before its
+ * "Show more" footer, so EUR and the corridors the design puts on the first
+ * screen lead and the rest follow alphabetically behind them.
  */
 export const CARD_FUND_LOCAL_CURRENCIES: CardFundLocalCurrency[] = [
+  { code: 'EUR', icon: flagImage('images/flag-eur.png') },
   { code: 'BRL', icon: flagImage('images/flag-brl.png') },
   { code: 'BDT', icon: flagImage('images/flag-bdt.png') },
   { code: 'PHP', icon: flagImage('images/flag-php.png') },
   { code: 'AED', icon: flagImage('images/flag-aed.png') },
   { code: 'ARS', icon: flagImage('images/flag-ars.png') },
   { code: 'COP', icon: flagImage('images/flag-cop.png') },
-  { code: 'EUR', icon: flagImage('images/flag-eur.png') },
   { code: 'GHS', icon: flagImage('images/flag-ghs.png') },
   { code: 'IDR', icon: flagImage('images/flag-idr.png') },
   { code: 'KES', icon: flagImage('images/flag-kes.png') },

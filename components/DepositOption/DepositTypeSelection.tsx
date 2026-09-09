@@ -28,7 +28,7 @@ import { useTransfiStore } from '@/store/useTransfiStore';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
-const FEATURED_LOCAL_CURRENCY_CODES = ['BRL', 'BDT', 'PHP'] as const;
+const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
 const CryptoIcon = ({ children }: { children: React.ReactNode }) => (
