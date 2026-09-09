@@ -4,7 +4,12 @@ import { getBalance, readContract } from 'viem/actions';
 import { arbitrum, base, bsc, fuse, mainnet } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
+import {
+  fetchCoinSimplePrice,
+  fetchTokenList,
+  fetchTokenPricesByAddress,
+  fetchTokenPriceUsd,
+} from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
@@ -452,7 +457,32 @@ const fetchTokenBalances = async (safeAddress: string) => {
     return undefined;
   };
 
-  // Fallback 1: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
+  // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
+  // carry no exchange rate (only Blockscout's do), so every ERC-20 on an
+  // Alchemy-served chain lands here at 0. Runs ahead of the coin-id and symbol
+  // lookups below because an address names a token exactly, and needs no
+  // swaptokens entry to resolve — a token missing from the curated list still
+  // gets a price.
+  const addressPriceTokens = allTokens.filter(
+    t => isZeroRate(t.quoteRate) && t.type !== TokenType.NATIVE && t.contractAddress,
+  );
+  if (addressPriceTokens.length > 0) {
+    try {
+      const priceByAddress = await fetchTokenPricesByAddress(
+        addressPriceTokens.map(t => ({ chainId: t.chainId, address: t.contractAddress })),
+      );
+      allTokens = allTokens.map(t => {
+        if (!isZeroRate(t.quoteRate) || t.type === TokenType.NATIVE) return t;
+        const usd = priceByAddress[`${t.chainId}:${t.contractAddress?.toLowerCase()}`];
+        if (usd != null && usd > 0) return { ...t, quoteRate: usd };
+        return t;
+      });
+    } catch (e) {
+      console.warn('Alchemy by-address price lookup failed:', e);
+    }
+  }
+
+  // Fallback 2: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
   const zeroRateTokens = allTokens.filter(t => isZeroRate(t.quoteRate));
   const coinIds = [
     ...new Set(
@@ -476,7 +506,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     }
   }
 
-  // Fallback 2: Alchemy by symbol for tokens still at 0 (no tokenId)
+  // Fallback 3: Alchemy by symbol for tokens still at 0 (no tokenId)
   const stillZero = allTokens.filter(t => isZeroRate(t.quoteRate) && t.contractTickerSymbol);
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
