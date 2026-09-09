@@ -3,16 +3,6 @@ import { Platform, type StyleProp, StyleSheet, View, type ViewStyle } from 'reac
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Web gets the blur straight from CSS; it composites against whatever the
-// element sits on, which is exactly the tile art behind these surfaces.
-const WEB_BACKDROP =
-  Platform.OS === 'web'
-    ? ({
-        backdropFilter: 'saturate(180%) blur(14px)',
-        WebkitBackdropFilter: 'saturate(180%) blur(14px)',
-      } as unknown as ViewStyle)
-    : undefined;
-
 interface GlassSurfaceProps {
   /** Matches the surface's own corner radius so the blur clips cleanly. */
   radius: number;
@@ -22,13 +12,13 @@ interface GlassSurfaceProps {
 }
 
 /**
- * Frosted "liquid glass" surface for the chips sitting on the textured vault
- * tiles: a blurred backdrop, a light tint lifting it off near-black art, and a
- * brighter top edge for the refracted rim.
+ * Native build of the liquid-glass surface: a blurred backdrop, a light tint
+ * lifting it off near-black art, and a lit top-left rim for pane thickness.
+ * The web build refracts the backdrop as well — see `GlassSurface.web.tsx`.
  *
- * Android is tint-and-rim only — its BlurView needs a `blurTarget` view that a
- * chip nested inside a tile has no way to reach — which still reads as glass
- * because the art behind these is almost uniformly dark.
+ * Android is tint-and-rim only. Its BlurView needs a `blurTarget` view that a
+ * chip nested inside a tile has no way to reach, and the art behind these is
+ * almost uniformly dark, so the blur would barely register regardless.
  */
 export const GlassSurface = ({ radius, children, style, className }: GlassSurfaceProps) => (
   <View
@@ -42,7 +32,6 @@ export const GlassSurface = ({ radius, children, style, className }: GlassSurfac
         borderColor: 'rgba(255, 255, 255, 0.18)',
         overflow: 'hidden',
       },
-      WEB_BACKDROP,
       style,
     ]}
   >
@@ -51,11 +40,29 @@ export const GlassSurface = ({ radius, children, style, className }: GlassSurfac
     )}
 
     <LinearGradient
-      colors={['rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.06)']}
+      colors={['rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.05)']}
       start={{ x: 0.2, y: 0 }}
       end={{ x: 0.8, y: 1 }}
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
+    />
+
+    {/* Lit top-left edge, the strongest single cue that this is a pane with
+        thickness rather than a flat translucent fill. */}
+    <View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          borderRadius: radius,
+          borderTopWidth: 1,
+          borderLeftWidth: 1,
+          borderTopColor: 'rgba(255, 255, 255, 0.40)',
+          borderLeftColor: 'rgba(255, 255, 255, 0.22)',
+          borderRightColor: 'transparent',
+          borderBottomColor: 'transparent',
+        },
+      ]}
     />
 
     {children}
