@@ -13,7 +13,7 @@ import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { SOLID_WEBSITE_URL } from '@/lib/config';
-import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
+import { ReferralPayoutToken, ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Environment-aware, so a QA build never shares a production referral link. */
@@ -280,6 +280,12 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
             {payoutToken ? ` in ${payoutToken}` : ''}, credited about 40 days after they qualify.
             One reward per friend, no cap.
           </Text>
+          {payoutToken === ReferralPayoutToken.SOFUSE && (
+            <Text className="text-sm text-white/70">
+              Rewards land in your FUSE savings, so they keep earning yield and count towards your
+              FUSE holding for a tier unlock. Swap them for dollars any time.
+            </Text>
+          )}
         </View>
       )}
 
