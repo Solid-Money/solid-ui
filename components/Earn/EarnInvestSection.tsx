@@ -88,7 +88,7 @@ export const EarnInvestSection = () => {
   const inputRef = useRef<TextInput>(null);
 
   const { tokens } = useXStocksTokens();
-  const { holdings } = useXStockHoldings();
+  const { holdings, isLoading: isHoldingsLoading } = useXStockHoldings();
 
   // Holdings carry no logo of their own, so they borrow the catalog's.
   const tokensBySymbol = useMemo(() => new Map(tokens.map(t => [t.symbol, t])), [tokens]);
@@ -153,35 +153,36 @@ export const EarnInvestSection = () => {
     collapse();
   };
 
+  // The whole section is for people who already hold something, so it is absent
+  // rather than empty for everyone else. Held back while the holdings read is in
+  // flight too: appearing and then vanishing reads worse than arriving late.
+  if (isHoldingsLoading || holdings.length === 0) return null;
+
   return (
     <View className="mt-8">
       <Text className="text-[18px] font-semibold leading-6 text-white">Invest</Text>
+      <Text className="mt-1 text-[14px] leading-5 text-white/50">Your positions</Text>
 
-      {/* What the user already holds, above the catalog they'd buy more from.
-          Absent entirely when they hold nothing — an empty panel would just be
-          a hole between the heading and the catalog. */}
-      {holdings.length > 0 && (
-        <View className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
-          {holdings.map(holding => {
-            const token = tokensBySymbol.get(holding.ticker);
-            const price = prices[holding.ticker];
+      <View className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
+        {holdings.map(holding => {
+          const token = tokensBySymbol.get(holding.ticker);
+          const price = prices[holding.ticker];
 
-            return (
-              <EarnAssetRow
-                key={holding.ticker}
-                ticker={holding.ticker}
-                name={formatAssetName(holding.ticker, holding.name)}
-                caption={formatShares(holding.shares)}
-                logoUrl={token?.logoUrl}
-                value={price === undefined ? undefined : holding.shares * price}
-                onPress={() => token && openStock(token, 'sell')}
-              />
-            );
-          })}
-        </View>
-      )}
+          return (
+            <EarnAssetRow
+              key={holding.ticker}
+              ticker={holding.ticker}
+              name={formatAssetName(holding.ticker, holding.name)}
+              caption={formatShares(holding.shares)}
+              logoUrl={token?.logoUrl}
+              value={price === undefined ? undefined : holding.shares * price}
+              onPress={() => token && openStock(token, 'sell')}
+            />
+          );
+        })}
+      </View>
 
-      <Text className="mt-4 text-[14px] leading-5 text-white/50">
+      <Text className="mt-6 text-[14px] leading-5 text-white/50">
         Buy, sell and use as collateral
       </Text>
 
