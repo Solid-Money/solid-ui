@@ -9,7 +9,6 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { AaveV3Pool_ABI } from '@/lib/abis/AaveV3Pool';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, TransactionType } from '@/lib/types';
@@ -151,7 +150,6 @@ export async function executeBorrowAndBridge(
   if (!bridgeStep) throw new Error('No bridge step found in Stargate quote');
 
   const { transaction } = bridgeStep;
-  const nativeFeeAmount = BigInt(transaction.value);
 
   const sendParam = {
     dstEid: getStargateChainId(destinationChainId) as number,
@@ -162,18 +160,6 @@ export async function executeBorrowAndBridge(
     composeMsg: '0x' as `0x${string}`,
     oftCmd: '0x' as `0x${string}`,
   };
-
-  const calldata = encodeFunctionData({
-    abi: CardDepositManager_ABI,
-    functionName: 'depositUsingStargate',
-    args: [
-      transaction.to as Address,
-      user.safeAddress as Address,
-      sendParam,
-      nativeFeeAmount,
-      ADDRESSES.fuse.bridgePaymasterAddress,
-    ],
-  });
 
   const transactions = [
     {
@@ -201,20 +187,14 @@ export async function executeBorrowAndBridge(
       }),
       value: 0n,
     },
-    // Forward the LZ native fee from BridgePaymaster (which is sponsored
-    // for the depositUsingStargate selector) and let the manager call
-    // Stargate's send().
+    // Let BridgePaymaster drive the manager: it quotes the LZ native fee on-chain,
+    // forwards exactly that, and names itself as the Stargate refund address.
     {
       to: ADDRESSES.fuse.bridgePaymasterAddress,
       data: encodeFunctionData({
         abi: BridgePayamster_ABI,
-        functionName: 'callWithValue',
-        args: [
-          ADDRESSES.fuse.cardDepositManager,
-          '0x37fe667d', // depositUsingStargate selector
-          calldata,
-          nativeFeeAmount,
-        ],
+        functionName: 'sponsorCardDeposit',
+        args: [ADDRESSES.fuse.cardDepositManager, transaction.to as Address, sendParam],
       }),
       value: 0n,
     },

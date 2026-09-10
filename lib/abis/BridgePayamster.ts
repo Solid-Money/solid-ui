@@ -1,198 +1,731 @@
 import { narrow } from 'abitype';
 
 export default narrow([
-  { inputs: [], stateMutability: 'nonpayable', type: 'constructor' },
   {
-    inputs: [{ internalType: 'address', name: 'target', type: 'address' }],
-    name: 'AddressEmptyCode',
-    type: 'error',
-  },
-  {
-    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-    name: 'AddressInsufficientBalance',
-    type: 'error',
-  },
-  { inputs: [], name: 'CallFailed', type: 'error' },
-  {
-    inputs: [{ internalType: 'address', name: 'implementation', type: 'address' }],
-    name: 'ERC1967InvalidImplementation',
-    type: 'error',
-  },
-  { inputs: [], name: 'ERC1967NonPayable', type: 'error' },
-  { inputs: [], name: 'ERC20ApproveFailed', type: 'error' },
-  { inputs: [], name: 'ERC20TransferFailed', type: 'error' },
-  { inputs: [], name: 'FailedInnerCall', type: 'error' },
-  { inputs: [], name: 'InsufficientBalance', type: 'error' },
-  { inputs: [], name: 'InvalidInitialization', type: 'error' },
-  { inputs: [], name: 'NativeTransferFailed', type: 'error' },
-  { inputs: [], name: 'NotInitializing', type: 'error' },
-  { inputs: [], name: 'NotSponsored', type: 'error' },
-  {
-    inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-    name: 'OwnableInvalidOwner',
-    type: 'error',
-  },
-  {
-    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-    name: 'OwnableUnauthorizedAccount',
-    type: 'error',
-  },
-  { inputs: [], name: 'ReentrancyGuardReentrantCall', type: 'error' },
-  {
-    inputs: [{ internalType: 'address', name: 'token', type: 'address' }],
-    name: 'SafeERC20FailedOperation',
-    type: 'error',
-  },
-  { inputs: [], name: 'SignatureMistatch', type: 'error' },
-  { inputs: [], name: 'UUPSUnauthorizedCallContext', type: 'error' },
-  {
-    inputs: [{ internalType: 'bytes32', name: 'slot', type: 'bytes32' }],
-    name: 'UUPSUnsupportedProxiableUUID',
-    type: 'error',
-  },
-  {
-    anonymous: false,
-    inputs: [{ indexed: false, internalType: 'uint64', name: 'version', type: 'uint64' }],
-    name: 'Initialized',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: 'address', name: 'previousOwner', type: 'address' },
-      { indexed: true, internalType: 'address', name: 'newOwner', type: 'address' },
-    ],
-    name: 'OwnershipTransferred',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: 'address', name: 'target', type: 'address' },
-      { indexed: true, internalType: 'bytes4', name: 'functionSig', type: 'bytes4' },
-      { indexed: false, internalType: 'bool', name: 'isSponsored', type: 'bool' },
-    ],
-    name: 'SponsorUpdated',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [{ indexed: true, internalType: 'address', name: 'implementation', type: 'address' }],
-    name: 'Upgraded',
-    type: 'event',
-  },
-  {
+    type: 'constructor',
     inputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'receive',
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
     name: 'UPGRADE_INTERFACE_VERSION',
-    outputs: [{ internalType: 'string', name: '', type: 'string' }],
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'string',
+        internalType: 'string',
+      },
+    ],
     stateMutability: 'view',
-    type: 'function',
   },
   {
-    inputs: [
-      { internalType: 'address', name: 'token', type: 'address' },
-      { internalType: 'address', name: 'spender', type: 'address' },
-      { internalType: 'uint256', name: 'amount', type: 'uint256' },
-    ],
+    type: 'function',
     name: 'approveERC20',
+    inputs: [
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'spender',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [
-      { internalType: 'address', name: 'target', type: 'address' },
-      { internalType: 'bytes4', name: 'functionSig', type: 'bytes4' },
-      { internalType: 'bytes', name: 'data', type: 'bytes' },
-      { internalType: 'uint256', name: 'value', type: 'uint256' },
-    ],
-    name: 'callWithValue',
-    outputs: [{ internalType: 'bytes', name: '', type: 'bytes' }],
-    stateMutability: 'nonpayable',
     type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'address', name: 'initialOwner', type: 'address' }],
     name: 'initialize',
+    inputs: [
+      {
+        name: 'initialOwner',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
+    type: 'function',
+    name: 'minSponsoredAmount',
     inputs: [
-      { internalType: 'address', name: '', type: 'address' },
-      { internalType: 'bytes4', name: '', type: 'bytes4' },
+      {
+        name: '',
+        type: 'address',
+        internalType: 'address',
+      },
     ],
-    name: 'isSponsored',
-    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
     stateMutability: 'view',
-    type: 'function',
   },
   {
-    inputs: [],
+    type: 'function',
     name: 'owner',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
     stateMutability: 'view',
-    type: 'function',
   },
   {
-    inputs: [],
+    type: 'function',
     name: 'proxiableUUID',
-    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'renounceOwnership',
+    inputs: [],
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [{ internalType: 'address', name: 'to', type: 'address' }],
+    type: 'function',
     name: 'rescueNative',
+    inputs: [
+      {
+        name: 'to',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [
-      { internalType: 'address', name: 'token', type: 'address' },
-      { internalType: 'address', name: 'to', type: 'address' },
-    ],
+    type: 'function',
     name: 'rescueTokens',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
     inputs: [
-      { internalType: 'address', name: '_target', type: 'address' },
-      { internalType: 'bytes4', name: '_functionSig', type: 'bytes4' },
-      { internalType: 'bool', name: '_isSponsored', type: 'bool' },
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'to',
+        type: 'address',
+        internalType: 'address',
+      },
     ],
-    name: 'setSponsored',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [{ internalType: 'address', name: 'newOwner', type: 'address' }],
+    type: 'function',
+    name: 'setTarget',
+    inputs: [
+      {
+        name: 'target',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'kind',
+        type: 'uint8',
+        internalType: 'enum BridgePaymaster.TargetKind',
+      },
+      {
+        name: '_minSponsoredAmount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'sponsorBridge',
+    inputs: [
+      {
+        name: 'teller',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'shareAmount',
+        type: 'uint96',
+        internalType: 'uint96',
+      },
+      {
+        name: 'to',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'bridgeWildCard',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
+    ],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'sponsorCardDeposit',
+    inputs: [
+      {
+        name: 'manager',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'oft',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'sendParam',
+        type: 'tuple',
+        internalType: 'struct SendParam',
+        components: [
+          {
+            name: 'dstEid',
+            type: 'uint32',
+            internalType: 'uint32',
+          },
+          {
+            name: 'to',
+            type: 'bytes32',
+            internalType: 'bytes32',
+          },
+          {
+            name: 'amountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'minAmountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'extraOptions',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'composeMsg',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'oftCmd',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'sponsorCardSwapAndDeposit',
+    inputs: [
+      {
+        name: 'manager',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'oft',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'amountIn',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'sendParam',
+        type: 'tuple',
+        internalType: 'struct SendParam',
+        components: [
+          {
+            name: 'dstEid',
+            type: 'uint32',
+            internalType: 'uint32',
+          },
+          {
+            name: 'to',
+            type: 'bytes32',
+            internalType: 'bytes32',
+          },
+          {
+            name: 'amountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'minAmountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'extraOptions',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'composeMsg',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'oftCmd',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'sponsorDepositAndBridge',
+    inputs: [
+      {
+        name: 'teller',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'depositAsset',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'depositAmount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'minimumMint',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'to',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'bridgeWildCard',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
+    ],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'sponsorFastWithdraw',
+    inputs: [
+      {
+        name: 'manager',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'oft',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'amountIn',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+      {
+        name: 'sendParam',
+        type: 'tuple',
+        internalType: 'struct SendParam',
+        components: [
+          {
+            name: 'dstEid',
+            type: 'uint32',
+            internalType: 'uint32',
+          },
+          {
+            name: 'to',
+            type: 'bytes32',
+            internalType: 'bytes32',
+          },
+          {
+            name: 'amountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'minAmountLD',
+            type: 'uint256',
+            internalType: 'uint256',
+          },
+          {
+            name: 'extraOptions',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'composeMsg',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+          {
+            name: 'oftCmd',
+            type: 'bytes',
+            internalType: 'bytes',
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'targetKind',
+    inputs: [
+      {
+        name: '',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint8',
+        internalType: 'enum BridgePaymaster.TargetKind',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'transferOwnership',
+    inputs: [
+      {
+        name: 'newOwner',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [
-      { internalType: 'address', name: 'newImplementation', type: 'address' },
-      { internalType: 'bytes', name: 'data', type: 'bytes' },
-    ],
+    type: 'function',
     name: 'upgradeToAndCall',
+    inputs: [
+      {
+        name: 'newImplementation',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'data',
+        type: 'bytes',
+        internalType: 'bytes',
+      },
+    ],
     outputs: [],
     stateMutability: 'payable',
-    type: 'function',
   },
-  { stateMutability: 'payable', type: 'receive' },
+  {
+    type: 'event',
+    name: 'FeeSponsored',
+    inputs: [
+      {
+        name: 'target',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'caller',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'fee',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'Initialized',
+    inputs: [
+      {
+        name: 'version',
+        type: 'uint64',
+        indexed: false,
+        internalType: 'uint64',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'OwnershipTransferred',
+    inputs: [
+      {
+        name: 'previousOwner',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'newOwner',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'TargetUpdated',
+    inputs: [
+      {
+        name: 'target',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'kind',
+        type: 'uint8',
+        indexed: false,
+        internalType: 'enum BridgePaymaster.TargetKind',
+      },
+      {
+        name: 'minSponsoredAmount',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'Upgraded',
+    inputs: [
+      {
+        name: 'implementation',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'error',
+    name: 'AddressEmptyCode',
+    inputs: [
+      {
+        name: 'target',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'AddressInsufficientBalance',
+    inputs: [
+      {
+        name: 'account',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'AmountBelowMinimum',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'ERC1967InvalidImplementation',
+    inputs: [
+      {
+        name: 'implementation',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'ERC1967NonPayable',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'FailedInnerCall',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InsufficientBalance',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'InvalidInitialization',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'NativeTransferFailed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'NotInitializing',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'OFTNotAllowed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'OwnableInvalidOwner',
+    inputs: [
+      {
+        name: 'owner',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'OwnableUnauthorizedAccount',
+    inputs: [
+      {
+        name: 'account',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'ReentrancyGuardReentrantCall',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'SafeERC20FailedOperation',
+    inputs: [
+      {
+        name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'UUPSUnauthorizedCallContext',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'UUPSUnsupportedProxiableUUID',
+    inputs: [
+      {
+        name: 'slot',
+        type: 'bytes32',
+        internalType: 'bytes32',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'UnsupportedTarget',
+    inputs: [],
+  },
 ]);
