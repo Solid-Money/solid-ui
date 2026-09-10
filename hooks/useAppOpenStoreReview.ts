@@ -12,26 +12,36 @@ import { useUserStore } from '@/store/useUserStore';
 // on top of a still-rendering home screen. Matches the cashback trigger.
 const REVIEW_PROMPT_DELAY_MS = 2000;
 
-// The backend owns the real spacing between prompts for this trigger (30 days
-// plus "a new deposit since last time"), so the local guard only needs to be
-// loose enough not to override it — the default 120 days would.
+// The backend owns the real spacing between prompts for this trigger — 30 days
+// plus a new deposit for a Rain cardholder, 120 days for a Wirex one, whose
+// signal is a standing balance and so could otherwise requalify forever. The
+// local guard only needs to be loose enough not to override the shorter of
+// those, which the default 120 days would.
 const REVIEW_REQUEST_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 /**
  * Records every app open on the backend and asks for an in-app store review when
- * the backend says this open qualifies — today that means the user has funded
- * their card at least twice and has come back to the app.
+ * the backend says this open qualifies.
  *
- * Eligibility deliberately lives server-side: it needs the card deposit count
- * from `rainCollateralTransactions`, and keeping the prompt history in the
- * `appOpens` collection means a reinstall (which wipes device storage) can't
- * reset the cooldown. This hook only decides *when* an open happened, and
- * surfaces the sheet when told to.
+ * What qualifies depends on the card the user holds, because the two issuers
+ * work differently: a **Rain** card is prefunded, so the evidence that it is
+ * working for them is having funded it at least twice; a **Wirex** card is never
+ * funded at all — a purchase debits the user's own Safe at settlement — so there
+ * is nothing to count, and the evidence is holding something the card can spend,
+ * whether that sits in the wallet as USDC/USDT or in savings as soUSD. Either
+ * way the prompt waits for the user to come back to the app afterwards.
+ *
+ * Eligibility deliberately lives server-side: it needs the card deposit count,
+ * the user's card issuer and an on-chain balance read, and keeping the prompt
+ * history in the `appOpens` collection means a reinstall (which wipes device
+ * storage) can't reset the cooldown. This hook only decides *when* an open
+ * happened, and surfaces the sheet when told to.
  *
  * Runs headlessly (renders nothing) and is a no-op on web, which has no native
- * review sheet.
+ * review sheet — the web app collects reviews through the Trustpilot widget in
+ * settings instead.
  */
-export const useCardDepositStoreReview = () => {
+export const useAppOpenStoreReview = () => {
   const { requestReview } = useStoreReview();
 
   const isAuthenticated = useUserStore(state =>
@@ -58,7 +68,7 @@ export const useCardDepositStoreReview = () => {
     lastRecordedAtRef.current = now;
 
     try {
-      const { shouldRequestReview, reason } = await recordAppOpen(
+      const { shouldRequestReview, reason, signal } = await recordAppOpen(
         Platform.OS,
         getAmplitudeDeviceId(),
       );
@@ -70,7 +80,11 @@ export const useCardDepositStoreReview = () => {
 
         void (async () => {
           const wasPrompted = await requestReview({
-            trigger: 'card_deposits',
+            trigger: 'app_open',
+            // Which population this prompt came from — Rain deposits or a Wirex
+            // balance — so the funnel can be read per issuer rather than as one
+            // average across two quite different triggers.
+            signal,
             cooldownMs: REVIEW_REQUEST_COOLDOWN_MS,
           });
 

@@ -384,6 +384,11 @@ export const TRACKING_EVENTS = {
   STORE_REVIEW_SKIPPED: 'store_review_skipped',
   STORE_REVIEW_UNAVAILABLE: 'store_review_unavailable',
   STORE_REVIEW_ERROR: 'store_review_error',
+
+  // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
+  TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
+  TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
+  TRUSTPILOT_REVIEW_LINK_OPENED: 'trustpilot_review_link_opened',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

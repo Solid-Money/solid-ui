@@ -2942,9 +2942,25 @@ export enum StoreReviewDecisionReason {
   ELIGIBLE = 'eligible',
   UNSUPPORTED_PLATFORM = 'unsupported_platform',
   NOT_ENOUGH_DEPOSITS = 'not_enough_deposits',
+  /** Wirex: nothing the card could spend, in the wallet or in savings. */
+  NOT_ENOUGH_BALANCE = 'not_enough_balance',
+  /** Wirex: the balance could not be read, so eligibility is unknown. */
+  BALANCE_UNAVAILABLE = 'balance_unavailable',
   NOT_ENOUGH_OPENS = 'not_enough_opens',
   COOLDOWN = 'cooldown',
   NO_NEW_DEPOSITS = 'no_new_deposits',
+}
+
+/**
+ * What the backend looked at to decide whether the user's card is in real use.
+ *
+ * Which one applies follows the card issuer: a Rain card is prefunded, so the
+ * evidence is deposits into it; a Wirex card spends the user's own wallet and
+ * savings, so there are no deposits and the evidence is what they hold.
+ */
+export enum StoreReviewSignal {
+  CARD_DEPOSITS = 'card_deposits',
+  SPENDABLE_BALANCE = 'spendable_balance',
 }
 
 /** Response to recording an app open (`POST /accounts/v1/app-opens`). */
@@ -2952,8 +2968,12 @@ export interface AppOpenResponse {
   /** Opens recorded for this user on this platform, including the current one. */
   openCount: number;
   lastOpenedAt: string;
-  /** Deposits the user has made to their card, per the backend. */
+  /** Deposits the user has made to their card, per the backend. Rain only. */
   cardDepositCount: number;
+  /** Wirex only: USD of card-spendable holdings, or null when not looked at. */
+  spendableUsd: number | null;
+  /** Which signal the decision used, or null when it never got that far. */
+  signal: StoreReviewSignal | null;
   /** True when the app should show the native review sheet now. */
   shouldRequestReview: boolean;
   reason: StoreReviewDecisionReason;
