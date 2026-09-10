@@ -27,6 +27,7 @@ type Path = {
   // Email-first signup flow
   SIGNUP_EMAIL: Href;
   SIGNUP_OTP: Href;
+  SIGNUP_USERNAME: Href;
   SIGNUP_CREATING: Href;
   SIGNUP_PASSKEY: Href;
   SAVINGS: Href;
@@ -113,6 +114,8 @@ export const path: Path = {
   // Email-first signup flow
   SIGNUP_EMAIL: '/signup/email',
   SIGNUP_OTP: '/signup/otp',
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  SIGNUP_USERNAME: '/signup/username' as Href,
   SIGNUP_CREATING: '/signup/creating',
   SIGNUP_PASSKEY: '/signup/passkey',
   SAVINGS: '/savings',
