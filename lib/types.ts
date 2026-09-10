@@ -1726,6 +1726,14 @@ export interface TierFeeLine {
  * tier tabs can't round the same rate differently.
  */
 export interface TierFees {
+  /**
+   * Fee rows, in display order.
+   *
+   * Only the products an admin has chosen to list: a product switched off for
+   * display is absent from this array rather than sent with a marker, so which
+   * rows exist can change without a client release. Render what arrives; never
+   * assume a given key is present.
+   */
   lines: TierFeeLine[];
   cashbackCap: string;
   /** FUSE that must be staked to hold this tier outright. 0 when none is. */

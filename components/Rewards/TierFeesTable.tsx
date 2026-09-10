@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import { resolveTierFees } from '@/components/Rewards/NewRewards/tierFees';
+import { feeTableRows, resolveTierFees } from '@/components/Rewards/NewRewards/tierFees';
 import { RewardsTier, TierBenefit, TierBenefits } from '@/lib/types';
 
 import RewardTable, { RewardTableRow } from './RewardTable';
@@ -9,16 +9,23 @@ interface TierFeesTableProps {
   tierBenefits: TierBenefits[];
 }
 
-/** Fee rows in display order, keyed by the backend's FeeProduct values. */
-const FEE_ROWS: { key: string; label: string; subtitle?: string }[] = [
-  { key: 'virtual_card', label: 'Virtual card', subtitle: 'Issued instantly' },
-  { key: 'bank_deposit', label: 'Bank deposit' },
+/**
+ * Per-row copy this table owns, keyed by the backend's row keys.
+ *
+ * Labels otherwise come from the response, so the rows an admin switches on and
+ * off in the dashboard reach this table without a client release. The overrides
+ * here are only where this table's wording has always differed from the tier
+ * card's — a row the map doesn't mention renders exactly as the backend named it.
+ */
+const ROW_COPY: Record<string, { label?: string; subtitle?: string }> = {
+  virtual_card: { label: 'Virtual card', subtitle: 'Issued instantly' },
+};
+
+/** Rows this platform never shows, whatever the backend sends. */
+const HIDDEN_ROW_KEYS = new Set(
   // Swap is not available on iOS, so the swap row is omitted there.
-  ...(Platform.OS === 'ios' ? [] : [{ key: 'swap', label: 'Swaps' }]),
-  { key: 'stocks', label: 'Stocks' },
-  { key: 'fx', label: 'FX conversion' },
-  { key: 'offramp', label: 'Bank withdrawal' },
-];
+  Platform.OS === 'ios' ? ['swap'] : [],
+);
 
 /**
  * The tier comparison table's fee section.
@@ -27,6 +34,11 @@ const FEE_ROWS: { key: string; label: string; subtitle?: string }[] = [
  * comparison and the mobile card show one set of numbers. Every value comes from
  * the live config the charge engine bills from — a fee the table calls "Free"
  * cannot be one a user is charged.
+ *
+ * Which rows exist is the backend's answer too, not a list held here: a product
+ * an admin has switched off for display is simply absent from the response. A
+ * hardcoded list would keep rendering the row with an empty cell under every
+ * tier.
  */
 const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
   const sortedTiers = tierBenefits.sort((a, b) => {
@@ -35,6 +47,8 @@ const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
   });
 
   const feesByTier = sortedTiers.map(tier => resolveTierFees(tier.tier, tier.fees));
+
+  const feeRows = feeTableRows(feesByTier, HIDDEN_ROW_KEYS);
 
   /** One fee product's value across every tier, as the table's cells. */
   const feeValues = (key: string): (TierBenefit | null)[] =>
@@ -54,9 +68,9 @@ const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
       subtitle: 'One subscription per category, per month',
       values: sortedTiers.map(tier => tier.subscriptionDiscountCap),
     },
-    ...FEE_ROWS.map(row => ({
-      label: row.label,
-      subtitle: row.subtitle,
+    ...feeRows.map(row => ({
+      label: ROW_COPY[row.key]?.label ?? row.label,
+      subtitle: ROW_COPY[row.key]?.subtitle,
       values: feeValues(row.key),
     })),
     {

@@ -1,5 +1,6 @@
 import {
   fallbackTierFees,
+  feeTableRows,
   formatFeeValue,
   resolveTierFees,
 } from '@/components/Rewards/NewRewards/tierFees';
@@ -123,5 +124,48 @@ describe('resolveTierFees', () => {
       lines: [],
     });
     expect(fees).toEqual(fallbackTierFees(RewardsTier.PRIME));
+  });
+});
+
+describe('feeTableRows', () => {
+  const tierWith = (keys: string[]): TierFees => ({
+    ...fallbackTierFees(RewardsTier.CORE),
+    lines: keys.map(key => ({ key, label: key, rate: 0, value: 'Free' })),
+  });
+
+  it('takes the rows and their order from the response', () => {
+    const rows = feeTableRows([tierWith(['virtual_card', 'swap', 'fx'])]);
+
+    expect(rows.map(row => row.key)).toEqual(['virtual_card', 'swap', 'fx']);
+  });
+
+  it('drops a row an admin has switched off, rather than showing it empty', () => {
+    // The backend omits a hidden product entirely, so the row must not survive
+    // in the client as a label with no value under any tier.
+    const rows = feeTableRows([tierWith(['virtual_card', 'fx']), tierWith(['virtual_card', 'fx'])]);
+
+    expect(rows.map(row => row.key)).toEqual(['virtual_card', 'fx']);
+  });
+
+  it('picks up a row switched on after this client shipped', () => {
+    const rows = feeTableRows([tierWith(['virtual_card', 'transfi'])]);
+
+    expect(rows.map(row => row.key)).toContain('transfi');
+  });
+
+  it('lists a row once across tiers, keeping one present on only some', () => {
+    const rows = feeTableRows([tierWith(['swap', 'fx']), tierWith(['swap', 'stocks'])]);
+
+    expect(rows.map(row => row.key)).toEqual(['swap', 'fx', 'stocks']);
+  });
+
+  it('honours rows the platform never shows, whatever the backend sends', () => {
+    const rows = feeTableRows([tierWith(['virtual_card', 'swap', 'fx'])], new Set(['swap']));
+
+    expect(rows.map(row => row.key)).toEqual(['virtual_card', 'fx']);
+  });
+
+  it('has no rows for a table with no tiers', () => {
+    expect(feeTableRows([])).toEqual([]);
   });
 });

@@ -89,3 +89,34 @@ export const resolveTierFees = (tier: RewardsTier, fees: TierFees | undefined): 
   if (fees?.lines?.length) return fees;
   return fallbackTierFees(tier);
 };
+
+/**
+ * The rows a table comparing several tiers should render, in response order.
+ *
+ * Which rows exist is the backend's answer, not a list held in the client: an
+ * admin can switch a product off for display and it simply stops arriving. A
+ * hardcoded list would keep rendering that row with an empty cell under every
+ * tier, and would miss a product switched on after the client shipped.
+ *
+ * Keys are collected across every tier rather than read off the first, so a row
+ * present on one tier and missing on another is still shown — blank on the tier
+ * that lacks it — rather than dropped. `hiddenKeys` is for rows a platform never
+ * shows whatever the backend sends (swap on iOS), which is why it is passed in
+ * rather than decided here.
+ */
+export const feeTableRows = (
+  feesByTier: TierFees[],
+  hiddenKeys: ReadonlySet<string> = new Set(),
+): { key: string; label: string }[] => {
+  const rows: { key: string; label: string }[] = [];
+
+  for (const fees of feesByTier) {
+    for (const line of fees.lines) {
+      if (hiddenKeys.has(line.key)) continue;
+      if (rows.some(row => row.key === line.key)) continue;
+      rows.push({ key: line.key, label: line.label });
+    }
+  }
+
+  return rows;
+};
