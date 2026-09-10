@@ -180,7 +180,7 @@ const DepositTypeSelection = () => {
         {/* Onramper's checkout is a native iOS Apple Pay flow, and it only
             prices for a few countries — `useOnramperAvailability` gates on both,
             so this group is absent rather than empty everywhere else. */}
-        {isOnramperAvailable ? (
+        {true ? (
           <CardFundGroup label="Other">
             <CardFundRow
               icon={

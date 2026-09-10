@@ -52,7 +52,7 @@
     "@meawallet/react-native-mpp": "file:./stubs/meawallet-mpp",
     "@merkl/api": "file:./packages/merkl-api-1.4.15-patched.tgz",
     "@number-flow/react": "^0.5.14",
-    "@onramper/onramper-react-native": "^1.1.1",
+    "@onramper/onramper-react-native": "^1.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
