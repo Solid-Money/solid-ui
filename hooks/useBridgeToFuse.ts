@@ -76,24 +76,14 @@ const useBridgeToFuse = (): BridgeResult => {
         },
       });
 
-      const callData = encodeFunctionData({
-        abi: ETHEREUM_TELLER_ABI,
-        functionName: 'bridge',
-        args: [
-          amountWei,
-          user.safeAddress,
-          encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
-          ADDRESSES.ethereum.nativeFeeToken,
-          fee ? fee : 0n,
-        ],
-      });
-
       const transactions = [
+        // The paymaster pulls the shares itself, so it can only ever bridge what this
+        // Safe approved - it no longer custodies shares between calls.
         {
           to: ADDRESSES.ethereum.vault,
           data: encodeFunctionData({
             abi: erc20Abi,
-            functionName: 'transfer',
+            functionName: 'approve',
             args: [ADDRESSES.ethereum.bridgePaymasterAddress, amountWei],
           }),
           value: 0n,
@@ -102,8 +92,13 @@ const useBridgeToFuse = (): BridgeResult => {
           to: ADDRESSES.ethereum.bridgePaymasterAddress,
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
-            functionName: 'callWithValue',
-            args: [ADDRESSES.ethereum.teller, '0x05921740', callData, fee ? fee : 0n],
+            functionName: 'sponsorBridge',
+            args: [
+              ADDRESSES.ethereum.teller,
+              amountWei,
+              user.safeAddress as Address,
+              encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
+            ],
           }),
           value: 0n,
         },

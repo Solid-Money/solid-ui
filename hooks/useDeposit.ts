@@ -107,26 +107,14 @@ const useDeposit = (): DepositResult => {
         },
       });
 
-      const callData = encodeFunctionData({
-        abi: ETHEREUM_TELLER_ABI,
-        functionName: 'depositAndBridge',
-        args: [
-          ADDRESSES.ethereum.usdc,
-          amountWei,
-          0n,
-          user.safeAddress,
-          encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
-          ADDRESSES.ethereum.nativeFeeToken,
-          fee ? fee : 0n,
-        ],
-      });
-
       const transactions = [
+        // The paymaster pulls the USDC itself, so it can only ever deposit what this
+        // Safe approved - it no longer custodies the deposit between calls.
         {
           to: ADDRESSES.ethereum.usdc,
           data: encodeFunctionData({
             abi: erc20Abi,
-            functionName: 'transfer',
+            functionName: 'approve',
             args: [ADDRESSES.ethereum.bridgePaymasterAddress, amountWei],
           }),
           value: 0n,
@@ -135,8 +123,15 @@ const useDeposit = (): DepositResult => {
           to: ADDRESSES.ethereum.bridgePaymasterAddress,
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
-            functionName: 'callWithValue',
-            args: [ADDRESSES.ethereum.teller, '0xcab716e8', callData, fee ? fee : 0n],
+            functionName: 'sponsorDepositAndBridge',
+            args: [
+              ADDRESSES.ethereum.teller,
+              ADDRESSES.ethereum.usdc,
+              amountWei,
+              0n,
+              user.safeAddress as Address,
+              encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
+            ],
           }),
           value: 0n,
         },
