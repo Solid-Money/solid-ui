@@ -185,7 +185,15 @@ export const ASSETS = {
     module: require('@/assets/images/card-action-withdraw.png'),
     hash: 'c8909ba5',
   },
+  'images/card-apple-wallet.svg': {
+    module: require('@/assets/images/card-apple-wallet.svg'),
+    hash: '1e7e1963',
+  },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
+  'images/card-edit-limit.svg': {
+    module: require('@/assets/images/card-edit-limit.svg'),
+    hash: 'd12798aa',
+  },
   'images/card-effortless.png': {
     module: require('@/assets/images/card-effortless.png'),
     hash: '532402c1',
@@ -198,6 +206,10 @@ export const ASSETS = {
   'images/card-global.png': {
     module: require('@/assets/images/card-global.png'),
     hash: '80bbf480',
+  },
+  'images/card-manage.svg': {
+    module: require('@/assets/images/card-manage.svg'),
+    hash: '22e7e015',
   },
   'images/card-nav-bar-icon.tsx': {
     module: require('@/assets/images/card-nav-bar-icon.tsx'),
@@ -1235,6 +1247,38 @@ export const ASSETS = {
   'images/visa-platinum-card.png': {
     module: require('@/assets/images/visa-platinum-card.png'),
     hash: 'ef91cb7a',
+  },
+  'images/wallet-guide/apple-card-details.png': {
+    module: require('@/assets/images/wallet-guide/apple-card-details.png'),
+    hash: '73760efc',
+  },
+  'images/wallet-guide/apple-find-wallet.png': {
+    module: require('@/assets/images/wallet-guide/apple-find-wallet.png'),
+    hash: '38af3e99',
+  },
+  'images/wallet-guide/apple-start-card.png': {
+    module: require('@/assets/images/wallet-guide/apple-start-card.png'),
+    hash: '52b802ec',
+  },
+  'images/wallet-guide/apple-verify.png': {
+    module: require('@/assets/images/wallet-guide/apple-verify.png'),
+    hash: '2b6a353f',
+  },
+  'images/wallet-guide/google-card-details.png': {
+    module: require('@/assets/images/wallet-guide/google-card-details.png'),
+    hash: 'bd1665d1',
+  },
+  'images/wallet-guide/google-find-wallet.png': {
+    module: require('@/assets/images/wallet-guide/google-find-wallet.png'),
+    hash: 'd392d91c',
+  },
+  'images/wallet-guide/google-start-card.png': {
+    module: require('@/assets/images/wallet-guide/google-start-card.png'),
+    hash: 'e2761ac6',
+  },
+  'images/wallet-guide/google-verify.png': {
+    module: require('@/assets/images/wallet-guide/google-verify.png'),
+    hash: 'caf70e95',
   },
   'images/wallet-yellow-background.png': {
     module: require('@/assets/images/wallet-yellow-background.png'),

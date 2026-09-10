@@ -7,12 +7,12 @@ import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-na
  * the half-stroke overflow Figma bakes into the box — matches the design exactly.
  */
 
-/** Figma 20095:5396 — 44×44 back button (circle + arrow are one asset). */
+/** Card-details back button: 50×50 circle with the original arrow geometry. */
 export const BackCircleIcon = () => (
-  <Svg width={44} height={44} viewBox="0 0 44 44" fill="none">
-    <Rect width={44} height={44} rx={22} fill="#2A2A2A" />
+  <Svg width={50} height={50} viewBox="0 0 50 50" fill="none">
+    <Rect width={50} height={50} rx={25} fill="#2A2A2A" />
     <Path
-      d="M15 21.7486H29.5293M20.7486 27.4971L15 21.7486L20.7486 16"
+      d="M18 24.7486H32.5293M23.7486 30.4971L18 24.7486L23.7486 19"
       stroke="white"
       strokeWidth={1.5}
       strokeLinecap="round"

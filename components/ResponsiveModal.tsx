@@ -73,6 +73,8 @@ export interface ResponsiveModalProps {
    * overflowing and the overlay scrolling the header away).
    */
   fillViewportHeight?: boolean;
+  /** Present the dialog edge-to-edge on iOS and Android. */
+  nativeFullScreen?: boolean;
 }
 
 const ResponsiveModal = ({
@@ -98,6 +100,7 @@ const ResponsiveModal = ({
   disableScroll = false,
   hideHeader = false,
   fillViewportHeight = false,
+  nativeFullScreen = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
@@ -105,6 +108,7 @@ const ResponsiveModal = ({
   // On web, opt into the flex layout (header fixed, body scrolls) that native
   // small screens already use, capping the card to the viewport (see below).
   const webFill = fillViewportHeight && Platform.OS === 'web';
+  const useNativeFullScreen = nativeFullScreen && Platform.OS !== 'web';
   const useNativeFlexLayout = isNativeSmallScreen || webFill;
   const useFixedHeightLayout = useNativeFlexLayout && !disableScroll;
   const dialogHeight = useSharedValue(0);
@@ -169,6 +173,7 @@ const ResponsiveModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
+        style={useNativeFullScreen ? { height: '100%', maxHeight: '100%' } : undefined}
         overlayClassName={overlayClassName}
         className={cn(
           // Desktop popups get a uniform 40px inset. Three of the four sides live
@@ -176,7 +181,10 @@ const ResponsiveModal = ({
           // reaches the card edge, and the matching 40px goes on the scroll
           // content container below.
           'px-4 pb-0 pt-4 md:max-w-lg md:px-10 md:pb-0 md:pt-10',
-          !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          !isScreenMedium && !useNativeFullScreen
+            ? 'mt-[5vh] w-screen max-w-full justify-start'
+            : '',
+          useNativeFullScreen && 'h-full max-h-full w-full max-w-none rounded-none p-0',
           webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect
         )}

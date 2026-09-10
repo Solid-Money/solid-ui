@@ -13,12 +13,14 @@ import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { formatUsd, onChainToUsd, usdToOnChain } from '@/constants/cardSpendModule';
 import { DigitalWalletType } from '@/constants/digital-wallet';
+import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import {
   CardSpendRegistrationSource,
   useCardSpendRegistration,
 } from '@/hooks/useCardSpendRegistration';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
+import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
 /** Where in the sheet the user is. */
 type SheetStep = 'root' | 'limits' | 'edit';
@@ -44,6 +46,7 @@ interface ManageCardSheetProps {
    * that guide is its own dialog and two portalled sheets cannot be open at once.
    */
   onAddToWallet?: (wallet: DigitalWalletType) => void;
+  canWithdraw?: boolean;
 }
 
 /**
@@ -97,6 +100,7 @@ const ManageCardSheet = ({
   onOpenChange,
   source = 'spending_sheet',
   onAddToWallet,
+  canWithdraw = false,
 }: ManageCardSheetProps) => {
   // One piece of state so the step and the step it came from can never disagree about
   // which way the sheet is travelling.
@@ -106,6 +110,7 @@ const ManageCardSheet = ({
   });
   const [editField, setEditField] = useState<SpendLimitField>('daily');
   const {
+    isAvailable,
     registration,
     isRegistered,
     isPaused,
@@ -123,6 +128,7 @@ const ManageCardSheet = ({
   // Read here as well as on the action row: the count is what makes an approvals queue
   // worth a row, and a challenge whose push never arrived is otherwise invisible.
   const { requests: threeDsRequests } = useWirexThreeDs();
+  const setWithdrawModal = useCardWithdrawStore(state => state.setModal);
 
   const isBusy = isRegistering || isUpdatingLimit || isDisabling;
   // Registration is permanent and module consent is not, so these two are independent and
@@ -249,6 +255,11 @@ const ManageCardSheet = ({
     onAddToWallet?.(wallet);
   };
 
+  const handleWithdraw = () => {
+    closeSheet();
+    setWithdrawModal(CARD_WITHDRAW_MODAL.OPEN_FORM);
+  };
+
   const openEdit = (field: SpendLimitField) => {
     setEditField(field);
     goTo('edit');
@@ -282,7 +293,7 @@ const ManageCardSheet = ({
       contentClassName="md:max-w-[420px]"
     >
       <View className="gap-4">
-        {isPaused ? (
+        {isAvailable && isPaused ? (
           <View className="rounded-2xl bg-[#2A2119] p-4">
             <Text className="text-sm text-[#E8A33D]">
               Card spending is paused on your account right now. Please contact support.
@@ -293,14 +304,14 @@ const ManageCardSheet = ({
         {/* Everything below is one on-chain read, and a blocked reveal is sent here — so
             neither waiting for that read nor failing it may leave the user staring at a
             disabled button with nothing to act on. */}
-        {isLoadingRegistration ? (
+        {isAvailable && isLoadingRegistration ? (
           <View className="flex-row items-center gap-2">
             <ActivityIndicator size="small" color="#ACACAC" />
             <Text className="text-sm text-[#ACACAC]">Checking your card spending…</Text>
           </View>
         ) : null}
 
-        {!registration && !isLoadingRegistration ? (
+        {isAvailable && !registration && !isLoadingRegistration ? (
           <View className="flex-row items-center gap-3 rounded-2xl bg-[#2A2119] p-4">
             <Text className="flex-1 text-sm text-[#E8A33D]">
               Could not read your card spending settings.
@@ -311,11 +322,11 @@ const ManageCardSheet = ({
           </View>
         ) : null}
 
-        {error ? <Text className="text-sm text-red-400">{error}</Text> : null}
+        {isAvailable && error ? <Text className="text-sm text-red-400">{error}</Text> : null}
 
         {/* Why the user is looking at a card sheet when they asked for their card number.
             Only while that is still the reason: once spending is on, the reveal works. */}
-        {source === 'card_reveal' && !isRegistered ? (
+        {isAvailable && source === 'card_reveal' && !isRegistered ? (
           <View className="flex-row gap-2 rounded-2xl bg-[#252525] p-4">
             <Eye size={18} color="#94F27F" style={styles.noticeIcon} />
             <Text className="flex-1 text-sm leading-snug text-[#ACACAC]">
@@ -354,6 +365,8 @@ const ManageCardSheet = ({
             onAddToWallet={handleAddToWallet}
             onApprovals={handleApprovals}
             approvalsCount={threeDsRequests.length}
+            showSpendControls={isAvailable}
+            onWithdraw={canWithdraw ? handleWithdraw : undefined}
           />
         )}
       </View>

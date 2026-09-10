@@ -8,7 +8,7 @@ import { RewardsTier } from '@/lib/types';
 import { formatBalanceUSD } from '@/lib/utils';
 
 /**
- * The terminal banner of the home CTA ladder (Figma 25141:7292): the user has a
+ * The terminal banner of the home CTA ladder (Figma 25740:4138): the user has a
  * card, has funded it and has spent on it, so there is no next step left to
  * nudge — just what the card is earning them.
  *
@@ -30,7 +30,10 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   return (
     <View className={className}>
       <View style={styles.card}>
-        <Text style={styles.title}>Earn {rate}% cashback on everything</Text>
+        <Text style={styles.title}>
+          Earning <Text style={styles.rate}>{rate}%</Text>
+          {'\n'}cashback
+        </Text>
         <View style={styles.earned}>
           <Text style={styles.earnedLabel}>Earned this month</Text>
           <Text style={styles.earnedAmount}>{formatBalanceUSD(earnedThisMonth)}</Text>
@@ -41,28 +44,28 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
 };
 
 const styles = StyleSheet.create({
-  // Figma: 387x94 with 21pt side padding; laid out with flex rather than the
+  // Figma: 387x95 with 23pt side padding; laid out with flex rather than the
   // design's absolute offsets so a five-figure month still fits on the right.
   card: {
+    alignItems: 'center',
     backgroundColor: '#1C1C1C',
     borderRadius: HOME_BANNER_RADIUS,
     flexDirection: 'row',
     gap: 12,
+    height: 95,
     justifyContent: 'space-between',
     overflow: 'hidden',
-    paddingHorizontal: 21,
-    paddingVertical: 20,
+    paddingHorizontal: 23,
   },
-  // Wraps to two lines at the design's width, which is what sets the card's height.
   title: {
     color: '#FFFFFF',
-    flexShrink: 1,
     fontFamily: 'MonaSans_500Medium',
     fontSize: 22,
     lineHeight: 24,
-    maxWidth: 201,
+    width: 160,
   },
-  earned: { alignItems: 'flex-end', gap: 4 },
+  rate: { color: '#94F27F' },
+  earned: { alignItems: 'flex-end', gap: 1 },
   earnedLabel: {
     color: 'rgba(255,255,255,0.7)',
     fontFamily: 'MonaSans_400Regular',

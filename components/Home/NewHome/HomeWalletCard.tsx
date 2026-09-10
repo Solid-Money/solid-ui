@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
@@ -151,9 +151,8 @@ const HomeWalletCard = ({
       openPane();
       return;
     }
-    // measureInWindow is async, so the open happens from its callback. The card's
-    // live position is needed both to fly from and, later, to fly back to.
-    node.measureInWindow((x, y, width, height) => {
+    // Both directions must use the overlay's root coordinate system.
+    const openFromRect = (x: number, y: number, width: number, height: number) => {
       if (!width || !height) {
         openPane();
         return;
@@ -174,7 +173,18 @@ const HomeWalletCard = ({
         last4 ?? '',
       );
       openPane(from);
-    });
+    };
+
+    if (Platform.OS === 'android') {
+      // Android measureInWindow subtracts the visible-window/status-bar offset.
+      // The absolute overlay and predicted details rect are root-relative, so
+      // use measure's page coordinates to avoid a status-bar-sized jump.
+      node.measure((_x, _y, width, height, pageX, pageY) => {
+        openFromRect(pageX, pageY, width, height);
+      });
+    } else {
+      node.measureInWindow(openFromRect);
+    }
   };
 
   return (
