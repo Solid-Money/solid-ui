@@ -14,7 +14,7 @@ import { VaultType } from '@/lib/types';
 
 import {
   calculateEstimatedDailyEarnings,
-  shouldShowEarnVaultCard,
+  resolveVaultApy,
   type VaultAmounts,
 } from './earnPortfolio';
 import { EarnVaultCard } from './EarnVaultCard';
@@ -55,9 +55,9 @@ export default function EarnScreen() {
   const fuseApy = useMaxAPY(VaultType.FUSE);
 
   const apyByVault: VaultAmounts = {
-    [VaultType.USDC]: usdcApy.maxAPY,
-    [VaultType.ETH]: ethApy.maxAPY,
-    [VaultType.FUSE]: fuseApy.maxAPY,
+    [VaultType.USDC]: resolveVaultApy(VaultType.USDC, usdcApy.maxAPY),
+    [VaultType.ETH]: resolveVaultApy(VaultType.ETH, ethApy.maxAPY),
+    [VaultType.FUSE]: resolveVaultApy(VaultType.FUSE, fuseApy.maxAPY),
   };
   const apyLoadingByVault = {
     [VaultType.USDC]: usdcApy.isAPYsLoading,
@@ -117,23 +117,16 @@ export default function EarnScreen() {
         </Text>
 
         <View className="gap-4">
-          {VAULT_CARDS.map(vault => {
-            const apy = apyByVault[vault.type];
-            const isApyLoading = apyLoadingByVault[vault.type];
-
-            if (!shouldShowEarnVaultCard(apy, isApyLoading)) return null;
-
-            return (
-              <EarnVaultCard
-                key={vault.type}
-                assetName={vault.assetName}
-                apy={apy}
-                background={vault.background}
-                isApyLoading={isApyLoading}
-                onPress={() => openVault(vault.type)}
-              />
-            );
-          })}
+          {VAULT_CARDS.map(vault => (
+            <EarnVaultCard
+              key={vault.type}
+              assetName={vault.assetName}
+              apy={apyByVault[vault.type]}
+              background={vault.background}
+              isApyLoading={apyLoadingByVault[vault.type]}
+              onPress={() => openVault(vault.type)}
+            />
+          ))}
         </View>
       </View>
     </PageLayout>

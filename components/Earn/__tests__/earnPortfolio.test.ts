@@ -1,7 +1,8 @@
 import {
   calculateEstimatedDailyEarnings,
+  FALLBACK_VAULT_APY,
   formatVaultApyLabel,
-  shouldShowEarnVaultCard,
+  resolveVaultApy,
   type VaultAmounts,
 } from '@/components/Earn/earnPortfolio';
 import { VaultType } from '@/lib/types';
@@ -38,17 +39,22 @@ describe('calculateEstimatedDailyEarnings', () => {
   });
 });
 
-describe('shouldShowEarnVaultCard', () => {
-  it('shows a vault with positive APY', () => {
-    expect(shouldShowEarnVaultCard(4.5, false)).toBe(true);
+describe('resolveVaultApy', () => {
+  it('prefers the reported APY when the analytics API returns one', () => {
+    expect(resolveVaultApy(VaultType.USDC, 5.2)).toBe(5.2);
   });
 
-  it('keeps the vault visible while APY is loading', () => {
-    expect(shouldShowEarnVaultCard(0, true)).toBe(true);
+  it.each([
+    [VaultType.USDC, 4],
+    [VaultType.ETH, 2],
+    [VaultType.FUSE, 14],
+  ])('falls back to the indicative rate for %s', (vaultType, expected) => {
+    expect(resolveVaultApy(vaultType, 0)).toBe(expected);
+    expect(resolveVaultApy(vaultType, undefined)).toBe(expected);
   });
 
-  it.each([0, -0.1])('hides a vault with %s APY', apy => {
-    expect(shouldShowEarnVaultCard(apy, false)).toBe(false);
+  it('falls back rather than showing a negative APY', () => {
+    expect(resolveVaultApy(VaultType.ETH, -0.8)).toBe(FALLBACK_VAULT_APY[VaultType.ETH]);
   });
 });
 
