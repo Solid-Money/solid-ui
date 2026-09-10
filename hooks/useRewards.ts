@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
 import {
+  activateTierTrial,
   fetchReferralSummary,
   fetchRewardsConfig,
   fetchRewardsUserData,
@@ -104,6 +105,32 @@ export const useOptInToRewards = () => {
     mutationFn: async () => await withRefreshToken(() => optInToRewards()),
     onSuccess: (data: RewardsUserData) => {
       // Write to the user-scoped key so the rewards screen reads it back.
+      queryClient.setQueryData([REWARDS, 'userData', userId], data);
+      void queryClient.invalidateQueries({ queryKey: [REWARDS] });
+    },
+  });
+};
+
+/**
+ * Start the tier trial the user has been given — an admin gift today, the
+ * welcome offer once that ships.
+ *
+ * The response carries the new tier, and writing it to the same key the rewards
+ * screen reads is what fires the upgrade celebration: `observe` compares the
+ * tier against the one it last saw, so painting the activated tier here shows
+ * the popup without a second round-trip.
+ */
+export const useActivateTierTrial = () => {
+  const queryClient = useQueryClient();
+  const userId = useSelectedUserId();
+  return useMutation({
+    mutationFn: async () => await withRefreshToken(() => activateTierTrial()),
+    onSuccess: (data: RewardsUserData) => {
+      if (userId) {
+        useRewardsUpgradeStore
+          .getState()
+          .observe(userId, useRewardsUpgradeStore.getState().session, data);
+      }
       queryClient.setQueryData([REWARDS, 'userData', userId], data);
       void queryClient.invalidateQueries({ queryKey: [REWARDS] });
     },

@@ -1665,6 +1665,57 @@ export interface RewardsUserData {
    * which is what hides the section.
    */
   fuseSkipLine?: FuseSkipLine;
+  /**
+   * A tier trial the user has been given and not yet accepted — an admin gift,
+   * or the welcome offer they qualified for.
+   *
+   * The duration only starts once they activate it, so this is an offer to
+   * open, not a clock already running. Absent on older backends, which hides
+   * the gift card.
+   */
+  pendingTierTrial?: TierTrial | null;
+  /**
+   * The trial currently granting the user their tier, with the expiry the
+   * countdown counts down to.
+   *
+   * `currentTier` already accounts for it — a trial only ever raises the tier,
+   * never lowers it — so this is what to show *about* the trial, not a tier to
+   * apply here.
+   */
+  activeTierTrial?: TierTrial | null;
+}
+
+/** The tiers a trial can grant. Core is the floor, not a gift. */
+export type GiftableTier = RewardsTier.PRIME | RewardsTier.ULTRA;
+
+/** Where a trial came from. */
+export type TierTrialSource = 'admin_gift' | 'promotion';
+
+/** A trial's lifecycle. It waits at `pending_activation` until the user opens it. */
+export type TierTrialStatus = 'pending_activation' | 'active' | 'expired' | 'revoked';
+
+/**
+ * A temporary tier upgrade: the user holds `tier` for `durationDays` from the
+ * moment they activate it, then returns to the tier their points and FUSE
+ * balance earn them. Neither of those is touched to grant it.
+ */
+export interface TierTrial {
+  id: string;
+  tier: GiftableTier;
+  source: TierTrialSource;
+  status: TierTrialStatus;
+  /** How long the trial runs once activated. */
+  durationDays: number;
+  /** A note written with an admin gift, when there is one. */
+  giftMessage?: string;
+  /** When an active trial ends. Null while it is still waiting to start. */
+  expiresAt: string | null;
+  /**
+   * Whole hours left on an active trial, 0 otherwise. The countdown reads this
+   * rather than differencing `expiresAt` so the pill and the expiry the backend
+   * enforces can't disagree.
+   */
+  hoursRemaining: number;
 }
 
 /** One "skip the line" rung: what a tier costs in FUSE and how close the user is. */
@@ -1746,6 +1797,12 @@ export interface TierBenefits {
   /** Ceiling on yield boost payouts for this tier, in USD. */
   yieldBoostCap?: number;
   cardCashback: TierBenefit;
+  /**
+   * `subscriptionDiscount` as a bare percentage (0 when the tier grants none),
+   * so the tier popups can quote the figure without parsing the prose. Absent
+   * on older backends, which is what hides that stat.
+   */
+  subscriptionDiscountRate?: number;
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;
   subscriptionDiscountCap: TierBenefit | null;

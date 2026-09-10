@@ -34,6 +34,7 @@ import RewardsSummaryCard from './RewardsSummaryCard';
 import { resolveTierUpgradeCardData } from './skipTheLine';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
+import TierTrialPill from './TierTrialPill';
 import TierUpgradeCard from './TierUpgradeCard';
 import UpgradeTierSheet from './UpgradeTierSheet';
 
@@ -223,7 +224,13 @@ export default function RewardsScreenNew() {
     >
       <View className="mb-5 w-full pb-24">
         <View className="mb-5 gap-5">
-          <PointsHeadline tier={currentTier} points={totalPoints} />
+          {/* The countdown goes between the tier name and the points, and draws
+              nothing at all when no trial is running. */}
+          <PointsHeadline
+            tier={currentTier}
+            points={totalPoints}
+            badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
+          />
           <View className="flex-row gap-3 px-4">
             <Pressable
               onPress={() => setIsReferralModalOpen(true)}

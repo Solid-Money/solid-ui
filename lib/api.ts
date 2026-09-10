@@ -1942,6 +1942,35 @@ export const optInToRewards = async (): Promise<RewardsUserData> => {
   return response.json();
 };
 
+/**
+ * Start the tier trial the user has been given — an admin gift, or the welcome
+ * offer they qualified for.
+ *
+ * The duration runs from this call rather than from when the trial was issued,
+ * so nothing is lost by leaving a gift unopened. Idempotent server-side: a
+ * double tap reports the running trial instead of restarting its clock.
+ *
+ * Returns the whole rewards payload so the new tier and its countdown can be
+ * painted from one response.
+ */
+export const activateTierTrial = async (): Promise<RewardsUserData> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/trial/activate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
