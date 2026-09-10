@@ -96,6 +96,7 @@ const DialogContent = React.forwardRef<
      * the dialog's transformed animation wrapper on small screens.
      */
     webPresentation?: 'modal' | 'bottom-sheet';
+    nativePresentation?: 'modal' | 'bottom-sheet';
   }
 >(
   (
@@ -107,6 +108,7 @@ const DialogContent = React.forwardRef<
       overlayClassName,
       showCloseButton = true,
       webPresentation = 'modal',
+      nativePresentation = 'modal',
       style,
       onMoveShouldSetResponder,
       onStartShouldSetResponder,
@@ -208,21 +210,30 @@ const DialogContent = React.forwardRef<
     );
 
     if (Platform.OS !== 'web') {
+      const isBottomSheet = nativePresentation === 'bottom-sheet' && !isScreenMedium;
       return (
         <DialogPortal hostName={portalHost}>
           <DialogOverlay
             className={cn(shouldAlignTop && 'justify-start', overlayClassName)}
-            closeOnPress={false}
+            closeOnPress={isBottomSheet}
           />
           <View
             style={StyleSheet.absoluteFill}
             pointerEvents="box-none"
             className={cn(
               'flex items-center p-2',
-              shouldAlignTop ? 'justify-start' : 'justify-center',
+              isBottomSheet
+                ? 'justify-end p-0'
+                : shouldAlignTop
+                  ? 'justify-start'
+                  : 'justify-center',
             )}
           >
-            <Animated.View entering={enteringAnimation} exiting={FadeOutDown.duration(180)}>
+            <Animated.View
+              style={isBottomSheet ? { width: '100%' } : undefined}
+              entering={enteringAnimation}
+              exiting={FadeOutDown.duration(180)}
+            >
               {content}
             </Animated.View>
             <Toast {...toastProps} />

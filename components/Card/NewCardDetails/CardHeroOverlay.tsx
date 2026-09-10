@@ -33,48 +33,37 @@ const CardHeroOverlay = () => {
   const last4 = useCardHeroStore(state => state.last4);
   const end = useCardHeroStore(state => state.end);
 
-  const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const progress = useSharedValue(0);
 
   useEffect(() => {
+    // Reset while the overlay is hidden as well as when a flight starts.
+    progress.value = 0;
     if (!active || !fromRect) return;
 
-    // The destination is known at the tap (see getCardHeroDestination), so this
-    // normally runs on the tap's own frame. Should it ever be missing, hold the
-    // clone still and arm a fallback rather than leaving it stuck on screen.
     if (!toRect) {
-      tx.value = 0;
-      ty.value = 0;
-      scale.value = 1;
       const timer = setTimeout(() => end(), FALLBACK_MS);
       return () => clearTimeout(timer);
     }
 
-    const fromCx = fromRect.x + fromRect.width / 2;
-    const fromCy = fromRect.y + fromRect.height / 2;
-    const toCx = toRect.x + toRect.width / 2;
-    const toCy = toRect.y + toRect.height / 2;
-
-    // Back to the origin first. These shared values outlive a flight — the clone
-    // unmounts but they keep whatever offset it landed on — so without this the next
-    // flight would start from the last one's end transform. Dismissing was the case
-    // that showed it: the card set off from roughly a screen-height above the pane
-    // and covered twice the distance it should have.
-    tx.value = 0;
-    ty.value = 0;
-    scale.value = 1;
-
-    tx.value = withTiming(toCx - fromCx, TIMING);
-    ty.value = withTiming(toCy - fromCy, TIMING);
-    scale.value = withTiming(toRect.width / fromRect.width, TIMING, finished => {
+    // Completion belongs to the flight, not its scale: equal-width cards have
+    // scale 1 -> 1, which native Reanimated completes immediately, before moving.
+    progress.value = withTiming(1, TIMING, finished => {
       if (finished) runOnJS(end)();
     });
-  }, [active, fromRect, toRect, tx, ty, scale, end]);
+  }, [active, fromRect, toRect, progress, end]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    if (!fromRect || !toRect) return {};
+    const dx = toRect.x + toRect.width / 2 - (fromRect.x + fromRect.width / 2);
+    const dy = toRect.y + toRect.height / 2 - (fromRect.y + fromRect.height / 2);
+    return {
+      transform: [
+        { translateX: dx * progress.value },
+        { translateY: dy * progress.value },
+        { scale: 1 + (toRect.width / fromRect.width - 1) * progress.value },
+      ],
+    };
+  });
 
   if (!active || !fromRect) return null;
 

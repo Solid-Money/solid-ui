@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { ArrowDownLeft } from 'lucide-react-native';
 
 import {
   AppleWalletRowIcon,
@@ -55,6 +56,8 @@ interface ManageCardStepProps {
   onApprovals: () => void;
   /** 3DS challenges waiting on an answer. A merchant is holding each one. */
   approvalsCount: number;
+  showSpendControls?: boolean;
+  onWithdraw?: () => void;
 }
 
 /**
@@ -72,6 +75,8 @@ const ManageCardStep = ({
   onAddToWallet,
   onApprovals,
   approvalsCount,
+  showSpendControls = true,
+  onWithdraw,
 }: ManageCardStepProps) => {
   // A phone can only provision into its own wallet, so the row names that one. Desktop
   // web has neither; the guide covers both there and Apple is the design's label.
@@ -79,20 +84,38 @@ const ManageCardStep = ({
 
   return (
     <View className="overflow-hidden rounded-twice bg-[#2B2B2B]">
-      <ManageRow icon={<EditLimitRowIcon />} label="Edit limit" onPress={onEditLimit} />
-      <View style={styles.divider} />
+      {showSpendControls ? (
+        <>
+          <ManageRow icon={<EditLimitRowIcon />} label="Edit limit" onPress={onEditLimit} />
+          <View style={styles.divider} />
+        </>
+      ) : null}
       <ManageRow
         icon={<AppleWalletRowIcon />}
         label={wallet === DigitalWalletType.Google ? 'Add to Google Wallet' : 'Add to Apple Wallet'}
         onPress={() => onAddToWallet(wallet)}
       />
-      <View style={styles.divider} />
-      <ManageRow
-        icon={<ApprovalsRowIcon />}
-        label="Approvals"
-        count={approvalsCount}
-        onPress={onApprovals}
-      />
+      {showSpendControls ? (
+        <>
+          <View style={styles.divider} />
+          <ManageRow
+            icon={<ApprovalsRowIcon />}
+            label="Approvals"
+            count={approvalsCount}
+            onPress={onApprovals}
+          />
+        </>
+      ) : null}
+      {onWithdraw ? (
+        <>
+          <View style={styles.divider} />
+          <ManageRow
+            icon={<ArrowDownLeft size={24} color="white" />}
+            label="Withdraw"
+            onPress={onWithdraw}
+          />
+        </>
+      ) : null}
     </View>
   );
 };

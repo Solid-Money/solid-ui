@@ -3,11 +3,9 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import { SettingsAsteriskIcon } from '@/components/Card/NewCardDetails/icons';
-import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
+import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
@@ -76,106 +74,33 @@ interface CardActionsRowProps {
   canToggleFreeze: boolean;
   isFreezing: boolean;
   onFreezeToggle: () => void;
-  onMorePress: () => void;
-  /**
-   * Opens the manage-card sheet. The sheet itself lives on the pane rather than in this
-   * row, because a blocked "Show details" tap opens the same one — and it has to stay
-   * reachable when this row hides its own button.
-   */
-  onSpendPress: () => void;
+  onManagePress: () => void;
   /**
    * Whether funds can move onto the card: not frozen, and KYC not paused or
    * offboarded. Derived by the parent (`canAddFundsToCard`) rather than here, so
    * this row and the freeze state it renders come from one reading of the card.
    */
   canAddFunds: boolean;
-  /**
-   * Whether funds can move off the card (`canWithdrawFromCard`). Not the mirror of
-   * `canAddFunds`: a freeze stops the card spending but leaves the collateral
-   * withdrawable, so this stays true on a frozen card and only a paused or
-   * offboarded customer turns it off.
-   */
-  canWithdraw: boolean;
 }
 
-/**
- * The funding / Withdraw / Freeze / More row on the card screen.
- *
- * The first action differs by issuer, because the two cards work differently:
- *
- *  - **Rain** cards are prefunded, so it is "Add funds" — move soUSD onto the card.
- *  - **Wirex** cards hold no balance (Wirex pays the merchant and we debit the user's
- *    Safe afterwards), so there is nothing to fund. It is "Set up"/"Manage" instead:
- *    registering the Safe with `SolidCashModule`, which is what gives the card
- *    permission to spend and sets the on-chain limits it may spend within, and
- *    afterwards the sheet that holds the limits, the wallet guide and the 3DS approvals
- *    queue.
- *
- * Offering "Add funds" on a Wirex card would be offering a transfer with no
- * destination.
- *
- * 3DS approvals used to have a circle of their own here. It is a queue that is empty
- * almost all the time, so it moved inside the manage sheet — but the count did not: a
- * merchant is holding each challenge on a clock, so it stays on this row as a badge on
- * "Manage", which is the one thing that would otherwise make it less visible than a
- * dedicated circle was.
- */
+/** The three card actions from Figma 20095:5552. */
 const CardActionsRow = ({
   isCardFrozen,
   canToggleFreeze,
   isFreezing,
   onFreezeToggle,
-  onMorePress,
-  onSpendPress,
+  onManagePress,
   canAddFunds,
-  canWithdraw,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
-  // The hook's `isAvailable` already accounts for the card's issuer, so no provider
-  // check is needed here — it is the single place that decision lives.
-  const { isAvailable: canRegisterSpend, isRegistered, isRevoked } = useCardSpendRegistration();
-  // Wirex-only, and gated inside the hook on the issuer rather than here. The count is
-  // the point of reading it from this row: a challenge whose push never arrived is
-  // otherwise invisible until the user goes looking for it, and the queue itself now sits
-  // a tap deeper inside the manage sheet.
   const { requests: threeDsRequests } = useWirexThreeDs();
-  // Two independent questions, deliberately not one flag. `canDepositToCard` is
-  // false for a Wirex card whatever else is true — depositing has no destination —
-  // and `canRegisterSpend` is false for a Rain one, which has nothing to register.
   const showDeposit = canAddFunds && canDepositToCard(provider);
-  // Once spending is set up this is a settings surface — limits, the wallet guide, the
-  // approvals queue — and none of that is "adding funds", so a frozen card still gets it.
-  // That also keeps the approvals queue reachable on a frozen card, which it was while it
-  // had a circle of its own. Before setup it *is* the funding-shaped action it used to be,
-  // and stays gated the way it was: an offboarded customer is not asked to grant a module.
-  const showManage = canRegisterSpend && (isRegistered || canAddFunds);
 
   return (
     <View className="flex-row items-start justify-center">
-      {showManage && (
+      {canAddFunds && !canDepositToCard(provider) && (
         <View style={styles.item}>
-          <CircleAction
-            label={isRevoked ? 'Paused' : isRegistered ? 'Manage' : 'Set up'}
-            badgeCount={threeDsRequests.length}
-            onPress={onSpendPress}
-          >
-            {/* A plus for the press that creates the grant, the Figma settings glyph
-                (20095:5554) once there is something to manage instead. */}
-            {isRegistered ? (
-              <SettingsAsteriskIcon />
-            ) : (
-              <Image
-                source={getAsset('images/card-action-add-funds.png')}
-                style={styles.actionIcon}
-                contentFit="contain"
-              />
-            )}
-          </CircleAction>
-        </View>
-      )}
-      {showDeposit && (
-        <View style={styles.item}>
-          <CardDirectDepositModal
+          <WirexCardFundModal
             trigger={
               <CircleAction label="Add funds">
                 <Image
@@ -188,17 +113,13 @@ const CardActionsRow = ({
           />
         </View>
       )}
-      {/* Withdraw moves tokens back out of the Rain collateral proxy. A Wirex card
-          has no collateral to withdraw — the user's assets never left their Safe —
-          so the flow has nothing to act on and is hidden rather than offered and
-          then failed. */}
-      {canWithdraw && canDepositToCard(provider) && (
+      {showDeposit && (
         <View style={styles.item}>
-          <WithdrawToCardModal
+          <CardDirectDepositModal
             trigger={
-              <CircleAction label="Withdraw">
+              <CircleAction label="Add funds">
                 <Image
-                  source={getAsset('images/card-action-withdraw.png')}
+                  source={getAsset('images/card-action-add-funds.png')}
                   style={styles.actionIcon}
                   contentFit="contain"
                 />
@@ -228,10 +149,15 @@ const CardActionsRow = ({
         </View>
       )}
       <View style={styles.item}>
-        <CircleAction label="More" onPress={onMorePress}>
+        <CircleAction
+          label="Manage"
+          onPress={onManagePress}
+          circleBackground="#2A2A2A"
+          badgeCount={threeDsRequests.length}
+        >
           <Image
-            source={getAsset('images/card-action-more.png')}
-            style={styles.actionIcon}
+            source={getAsset('images/card-manage.svg')}
+            style={{ width: 24, height: 25 }}
             contentFit="contain"
           />
         </CircleAction>

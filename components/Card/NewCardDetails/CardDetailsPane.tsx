@@ -9,7 +9,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -17,11 +19,15 @@ import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
 import CardDetailsHeader from '@/components/Card/NewCardDetails/CardDetailsHeader';
-import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHeroLayout';
+import {
+  getCardHeroDestination,
+  HEADER_HEIGHT,
+} from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
-import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
+import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
+import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { DigitalWalletType } from '@/constants/digital-wallet';
@@ -34,7 +40,7 @@ import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { CardProvider, CardStatus } from '@/lib/types';
+import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
   canToggleCardFreeze,
@@ -45,11 +51,9 @@ import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
-/**
- * How long to keep the pane on screen after it's been dismissed: long enough for the
- * slowest section to animate out (600ms) and the card to land back on the wallet.
- */
-const CLOSE_SETTLE_MS = 640;
+const HEADER_FADE_EXTENT = 32;
+const HEADER_GRADIENT_FADE_MS = 280;
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 /**
  * The card-details surface (Figma 20095:5393), rendered as a layer on the wallet
@@ -93,16 +97,13 @@ const CardDetailsPane = () => {
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
-  // Which wallet the guide should open on when it was reached from the manage sheet,
-  // whose row names the wallet this device actually has. Undefined lets the guide keep
-  // its own default, which is what the "More" circle wants.
   const [walletFromManage, setWalletFromManage] = useState<DigitalWalletType | undefined>();
-  // The manage-card sheet is owned here rather than by the action row, because two things
-  // open it: the row's own "Set up"/"Manage" button, and a "Show details" tap on a card
-  // that cannot spend yet. One instance above both also keeps it reachable when the row
-  // hides its button — which is exactly when a blocked reveal still needs somewhere to
-  // send the user. `null` is closed; the value it holds is which entry point opened it,
-  // for the registration funnel.
+  // The card-spending sheet is owned here rather than by the action row, because two
+  // things open it: the row's own "Set up"/"Spending" button, and a "Show details" tap
+  // on a card that cannot spend yet. One instance above both also keeps it reachable
+  // when the row hides its button (a frozen card) — which is exactly when a blocked
+  // reveal still needs somewhere to send the user. `null` is closed; the value it holds
+  // is which entry point opened it, for the registration funnel.
   const [spendSheetSource, setSpendSheetSource] = useState<CardSpendRegistrationSource | null>(
     null,
   );
@@ -110,14 +111,22 @@ const CardDetailsPane = () => {
   // handler, which would be rebuilt on every render of this pane otherwise.
   const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
   const openSpendSheetFromReveal = useCallback(() => setSpendSheetSource('card_reveal'), []);
-  // Held true through the dismissal, so the sections have something to animate out
-  // of; without it `isOpen` going false would yank the pane off screen instantly.
-  const [isSettling, setIsSettling] = useState(false);
-  const hasOpened = useRef(false);
+  const isVisible = useCardPaneVisibility(isOpen);
   // Laid out (invisibly) once the wallet screen has settled, so the first open costs
   // no more than the ones after it.
   const [isWarm, setIsWarm] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const headerGradientOpacity = useSharedValue(0);
+  const headerGradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerGradientOpacity.value,
+  }));
+
+  useEffect(() => {
+    headerGradientOpacity.value = withTiming(isOpen ? 1 : 0, {
+      duration: HEADER_GRADIENT_FADE_MS,
+      easing: EASE_OUT_QUINT,
+    });
+  }, [headerGradientOpacity, isOpen]);
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => setIsWarm(true));
@@ -126,8 +135,6 @@ const CardDetailsPane = () => {
 
   useEffect(() => {
     if (isOpen) {
-      hasOpened.current = true;
-      setIsSettling(false);
       // Always open at the top: the card's landing position is computed rather than
       // measured, so a scroll position left over from a previous visit would put the
       // real card somewhere the clone isn't flying to.
@@ -138,17 +145,8 @@ const CardDetailsPane = () => {
     // dialog is portalled, so it outlives the layer that opened it. Clearing the source
     // rather than merely hiding it also stops the sheet reappearing on the next visit.
     setSpendSheetSource(null);
-    // Nothing to settle if it was never opened, or the pane would sit visible for the
-    // settle window on startup.
-    if (!hasOpened.current) return;
-    setIsSettling(true);
-    const timer = setTimeout(() => setIsSettling(false), CLOSE_SETTLE_MS);
-    return () => clearTimeout(timer);
+    setIsAddToWalletOpen(false);
   }, [isOpen]);
-
-  // Visible the instant it opens — deriving it rather than waiting on an effect keeps
-  // the sections' entrance from starting a frame behind.
-  const isVisible = isOpen || isSettling;
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
   const canToggleFreeze = canToggleCardFreeze(cardDetails);
@@ -235,15 +233,11 @@ const CardDetailsPane = () => {
         !isVisible && styles.warm,
       ]}
     >
-      {/* Same column as the content below, so the back button doesn't drift out to
-          the edge of the desktop body area. */}
-      <View
-        className="mx-auto w-full max-w-[40rem]"
-        style={[{ paddingTop: insets.top }, columnAlignmentStyle]}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingTop: insets.top + HEADER_HEIGHT }}
+        showsVerticalScrollIndicator={false}
       >
-        <CardDetailsHeader onBack={close} />
-      </View>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
         <View className="mx-auto w-full max-w-[40rem] px-4" style={columnAlignmentStyle}>
           <CardRevealSection
             last4={cardDetails?.card_details?.last_4}
@@ -260,13 +254,8 @@ const CardDetailsPane = () => {
               canToggleFreeze={canToggleFreeze}
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
-              onMorePress={() => {
-                setWalletFromManage(undefined);
-                setIsAddToWalletOpen(true);
-              }}
-              onSpendPress={openSpendSheet}
+              onManagePress={openSpendSheet}
               canAddFunds={canAddFundsToCard(fundsAccess)}
-              canWithdraw={canWithdrawFromCard(fundsAccess)}
             />
           </HeroEnter>
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
@@ -287,24 +276,37 @@ const CardDetailsPane = () => {
           <View className="h-32" />
         </View>
       </ScrollView>
+      <AnimatedLinearGradient
+        colors={['#111111', 'rgba(17,17,17,0.78)', 'rgba(17,17,17,0)']}
+        locations={[0, 0.55, 1]}
+        pointerEvents="none"
+        style={[
+          styles.headerGradient,
+          { height: insets.top + HEADER_HEIGHT + HEADER_FADE_EXTENT },
+          headerGradientAnimatedStyle,
+        ]}
+      />
+      {/* A true transparent overlay: the scroll content passes behind this header
+          instead of stopping below a separate black layout row. */}
+      <View pointerEvents="box-none" style={[styles.headerOverlay, { paddingTop: insets.top }]}>
+        <View className="mx-auto w-full max-w-[40rem]" style={columnAlignmentStyle}>
+          <CardDetailsHeader onBack={close} />
+        </View>
+      </View>
       <CardWelcomePopup
         isOpen={isOpen && shouldShowWelcomePopup}
         onClose={() => setShouldShowWelcomePopup(false)}
       />
-      {/* Wirex only — a Rain card prefunds itself and has no module to enable. Mounted
-          on the issuer rather than on the action row's own visibility, so the reveal
-          gate above always has a sheet to open. */}
-      {provider === CardProvider.WIREX && (
-        <ManageCardSheet
-          isOpen={spendSheetSource !== null}
-          onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
-          source={spendSheetSource ?? 'spending_sheet'}
-          onAddToWallet={wallet => {
-            setWalletFromManage(wallet);
-            setIsAddToWalletOpen(true);
-          }}
-        />
-      )}
+      <ManageCardSheet
+        isOpen={isOpen && spendSheetSource !== null}
+        onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
+        source={spendSheetSource ?? 'spending_sheet'}
+        onAddToWallet={wallet => {
+          setWalletFromManage(wallet);
+          setIsAddToWalletOpen(true);
+        }}
+        canWithdraw={canWithdrawFromCard(fundsAccess)}
+      />
       <AddToWalletModal
         trigger={null}
         isOpen={isAddToWalletOpen || (isOpen && walletGuide !== null)}
@@ -326,6 +328,20 @@ const styles = StyleSheet.create({
   layer: { zIndex: 60 },
   cold: { display: 'none' },
   warm: { opacity: 0 },
+  headerGradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 9,
+  },
+  headerOverlay: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 10,
+  },
   // Figma vertical rhythm: 51 from the panel to the action icons, 45 to the cashback
   // card, 20 to the links list.
   actionsRow: { marginTop: 51 },
