@@ -24,6 +24,7 @@ import { emailSignUp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
+import { isUsernameTakenError } from '@/lib/utils/username';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -120,6 +121,7 @@ export default function SignupCreating() {
 
   const {
     email,
+    username,
     verificationToken,
     challenge,
     attestation,
@@ -132,6 +134,7 @@ export default function SignupCreating() {
   } = useSignupFlowStore(
     useShallow(state => ({
       email: state.email,
+      username: state.username,
       verificationToken: state.verificationToken,
       challenge: state.challenge,
       attestation: state.attestation,
@@ -174,6 +177,14 @@ export default function SignupCreating() {
       return;
     }
 
+    // Reached without choosing a handle — the step was skipped, or the flow
+    // was resumed from a build that predates it. Ask rather than fall back to
+    // a name derived from the email address.
+    if (!isSharedReviewAccess && !username) {
+      router.replace(path.SIGNUP_USERNAME);
+      return;
+    }
+
     if (!isSharedReviewAccess && (!challenge || !attestation)) {
       router.replace(path.SIGNUP_PASSKEY);
       return;
@@ -208,6 +219,7 @@ export default function SignupCreating() {
         credentialId,
         referralCode || undefined,
         marketingConsent,
+        username || undefined,
       );
 
       let safeAddress = user.safeAddress;
@@ -311,6 +323,15 @@ export default function SignupCreating() {
         tags: { type: 'signup_account_creation_error' },
         extra: { email },
       });
+
+      // A handle claimed between the availability check and this request is
+      // fixed by picking another one, so send the user back to that step
+      // rather than to the passkey they already created.
+      if (!isSharedReviewAccess && isUsernameTakenError(err)) {
+        setStep('username');
+        router.replace(path.SIGNUP_USERNAME);
+        return;
+      }
 
       const retryStep = isSharedReviewAccess ? 'otp' : 'passkey';
       setStep(retryStep);

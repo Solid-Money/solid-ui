@@ -226,6 +226,11 @@ export const TRACKING_EVENTS = {
   EMAIL_VERIFICATION_FAILED: 'email_verification_failed',
   EMAIL_SKIPPED: 'email_skipped',
 
+  // Username Events
+  USERNAME_STEP_VIEWED: 'username_step_viewed',
+  USERNAME_SUBMITTED: 'username_submitted',
+  USERNAME_UNAVAILABLE: 'username_unavailable',
+
   // Passkey Events
   PASSKEY_ADDED: 'passkey_added',
   PASSKEY_SKIPPED: 'passkey_skipped',

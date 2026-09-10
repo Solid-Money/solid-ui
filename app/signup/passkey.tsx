@@ -126,7 +126,7 @@ export default function SignupPasskey() {
   };
 
   const handleBack = () => {
-    setStep('otp');
+    setStep('username');
     router.back();
   };
 

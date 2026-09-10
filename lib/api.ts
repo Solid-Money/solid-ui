@@ -2729,6 +2729,28 @@ export const verifySignupOtp = async (
 };
 
 /**
+ * Whether a username can be claimed, and the reason when it cannot (public).
+ * The server owns the reserved-name list and uniqueness, so this is the only
+ * way the signup form can report either.
+ */
+export const checkUsernameAvailability = async (
+  username: string,
+): Promise<{ available: boolean; reason?: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username-availability/${encodeURIComponent(username)}`,
+    {
+      method: 'GET',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { available: boolean; reason?: string };
+};
+
+/**
  * Step 3: Create account with email auth proof and optional passkey data (public)
  */
 export const emailSignUp = async (
@@ -2739,6 +2761,7 @@ export const emailSignUp = async (
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,
+  username?: string,
 ) => {
   const body: Record<string, any> = {
     email,
@@ -2749,6 +2772,10 @@ export const emailSignUp = async (
   };
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
+  // Omitted rather than sent empty: the server derives a name from the email
+  // when no username is supplied, which is the path the reviewer account and
+  // any older client still take.
+  if (username) body.username = username;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
     method: 'POST',
@@ -2759,7 +2786,22 @@ export const emailSignUp = async (
     credentials: 'include',
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) {
+    // Surface the server's reason: the caller decides which step to return to
+    // from it (a taken username is fixed on a different screen than a failed
+    // account creation), and it is what the user is shown.
+    const data = await response.json().catch(() => null);
+    // Nest reports a single failure as a string and validation failures as an
+    // array of them.
+    const message = Array.isArray(data?.message) ? data.message.join('. ') : data?.message;
+    const error = new Error(message || 'Failed to create account. Please try again.') as Error & {
+      status: number;
+      data: unknown;
+    };
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
   return response.json();
 };
 
