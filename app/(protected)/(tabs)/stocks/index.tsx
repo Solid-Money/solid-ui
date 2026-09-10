@@ -34,7 +34,7 @@ function StocksPageContent() {
   const { isScreenMedium } = useDimension();
   const scrollRef = useRef<ScrollView>(null);
 
-  const { holdings } = useXStockHoldings();
+  const { holdings, isLoading: isHoldingsLoading } = useXStockHoldings();
   const hasHoldings = holdings.length > 0;
   const holdingTickers = holdings.map(h => h.ticker);
   const holdingPrices = useXStockPrices(holdingTickers);
@@ -53,12 +53,35 @@ function StocksPageContent() {
   // instead of stranding them on a Stocks tab they never chose to open.
   const [cameFromDeepLink, setCameFromDeepLink] = useState(false);
 
-  // Open the buy flow straight onto a stock from a `/stocks?ticker=TSLAx`
-  // deep link (the Earn catalog uses it), then clear the param so closing the
-  // modal doesn't leave a link that reopens it on the next visit.
-  const { ticker: tickerParam } = useLocalSearchParams<{ ticker?: string }>();
+  // Open a trade straight from a `/stocks?ticker=TSLAx&action=sell` deep link
+  // (the Earn page uses it), then clear the params so closing the modal doesn't
+  // leave a link that reopens it on the next visit.
+  const { ticker: tickerParam, action: actionParam } = useLocalSearchParams<{
+    ticker?: string;
+    action?: string;
+  }>();
+
   useEffect(() => {
     if (!tickerParam) return;
+
+    const clearParams = () => router.setParams({ ticker: undefined, action: undefined });
+
+    if (actionParam === 'sell') {
+      const holding = holdings.find(h => h.ticker === tickerParam);
+
+      // Holdings are read from chain and arrive after this screen mounts, so
+      // the params are held until they land rather than dropped on the floor.
+      if (!holding) {
+        if (!isHoldingsLoading) clearParams();
+        return;
+      }
+
+      setSelectedHolding(holding);
+      setSellModalOpen(true);
+      setCameFromDeepLink(true);
+      clearParams();
+      return;
+    }
 
     const token = XSTOCKS_TOKENS.find(t => t.symbol === tickerParam);
     if (token) {
@@ -66,8 +89,8 @@ function StocksPageContent() {
       setBuyModalOpen(true);
       setCameFromDeepLink(true);
     }
-    router.setParams({ ticker: undefined });
-  }, [tickerParam]);
+    clearParams();
+  }, [tickerParam, actionParam, holdings, isHoldingsLoading]);
 
   function handleBuyPress() {
     setBuyToken(null);
@@ -78,6 +101,7 @@ function StocksPageContent() {
   function handleSellPress() {
     if (holdings.length > 0) {
       setSelectedHolding(holdings[0]);
+      setCameFromDeepLink(false);
       setSellModalOpen(true);
     }
   }
@@ -100,7 +124,18 @@ function StocksPageContent() {
 
   function handleHoldingPress(holding: Holding) {
     setSelectedHolding(holding);
+    setCameFromDeepLink(false);
     setSellModalOpen(true);
+  }
+
+  // Same as the buy flow: a deep-linked sale returns to the screen that opened
+  // it rather than stranding the user on a Stocks tab they never chose.
+  function handleSellClose() {
+    setSellModalOpen(false);
+    if (cameFromDeepLink && router.canGoBack()) {
+      setCameFromDeepLink(false);
+      router.back();
+    }
   }
 
   function scrollToDiscover() {
@@ -130,7 +165,7 @@ function StocksPageContent() {
         selectedHolding={selectedHolding}
         selectedStockPrice={selectedStockPrice}
         onBuyClose={handleBuyClose}
-        onSellClose={() => setSellModalOpen(false)}
+        onSellClose={handleSellClose}
       />
     );
   }
@@ -195,7 +230,7 @@ function StocksPageContent() {
         holding={selectedHolding}
         stockPrice={selectedStockPrice}
         isOpen={sellModalOpen}
-        onClose={() => setSellModalOpen(false)}
+        onClose={handleSellClose}
         trigger={null}
       />
     </PageLayout>

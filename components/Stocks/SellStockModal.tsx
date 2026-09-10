@@ -102,8 +102,13 @@ export default function SellStockModal({
   }, [quote, sharesAmount, stockPrice]);
 
   const usdAmount = sharesAmount * stockPrice;
-  const returnPct = holding ? ((stockPrice - holding.avgCost) / holding.avgCost) * 100 : 0;
-  const returnAbs = holding ? (stockPrice - holding.avgCost) * sharesAmount : 0;
+  // avgCost is 0 whenever it is unknown, which is always for on-chain holdings:
+  // a balanceOf carries no purchase price. Dividing by it yields Infinity, so
+  // the return is only computed — and only shown — when there is a basis for it.
+  const avgCost = holding?.avgCost ?? 0;
+  const hasCostBasis = avgCost > 0;
+  const returnPct = hasCostBasis ? ((stockPrice - avgCost) / avgCost) * 100 : 0;
+  const returnAbs = hasCostBasis ? (stockPrice - avgCost) * sharesAmount : 0;
 
   function navigate(next: SellStep) {
     setPreviousStep(step);
@@ -164,6 +169,7 @@ export default function SellStockModal({
           sharesAmount={sharesAmount}
           usdAmount={usdAmount}
           estimatedUsdc={estimatedUsdc}
+          hasCostBasis={hasCostBasis}
           returnPct={returnPct}
           returnAbs={returnAbs}
           quoteLoading={quoteLoading}
@@ -219,6 +225,7 @@ function SellInputStep({
   sharesAmount,
   usdAmount,
   estimatedUsdc,
+  hasCostBasis,
   returnPct,
   returnAbs,
   quoteLoading,
@@ -235,6 +242,7 @@ function SellInputStep({
   sharesAmount: number;
   usdAmount: number;
   estimatedUsdc: number;
+  hasCostBasis: boolean;
   returnPct: number;
   returnAbs: number;
   quoteLoading: boolean;
@@ -245,6 +253,7 @@ function SellInputStep({
 }) {
   const isPositiveReturn = returnPct >= 0;
   const hasContract = !!holding.contractAddress;
+  const avgCostLabel = holding.avgCost.toFixed(2);
 
   return (
     <View className="gap-8 pb-4">
@@ -354,10 +363,12 @@ function SellInputStep({
 
       {/* Stats */}
       <Text className="text-center text-xs text-[#808080]">
-        {holding.shares.toFixed(2)} {holding.ticker} available · Avg cost $
-        {holding.avgCost.toFixed(2)} · Est. return {isPositiveReturn ? '+' : ''}$
-        {returnAbs.toFixed(2)} ({isPositiveReturn ? '+' : ''}
-        {returnPct.toFixed(2)}%)
+        {holding.shares.toFixed(2)} {holding.ticker} available
+        {hasCostBasis
+          ? ` · Avg cost $${avgCostLabel} · Est. return ${isPositiveReturn ? '+' : ''}$${returnAbs.toFixed(
+              2,
+            )} (${isPositiveReturn ? '+' : ''}${returnPct.toFixed(2)}%)`
+          : ''}
       </Text>
 
       {/* CTA */}

@@ -42,11 +42,12 @@ const DISCLAIMER =
   'Availability depends on your region. Not investment advice.';
 
 /**
- * Buying lives on the Stocks screen, so a row hands it the ticker and lands
- * straight on that stock's buy flow.
+ * Trading lives on the Stocks screen, so a row hands it the ticker and the
+ * side to open on: a catalog row is something to buy, a position is something
+ * the user already owns and would be selling.
  */
-const openStock = (token: XStockToken) =>
-  router.push({ pathname: '/stocks', params: { ticker: token.symbol } } as Href);
+const openStock = (token: XStockToken, action: 'buy' | 'sell' = 'buy') =>
+  router.push({ pathname: '/stocks', params: { ticker: token.symbol, action } } as Href);
 
 /**
  * Scrolls its own rows once expanded, and is a plain View before that. The
@@ -173,7 +174,7 @@ export const EarnInvestSection = () => {
                 caption={formatShares(holding.shares)}
                 logoUrl={token?.logoUrl}
                 value={price === undefined ? undefined : holding.shares * price}
-                onPress={() => token && openStock(token)}
+                onPress={() => token && openStock(token, 'sell')}
               />
             );
           })}
