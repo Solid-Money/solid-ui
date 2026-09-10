@@ -283,27 +283,29 @@ const TierFeesCard = ({ tier }: { tier: RewardsTier }) => {
       <CoreDivider />
 
       <View className="px-[19px] py-2">
-        {fees.lines.map(line => (
-          <View key={line.key} className="h-[52px] flex-row items-center justify-between">
-            <Text
-              className="text-white"
-              style={{
-                ...CORE_MEDIUM_16,
-                // The virtual card is the one row that is not a fee, so it sits
-                // in the lighter weight the fee rows use for emphasis by contrast.
-                fontFamily:
-                  line.key === 'virtual_card' ? 'MonaSans_500Medium' : 'MonaSans_600SemiBold',
-              }}
-            >
-              {line.label}
-            </Text>
-            <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
-              <Text className="text-white" style={CORE_MEDIUM_16}>
-                {line.value}
+        {fees.lines
+          .filter(line => line.key !== 'fx')
+          .map(line => (
+            <View key={line.key} className="h-[52px] flex-row items-center justify-between">
+              <Text
+                className="text-white"
+                style={{
+                  ...CORE_MEDIUM_16,
+                  // The virtual card is the one row that is not a fee, so it sits
+                  // in the lighter weight the fee rows use for emphasis by contrast.
+                  fontFamily:
+                    line.key === 'virtual_card' ? 'MonaSans_500Medium' : 'MonaSans_600SemiBold',
+                }}
+              >
+                {line.label}
               </Text>
+              <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
+                <Text className="text-white" style={CORE_MEDIUM_16}>
+                  {line.value}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
         <View className="h-[52px] flex-row items-center justify-between">
           <Text
