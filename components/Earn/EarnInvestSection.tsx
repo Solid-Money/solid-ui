@@ -1,10 +1,16 @@
-import { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { Href, router } from 'expo-router';
 import { Search, X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useXStockHoldings } from '@/hooks/useXStockHoldings';
 import { useXStockPrices } from '@/hooks/useXStockPrices';
 import { useXStocksTokens, XStockToken } from '@/hooks/useXStocksTokens';
@@ -21,17 +27,54 @@ import {
   selectCategoryTokens,
 } from './earnCatalog';
 
+/** Roughly seven rows — tall enough to feel like a list, short enough that the
+ *  page's own scroll is still reachable by the time you hit the bottom. */
+const EXPANDED_MAX_HEIGHT = 400;
+
+/** Rows added per page while scrolling the expanded list. */
+const EXPANDED_PAGE_SIZE = 20;
+
+/** Distance from the bottom at which the next page is pulled in. */
+const LOAD_MORE_THRESHOLD = 240;
+
 const DISCLAIMER =
   'Tokenized assets carry market risk and can lose value. ' +
   'Availability depends on your region. Not investment advice.';
 
 /**
- * Every entry point lands on the Stocks screen, which owns buy/sell. Naming a
- * stock opens its buy flow directly; the browse CTA leaves the picker open.
+ * Buying lives on the Stocks screen, so a row hands it the ticker and lands
+ * straight on that stock's buy flow.
  */
-const openStocks = (token?: XStockToken) =>
-  router.push(
-    token ? ({ pathname: '/stocks', params: { ticker: token.symbol } } as Href) : path.STOCKS,
+const openStock = (token: XStockToken) =>
+  router.push({ pathname: '/stocks', params: { ticker: token.symbol } } as Href);
+
+/**
+ * Scrolls its own rows once expanded, and is a plain View before that. The
+ * collapsed preview is short enough to sit in the page's scroll, and nesting a
+ * scroll view around it would capture drags the page should have had.
+ */
+const ListContainer = ({
+  isExpanded,
+  onScroll,
+  children,
+}: {
+  isExpanded: boolean;
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  children: ReactNode;
+}) =>
+  isExpanded ? (
+    <ScrollView
+      style={{ maxHeight: EXPANDED_MAX_HEIGHT }}
+      nestedScrollEnabled
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View>{children}</View>
   );
 
 /** Figma — the tokenized-asset catalog beneath the Earn vault tiles. */
@@ -39,6 +82,8 @@ export const EarnInvestSection = () => {
   const [activeCategory, setActiveCategory] = useState<EarnCategoryKey>('popular');
   const [isSearching, setIsSearching] = useState(false);
   const [query, setQuery] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [renderLimit, setRenderLimit] = useState(EXPANDED_PAGE_SIZE);
   const inputRef = useRef<TextInput>(null);
 
   const { tokens } = useXStocksTokens();
@@ -47,14 +92,20 @@ export const EarnInvestSection = () => {
   // Holdings carry no logo of their own, so they borrow the catalog's.
   const tokensBySymbol = useMemo(() => new Map(tokens.map(t => [t.symbol, t])), [tokens]);
 
-  // Searching scans the whole catalog; browsing stays within the active
-  // category's curated picks.
+  // Searching scans the whole catalog; expanding drops the curation entirely
+  // and lists everything; otherwise it's the active category's curated picks.
+  const listedTokens = useMemo(() => {
+    if (isSearching && query.trim()) {
+      return searchTokens(tokens, query, isExpanded ? tokens.length : EARN_PREVIEW_COUNT);
+    }
+    return isExpanded ? tokens : selectCategoryTokens(tokens, activeCategory);
+  }, [tokens, isSearching, query, activeCategory, isExpanded]);
+
+  // Only the rows on screen are mounted, and only those get priced — the price
+  // hook is one query per ticker, so each page costs only its own new tickers.
   const visibleTokens = useMemo(
-    () =>
-      isSearching && query.trim()
-        ? searchTokens(tokens, query, EARN_PREVIEW_COUNT)
-        : selectCategoryTokens(tokens, activeCategory),
-    [tokens, isSearching, query, activeCategory],
+    () => (isExpanded ? listedTokens.slice(0, renderLimit) : listedTokens),
+    [isExpanded, listedTokens, renderLimit],
   );
 
   const pricedSymbols = useMemo(
@@ -62,6 +113,32 @@ export const EarnInvestSection = () => {
     [visibleTokens, holdings],
   );
   const prices = useXStockPrices(pricedSymbols);
+
+  const collapse = () => {
+    setIsExpanded(false);
+    setRenderLimit(EXPANDED_PAGE_SIZE);
+  };
+
+  const expand = () => {
+    setIsExpanded(true);
+    setRenderLimit(EXPANDED_PAGE_SIZE);
+  };
+
+  // Picking a category is a request for that curated view, so it drops out of
+  // the full listing rather than filtering it.
+  const selectCategory = (key: EarnCategoryKey) => {
+    setActiveCategory(key);
+    collapse();
+  };
+
+  const handleScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+    const distanceFromEnd = contentSize.height - contentOffset.y - layoutMeasurement.height;
+
+    if (distanceFromEnd < LOAD_MORE_THRESHOLD) {
+      setRenderLimit(limit => Math.min(limit + EXPANDED_PAGE_SIZE, listedTokens.length));
+    }
+  };
 
   const openSearch = () => {
     setIsSearching(true);
@@ -72,6 +149,7 @@ export const EarnInvestSection = () => {
   const closeSearch = () => {
     setIsSearching(false);
     setQuery('');
+    collapse();
   };
 
   return (
@@ -95,7 +173,7 @@ export const EarnInvestSection = () => {
                 caption={formatShares(holding.shares)}
                 logoUrl={token?.logoUrl}
                 value={price === undefined ? undefined : holding.shares * price}
-                onPress={() => token && openStocks(token)}
+                onPress={() => token && openStock(token)}
               />
             );
           })}
@@ -155,7 +233,7 @@ export const EarnInvestSection = () => {
                   key={category.key}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}
-                  onPress={() => setActiveCategory(category.key)}
+                  onPress={() => selectCategory(category.key)}
                   className={`h-9 justify-center rounded-full px-4 transition-all active:opacity-80 ${
                     isActive ? 'bg-white' : 'bg-[#1C1C1C]'
                   }`}
@@ -179,35 +257,40 @@ export const EarnInvestSection = () => {
       )}
 
       {/* The rows group into one panel so the list reads as a single surface
-          rather than five items floating on the page background. */}
+          rather than a handful of items floating on the page background. Only
+          the expanded list scrolls: a nested scroll view around the short
+          preview would swallow drags meant for the page. */}
       <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
-        {visibleTokens.map(token => (
-          <EarnAssetRow
-            key={token.symbol}
-            ticker={token.symbol}
-            name={formatAssetName(token.symbol, token.name)}
-            caption={getAssetSector(token.symbol)}
-            logoUrl={token.logoUrl}
-            value={prices[token.symbol]}
-            onPress={() => openStocks(token)}
-          />
-        ))}
+        <ListContainer isExpanded={isExpanded} onScroll={handleScroll}>
+          {visibleTokens.map(token => (
+            <EarnAssetRow
+              key={token.symbol}
+              ticker={token.symbol}
+              name={formatAssetName(token.symbol, token.name)}
+              caption={getAssetSector(token.symbol)}
+              logoUrl={token.logoUrl}
+              value={prices[token.symbol]}
+              onPress={() => openStock(token)}
+            />
+          ))}
 
-        {visibleTokens.length === 0 && (
-          <View className="items-center py-6">
-            <Text className="text-[14px] text-white/50">No assets match “{query.trim()}”</Text>
-          </View>
-        )}
+          {visibleTokens.length === 0 && (
+            <View className="items-center py-6">
+              <Text className="text-[14px] text-white/50">No assets match “{query.trim()}”</Text>
+            </View>
+          )}
+        </ListContainer>
       </View>
 
       <Pressable
-        accessibilityLabel={`Browse all ${tokens.length} assets`}
+        accessibilityLabel={isExpanded ? 'Show fewer assets' : `Browse all ${tokens.length} assets`}
         accessibilityRole="button"
-        onPress={() => openStocks()}
+        accessibilityState={{ expanded: isExpanded }}
+        onPress={isExpanded ? collapse : expand}
         className="mt-4 h-[52px] items-center justify-center rounded-full bg-[#1C1C1C] transition-all active:scale-[0.98] active:opacity-90"
       >
         <Text className="text-[15px] font-medium leading-5 text-white">
-          Browse all {tokens.length} assets
+          {isExpanded ? 'Show less' : `Browse all ${tokens.length} assets`}
         </Text>
       </Pressable>
 

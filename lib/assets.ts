@@ -361,11 +361,11 @@ export const ASSETS = {
   },
   'images/earn-eth-icon.png': {
     module: require('@/assets/images/earn-eth-icon.png'),
-    hash: 'a1c4c4b5',
+    hash: 'be536400',
   },
   'images/earn-eth-tile-background.png': {
     module: require('@/assets/images/earn-eth-tile-background.png'),
-    hash: '56971885',
+    hash: 'f3c96725',
   },
   'images/earn-fuse-card-background.png': {
     module: require('@/assets/images/earn-fuse-card-background.png'),
@@ -373,11 +373,11 @@ export const ASSETS = {
   },
   'images/earn-fuse-icon.png': {
     module: require('@/assets/images/earn-fuse-icon.png'),
-    hash: 'c9a5744a',
+    hash: '3d4bd355',
   },
   'images/earn-fuse-tile-background.png': {
     module: require('@/assets/images/earn-fuse-tile-background.png'),
-    hash: '716e9ae2',
+    hash: '8694f432',
   },
   'images/earn-green.png': { module: require('@/assets/images/earn-green.png'), hash: 'a1f2db4d' },
   'images/earn-indigo.png': {
@@ -395,11 +395,11 @@ export const ASSETS = {
   },
   'images/earn-usd-icon.png': {
     module: require('@/assets/images/earn-usd-icon.png'),
-    hash: '76cc5b17',
+    hash: 'adb82bcf',
   },
   'images/earn-usd-tile-background.png': {
     module: require('@/assets/images/earn-usd-tile-background.png'),
-    hash: '9b7c6a90',
+    hash: '28580f20',
   },
   'images/earn.png': { module: require('@/assets/images/earn.png'), hash: 'c1d01a5d' },
   'images/email.png': { module: require('@/assets/images/email.png'), hash: '7154e7ce' },

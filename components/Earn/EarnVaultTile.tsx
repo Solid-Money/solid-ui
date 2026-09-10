@@ -33,7 +33,7 @@ export const EarnVaultTile = ({
   >
     <Image
       source={getAsset(background)}
-      contentFit="cover"
+      contentFit="fill"
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
     />
@@ -53,14 +53,14 @@ export const EarnVaultTile = ({
         )}
       </View>
 
-      <View className="size-[52px] items-center justify-center rounded-full border border-white/10 bg-white/10">
-        <Image
-          source={getAsset(icon)}
-          contentFit="contain"
-          style={{ width: 26, height: 26 }}
-          alt={`${assetName} icon`}
-        />
-      </View>
+      {/* The badge circle is baked into the icon asset, so this renders at the
+          full 52px with no wrapper — a View behind it would double the ring. */}
+      <Image
+        source={getAsset(icon)}
+        contentFit="contain"
+        style={{ width: 52, height: 52 }}
+        alt={`${assetName} icon`}
+      />
     </View>
   </Pressable>
 );
