@@ -11,6 +11,7 @@ import NeedHelp from '@/components/NeedHelp';
 import {
   getSavingsFundNetworkChips,
   getSavingsFundTokenGroups,
+  offersExternalWalletFunding,
 } from '@/components/Savings/SavingsFund/constants';
 import SavingsFundConnectWalletRow from '@/components/Savings/SavingsFund/SavingsFundConnectWalletRow';
 import { useDimension } from '@/hooks/useDimension';
@@ -54,9 +55,13 @@ const SavingsFundOptions = ({
   const showMoveFromWallet = hasWalletFunds && !isLoadingWalletFunds;
   // Desktop connects a wallet from this screen; mobile keeps the sub-screen,
   // which also carries the QR and buy-crypto options that aren't gated on
-  // 'wallet'. A vault that takes no external-wallet deposit shows neither.
-  const showConnectWallet = isDesktop && depositConfig.methods.includes('wallet');
-  const showOther = showMoveFromWallet || showConnectWallet || !isDesktop;
+  // 'wallet'. A vault that takes no external-wallet deposit shows neither, and
+  // nor does the card's minimum-deposit step — see offersExternalWalletFunding.
+  const allowExternalWallet = offersExternalWalletFunding(intent);
+  const showConnectWallet =
+    allowExternalWallet && isDesktop && depositConfig.methods.includes('wallet');
+  const showExternalWallet = allowExternalWallet && !isDesktop;
+  const showOther = showMoveFromWallet || showConnectWallet || showExternalWallet;
 
   return (
     <View className="gap-y-8">
@@ -100,7 +105,7 @@ const SavingsFundOptions = ({
             />
           ) : null}
           {showConnectWallet ? <SavingsFundConnectWalletRow /> : null}
-          {!isDesktop ? (
+          {showExternalWallet ? (
             <CardFundRow
               icon={<FundExternalWallet width={26} height={26} />}
               title="Deposit from an external wallet"
