@@ -1,8 +1,10 @@
-import { Platform, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 
-import TrustpilotWidget from '@/components/Trustpilot/TrustpilotWidget';
 import { Text } from '@/components/ui/text';
-import { isTrustpilotConfigured } from '@/constants/trustpilot';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { isTrustpilotConfigured, TRUSTPILOT_REVIEW_URL } from '@/constants/trustpilot';
+import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 interface TrustpilotReviewCardProps {
@@ -12,8 +14,7 @@ interface TrustpilotReviewCardProps {
 }
 
 /**
- * "Enjoying Solid?" card wrapping the Trustpilot Review Collector widget, styled to sit
- * in the same stack as the settings rows.
+ * "Enjoying Solid?" review link, styled to sit in the same stack as the settings rows.
  *
  * Settings is the placement on purpose. The widget is standing UI rather than a prompt —
  * it cannot be timed to a happy moment the way the native review sheet is — so putting
@@ -31,13 +32,28 @@ export default function TrustpilotReviewCard({
 }: TrustpilotReviewCardProps) {
   if (Platform.OS !== 'web' || !isTrustpilotConfigured()) return null;
 
+  const handlePress = () => {
+    track(TRACKING_EVENTS.TRUSTPILOT_REVIEW_LINK_OPENED, { context: analyticsContext });
+    void Linking.openURL(TRUSTPILOT_REVIEW_URL);
+  };
+
   return (
-    <View className={cn('overflow-hidden rounded-xl bg-[#1c1c1c] px-5 py-4', className)}>
-      <Text className="text-base font-bold text-white">Enjoying Solid?</Text>
-      <Text className="mt-1 text-sm text-[#ACACAC]">
-        Tell others what you think — it takes a minute and it genuinely helps.
-      </Text>
-      <TrustpilotWidget analyticsContext={analyticsContext} className="mt-3" />
-    </View>
+    <Pressable
+      onPress={handlePress}
+      className={cn(
+        'flex-row items-center justify-between rounded-xl bg-[#1c1c1c] px-5 py-4 active:opacity-70',
+        className,
+      )}
+      accessibilityRole="link"
+      accessibilityLabel="Review Solid on Trustpilot"
+    >
+      <View className="flex-1 pr-4">
+        <Text className="text-base font-bold text-white">Enjoying Solid?</Text>
+        <Text className="mt-1 text-sm text-[#ACACAC]">
+          Tell others what you think — it takes a minute and it genuinely helps.
+        </Text>
+      </View>
+      <ChevronRight size={20} color="white" strokeWidth={1.5} />
+    </Pressable>
   );
 }
