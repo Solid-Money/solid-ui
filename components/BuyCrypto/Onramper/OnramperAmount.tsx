@@ -279,16 +279,24 @@ export const OnramperAmount = () => {
 
   return (
     <View className="shrink-0 gap-6">
-      {/* A forced country produces a flow that works here but would not for a
-          real user in this region — say so, or a successful test read as proof
-          the region is live. */}
-      {isCountryOverridden ? (
-        <View className="rounded-[10px] border border-amber-400/40 bg-amber-400/10 px-3 py-2">
-          <Text className="text-xs font-medium leading-[17px] text-amber-300">
-            Testing as {countryCode}. Your real region is not served — set
-            EXPO_PUBLIC_ONRAMPER_COUNTRY to change or unset it.
+      {/* Tappable on qa/preview so a tester can try another country without a
+          rebuild. Always says which country is in force: a forced one produces
+          a flow that works here and would not for a real user in that region,
+          and a successful test would otherwise read as proof the region is
+          live. */}
+      {isDevFeatureEnabled ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Testing country: ${countryCode || 'not set'}. Tap to change.`}
+          className="flex-row items-center justify-between gap-3 rounded-[10px] border border-amber-400/40 bg-amber-400/10 px-3 py-2 active:opacity-70"
+          onPress={() => setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_COUNTRY)}
+        >
+          <Text className="flex-1 text-xs font-medium leading-[17px] text-amber-300">
+            Testing as {countryCode || '—'}
+            {isCountryOverridden ? '' : ' (detected)'} · tap to change
           </Text>
-        </View>
+          <ChevronDown size={14} color="#FCD34D" />
+        </Pressable>
       ) : null}
 
       <View className="gap-2.5">

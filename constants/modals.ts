@@ -176,6 +176,11 @@ export const DEPOSIT_MODAL = {
     name: 'open_onramper_asset',
     number: 28.6,
   },
+  /** Testing-only country picker (qa/preview builds). */
+  OPEN_ONRAMPER_COUNTRY: {
+    name: 'open_onramper_country',
+    number: 28.9,
+  },
 };
 
 export const SEND_MODAL = {

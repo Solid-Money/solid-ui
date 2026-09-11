@@ -202,6 +202,7 @@ export const TRACKING_EVENTS = {
   ONRAMPER_AMOUNT_VIEWED: 'onramper_amount_viewed',
   ONRAMPER_CURRENCY_SELECTED: 'onramper_currency_selected',
   ONRAMPER_ASSET_SELECTED: 'onramper_asset_selected',
+  ONRAMPER_COUNTRY_SELECTED: 'onramper_country_selected',
   ONRAMPER_QUOTE_READY: 'onramper_quote_ready',
   ONRAMPER_QUOTE_FAILED: 'onramper_quote_failed',
   ONRAMPER_CHECKOUT_COMPLETED: 'onramper_checkout_completed',

@@ -10,6 +10,7 @@ import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import { OnramperAmount } from '@/components/BuyCrypto/Onramper/OnramperAmount';
 import { OnramperAssetSelector } from '@/components/BuyCrypto/Onramper/OnramperAssetSelector';
+import { OnramperCountrySelector } from '@/components/BuyCrypto/Onramper/OnramperCountrySelector';
 import { OnramperCurrencySelector } from '@/components/BuyCrypto/Onramper/OnramperCurrencySelector';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
@@ -160,6 +161,7 @@ const useDepositOption = ({
   const isOnramperAmount = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_AMOUNT.name;
   const isOnramperCurrency = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_CURRENCY.name;
   const isOnramperAsset = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_ASSET.name;
+  const isOnramperCountry = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_COUNTRY.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -336,6 +338,10 @@ const useDepositOption = ({
       return <OnramperAssetSelector />;
     }
 
+    if (isOnramperCountry) {
+      return <OnramperCountrySelector />;
+    }
+
     if (isPublicAddress) {
       return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
     }
@@ -430,6 +436,7 @@ const useDepositOption = ({
     if (isOnramperAmount) return 'onramper-amount';
     if (isOnramperCurrency) return 'onramper-currency';
     if (isOnramperAsset) return 'onramper-asset';
+    if (isOnramperCountry) return 'onramper-country';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -475,6 +482,7 @@ const useDepositOption = ({
     if (isOnramperAmount) return 'Buy crypto';
     if (isOnramperCurrency) return 'Select currency';
     if (isOnramperAsset) return 'Select asset';
+    if (isOnramperCountry) return 'Select country';
     if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -766,7 +774,7 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else if (isOnramperAmount) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
-    } else if (isOnramperCurrency || isOnramperAsset) {
+    } else if (isOnramperCurrency || isOnramperAsset || isOnramperCountry) {
       setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_AMOUNT);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
@@ -942,7 +950,8 @@ const useDepositOption = ({
     isVirtualAccountDetails ||
     isVirtualAccountApply ||
     isOnramperCurrency ||
-    isOnramperAsset;
+    isOnramperAsset ||
+    isOnramperCountry;
   const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
   const hideHeader = isVirtualAccountApply;
 

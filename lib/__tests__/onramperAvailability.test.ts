@@ -51,11 +51,30 @@ describe('resolveOnramperAvailability', () => {
     });
   });
 
-  it('prefers the override over whatever geo reported', () => {
+  it('prefers the env override over whatever geo reported', () => {
     expect(resolve({ countryCode: 'ZM', countryOverride: 'ES' })).toMatchObject({
       countryCode: 'ES',
       isAvailable: true,
     });
+  });
+
+  it('prefers an in-app selection over the env override', () => {
+    // A tester who just picked a country in the UI means it more recently than
+    // whoever set the .env — otherwise the picker would appear to do nothing.
+    expect(
+      resolve({ countryCode: 'ZM', countryOverride: 'ES', countrySelection: 'US' }),
+    ).toMatchObject({ countryCode: 'US', isCountryOverridden: true });
+  });
+
+  it('falls back to geo when neither override is set', () => {
+    expect(resolve({ countryCode: 'ZM' })).toMatchObject({
+      countryCode: 'ZM',
+      isCountryOverridden: false,
+    });
+  });
+
+  it('upper-cases an in-app selection', () => {
+    expect(resolve({ countrySelection: 'es' }).countryCode).toBe('ES');
   });
 
   it('reports no override when none is set', () => {

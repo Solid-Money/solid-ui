@@ -16,9 +16,18 @@ interface OnramperState {
   fiatCurrency: string | null;
   /** Onramper asset id, e.g. 'usdc_base'. Null until the assets load. */
   assetId: string | null;
+  /**
+   * Country to quote against, chosen by hand on qa/preview builds.
+   *
+   * Testing affordance only: Onramper serves very few countries, and rebuilding
+   * with a different `EXPO_PUBLIC_ONRAMPER_COUNTRY` to try another one costs a
+   * bundle each time. Null means "use the env override, or geo".
+   */
+  country: string | null;
   setFiatAmount: (fiatAmount: string) => void;
   setFiatCurrency: (fiatCurrency: string) => void;
   setAssetId: (assetId: string) => void;
+  setCountry: (country: string) => void;
   reset: () => void;
 }
 
@@ -26,11 +35,17 @@ export const useOnramperStore = create<OnramperState>(set => ({
   fiatAmount: '',
   fiatCurrency: null,
   assetId: null,
+  country: null,
   setFiatAmount: fiatAmount => set({ fiatAmount }),
   // The asset list is per-currency, so a currency change invalidates the
   // selection — clearing it lets the amount screen fall back to the first
   // deliverable asset for the new currency instead of quoting a stale pair.
   setFiatCurrency: fiatCurrency => set({ fiatCurrency, assetId: null }),
   setAssetId: assetId => set({ assetId }),
+  // Both selections are per-country, so switching clears them rather than
+  // quoting a pair the new country may not offer.
+  setCountry: country => set({ country: country.toUpperCase(), assetId: null }),
+  // `country` deliberately survives a reset: it is a tester's setting for the
+  // session, not part of the purchase being entered.
   reset: () => set({ fiatAmount: '', fiatCurrency: null, assetId: null }),
 }));
