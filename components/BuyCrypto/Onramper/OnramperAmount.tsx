@@ -15,7 +15,7 @@ import { useOnramperAssets, useOnramperConfig } from '@/hooks/useOnramper';
 import useOnramperAvailability from '@/hooks/useOnramperAvailability';
 import useOnramperCheckout from '@/hooks/useOnramperCheckout';
 import useOnramperClient from '@/hooks/useOnramperClient';
-import useUser from '@/hooks/useUser';
+import useOnramperDestination from '@/hooks/useOnramperDestination';
 import { track } from '@/lib/analytics';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { signOutOnramper } from '@/lib/onramper';
@@ -42,7 +42,6 @@ const formatAmount = (value: number | undefined, maximumFractionDigits = 2) =>
 export const OnramperAmount = () => {
   const setModal = useBuyCryptoNavigation();
   const closeDeposit = useDepositStore(state => state.setModal);
-  const { user } = useUser();
   const { countryCode, isAvailable, isCountryOverridden } = useOnramperAvailability();
 
   const fiatAmount = useOnramperStore(state => state.fiatAmount);
@@ -91,6 +90,11 @@ export const OnramperAmount = () => {
   );
   const selectedAsset = useMemo(() => assets.find(a => a.id === assetId), [assets, assetId]);
 
+  // The address Onramper delivers to. Minted per chain+token, never the Safe —
+  // see useOnramperDestination for why that distinction is load-bearing.
+  const { data: destination, isLoading: destinationLoading } =
+    useOnramperDestination(selectedAsset);
+
   const {
     button,
     quote,
@@ -104,7 +108,7 @@ export const OnramperAmount = () => {
     paymentMethod: paymentMethod?.id,
     country: countryCode,
     network: selectedAsset?.network,
-    address: user?.safeAddress,
+    address: destination?.walletAddress,
   });
 
   // What the checkout listeners below report. Held in a ref so they can be
@@ -421,13 +425,15 @@ export const OnramperAmount = () => {
         {button ?? (
           <View className="h-12 items-center justify-center rounded-full bg-white/20">
             <Text className="text-base font-bold text-white">
-              {quoteLoading
-                ? 'Getting quote…'
-                : belowMin || aboveMax || isAmountOutOfRange
-                  ? 'Amount out of limits'
-                  : hasAmount
-                    ? 'Quote unavailable'
-                    : 'Enter an amount'}
+              {destinationLoading
+                ? 'Preparing your deposit address…'
+                : quoteLoading
+                  ? 'Getting quote…'
+                  : belowMin || aboveMax || isAmountOutOfRange
+                    ? 'Amount out of limits'
+                    : hasAmount
+                      ? 'Quote unavailable'
+                      : 'Enter an amount'}
             </Text>
           </View>
         )}

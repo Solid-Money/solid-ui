@@ -177,10 +177,11 @@ const DepositTypeSelection = () => {
           </Pressable>
         </CardFundGroup>
 
-        {/* Onramper's checkout is a native iOS Apple Pay flow, and it only
-            prices for a few countries — `useOnramperAvailability` gates on both,
-            so this group is absent rather than empty everywhere else. */}
-        {true ? (
+        {/* Onramper's checkout is a native iOS Apple Pay view, so there is
+            nothing to render off iOS. Region is deliberately not gated here —
+            an unserved country reaches the screen and finds an empty asset
+            list, which is the honest answer. */}
+        {isOnramperAvailable ? (
           <CardFundGroup label="Other">
             <CardFundRow
               icon={
