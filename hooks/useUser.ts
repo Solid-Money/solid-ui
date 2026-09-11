@@ -292,17 +292,35 @@ const useUser = (): UseUserReturn => {
       // Step 3: Authenticate with our backend using the signed request
       const user = await login(stamp);
 
-      const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
+      // The login response already carries the account's safe address, so the
+      // usual path no longer derives it locally. Deriving it means a Turnkey
+      // `createAccount` round trip plus the RPC calls `toSafeSmartAccount` makes
+      // — all of it in front of the user, who is watching a spinner, to arrive
+      // at an address the server just sent us. The smart-account *client* is
+      // only needed to sign a transaction, and that is built on demand by the
+      // flows that actually send one.
+      //
+      // The fallback below covers the one case that genuinely has no address on
+      // file, which is the same condition that already triggered the sync.
+      let safeAddress = user.safeAddress;
 
-      if (!user.safeAddress || user.safeAddress === '') {
+      if (!safeAddress) {
+        const smartAccountClient = await safeAA(
+          mainnet,
+          user.subOrganizationId,
+          user.walletAddress,
+        );
+        // Bound to a const so the closure below captures the derived address
+        // itself rather than the reassignable outer binding.
+        const derivedSafeAddress = smartAccountClient.account.address;
+        safeAddress = derivedSafeAddress;
+
         console.warn('[useUser] updating safe address on login (missing on user)', {
           userId: user._id,
-          safeAddress: smartAccountClient.account.address,
+          safeAddress: derivedSafeAddress,
         });
 
-        const resp = await withRefreshToken(() =>
-          updateSafeAddress(smartAccountClient.account.address),
-        );
+        const resp = await withRefreshToken(() => updateSafeAddress(derivedSafeAddress));
 
         if (!resp) {
           const error = new Error('Error updating safe address on login');
@@ -313,7 +331,7 @@ const useUser = (): UseUserReturn => {
             },
             user: {
               id: user._id,
-              address: smartAccountClient.account.address,
+              address: derivedSafeAddress,
             },
           });
         }
@@ -323,7 +341,7 @@ const useUser = (): UseUserReturn => {
       }
 
       const selectedUser: User = {
-        safeAddress: smartAccountClient.account.address,
+        safeAddress,
         walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
@@ -359,12 +377,16 @@ const useUser = (): UseUserReturn => {
         });
       }
 
-      await checkBalance(selectedUser);
+      // Started, not awaited. This is a subgraph query whose only job is to set
+      // `isDeposited` on the stored user; the home screen derives the same flag
+      // from its own queries, and `usePostSignupInit` runs this again on mount.
+      // Blocking navigation on it just moved the wait in front of the user.
+      void checkBalance(selectedUser);
 
       // Identify user in analytics with full attribution context
       trackIdentity(user.userId, {
         username: user.username,
-        safe_address: smartAccountClient.account.address,
+        safe_address: safeAddress,
         email: user.email,
         has_referral_code: !!user.referralCode,
         login_method: 'passkey',
@@ -374,25 +396,29 @@ const useUser = (): UseUserReturn => {
         attribution_channel: getAttributionChannel(attributionData),
       });
 
-      // Fetch points after successful login
-      try {
-        const { fetchPoints } = usePointsStore.getState();
-        await fetchPoints();
-      } catch (error) {
-        console.warn('Failed to fetch points:', error);
-        Sentry.captureException(new Error('Error fetching points'), {
-          extra: {
-            error,
-          },
+      // Fetch points after successful login — in the background. Points are not
+      // on the first screen the user lands on, and the summary behind this is
+      // one of the slower endpoints we have, so awaiting it here meant the
+      // login button stayed busy for a number nothing was waiting to render.
+      // `usePostSignupInit` also fetches these once the app is up.
+      usePointsStore
+        .getState()
+        .fetchPoints()
+        .catch(error => {
+          console.warn('Failed to fetch points:', error);
+          Sentry.captureException(new Error('Error fetching points'), {
+            extra: {
+              error,
+            },
+          });
+          // Don't fail login if points fetch fails
         });
-        // Don't fail login if points fetch fails
-      }
 
       setLoginInfo({ status: Status.SUCCESS });
       track(TRACKING_EVENTS.LOGGED_IN, {
         user_id: user.userId,
         username: user.username,
-        safe_address: smartAccountClient.account.address,
+        safe_address: safeAddress,
         has_email: !!user.email,
         is_deposited: !!user.isDeposited,
         device_id: deviceId,
@@ -403,7 +429,7 @@ const useUser = (): UseUserReturn => {
       // Update user properties on login with attribution
       trackIdentity(user.userId, {
         username: user.username,
-        safe_address: smartAccountClient.account.address,
+        safe_address: safeAddress,
         has_email: !!user.email,
         is_deposited: !!user.isDeposited,
         last_login_date: new Date().toISOString(),
