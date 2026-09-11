@@ -16,7 +16,6 @@ describe('resolveOnramperAvailability', () => {
     resolveOnramperAvailability({
       isPlatformSupported: true,
       countryCode: 'US',
-      isGeoLoading: false,
       ...overrides,
     });
 
@@ -38,12 +37,10 @@ describe('resolveOnramperAvailability', () => {
     }
   });
 
-  it('withholds the flow while geo is still resolving', () => {
-    // Appearing and then vanishing reads as a bug; the lookup settles quickly.
-    expect(resolve({ countryCode: '', isGeoLoading: true })).toMatchObject({
-      isAvailable: false,
-      isLoading: true,
-    });
+  it('offers the flow before geo has resolved', () => {
+    // Geography gates nothing now, including the lookup finishing. A slow or
+    // failing IP lookup must not withhold the row.
+    expect(resolve({ countryCode: '' })).toMatchObject({ isAvailable: true });
   });
 
   it('runs as the overridden country and flags that it did', () => {
@@ -54,12 +51,10 @@ describe('resolveOnramperAvailability', () => {
     });
   });
 
-  it('stops waiting on the IP lookup once a country is overridden', () => {
-    // The tester already said which country to use; blocking on a lookup whose
-    // answer is discarded would keep them out of the flow.
-    expect(resolve({ countryCode: '', countryOverride: 'US', isGeoLoading: true })).toMatchObject({
+  it('prefers the override over whatever geo reported', () => {
+    expect(resolve({ countryCode: 'ZM', countryOverride: 'ES' })).toMatchObject({
+      countryCode: 'ES',
       isAvailable: true,
-      isLoading: false,
     });
   });
 

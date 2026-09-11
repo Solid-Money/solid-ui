@@ -15,7 +15,7 @@ import { useOnramperAssets, useOnramperConfig } from '@/hooks/useOnramper';
 import useOnramperAvailability from '@/hooks/useOnramperAvailability';
 import useOnramperCheckout from '@/hooks/useOnramperCheckout';
 import useOnramperClient from '@/hooks/useOnramperClient';
-import useOnramperDestination from '@/hooks/useOnramperDestination';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { signOutOnramper } from '@/lib/onramper';
@@ -42,6 +42,7 @@ const formatAmount = (value: number | undefined, maximumFractionDigits = 2) =>
 export const OnramperAmount = () => {
   const setModal = useBuyCryptoNavigation();
   const closeDeposit = useDepositStore(state => state.setModal);
+  const { user } = useUser();
   const { countryCode, isAvailable, isCountryOverridden } = useOnramperAvailability();
 
   const fiatAmount = useOnramperStore(state => state.fiatAmount);
@@ -90,11 +91,6 @@ export const OnramperAmount = () => {
   );
   const selectedAsset = useMemo(() => assets.find(a => a.id === assetId), [assets, assetId]);
 
-  // The address Onramper delivers to. Minted per chain+token, never the Safe —
-  // see useOnramperDestination for why that distinction is load-bearing.
-  const { data: destination, isLoading: destinationLoading } =
-    useOnramperDestination(selectedAsset);
-
   const {
     button,
     quote,
@@ -108,7 +104,12 @@ export const OnramperAmount = () => {
     paymentMethod: paymentMethod?.id,
     country: countryCode,
     network: selectedAsset?.network,
-    address: destination?.walletAddress,
+    // The user's Safe, as requested. Worth knowing: the deposit webhook matches
+    // incoming transfers against registered direct-deposit addresses only, and
+    // the Safe is not registered on any EVM stream — so a delivery on Ethereum
+    // or Base is not currently detected or bridged. Crediting it needs a change
+    // on the backend side, not here.
+    address: user?.safeAddress,
   });
 
   // What the checkout listeners below report. Held in a ref so they can be
@@ -425,15 +426,13 @@ export const OnramperAmount = () => {
         {button ?? (
           <View className="h-12 items-center justify-center rounded-full bg-white/20">
             <Text className="text-base font-bold text-white">
-              {destinationLoading
-                ? 'Preparing your deposit address…'
-                : quoteLoading
-                  ? 'Getting quote…'
-                  : belowMin || aboveMax || isAmountOutOfRange
-                    ? 'Amount out of limits'
-                    : hasAmount
-                      ? 'Quote unavailable'
-                      : 'Enter an amount'}
+              {quoteLoading
+                ? 'Getting quote…'
+                : belowMin || aboveMax || isAmountOutOfRange
+                  ? 'Amount out of limits'
+                  : hasAmount
+                    ? 'Quote unavailable'
+                    : 'Enter an amount'}
             </Text>
           </View>
         )}

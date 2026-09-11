@@ -19,9 +19,8 @@ export const resolveOnramperCountryOverride = (
 };
 
 export interface OnramperAvailability {
-  /** Whether to offer the flow at all. */
+  /** Whether to offer the flow at all. Platform only. */
   isAvailable: boolean;
-  isLoading: boolean;
   /** Country sent to Onramper — it refuses to price without one. */
   countryCode: string;
   isPlatformSupported: boolean;
@@ -35,41 +34,34 @@ export interface OnramperAvailability {
  * Platform only. The package wraps Onramper's *iOS* SDK, so off iOS there is no
  * native checkout button to render at all — a hard limit, not a policy.
  *
- * There is deliberately no region gate here. An earlier version asked the
- * backend whether buys complete in the user's country and hid the row when they
- * did not, which is the right end state but hid the flow from everyone outside
- * the US while the one EU-capable ramp was failing. The screen still reports an
- * unserved region honestly — the asset list comes back empty and no quote is
- * produced — so removing the gate costs discoverability of the failure, not
- * safety. Restore it by gating on the `isSupported` that `/onramper/config`
- * still returns.
+ * Nothing about geography gates this: not the country, and not whether the IP
+ * lookup has finished. An earlier version did both — it asked the backend
+ * whether buys complete in the user's country, and waited on geo before
+ * deciding — which hid the flow from everyone outside the US while the one
+ * EU-capable ramp was failing, and hid it again whenever the lookup was slow.
+ * An unserved region still reports itself honestly further in: the asset list
+ * comes back empty and no quote is produced.
+ *
+ * `countryCode` is still resolved, because Onramper refuses to price without
+ * one — it just no longer decides whether the row appears. Restore the gate by
+ * reading the `isSupported` that `/onramper/config` still returns.
  */
 export const resolveOnramperAvailability = ({
   isPlatformSupported,
   countryCode,
   countryOverride,
-  isGeoLoading,
 }: {
   isPlatformSupported: boolean;
   /** Country from geo. Ignored when `countryOverride` is set. */
   countryCode: string;
   /** Testing override from `resolveOnramperCountryOverride`. */
   countryOverride?: string;
-  /** The IP lookup is still running. Irrelevant once overridden. */
-  isGeoLoading: boolean;
 }): OnramperAvailability => {
   const isCountryOverridden = !!countryOverride;
-  const normalized = countryOverride ?? countryCode.toUpperCase();
-
-  // An override makes the IP lookup irrelevant, so it must not still be waited
-  // on — otherwise a tester in a country the lookup is slow or failing for
-  // can't reach the flow they overrode their way into.
-  const waiting = isCountryOverridden ? false : isGeoLoading;
 
   return {
-    isAvailable: isPlatformSupported && !waiting,
-    isLoading: waiting,
-    countryCode: normalized,
+    isAvailable: isPlatformSupported,
+    countryCode: countryOverride ?? countryCode.toUpperCase(),
     isPlatformSupported,
     isCountryOverridden,
   };

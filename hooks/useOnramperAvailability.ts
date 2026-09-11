@@ -13,10 +13,10 @@ import type { OnramperAvailability } from '@/lib/onramperAvailability';
 /**
  * Whether to offer the Onramper buy-crypto flow, and which country to quote
  * against. The decision lives in `lib/onramperAvailability` — see it for why
- * there is no region gate here.
+ * geography gates nothing here.
  */
 export default function useOnramperAvailability(): OnramperAvailability {
-  const { countryCode, isLoading: isGeoLoading } = useGeoCompliance();
+  const { countryCode } = useGeoCompliance();
 
   const countryOverride = resolveOnramperCountryOverride(
     EXPO_PUBLIC_ONRAMPER_COUNTRY,
@@ -29,8 +29,7 @@ export default function useOnramperAvailability(): OnramperAvailability {
         isPlatformSupported: isOnramperSupported,
         countryCode,
         countryOverride,
-        isGeoLoading,
       }),
-    [countryCode, countryOverride, isGeoLoading],
+    [countryCode, countryOverride],
   );
 }
