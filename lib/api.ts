@@ -2780,6 +2780,48 @@ export const checkUsernameAvailability = async (
 };
 
 /**
+ * Change the signed-in user's handle. The server re-checks the format, the
+ * reserved list and uniqueness, so its refusal is what the screen shows — the
+ * name being taken in particular, which no local check can know.
+ */
+export const updateUsername = async (username: string): Promise<{ username: string }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-username`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ username }),
+    },
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    // Nest reports a single failure as a string and validation failures as an
+    // array of them.
+    const message = Array.isArray(data?.message) ? data.message.join('. ') : data?.message;
+    const error = new Error(
+      message || 'Could not change your username. Please try again.',
+    ) as Error & {
+      status: number;
+      data: unknown;
+    };
+    // `status` is what withRefreshToken reads to retry an expired session, and
+    // what tells a taken handle apart from any other refusal.
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return response.json();
+};
+
+/**
  * Step 3: Create account with email auth proof and optional passkey data (public)
  */
 export const emailSignUp = async (

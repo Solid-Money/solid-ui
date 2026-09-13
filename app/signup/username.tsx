@@ -14,6 +14,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
+import { USERNAME_TAKEN_FALLBACK, useUsernameAvailability } from '@/hooks/useUsernameAvailability';
 import { track } from '@/lib/analytics';
 import { checkUsernameAvailability } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -26,15 +27,6 @@ import {
   USERNAME_MAX_LENGTH,
 } from '@/lib/utils/username';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
-
-// Long enough that a typed-out name is checked once rather than per keystroke.
-const AVAILABILITY_DEBOUNCE_MS = 400;
-
-type Availability =
-  | { status: 'idle' }
-  | { status: 'checking' }
-  | { status: 'available' }
-  | { status: 'unavailable'; reason: string };
 
 export default function SignupUsername() {
   const router = useRouter();
@@ -53,7 +45,7 @@ export default function SignupUsername() {
     );
 
   const [value, setValue] = useState('');
-  const [availability, setAvailability] = useState<Availability>({ status: 'idle' });
+  const availability = useUsernameAvailability(value);
   // The format error is only shown once the user has tried to continue, so a
   // half-typed name is not called invalid while they are still typing it.
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -90,40 +82,6 @@ export default function SignupUsername() {
     track(TRACKING_EVENTS.USERNAME_STEP_VIEWED, { email });
   }, [_hasHydrated, email]);
 
-  // Check availability once typing settles, so the answer is on screen before
-  // the user reaches for Continue.
-  useEffect(() => {
-    if (getUsernameFormatError(value)) {
-      setAvailability({ status: 'idle' });
-      return;
-    }
-
-    const candidate = normalizeUsername(value);
-    setAvailability({ status: 'checking' });
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const result = await checkUsernameAvailability(candidate);
-        if (cancelled) return;
-        setAvailability(
-          result.available
-            ? { status: 'available' }
-            : { status: 'unavailable', reason: result.reason || 'This username is already taken' },
-        );
-      } catch {
-        // A check that cannot reach the server must not block the step: the
-        // signup request validates the name again and is the real gate.
-        if (!cancelled) setAvailability({ status: 'idle' });
-      }
-    }, AVAILABILITY_DEBOUNCE_MS);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [value]);
-
   const handleChange = (text: string) => {
     setValue(sanitizeUsernameInput(text));
     setSubmitError(null);
@@ -147,8 +105,7 @@ export default function SignupUsername() {
       // may be stale or may never have run on a slow connection.
       const result = await checkUsernameAvailability(candidate);
       if (!result.available) {
-        const reason = result.reason || 'This username is already taken';
-        setAvailability({ status: 'unavailable', reason });
+        const reason = result.reason || USERNAME_TAKEN_FALLBACK;
         setSubmitError(reason);
         track(TRACKING_EVENTS.USERNAME_UNAVAILABLE, { email, reason });
         return;

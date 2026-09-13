@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Href } from 'expo-router';
 import { ChevronRight, X } from 'lucide-react-native';
 import { Address } from 'viem';
 
@@ -149,8 +150,10 @@ export default function Account() {
             </>
           )} */}
 
-          {/* User Name Section - shown for legacy users or users with custom username */}
-          {user?.username && !user.username.startsWith('user_') && (
+          {/* User Name Section - the handle other people see, and can be changed.
+              Shown for auto-generated handles too: those are exactly the users
+              who have a reason to pick their own. */}
+          {user?.username && (
             <>
               <Text className="mb-4 text-base font-bold text-white">User Name</Text>
               <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">
@@ -160,13 +163,15 @@ export default function Account() {
                   isDesktop={isDesktop}
                   hideIconBackground
                   titleStyle="font-medium"
+                  link={'/settings/username' as Href}
+                  customAction={<ChevronRight size={20} />}
                 />
               </View>
             </>
           )}
 
           {/* Fallback for users with neither email nor username (should not happen) */}
-          {!user?.email && (!user?.username || user.username.startsWith('user_')) && (
+          {!user?.email && !user?.username && (
             <>
               <Text className="mb-4 text-base font-bold text-white">Account</Text>
               <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">

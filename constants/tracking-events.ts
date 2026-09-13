@@ -230,6 +230,9 @@ export const TRACKING_EVENTS = {
   USERNAME_STEP_VIEWED: 'username_step_viewed',
   USERNAME_SUBMITTED: 'username_submitted',
   USERNAME_UNAVAILABLE: 'username_unavailable',
+  USERNAME_CHANGE_VIEWED: 'username_change_viewed',
+  USERNAME_CHANGED: 'username_changed',
+  USERNAME_CHANGE_FAILED: 'username_change_failed',
 
   // Passkey Events
   PASSKEY_ADDED: 'passkey_added',

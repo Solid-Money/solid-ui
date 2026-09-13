@@ -42,6 +42,14 @@ export default function SettingsLayout() {
         }}
       />
       <Stack.Screen
+        name="username"
+        options={{
+          title: 'Username',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="help"
         options={{
           title: 'Help & Support',
