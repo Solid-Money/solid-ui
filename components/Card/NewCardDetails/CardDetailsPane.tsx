@@ -154,6 +154,7 @@ const CardDetailsPane = () => {
   const fundsAccess = {
     isCardFrozen,
     isCustomerRestricted: isCustomerFundsRestricted(customer?.status),
+    provider,
   };
 
   /**

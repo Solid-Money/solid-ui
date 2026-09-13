@@ -70,6 +70,12 @@ export interface CardFundsAccess {
   isCardFrozen: boolean;
   /** KYC is paused or the customer is offboarded — see `isCustomerFundsRestricted`. */
   isCustomerRestricted: boolean;
+  /**
+   * Which issuer the card is on. `null`/`undefined` while it is still
+   * resolving — treated as Rain, so a slow query never hides an action a Rain
+   * cardholder has.
+   */
+  provider?: CardProvider | null;
 }
 
 /**
@@ -100,9 +106,17 @@ export const canAddFundsToCard = ({
  * unfreezing — which would undo a compliance hold and so has to go through
  * support — taking collateral out is not a way around the freeze, and the API
  * permits it either way; hiding the button would only hide it from the app.
+ *
+ * It does read the issuer, for the same reason {@link canDepositToCard} does.
+ * A Wirex card holds no balance of its own, so there is no collateral proxy to
+ * withdraw from and no backend endpoint that would serve one — the withdraw
+ * screen's Rain-only collateral query never even runs, leaving the cardholder
+ * on "$0" with Max greyed out while their card reports a balance. Their money
+ * is in savings and comes out through the savings withdrawal, so offering this
+ * action was offering a dead end.
  */
-export const canWithdrawFromCard = ({ isCustomerRestricted }: CardFundsAccess): boolean =>
-  !isCustomerRestricted;
+export const canWithdrawFromCard = ({ isCustomerRestricted, provider }: CardFundsAccess): boolean =>
+  !isCustomerRestricted && cardHoldsBalance(provider);
 
 /**
  * Whether this card can be funded by depositing onto it.

@@ -1,4 +1,4 @@
-import { KycStatus } from '@/lib/types';
+import { CardProvider, KycStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
   canWithdrawFromCard,
@@ -31,6 +31,21 @@ describe('card funds access', () => {
     it('hides Withdraw for a paused or offboarded customer', () => {
       expect(canWithdrawFromCard(restricted)).toBe(false);
       expect(canWithdrawFromCard({ isCardFrozen: true, isCustomerRestricted: true })).toBe(false);
+    });
+
+    it('hides Withdraw on a Wirex card, which holds no balance of its own', () => {
+      // There is no collateral proxy behind a Wirex card and no backend
+      // endpoint that would serve one, so the withdraw screen's Rain-only
+      // collateral query never ran and the cardholder sat on "$0" with Max
+      // greyed out. Their money comes out through the savings withdrawal.
+      expect(canWithdrawFromCard({ ...live, provider: CardProvider.WIREX })).toBe(false);
+    });
+
+    it('offers Withdraw on a Rain card and before the issuer resolves', () => {
+      expect(canWithdrawFromCard({ ...live, provider: CardProvider.RAIN })).toBe(true);
+      // An unresolved issuer must not cost a Rain cardholder the action.
+      expect(canWithdrawFromCard({ ...live, provider: null })).toBe(true);
+      expect(canWithdrawFromCard({ ...live, provider: undefined })).toBe(true);
     });
   });
 

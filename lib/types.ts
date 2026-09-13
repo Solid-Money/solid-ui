@@ -1035,6 +1035,14 @@ export interface CardCollateralAvailableDto {
   spendingPowerUsd?: number;
   /** Which of the two caps is currently binding for the default asset. */
   limitedBy: 'collateral' | 'spendingPower' | 'none';
+  /**
+   * Set when the default asset's balance could not be read (RPC failure,
+   * unsupported chain). `availableUsd` is 0 then because the backend will not
+   * quote a figure it did not read — NOT because the card is empty. A screen
+   * that renders this as "$0 available" tells a funded cardholder their money
+   * is gone; show it as unknown and let them retry.
+   */
+  unavailableReason?: string;
   /** Default asset a withdrawal draws from; absent when the user has none. */
   chainId?: number;
   collateralProxy?: string;
