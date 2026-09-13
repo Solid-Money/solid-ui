@@ -8,10 +8,22 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Text } from '@/components/ui/text';
-import faqs from '@/constants/faqs';
+import { getVaultFaqs } from '@/constants/vault-faqs';
+import { VaultType } from '@/lib/types';
 
-/** Figma 24805:8738 / 24805:8760 — compact FAQ card for the vault detail screen. */
-const VaultFaqCard = () => {
+type VaultFaqCardProps = {
+  vaultType: VaultType;
+};
+
+/**
+ * Figma 24805:8738 / 24805:8760 — compact FAQ card for the vault detail screen.
+ *
+ * The questions are vault-specific: the ETH and FUSE vaults answer for soETH
+ * and soFUSE rather than reusing the soUSD list.
+ */
+const VaultFaqCard = ({ vaultType }: VaultFaqCardProps) => {
+  const faqs = getVaultFaqs(vaultType);
+
   return (
     <View className="mx-4">
       <Text className="text-[16px] font-normal leading-[16px] text-white/50">
@@ -21,7 +33,14 @@ const VaultFaqCard = () => {
       <View className="mt-[13px] overflow-hidden rounded-[20px] bg-[#1C1C1C] py-[5px]">
         <Accordion type="multiple" collapsible className="w-full">
           {faqs.map((faq, index) => (
-            <AccordionItem key={faq.question} value={`vault-faq-${index}`} className="border-t-0">
+            // Scoped to the vault so switching vaults on the same mounted
+            // screen collapses the rows instead of leaving an index expanded
+            // onto a different question.
+            <AccordionItem
+              key={faq.question}
+              value={`${vaultType}-faq-${index}`}
+              className="border-t-0"
+            >
               <AccordionTrigger
                 className="min-h-[47px] gap-[5px] px-5 py-3"
                 iconClassName="text-white"
