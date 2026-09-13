@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 
 import {
   CARD_BODY_BLEED_PERCENT,
@@ -14,8 +15,13 @@ import NewCardArt, { NEW_CARD_ASPECT_RATIO } from '@/components/Card/NewCardDeta
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
@@ -86,16 +92,41 @@ const HomeWalletCard = ({
   const pageLeft = usePageLeft();
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
+  const { data: cardStatus } = useCardStatus();
+  // Verification already submitted, decision still out — for either issuer.
+  const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
 
   const card = <NewCardArt last4={last4} />;
+
+  /**
+   * Tapping the card with no card yet.
+   *
+   * Someone who has already submitted their verification is sent straight to the
+   * "your card is on its way" screen. The "Your card is waiting → Verify now"
+   * prompt is the wrong thing to put in front of them: its CTA starts card
+   * onboarding, which for an applicant mid-decision means country selection and
+   * a fresh KYC session — asking them to redo work they have finished.
+   */
+  const handleCardlessPress = () => {
+    if (awaitingKycDecision) {
+      track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
+        source: 'home_wallet_card',
+        kycStatus: cardStatus?.kycStatus,
+        rainApplicationStatus: cardStatus?.rainApplicationStatus,
+      });
+      router.push(path.CARD_ACTIVATE);
+      return;
+    }
+    setIsVerificationOpen(true);
+  };
 
   if (!hasCard) {
     return (
       <View>
         <Pressable
-          accessibilityLabel="Get your card"
+          accessibilityLabel={awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
           accessibilityRole="button"
-          onPress={() => setIsVerificationOpen(true)}
+          onPress={handleCardlessPress}
           className="px-4"
         >
           {hasCtaBanner ? (
@@ -117,8 +148,12 @@ const HomeWalletCard = ({
                 style={styles.getCardPanel}
               >
                 <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
+                  {/* The strip is the fallback entry point, so it is also what an
+                      applicant mid-decision sees once they have snoozed the CTA
+                      banner. "Get your card" would be the wrong invitation there;
+                      this is the banner's own copy for the same rung. */}
                   <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
-                    Get your card
+                    {awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
                   </Text>
                   <Image
                     source={getAsset('images/get-your-card-chevron.svg')}

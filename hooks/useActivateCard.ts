@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -10,6 +9,8 @@ import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
 import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
+import { isCardIssuanceUnderReview } from '@/lib/utils/cardReviewState';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -36,6 +37,11 @@ export function useActivateCard() {
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
 
+  // Whether verification is in and a decision is pending, for either live
+  // issuer — Rain/Didit's application status and the backend kycStatus the
+  // Wirex/Sumsub flow reports are folded into one answer upstream.
+  const awaitingKycDecision = isKycAwaitingDecision(cardStatusResponse);
+
   // Country check logic (Rain-first: Bridge-only = no card). Skip when user already has card,
   // has confirmed country, or has Rain application status (already in KYC flow).
   const userHasCard = hasCard(cardStatusResponse);
@@ -43,12 +49,17 @@ export function useActivateCard() {
   // A card already ordered clears the gate too — this screen is where a pending
   // card waits, and re-running an IP check on someone mid-issuance would bounce a
   // traveller (or anyone behind a VPN) into country selection and restart the
-  // onboarding they just finished.
+  // onboarding they just finished. A submitted verification clears it for the
+  // same reason, and needs saying separately: a Wirex/Sumsub applicant has no
+  // Rain application for the clause above to catch, so an IP guess could bounce
+  // one mid-decision into country selection — which is the "we just show the
+  // verify page again" loop this screen exists to end.
   const skipCountryCheck =
     countryConfirmed === 'true' ||
     userHasCard ||
     hasPendingCard(cardStatusResponse) ||
-    hasRainApplicationStatus;
+    hasRainApplicationStatus ||
+    awaitingKycDecision;
   const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
   const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
@@ -63,11 +74,15 @@ export function useActivateCard() {
     cardsEndorsement,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
-  // Derived: under review state
-  const isUnderReview =
-    cardsEndorsement?.status === EndorsementStatus.INCOMPLETE &&
-    Array.isArray(cardsEndorsement?.requirements?.pending) &&
-    cardsEndorsement.requirements.pending.length > 0;
+  // Derived: under review state — the screen shows "your card is on its way"
+  // instead of a steps list the user cannot move. Previously read from the
+  // bridge.xyz endorsement alone, which is a concept neither live issuer has, so
+  // a Wirex/Sumsub or Rain/Didit applicant mid-decision fell through to the
+  // steps list and was asked to verify all over again.
+  const isUnderReview = isCardIssuanceUnderReview({
+    cardStatus: cardStatusResponse,
+    cardsEndorsement,
+  });
 
   // Track page view on mount
   useEffect(() => {

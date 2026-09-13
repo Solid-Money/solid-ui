@@ -5,6 +5,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useDepositStore } from '@/store/useDepositStore';
 
 export interface HomeSetupStep {
@@ -68,7 +69,17 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
     // useCountryCheck use). These steps used to fall back to `/card`, the deprecated
     // waitlist page — and they fall back often: `activate` has no onPress until KYC
     // is complete, and `kyc` has none while its button is disabled.
-    const startCardOnboarding = () => router.push(path.CARD_COUNTRY_SELECTION);
+    //
+    // "While its button is disabled" includes a verification that is submitted and
+    // waiting on a decision, and for that case country selection is the wrong
+    // fallback in both directions: it restarts onboarding the applicant finished,
+    // and the KYC session it leads to is refused once a provider consumer exists.
+    // The issuance screen is where that state belongs — it renders "your card is
+    // on its way".
+    const startCardOnboarding = () =>
+      router.push(
+        isKycAwaitingDecision(cardStatus) ? path.CARD_ACTIVATE : path.CARD_COUNTRY_SELECTION,
+      );
 
     const steps: HomeSetupStep[] = [
       {
@@ -105,5 +116,5 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
     const firstIncomplete = steps.find(step => !step.completed);
 
     return { steps, completedCount, total: steps.length, firstIncomplete };
-  }, [cardSteps, depositCompleted, router]);
+  }, [cardSteps, cardStatus, depositCompleted, router]);
 }
