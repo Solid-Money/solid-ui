@@ -97,6 +97,7 @@ export const OnramperAmount = () => {
     isLoading: quoteLoading,
     error: quoteError,
     isAmountOutOfRange,
+    blockedReason,
   } = useOnramperCheckout(client, {
     source: fiatCurrency,
     destination: assetId,
@@ -419,6 +420,30 @@ export const OnramperAmount = () => {
         ) : null}
         {quoteError && !isAmountOutOfRange ? (
           <Text className="text-xs text-red-500">{quoteError.message}</Text>
+        ) : null}
+        {/* The sentence above is all a real user can act on. On qa/preview the
+            code is the diagnosis — `quoteUnavailable` for a pair no ramp sells
+            reads identically to one where the ramp is down — and reading it here
+            beats tailing the bundler on a physical device. */}
+        {/* Nothing was even attempted — name the missing precondition, or an
+            unserved country is indistinguishable from a broken one. */}
+        {isDevFeatureEnabled && !quoteError && blockedReason && hasAmount ? (
+          <Text
+            selectable
+            className="text-xs leading-[17px] text-amber-300"
+            style={{ fontFamily: 'monospace' }}
+          >
+            no checkout attempted — {blockedReason}
+          </Text>
+        ) : null}
+        {isDevFeatureEnabled && quoteError ? (
+          <Text
+            selectable
+            className="text-xs leading-[17px] text-amber-300"
+            style={{ fontFamily: 'monospace' }}
+          >
+            {describeOnramperError(quoteError)}
+          </Text>
         ) : null}
       </View>
 

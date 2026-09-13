@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import useDebounce from '@/hooks/useDebounce';
+import { describeOnramperError } from '@/lib/onramperErrors';
 
 import type { OnramperClient, OnramperError, QuoteResponse } from '@onramper/onramper-react-native';
 import type { ReactNode } from 'react';
@@ -43,6 +44,12 @@ interface UseOnramperCheckoutReturn {
   error: OnramperError | undefined;
   /** True when the amount is outside the ramp's limits, rather than a real fault. */
   isAmountOutOfRange: boolean;
+  /**
+   * Why no checkout was attempted, when none was. Diagnostic only — the screen
+   * shows it on qa/preview builds so an unattempted call is distinguishable
+   * from a failed one.
+   */
+  blockedReason: string | undefined;
 }
 
 /**
@@ -75,21 +82,42 @@ export default function useOnramperCheckout(
   // second must win regardless of which resolves first.
   const requestId = useRef(0);
 
-  const isReady =
-    !!client &&
-    !!source &&
-    !!destination &&
-    !!paymentMethod &&
-    !!country &&
-    !!network &&
-    !!address &&
-    Number.isFinite(numericAmount) &&
-    numericAmount > 0;
+  /**
+   * The first precondition `getCheckoutRequirements` is missing, or undefined
+   * when there are none.
+   *
+   * Without this an unmet precondition and a failed call look identical on
+   * screen — both leave the CTA at "Quote unavailable" with nothing said. They
+   * are very different problems: a country Onramper doesn't serve returns no
+   * assets, so `destination` is never set and the SDK is never even called.
+   * Ordered so the most upstream cause is named first.
+   */
+  const missing = !client
+    ? 'SDK not initialized'
+    : !country
+      ? 'no country'
+      : !source
+        ? 'no currency selected'
+        : !destination
+          ? 'no asset available for this currency'
+          : !network
+            ? 'asset has no network'
+            : !paymentMethod
+              ? 'no payment method for this country'
+              : !address
+                ? 'no wallet address'
+                : !(Number.isFinite(numericAmount) && numericAmount > 0)
+                  ? 'no amount entered'
+                  : undefined;
+
+  const isReady = !missing;
 
   useEffect(() => {
     const id = ++requestId.current;
 
-    if (!isReady) {
+    // `missing` already covers a null client; naming it again is what narrows
+    // the type for the call below.
+    if (!isReady || !client) {
       // Drop a button prepared for an earlier selection — leaving it on screen
       // would offer a checkout for something the inputs no longer describe.
       setButton(null);
@@ -122,6 +150,14 @@ export default function useOnramperCheckout(
       })
       .catch((e: unknown) => {
         if (id !== requestId.current) return;
+        // The screen has room for one sentence, and `quoteUnavailable` reads the
+        // same whether the pair is unsold, the ramp is down, or the request was
+        // malformed. The code and the pair are what separate those.
+        console.error(
+          `[Onramper] getCheckoutRequirements failed for ${source}->${destination} ` +
+            `(${numericAmount} ${source}, ${paymentMethod}, ${country}): ` +
+            describeOnramperError(e),
+        );
         setButton(null);
         setQuote(undefined);
         setError(e as OnramperError);
@@ -150,5 +186,6 @@ export default function useOnramperCheckout(
     // The amount being out of range is the input's problem to state, not a
     // failure worth an error screen.
     isAmountOutOfRange: error?.code === 'amountOutOfRange',
+    blockedReason: missing,
   };
 }
