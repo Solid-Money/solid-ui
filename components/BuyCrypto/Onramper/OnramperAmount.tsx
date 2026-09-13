@@ -204,12 +204,42 @@ export const OnramperAmount = () => {
   const totalFee =
     quote == null ? undefined : (quote.networkFee ?? 0) + (quote.transactionFee ?? 0);
 
+  /**
+   * Country control for qa/preview builds, so a tester can try another country
+   * without a rebuild.
+   *
+   * Declared before the early returns and rendered by each of them on purpose.
+   * It first shipped inside the main form only, which put it behind the
+   * bootstrap-error screen — unreachable in exactly the situation it exists to
+   * diagnose, since a failed bootstrap is where someone most wants to try a
+   * different country.
+   *
+   * Always names the country in force: a forced one produces a flow that works
+   * here and would not for a real user in that region, and a successful test
+   * would otherwise read as proof the region is live.
+   */
+  const testingCountryLine = isDevFeatureEnabled ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Testing country: ${countryCode || 'not set'}. Tap to change.`}
+      className="flex-row items-center justify-between gap-3 rounded-[10px] border border-amber-400/40 bg-amber-400/10 px-3 py-2 active:opacity-70"
+      onPress={() => setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_COUNTRY)}
+    >
+      <Text className="flex-1 text-xs font-medium leading-[17px] text-amber-300">
+        Testing as {countryCode || '—'}
+        {isCountryOverridden ? '' : ' (detected)'} · tap to change
+      </Text>
+      <ChevronDown size={14} color="#FCD34D" />
+    </Pressable>
+  ) : null;
+
   // The client bootstrap needs an authenticated session and a supported
   // platform. A failure here is not the user's doing and is usually transient,
   // so it offers a retry rather than an explanation.
   if (clientError) {
     return (
       <View className="shrink-0 gap-6">
+        {testingCountryLine}
         <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
           <Text className="text-base font-semibold text-white">Couldn&apos;t start checkout</Text>
           <Text className="text-sm font-medium leading-5 text-white/70">
@@ -255,15 +285,21 @@ export const OnramperAmount = () => {
 
   if (clientLoading || configLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#94F27F" />
+      <View className="shrink-0 gap-6">
+        {testingCountryLine}
+        <View className="flex-1 items-center justify-center py-10">
+          <ActivityIndicator size="large" color="#94F27F" />
+        </View>
       </View>
     );
   }
 
-  // Onramper only prices for a handful of countries. Reaching this screen from
-  // an unsupported one means the entry row's gate and the geo lookup disagreed
-  // — say so plainly instead of showing inputs that never produce a button.
+  // Platform, not region — `isAvailable` is only the iOS check now. The entry
+  // row is already hidden off iOS, so this guards the ways the screen can be
+  // reached without it: a deep link, or the modal opened directly on web. There
+  // is no native checkout button to render there, so inputs would be a lie.
+  // An unserved *country* is a different thing and does not land here; it gets
+  // the empty asset list instead.
   if (!isAvailable) {
     return (
       <View className="shrink-0 gap-6">
@@ -280,25 +316,7 @@ export const OnramperAmount = () => {
 
   return (
     <View className="shrink-0 gap-6">
-      {/* Tappable on qa/preview so a tester can try another country without a
-          rebuild. Always says which country is in force: a forced one produces
-          a flow that works here and would not for a real user in that region,
-          and a successful test would otherwise read as proof the region is
-          live. */}
-      {isDevFeatureEnabled ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Testing country: ${countryCode || 'not set'}. Tap to change.`}
-          className="flex-row items-center justify-between gap-3 rounded-[10px] border border-amber-400/40 bg-amber-400/10 px-3 py-2 active:opacity-70"
-          onPress={() => setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_COUNTRY)}
-        >
-          <Text className="flex-1 text-xs font-medium leading-[17px] text-amber-300">
-            Testing as {countryCode || '—'}
-            {isCountryOverridden ? '' : ' (detected)'} · tap to change
-          </Text>
-          <ChevronDown size={14} color="#FCD34D" />
-        </Pressable>
-      ) : null}
+      {testingCountryLine}
 
       <View className="gap-2.5">
         <Text className="text-base font-medium text-white/70">You pay</Text>
