@@ -4,7 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { Href, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
-import { cardThreeDsRequestPath, path } from '@/constants/path';
+import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/constants/path';
 import { registerPushToken } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { useUserStore } from '@/store/useUserStore';
@@ -35,11 +35,13 @@ type NotificationData = {
 
 /**
  * Map a push notification's `data` (set by the backend) to an in-app route.
- * Card payment notifications open the card screen; anything else goes home.
+ * Card payment notifications open the transaction they are about; anything
+ * unrecognised goes home.
  *
- * Takes the whole payload rather than just `type` because one destination needs
- * more than the type to be reachable: a 3D Secure challenge is a question about
- * one specific transaction, and the card screen is not an answer to it.
+ * Takes the whole payload rather than just `type` because the destinations that
+ * matter need more than the type to be reachable: a spend push and a 3D Secure
+ * challenge are each about one specific transaction, and a screen listing all of
+ * them is not an answer to either.
  */
 function getNotificationRoute(data?: NotificationData): Href {
   const type = data?.type;
@@ -77,10 +79,14 @@ function getNotificationRoute(data?: NotificationData): Href {
   }
 
   switch (type) {
-    // Only a card holder gets a transaction push, so open the card itself
+    // A spend push is about one purchase, so the tap opens that purchase —
+    // merchant, the dollar conversion, the fees and the cashback it earned are
+    // all on the detail screen, and none of them are on the card. The id is the
+    // whole address; without one (a Wirex decline never reaches the activity
+    // feed, so it has no transaction to open) fall back to the card itself
     // rather than the `/card` shim's status check.
     case 'card-transaction':
-      return path.CARD_INFO;
+      return data?.transactionId ? cardTransactionDetailPath(data.transactionId) : path.CARD_INFO;
     // A 3DS challenge is held by the merchant until it is answered, so the tap
     // lands straight on the decision screen. The amount and merchant ride along
     // so it can render before the pending list has loaded. Without an id there

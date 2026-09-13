@@ -193,6 +193,19 @@ export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
     params: { screen: CARD_INFO_SCREEN, [CARD_INFO_WALLET_PARAM]: wallet },
   }) as Href;
 
+/**
+ * One card transaction's own detail screen.
+ *
+ * The activity detail route is shared by wallet and card rows, and the `card-`
+ * prefix on the id is what tells them apart: `/activity/[clientTxId]` reads it
+ * off the front (`isCardTransaction`) and asks the issuer for the transaction
+ * instead of looking for it on chain. Built here rather than spelled out at each
+ * call site so a card push and a tapped feed row address the same screen the
+ * same way.
+ */
+export const cardTransactionDetailPath = (transactionId: string): Href =>
+  `/activity/card-${transactionId}` as Href;
+
 export const cardThreeDsRequestPath = (
   transactionId: string,
   preview?: {
