@@ -19,6 +19,17 @@ const BUTTON_STYLE = {
   borderRadius: 24,
 };
 
+/**
+ * The payment method we declare at checkout.
+ *
+ * Ours to choose, not Onramper's to tell us: `CheckoutRequest.paymentMethod` is
+ * an input, and the SDK's headless checkout only renders `applepay` and
+ * `revolutpay`. Reading it back from `/supported/payment-types` was indirection
+ * for a value we own, and made an empty array — which only says what Onramper
+ * advertises — look like a missing capability that blocked the whole screen.
+ */
+export const ONRAMPER_PAYMENT_METHOD = 'applepay';
+
 export interface OnramperCheckoutParams {
   /** Onramper fiat id, e.g. 'usd'. */
   source?: string | null;
@@ -26,7 +37,7 @@ export interface OnramperCheckoutParams {
   destination?: string | null;
   /** Amount in `source`, as typed. */
   amount: string;
-  /** e.g. 'applepay'. */
+  /** Defaults to `ONRAMPER_PAYMENT_METHOD`; pass one only to override it. */
   paymentMethod?: string | null;
   /** ISO-3166 alpha-2, e.g. 'US'. Onramper refuses to price without one. */
   country?: string | null;
@@ -67,7 +78,15 @@ export default function useOnramperCheckout(
   client: OnramperClient | undefined,
   params: OnramperCheckoutParams,
 ): UseOnramperCheckoutReturn {
-  const { source, destination, amount, paymentMethod, country, network, address } = params;
+  const {
+    source,
+    destination,
+    amount,
+    paymentMethod = ONRAMPER_PAYMENT_METHOD,
+    country,
+    network,
+    address,
+  } = params;
 
   const debouncedAmount = useDebounce(amount, CHECKOUT_DEBOUNCE_MS);
   const numericAmount = Number(debouncedAmount);
@@ -102,13 +121,11 @@ export default function useOnramperCheckout(
           ? 'no asset available for this currency'
           : !network
             ? 'asset has no network'
-            : !paymentMethod
-              ? 'no payment method for this country'
-              : !address
-                ? 'no wallet address'
-                : !(Number.isFinite(numericAmount) && numericAmount > 0)
-                  ? 'no amount entered'
-                  : undefined;
+            : !address
+              ? 'no wallet address'
+              : !(Number.isFinite(numericAmount) && numericAmount > 0)
+                ? 'no amount entered'
+                : undefined;
 
   const isReady = !missing;
 

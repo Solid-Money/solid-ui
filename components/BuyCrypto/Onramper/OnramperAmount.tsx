@@ -76,7 +76,6 @@ export const OnramperAmount = () => {
   // Memoized because the `?? []` fallback is a fresh array each render, which
   // would re-run the preselect effect below on every one of them.
   const assets = useMemo(() => assetData?.assets ?? [], [assetData?.assets]);
-  const paymentMethod = assetData?.paymentMethods?.[0];
 
   // Land on the first deliverable asset so the screen can quote immediately.
   // The list is ordered cheapest-network-first by the backend.
@@ -102,7 +101,6 @@ export const OnramperAmount = () => {
     source: fiatCurrency,
     destination: assetId,
     amount: fiatAmount,
-    paymentMethod: paymentMethod?.id,
     country: countryCode,
     network: selectedAsset?.network,
     // The user's Safe, as requested. Worth knowing: the deposit webhook matches
