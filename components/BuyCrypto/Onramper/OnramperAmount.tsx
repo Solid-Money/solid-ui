@@ -233,57 +233,11 @@ export const OnramperAmount = () => {
     </Pressable>
   ) : null;
 
-  // The client bootstrap needs an authenticated session and a supported
-  // platform. A failure here is not the user's doing and is usually transient,
-  // so it offers a retry rather than an explanation.
-  if (clientError) {
-    return (
-      <View className="shrink-0 gap-6">
-        {testingCountryLine}
-        <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
-          <Text className="text-base font-semibold text-white">Couldn&apos;t start checkout</Text>
-          <Text className="text-sm font-medium leading-5 text-white/70">
-            We couldn&apos;t reach our payment provider. Check your connection and try again.
-          </Text>
-          {/* The sentence above is all a real user can act on. On qa/preview
-              builds the code is what someone debugging actually needs, and
-              reading it here beats tailing the bundler on a physical device. */}
-          {isDevFeatureEnabled ? (
-            <Text
-              selectable
-              className="mt-1 text-xs leading-[17px] text-amber-300"
-              style={{ fontFamily: 'monospace' }}
-            >
-              {describeOnramperError(clientError)}
-            </Text>
-          ) : null}
-        </View>
-        <Button className="h-12 rounded-full" variant="brand" onPress={retry}>
-          <Text className="text-base font-bold text-black">Try again</Text>
-        </Button>
-        {/* A stale stored OnramperID login can be what the bootstrap trips on,
-            and it survives reinstalls of the JS bundle because it lives in the
-            native keychain. Clearing it is a diagnostic step, not something to
-            offer a real user, so it is qa/preview only. */}
-        {isDevFeatureEnabled ? (
-          <Pressable
-            accessibilityRole="button"
-            className="h-11 items-center justify-center rounded-full border border-white/20 active:opacity-70"
-            onPress={() => {
-              void signOutOnramper().then(retry);
-            }}
-          >
-            <Text className="text-sm font-semibold text-white/70">
-              Clear Onramper login and retry
-            </Text>
-          </Pressable>
-        ) : null}
-        <NeedHelp />
-      </View>
-    );
-  }
-
-  if (clientLoading || configLoading) {
+  // Only the catalogue blocks the form. The SDK bootstrap deliberately does not:
+  // it needs no country and supplies no currency, asset or limit — everything
+  // this screen renders comes from our backend. Waiting on it would hide a form
+  // that is entirely usable without it.
+  if (configLoading) {
     return (
       <View className="shrink-0 gap-6">
         {testingCountryLine}
@@ -471,21 +425,73 @@ export const OnramperAmount = () => {
           partners and may change.
         </Text>
 
-        {/* The native Apple Pay button *is* the CTA — it only exists once a
-            quote does, so the placeholder below stands in until then rather
-            than a disabled button that could be mistaken for it. */}
-        {button ?? (
-          <View className="h-12 items-center justify-center rounded-full bg-white/20">
-            <Text className="text-base font-bold text-white">
-              {quoteLoading
-                ? 'Getting quote…'
-                : belowMin || aboveMax || isAmountOutOfRange
-                  ? 'Amount out of limits'
-                  : hasAmount
-                    ? 'Quote unavailable'
-                    : 'Enter an amount'}
-            </Text>
+        {/* A failed bootstrap costs checkout and nothing else — the selections
+            above still work, so this replaces the CTA rather than the screen.
+            It used to return early and hide everything, which also put the
+            country control out of reach in the one state where a tester most
+            wants it. */}
+        {clientError ? (
+          <View className="gap-3">
+            <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
+              <Text className="text-base font-semibold text-white">
+                Couldn&apos;t start checkout
+              </Text>
+              <Text className="text-sm font-medium leading-5 text-white/70">
+                We couldn&apos;t reach our payment provider. Your selections are saved — check your
+                connection and try again.
+              </Text>
+              {/* The sentence above is all a real user can act on. On qa/preview
+                  the code is what someone debugging needs, and reading it here
+                  beats tailing the bundler on a physical device. */}
+              {isDevFeatureEnabled ? (
+                <Text
+                  selectable
+                  className="mt-1 text-xs leading-[17px] text-amber-300"
+                  style={{ fontFamily: 'monospace' }}
+                >
+                  {describeOnramperError(clientError)}
+                </Text>
+              ) : null}
+            </View>
+            <Button className="h-12 rounded-full" variant="brand" onPress={retry}>
+              <Text className="text-base font-bold text-black">Try again</Text>
+            </Button>
+            {/* A stale stored OnramperID login can be what the bootstrap trips
+                on, and it survives a bundle reload because it lives in the
+                native keychain. A diagnostic step, so qa/preview only. */}
+            {isDevFeatureEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                className="h-11 items-center justify-center rounded-full border border-white/20 active:opacity-70"
+                onPress={() => {
+                  void signOutOnramper().then(retry);
+                }}
+              >
+                <Text className="text-sm font-semibold text-white/70">
+                  Clear Onramper login and retry
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
+        ) : (
+          /* The native Apple Pay button *is* the CTA — it only exists once a
+             quote does, so the placeholder stands in until then rather than a
+             disabled button that could be mistaken for it. */
+          (button ?? (
+            <View className="h-12 items-center justify-center rounded-full bg-white/20">
+              <Text className="text-base font-bold text-white">
+                {clientLoading
+                  ? 'Starting checkout…'
+                  : quoteLoading
+                    ? 'Getting quote…'
+                    : belowMin || aboveMax || isAmountOutOfRange
+                      ? 'Amount out of limits'
+                      : hasAmount
+                        ? 'Quote unavailable'
+                        : 'Enter an amount'}
+              </Text>
+            </View>
+          ))
         )}
 
         <NeedHelp />
