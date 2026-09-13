@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 import { CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
-import { resolveKycProgress } from '@/lib/utils/kyc/verificationProgress';
+import { isKycAwaitingDecision, resolveKycProgress } from '@/lib/utils/kyc/verificationProgress';
 
 const STARTED_AT = 1_700_000_000_000;
 
@@ -143,5 +143,62 @@ describe('resolveKycProgress', () => {
         ),
       ).toBe('approved');
     });
+  });
+});
+
+/**
+ * The question every entry point into the card flow asks before offering to
+ * start verification. Getting it wrong for one issuer is what showed a
+ * Wirex/Sumsub applicant the "Verify now" prompt — and then country selection —
+ * while their submitted verification was still being decided.
+ */
+describe('isKycAwaitingDecision', () => {
+  it('is false before anyone has started', () => {
+    expect(isKycAwaitingDecision(null)).toBe(false);
+    expect(isKycAwaitingDecision(undefined)).toBe(false);
+    expect(isKycAwaitingDecision(cardStatus({ kycStatus: KycStatus.NOT_STARTED }))).toBe(false);
+  });
+
+  it('is true for a Wirex/Sumsub applicant, which has no Rain application at all', () => {
+    expect(isKycAwaitingDecision(cardStatus({ kycStatus: KycStatus.UNDER_REVIEW }))).toBe(true);
+  });
+
+  it.each([RainApplicationStatus.PENDING, RainApplicationStatus.MANUAL_REVIEW])(
+    'is true for a Rain/Didit applicant at %s, even with Didit already approved',
+    status => {
+      expect(
+        isKycAwaitingDecision(
+          cardStatus({ kycStatus: KycStatus.APPROVED, rainApplicationStatus: status }),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it('is true while Didit decides, before Rain has seen the applicant', () => {
+    expect(
+      isKycAwaitingDecision(
+        cardStatus({
+          kycStatus: KycStatus.UNDER_REVIEW,
+          rainApplicationStatus: RainApplicationStatus.NOT_STARTED,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['the user still has a step to take', { kycStatus: KycStatus.INCOMPLETE }],
+    [
+      'Rain wants an external verification step',
+      { rainApplicationStatus: RainApplicationStatus.NEEDS_VERIFICATION },
+    ],
+    [
+      'Rain wants more information',
+      { rainApplicationStatus: RainApplicationStatus.NEEDS_INFORMATION },
+    ],
+    ['verification passed', { kycStatus: KycStatus.APPROVED }],
+    ['verification was declined', { kycStatus: KycStatus.REJECTED }],
+    ['Rain closed the application', { rainApplicationStatus: RainApplicationStatus.DENIED }],
+  ])('is false when %s', (_case, overrides) => {
+    expect(isKycAwaitingDecision(cardStatus(overrides))).toBe(false);
   });
 });

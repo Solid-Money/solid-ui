@@ -35,33 +35,36 @@ export default function ActivateMobile() {
     );
   }
 
+  // Verification is in and the decision is still being made, so there is no step
+  // to offer: this takes over the screen rather than sitting under a steps list
+  // whose first row would invite the user to verify again.
+  if (isUnderReview) {
+    return <UnderReviewState />;
+  }
+
   return (
     <PageLayout desktopOnly contentClassName="pb-10">
       <View className="mx-auto w-full max-w-lg px-4 pt-8">
         <ActivateCardHeader onBack={handleGoBack} />
         <ActivateCardImage />
 
-        {isUnderReview ? (
-          <UnderReviewState />
-        ) : (
-          <View className="mb-4 mt-8">
-            <Text className="mb-4 text-lg font-medium text-white/70">Card issuance status</Text>
-            <CardStatusBanner
-              isPending={isCardPending}
-              isBlocked={isCardBlocked}
-              blockedReason={activationBlockedReason}
-            />
-            <CardActivationStepsList
-              steps={steps}
-              activeStepId={activeStepId}
-              isCardPending={isCardPending}
-              isStepButtonEnabled={isStepButtonEnabled}
-              canToggleStep={canToggleStep}
-              activatingCard={activatingCard}
-              onToggle={toggleStep}
-            />
-          </View>
-        )}
+        <View className="mb-4 mt-8">
+          <Text className="mb-4 text-lg font-medium text-white/70">Card issuance status</Text>
+          <CardStatusBanner
+            isPending={isCardPending}
+            isBlocked={isCardBlocked}
+            blockedReason={activationBlockedReason}
+          />
+          <CardActivationStepsList
+            steps={steps}
+            activeStepId={activeStepId}
+            isCardPending={isCardPending}
+            isStepButtonEnabled={isStepButtonEnabled}
+            canToggleStep={canToggleStep}
+            activatingCard={activatingCard}
+            onToggle={toggleStep}
+          />
+        </View>
       </View>
     </PageLayout>
   );

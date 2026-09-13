@@ -10,6 +10,7 @@ import {
   hasCardStatusWithRainApplication,
   hasPendingCard,
 } from '@/lib/utils';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 /**
  * `/card` is deprecated as a destination — it used to render the standalone card
@@ -37,6 +38,14 @@ export default function Card() {
   // renders the "on its way" state and polls until it does; country selection
   // would restart onboarding this user already completed.
   if (hasPendingCard(cardStatus)) {
+    return <Redirect href={path.CARD_ACTIVATE} />;
+  }
+
+  // Verification is submitted and the decision is still out. The issuance flow
+  // renders "your card is on its way"; country selection below would ask an
+  // applicant mid-decision to start over. Stated separately from the Rain clause
+  // that follows because a Wirex/Sumsub applicant has no Rain application.
+  if (isKycAwaitingDecision(cardStatus)) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 

@@ -23,6 +23,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { resolveCardCountry } from '@/lib/cardCountryGate';
 import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 interface CardWaitingModalProps {
   isOpen: boolean;
@@ -187,13 +188,17 @@ const CardWaitingModal = ({ isOpen, onClose, firstIncomplete }: CardWaitingModal
   const [checkingCountry, setCheckingCountry] = useState(false);
   const { data: cardStatus } = useCardStatus();
   // Same escape hatch as `skipCountryCheck` in useActivateCard: someone holding
-  // a card, waiting on one being issued, or already part-way through a Rain
-  // application has cleared the country gate once and must not be bounced back
-  // out of the flow.
+  // a card, waiting on one being issued, already part-way through a Rain
+  // application, or waiting on a verification decision has cleared the country
+  // gate once and must not be bounced back out of the flow. (This modal is not
+  // normally reachable in the last case — the wallet card sends those users
+  // straight to the "on its way" screen — but the guard belongs with the others
+  // so a future entry point cannot reintroduce the bounce.)
   const skipCountryGate =
     hasCard(cardStatus) ||
     hasPendingCard(cardStatus) ||
-    hasCardStatusWithRainApplication(cardStatus);
+    hasCardStatusWithRainApplication(cardStatus) ||
+    isKycAwaitingDecision(cardStatus);
   const benefits = Platform.OS === 'web' ? WEB_BENEFITS : BENEFITS;
 
   // Hero entrance — card spins/settles in from Figma node 20964:2589: fades in,

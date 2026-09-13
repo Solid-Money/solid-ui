@@ -132,6 +132,25 @@ const REJECTED_KYC_STATUSES: KycStatus[] = [KycStatus.REJECTED, KycStatus.OFFBOA
 /** Backend KYC statuses where the decision sits with the provider or with us. */
 const IN_REVIEW_KYC_STATUSES: KycStatus[] = [KycStatus.UNDER_REVIEW, KycStatus.PAUSED];
 
+/**
+ * Whether verification has been submitted and is waiting on a decision — the
+ * applicant has nothing left to do but wait.
+ *
+ * Folding both live issuers into one answer is the whole point: Rain/Didit
+ * reports `rainApplicationStatus` pending/manualReview (and, for the Didit-only
+ * phase before Rain has seen the applicant, `kycStatus: under_review`), while
+ * Wirex/Sumsub has no Rain application at all and reports `under_review` on its
+ * own. Every screen that would otherwise offer to start verification keys off
+ * this, so neither provider needs a branch of its own.
+ *
+ * Deliberately says nothing about the deprecated bridge.xyz/Persona flow, whose
+ * "under review" lives on the cards endorsement rather than on `/cards/status`;
+ * the activation screen still checks that separately.
+ */
+export function isKycAwaitingDecision(cardStatus: CardStatusResponse | null | undefined): boolean {
+  return resolveKycProgress(cardStatus) === 'in-review';
+}
+
 export function resolveKycProgress(
   cardStatus: CardStatusResponse | null | undefined,
   kycStartedAt?: number | null,
