@@ -83,6 +83,14 @@ export default function CardWithdrawForm() {
   // "not known yet" and must not be read as "not Rain" — that would flash the
   // wrong copy at a Rain cardholder on every open.
   const isIssuerResolving = provider == null;
+  /**
+   * A card that genuinely holds no collateral of its own, as opposed to one
+   * whose issuer has not resolved yet. Both leave `isRainCard` false, so
+   * `!isRainCard` alone answers the wrong question: a Rain cardholder whose
+   * collateral query has errored while the issuer is momentarily unresolved
+   * would be told their card holds no balance.
+   */
+  const holdsNoCollateral = !isRainCard && !isIssuerResolving;
   const isCollateralResolving =
     isCollateralLoading || (isIssuerResolving && !collateral && !isCollateralError);
   /** We have no trustworthy figure — which is not the same as a figure of $0. */
@@ -361,14 +369,14 @@ export default function CardWithdrawForm() {
    */
   const collateralUnavailableNotice = useMemo(() => {
     if (!isAvailableUnknown) return null;
-    if (!isRainCard && !collateral) {
+    if (holdsNoCollateral && !collateral) {
       return 'Withdrawing to your wallet is only available on cards that hold their own balance.';
     }
     if (!collateral) {
       return "Couldn't load how much you can withdraw. Check your connection and try again.";
     }
     return `Couldn't read your ${assetSymbol} balance right now, so the amount above isn't capped. Your withdrawal is still checked before it's sent.`;
-  }, [isAvailableUnknown, isRainCard, collateral, assetSymbol]);
+  }, [isAvailableUnknown, holdsNoCollateral, collateral, assetSymbol]);
 
   return (
     <View className="gap-3">
@@ -467,6 +475,11 @@ export default function CardWithdrawForm() {
       ) : collateralUnavailableNotice ? (
         <View className="flex-row flex-wrap items-center gap-1">
           <Text className="text-sm text-[#E8A33D]">{collateralUnavailableNotice}</Text>
+          {/* `isRainCard`, not `!holdsNoCollateral`: the notice only has to name
+              what went wrong, but a retry has to actually do something, and the
+              query it refetches runs for Rain alone. While the issuer is still
+              resolving there is nothing to retry — the query starts itself, and
+              then polls, the moment the issuer lands. */}
           {isRainCard ? (
             <Pressable onPress={() => void refetchCollateral()}>
               <Text className="text-sm font-semibold text-white underline">Try again</Text>

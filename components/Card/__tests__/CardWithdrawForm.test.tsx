@@ -190,6 +190,21 @@ describe('CardWithdrawForm — the available figure', () => {
     expect(rendered).toContain('only available on cards that hold their own balance');
   });
 
+  it('does not blame the card when the issuer has not resolved and the read failed', () => {
+    // `isRainCard` is false for two unrelated reasons — not Rain, and not known
+    // yet — so `!isRainCard` alone told a Rain cardholder their card holds no
+    // balance whenever the collateral query had errored while the issuer was
+    // momentarily unresolved (a user switch re-keys the issuer queries, while
+    // the collateral key has no userId in it and keeps its error).
+    mockProvider = null;
+    mockCollateralQuery = { data: undefined, isLoading: false, isError: true };
+
+    const { rendered } = render();
+
+    expect(rendered).toContain("Couldn't load how much you can withdraw");
+    expect(rendered).not.toContain('only available on cards that hold their own balance');
+  });
+
   it('waits rather than guessing while the issuer is still resolving', () => {
     // `resolveCardIssuer` answers null until a card exists. Reading that as
     // "not Rain" would flash the wrong copy at every Rain cardholder on open.
