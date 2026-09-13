@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import { Text } from '@/components/ui/text';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { useCardCollateralAvailable } from '@/hooks/useCardCollateralAvailable';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
 import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
@@ -33,6 +34,7 @@ function getExplorerTxUrl(_chainId: number | undefined, txHash: string): string 
 export default function CardWithdrawForm() {
   const { user } = useUser();
   const { data: cardDetails, refetch, isLoading: isCardDetailsLoading } = useCardDetails();
+  const { provider } = useCardProvider();
   // Undefined until the user picks: the backend then opens on the richest
   // asset, which is the one worth withdrawing.
   const [selectedTokenAddress, setSelectedTokenAddress] = useState<string | undefined>();
@@ -40,6 +42,7 @@ export default function CardWithdrawForm() {
     data: collateral,
     refetch: refetchCollateral,
     isLoading: isCollateralLoading,
+    isError: isCollateralError,
   } = useCardCollateralAvailable(selectedTokenAddress);
   const { setModal, setTransaction } = useCardWithdrawStore(
     useShallow(state => ({ setModal: state.setModal, setTransaction: state.setTransaction })),
@@ -68,6 +71,23 @@ export default function CardWithdrawForm() {
   // transaction, and neither equals the balance.
   const collateralAvailable = collateral?.availableUsd ?? 0;
   const collateralFormatted = formatNumber(collateralAvailable, 2, 2);
+
+  // The collateral read only runs for Rain, so "no data" has three meanings and
+  // they are not interchangeable: still resolving, could not be read, or a real
+  // answer of zero. Collapsing all three into `availableUsd ?? 0` is what put
+  // "$0" and a greyed-out Max in front of cardholders whose card reported a
+  // balance — a disabled or failed query has `isLoading === false` in React
+  // Query v5, so they did not even get a skeleton to tell them we were unsure.
+  const isRainCard = provider === CardProvider.RAIN;
+  // `resolveCardIssuer` answers null until a card exists, so a null issuer means
+  // "not known yet" and must not be read as "not Rain" — that would flash the
+  // wrong copy at a Rain cardholder on every open.
+  const isIssuerResolving = provider == null;
+  const isCollateralResolving =
+    isCollateralLoading || (isIssuerResolving && !collateral && !isCollateralError);
+  /** We have no trustworthy figure — which is not the same as a figure of $0. */
+  const isCollateralUnknown =
+    !isCollateralResolving && (isCollateralError || !collateral || !!collateral.unavailableReason);
 
   const { control, handleSubmit, formState, watch, setValue, setError, clearErrors, trigger } =
     useForm<FormData>({
@@ -105,7 +125,13 @@ export default function CardWithdrawForm() {
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
-          .refine(val => Number(val) <= collateralAvailable, {
+          // An unknown cap is not a cap of zero. The backend's own pre-check
+          // takes the same line — it logs a failed balance read and lets the
+          // withdrawal through, because Rain rejects an over-withdrawal anyway
+          // and a flaky RPC must not block a valid one. The screen was stricter
+          // than the API it calls, which is how a read failure became "you have
+          // nothing to withdraw".
+          .refine(val => isCollateralUnknown || Number(val) <= collateralAvailable, {
             // Name the asset: "$0.42 available" is baffling next to a $100.60
             // card balance unless it says which asset that $0.42 is.
             message:
@@ -114,7 +140,7 @@ export default function CardWithdrawForm() {
                 : `No ${assetSymbol} is available to withdraw right now`,
           }),
       }),
-    [collateralAvailable, collateralFormatted, assetSymbol],
+    [collateralAvailable, collateralFormatted, assetSymbol, isCollateralUnknown],
   );
 
   const validationError = useMemo(() => {
@@ -122,7 +148,7 @@ export default function CardWithdrawForm() {
       if (!watchedAmount) return null;
       // The available figure starts at 0 until the on-chain read lands; don't
       // accuse the user of over-withdrawing before we know the balance.
-      if (isCollateralLoading) return null;
+      if (isCollateralResolving) return null;
       const parsed = collateralSchema.safeParse({ amount: watchedAmount });
       if (parsed.success) return null;
       return parsed.error.issues[0]?.message ?? null;
@@ -135,7 +161,7 @@ export default function CardWithdrawForm() {
       const err = error as { issues?: { message?: string }[] };
       return err.issues?.[0]?.message ?? null;
     }
-  }, [watchedAmount, isCollateral, isCollateralLoading, schema, collateralSchema]);
+  }, [watchedAmount, isCollateral, isCollateralResolving, schema, collateralSchema]);
 
   const onSubmit = useCallback(
     async (data: FormData) => {
@@ -147,6 +173,15 @@ export default function CardWithdrawForm() {
         if (!parsed.success) {
           const msg = parsed.error.issues[0]?.message ?? 'Invalid input';
           setError('amount', { message: msg });
+          return;
+        }
+        // The signature names the asset it moves, and that address only comes
+        // from the collateral response. Without one the backend answers
+        // "tokenAddress is required", so say what is actually wrong instead.
+        if (!fundingTokenAddress) {
+          setError('amount', {
+            message: 'Could not load your card collateral. Pull to refresh and try again.',
+          });
           return;
         }
       } else {
@@ -268,8 +303,9 @@ export default function CardWithdrawForm() {
     ],
   );
 
-  const isAvailableLoading = isCollateral ? isCollateralLoading : isCardDetailsLoading;
+  const isAvailableLoading = isCollateral ? isCollateralResolving : isCardDetailsLoading;
   const disabled = isSubmitting;
+  const isAvailableUnknown = isCollateral && isCollateralUnknown;
   const availableFormatted = isCollateral ? collateralFormatted : formattedBalance;
 
   /** Assets other than the selected one that still hold a balance. */
@@ -290,7 +326,9 @@ export default function CardWithdrawForm() {
   // sits in another asset, say that instead — the money is not missing, it just
   // has to be withdrawn one asset at a time.
   const collateralShortfallHint = useMemo(() => {
-    if (!isCollateral || isCollateralLoading || !collateral) return null;
+    if (!isCollateral || isCollateralResolving || !collateral) return null;
+    // A figure we could not read is not a shortfall; it has its own notice.
+    if (isCollateralUnknown) return null;
     if (collateralAvailable >= spendableAmount) return null;
 
     if (otherFundedAssets.length) {
@@ -302,7 +340,8 @@ export default function CardWithdrawForm() {
     return `Your card balance is $${formattedBalance}, but only $${collateralFormatted} of ${assetSymbol} is currently available to withdraw.`;
   }, [
     isCollateral,
-    isCollateralLoading,
+    isCollateralResolving,
+    isCollateralUnknown,
     collateral,
     collateralAvailable,
     spendableAmount,
@@ -311,6 +350,25 @@ export default function CardWithdrawForm() {
     formattedBalance,
     assetSymbol,
   ]);
+
+  /**
+   * What to say when the withdrawable figure could not be read.
+   *
+   * Deliberately split by whether a withdrawal is still possible: with the
+   * response in hand but one asset's balance unread we know which token to move
+   * and Rain remains the backstop, so the user may proceed; with no response at
+   * all there is nothing to sign against and retrying is the only move.
+   */
+  const collateralUnavailableNotice = useMemo(() => {
+    if (!isAvailableUnknown) return null;
+    if (!isRainCard && !collateral) {
+      return 'Withdrawing to your wallet is only available on cards that hold their own balance.';
+    }
+    if (!collateral) {
+      return "Couldn't load how much you can withdraw. Check your connection and try again.";
+    }
+    return `Couldn't read your ${assetSymbol} balance right now, so the amount above isn't capped. Your withdrawal is still checked before it's sent.`;
+  }, [isAvailableUnknown, isRainCard, collateral, assetSymbol]);
 
   return (
     <View className="gap-3">
@@ -325,7 +383,9 @@ export default function CardWithdrawForm() {
               {isAvailableLoading ? (
                 <Skeleton className="h-5 w-14 rounded-md" />
               ) : (
-                <Text className="font-medium opacity-50">${availableFormatted}</Text>
+                <Text className="font-medium opacity-50">
+                  {isAvailableUnknown ? '—' : `$${availableFormatted}`}
+                </Text>
               )}
             </View>
             <Max
@@ -336,7 +396,13 @@ export default function CardWithdrawForm() {
                 );
                 trigger('amount');
               }}
-              disabled={isAvailableLoading || (isCollateral && collateralAvailable <= 0)}
+              // There is no Max to fill in when the balance is unknown, but that
+              // is the one case where the user may still type an amount.
+              disabled={
+                isAvailableLoading ||
+                isAvailableUnknown ||
+                (isCollateral && collateralAvailable <= 0)
+              }
             />
           </View>
         </View>
@@ -398,6 +464,15 @@ export default function CardWithdrawForm() {
         <Text className="text-sm text-red-500">
           {validationError ?? formState.errors.amount?.message}
         </Text>
+      ) : collateralUnavailableNotice ? (
+        <View className="flex-row flex-wrap items-center gap-1">
+          <Text className="text-sm text-[#E8A33D]">{collateralUnavailableNotice}</Text>
+          {isRainCard ? (
+            <Pressable onPress={() => void refetchCollateral()}>
+              <Text className="text-sm font-semibold text-white underline">Try again</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : collateralShortfallHint ? (
         <Text className="text-sm opacity-50">{collateralShortfallHint}</Text>
       ) : null}
