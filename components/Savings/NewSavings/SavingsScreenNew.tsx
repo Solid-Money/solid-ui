@@ -94,7 +94,7 @@ export default function SavingsScreenNew() {
             <VaultStrategyBreakdownCard vaultType={selectedVaultType} />
           </View>
 
-          <VaultFaqCard />
+          <VaultFaqCard vaultType={selectedVaultType} />
         </View>
       </View>
     </PageLayout>
