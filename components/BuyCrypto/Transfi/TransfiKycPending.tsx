@@ -293,6 +293,11 @@ export const TransfiKycPending = () => {
     // submission of its own and refusing every replacement. Verifying with them
     // directly is the way past that, so lead with it.
     const canVerifyDirectly = Boolean(status?.canRetryKyc);
+    // Two actions on one screen, each firing its own request. Leaving either
+    // live while the other is in flight lets them race: "Try again" also calls
+    // setExhausted(false), so a hosted-retry landing afterwards would set a
+    // verification URL on a screen that has already moved on.
+    const isBusy = isRetrying || isSharing;
     return (
       <View className="flex-1 items-center justify-center gap-6 px-4">
         <View className="items-center gap-2">
@@ -313,7 +318,7 @@ export const TransfiKycPending = () => {
             <Button
               className="h-14 rounded-2xl"
               variant="brand"
-              disabled={isRetrying}
+              disabled={isBusy}
               onPress={() => void handleHostedRetry()}
             >
               {isRetrying ? (
@@ -328,6 +333,7 @@ export const TransfiKycPending = () => {
           <Button
             className="h-14 rounded-2xl"
             variant={canVerifyDirectly ? 'secondary' : 'brand'}
+            disabled={isBusy}
             onPress={handleRetry}
           >
             <Text
