@@ -3,21 +3,22 @@ import { CardProvider, KycStatus, RainApplicationStatus } from '@/lib/types';
 
 const noop = () => {};
 
-type Options = Parameters<typeof buildCardSteps>[8];
+type Options = Parameters<typeof buildCardSteps>[7];
 
 const build = ({
   cardActivated = false,
+  activationBlocked,
   options,
 }: {
   cardActivated?: boolean;
+  activationBlocked?: boolean;
   options?: Options;
 } = {}) =>
   buildCardSteps(
     undefined, // cardsEndorsement
     undefined, // customerRejectionReasons
     cardActivated,
-    undefined, // activationBlocked
-    undefined, // activationBlockedReason
+    activationBlocked,
     noop, // handleProceedToKyc
     noop, // pushCardReady
     noop, // pushCardDetails
@@ -236,5 +237,40 @@ describe('buildCardSteps - deposit-and-hold step', () => {
     });
 
     expect(steps.map(s => s.key)).toEqual(['deposit', 'kyc', 'activate', 'spend']);
+  });
+});
+
+describe('buildCardSteps - a blocked activation', () => {
+  it('does not repeat the failure reason in the step description', () => {
+    // CardStatusBanner renders the reason directly above this list, and
+    // useStepNavigation auto-expands the first incomplete step — the activate
+    // step — so carrying the reason here showed it twice on first paint.
+    const activate = build({
+      activationBlocked: true,
+      options: { depositRequired: false, kycStatus: KycStatus.APPROVED },
+    }).find(s => s.key === 'activate');
+
+    expect(activate?.description).toBe(
+      'On hold — see the message above for what happened and what to do next.',
+    );
+  });
+
+  it('withdraws the activate action, so the button cannot reproduce the failure', () => {
+    const activate = build({
+      activationBlocked: true,
+      options: { depositRequired: false, kycStatus: KycStatus.APPROVED },
+    }).find(s => s.key === 'activate');
+
+    expect(activate?.buttonText).toBeUndefined();
+    expect(activate?.onPress).toBeUndefined();
+  });
+
+  it('still offers the action when nothing is blocking', () => {
+    const activate = build({
+      options: { depositRequired: false, kycStatus: KycStatus.APPROVED },
+    }).find(s => s.key === 'activate');
+
+    expect(activate?.buttonText).toBe('Activate card');
+    expect(activate?.onPress).toBeDefined();
   });
 });

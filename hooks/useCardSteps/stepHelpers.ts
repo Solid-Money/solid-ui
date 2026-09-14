@@ -29,7 +29,6 @@ export function buildCardSteps(
   customerRejectionReasons: BridgeRejectionReason[] | undefined,
   cardActivated: boolean,
   activationBlocked: boolean | undefined,
-  activationBlockedReason: string | undefined,
   handleProceedToKyc: () => void,
   pushCardReady: () => void,
   pushCardDetails: () => void,
@@ -97,8 +96,14 @@ export function buildCardSteps(
         options?.kycStatus === KycStatus.APPROVED ||
         cardsEndorsement?.status === EndorsementStatus.APPROVED;
 
+  // Deliberately does NOT repeat the failure reason. `CardStatusBanner` already
+  // carries it — as a headline, with the detail and a support action — and
+  // /card/activate is the only screen that renders these descriptions, always
+  // with that banner directly above this list. Worse, `useStepNavigation`
+  // auto-expands the first incomplete step, which for a blocked applicant IS
+  // this one, so the same sentence met the user twice on first paint.
   const orderCardDesc = activationBlocked
-    ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
+    ? 'On hold — see the message above for what happened and what to do next.'
     : 'All is set! Click on "Activate card" to review the agreements and issue your new card.';
 
   const kycStepOnPress =

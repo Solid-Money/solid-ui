@@ -441,8 +441,6 @@ export function useCardSteps(
         // failures (an issuer blip, provisioning still running) leave the button
         // alone on purpose — there, retrying is the right move.
         cardStatusResponse?.activationBlocked || cardStatusResponse?.activationFailure?.terminal,
-        cardStatusResponse?.activationFailure?.reason ??
-          cardStatusResponse?.activationBlockedReason,
         handleProceedToKyc,
         pushCardReady,
         pushCardDetails,
@@ -467,9 +465,7 @@ export function useCardSteps(
       customer?.rejection_reasons,
       cardActivated,
       cardStatusResponse?.activationBlocked,
-      cardStatusResponse?.activationBlockedReason,
       cardStatusResponse?.activationFailure?.terminal,
-      cardStatusResponse?.activationFailure?.reason,
       cardStatusResponse?.rainApplicationStatus,
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,
