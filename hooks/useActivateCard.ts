@@ -36,6 +36,10 @@ export function useActivateCard() {
   const activationBlockedReason =
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
+  // The classified failure, when the server could name one. Present for the
+  // failures that never set the sticky `activationBlocked` flag — which is most
+  // of them, and exactly the ones this screen used to say nothing about.
+  const activationFailure = cardStatusResponse?.activationFailure;
 
   // Whether verification is in and a decision is pending, for either live
   // issuer — Rain/Didit's application status and the backend kycStatus the
@@ -132,6 +136,7 @@ export function useActivateCard() {
     isCardBlocked,
     isUnderReview,
     activationBlockedReason,
+    activationFailure,
     // Step management
     steps,
     activeStepId,

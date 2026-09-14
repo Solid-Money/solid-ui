@@ -53,6 +53,14 @@ export function isCardIssuanceUnderReview({
   // its way would never go looking for it.
   if (cardStatus?.activationBlocked) return false;
 
+  // An issuance attempt that failed for a reason nothing on this screen can
+  // clear — an unsupported document country, an issuer decline. Same argument
+  // as the blocked case above, and it needs saying separately because most of
+  // these never set `activationBlocked`: that flag is sticky and is only ever
+  // raised by hand, so a terminal failure would otherwise be hidden behind
+  // "your card is on its way" indefinitely.
+  if (cardStatus?.activationFailure?.terminal) return false;
+
   // Verification passed but the application is parked because the deposit is no
   // longer held. The "top up and hold" step is the user's move, and it lives on
   // the steps list.
