@@ -663,7 +663,10 @@ export const submitCardConsents = async (consents: {
     body: JSON.stringify(consents),
   });
 
-  if (!response.ok) throw response;
+  // Same reason as `createCard` below: this runs inside the same activation
+  // try-block, so a bare Response here is rendered as the generic
+  // "Something went wrong. Please try again." too.
+  if (!response.ok) throw await toApiError(response, 'Failed to record your card agreements');
 
   return response.json();
 };
@@ -1050,7 +1053,12 @@ export const createCard = async (): Promise<CardResponse> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  // Throwing the bare Response here is why every activation failure reached the
+  // user as "Something went wrong. Please try again.": the caller renders
+  // `error instanceof Error ? error.message : <fallback>`, and a Response is not
+  // an Error, so the backend's reason — "Cards are not available in Bangladesh
+  // (BD) yet.", "KYC is not approved." — was discarded unread every time.
+  if (!response.ok) throw await toApiError(response, 'Failed to activate your card');
 
   return response.json();
 };

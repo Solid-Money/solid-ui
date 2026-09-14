@@ -293,9 +293,17 @@ export default function CardReady() {
       router.replace(path.CARD_ACTIVATE);
     } catch (error) {
       console.error('Error activating card:', error);
+      // The backend records why, and the issuance screen renders the full
+      // explanation from it. Refetch so that reason is there the moment the user
+      // looks, rather than a poll-interval later.
+      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
       Toast.show({
         type: 'error',
         text1: 'Error activating card',
+        // Now reaches the real reason — "Cards are not available in Bangladesh
+        // (BD) yet." rather than the generic line users quoted back to support —
+        // because the API client throws an ApiError carrying the server message
+        // instead of the bare Response, which is never an `Error`.
         text2: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
         props: { badgeText: '' },
       });

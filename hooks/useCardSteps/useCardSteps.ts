@@ -434,8 +434,13 @@ export function useCardSteps(
         cardsEndorsement,
         customer?.rejection_reasons,
         cardActivated,
-        cardStatusResponse?.activationBlocked,
-        cardStatusResponse?.activationBlockedReason,
+        // A terminal issuance failure gates the activate step exactly like the
+        // sticky block does: pressing "Activate card" on an unsupported country
+        // or an issuer decline can only reproduce the same failure, and that
+        // retry loop is what the support tickets are made of. Non-terminal
+        // failures (an issuer blip, provisioning still running) leave the button
+        // alone on purpose — there, retrying is the right move.
+        cardStatusResponse?.activationBlocked || cardStatusResponse?.activationFailure?.terminal,
         handleProceedToKyc,
         pushCardReady,
         pushCardDetails,
@@ -460,7 +465,7 @@ export function useCardSteps(
       customer?.rejection_reasons,
       cardActivated,
       cardStatusResponse?.activationBlocked,
-      cardStatusResponse?.activationBlockedReason,
+      cardStatusResponse?.activationFailure?.terminal,
       cardStatusResponse?.rainApplicationStatus,
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,

@@ -84,6 +84,37 @@ describe('isCardIssuanceUnderReview', () => {
       ).toBe(false);
     });
 
+    it('yields to a terminal issuance failure, which no waiting will clear', () => {
+      // Most of these never set `activationBlocked` — that flag is sticky and
+      // raised by hand — so without this the reason would sit behind "your card
+      // is on its way" indefinitely.
+      expect(
+        isUnderReview({
+          kycStatus: KycStatus.UNDER_REVIEW,
+          activationFailure: {
+            code: 'COUNTRY_NOT_SUPPORTED',
+            reason: 'Cards are not available in Bangladesh (BD) yet.',
+            terminal: true,
+          },
+        }),
+      ).toBe(false);
+    });
+
+    it('still holds while a non-terminal failure is retryable', () => {
+      // An issuer blip or provisioning still running: the card really is on its
+      // way, and the screen should keep saying so.
+      expect(
+        isUnderReview({
+          kycStatus: KycStatus.UNDER_REVIEW,
+          activationFailure: {
+            code: 'TEMPORARY_FAILURE',
+            reason: 'Our card issuer is not responding right now.',
+            terminal: false,
+          },
+        }),
+      ).toBe(true);
+    });
+
     it('yields to an application parked on its deposit', () => {
       // "Top up and hold your $X" is the user's move; it lives on the steps list.
       expect(
