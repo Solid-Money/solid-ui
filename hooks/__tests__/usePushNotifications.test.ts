@@ -75,6 +75,31 @@ describe('routeForLink', () => {
     expect(routeForLink('not a url')).toBeUndefined();
     expect(routeForLink(undefined)).toBeUndefined();
   });
+
+  describe('host allowlist', () => {
+    it('accepts the hosts that serve our Universal Links', () => {
+      expect(routeForLink('https://app.solid.xyz/card')).toEqual(path.CARD_INFO);
+      expect(routeForLink('https://solid.xyz/rewards')).toEqual(path.REWARDS);
+    });
+
+    it.each([
+      ['a foreign host', 'https://malicious.com/card'],
+      // The ones a substring check would wave through.
+      ['a lookalike suffix', 'https://app.solid.xyz.evil.com/card'],
+      ['a lookalike prefix', 'https://notapp.solid.xyz/card'],
+      ['our host in the userinfo', 'https://app.solid.xyz@evil.com/card'],
+      ['our host in the path', 'https://evil.com/app.solid.xyz/card'],
+      ['our host in the query', 'https://evil.com/card?x=app.solid.xyz'],
+    ])('refuses to route %s', (_label, url) => {
+      expect(routeForLink(url)).toBeUndefined();
+    });
+
+    it('refuses a non-http scheme pointed at a known host', () => {
+      // The backend only ever emits https; a custom-scheme link reaching here
+      // did not come from it.
+      expect(routeForLink('javascript://app.solid.xyz/card')).toBeUndefined();
+    });
+  });
 });
 
 describe('getNotificationRoute', () => {
@@ -171,6 +196,18 @@ describe('getNotificationRoute', () => {
 
     it('uses the type when the link is unreadable', () => {
       expect(getNotificationRoute({ type: 'rewards-idle', link: 'garbage' })).toEqual(path.REWARDS);
+    });
+
+    it('ignores a link from a host we do not serve, rather than following it', () => {
+      // Falls through to the type switch, which is the pre-link behaviour.
+      expect(
+        getNotificationRoute({ type: 'rewards-idle', link: 'https://malicious.com/card' }),
+      ).toEqual(path.REWARDS);
+      // A lifecycle type has no branch there, so it lands on home — the safe
+      // default, not the screen the foreign path asked for.
+      expect(
+        getNotificationRoute({ type: 'kyc-approved', link: 'https://malicious.com/card' }),
+      ).toEqual(path.HOME);
     });
   });
 });

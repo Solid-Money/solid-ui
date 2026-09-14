@@ -1,8 +1,6 @@
 import * as Linking from 'expo-linking';
 
-// Hosts that serve Universal Links (iOS) / App Links (Android) for the app.
-// Incoming links on these hosts are rewritten to the matching in-app route.
-const KNOWN_HOSTS = ['app.solid.xyz', 'solid.xyz'];
+import { KNOWN_HOSTS } from '@/constants/deeplink';
 
 /**
  * Expo Router native deep-link hook.
@@ -27,10 +25,7 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
     const query = queryParams
       ? Object.entries(queryParams)
           .filter(([, value]) => value != null)
-          .map(
-            ([key, value]) =>
-              `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
-          )
+          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
           .join('&')
       : '';
 

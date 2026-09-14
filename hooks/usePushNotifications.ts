@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { Href, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
+import { KNOWN_HOSTS } from '@/constants/deeplink';
 import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -83,19 +84,38 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
 /**
  * The screen a push's deep link names, or undefined if it names none.
  *
+ * The host is checked against {@link KNOWN_HOSTS} before the path is read, the
+ * same test `redirectSystemPath` applies to a link the OS hands us. A push
+ * payload is not attacker-reachable today — sending one needs our FCM
+ * credentials, and the paths below resolve through a closed map to hardcoded
+ * screens, so nothing here can navigate out of the app. The check is here
+ * because the link is still data from outside this file, the app already has
+ * one allowlist for exactly this decision, and the day a link is built from
+ * something a user supplied is not the day to start looking for the control
+ * point.
+ *
  * `/rewards?referral=open` is the one path whose query changes the destination:
  * it is the referral sheet, which is its own Href. Everything else ignores the
  * query, which by then is only the campaign.
  *
- * Returns undefined rather than throwing for a malformed or unrecognised link
- * so the caller falls back to the `type` switch: a link we cannot read is a
- * reason to route the old way, never a reason to drop the tap.
+ * Returns undefined rather than throwing for a malformed, foreign or
+ * unrecognised link so the caller falls back to the `type` switch: a link we
+ * cannot trust or cannot read is a reason to route the old way, never a reason
+ * to drop the tap.
  */
 function routeForLink(link?: string): Href | undefined {
   if (!link) return undefined;
 
   try {
     const url = new URL(link);
+    // Scheme as well as host: `javascript://app.solid.xyz/card` parses with a
+    // hostname that passes the allowlist. Nothing here would execute it — the
+    // paths resolve to hardcoded screens and this never navigates to the URL —
+    // but a link whose scheme is not http(s) did not come from our backend, and
+    // `redirectSystemPath` screens the same way (`path.startsWith('http')`).
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    if (!KNOWN_HOSTS.includes(url.hostname)) return undefined;
+
     const pathname = url.pathname.replace(/\/+$/, '') || '/';
 
     if (pathname === '/rewards' && url.searchParams.get('referral') === 'open') {
