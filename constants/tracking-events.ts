@@ -247,6 +247,15 @@ export const TRACKING_EVENTS = {
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
 
+  // Push notification events. The backend stamps every push with the campaign
+  // that sent it (utm_source / utm_medium=push / utm_campaign) and the deep
+  // link it points at; the tap handler records the open and writes that
+  // campaign into the attribution store, so the deposit and card-payment events
+  // that follow in the same session carry it too. Before this, `utm_medium` in
+  // Amplitude had sixteen values and `push` was not one of them — no push had
+  // ever been credited with a deposit.
+  PUSH_NOTIFICATION_OPENED: 'push_notification_opened',
+
   // Home CTA banner events — the one next-step card under the wallet card,
   // whichever rung of the funnel the user is on (Figma 25141:6965).
   HOME_PROMPT_DISMISSED: 'home_prompt_dismissed',
