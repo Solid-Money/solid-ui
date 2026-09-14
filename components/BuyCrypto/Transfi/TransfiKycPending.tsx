@@ -22,6 +22,14 @@ import { useTransfiStore } from '@/store/useTransfiStore';
 const MAX_SHARE_ATTEMPTS = 3;
 
 /**
+ * How long to keep promising "under a minute" before saying what is actually
+ * happening. Most decisions land inside this; the ones that don't were leaving
+ * users watching a spinner for days against a manual review, so past this the
+ * screen stops predicting and offers a way out instead.
+ */
+const SLOW_VERIFICATION_MS = 45_000;
+
+/**
  * Shown while TransFi verifies the shared identity. If the user still needs to
  * share (arrived here straight from the identity flow), we trigger the share
  * automatically. Polls the gating status and advances to the amount screen on
@@ -40,9 +48,16 @@ export const TransfiKycPending = () => {
   const [hostedKycUrl, setHostedKycUrl] = useState<string>();
   const [hostedKycBlocked, setHostedKycBlocked] = useState(false);
   const [retryError, setRetryError] = useState<string>();
+  /** Past SLOW_VERIFICATION_MS on this screen without a verdict. */
+  const [isSlow, setIsSlow] = useState(false);
 
   useEffect(() => {
     track(TRACKING_EVENTS.BUY_CRYPTO_KYC_PENDING_VIEWED);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsSlow(true), SLOW_VERIFICATION_MS);
+    return () => clearTimeout(timer);
   }, []);
 
   // If we can share but haven't succeeded yet (e.g. just returned from the
@@ -150,8 +165,11 @@ export const TransfiKycPending = () => {
 
   // The hosted flow has been handed to the user and is being completed outside
   // this modal. Nothing to do here but let them reopen it — the polled status
-  // moves on by itself once TransFi receives the new submission.
-  if (hostedKycUrl && status?.status === 'rejected') {
+  // moves on by itself once TransFi receives the new submission. Shown for a
+  // still-unshared profile as well as a rejected one: both are states the user
+  // leaves by verifying with the partner directly, and dropping the screen the
+  // moment the status moved would strand them with the page already open.
+  if (hostedKycUrl && (status?.status === 'rejected' || status?.status === 'can_share')) {
     return (
       <View className="flex-1 gap-6">
         <View className="items-center gap-4 pt-2">
@@ -219,7 +237,10 @@ export const TransfiKycPending = () => {
           <Text className="text-center text-base text-muted-foreground">
             {canRetry
               ? 'Our payment partner couldn’t verify the documents we shared — usually a photo that’s blurry, cropped or out of date. You can verify again with them directly.'
-              : 'We couldn’t verify your identity with our payment partner. Please try again later.'}
+              : // Their decision, and it is final: "try again later" read as a
+                // wait that would clear, so users kept coming back to the same
+                // screen. Say what it is and where to take it.
+                'Our payment partner won’t verify this account. Your Solid verification is unaffected — the rest of the app still works. Contact support if you think this is a mistake.'}
           </Text>
           {status.reasons?.length ? (
             <Text className="text-center text-sm text-muted-foreground">
@@ -266,6 +287,17 @@ export const TransfiKycPending = () => {
   }
 
   if (exhausted) {
+    // A profile already exists at the partner, so re-sharing the same documents
+    // is not the only move left — and for the users this screen was stranding,
+    // it was the move that could never work: the partner was holding a
+    // submission of its own and refusing every replacement. Verifying with them
+    // directly is the way past that, so lead with it.
+    const canVerifyDirectly = Boolean(status?.canRetryKyc);
+    // Two actions on one screen, each firing its own request. Leaving either
+    // live while the other is in flight lets them race: "Try again" also calls
+    // setExhausted(false), so a hosted-retry landing afterwards would set a
+    // verification URL on a screen that has already moved on.
+    const isBusy = isRetrying || isSharing;
     return (
       <View className="flex-1 items-center justify-center gap-6 px-4">
         <View className="items-center gap-2">
@@ -273,13 +305,46 @@ export const TransfiKycPending = () => {
             We couldn&apos;t finish setting this up
           </Text>
           <Text className="text-center text-base text-muted-foreground">
-            Sharing your verification with our payment partner didn&apos;t go through. Your identity
-            check is still valid — try again in a moment.
+            {canVerifyDirectly
+              ? 'Sharing your verification with our payment partner didn’t go through. Your identity check is still valid — you can verify with them directly instead.'
+              : 'Sharing your verification with our payment partner didn’t go through. Your identity check is still valid — try again in a moment.'}
           </Text>
+          {retryError ? (
+            <Text className="text-center text-sm text-red-500">{retryError}</Text>
+          ) : null}
         </View>
         <View className="mt-auto w-full gap-3">
-          <Button className="h-14 rounded-2xl" variant="brand" onPress={handleRetry}>
-            <Text className="text-base font-bold text-primary-foreground">Try again</Text>
+          {canVerifyDirectly ? (
+            <Button
+              className="h-14 rounded-2xl"
+              variant="brand"
+              disabled={isBusy}
+              onPress={() => void handleHostedRetry()}
+            >
+              {isRetrying ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <Text className="text-base font-bold text-primary-foreground">
+                  Verify with our partner
+                </Text>
+              )}
+            </Button>
+          ) : null}
+          <Button
+            className="h-14 rounded-2xl"
+            variant={canVerifyDirectly ? 'secondary' : 'brand'}
+            disabled={isBusy}
+            onPress={handleRetry}
+          >
+            <Text
+              className={
+                canVerifyDirectly
+                  ? 'text-base font-semibold text-primary'
+                  : 'text-base font-bold text-primary-foreground'
+              }
+            >
+              Try again
+            </Text>
           </Button>
           <Button
             className="h-12 rounded-2xl"
@@ -299,9 +364,20 @@ export const TransfiKycPending = () => {
       <View className="items-center gap-2">
         <Text className="text-center text-xl font-bold text-primary">Verifying your identity</Text>
         <Text className="text-center text-base text-muted-foreground">
-          This usually takes under a minute. You can keep this open.
+          {isSlow
+            ? 'Our payment partner is still reviewing this. You can close this and come back — the result is saved to your account either way.'
+            : 'This usually takes under a minute. You can keep this open.'}
         </Text>
       </View>
+      {isSlow ? (
+        <Button
+          className="mt-auto h-12 w-full rounded-2xl"
+          variant="ghost"
+          onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+        >
+          <Text className="text-base font-semibold text-muted-foreground">Close</Text>
+        </Button>
+      ) : null}
     </View>
   );
 };

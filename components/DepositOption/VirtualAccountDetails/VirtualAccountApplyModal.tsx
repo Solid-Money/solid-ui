@@ -14,12 +14,15 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
-import { DepositModal, RainApplicationStatus } from '@/lib/types';
+import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
+
+import { resolveVirtualAccountApplyAction } from './virtualAccountApplyAction';
 
 const BENEFITS_HEIGHT = 328;
 const FIRST_ROW_HEIGHT = 177;
@@ -111,6 +114,11 @@ export const VirtualAccountApplyModal = ({
   const setModal = useDepositStore(state => state.setModal);
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const { data: cardStatus } = useCardStatus();
+  // Which issuer would open this user's account. `loading` is neither — the CTA
+  // waits rather than guessing, because guessing Rain is what sent Wirex users
+  // into a verification they had already passed.
+  const { provider: virtualAccountProvider, isLoading: isResolvingProvider } =
+    useVirtualAccountProvider();
 
   const [isChecking, setIsChecking] = useState(false);
   // Set once we know the user's region isn't served — swaps the pitch for the
@@ -141,8 +149,26 @@ export const VirtualAccountApplyModal = ({
 
   const proceed = useCallback(() => {
     const rainStatus = cardStatus?.rainApplicationStatus;
+    const action = resolveVirtualAccountApplyAction({
+      provider: virtualAccountProvider,
+      rainApplicationStatus: rainStatus,
+      kycApplicationEstablished: cardStatus?.kycApplicationEstablished,
+    });
 
-    if (rainStatus === RainApplicationStatus.APPROVED) {
+    // Wirex issues this user's account, not Rain, so no amount of Rain approval
+    // opens one and the Didit VA workflow is the wrong check to send them to.
+    // Their details screen owns activation, including the "verify with Sumsub
+    // first" state.
+    if (action.type === 'wirex-details') {
+      track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+        provider: 'wirex',
+        rain_application_status: rainStatus ?? 'not_started',
+      });
+      requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+      return;
+    }
+
+    if (action.type === 'rain-tos') {
       requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_TOS);
       return;
     }
@@ -150,22 +176,20 @@ export const VirtualAccountApplyModal = ({
     // Everyone else is sent through identity verification first — the single
     // biggest drop-off in this flow, so it gets its own event.
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+      provider: 'rain',
       rain_application_status: rainStatus ?? 'not_started',
+      kyc_application_established: Boolean(cardStatus?.kycApplicationEstablished),
     });
 
     setKycFlow('va');
     requestDepositModal(DEPOSIT_MODAL.CLOSE);
 
-    if (
-      rainStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
-      rainStatus === RainApplicationStatus.NEEDS_INFORMATION
-    ) {
-      router.push(path.CARD_PENDING);
-      return;
-    }
-
-    router.push(path.KYC);
-  }, [cardStatus, requestDepositModal, router, setKycFlow]);
+    // An application already exists, so a new verification would be refused
+    // with 409 KYC_ALREADY_EXISTS and /kyc would bounce straight back out —
+    // which is exactly what "Verify now" looked like from the outside. Send
+    // them to the page that carries the application's real state instead.
+    router.push(action.type === 'rain-application' ? path.CARD_PENDING : path.KYC);
+  }, [cardStatus, requestDepositModal, router, setKycFlow, virtualAccountProvider]);
 
   /**
    * Where the user is, for the virtual account gate.
@@ -268,9 +292,9 @@ export const VirtualAccountApplyModal = ({
           className="w-full rounded-full border-0 active:opacity-90"
           style={{ height: CTA_HEIGHT }}
           onPress={handleApply}
-          disabled={isChecking}
+          disabled={isChecking || isResolvingProvider}
         >
-          {isChecking ? (
+          {isChecking || isResolvingProvider ? (
             <ActivityIndicator color="#000" />
           ) : (
             <Text className="text-[16px] font-semibold text-black">Verify now</Text>

@@ -20,6 +20,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -47,6 +48,7 @@ const DepositTypeSelection = () => {
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 
@@ -61,12 +63,20 @@ const DepositTypeSelection = () => {
   }, [showAllCurrencies]);
 
   const handleCashPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
-    if (existingAutomation) {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+      provider: virtualAccountProvider,
+    });
+    // A Wirex user has no Rain automation and never will, so the Rain apply
+    // pitch is not their next step — their details screen owns activation for
+    // both rails. The other two entry points into this flow already route on
+    // the provider; this one did not, which is how Wirex users reached a
+    // "Verify now" that could only bounce them off the Rain KYC gate.
+    if (virtualAccountProvider === 'wirex' || existingAutomation) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
-    } else {
-      setIsVirtualAccountApplyOpen(true);
+      return;
     }
+    setIsVirtualAccountApplyOpen(true);
   };
 
   const handleShowAddressPress = () => {

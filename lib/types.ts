@@ -2711,9 +2711,12 @@ export interface TransfiStatusResponse {
   transfiKycStatus?: string;
   reasons?: string[];
   /**
-   * On `rejected`, whether TransFi will let the user resubmit through its hosted
-   * KYC. False for compliance rejections, where retrying is pointless — the
-   * screen offers a retry only when this is true.
+   * Whether TransFi will let the user verify through its hosted KYC.
+   *
+   * On `rejected`, false for compliance rejections, where retrying is
+   * pointless — the screen offers a retry only when this is true. On
+   * `can_share`, true once a TransFi profile exists, which is what lets a share
+   * that keeps being refused offer the hosted flow instead of looping.
    */
   canRetryKyc?: boolean;
   /**
