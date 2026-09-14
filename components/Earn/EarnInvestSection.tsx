@@ -153,36 +153,46 @@ export const EarnInvestSection = () => {
     collapse();
   };
 
-  // The whole section is for people who already hold something, so it is absent
-  // rather than empty for everyone else. Held back while the holdings read is in
-  // flight too: appearing and then vanishing reads worse than arriving late.
-  if (isHoldingsLoading || holdings.length === 0) return null;
+  // The positions panel is for people who already hold something, so it is absent
+  // rather than empty for everyone else, and held back while the holdings read is
+  // in flight: appearing and then vanishing reads worse than arriving a beat late.
+  //
+  // The catalog below is deliberately not gated on it. It is the only route from
+  // Earn into buying a first stock, so it has to render for holders and
+  // non-holders alike, and it must not wait on a chain read to do so.
+  const hasPositions = !isHoldingsLoading && holdings.length > 0;
 
   return (
     <View className="mt-8">
       <Text className="text-[18px] font-semibold leading-6 text-white">Invest</Text>
-      <Text className="mt-1 text-[14px] leading-5 text-white/50">Your positions</Text>
 
-      <View className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
-        {holdings.map(holding => {
-          const token = tokensBySymbol.get(holding.ticker);
-          const price = prices[holding.ticker];
+      {hasPositions && (
+        <>
+          <Text className="mt-1 text-[14px] leading-5 text-white/50">Your positions</Text>
 
-          return (
-            <EarnAssetRow
-              key={holding.ticker}
-              ticker={holding.ticker}
-              name={formatAssetName(holding.ticker, holding.name)}
-              caption={formatShares(holding.shares)}
-              logoUrl={token?.logoUrl}
-              value={price === undefined ? undefined : holding.shares * price}
-              onPress={() => token && openStock(token, 'sell')}
-            />
-          );
-        })}
-      </View>
+          <View className="mt-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-4 py-2">
+            {holdings.map(holding => {
+              const token = tokensBySymbol.get(holding.ticker);
+              const price = prices[holding.ticker];
 
-      <Text className="mt-6 text-[14px] leading-5 text-white/50">
+              return (
+                <EarnAssetRow
+                  key={holding.ticker}
+                  ticker={holding.ticker}
+                  name={formatAssetName(holding.ticker, holding.name)}
+                  caption={formatShares(holding.shares)}
+                  logoUrl={token?.logoUrl}
+                  value={price === undefined ? undefined : holding.shares * price}
+                  onPress={() => token && openStock(token, 'sell')}
+                />
+              );
+            })}
+          </View>
+        </>
+      )}
+
+      {/* Falls back to the section's subtitle slot when nothing sits above it. */}
+      <Text className={`text-[14px] leading-5 text-white/50 ${hasPositions ? 'mt-6' : 'mt-1'}`}>
         Buy, sell and use as collateral
       </Text>
 
