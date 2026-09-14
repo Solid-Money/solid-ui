@@ -543,11 +543,37 @@ export interface KycWarning {
   node_id?: string;
 }
 
+/**
+ * Why the last card activation attempt did not produce a card.
+ *
+ * `activationBlockedReason` only ever arrived alongside the sticky
+ * `activationBlocked` flag, so the failures that do NOT set it — an unsupported
+ * document country, a name the issuer could not read, an issuer-side decline —
+ * reached this client as nothing at all, and the card screen fell back to
+ * "There was an issue activating your card. Please contact support."
+ */
+export interface CardActivationFailure {
+  /** Server-side `CardActivationBlockCode`. Branch on this, not on prose. */
+  code: string;
+  /** One-line headline, already written for the user. */
+  reason: string;
+  /** What happened and what to do about it. */
+  detail?: string;
+  /** False when retrying is genuinely worth a try; true when it cannot help. */
+  terminal: boolean;
+  occurredAt?: string | null;
+}
+
 export interface CardStatusResponse {
   status?: CardStatus;
   activationBlocked?: boolean;
   activationBlockedReason?: string;
   activationFailedAt?: string;
+  /**
+   * The last activation failure, classified. Present whether or not
+   * `activationBlocked` is set — see {@link CardActivationFailure}.
+   */
+  activationFailure?: CardActivationFailure;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
