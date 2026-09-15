@@ -246,6 +246,27 @@ export function useCardSteps(
         countryCode,
       });
 
+      /**
+       * No country at all — neither stored nor detectable. `resolveKycProvider`
+       * answers Didit here because Didit is available everywhere, and that
+       * fallback is how users in markets Wirex wins (Thailand, Brazil, the US)
+       * ended up on Rain permanently: the Didit session creates a card customer
+       * that defaults to Rain, and nothing ever rewrites it.
+       *
+       * Ask instead of guessing. This is the same screen the Sumsub branch
+       * below uses, and it is only reached when the IP lookup failed too — a
+       * country that resolved keeps going without an extra step.
+       */
+      if (!countryCode) {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'country_selection_required',
+          kycProvider,
+          reason: 'country_unresolved',
+        });
+        router.push(path.CARD_COUNTRY_SELECTION as any);
+        return;
+      }
+
       if (kycProvider === KycProvider.SUMSUB) {
         /**
          * A verification that has already been submitted must not be restarted.

@@ -2,7 +2,7 @@
 
 import { getProviderRouting } from '@/lib/api';
 import { detectGeo } from '@/lib/geo';
-import { resolveKycProvider } from '@/lib/kycProviderRouting';
+import { resolveKycProvider, resolveRoutingCountry } from '@/lib/kycProviderRouting';
 import { CardProvider, KycProvider } from '@/lib/types';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -200,5 +200,50 @@ describe('resolveKycProvider flow gating', () => {
       kycProvider: KycProvider.DIDIT,
       countryCode: 'DE',
     });
+  });
+});
+
+/**
+ * The Didit session sends this country too, so the server can refuse a card
+ * application in a market Wirex wins. Both callers have to reach the same
+ * answer for the same user: route the client to Didit on one country and have
+ * the session refused on another and the user bounces between widgets.
+ *
+ * This is the resolution the misrouted users never had. A Thai account seconds
+ * old has no stored country and no `user.country` on the server either, so
+ * whatever this returns is the only thing standing between them and a Rain card
+ * customer nothing will ever rewrite.
+ */
+describe('resolveRoutingCountry', () => {
+  it('uses the stored country without an IP lookup', async () => {
+    storeCountry('TH');
+
+    await expect(resolveRoutingCountry()).resolves.toBe('TH');
+    expect(mockDetectGeo).not.toHaveBeenCalled();
+  });
+
+  it('falls back to an IP lookup when nothing is stored', async () => {
+    mockDetectGeo.mockResolvedValue({ countryCode: 'TH', countryName: 'Thailand' });
+
+    await expect(resolveRoutingCountry()).resolves.toBe('TH');
+  });
+
+  /**
+   * The genuinely unknowable case. It answers undefined rather than guessing —
+   * the card flow sends the user to the country selection screen on it, because
+   * quietly proceeding is what routed these applicants to Rain.
+   */
+  it('answers undefined when the country cannot be resolved at all', async () => {
+    mockDetectGeo.mockResolvedValue(null);
+
+    await expect(resolveRoutingCountry()).resolves.toBeUndefined();
+  });
+
+  it('does not persist the country it detected', async () => {
+    mockDetectGeo.mockResolvedValue({ countryCode: 'TH', countryName: 'Thailand' });
+
+    await resolveRoutingCountry();
+
+    expect(useCountryStore.getState().countryInfo).toBeNull();
   });
 });

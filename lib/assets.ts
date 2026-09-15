@@ -1068,6 +1068,10 @@ export const ASSETS = {
     module: require('@/assets/images/solid-dark-purple.png'),
     hash: 'e599ecfa',
   },
+  'images/solid-email-logo.png': {
+    module: require('@/assets/images/solid-email-logo.png'),
+    hash: 'bc075f1b',
+  },
   'images/solid-favicon-180.png': {
     module: require('@/assets/images/solid-favicon-180.png'),
     hash: '0b2fb9ee',

@@ -10,6 +10,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
+import { resolveRoutingCountry } from '@/lib/kycProviderRouting';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -181,7 +182,15 @@ export function useDiditSession() {
       // Their card application stays gated regardless: the hand-off to the
       // issuer re-checks the deposit whichever flow started the session.
       const diditFlow = kycFlow === 'va' ? 'va' : kycFlow === 'transfi' ? 'onramp' : 'card';
-      const res = await withRefreshToken(() => createDiditSession(undefined, diditFlow));
+      // The card flow sends its country so the server can refuse a market Wirex
+      // serves — Wirex wins every jurisdiction both issuers cover, and this
+      // session is what would otherwise pin the user to Rain permanently. Only
+      // the card asks: the onramp and the virtual account run off their own
+      // country lists and are not card applications.
+      const countryCode = diditFlow === 'card' ? await resolveRoutingCountry() : undefined;
+      const res = await withRefreshToken(() =>
+        createDiditSession(undefined, diditFlow, countryCode),
+      );
       if (!res) {
         setSession({
           phase: 'error',
@@ -221,6 +230,28 @@ export function useDiditSession() {
           // destination, still without claiming the check passed.
           await redirectBasedOnKycStatus(KycStatus.APPROVED, 'existing');
         }
+        return;
+      }
+      /**
+       * CARD_PROVIDER_MISMATCH (400): this user's country routes to Wirex,
+       * which verifies with Sumsub — Wirex wins every market both issuers
+       * serve. Didit is the wrong widget for them: a stale build, or a country
+       * the client could not resolve and defaulted away from. The server
+       * refused before creating the card customer that would have pinned them
+       * to Rain for good, since nothing ever rewrites it.
+       *
+       * Back to the country screen, exactly as the Sumsub side does for the
+       * mirror case. It re-asks routing on the way through and lands them on
+       * Sumsub — and, decisively, persists the country they pick, so the round
+       * trip settles instead of repeating. Pushing straight at the Sumsub
+       * screen would only bounce off its own COUNTRY_REQUIRED.
+       */
+      if (e?.code === 'CARD_PROVIDER_MISMATCH') {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'provider_mismatch',
+          kycProvider: 'didit',
+        });
+        router.replace(path.CARD_COUNTRY_SELECTION as any);
         return;
       }
       // CARD_DEPOSIT_REQUIRED (400): the applicant is not holding the minimum
