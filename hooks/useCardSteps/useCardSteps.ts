@@ -12,7 +12,7 @@ import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
-import { getCustomerFromBridge, getKycLinkFromBridge, resumeRainKycForward } from '@/lib/api';
+import { resumeRainKycForward } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
@@ -24,14 +24,6 @@ import { useKycStore } from '@/store/useKycStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 // Import helpers
-import { shouldStopKycFlow } from './endorsementHelpers';
-import {
-  checkAndBlockForCountryAccess,
-  redirectToCollectUserInfo,
-  redirectToExistingCustomerKycLink,
-  showAccountOffboardedToast,
-  showKycUnderReviewToast,
-} from './kycFlowHelpers';
 import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
 import { resolveRainKycAction } from './rainKycAction';
 import { openCardSavingsDeposit } from './savingsDepositEntry';
@@ -77,7 +69,6 @@ export function useCardSteps(
     cardStatusResponse?.applicationExternalVerificationLink != null
       ? CardProvider.RAIN
       : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
-  const countryStore = useCountryStore(useShallow(state => ({ countryInfo: state.countryInfo })));
 
   // Get customer data with cards endorsement
   const { data: customer } = useCustomer();
@@ -227,167 +218,111 @@ export function useCardSteps(
       cardIssuer,
     });
 
-    // Non-Bridge users go through Didit (Rain) by default. The backend is
-    // authoritative for whether this jurisdiction should instead use Sumsub
-    // (Wirex). Defaulting to Didit — and staying there if the call fails — keeps
-    // the widely-available flow as the safe fallback.
+    // EVERY card applicant routes here. The backend is authoritative for which
+    // jurisdiction gets Sumsub (Wirex) and which gets Didit (Rain), and Wirex
+    // wins the markets both issuers serve. Defaulting to Didit — and staying
+    // there if the call fails — keeps the widely-available flow as the safe
+    // fallback.
+    //
+    // This used to be the `cardIssuer !== BRIDGE` branch, with a bridge.xyz
+    // fall-through behind it that ran a Persona inquiry. Both are retired: the
+    // backend refuses a card KYC link on bridge.xyz and answers with the issuer
+    // and identity provider the user's country routes to instead, so reaching
+    // that fall-through could only produce "An error occurred while creating the
+    // KYC link". It was already unreachable — `/cards/status` names `bridge` for
+    // nobody, and `useCardProvider` maps a Bridge card to null rather than to
+    // the issuer — so removing it changes nothing for any real user and leaves
+    // one path through this action.
     //
     // The country is resolved inside `resolveKycProvider`, not read from this
     // closure: entry points run the country gate and then call this action in
     // the same tick, so a country captured at render time is still the pre-gate
     // one and a Wirex user would be sent to Didit on their first press.
-    if (cardIssuer !== CardProvider.BRIDGE) {
-      setKycFlow('card');
-      const { kycProvider, countryCode } = await resolveKycProvider();
-      setKycProvider(kycProvider);
+    setKycFlow('card');
+    const { kycProvider, countryCode } = await resolveKycProvider();
+    setKycProvider(kycProvider);
+    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+      action: 'route',
+      kycProvider,
+      countryCode,
+    });
+
+    /**
+     * No country at all — neither stored nor detectable. `resolveKycProvider`
+     * answers Didit here because Didit is available everywhere, and that
+     * fallback is how users in markets Wirex wins (Thailand, Brazil, the US)
+     * ended up on Rain permanently: the Didit session creates a card customer
+     * that defaults to Rain, and nothing ever rewrites it.
+     *
+     * Ask instead of guessing. This is the same screen the Sumsub branch
+     * below uses, and it is only reached when the IP lookup failed too — a
+     * country that resolved keeps going without an extra step.
+     */
+    if (!countryCode) {
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-        action: 'route',
+        action: 'country_selection_required',
         kycProvider,
-        countryCode,
+        reason: 'country_unresolved',
       });
+      router.push(path.CARD_COUNTRY_SELECTION as any);
+      return;
+    }
+
+    if (kycProvider === KycProvider.SUMSUB) {
+      /**
+       * A verification that has already been submitted must not be restarted.
+       * Sumsub GREEN hands off to Wirex, which then adjudicates, so an
+       * UNDER_REVIEW user is mid-hand-off — and if that forward stalled (a
+       * Wirex outage; see the admin retry endpoint) they would sit here
+       * pressing a button that opens a brand new session, hit the country
+       * gate on it, and be told to confirm a country to redo work they had
+       * already finished.
+       *
+       * `kycStatus`, not `uiKycStatus`: the latter can be an optimistic
+       * post-submit window, while this needs the backend's own answer — and
+       * for a Wirex user there is no Bridge kycLink, so it is exactly what
+       * /cards/status reported.
+       */
+      if (kycStatus === KycStatus.UNDER_REVIEW) {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'already_under_review',
+          kycProvider,
+        });
+        router.push(path.CARD_PENDING as any);
+        return;
+      }
 
       /**
-       * No country at all — neither stored nor detectable. `resolveKycProvider`
-       * answers Didit here because Didit is available everywhere, and that
-       * fallback is how users in markets Wirex wins (Thailand, Brazil, the US)
-       * ended up on Rain permanently: the Didit session creates a card customer
-       * that defaults to Rain, and nothing ever rewrites it.
+       * Sumsub card sessions REQUIRE a country the user declared themselves —
+       * an IP guess is refused server-side, because `user.country` pins which
+       * issuer serves them and nothing writes it back. Ask here rather than
+       * letting the session fail: this is the entry point the home setup step
+       * uses (`useHomeSetupSteps` calls this action directly rather than
+       * `startCardOnboarding`), so it is reached with no gate having run at
+       * all, and `resolveKycProvider` deliberately does not persist the
+       * country it routes on.
        *
-       * Ask instead of guessing. This is the same screen the Sumsub branch
-       * below uses, and it is only reached when the IP lookup failed too — a
-       * country that resolved keeps going without an extra step.
+       * The selection screen writes `source: 'manual'` and re-enters the flow
+       * via `/card/activate?countryConfirmed=true`, so this asks once.
        */
-      if (!countryCode) {
+      if (useCountryStore.getState().countryInfo?.source !== 'manual') {
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'country_selection_required',
           kycProvider,
-          reason: 'country_unresolved',
+          countryCode,
         });
         router.push(path.CARD_COUNTRY_SELECTION as any);
         return;
       }
-
-      if (kycProvider === KycProvider.SUMSUB) {
-        /**
-         * A verification that has already been submitted must not be restarted.
-         * Sumsub GREEN hands off to Wirex, which then adjudicates, so an
-         * UNDER_REVIEW user is mid-hand-off — and if that forward stalled (a
-         * Wirex outage; see the admin retry endpoint) they would sit here
-         * pressing a button that opens a brand new session, hit the country
-         * gate on it, and be told to confirm a country to redo work they had
-         * already finished. The Bridge branch below has always guarded this;
-         * the Sumsub path did not.
-         *
-         * `kycStatus`, not `uiKycStatus`: the latter can be an optimistic
-         * post-submit window, while this needs the backend's own answer — and
-         * for a Wirex user there is no Bridge kycLink, so it is exactly what
-         * /cards/status reported.
-         */
-        if (kycStatus === KycStatus.UNDER_REVIEW) {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'already_under_review',
-            kycProvider,
-          });
-          router.push(path.CARD_PENDING as any);
-          return;
-        }
-
-        /**
-         * Sumsub card sessions REQUIRE a country the user declared themselves —
-         * an IP guess is refused server-side, because `user.country` pins which
-         * issuer serves them and nothing writes it back. Ask here rather than
-         * letting the session fail: this is the entry point the home setup step
-         * uses (`useHomeSetupSteps` calls this action directly rather than
-         * `startCardOnboarding`), so it is reached with no gate having run at
-         * all, and `resolveKycProvider` deliberately does not persist the
-         * country it routes on.
-         *
-         * The selection screen writes `source: 'manual'` and re-enters the flow
-         * via `/card/activate?countryConfirmed=true`, so this asks once.
-         */
-        if (useCountryStore.getState().countryInfo?.source !== 'manual') {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'country_selection_required',
-            kycProvider,
-            countryCode,
-          });
-          router.push(path.CARD_COUNTRY_SELECTION as any);
-          return;
-        }
-      }
-
-      router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
-      return;
     }
 
-    setKycFlow('card');
-
-    // Check country access (Bridge flow)
-    const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
-    if (isBlocked) return;
-
-    // Check latest KYC status (Bridge)
-    try {
-      if (kycLinkId) {
-        const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
-        const latestStatus = (latest?.kyc_status as KycStatus) || KycStatus.NOT_STARTED;
-
-        if (latestStatus === KycStatus.UNDER_REVIEW) {
-          showKycUnderReviewToast(kycLinkId);
-          return;
-        }
-
-        if (latestStatus === KycStatus.OFFBOARDED) {
-          showAccountOffboardedToast(kycLinkId);
-          return;
-        }
-
-        // KYC link approved, but we need to check cards endorsement status
-        // (KYC approval ≠ cards endorsement approval - they can differ)
-        if (latestStatus === KycStatus.APPROVED) {
-          const latestCustomer = await withRefreshToken(() => getCustomerFromBridge());
-          const latestCardsEndorsement = latestCustomer?.endorsements?.find(
-            e => e.name === 'cards',
-          );
-
-          // Check cards endorsement status:
-          // - APPROVED: stop - user can order card
-          // - PENDING REVIEW: stop - user should wait
-          // - REVOKED/INCOMPLETE/None: continue - user needs to retry KYC for cards
-          const stopFlow = shouldStopKycFlow(
-            latestCardsEndorsement,
-            kycLinkId,
-            latestCustomer?.rejection_reasons,
-          );
-
-          if (stopFlow) return;
-
-          // Edge case: KYC approved but cards endorsement not approved
-          // Redirect user to complete KYC specifically for cards endorsement
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'approved_missing_endorsement',
-            kycLinkId,
-            hasCardsEndorsement: Boolean(latestCardsEndorsement),
-            cardsEndorsementStatus: latestCardsEndorsement?.status,
-          });
-
-          if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
-        }
-      }
-    } catch {
-      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, { action: 'status_check_failed', kycLinkId });
-    }
-
-    // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
-    if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
-    redirectToCollectUserInfo(router, countryStore.countryInfo?.countryCode);
+    router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
   }, [
     router,
     kycLinkId,
     kycStatus,
     uiKycStatus,
     processingUntil,
-    countryStore,
     cardsEndorsement?.status,
     cardIssuer,
     setKycFlow,
