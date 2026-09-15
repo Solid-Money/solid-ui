@@ -13,6 +13,11 @@ export interface ResolvedKycProvider {
 /**
  * The country to route the KYC provider on, read at call time.
  *
+ * Exported because the Didit session sends it too: the backend refuses a card
+ * session in a country Wirex serves, and it can only do that with a country in
+ * hand. Both must reach the same answer or the client would be routed to Didit
+ * and then refused by it.
+ *
  * Reading the store here rather than through a `useCountryStore` selector is
  * what makes this safe to call straight after the card country gate: the gate
  * persists the country it just resolved, but the React tree has not re-rendered
@@ -26,7 +31,7 @@ export interface ResolvedKycProvider {
  * `resolveCountryAccess` knows that answer. `detectGeo` memoises per session, so
  * this costs nothing once the gate has run.
  */
-const resolveRoutingCountry = async (): Promise<string | undefined> => {
+export const resolveRoutingCountry = async (): Promise<string | undefined> => {
   const stored = useCountryStore.getState().countryInfo?.countryCode;
   if (stored) return stored;
 

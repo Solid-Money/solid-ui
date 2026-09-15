@@ -745,10 +745,20 @@ export const toApiError = async (
  * ungated — buying crypto with fiat is how a fiat-only user funds their savings
  * in the first place, so requiring a balance to verify for it would leave them
  * unable to fund the balance it requires. `va` is the virtual-account workflow.
+ *
+ * `countryCode` is read for the CARD flow only, and only to be REFUSED on: a
+ * Didit session is a card application to Rain, and Rain must not take an
+ * applicant Wirex serves. The backend prefers the user's stored country and
+ * falls back to this one, which matters for the case that produced the bug —
+ * an account seconds old has no stored country, so without this the server has
+ * nothing to check and the applicant is pinned to Rain for good. Nothing here
+ * is written as the user's residence, so an IP-detected country is safe to
+ * send; the worst it can do is send a traveller to confirm where they live.
  */
 export const createDiditSession = async (
   callback?: string,
   flow: 'card' | 'va' | 'onramp' = 'card',
+  countryCode?: string,
 ): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
@@ -759,7 +769,11 @@ export const createDiditSession = async (
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({ ...(callback ? { callback } : {}), flow }),
+    body: JSON.stringify({
+      ...(callback ? { callback } : {}),
+      flow,
+      ...(countryCode ? { countryCode } : {}),
+    }),
   });
   if (!response.ok) {
     throw await toApiError(response, 'Failed to create verification session');
