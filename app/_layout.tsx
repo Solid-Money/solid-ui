@@ -68,8 +68,15 @@ Sentry.init({
   sendDefaultPii: true,
 
   // Performance Monitoring - configured upfront, integrations added later
+  //
+  // Profiling and session replay are the two settings here that cost something
+  // on every frame rather than only when an event is sent, and half of all
+  // sessions were carrying both at once (plus Amplitude's own replay plugin, see
+  // `lib/analytics.ts`). On the low-end Android hardware most of our sessions
+  // run on, that competes with the app itself. A tenth of sessions is still a
+  // large sample at our volume.
   tracesSampleRate: 0.5,
-  profilesSampleRate: 0.5,
+  profilesSampleRate: 0.1,
 
   // Release Health
   enableAutoSessionTracking: true,
@@ -103,8 +110,10 @@ Sentry.init({
     return event;
   },
 
-  // Configure Session Replay - rates set upfront, integration added later
-  replaysSessionSampleRate: 0.5,
+  // Configure Session Replay - rates set upfront, integration added later.
+  // See the profiling note above for why this is no longer half of all sessions;
+  // replays on error are unaffected, so nothing is lost from an incident.
+  replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
 
   // Integrations
