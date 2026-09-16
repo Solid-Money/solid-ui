@@ -25,6 +25,16 @@ import WalletDepositSelectors from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
+/** Inset shared by both halves of the card, so the QR and address line up. */
+const CARD_PADDING = 20;
+/**
+ * Margin of plain background left around the modules. The library keeps the
+ * element at `size` and scales the modules down to make room, so this buys the
+ * 20px corner radius something to cut into: a radius R bites at most R - R/√2
+ * (≈ 5.9px here) into the corner, well inside the ~9px margin, which keeps the
+ * rounding clear of the finder patterns a scanner needs intact.
+ */
+const QR_QUIET_ZONE = 10;
 const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
 
 /**
@@ -90,7 +100,7 @@ const WalletDepositAddress = () => {
   }, [address]);
 
   return (
-    <View className="gap-y-4">
+    <View className="gap-y-6">
       <WalletDepositSelectors
         chainId={chainId}
         symbol={symbol}
@@ -98,31 +108,48 @@ const WalletDepositAddress = () => {
         onSymbolChange={selectSymbol}
       />
 
-      <View className="items-center gap-y-3 rounded-[15px] bg-card px-4 py-6">
+      {/* The card's own padding sits on each section rather than the card, so the
+          divider between the QR and the address runs its full width. */}
+      <View className="overflow-hidden rounded-[20px] bg-card">
         <View
-          className="w-full items-center justify-center overflow-hidden rounded-xl"
-          style={{ height: qrSize }}
+          className="w-full items-center"
+          style={{ padding: CARD_PADDING }}
           onLayout={event =>
-            setQrSize(Math.min(Math.round(event.nativeEvent.layout.width), QR_MAX_SIZE))
+            setQrSize(
+              Math.min(Math.round(event.nativeEvent.layout.width) - CARD_PADDING * 2, QR_MAX_SIZE),
+            )
           }
         >
-          {address ? (
-            <QRCode
-              value={address}
-              size={qrSize}
-              color="white"
-              backgroundColor="#1C1C1C"
-              logo={network?.icon as ImageSourcePropType}
-              logoSize={Math.round(qrSize * 0.154)}
-              logoBorderRadius={Math.round(qrSize * 0.077)}
-              logoBackgroundColor="transparent"
-            />
-          ) : (
-            <ActivityIndicator color="white" />
-          )}
+          <View
+            className="items-center justify-center overflow-hidden rounded-[20px]"
+            style={{ width: qrSize, height: qrSize }}
+          >
+            {address ? (
+              <QRCode
+                value={address}
+                size={qrSize}
+                color="white"
+                backgroundColor="#1C1C1C"
+                // Keeps the rounded corners clear of the finder patterns: a corner
+                // clipped into is a corner a scanner can fail to locate.
+                quietZone={QR_QUIET_ZONE}
+                logo={network?.icon as ImageSourcePropType}
+                logoSize={Math.round(qrSize * 0.154)}
+                logoBorderRadius={Math.round(qrSize * 0.077)}
+                logoBackgroundColor="transparent"
+              />
+            ) : (
+              <ActivityIndicator color="white" />
+            )}
+          </View>
         </View>
 
-        <View className="flex-row items-center justify-center">
+        <View className="h-px bg-white/[0.08]" />
+
+        <View
+          className="flex-row items-center justify-center"
+          style={{ paddingHorizontal: CARD_PADDING, paddingVertical: CARD_PADDING * 0.75 }}
+        >
           <Text className="text-lg font-medium text-white">
             {address ? eclipseAddress(address, 7, 5) : '—'}
           </Text>
@@ -136,7 +163,7 @@ const WalletDepositAddress = () => {
         </View>
       </View>
 
-      <View className="gap-y-2">
+      <View className="gap-y-3">
         <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
           <Text className="text-sm text-white">Send at least</Text>
           <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
@@ -150,15 +177,14 @@ const WalletDepositAddress = () => {
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
         </Text>
+        <Pressable
+          className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
+          onPress={() => Linking.openURL(WALLET_DEPOSIT_LEARN_URL)}
+        >
+          <Text className="text-sm text-white">Learn about deposits</Text>
+          <ChevronRight color="white" size={16} />
+        </Pressable>
       </View>
-
-      <Pressable
-        className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
-        onPress={() => Linking.openURL(WALLET_DEPOSIT_LEARN_URL)}
-      >
-        <Text className="text-sm text-white">Learn about deposits</Text>
-        <ChevronRight color="white" size={16} />
-      </Pressable>
 
       {isScanning ? (
         <View className="flex-row items-center gap-x-2 self-center rounded-[18px] bg-[#333333] px-4 py-2">
