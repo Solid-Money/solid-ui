@@ -33,6 +33,10 @@ export default function RewardsLayout() {
           headerShown: false,
         }}
       />
+      {/* Both upgrade screens draw their own header — back, title and a dismiss
+          that leaves the flow rather than stepping back through it. */}
+      <Stack.Screen name="upgrade" options={{ title: 'Upgrade tier', headerShown: false }} />
+      <Stack.Screen name="upgrade-review" options={{ title: 'Upgrade tier', headerShown: false }} />
     </Stack>
   );
 }
