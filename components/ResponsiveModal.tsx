@@ -73,6 +73,16 @@ export interface ResponsiveModalProps {
    * overflowing and the overlay scrolling the header away).
    */
   fillViewportHeight?: boolean;
+  /**
+   * How the modal presents itself below the medium breakpoint.
+   *
+   * `sheet` (the default) is the near-full-screen card the multi-step deposit and
+   * send flows use: top-aligned under a 5vh gap and stretched to the bottom edge.
+   * `drawer` anchors a content-sized card to the bottom of the screen instead —
+   * for short, self-contained choices. Desktop is unaffected: both present as the
+   * usual centred modal.
+   */
+  mobilePresentation?: 'sheet' | 'drawer';
 }
 
 const ResponsiveModal = ({
@@ -98,10 +108,15 @@ const ResponsiveModal = ({
   disableScroll = false,
   hideHeader = false,
   fillViewportHeight = false,
+  mobilePresentation = 'sheet',
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
-  const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
+  const isNativeSmall = Platform.OS !== 'web' && !isScreenMedium;
+  const isDrawer = mobilePresentation === 'drawer' && !isScreenMedium;
+  // A drawer is sized by its content, so it opts out of the stretched-to-the-
+  // bottom layout the full-height mobile sheet uses.
+  const isNativeSmallScreen = isNativeSmall && !isDrawer;
   // On web, opt into the flex layout (header fixed, body scrolls) that native
   // small screens already use, capping the card to the viewport (see below).
   const webFill = fillViewportHeight && Platform.OS === 'web';
@@ -170,13 +185,18 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         overlayClassName={overlayClassName}
+        webPresentation={isDrawer ? 'bottom-sheet' : 'modal'}
+        nativePresentation={isDrawer ? 'bottom-sheet' : 'modal'}
         className={cn(
           // Desktop popups get a uniform 40px inset. Three of the four sides live
           // here; the bottom stays 0 so the scroll viewport (and its bottom fade)
           // reaches the card edge, and the matching 40px goes on the scroll
           // content container below.
           'px-4 pb-0 pt-4 md:max-w-lg md:px-10 md:pb-0 md:pt-10',
-          !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          // `justify-start` is what DialogContent reads to top-align the sheet, so
+          // it is deliberately absent from the drawer, which anchors to the bottom.
+          !isScreenMedium && !isDrawer ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          isDrawer ? 'w-screen max-w-full rounded-b-none rounded-t-[30px] pt-3' : '',
           webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect
         )}
@@ -274,7 +294,7 @@ const ResponsiveModal = ({
                     // indicator / gesture bar on top of the base pb-4.
                     contentContainerStyle={{
                       ...(useFixedHeightLayout ? { flexGrow: 1 } : null),
-                      ...(isNativeSmallScreen ? { paddingBottom: 16 + insets.bottom } : null),
+                      ...(isNativeSmall ? { paddingBottom: 16 + insets.bottom } : null),
                     }}
                     style={useFixedHeightLayout ? { flex: 1 } : undefined}
                     showsVerticalScrollIndicator={false}

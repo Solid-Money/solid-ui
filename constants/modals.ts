@@ -11,6 +11,22 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_type',
     number: 1.5,
   },
+  /**
+   * "Receive crypto" — the crypto branch of the "Deposit with" chooser: show the
+   * deposit address, or connect an external wallet.
+   */
+  OPEN_DEPOSIT_CRYPTO: {
+    name: 'open_deposit_crypto',
+    number: 1.7,
+  },
+  /**
+   * "Deposit with cash" — the cash branch of the "Deposit with" chooser: USD via
+   * the virtual account, or a local currency via the onramp.
+   */
+  OPEN_DEPOSIT_CASH: {
+    name: 'open_deposit_cash',
+    number: 1.8,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
