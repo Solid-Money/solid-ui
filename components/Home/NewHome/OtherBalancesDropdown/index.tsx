@@ -288,12 +288,12 @@ export const SavingsBalanceRow = ({
 }) => (
   <BalanceRow color={SAVINGS_COLOR} label="Savings" value={savingsBalance} isLoading={isLoading}>
     <DepositTrigger
-      modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
+      modal={DEPOSIT_MODAL.OPEN_FORM}
       preserveSelectedVault
       source="home_other_balances"
       onBeforeOpen={() => {
         onDismiss?.();
-        useDepositStore.getState().setDepositFromSolid(false);
+        useDepositStore.getState().setDepositFromSolid(true);
       }}
       trigger={<AddButton />}
     />

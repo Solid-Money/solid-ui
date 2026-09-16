@@ -55,6 +55,9 @@ type EmptyDepositTokensProps = {
 
 const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
   const supportedTokens = useMemo(() => getSupportedTokens(vault), [vault]);
+  // The headline stacks the symbols ("USDC/USDT"); the sentence below reads them
+  // out ("USDC or USDT").
+  const tokenPair = supportedTokens.map(t => t.symbol).join('/');
   const tokenList = supportedTokens.map(t => t.symbol).join(' or ');
 
   const setModal = useDepositStore(useShallow(state => state.setModal));
@@ -88,7 +91,7 @@ const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
       </View>
       <View className="mt-3 items-center gap-1 rounded-2xl px-12">
         <Text className="text-center text-lg font-semibold text-white">
-          You don’t have {tokenList} balance
+          You don’t have {tokenPair} balance
         </Text>
         {tokenList && (
           <Text className="text-center text-sm text-muted-foreground">
@@ -98,7 +101,7 @@ const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
         )}
       </View>
       <Button variant="brand" className="mt-8 h-12 w-full rounded-xl" onPress={handleDepositPress}>
-        <Text className="text-base font-bold">Add Funds</Text>
+        <Text className="text-base font-bold">Add funds</Text>
       </Button>
     </View>
   );
