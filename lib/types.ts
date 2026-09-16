@@ -900,6 +900,26 @@ export interface WirexThreeDsDecisionResponse {
  * Limits are decimal USD strings rather than numbers: they are 6-decimal on-chain
  * values and float rounding on a spending cap is not worth the convenience.
  */
+/**
+ * Whether the app may offer the spend-mode picker and the borrow position to this user.
+ *
+ * Server-decided, because the first cohort is a Mongo collection (`wirexTeamMembers`) that
+ * has to be editable without a release — adding the next tester must not mean shipping a
+ * build. It is a visibility gate and nothing more: the mode is changed by a `setMode`
+ * UserOperation the Safe signs for itself, so this decides what the app offers, never what
+ * the chain allows.
+ */
+export interface CardSpendModeAccessResponse {
+  /** Whether to render the spend-mode card and the borrow position at all. */
+  enabled: boolean;
+  /**
+   * `cohort` — on the list. `open` — the gate is lifted for everyone.
+   * `not-in-cohort` — off, working as intended. `unavailable` — the lookup failed and we
+   * defaulted to closed, which is a bug rather than the feature.
+   */
+  reason: 'cohort' | 'open' | 'not-in-cohort' | 'unavailable';
+}
+
 export interface WirexCardRegistrationResponse {
   /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
   registered: boolean;
@@ -982,6 +1002,14 @@ export interface WirexCardRegistrationConfirmRequest {
   dailyLimitUsd: string;
   monthlyLimitUsd: string;
   timezoneOffset: number;
+  /**
+   * The spend module the Safe is now registered on.
+   *
+   * Sent so the backend records which generation this cardholder is on rather than
+   * inferring it from its own config, which is wrong for exactly as long as the two
+   * cohorts coexist. Omitted means v1, which is what every pre-v2 caller means.
+   */
+  moduleAddress?: string;
 }
 
 // --- Rain contracts (funding) ---
@@ -2199,6 +2227,41 @@ export interface CardSpendDetails {
   state?: string;
   settled_at?: string;
   decline_reason?: string;
+  /**
+   * The refund leg, when this transaction has one.
+   *
+   * Separate from the fields above because those describe the *purchase* — what
+   * left the Safe and how the claim stands. A refund is its own movement in the
+   * opposite direction, with its own hash and its own arithmetic.
+   */
+  refund?: CardRefundDetails;
+}
+
+/**
+ * What came back on a refunded transaction, and why it is not the round number
+ * the merchant quoted.
+ *
+ * The cashback the purchase earned is withheld from the refund — a refunded
+ * purchase was never a purchase, so the reward comes back with the money. That
+ * is correct and also invisible: the shop says it refunded $40 and $38.80
+ * arrives. These three figures are what makes the shortfall explainable on the
+ * receipt instead of in a support ticket.
+ */
+export interface CardRefundDetails {
+  /** `pending` | `paid` | `failed` — where the refund payout stands. */
+  status: string;
+  /** What the refund is worth before anything is withheld, in USD. */
+  gross_usd: number;
+  /** Cashback withheld from it, in USD. Absent when nothing was withheld. */
+  cashback_deducted_usd?: number;
+  /** What actually reached the Safe, or will. `gross_usd` minus the deduction. */
+  paid_usd: number;
+  /** The USDC.e transfer that paid it, on Fuse. Absent until it lands. */
+  tx_hash?: string;
+  /** Chain the refund was paid on. Fuse (122) — NOT the issuer's chain. */
+  chain_id?: number;
+  /** One sentence explaining the deduction, when there is one to explain. */
+  note?: string;
 }
 
 export interface CardTransaction {

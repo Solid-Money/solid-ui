@@ -27,6 +27,11 @@ import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
+import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
+import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
+import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
+import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
@@ -107,6 +112,12 @@ const CardDetailsPane = () => {
   const [spendSheetSource, setSpendSheetSource] = useState<CardSpendRegistrationSource | null>(
     null,
   );
+  // Which funds the card draws on — cash, credit or both. UI only for now: the
+  // sheet previews the three modes and never commits one.
+  const spendModeFigures = useSpendModeFigures();
+  const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
+  // The borrow position's own sheet, opened by tapping the card that shows it.
+  const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
   // Stable identities: the reveal section folds its opener into the memoised toggle
   // handler, which would be rebuilt on every render of this pane otherwise.
   const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
@@ -146,6 +157,8 @@ const CardDetailsPane = () => {
     // rather than merely hiding it also stops the sheet reappearing on the next visit.
     setSpendSheetSource(null);
     setIsAddToWalletOpen(false);
+    setIsSpendModeOpen(false);
+    setIsBorrowPositionOpen(false);
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
@@ -259,6 +272,34 @@ const CardDetailsPane = () => {
               canAddFunds={canAddFundsToCard(fundsAccess)}
             />
           </HeroEnter>
+          {/* Hidden outright rather than shown inert while the card has only one way to be
+              funded. Until this build can reach the v2 module there is nothing to change to,
+              and a "Spend mode: Cash [Change]" row that cannot change anything is worse than
+              no row — it is the one surface that would give away a migration the cardholder
+              is deliberately never asked about. */}
+          {spendModeFigures.canChangeMode ? (
+            <HeroEnter spec={HERO_ENTER.spendMode} style={styles.spendModeCard}>
+              <SpendingModeCard
+                mode={spendModeFigures.mode}
+                onChangeMode={() => setIsSpendModeOpen(true)}
+              />
+            </HeroEnter>
+          ) : null}
+          {/* Shown to anyone who has a credit line, not only to someone already in debt —
+              see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
+              spend against BEFORE they spend it; gating on the loan meant the first thing
+              they learned about their own line was a decline. */}
+          {spendModeFigures.showsBorrowPosition ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.borrowPositionCard}>
+              <BorrowPositionCard
+                borrowed={spendModeFigures.borrowed}
+                creditLimit={spendModeFigures.creditLimit}
+                borrowApy={spendModeFigures.borrowApy}
+                borrowedProgress={spendModeFigures.borrowedProgress}
+                onPress={() => setIsBorrowPositionOpen(true)}
+              />
+            </HeroEnter>
+          ) : null}
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
             <CashbackDetailsSheet
               trigger={<CardCashbackCard />}
@@ -308,6 +349,15 @@ const CardDetailsPane = () => {
         }}
         canWithdraw={canWithdrawFromCard(fundsAccess)}
       />
+      <SpendModeSheet
+        isOpen={isOpen && isSpendModeOpen}
+        onOpenChange={setIsSpendModeOpen}
+        activeMode={spendModeFigures.mode}
+      />
+      <BorrowPositionSheet
+        isOpen={isOpen && isBorrowPositionOpen}
+        onOpenChange={setIsBorrowPositionOpen}
+      />
       <AddToWalletModal
         trigger={null}
         isOpen={isAddToWalletOpen || (isOpen && walletGuide !== null)}
@@ -343,10 +393,12 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 10,
   },
-  // Figma vertical rhythm: 51 from the panel to the action icons, 45 to the cashback
-  // card, 20 to the links list.
+  // Figma vertical rhythm (26134:23654): 51 from the panel to the action icons, 53
+  // to the spend-mode row, then 20 between each card down the stack.
   actionsRow: { marginTop: 51 },
-  cashbackCard: { marginTop: 45 },
+  spendModeCard: { marginTop: 53 },
+  borrowPositionCard: { marginTop: 20 },
+  cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },
 });
 

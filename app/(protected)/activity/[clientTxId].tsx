@@ -53,6 +53,7 @@ import {
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
 import {
+  cardRefundExplorerUrl,
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
@@ -309,6 +310,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const spend = transaction.spend_details;
   const sweepHash = spend?.sweep_tx_hash;
   const sweepUrl = cardSweepExplorerUrl(spend);
+  // Money coming back, and what was taken out of it on the way. See `CardRefundDetails`.
+  const refund = spend?.refund;
+  const refundUrl = cardRefundExplorerUrl(refund);
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -338,9 +342,16 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       // are different findings that our cardholder copy deliberately softens.
       spend.decline_reason && `Decline code: ${spend.decline_reason}`,
       sweepHash && `Sweep: ${sweepHash}`,
+      // The refund leg, because "why is my refund short" is the question this
+      // screen's refund rows exist to pre-empt — and the one people still write
+      // in about. Support needs the gross and the deduction, not just the net.
+      refund && `Refund: ${refund.status} ${refund.paid_usd} of ${refund.gross_usd} USD`,
+      refund?.cashback_deducted_usd &&
+        `Cashback withheld from refund: ${refund.cashback_deducted_usd} USD`,
+      refund?.tx_hash && `Refund tx: ${refund.tx_hash}`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
-  }, [spend, sweepHash, transaction.usd_amount]);
+  }, [spend, sweepHash, refund, transaction.usd_amount]);
 
   const transactionContext = useMemo(
     () =>
@@ -364,6 +375,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const handleSweepPress = useCallback(() => {
     if (sweepUrl) Linking.openURL(sweepUrl);
   }, [sweepUrl]);
+
+  const handleRefundPress = useCallback(() => {
+    if (refundUrl) Linking.openURL(refundUrl);
+  }, [refundUrl]);
 
   const handleLocationPress = useCallback(() => {
     if (!merchantPlace) return;
@@ -546,6 +561,70 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Value>
         ),
       },
+      // The three figures that make a short refund explainable.
+      //
+      // Only shown when something was actually withheld. A refund that paid in
+      // full needs no arithmetic — the amount above already is the amount — and
+      // printing "Cashback returned: $0.00" on it would invent a concern the
+      // cardholder did not have.
+      refund?.cashback_deducted_usd
+        ? {
+            key: 'refund-cashback',
+            // Not green. Every other cashback figure on this screen is money
+            // coming to the user; this one is going back, and colouring it like
+            // a gain would misread at a glance — which on a figure that makes a
+            // refund smaller is the one thing worth getting right.
+            label: (
+              <View className="flex-row items-center gap-1.5">
+                <CashbackDiamondIcon size={14} />
+                <Text className={cn(ROW_TEXT, 'font-medium text-white/70')}>Cashback returned</Text>
+              </View>
+            ),
+            value: (
+              <Value>
+                -{formatCardAmount(String(refund.cashback_deducted_usd), cardProvider, 'USD')}
+              </Value>
+            ),
+            caption: (
+              <Text className="mt-2 text-[13px] leading-4 text-white/50">
+                {refund.note ?? 'The cashback this purchase earned was returned with the refund'}
+              </Text>
+            ),
+          }
+        : null,
+      refund?.cashback_deducted_usd
+        ? {
+            key: 'refund-paid',
+            label: (
+              <Label>{refund.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
+            ),
+            value: (
+              <Value className="text-brand">
+                {formatCardAmount(String(refund.paid_usd), cardProvider, 'USD')}
+              </Value>
+            ),
+          }
+        : null,
+      // The transfer that paid it. Its own row rather than folded into "Sweep":
+      // that hash is money we took to cover the purchase, this is money we sent
+      // back, and one label over both is how a cardholder ends up reading a
+      // refund as another charge.
+      refundUrl && refund?.tx_hash
+        ? {
+            key: 'refund-tx',
+            label: <Label>Refund</Label>,
+            value: (
+              <Pressable onPress={handleRefundPress} className="hover:opacity-70">
+                <View className="flex-row items-center gap-1">
+                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                    {eclipseAddress(refund.tx_hash)}
+                  </Underline>
+                  <ArrowUpRight color="white" size={16} />
+                </View>
+              </Pressable>
+            ),
+          }
+        : null,
       // What the merchant actually charged, in their own currency — the figure
       // the user will recognise from the till, against the dollars they were
       // billed at the top of this screen.
@@ -623,6 +702,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     transaction.currency,
     declineReason,
     transaction.refunded_amount,
+    refund,
+    refundUrl,
+    handleRefundPress,
   ]);
 
   return (

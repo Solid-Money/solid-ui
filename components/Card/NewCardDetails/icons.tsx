@@ -305,6 +305,19 @@ export const RowChevronIcon = () => (
   </Svg>
 );
 
+/** Figma 26134:24140 — the smaller chevron beside an inline label, e.g. "Spend mode". */
+export const InlineChevronIcon = () => (
+  <Svg width={6.81066} height={11.5} viewBox="0 0 6.81066 11.5" fill="none">
+    <Path
+      d="M0.75 0.75L5.75 5.75L0.75 10.75"
+      stroke="white"
+      strokeOpacity={0.5}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
 /**
  * Confirmation shown in the copy button's place for a moment after a value is copied.
  * The design doesn't specify one, so it's drawn to match CopyIcon exactly — same box,
