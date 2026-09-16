@@ -494,8 +494,10 @@ const useDepositOption = ({
     // width. 480px keeps the desktop card in proportion without squeezing it: at
     // the 420px the card flow uses, the 40px desktop inset left less room for
     // content than a phone has, and rows wrapped tighter on the wider screen.
+    // `md:pb-6` sits under the scroll area's own md:pb-10: these screens end on a
+    // card or a button, and on desktop that landed too close to the modal's edge.
     if (isDepositTypeSelection || isDepositCrypto || isDepositCash || isPublicAddress) {
-      return 'md:max-w-[480px]';
+      return 'md:max-w-[480px] md:pb-6';
     }
 
     if (isBuyCrypto) {

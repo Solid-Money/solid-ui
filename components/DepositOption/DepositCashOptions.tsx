@@ -6,7 +6,10 @@ import { Minus, Plus } from 'lucide-react-native';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { CARD_FUND_USD_ICON } from '@/components/Card/CardFund/constants';
-import { CARD_FUND_LOCAL_CURRENCIES } from '@/components/Card/CardFund/localCurrencies';
+import {
+  CARD_FUND_LOCAL_CURRENCIES,
+  getCardFundLocalPaymentMethods,
+} from '@/components/Card/CardFund/localCurrencies';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -17,7 +20,7 @@ import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { RainApplicationStatus } from '@/lib/types';
+import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -70,15 +73,28 @@ const DepositCashOptions = () => {
     showAllCurrencies ? 'MXN' : undefined,
   );
 
-  const paymentMethodChips = useMemo(
-    () => ({
-      BRL: getPaymentMethodChips(brlPaymentMethods),
-      BDT: getPaymentMethodChips(bdtPaymentMethods),
-      PHP: getPaymentMethodChips(phpPaymentMethods),
-      MXN: getPaymentMethodChips(mxnPaymentMethods),
-    }),
-    [bdtPaymentMethods, brlPaymentMethods, mxnPaymentMethods, phpPaymentMethods],
-  );
+  /**
+   * Rails to show on a currency's row.
+   *
+   * TransFi's payment config is the live answer, but it is a request that can be
+   * pending, geo-refused or simply unavailable, and a row with no chips reads as
+   * a currency with no way to pay for it. So the committed corridor list is the
+   * baseline — the same one the card funding screen shows — and the live config
+   * replaces it once it arrives.
+   */
+  const paymentMethodChips = useMemo(() => {
+    const resolve = (code: string, methods: TransfiPaymentMethodOption[] | undefined) => {
+      const live = getPaymentMethodChips(methods);
+      return live.length ? live : getCardFundLocalPaymentMethods(code);
+    };
+
+    return {
+      BRL: resolve('BRL', brlPaymentMethods),
+      BDT: resolve('BDT', bdtPaymentMethods),
+      PHP: resolve('PHP', phpPaymentMethods),
+      MXN: resolve('MXN', mxnPaymentMethods),
+    };
+  }, [bdtPaymentMethods, brlPaymentMethods, mxnPaymentMethods, phpPaymentMethods]);
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
