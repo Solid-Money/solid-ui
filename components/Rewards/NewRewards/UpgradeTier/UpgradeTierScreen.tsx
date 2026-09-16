@@ -12,6 +12,7 @@ import { useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
+import { getTierDisplayName } from '@/lib/tierNames';
 import {
   availableRoutes,
   canAffordUpgrade,
@@ -61,7 +62,9 @@ export default function UpgradeTierScreen() {
   }, [membership, tierParam]);
 
   const offer = tier ? findOffer(membership, tier) : undefined;
-  const routes = availableRoutes(offer);
+  // Memoised because the effect below depends on it: a fresh array every render
+  // would re-run the effect every render for no reason.
+  const routes = useMemo(() => availableRoutes(offer), [offer]);
   const [route, setRoute] = useState<TierUpgradeRoute | null>(null);
 
   // Settles on a route once the offer is known, and re-settles if the one in
@@ -97,6 +100,29 @@ export default function UpgradeTierScreen() {
             {membership?.currentTier === RewardsTier.ULTRA
               ? 'You are on the highest tier.'
               : 'Tier upgrades are not available right now.'}
+          </Text>
+          <Button
+            variant="brand"
+            onPress={() => router.replace(path.REWARDS)}
+            className="mt-6 h-14 rounded-full"
+          >
+            <Text className="text-base font-bold text-black">Back to Rewards</Text>
+          </Button>
+        </View>
+      </PageLayout>
+    );
+  }
+
+  // A deep link can name a tier the user already holds. Offering it would price
+  // an upgrade at nothing and hand the review screen zero FUSE to lock, so the
+  // honest answer is that there is nothing to buy.
+  if (offer.held) {
+    return (
+      <PageLayout scrollable={false} mobileTitle={null} showNavbar={false}>
+        <UpgradeTierHeader title="Upgrade tier" />
+        <View className="mx-auto w-full max-w-[414px] px-4">
+          <Text className="text-center text-[16px] leading-5 text-white/70">
+            You already hold {getTierDisplayName(tier)}.
           </Text>
           <Button
             variant="brand"

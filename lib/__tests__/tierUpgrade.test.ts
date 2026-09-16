@@ -83,6 +83,16 @@ describe('fuseSharesForAmount', () => {
     expect(fuseSharesForAmount(Number.NaN, ONE)).toBe(0n);
     expect(fuseSharesForAmount(50_000, 0n)).toBe(0n);
   });
+
+  /**
+   * `toFixed` gives up and returns exponential notation at 1e21, which BigInt
+   * cannot parse. No tier is priced anywhere near that — this is a guard
+   * against a crash, not a case to support.
+   */
+  it('refuses an amount too large to convert rather than throwing', () => {
+    expect(fuseSharesForAmount(1e21, ONE)).toBe(0n);
+    expect(fuseSharesForAmount(Number.MAX_VALUE, ONE)).toBe(0n);
+  });
 });
 
 describe('fuseForShares', () => {
