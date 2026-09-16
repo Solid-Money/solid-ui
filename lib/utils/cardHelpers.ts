@@ -4,6 +4,7 @@ import {
   CardFeeStatus,
   CardFeeWaiveReason,
   CardProvider,
+  CardRefundDetails,
   CardResponse,
   CardSpendDetails,
   CardStatus,
@@ -391,6 +392,25 @@ export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): str
   // The backend sends the chain alongside the hash; tolerate its absence rather
   // than dropping the link, since Fuse is the only chain that produces one.
   const chainId = details?.chain_id ?? FUSE_CHAIN_ID;
+  if (chainId !== FUSE_CHAIN_ID) return undefined;
+  return `https://explorer.fuse.io/tx/${hash}`;
+};
+
+/**
+ * Explorer link for the USDC.e transfer that paid a refund, on Fuse.
+ *
+ * Its own helper rather than a second call to {@link cardSweepExplorerUrl} with
+ * a different field: the two hashes point in opposite directions — one is money
+ * we took, one is money we sent back — and a single helper reading whichever
+ * field happened to be set is how a refund ends up rendered under a "Sweep"
+ * label. Same chain guard, for the same reason.
+ */
+export const cardRefundExplorerUrl = (
+  refund: CardRefundDetails | undefined,
+): string | undefined => {
+  const hash = refund?.tx_hash;
+  if (!hash) return undefined;
+  const chainId = refund?.chain_id ?? FUSE_CHAIN_ID;
   if (chainId !== FUSE_CHAIN_ID) return undefined;
   return `https://explorer.fuse.io/tx/${hash}`;
 };

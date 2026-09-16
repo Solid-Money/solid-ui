@@ -351,6 +351,14 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_DISABLE_COMPLETED: 'card_spend_disable_completed',
   CARD_SPEND_DISABLE_FAILED: 'card_spend_disable_failed',
   CARD_SPEND_DISABLE_CANCELLED: 'card_spend_disable_cancelled',
+  // Changing how the card is funded — cash, credit, or smart. The first change off cash
+  // also migrates the Safe from the v1 module to v2, which `migrated` on the completed
+  // event distinguishes: a first switch costs a four-call batch and every later one is a
+  // single `setMode`, and they are worth telling apart in the funnel.
+  CARD_SPEND_MODE_CHANGE_PRESSED: 'card_spend_mode_change_pressed',
+  CARD_SPEND_MODE_CHANGE_COMPLETED: 'card_spend_mode_change_completed',
+  CARD_SPEND_MODE_CHANGE_FAILED: 'card_spend_mode_change_failed',
+  CARD_SPEND_MODE_CHANGE_CANCELLED: 'card_spend_mode_change_cancelled',
   // Changing the caps on an existing registration. Separate from the register funnel
   // because it is a returning user tuning a live card, not a new one being set up, and
   // the two directions are genuinely different products of the contract: a decrease

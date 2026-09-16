@@ -60,6 +60,7 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardSpendModeAccessResponse,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
@@ -3402,6 +3403,32 @@ export const getWirexCardRegistration = async (
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/card-registration${query}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Whether this user may see the spend-mode picker and the borrow position.
+ *
+ * Its own request rather than a field on the registration read, and deliberately so: that
+ * read is a live chain call, and a rollout gate has no business being unavailable because
+ * Fuse is lagging. This is one indexed Mongo lookup.
+ */
+export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-mode/access`,
     {
       headers: {
         ...getPlatformHeaders(),
