@@ -21,17 +21,19 @@ import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
+import DepositCashOptions from '@/components/DepositOption/DepositCashOptions';
+import DepositCryptoOptions from '@/components/DepositOption/DepositCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
-import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import DepositTypeSelection from '@/components/DepositOption/DepositTypeSelection';
 import DepositWalletConnector from '@/components/DepositOption/DepositWalletConnector';
 import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
+import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScreen';
@@ -174,6 +176,8 @@ const useDepositOption = ({
   const isSavingsFundAddress = currentModal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND_ADDRESS.name;
   const isSavingsFundFlow = isSavingsFund || isSavingsFundNetworks || isSavingsFundAddress;
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
+  const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
+  const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -321,7 +325,7 @@ const useDepositOption = ({
     }
 
     if (isPublicAddress) {
-      return <DepositPublicAddress onDone={() => setModal(DEPOSIT_MODAL.CLOSE)} />;
+      return <WalletDepositAddress />;
     }
 
     if (isSavingsFund) {
@@ -386,7 +390,15 @@ const useDepositOption = ({
       return <DepositWalletConnector />;
     }
 
-    return <DepositTypeSelection />;
+    if (isDepositCrypto) {
+      return <DepositCryptoOptions />;
+    }
+
+    if (isDepositCash) {
+      return <DepositCashOptions />;
+    }
+
+    return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
   };
 
   const getContentKey = () => {
@@ -424,6 +436,8 @@ const useDepositOption = ({
     if (isVirtualAccountApply) return 'virtual-account-apply';
     if (isOptions) return 'deposit-options';
     if (isWalletConnector) return 'deposit-wallet-connector';
+    if (isDepositCrypto) return 'deposit-crypto-options';
+    if (isDepositCash) return 'deposit-cash-options';
     return 'deposit-type-selection';
   };
 
@@ -453,7 +467,7 @@ const useDepositOption = ({
     // The error screen carries its own headline and icon; a second title above
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
-    if (isPublicAddress) return 'Your Solid address';
+    if (isPublicAddress) return 'Deposit address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector && depositFromSolid) return 'Deposit';
@@ -462,7 +476,11 @@ const useDepositOption = ({
     if (isVirtualAccountTos) return 'Bank Deposit';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
     if (isFormAndAddress && !depositFromSolid) return 'Add funds';
-    if (isDepositTypeSelection) return 'Fund your wallet';
+    // The chooser is a drawer with no header of its own — it carries its grab
+    // handle and centred title in the content (see DepositTypeSelection).
+    if (isDepositTypeSelection) return undefined;
+    if (isDepositCrypto) return 'Receive crypto';
+    if (isDepositCash) return 'Deposit with cash';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -472,8 +490,10 @@ const useDepositOption = ({
       return 'mt-0 overflow-hidden bg-[#111] px-0 pb-0 pt-0 md:h-[90vh] md:w-screen md:max-w-lg md:!px-0 md:!pt-0';
     }
 
-    if (isDepositTypeSelection) {
-      return 'rounded-t-[30px]';
+    // The chooser, its two branches and the deposit address are designed at phone
+    // width; 420px keeps the desktop card in proportion instead of stretching it.
+    if (isDepositTypeSelection || isDepositCrypto || isDepositCash || isPublicAddress) {
+      return 'md:max-w-[420px]';
     }
 
     if (isBuyCrypto) {
@@ -523,7 +543,7 @@ const useDepositOption = ({
       return 'gap-3';
     }
 
-    // The deposit type picker is a short, self-contained choice screen. Let it
+    // The chooser is a short, self-contained choice screen with no header. Let it
     // size to its content instead of inheriting the legacy deposit flow height.
     if (isDepositTypeSelection) {
       return '';
@@ -543,7 +563,12 @@ const useDepositOption = ({
       !isBankTransfer &&
       !isDepositDirectly &&
       !isDepositDirectlyAddress &&
-      !isSavingsFundFlow
+      !isSavingsFundFlow &&
+      // The redesigned wallet deposit screens are as tall as their content — a
+      // two-row list padded out to 40rem is mostly empty card.
+      !isDepositCrypto &&
+      !isDepositCash &&
+      !isPublicAddress
     ) {
       return 'min-h-[40rem]';
     }
@@ -735,7 +760,7 @@ const useDepositOption = ({
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
@@ -745,9 +770,10 @@ const useDepositOption = ({
     } else if (isBuyCryptoOptions) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isWalletConnector) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      // The onramp is only ever entered by picking a currency on the cash screen.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
@@ -766,7 +792,13 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      // Reached from the crypto branch of the chooser, and from the savings
+      // flow's own external-wallet list — each step back to where it came from.
+      setModal(
+        previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
+          ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
+          : DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO,
+      );
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
@@ -793,10 +825,12 @@ const useDepositOption = ({
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isNetworks) {
       setDepositFromSolid(false);
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
+    } else if (isVirtualAccountApply) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isOptions) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     } else {
@@ -843,35 +877,23 @@ const useDepositOption = ({
     return undefined;
   }, [isDepositDirectlyAddress, directDepositSession.status, handleDeleteDeposit, isDeleting]);
 
+  /**
+   * The steps that only exist because an external wallet is connected: the chain
+   * list, the amount form and its token selector all read that connection.
+   *
+   * Listed rather than excluded, because everything else in this modal — the
+   * chooser and its branches, the deposit address, bank transfer, the onramp,
+   * savings — stands on its own. Naming what depends on the connection keeps a
+   * disconnected desktop session (the default, since nobody has connected a
+   * wallet yet) from throwing the user back to the start of an unrelated flow.
+   */
+  const dependsOnConnectedWallet = !depositFromSolid && (isNetworks || isForm || isTokenSelector);
+
   useEffect(() => {
-    if (
-      status === 'disconnected' &&
-      !depositFromSolid &&
-      !isClose &&
-      !isDepositDirectly &&
-      !isDepositDirectlyAddress &&
-      !isDepositDirectlyTokens &&
-      !isSavingsFundFlow &&
-      !isExternalWalletOptions &&
-      !isBuyCryptoOptions &&
-      !isWalletConnector
-    ) {
+    if (status === 'disconnected' && dependsOnConnectedWallet) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
     }
-  }, [
-    status,
-    setModal,
-    depositFromSolid,
-    isClose,
-    isDepositDirectly,
-    isDepositDirectlyAddress,
-    isDepositDirectlyTokens,
-    isSavingsFundFlow,
-    isExternalWalletOptions,
-    isBuyCryptoOptions,
-    isWalletConnector,
-    currentModal.name,
-  ]);
+  }, [status, dependsOnConnectedWallet, setModal]);
 
   useEffect(() => {
     return () => {
@@ -899,6 +921,8 @@ const useDepositOption = ({
     isBuyCryptoCurrency ||
     isBuyCryptoPaymentMethod ||
     isPublicAddress ||
+    isDepositCrypto ||
+    isDepositCash ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -918,12 +942,17 @@ const useDepositOption = ({
     isVirtualAccountDetails ||
     isVirtualAccountApply;
   const fillViewportHeight = isVirtualAccountDetails || isVirtualAccountApply;
-  const hideHeader = isVirtualAccountApply;
+  // The chooser draws its own grab handle and centred title, and offers "Close"
+  // as a button, so it needs none of the modal's back/close chrome.
+  const hideHeader = isVirtualAccountApply || isDepositTypeSelection;
 
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositTypeSelection,
+    compactHeader: isDepositCrypto || isDepositCash || isPublicAddress,
+    // Short enough to sit at the bottom of a phone screen rather than take it
+    // over; desktop shows it as the usual centred modal either way.
+    mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),
     needsWalletProvider,
     disableScroll,
     fillViewportHeight,

@@ -96,6 +96,13 @@ const DialogContent = React.forwardRef<
      * the dialog's transformed animation wrapper on small screens.
      */
     webPresentation?: 'modal' | 'bottom-sheet';
+    /**
+     * Native counterpart of `webPresentation`: anchors the card to the bottom of
+     * the screen instead of centring it, so a drawer reads the same on iOS and
+     * Android as it does on web-mobile. Ignored once the screen is medium or
+     * wider, where both platforms show a centred modal.
+     */
+    nativePresentation?: 'modal' | 'bottom-sheet';
   }
 >(
   (
@@ -107,6 +114,7 @@ const DialogContent = React.forwardRef<
       overlayClassName,
       showCloseButton = true,
       webPresentation = 'modal',
+      nativePresentation = 'modal',
       style,
       onMoveShouldSetResponder,
       onStartShouldSetResponder,
@@ -120,6 +128,8 @@ const DialogContent = React.forwardRef<
     const { open } = DialogPrimitive.useRootContext();
     const isWebBottomSheet =
       Platform.OS === 'web' && !isScreenMedium && webPresentation === 'bottom-sheet';
+    const isNativeBottomSheet =
+      Platform.OS !== 'web' && !isScreenMedium && nativePresentation === 'bottom-sheet';
     // Top-aligned sheets are pushed down by `mt-[5vh]` (ResponsiveModal) and sit
     // inside an overlay with 8px padding, so a full-viewport height overflowed the
     // bottom of the screen by that much — clipping whatever the content ended with
@@ -218,11 +228,20 @@ const DialogContent = React.forwardRef<
             style={StyleSheet.absoluteFill}
             pointerEvents="box-none"
             className={cn(
-              'flex items-center p-2',
-              shouldAlignTop ? 'justify-start' : 'justify-center',
+              'flex items-center',
+              isNativeBottomSheet ? 'p-0' : 'p-2',
+              shouldAlignTop
+                ? 'justify-start'
+                : isNativeBottomSheet
+                  ? 'justify-end'
+                  : 'justify-center',
             )}
           >
-            <Animated.View entering={enteringAnimation} exiting={FadeOutDown.duration(180)}>
+            <Animated.View
+              className={isNativeBottomSheet ? 'w-full' : undefined}
+              entering={enteringAnimation}
+              exiting={FadeOutDown.duration(180)}
+            >
               {content}
             </Animated.View>
             <Toast {...toastProps} />

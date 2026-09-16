@@ -34,7 +34,9 @@ const DepositWalletConnector = () => {
     })
       .then(wallet => {
         if (!wallet) {
-          setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+          // Dismissing the connect popup goes back to where the row was tapped,
+          // not two levels up to the chooser.
+          setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
           return;
         }
 
@@ -50,7 +52,7 @@ const DepositWalletConnector = () => {
           error: String(error),
           deposit_method: 'wallet',
         });
-        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
       })
       .finally(cleanupThirdwebStyles);
   }, [activeAccount?.address, connect, setModal]);

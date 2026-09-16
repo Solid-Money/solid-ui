@@ -22,6 +22,7 @@ const DepositModalProvider = () => {
     disableScroll,
     fillViewportHeight,
     hideHeader,
+    mobilePresentation,
     actionButton,
     shouldAnimate,
     isForward,
@@ -62,6 +63,7 @@ const DepositModalProvider = () => {
         disableScroll={disableScroll}
         fillViewportHeight={fillViewportHeight}
         hideHeader={hideHeader}
+        mobilePresentation={mobilePresentation}
       >
         {getContent()}
       </ResponsiveModal>
