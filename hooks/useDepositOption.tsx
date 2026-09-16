@@ -491,9 +491,11 @@ const useDepositOption = ({
     }
 
     // The chooser, its two branches and the deposit address are designed at phone
-    // width; 420px keeps the desktop card in proportion instead of stretching it.
+    // width. 480px keeps the desktop card in proportion without squeezing it: at
+    // the 420px the card flow uses, the 40px desktop inset left less room for
+    // content than a phone has, and rows wrapped tighter on the wider screen.
     if (isDepositTypeSelection || isDepositCrypto || isDepositCash || isPublicAddress) {
-      return 'md:max-w-[420px]';
+      return 'md:max-w-[480px]';
     }
 
     if (isBuyCrypto) {

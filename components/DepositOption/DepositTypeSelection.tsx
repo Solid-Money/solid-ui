@@ -1,7 +1,6 @@
 import { View } from 'react-native';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
-import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -13,6 +12,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import { DEPOSIT_CASH_CLUSTER_ICONS, DEPOSIT_CASH_CURRENCY_COUNT } from './DepositCashOptions';
 import DepositIconCluster from './DepositIconCluster';
+import DepositMethodRow from './DepositMethodRow';
 
 const DEPOSIT_CRYPTO_CLUSTER_ICONS = [
   getAsset('images/deposit-crypto-usdc.png'),
@@ -59,13 +59,13 @@ const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
       </View>
 
       <CardFundGroup>
-        <CardFundRow
+        <DepositMethodRow
           icon={<DepositIconCluster icons={DEPOSIT_CRYPTO_CLUSTER_ICONS} />}
           title="Crypto"
           subtitle="Transfer from any wallet or exchange"
           onPress={handleCryptoPress}
         />
-        <CardFundRow
+        <DepositMethodRow
           icon={
             <DepositIconCluster
               icons={DEPOSIT_CASH_CLUSTER_ICONS}
