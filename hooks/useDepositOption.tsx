@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, PressableProps, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -42,18 +42,20 @@ import { WirexBankAccountPane } from '@/components/WirexBankAccount/WirexBankAcc
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { VAULTS } from '@/constants/vaults';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { DepositModal } from '@/lib/types';
+import { DepositModal, VaultType } from '@/lib/types';
 import {
   getAllowedTokensForChain,
   getDefaultDepositSelection,
   getVaultDepositConfig,
 } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useSavingStore } from '@/store/useSavingStore';
 
 import useResponsiveModal from './useResponsiveModal';
 
@@ -709,10 +711,14 @@ const useDepositOption = ({
 
   const handleBackPress = () => {
     if (isFormAndAddress && depositFromSolid) {
-      // Savings deposit form is the entry point — close the modal
+      // The savings deposit form is the entry point, so there is no earlier step
+      // to return to. Back leads to the vault being deposited into instead —
+      // reached from its own screen or from Home, it lands in the same place.
+      const vaultType = VAULTS[useSavingStore.getState().selectedVault]?.type ?? VaultType.USDC;
       setModal(DEPOSIT_MODAL.CLOSE);
       resetDepositFlow();
       clearSessionStartTime();
+      router.navigate({ pathname: '/savings', params: { vault: vaultType } } as Href);
     } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
@@ -877,7 +883,7 @@ const useDepositOption = ({
   const shouldOpen = !isClose;
 
   const showBackButton =
-    (isFormAndAddress && !depositFromSolid) ||
+    isFormAndAddress ||
     isBuyCrypto ||
     isNetworks ||
     isOptions ||
