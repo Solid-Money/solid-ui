@@ -60,10 +60,21 @@ const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
   const tokenPair = supportedTokens.map(t => t.symbol).join('/');
   const tokenList = supportedTokens.map(t => t.symbol).join(' or ');
 
-  const setModal = useDepositStore(useShallow(state => state.setModal));
+  const { setModal, setDepositFromSolid } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setDepositFromSolid: state.setDepositFromSolid,
+    })),
+  );
 
   const handleDepositPress = () => {
-    setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    // There is nothing in the wallet to move into the vault, so this leaves the
+    // deposit-from-Solid flow for the one that gets money into the wallet. The
+    // flag has to go with it: left set, the steps behind "Fund your wallet"
+    // would still resolve to the vault deposit form, without the wallet
+    // provider an external deposit needs.
+    setDepositFromSolid(false);
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
   };
 
   return (
