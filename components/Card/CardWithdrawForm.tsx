@@ -21,7 +21,11 @@ import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
-import { assetLabel, toAmountInputValue } from '@/lib/utils/cardHelpers';
+import {
+  assetLabel,
+  isDifferentCollateralAsset,
+  toAmountInputValue,
+} from '@/lib/utils/cardHelpers';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
@@ -457,6 +461,16 @@ export default function CardWithdrawForm() {
               assets={collateral?.tokens}
               selectedTokenAddress={collateral?.tokenAddress}
               onSelectAsset={asset => {
+                // Re-picking the asset already selected must leave the amount
+                // alone: the row the user taps is the one the trigger names, the
+                // cap has not moved, and wiping it there turned "press Max, then
+                // confirm the destination" into an empty field and a withdrawal
+                // that could not be submitted.
+                if (
+                  !isDifferentCollateralAsset(asset, selectedTokenAddress ?? fundingTokenAddress)
+                ) {
+                  return;
+                }
                 setSelectedTokenAddress(asset.tokenAddress);
                 // The cap belongs to the old asset; clear it rather than
                 // validate the typed amount against a balance it never had.

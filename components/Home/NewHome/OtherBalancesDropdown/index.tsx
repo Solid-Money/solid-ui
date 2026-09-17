@@ -20,13 +20,20 @@ import {
   bankBalancesToShow,
   type CardBalanceDisplay,
   getTotalBalance,
+  holdsFundsAnywhere,
   type OtherBalances,
   shouldShowCard,
   shouldShowSpendable,
 } from './balanceTotals';
 import OtherBalancesPie from './OtherBalancesPie';
 
-export { bankBalancesToShow, getTotalBalance, shouldShowCard, shouldShowSpendable };
+export {
+  bankBalancesToShow,
+  getTotalBalance,
+  holdsFundsAnywhere,
+  shouldShowCard,
+  shouldShowSpendable,
+};
 export type { BankBalance, CardBalanceDisplay, OtherBalances };
 
 const WALLET_COLOR = '#FFFFFF';

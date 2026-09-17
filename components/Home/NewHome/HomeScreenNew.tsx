@@ -11,7 +11,10 @@ import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
-import { getTotalBalance } from '@/components/Home/NewHome/OtherBalancesDropdown';
+import {
+  getTotalBalance,
+  holdsFundsAnywhere,
+} from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
@@ -195,6 +198,18 @@ export default function HomeScreenNew() {
     userHasCard,
     cardHoldsOwnBalance,
   });
+  // Whether the action row offers Swap and Send at all. Deliberately NOT
+  // `depositCompleted` on its own: that only knows about wallet funding, and a
+  // cardholder who funds their card directly has none of it — see
+  // `holdsFundsAnywhere`.
+  const hasFunds = holdsFundsAnywhere({
+    depositCompleted,
+    walletBalance,
+    cardBalance,
+    savingsBalance,
+    userHasCard,
+    cardHoldsOwnBalance,
+  });
   const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(totalBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
   // Which rung of the card funnel belongs under the card, if any — null once the
@@ -253,7 +268,7 @@ export default function HomeScreenNew() {
               </BalancePillRow>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />
+              <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
             </HeroExit>
           </View>
         )}
