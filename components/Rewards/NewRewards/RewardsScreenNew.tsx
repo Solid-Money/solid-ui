@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Href, router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
@@ -15,14 +15,13 @@ import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
-import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useSpinStatus } from '@/hooks/useSpinWin';
+import { useTierMembership } from '@/hooks/useTierMembership';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
+import { nextPurchasableTier } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
-import { useSwapState } from '@/store/swapStore';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
@@ -34,9 +33,9 @@ import RewardsSummaryCard from './RewardsSummaryCard';
 import { resolveTierUpgradeCardData } from './skipTheLine';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
+import TierMembershipSheet from './TierMembershipSheet';
 import TierTrialPill from './TierTrialPill';
 import TierUpgradeCard from './TierUpgradeCard';
-import UpgradeTierSheet from './UpgradeTierSheet';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -55,9 +54,8 @@ export default function RewardsScreenNew() {
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
+  const { data: membership } = useTierMembership();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
-  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
-  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
@@ -69,32 +67,28 @@ export default function RewardsScreenNew() {
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
-  const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
-    RewardsTier.PRIME,
+  const [isMembershipSheetOpen, setIsMembershipSheetOpen] = useState(false);
+
+  /**
+   * Opens the upgrade flow on a specific tier.
+   *
+   * A screen rather than the old sheet: v3 sells the tier outright, so the
+   * decision now carries a price, a term and a choice of how to pay — more than
+   * a 470px sheet can put in front of someone before they sign for it.
+   */
+  const handleUpgradeTier = useCallback(
+    (tier: RewardsTier | null) => {
+      const target =
+        tier === RewardsTier.PRIME || tier === RewardsTier.ULTRA
+          ? tier
+          : nextPurchasableTier(membership);
+
+      if (!target) return;
+
+      router.push({ pathname: '/rewards/upgrade', params: { tier: target } } as Href);
+    },
+    [membership],
   );
-
-  const handleUpgradeTier = useCallback((tier: RewardsTier | null) => {
-    if (tier !== RewardsTier.PRIME && tier !== RewardsTier.ULTRA) return;
-
-    setUpgradeTier(tier);
-    setIsUpgradeSheetOpen(true);
-  }, []);
-
-  const handleDepositFuse = useCallback(() => {
-    setIsUpgradeSheetOpen(false);
-
-    const depositStore = useDepositStore.getState();
-    depositStore.resetDepositFlow();
-    depositStore.setSavingsFundIntent('savings');
-    depositStore.setDepositFromSolid(false);
-    selectSavingsFundToken('WFUSE');
-  }, [selectSavingsFundToken]);
-
-  const handleBuyFuse = useCallback(() => {
-    setIsUpgradeSheetOpen(false);
-    openBuyFuse(upgradeTier);
-  }, [openBuyFuse, upgradeTier]);
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
   // true when the backend doesn't send it, so we never prompt prematurely.
@@ -230,6 +224,7 @@ export default function RewardsScreenNew() {
             tier={currentTier}
             points={totalPoints}
             badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
+            onPressTier={() => setIsMembershipSheetOpen(true)}
           />
           <View className="flex-row gap-3 px-4">
             <Pressable
@@ -319,13 +314,7 @@ export default function RewardsScreenNew() {
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
       />
-      <UpgradeTierSheet
-        open={isUpgradeSheetOpen}
-        tier={upgradeTier}
-        onOpenChange={setIsUpgradeSheetOpen}
-        onDepositFuse={handleDepositFuse}
-        onBuyFuse={handleBuyFuse}
-      />
+      <TierMembershipSheet open={isMembershipSheetOpen} onOpenChange={setIsMembershipSheetOpen} />
     </PageLayout>
   );
 }

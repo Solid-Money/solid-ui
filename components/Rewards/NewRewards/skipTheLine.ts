@@ -15,6 +15,38 @@ const FALLBACK_TIER_POINT_THRESHOLDS: Partial<Record<RewardsTier, number>> = {
 };
 
 /**
+ * The FUSE thresholds at launch, for the preview fallback only.
+ *
+ * `getBuyFuseTierTargets` prices its rungs from the backend's own block, which
+ * is exactly what the fallback exists because it does not have — so the
+ * fallback has to hand it a stand-in rather than call it with nothing and get
+ * an empty list back. These match the shipped `fuse_staking.tier*.amount`
+ * defaults; real config always wins when the backend sends it.
+ */
+const FALLBACK_SKIP_LINE: FuseSkipLine = {
+  enabled: true,
+  balanceFuse: 0,
+  balanceUsd: 0,
+  unlockedTier: RewardsTier.CORE,
+  tiers: [
+    {
+      tier: RewardsTier.PRIME,
+      requiredFuse: 50_000,
+      unlocked: false,
+      remainingFuse: 50_000,
+      progressPct: 0,
+    },
+    {
+      tier: RewardsTier.ULTRA,
+      requiredFuse: 400_000,
+      unlocked: false,
+      remainingFuse: 400_000,
+      progressPct: 0,
+    },
+  ],
+};
+
+/**
  * Whether the "Skip the line" section has anything to show.
  *
  * Three separate things can each mean "no section": an older backend that
@@ -59,7 +91,7 @@ export const resolveTierUpgradeCardData = ({
           balanceFuse: 0,
           balanceUsd: 0,
           unlockedTier: currentTier,
-          tiers: getBuyFuseTierTargets(currentTier),
+          tiers: getBuyFuseTierTargets(currentTier, FALLBACK_SKIP_LINE),
         }
       : undefined);
   const resolvedTargetPoints =
