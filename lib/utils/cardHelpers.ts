@@ -349,6 +349,53 @@ export const assetLabel = (asset: CardCollateralTokenBalanceDto): string =>
   asset.symbol || `${asset.tokenAddress.slice(0, 6)}…${asset.tokenAddress.slice(-4)}`;
 
 /**
+ * The collateral assets the withdraw screen offers, richest first (the backend
+ * already sorts them that way).
+ *
+ * Two things are dropped, for two different reasons:
+ *
+ *  - An asset whose balance could not be read. `availableUsd` is 0 for those and
+ *    it does not mean "empty", so offering one can only quote a figure we do not
+ *    have.
+ *  - An asset that holds nothing. A withdrawal moves one named token, so picking
+ *    an empty one has exactly one outcome: "No X is available to withdraw right
+ *    now". The backend lists every token every Rain contract supports — one
+ *    cardholder saw ten rows, eight of them $0 and two of them duplicate symbols
+ *    of the funded pair — and burying the assets they could actually withdraw in
+ *    that list is what made the screen look broken.
+ *
+ * The selected asset is always kept, even at $0: the list has to be able to show
+ * what the trigger says is selected. And when nothing is funded at all, the whole
+ * readable list comes back rather than an empty one — the user still needs to see
+ * what the card holds, and an empty picker offers no way out of it.
+ */
+export const withdrawableAssetOptions = (
+  assets: CardCollateralTokenBalanceDto[] | undefined,
+  selectedTokenAddress?: string,
+): CardCollateralTokenBalanceDto[] => {
+  const readable = (assets ?? []).filter(asset => !asset.unavailableReason);
+  const selected = selectedTokenAddress?.toLowerCase();
+  const funded = readable.filter(
+    asset => asset.balanceUsd > 0 || asset.tokenAddress.toLowerCase() === selected,
+  );
+  return funded.length ? funded : readable;
+};
+
+/**
+ * Whether picking `asset` replaces the asset a withdrawal would currently draw
+ * from — i.e. whether the amount already typed still belongs to the same cap.
+ *
+ * Re-picking the asset that is already selected is a no-op the user can perform
+ * at any time (the row they tap is the one the trigger names), so treating every
+ * pick as a change is how "$4.87, Max" became an empty amount field the moment
+ * the picker closed.
+ */
+export const isDifferentCollateralAsset = (
+  asset: CardCollateralTokenBalanceDto,
+  selectedTokenAddress?: string,
+): boolean => asset.tokenAddress.toLowerCase() !== selectedTokenAddress?.toLowerCase();
+
+/**
  * Block explorer for the chain a card transaction settled on.
  *
  * Rain settles on Arbitrum and Wirex on Base, so the explorer has to follow the

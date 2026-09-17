@@ -1,6 +1,7 @@
 import {
   bankBalancesToShow,
   getTotalBalance,
+  holdsFundsAnywhere,
   shouldShowCard,
   shouldShowSpendable,
 } from '@/components/Home/NewHome/OtherBalancesDropdown/balanceTotals';
@@ -48,6 +49,59 @@ describe('getTotalBalance', () => {
         userHasCard: false,
       }),
     ).toBe(0);
+  });
+});
+
+/**
+ * Reported by a cardholder: "Swap and Send are no longer showing". They held
+ * $4.87 on a Rain card and nothing in their wallet, because every deposit they
+ * had ever made went to the card's own deposit address — which never touches
+ * their Safe. The action row asked whether the wallet had been funded, got "no",
+ * and collapsed to a lone "Add Funds" button on a screen that was, right above it,
+ * showing them a balance.
+ */
+describe('holdsFundsAnywhere', () => {
+  const empty = {
+    walletBalance: 0,
+    cardBalance: 0,
+    savingsBalance: 0,
+    userHasCard: false,
+    depositCompleted: false,
+  };
+
+  it('offers Swap and Send to a cardholder whose only money is on the card', () => {
+    expect(holdsFundsAnywhere({ ...empty, cardBalance: 4.87, userHasCard: true })).toBe(true);
+  });
+
+  it('offers them on a savings balance alone', () => {
+    expect(holdsFundsAnywhere({ ...empty, savingsBalance: 12.5 })).toBe(true);
+  });
+
+  it('offers them on a wallet balance alone', () => {
+    expect(holdsFundsAnywhere({ ...empty, walletBalance: 2.03 })).toBe(true);
+  });
+
+  it('keeps offering them to a wallet that was funded and then emptied', () => {
+    // `depositCompleted` is the historical answer, and it also covers a balance
+    // query that is erroring or has not landed yet.
+    expect(holdsFundsAnywhere({ ...empty, depositCompleted: true })).toBe(true);
+  });
+
+  it('hides them only when the user holds nothing at all', () => {
+    expect(holdsFundsAnywhere(empty)).toBe(false);
+  });
+
+  it('is not fooled by a Wirex card reporting spending power as its balance', () => {
+    // That figure is the wallet and savings the card can reach, seen from the
+    // card's side. With both at zero there is nothing to swap or send.
+    expect(
+      holdsFundsAnywhere({
+        ...empty,
+        cardBalance: 9.24,
+        userHasCard: true,
+        cardHoldsOwnBalance: false,
+      }),
+    ).toBe(false);
   });
 });
 
