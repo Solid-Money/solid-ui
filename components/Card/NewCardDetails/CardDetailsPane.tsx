@@ -9,7 +9,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -17,21 +19,32 @@ import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
 import CardDetailsHeader from '@/components/Card/NewCardDetails/CardDetailsHeader';
-import { getCardHeroDestination } from '@/components/Card/NewCardDetails/cardHeroLayout';
+import {
+  getCardHeroDestination,
+  HEADER_HEIGHT,
+} from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
-import { HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
+import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
+import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
+import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
+import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
+import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
+import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { CardSpendRegistrationSource } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { IS_TIER_CASHBACK_HARDCODED } from '@/lib/config';
-import { resolveTierCashbackRate } from '@/lib/tierCashback';
+import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
@@ -43,11 +56,9 @@ import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 
-/**
- * How long to keep the pane on screen after it's been dismissed: long enough for the
- * slowest section to animate out (600ms) and the card to land back on the wallet.
- */
-const CLOSE_SETTLE_MS = 640;
+const HEADER_FADE_EXTENT = 32;
+const HEADER_GRADIENT_FADE_MS = 280;
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 /**
  * The card-details surface (Figma 20095:5393), rendered as a layer on the wallet
@@ -91,14 +102,42 @@ const CardDetailsPane = () => {
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
-  // Held true through the dismissal, so the sections have something to animate out
-  // of; without it `isOpen` going false would yank the pane off screen instantly.
-  const [isSettling, setIsSettling] = useState(false);
-  const hasOpened = useRef(false);
+  const [walletFromManage, setWalletFromManage] = useState<DigitalWalletType | undefined>();
+  // The card-spending sheet is owned here rather than by the action row, because two
+  // things open it: the row's own "Set up"/"Spending" button, and a "Show details" tap
+  // on a card that cannot spend yet. One instance above both also keeps it reachable
+  // when the row hides its button (a frozen card) — which is exactly when a blocked
+  // reveal still needs somewhere to send the user. `null` is closed; the value it holds
+  // is which entry point opened it, for the registration funnel.
+  const [spendSheetSource, setSpendSheetSource] = useState<CardSpendRegistrationSource | null>(
+    null,
+  );
+  // Which funds the card draws on — cash, credit or both. UI only for now: the
+  // sheet previews the three modes and never commits one.
+  const spendModeFigures = useSpendModeFigures();
+  const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
+  // The borrow position's own sheet, opened by tapping the card that shows it.
+  const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
+  // Stable identities: the reveal section folds its opener into the memoised toggle
+  // handler, which would be rebuilt on every render of this pane otherwise.
+  const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
+  const openSpendSheetFromReveal = useCallback(() => setSpendSheetSource('card_reveal'), []);
+  const isVisible = useCardPaneVisibility(isOpen);
   // Laid out (invisibly) once the wallet screen has settled, so the first open costs
   // no more than the ones after it.
   const [isWarm, setIsWarm] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const headerGradientOpacity = useSharedValue(0);
+  const headerGradientAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerGradientOpacity.value,
+  }));
+
+  useEffect(() => {
+    headerGradientOpacity.value = withTiming(isOpen ? 1 : 0, {
+      duration: HEADER_GRADIENT_FADE_MS,
+      easing: EASE_OUT_QUINT,
+    });
+  }, [headerGradientOpacity, isOpen]);
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => setIsWarm(true));
@@ -107,25 +146,20 @@ const CardDetailsPane = () => {
 
   useEffect(() => {
     if (isOpen) {
-      hasOpened.current = true;
-      setIsSettling(false);
       // Always open at the top: the card's landing position is computed rather than
       // measured, so a scroll position left over from a previous visit would put the
       // real card somewhere the clone isn't flying to.
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       return;
     }
-    // Nothing to settle if it was never opened, or the pane would sit visible for the
-    // settle window on startup.
-    if (!hasOpened.current) return;
-    setIsSettling(true);
-    const timer = setTimeout(() => setIsSettling(false), CLOSE_SETTLE_MS);
-    return () => clearTimeout(timer);
+    // A dismissed pane must not leave its spending sheet floating over the wallet: the
+    // dialog is portalled, so it outlives the layer that opened it. Clearing the source
+    // rather than merely hiding it also stops the sheet reappearing on the next visit.
+    setSpendSheetSource(null);
+    setIsAddToWalletOpen(false);
+    setIsSpendModeOpen(false);
+    setIsBorrowPositionOpen(false);
   }, [isOpen]);
-
-  // Visible the instant it opens — deriving it rather than waiting on an effect keeps
-  // the sections' entrance from starting a frame behind.
-  const isVisible = isOpen || isSettling;
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
   const canToggleFreeze = canToggleCardFreeze(cardDetails);
@@ -133,6 +167,7 @@ const CardDetailsPane = () => {
   const fundsAccess = {
     isCardFrozen,
     isCustomerRestricted: isCustomerFundsRestricted(customer?.status),
+    provider,
   };
 
   /**
@@ -212,20 +247,17 @@ const CardDetailsPane = () => {
         !isVisible && styles.warm,
       ]}
     >
-      {/* Same column as the content below, so the back button doesn't drift out to
-          the edge of the desktop body area. */}
-      <View
-        className="mx-auto w-full max-w-[40rem]"
-        style={[{ paddingTop: insets.top }, columnAlignmentStyle]}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingTop: insets.top + HEADER_HEIGHT }}
+        showsVerticalScrollIndicator={false}
       >
-        <CardDetailsHeader onBack={close} />
-      </View>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
         <View className="mx-auto w-full max-w-[40rem] px-4" style={columnAlignmentStyle}>
           <CardRevealSection
             last4={cardDetails?.card_details?.last_4}
             cardholderName={cardDetails?.cardholder_name}
             provider={provider}
+            onRequireSpendSetup={openSpendSheetFromReveal}
             // The card's own issuing country, falling back to the KYC residence
             // country the status endpoint reports (it's absent for test overrides).
             issuingCountryCode={cardDetails?.issuing_country ?? cardStatus?.country}
@@ -236,20 +268,43 @@ const CardDetailsPane = () => {
               canToggleFreeze={canToggleFreeze}
               isFreezing={isFreezing}
               onFreezeToggle={handleFreezeToggle}
-              onMorePress={() => setIsAddToWalletOpen(true)}
+              onManagePress={openSpendSheet}
               canAddFunds={canAddFundsToCard(fundsAccess)}
-              canWithdraw={canWithdrawFromCard(fundsAccess)}
             />
           </HeroEnter>
+          {/* Hidden outright rather than shown inert while the card has only one way to be
+              funded. Until this build can reach the v2 module there is nothing to change to,
+              and a "Spend mode: Cash [Change]" row that cannot change anything is worse than
+              no row — it is the one surface that would give away a migration the cardholder
+              is deliberately never asked about. */}
+          {spendModeFigures.canChangeMode ? (
+            <HeroEnter spec={HERO_ENTER.spendMode} style={styles.spendModeCard}>
+              <SpendingModeCard
+                mode={spendModeFigures.mode}
+                onChangeMode={() => setIsSpendModeOpen(true)}
+              />
+            </HeroEnter>
+          ) : null}
+          {/* Shown to anyone who has a credit line, not only to someone already in debt —
+              see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
+              spend against BEFORE they spend it; gating on the loan meant the first thing
+              they learned about their own line was a decline. */}
+          {spendModeFigures.showsBorrowPosition ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.borrowPositionCard}>
+              <BorrowPositionCard
+                borrowed={spendModeFigures.borrowed}
+                creditLimit={spendModeFigures.creditLimit}
+                borrowApy={spendModeFigures.borrowApy}
+                borrowedProgress={spendModeFigures.borrowedProgress}
+                onPress={() => setIsBorrowPositionOpen(true)}
+              />
+            </HeroEnter>
+          ) : null}
           <HeroEnter spec={HERO_ENTER.cashback} style={styles.cashbackCard}>
             <CashbackDetailsSheet
               trigger={<CardCashbackCard />}
               triggerContainerClassName="w-full"
-              cashbackRate={resolveTierCashbackRate(
-                rewardsData?.currentTier,
-                rewardsData?.cashbackRate,
-                IS_TIER_CASHBACK_HARDCODED,
-              )}
+              cashbackRate={resolveUserCashbackRate(rewardsData)}
               cashbackThisMonth={cashbackThisMonth}
               cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
               maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
@@ -263,9 +318,45 @@ const CardDetailsPane = () => {
           <View className="h-32" />
         </View>
       </ScrollView>
+      <AnimatedLinearGradient
+        colors={['#111111', 'rgba(17,17,17,0.78)', 'rgba(17,17,17,0)']}
+        locations={[0, 0.55, 1]}
+        pointerEvents="none"
+        style={[
+          styles.headerGradient,
+          { height: insets.top + HEADER_HEIGHT + HEADER_FADE_EXTENT },
+          headerGradientAnimatedStyle,
+        ]}
+      />
+      {/* A true transparent overlay: the scroll content passes behind this header
+          instead of stopping below a separate black layout row. */}
+      <View pointerEvents="box-none" style={[styles.headerOverlay, { paddingTop: insets.top }]}>
+        <View className="mx-auto w-full max-w-[40rem]" style={columnAlignmentStyle}>
+          <CardDetailsHeader onBack={close} />
+        </View>
+      </View>
       <CardWelcomePopup
         isOpen={isOpen && shouldShowWelcomePopup}
         onClose={() => setShouldShowWelcomePopup(false)}
+      />
+      <ManageCardSheet
+        isOpen={isOpen && spendSheetSource !== null}
+        onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
+        source={spendSheetSource ?? 'spending_sheet'}
+        onAddToWallet={wallet => {
+          setWalletFromManage(wallet);
+          setIsAddToWalletOpen(true);
+        }}
+        canWithdraw={canWithdrawFromCard(fundsAccess)}
+      />
+      <SpendModeSheet
+        isOpen={isOpen && isSpendModeOpen}
+        onOpenChange={setIsSpendModeOpen}
+        activeMode={spendModeFigures.mode}
+      />
+      <BorrowPositionSheet
+        isOpen={isOpen && isBorrowPositionOpen}
+        onOpenChange={setIsBorrowPositionOpen}
       />
       <AddToWalletModal
         trigger={null}
@@ -276,7 +367,7 @@ const CardDetailsPane = () => {
           // immediately re-open from it.
           if (!open) dismissWalletGuide();
         }}
-        initialWallet={walletGuide ?? undefined}
+        initialWallet={walletGuide ?? walletFromManage}
       />
     </View>
   );
@@ -288,10 +379,26 @@ const styles = StyleSheet.create({
   layer: { zIndex: 60 },
   cold: { display: 'none' },
   warm: { opacity: 0 },
-  // Figma vertical rhythm: 51 from the panel to the action icons, 45 to the cashback
-  // card, 20 to the links list.
+  headerGradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 9,
+  },
+  headerOverlay: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 10,
+  },
+  // Figma vertical rhythm (26134:23654): 51 from the panel to the action icons, 53
+  // to the spend-mode row, then 20 between each card down the stack.
   actionsRow: { marginTop: 51 },
-  cashbackCard: { marginTop: 45 },
+  spendModeCard: { marginTop: 53 },
+  borrowPositionCard: { marginTop: 20 },
+  cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },
 });
 

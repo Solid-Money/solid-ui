@@ -1,4 +1,4 @@
-import { Cashback, CashbackStatus } from '@/lib/types';
+import { Cashback, CashbackStatus, CashbackType } from '@/lib/types';
 import { getCashbackAmount } from '@/lib/utils/cardHelpers';
 
 const cashback = (overrides: Partial<Cashback>): Cashback =>
@@ -23,6 +23,7 @@ describe('getCashbackAmount', () => {
       isPending: true,
       isEscrowed: true,
       isPaid: false,
+      isIneligible: false,
       payoutAt: '2026-09-16T09:03:23.823Z',
     });
   });
@@ -70,6 +71,81 @@ describe('getCashbackAmount', () => {
   it('reports nothing for a transaction with no cashback of its own', () => {
     expect(getCashbackAmount('tx-other', [cashback({})])).toBeNull();
     expect(getCashbackAmount('tx-1', undefined)).toBeNull();
+  });
+
+  /**
+   * The one status that will never pay and is still shown. A cash withdrawal
+   * with no cashback row looks identical to a purchase whose cashback has not
+   * arrived yet, so the receipt states the exclusion rather than leaving a gap.
+   */
+  it('surfaces an ineligible purchase instead of hiding it', () => {
+    const info = getCashbackAmount('tx-1', [cashback({ status: CashbackStatus.Ineligible })]);
+
+    expect(info).toEqual({
+      amount: null,
+      isPending: false,
+      isEscrowed: false,
+      isPaid: false,
+      isIneligible: true,
+    });
+  });
+
+  /**
+   * A subscription row is the Prime/Ultra perk, paid instead of the tier rate on
+   * that charge rather than alongside it. The receipt has to say so: 25% on a
+   * $200 subscription and 4% on it are wildly different figures, and a row
+   * labelled only "Cashback" reads as the tier rate having been applied.
+   */
+  it('flags a subscription row and names its category', () => {
+    const info = getCashbackAmount('tx-1', [
+      cashback({
+        type: CashbackType.SubscriptionDiscount,
+        subscriptionCategory: 'ai',
+        projectedUsdValue: 50,
+        payoutAt: '2026-09-18T03:34:33.353Z',
+      }),
+    ]);
+
+    expect(info).toMatchObject({
+      amount: '+$50.00',
+      isEscrowed: true,
+      isSubscriptionDiscount: true,
+      subscriptionCategory: 'ai',
+    });
+  });
+
+  it('carries the subscription flag onto a settled row', () => {
+    const info = getCashbackAmount('tx-1', [
+      cashback({
+        type: CashbackType.SubscriptionDiscount,
+        subscriptionCategory: 'music',
+        status: CashbackStatus.Paid,
+        soUsdAmount: '11',
+        soUsdRate: '1',
+      }),
+    ]);
+
+    expect(info).toMatchObject({
+      amount: '+$11.00',
+      isPaid: true,
+      isSubscriptionDiscount: true,
+      subscriptionCategory: 'music',
+    });
+  });
+
+  it('leaves a regular row unflagged, including one from before the field existed', () => {
+    // `toEqual` on purpose: the flag must be absent rather than false, so that
+    // every existing consumer of a regular row sees exactly what it always did.
+    for (const type of [CashbackType.Cashback, undefined]) {
+      expect(getCashbackAmount('tx-1', [cashback({ type, projectedUsdValue: 8 })])).toEqual({
+        amount: '+$8.00',
+        isPending: true,
+        isEscrowed: true,
+        isPaid: false,
+        isIneligible: false,
+        payoutAt: undefined,
+      });
+    }
   });
 
   it('hides cashback that will never pay', () => {

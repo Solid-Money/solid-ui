@@ -16,6 +16,19 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
+/**
+ * Card spend v2: the Credit and Smart funding modes, and the borrow position behind them.
+ *
+ * Gated on a flag rather than on whether {@link ADDRESSES}.fuse.cashModuleV2 is still the zero
+ * address, so a QA build can point at a testnet deployment before mainnet has one. Off means the
+ * card behaves exactly as it does today — every cardholder is on v1, spending cash, and the two
+ * modes they cannot use are not offered.
+ *
+ * The flag alone is not sufficient: the addresses have to be real too, which
+ * `isCardSpendV2Configured` checks. Both are required because they fail differently — a flag with
+ * no address is a misconfigured build, and an address with no flag is a deliberate dark launch.
+ */
+export const EXPO_PUBLIC_CARD_SPEND_V2 = process.env.EXPO_PUBLIC_CARD_SPEND_V2 === 'true';
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined
 // into the JS bundle, so only ever put a publishable key here, never a secret.
@@ -138,6 +151,26 @@ type Addresses = {
     cashModule: Address;
     /** SolidCashLens — one-call read of a Safe's spending power across its allowlisted assets. */
     cashLens: Address;
+    /**
+     * SolidCashModuleV2 — the card spend module that adds the Credit and Smart funding modes.
+     *
+     * **One address for both halves.** The module is split into a core and a setters contract to
+     * fit EIP-170, and the core `delegatecall`s anything it does not implement into the setters —
+     * so callers only ever use this address, for reads as well as writes.
+     *
+     * A Safe is operated by v1 or by v2, never both: v2 goes inert while v1 is still enabled, and
+     * `registerSafe` refuses unless v1 is disabled. Migration is therefore one batched user
+     * operation, and it only happens when a cardholder first chooses a mode v1 cannot serve.
+     */
+    cashModuleV2: Address;
+    /**
+     * SolidSpendLens — the cohort-aware read serving BOTH module generations from one call.
+     *
+     * Distinct from {@link cashLens}, which only knows v1. This one reports which module owns a
+     * given Safe, which is what lets the app ask "what can this Safe spend?" without first knowing
+     * which generation the cardholder is on.
+     */
+    spendLensV2: Address;
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
@@ -153,6 +186,9 @@ type Addresses = {
     usdc: Address;
   };
 };
+
+/** Stand-in for a contract this build has no address for. Never a valid call target. */
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
 export const ADDRESSES: Addresses = {
   ethereum: {
@@ -213,6 +249,11 @@ export const ADDRESSES: Addresses = {
     // this address therefore means every registered Safe must re-consent.
     cashModule: '0x31F7f64769C6B2D4d3edd053421a0465FB371061',
     cashLens: '0x2036512E45BF7c61814050fF9B1b5403353854a6',
+    // NOT DEPLOYED YET. Both are the zero address until the v2 deployment lands, and
+    // `isCardSpendV2Configured` is what stops the app offering a mode it cannot execute. The env
+    // overrides exist so a QA build can point at a testnet deployment without waiting for mainnet.
+    cashModuleV2: (process.env.EXPO_PUBLIC_CASH_MODULE_V2_ADDRESS ?? ZERO_ADDRESS) as Address,
+    spendLensV2: (process.env.EXPO_PUBLIC_SPEND_LENS_V2_ADDRESS ?? ZERO_ADDRESS) as Address,
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',

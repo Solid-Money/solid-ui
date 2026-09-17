@@ -6,11 +6,6 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
-import {
-  CARD_DEPOSIT_REQUIRED_COUNTRY,
-  MINIMUM_CARD_DEPOSIT_CENTS,
-  MINIMUM_CARD_DEPOSIT_USD,
-} from '@/constants/card';
 import { refreshToken } from '@/lib/api';
 import {
   ADDRESSES,
@@ -400,25 +395,12 @@ export {
   hasPendingCard,
 } from '@/lib/utils/cardStatusRouting';
 
-/**
- * Whether the user's residence country requires a minimum deposit before they
- * can proceed with card issuance (Bangladesh). Callers pass the KYC residence
- * country from the backend (`cardStatus.country`) when available, falling back to
- * the client-detected/selected country so the gate applies before a card
- * customer exists (getCardStatus 404s then).
- */
-export const requiresCardDeposit = (country: string | null | undefined): boolean =>
-  country?.toUpperCase() === CARD_DEPOSIT_REQUIRED_COUNTRY;
-
-/** Whether the user has deposited at least the minimum required collateral (cents). */
-export const hasMetCardDeposit = (depositedCents: number | null | undefined): boolean =>
-  (depositedCents ?? 0) >= MINIMUM_CARD_DEPOSIT_CENTS;
-
-/**
- * Whether the user holds at least the minimum required amount in the savings
- * (soUSD) vault. This is the gate for the Bangladesh "deposit first" step, which
- * now happens before any card exists. A small tolerance absorbs quote/rounding
- * noise so a genuine $5 deposit (soUSD is valued at ≥ $1) reliably qualifies.
- */
-export const hasMetSavingsDeposit = (savingsUsd: number | null | undefined): boolean =>
-  (savingsUsd ?? 0) >= MINIMUM_CARD_DEPOSIT_USD - 0.8;
+// The minimum-deposit gate predicates live in their own leaf module for the
+// same reason as the routing ones above: they are load-bearing and this file's
+// import graph does not load under jest-expo. Re-exported so `@/lib/utils`
+// stays the single import path.
+export {
+  hasMetCardDeposit,
+  hasMetSavingsDeposit,
+  requiresCardDeposit,
+} from '@/lib/utils/cardDepositGate';

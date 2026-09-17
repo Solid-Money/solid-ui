@@ -97,24 +97,14 @@ const useBridgeToMainnetSoEth = (): BridgeSoEthResult => {
           },
         });
 
-        const callData = encodeFunctionData({
-          abi: ETHEREUM_TELLER_ABI,
-          functionName: 'bridge',
-          args: [
-            amountWei,
-            user.safeAddress,
-            encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
-            ADDRESSES.fuse.nativeFeeToken,
-            fee ? fee : 0n,
-          ],
-        });
-
         const transactions = [
+          // The paymaster pulls the shares itself, so it can only ever bridge what this
+          // Safe approved - it no longer custodies shares between calls.
           {
             to: ADDRESSES.fuse.soEthVault,
             data: encodeFunctionData({
               abi: erc20Abi,
-              functionName: 'transfer',
+              functionName: 'approve',
               args: [ADDRESSES.fuse.bridgePaymasterAddress, amountWei],
             }),
             value: 0n,
@@ -123,8 +113,13 @@ const useBridgeToMainnetSoEth = (): BridgeSoEthResult => {
             to: ADDRESSES.fuse.bridgePaymasterAddress,
             data: encodeFunctionData({
               abi: BridgePayamster_ABI,
-              functionName: 'callWithValue',
-              args: [ADDRESSES.fuse.soEthTeller, '0x05921740', callData, fee ? fee : 0n],
+              functionName: 'sponsorBridge',
+              args: [
+                ADDRESSES.fuse.soEthTeller,
+                amountWei,
+                user.safeAddress as Address,
+                encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
+              ],
             }),
             value: 0n,
           },

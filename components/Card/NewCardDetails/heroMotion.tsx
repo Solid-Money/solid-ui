@@ -82,6 +82,14 @@ export const HERO_ENTER = {
   title: { delay: 180, fade: 280, transform: 300, translateY: 10 },
   /** Figma 21903:903 — the Add funds / Freeze / Settings row. */
   actions: { delay: 300, fade: 320, transform: 360, translateY: 24 },
+  /**
+   * The spend-mode row (Figma 26134:24137). The motion frame predates both it and
+   * the borrow card below, so the two take the steps between the action row and
+   * the cashback card rather than timings of their own.
+   */
+  spendMode: { delay: 350, fade: 320, transform: 360, translateY: 26 },
+  /** The borrow position card (Figma 26134:23800). */
+  borrowPosition: { delay: 375, fade: 320, transform: 360, translateY: 27 },
   /** Figma 21903:936 — the cashback card. */
   cashback: { delay: 400, fade: 320, transform: 360, translateY: 28 },
   /** Figma 21903:950 — the transactions / rewards / support list. */

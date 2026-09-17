@@ -26,6 +26,7 @@ import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { subscriptionCategoryLabel } from '@/components/Rewards/NewRewards/subscriptionBrands';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -50,12 +51,13 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
+import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
 import {
+  cardRefundExplorerUrl,
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
   formatCardAmount,
   formatCardTransactionAmount,
-  getCardFeeInfo,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
   getCashbackAmount,
@@ -308,6 +310,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const spend = transaction.spend_details;
   const sweepHash = spend?.sweep_tx_hash;
   const sweepUrl = cardSweepExplorerUrl(spend);
+  // Money coming back, and what was taken out of it on the way. See `CardRefundDetails`.
+  const refund = spend?.refund;
+  const refundUrl = cardRefundExplorerUrl(refund);
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -318,6 +323,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return dateStr ? new Date(dateStr) : new Date();
   }, [isApproved, transaction.authorized_at, transaction.posted_at]);
 
+  // Why we refused the charge, in the most specific terms we have — our own
+  // decline code where it says more than the issuer's reason, which collapses
+  // several distinct causes onto "insufficient funds".
+  const declineReason = useMemo(() => cardDeclineReason(transaction), [transaction]);
+
   // Support needs the ledger side to trace a purchase whose sweep is stuck or
   // failed; none of it is worth a row on screen, but all of it belongs in the
   // message the user sends.
@@ -327,10 +337,21 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       transaction.usd_amount && `USD value: ${transaction.usd_amount}`,
       spend.so_usd_amount && `soUSD: ${spend.so_usd_amount}`,
       spend.state && `Settlement: ${spend.state}`,
+      // The raw code, not the sentence the row shows: support is triaging
+      // against the ledger, where EXCEEDS_PER_TX_LIMIT and INSUFFICIENT_FUNDS
+      // are different findings that our cardholder copy deliberately softens.
+      spend.decline_reason && `Decline code: ${spend.decline_reason}`,
       sweepHash && `Sweep: ${sweepHash}`,
+      // The refund leg, because "why is my refund short" is the question this
+      // screen's refund rows exist to pre-empt — and the one people still write
+      // in about. Support needs the gross and the deduction, not just the net.
+      refund && `Refund: ${refund.status} ${refund.paid_usd} of ${refund.gross_usd} USD`,
+      refund?.cashback_deducted_usd &&
+        `Cashback withheld from refund: ${refund.cashback_deducted_usd} USD`,
+      refund?.tx_hash && `Refund tx: ${refund.tx_hash}`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
-  }, [spend, sweepHash, transaction.usd_amount]);
+  }, [spend, sweepHash, refund, transaction.usd_amount]);
 
   const transactionContext = useMemo(
     () =>
@@ -355,13 +376,16 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     if (sweepUrl) Linking.openURL(sweepUrl);
   }, [sweepUrl]);
 
+  const handleRefundPress = useCallback(() => {
+    if (refundUrl) Linking.openURL(refundUrl);
+  }, [refundUrl]);
+
   const handleLocationPress = useCallback(() => {
     if (!merchantPlace) return;
     Linking.openURL(getCardMerchantMapsUrl(merchantPlace, transaction.merchant_name));
   }, [merchantPlace, transaction.merchant_name]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
-  const feeInfo = getCardFeeInfo(transaction);
   const localDetails = transaction.local_transaction_details;
 
   /**
@@ -385,8 +409,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
     // `approved` is authorized but not yet posted. Cashback is settled once it
     // has actually paid; a transaction that earned none has nothing to wait for.
+    // An ineligible purchase is settled the moment it is recorded — nothing is
+    // coming, so a chip promising otherwise would never clear.
     const isSpendSettled = !isApproved;
-    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid;
+    const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
 
     return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
   }, [cashbackInfo, isApproved, isDeclined, isReversed]);
@@ -432,42 +458,56 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   );
 
   const rows = useMemo(() => {
+    // "AI", "Streaming" — the category a subscription row was billed under, for
+    // the note under the figure. Undefined on a regular cashback row.
+    const subscriptionCategory = cashbackInfo?.isSubscriptionDiscount
+      ? subscriptionCategoryLabel(cashbackInfo.subscriptionCategory)
+      : undefined;
+
     const allRows = [
       // No Status row: the chip under the amount carries it, and says it louder
       // than a row in a card of plain facts can. See `statusPill`.
       isDeclined &&
-        transaction.declined_reason && {
+        declineReason && {
           key: 'reason',
           label: <Label>Reason</Label>,
           // Wraps rather than truncates — a decline reason is the one value on
           // this screen the user has to read in full. No size of its own: it
           // used to step down from `text-lg` to `text-base`, and now every value
           // on the card is already the 16px that step was reaching for.
-          value: (
-            <Value className="max-w-[60%] text-right">
-              {toTitleCase(transaction.declined_reason)}
-            </Value>
-          ),
+          value: <Value className="max-w-[60%] text-right">{declineReason}</Value>,
         },
       cashbackInfo && {
         key: 'cashback',
         // The label is green on both sides of the design (Figma 21287:5858):
         // what the user earned back reads as a gain, not as another fact about
-        // the charge.
+        // the charge. Muted on an ineligible purchase, where green would
+        // advertise a gain that never happened.
         label: (
           <View className="flex-row items-center gap-1.5">
             <CashbackDiamondIcon size={14} />
-            <Text className={cn(ROW_TEXT, 'font-medium text-brand')}>Cashback</Text>
+            <Text
+              className={cn(
+                ROW_TEXT,
+                'font-medium',
+                cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand',
+              )}
+            >
+              {cashbackInfo.isSubscriptionDiscount ? 'Subscription cashback' : 'Cashback'}
+            </Text>
           </View>
         ),
-        // The figure earns its green only once the payout has landed. Until
-        // then it is a projection, and it carries no "(Escrowed)" or
-        // "(Pending)" of its own — the "Releases in" row below already says the
-        // money is still on its way, and saying so twice on one receipt reads
-        // as a warning about the amount rather than a note about its timing.
+        // Green like its label, paid or not: the figure is money coming back
+        // either way. It carries no "(Escrowed)" or "(Pending)" of its own —
+        // the "Releases in" row below already says the money is still on its
+        // way, and saying so twice on one receipt reads as a warning about the
+        // amount rather than a note about its timing. Muted only when the
+        // purchase earned nothing at all.
         value: (
-          <Value className={cashbackInfo.isPaid ? 'text-brand' : undefined}>
-            {cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending')}
+          <Value className={cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand'}>
+            {cashbackInfo.isIneligible
+              ? 'Ineligible'
+              : (cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending'))}
           </Value>
         ),
         // While the charge is still pending, the amount at the top of this
@@ -476,10 +516,31 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         // cardholder reads as an error. Spans the row rather than sitting under
         // the value, where a sentence this long would wrap to three lines
         // against the label.
-        caption: isApproved ? (
+        // "Ineligible" on its own invites the support ticket this row exists to
+        // prevent, so the reason comes with it. The pending-sum note is mutually
+        // exclusive: there is no amount here to reconcile against the total.
+        // A subscription row is worth explaining even when the pending-sum note
+        // also applies, so the two stack rather than one winning: the perk pays
+        // instead of the tier rate, and a cardholder who knows the rate is 25%
+        // but sees one figure has no way to tell which of the two they got.
+        caption: cashbackInfo.isIneligible ? (
           <Text className="mt-2 text-[13px] leading-4 text-white/50">
-            Cashback amount is not reflected on a pending transaction sum
+            Cash withdrawals, money transfers and government payments don&apos;t earn cashback
           </Text>
+        ) : subscriptionCategory || isApproved ? (
+          <View className="mt-2 gap-1">
+            {subscriptionCategory ? (
+              <Text className="text-[13px] leading-4 text-white/50">
+                Your {subscriptionCategory} subscription perk, paid instead of standard card
+                cashback on this charge
+              </Text>
+            ) : null}
+            {isApproved ? (
+              <Text className="text-[13px] leading-4 text-white/50">
+                Cashback amount is not reflected on a pending transaction sum
+              </Text>
+            ) : null}
+          </View>
         ) : undefined,
       },
       cashbackInfo?.isEscrowed &&
@@ -500,8 +561,73 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Value>
         ),
       },
-      // What the merchant actually charged, shown right above the FX fee so the
-      // fee has a visible cause rather than looking like an unexplained charge.
+      // The three figures that make a short refund explainable.
+      //
+      // Only shown when something was actually withheld. A refund that paid in
+      // full needs no arithmetic — the amount above already is the amount — and
+      // printing "Cashback returned: $0.00" on it would invent a concern the
+      // cardholder did not have.
+      refund?.cashback_deducted_usd
+        ? {
+            key: 'refund-cashback',
+            // Not green. Every other cashback figure on this screen is money
+            // coming to the user; this one is going back, and colouring it like
+            // a gain would misread at a glance — which on a figure that makes a
+            // refund smaller is the one thing worth getting right.
+            label: (
+              <View className="flex-row items-center gap-1.5">
+                <CashbackDiamondIcon size={14} />
+                <Text className={cn(ROW_TEXT, 'font-medium text-white/70')}>Cashback returned</Text>
+              </View>
+            ),
+            value: (
+              <Value>
+                -{formatCardAmount(String(refund.cashback_deducted_usd), cardProvider, 'USD')}
+              </Value>
+            ),
+            caption: (
+              <Text className="mt-2 text-[13px] leading-4 text-white/50">
+                {refund.note ?? 'The cashback this purchase earned was returned with the refund'}
+              </Text>
+            ),
+          }
+        : null,
+      refund?.cashback_deducted_usd
+        ? {
+            key: 'refund-paid',
+            label: (
+              <Label>{refund.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
+            ),
+            value: (
+              <Value className="text-brand">
+                {formatCardAmount(String(refund.paid_usd), cardProvider, 'USD')}
+              </Value>
+            ),
+          }
+        : null,
+      // The transfer that paid it. Its own row rather than folded into "Sweep":
+      // that hash is money we took to cover the purchase, this is money we sent
+      // back, and one label over both is how a cardholder ends up reading a
+      // refund as another charge.
+      refundUrl && refund?.tx_hash
+        ? {
+            key: 'refund-tx',
+            label: <Label>Refund</Label>,
+            value: (
+              <Pressable onPress={handleRefundPress} className="hover:opacity-70">
+                <View className="flex-row items-center gap-1">
+                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                    {eclipseAddress(refund.tx_hash)}
+                  </Underline>
+                  <ArrowUpRight color="white" size={16} />
+                </View>
+              </Pressable>
+            ),
+          }
+        : null,
+      // What the merchant actually charged, in their own currency — the figure
+      // the user will recognise from the till, against the dollars they were
+      // billed at the top of this screen.
       localDetails?.amount &&
         localDetails.currency && {
           key: 'local-amount',
@@ -512,24 +638,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </Value>
           ),
         },
-      feeInfo && {
-        key: 'card-fee',
-        label: (
-          <Label>
-            {feeInfo.label}
-            {feeInfo.rate ? ` (${feeInfo.rate})` : ''}
-          </Label>
-        ),
-        value: (
-          <Value className={feeInfo.isWaived ? 'text-brand' : ''}>
-            {feeInfo.isWaived
-              ? feeInfo.waivedNote || 'Free'
-              : feeInfo.isPending
-                ? `${feeInfo.amount} (Pending)`
-                : feeInfo.amount}
-          </Value>
-        ),
-      },
+      // No fee row. An FX fee is swept as its own charge rather than folded
+      // into this purchase, so it is a movement in its own right and not a term
+      // of the figure at the top of this screen — which is what a row in among
+      // these made it look like.
       // What the purchase actually cost the user in their own asset. The figure
       // above is what the merchant charged; this is what left the wallet to
       // cover it, and the two are in different units.
@@ -577,7 +689,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return allRows;
   }, [
     cashbackInfo,
-    feeInfo,
     localDetails,
     txHash,
     handleExplorerPress,
@@ -589,8 +700,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     sweepHash,
     handleSweepPress,
     transaction.currency,
-    transaction.declined_reason,
+    declineReason,
     transaction.refunded_amount,
+    refund,
+    refundUrl,
+    handleRefundPress,
   ]);
 
   return (

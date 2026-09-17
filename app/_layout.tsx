@@ -40,7 +40,7 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
-import CardDepositStoreReviewTrigger from '@/components/StoreReview/CardDepositStoreReviewTrigger';
+import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
 import { toastProps } from '@/components/Toast';
@@ -451,7 +451,7 @@ function RootLayout() {
                       {hasSelectedUser && Platform.OS !== 'web' && (
                         <>
                           <CashbackStoreReviewTrigger />
-                          <CardDepositStoreReviewTrigger />
+                          <AppOpenStoreReviewTrigger />
                         </>
                       )}
                     </BottomSheetModalProvider>

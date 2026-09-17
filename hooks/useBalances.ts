@@ -3,14 +3,20 @@ import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { arbitrum, base, bsc, fuse, mainnet } from 'viem/chains';
 
-import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
+import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
+import {
+  fetchCoinSimplePrice,
+  fetchTokenList,
+  fetchTokenPricesByAddress,
+  fetchTokenPriceUsd,
+} from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
-import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
+import { isSoETHToken, isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 
+import { makeNativePriceFetcher } from './useNativePriceUsd';
 import useUser from './useUser';
 
 // Blockscout response structure for both Ethereum and Fuse
@@ -100,6 +106,44 @@ const symbols = {
   'USDC.E': 'USDC',
 };
 
+/**
+ * Native-token USD price per chain. Uses the shared fetcher (Alchemy by symbol,
+ * CoinGecko on failure) rather than a bare Alchemy call: FUSE's "symbol" here is
+ * a CoinGecko coin id that Alchemy's by-symbol endpoint never resolves, so on
+ * its own it yields no price at all.
+ */
+const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> = {
+  [mainnet.id]: makeNativePriceFetcher(mainnet.id),
+  [fuse.id]: makeNativePriceFetcher(fuse.id),
+  [base.id]: makeNativePriceFetcher(base.id),
+  [arbitrum.id]: makeNativePriceFetcher(arbitrum.id),
+  [bsc.id]: makeNativePriceFetcher(bsc.id),
+};
+
+const isZeroRate = (r: number | null | undefined) =>
+  r == null || r === 0 || (typeof r === 'number' && Number.isNaN(r));
+
+const parsePrice = (v: unknown): number | undefined => {
+  if (typeof v === 'number' && !Number.isNaN(v)) return v;
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    return !Number.isNaN(n) ? n : undefined;
+  }
+  return undefined;
+};
+
+/**
+ * A vault share is worth its exchange rate in the underlying asset, never one
+ * for one: soFUSE and soETH are listed under the underlying's own price id
+ * (`fuse-network-token` / `weth`), so letting them take a price from the generic
+ * fallbacks below values a share as a bare FUSE or ETH and under-reports the
+ * holding by the whole accrued yield. Their rate comes from the accountant or
+ * not at all. soUSD is excluded from this rule: its price id names the share
+ * itself, so a fallback price for it is the right number.
+ */
+const isUnderlyingPricedShare = (contractAddress: string): boolean =>
+  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress);
+
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
   const [
@@ -111,6 +155,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     bscResponse,
     soUSDRate,
     soFUSERate,
+    soETHRate,
     ethBalance,
     fuseBalance,
     baseBalance,
@@ -143,6 +188,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
+    // One soETH rate for every chain the share sits on, read from the Ethereum
+    // accountant — the same source the savings screen uses.
+    readContract(publicClient(mainnet.id), {
+      address: ADDRESSES.ethereum.soEthAccountant,
+      abi: ACCOUNTANT_ABI,
+      functionName: 'getRate',
+    }),
     getBalance(publicClient(mainnet.id), {
       address: safeAddress as `0x${string}`,
     }),
@@ -158,11 +210,11 @@ const fetchTokenBalances = async (safeAddress: string) => {
     getBalance(publicClient(bsc.id), {
       address: safeAddress as `0x${string}`,
     }),
-    fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
-    fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
-    fetchTokenPriceUsd(NATIVE_TOKENS[base.id]),
-    fetchTokenPriceUsd(NATIVE_TOKENS[arbitrum.id]),
-    fetchTokenPriceUsd(NATIVE_TOKENS[bsc.id]),
+    NATIVE_PRICE_FETCHERS[mainnet.id](),
+    NATIVE_PRICE_FETCHERS[fuse.id](),
+    NATIVE_PRICE_FETCHERS[base.id](),
+    NATIVE_PRICE_FETCHERS[arbitrum.id](),
+    NATIVE_PRICE_FETCHERS[bsc.id](),
     fetchTokenList({
       isActive: true,
     }),
@@ -176,6 +228,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let bscTokens: TokenBalance[] = [];
   let soUSDRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
+  let soETHQuoteRateUSD = 0;
 
   // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
@@ -185,15 +238,28 @@ const fetchTokenBalances = async (safeAddress: string) => {
   }
 
   // Process soFUSE rate: soFUSE→FUSE (18 decimals) × FUSE price = USD quote rate (align with savings)
-  if (
-    soFUSERate.status === PromiseStatus.FULFILLED &&
-    fusePrice.status === PromiseStatus.FULFILLED
-  ) {
+  const fusePriceNum =
+    fusePrice.status === PromiseStatus.FULFILLED ? parsePrice(fusePrice.value) : undefined;
+  const ethPriceNum =
+    ethPrice.status === PromiseStatus.FULFILLED ? parsePrice(ethPrice.value) : undefined;
+
+  if (soFUSERate.status === PromiseStatus.FULFILLED && fusePriceNum) {
     const soFUSEToFuse = Number(soFUSERate.value) / Math.pow(10, 18);
-    const fusePriceNum = Number(fusePrice.value);
     soFUSEQuoteRateUSD = soFUSEToFuse * fusePriceNum;
   } else if (soFUSERate.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch soFUSE rate:', soFUSERate.reason);
+  } else if (!fusePriceNum) {
+    console.warn('No FUSE price — soFUSE left unpriced rather than valued as bare FUSE');
+  }
+
+  // Same for soETH: soETH→ETH (18 decimals) × ETH price.
+  if (soETHRate.status === PromiseStatus.FULFILLED && ethPriceNum) {
+    const soETHToEth = Number(soETHRate.value) / Math.pow(10, 18);
+    soETHQuoteRateUSD = soETHToEth * ethPriceNum;
+  } else if (soETHRate.status === PromiseStatus.REJECTED) {
+    console.warn('Failed to fetch soETH rate:', soETHRate.reason);
+  } else if (!ethPriceNum) {
+    console.warn('No ETH price — soETH left unpriced rather than valued as bare ETH');
   }
 
   const getAddress = (item: BlockscoutTokenBalance) => {
@@ -211,13 +277,18 @@ const fetchTokenBalances = async (safeAddress: string) => {
     );
     const isSoUSD = isSoUSDToken(address);
     const isSoFUSE = isSoFUSEToken(address);
+    const isSoETH = isSoETHToken(address);
+    // Vault shares are priced off their accountant rate, not off a market quote
+    // for the share (Blockscout has none) or for the underlying asset.
     const quoteRate = isSoUSD
       ? soUSDRateNum
       : isSoFUSE
         ? soFUSEQuoteRateUSD
-        : item.token.exchange_rate
-          ? parseFloat(item.token.exchange_rate)
-          : 0;
+        : isSoETH
+          ? soETHQuoteRateUSD
+          : item.token.exchange_rate
+            ? parseFloat(item.token.exchange_rate)
+            : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
@@ -440,20 +511,44 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ...bscTokens,
   ];
 
-  const isZeroRate = (r: number | null | undefined) =>
-    r == null || r === 0 || (typeof r === 'number' && Number.isNaN(r));
-
-  const parsePrice = (v: unknown): number | undefined => {
-    if (typeof v === 'number' && !Number.isNaN(v)) return v;
-    if (typeof v === 'string') {
-      const n = parseFloat(v);
-      return !Number.isNaN(n) ? n : undefined;
+  // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
+  // carry no exchange rate (only Blockscout's do), so every ERC-20 on an
+  // Alchemy-served chain lands here at 0. Runs ahead of the coin-id and symbol
+  // lookups below because an address names a token exactly, and needs no
+  // swaptokens entry to resolve — a token missing from the curated list still
+  // gets a price.
+  const addressPriceTokens = allTokens.filter(
+    t =>
+      isZeroRate(t.quoteRate) &&
+      t.type !== TokenType.NATIVE &&
+      t.contractAddress &&
+      !isUnderlyingPricedShare(t.contractAddress),
+  );
+  if (addressPriceTokens.length > 0) {
+    try {
+      const priceByAddress = await fetchTokenPricesByAddress(
+        addressPriceTokens.map(t => ({ chainId: t.chainId, address: t.contractAddress })),
+      );
+      allTokens = allTokens.map(t => {
+        if (
+          !isZeroRate(t.quoteRate) ||
+          t.type === TokenType.NATIVE ||
+          isUnderlyingPricedShare(t.contractAddress)
+        )
+          return t;
+        const usd = priceByAddress[`${t.chainId}:${t.contractAddress?.toLowerCase()}`];
+        if (usd != null && usd > 0) return { ...t, quoteRate: usd };
+        return t;
+      });
+    } catch (e) {
+      console.warn('Alchemy by-address price lookup failed:', e);
     }
-    return undefined;
-  };
+  }
 
-  // Fallback 1: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
-  const zeroRateTokens = allTokens.filter(t => isZeroRate(t.quoteRate));
+  // Fallback 2: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
+  const zeroRateTokens = allTokens.filter(
+    t => isZeroRate(t.quoteRate) && !isUnderlyingPricedShare(t.contractAddress),
+  );
   const coinIds = [
     ...new Set(
       zeroRateTokens
@@ -465,7 +560,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     try {
       const priceMap = await fetchCoinSimplePrice(coinIds);
       allTokens = allTokens.map(t => {
-        if (!isZeroRate(t.quoteRate)) return t;
+        if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
         const id = t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
         const usd = id ? parsePrice(priceMap[id]?.usd) : undefined;
         if (usd != null && usd > 0) return { ...t, quoteRate: usd };
@@ -476,8 +571,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
     }
   }
 
-  // Fallback 2: Alchemy by symbol for tokens still at 0 (no tokenId)
-  const stillZero = allTokens.filter(t => isZeroRate(t.quoteRate) && t.contractTickerSymbol);
+  // Fallback 3: Alchemy by symbol for tokens still at 0 (no tokenId)
+  const stillZero = allTokens.filter(
+    t =>
+      isZeroRate(t.quoteRate) &&
+      t.contractTickerSymbol &&
+      !isUnderlyingPricedShare(t.contractAddress),
+  );
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
     try {
@@ -491,7 +591,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
         }
       });
       allTokens = allTokens.map(t => {
-        if (!isZeroRate(t.quoteRate)) return t;
+        if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
         const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
         if (typeof p === 'number') return { ...t, quoteRate: p };
         return t;

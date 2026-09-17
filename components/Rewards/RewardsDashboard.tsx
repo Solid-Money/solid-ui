@@ -100,7 +100,9 @@ const RewardsDashboard = ({
 
   const handleStarAreaLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    setStarArea(prev => (prev.width === width && prev.height === height ? prev : { width, height }));
+    setStarArea(prev =>
+      prev.width === width && prev.height === height ? prev : { width, height },
+    );
   };
 
   // Get benefits for the current tier from API data

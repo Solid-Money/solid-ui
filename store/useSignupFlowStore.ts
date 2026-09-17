@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 
-export type SignupStep = 'email' | 'otp' | 'passkey' | 'creating' | 'complete';
+export type SignupStep = 'email' | 'otp' | 'username' | 'passkey' | 'creating' | 'complete';
 
 interface SignupFlowState {
   // Current step in the signup flow
@@ -12,6 +12,7 @@ interface SignupFlowState {
 
   // User input data
   email: string;
+  username: string;
   marketingConsent: boolean;
   referralCode: string;
 
@@ -43,6 +44,7 @@ interface SignupFlowActions {
 
   // Data setters
   setEmail: (email: string) => void;
+  setUsername: (username: string) => void;
   setMarketingConsent: (consent: boolean) => void;
   setReferralCode: (code: string) => void;
   setOtpId: (otpId: string) => void;
@@ -65,6 +67,7 @@ interface SignupFlowActions {
 const initialState: SignupFlowState = {
   step: 'email',
   email: '',
+  username: '',
   marketingConsent: false,
   referralCode: '',
   otpId: '',
@@ -90,7 +93,14 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
 
       goBack: () =>
         set(state => {
-          const stepOrder: SignupStep[] = ['email', 'otp', 'passkey', 'creating', 'complete'];
+          const stepOrder: SignupStep[] = [
+            'email',
+            'otp',
+            'username',
+            'passkey',
+            'creating',
+            'complete',
+          ];
           const currentIndex = stepOrder.indexOf(state.step);
           if (currentIndex > 0) {
             return { step: stepOrder[currentIndex - 1], error: null };
@@ -99,6 +109,7 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
         }),
 
       setEmail: email => set({ email }),
+      setUsername: username => set({ username }),
       setMarketingConsent: marketingConsent => set({ marketingConsent }),
       setReferralCode: referralCode => set({ referralCode }),
       setOtpId: otpId => set({ otpId }),
@@ -126,6 +137,10 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
       // Only persist certain fields to allow resuming if app closes during signup
       partialize: state => ({
         email: state.email,
+        // Persisted so the handle survives an app restart between the username
+        // step and account creation, rather than sending the user back to
+        // choose again.
+        username: state.username,
         marketingConsent: state.marketingConsent,
         referralCode: state.referralCode,
         otpId: state.otpId,

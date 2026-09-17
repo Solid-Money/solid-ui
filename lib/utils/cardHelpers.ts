@@ -4,6 +4,7 @@ import {
   CardFeeStatus,
   CardFeeWaiveReason,
   CardProvider,
+  CardRefundDetails,
   CardResponse,
   CardSpendDetails,
   CardStatus,
@@ -12,6 +13,7 @@ import {
   Cashback,
   CashbackInfo,
   CashbackStatus,
+  CashbackType,
   CryptoTransactionDetails,
   FreezeInitiator,
   KycStatus,
@@ -69,6 +71,12 @@ export interface CardFundsAccess {
   isCardFrozen: boolean;
   /** KYC is paused or the customer is offboarded — see `isCustomerFundsRestricted`. */
   isCustomerRestricted: boolean;
+  /**
+   * Which issuer the card is on. `null`/`undefined` while it is still
+   * resolving — treated as Rain, so a slow query never hides an action a Rain
+   * cardholder has.
+   */
+  provider?: CardProvider | null;
 }
 
 /**
@@ -99,9 +107,17 @@ export const canAddFundsToCard = ({
  * unfreezing — which would undo a compliance hold and so has to go through
  * support — taking collateral out is not a way around the freeze, and the API
  * permits it either way; hiding the button would only hide it from the app.
+ *
+ * It does read the issuer, for the same reason {@link canDepositToCard} does.
+ * A Wirex card holds no balance of its own, so there is no collateral proxy to
+ * withdraw from and no backend endpoint that would serve one — the withdraw
+ * screen's Rain-only collateral query never even runs, leaving the cardholder
+ * on "$0" with Max greyed out while their card reports a balance. Their money
+ * is in savings and comes out through the savings withdrawal, so offering this
+ * action was offering a dead end.
  */
-export const canWithdrawFromCard = ({ isCustomerRestricted }: CardFundsAccess): boolean =>
-  !isCustomerRestricted;
+export const canWithdrawFromCard = ({ isCustomerRestricted, provider }: CardFundsAccess): boolean =>
+  !isCustomerRestricted && cardHoldsBalance(provider);
 
 /**
  * Whether this card can be funded by depositing onto it.
@@ -138,6 +154,40 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
  */
 export const cardHoldsBalance = (provider: CardProvider | null | undefined): boolean =>
   canDepositToCard(provider);
+
+/**
+ * Whether the cardholder may be shown their card number, expiry and security code.
+ *
+ * Only ever false on a Wirex card, and for one reason: those cards hold no balance.
+ * Wirex pays the merchant and our backend debits the user's Safe afterwards through
+ * `SolidCashModule`, so with the module disabled — or the Safe never registered — there
+ * is nothing to debit and every payment on those numbers is declined. Handing them over
+ * is handing over a card that looks like it works, which is the same mistake as flipping
+ * the card onto placeholder digits after a failed reveal.
+ *
+ * So the reveal is a spending decision, and `canCardSpend` is the module's own answer
+ * (`isRegistered` on `useCardSpendRegistration` — module enabled *and* Safe registered,
+ * both halves). Anything short of a positive reading blocks: a chain read still in
+ * flight or one that failed is not permission, it is not knowing.
+ *
+ * A Rain card is unaffected. It is prefunded and has no module to enable, so there is no
+ * such thing as a Rain card whose details are worth less than the card itself. An
+ * unresolved issuer is treated as Rain here, matching {@link canDepositToCard} — a card
+ * with no `SolidCashModule` behind it cannot be blocked on one.
+ *
+ * Note this is not about a card that merely *cannot spend right now*: a freeze, or a
+ * guardian pause, is temporary and outside the cardholder's hands, and the numbers are
+ * still theirs to read. This is about the permission the app asked them for and has not
+ * got.
+ */
+export const canRevealCardDetails = ({
+  provider,
+  canCardSpend,
+}: {
+  provider: CardProvider | null | undefined;
+  /** The module's live verdict: enabled on the Safe and the Safe registered. */
+  canCardSpend: boolean;
+}): boolean => provider !== CardProvider.WIREX || canCardSpend;
 
 /**
  * Get initials from merchant/person name for avatar display
@@ -347,6 +397,25 @@ export const cardSweepExplorerUrl = (details: CardSpendDetails | undefined): str
 };
 
 /**
+ * Explorer link for the USDC.e transfer that paid a refund, on Fuse.
+ *
+ * Its own helper rather than a second call to {@link cardSweepExplorerUrl} with
+ * a different field: the two hashes point in opposite directions — one is money
+ * we took, one is money we sent back — and a single helper reading whichever
+ * field happened to be set is how a refund ends up rendered under a "Sweep"
+ * label. Same chain guard, for the same reason.
+ */
+export const cardRefundExplorerUrl = (
+  refund: CardRefundDetails | undefined,
+): string | undefined => {
+  const hash = refund?.tx_hash;
+  if (!hash) return undefined;
+  const chainId = refund?.chain_id ?? FUSE_CHAIN_ID;
+  if (chainId !== FUSE_CHAIN_ID) return undefined;
+  return `https://explorer.fuse.io/tx/${hash}`;
+};
+
+/**
  * Currencies that read better as a leading symbol. Deliberately short: anything
  * missing falls back to a trailing ISO code, which is how CHF and PLN are
  * written anyway, and is honest rather than wrong — Rain cards are USD, but a
@@ -458,6 +527,9 @@ const VISIBLE_CASHBACK_STATUSES: CashbackStatus[] = [
   CashbackStatus.Paid,
   CashbackStatus.Escrowed,
   CashbackStatus.Pending,
+  // Visible on purpose: a purchase the programme excludes is worth stating, or
+  // the receipt looks the same as one whose cashback has not arrived yet.
+  CashbackStatus.Ineligible,
 ];
 
 // Statuses that indicate cashback is still pending
@@ -493,6 +565,32 @@ export const getCashbackAmount = (
     return null;
   }
 
+  // Which programme paid the row, carried through every branch below so the
+  // receipt can name subscription cashback as such. A charge earns the tier rate
+  // or the subscription perk, never both, so this labels the one row rather than
+  // implying a second is missing. Rows written before the field existed are all
+  // regular cashback.
+  const subscription =
+    cashback.type === CashbackType.SubscriptionDiscount
+      ? {
+          isSubscriptionDiscount: true,
+          subscriptionCategory: cashback.subscriptionCategory,
+        }
+      : {};
+
+  // Excluded by merchant category. There is no amount and none is coming, so
+  // this returns before every branch that reaches for a figure or a projection.
+  if (cashback.status === CashbackStatus.Ineligible) {
+    return {
+      amount: null,
+      isPending: false,
+      isEscrowed: false,
+      isPaid: false,
+      isIneligible: true,
+      ...subscription,
+    };
+  }
+
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
   const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
@@ -512,7 +610,9 @@ export const getCashbackAmount = (
       isPending: true,
       isEscrowed,
       isPaid: false,
+      isIneligible: false,
       payoutAt: cashback.payoutAt,
+      ...subscription,
     };
   }
 
@@ -531,7 +631,9 @@ export const getCashbackAmount = (
     isPending,
     isEscrowed,
     isPaid: cashback.status === CashbackStatus.Paid,
+    isIneligible: false,
     payoutAt: cashback.payoutAt,
+    ...subscription,
   };
 };
 

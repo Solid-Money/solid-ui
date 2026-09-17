@@ -2,7 +2,6 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import { FastWithdrawManager_ABI } from '@/lib/abis/FastWithdrawManager';
 import { track } from '@/lib/analytics';
 import { getStargateQuote } from '@/lib/utils/stargate';
 import { ADDRESSES } from '@/lib/config';
@@ -142,7 +141,6 @@ const useFastWithdrawAndBridge = (): BridgeResult => {
         }
 
         const { transaction } = bridgeStep;
-        const nativeFeeAmount = BigInt(transaction.value);
 
         const sendParam = {
           dstEid: getStargateChainId(toChainId) as number,
@@ -150,24 +148,11 @@ const useFastWithdrawAndBridge = (): BridgeResult => {
             size: 32,
           }),
           amountLD: amountWei,
-          minAmountLD: minAmount,
-          extraOptions: '0x',
-          composeMsg: '0x',
-          oftCmd: '0x',
+          minAmountLD: BigInt(minAmount),
+          extraOptions: '0x' as `0x${string}`,
+          composeMsg: '0x' as `0x${string}`,
+          oftCmd: '0x' as `0x${string}`,
         };
-
-        const calldata = encodeFunctionData({
-          abi: FastWithdrawManager_ABI,
-          functionName: 'swapAndWithdrawUsingStargate',
-          args: [
-            transaction.to as Address,
-            user.safeAddress as Address,
-            amountWei,
-            sendParam,
-            nativeFeeAmount,
-            ADDRESSES.fuse.bridgePaymasterAddress,
-          ],
-        });
 
         const transactions = [
           // 1) Approve soUSD from Safe to WithdrawManager
@@ -180,17 +165,18 @@ const useFastWithdrawAndBridge = (): BridgeResult => {
             }),
             value: 0n,
           },
-          // 2) Perform the Stargate taxi call via BridgePaymaster and WithdrawManager, forwarding the fee it now holds
+          // 2) Perform the Stargate taxi call via BridgePaymaster, which quotes the fee
+          // on-chain and forwards exactly that, naming itself as the refund address.
           {
             to: ADDRESSES.fuse.bridgePaymasterAddress,
             data: encodeFunctionData({
               abi: BridgePayamster_ABI,
-              functionName: 'callWithValue',
+              functionName: 'sponsorFastWithdraw',
               args: [
                 ADDRESSES.fuse.fastWithdrawManager,
-                '0x106cb049', // swapAndWithdrawUsingStargate function selector
-                calldata,
-                nativeFeeAmount, // the native to forward
+                transaction.to as Address,
+                amountWei,
+                sendParam,
               ],
             }),
             value: 0n,

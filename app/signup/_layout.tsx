@@ -13,6 +13,7 @@ export default function SignupLayout() {
     >
       <Stack.Screen name="email" />
       <Stack.Screen name="otp" />
+      <Stack.Screen name="username" />
       <Stack.Screen name="creating" />
       <Stack.Screen name="passkey" />
     </Stack>

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 
 import {
   CARD_BODY_BLEED_PERCENT,
@@ -14,8 +15,13 @@ import NewCardArt, { NEW_CARD_ASPECT_RATIO } from '@/components/Card/NewCardDeta
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
@@ -26,6 +32,16 @@ interface HomeWalletCardProps {
   last4?: string;
   /** Whether the user has already funded their account (deposit step). */
   depositCompleted: boolean;
+  /**
+   * Whether a CTA banner is rendered directly below (see `HomePromptCard`).
+   *
+   * When one is, the cardless "Get your card" strip is dropped: the banner is
+   * the labelled next step now, and repeating it under the card said the same
+   * thing twice — or, on the review and declined banners, said something the
+   * banner directly contradicts. The art stays tappable either way, so the
+   * setup prompt is still one tap from here.
+   */
+  hasCtaBanner?: boolean;
 }
 
 const CARD_BODY_ASPECT_RATIO =
@@ -54,8 +70,16 @@ const CARDLESS_STACK_ASPECT_RATIO =
  * start flying on the tap's own frame with nothing mounting underneath it. Without a
  * card, tapping instead opens the same "Your card is waiting" verification prompt as
  * HomeVerificationCard.
+ *
+ * The cardless "Get your card" strip is the fallback entry point, shown only when
+ * no CTA banner is — see `hasCtaBanner`.
  */
-const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProps) => {
+const HomeWalletCard = ({
+  hasCard,
+  last4,
+  depositCompleted,
+  hasCtaBanner,
+}: HomeWalletCardProps) => {
   const start = useCardHeroStore(state => state.start);
   const heroActive = useCardHeroStore(state => state.active);
   const openPane = useCardPaneStore(state => state.open);
@@ -68,43 +92,84 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
   const pageLeft = usePageLeft();
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const { firstIncomplete } = useHomeSetupSteps(depositCompleted);
+  const { data: cardStatus } = useCardStatus();
+  // Verification already submitted, decision still out — for either issuer.
+  const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
 
   const card = <NewCardArt last4={last4} />;
+
+  /**
+   * Tapping the card with no card yet.
+   *
+   * Someone who has already submitted their verification is sent straight to the
+   * "your card is on its way" screen. The "Your card is waiting → Verify now"
+   * prompt is the wrong thing to put in front of them: its CTA starts card
+   * onboarding, which for an applicant mid-decision means country selection and
+   * a fresh KYC session — asking them to redo work they have finished.
+   */
+  const handleCardlessPress = () => {
+    if (awaitingKycDecision) {
+      track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
+        source: 'home_wallet_card',
+        kycStatus: cardStatus?.kycStatus,
+        rainApplicationStatus: cardStatus?.rainApplicationStatus,
+      });
+      router.push(path.CARD_ACTIVATE);
+      return;
+    }
+    setIsVerificationOpen(true);
+  };
 
   if (!hasCard) {
     return (
       <View>
         <Pressable
-          accessibilityLabel="Get your card"
+          accessibilityLabel={awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
           accessibilityRole="button"
-          onPress={() => setIsVerificationOpen(true)}
+          onPress={handleCardlessPress}
           className="px-4"
         >
-          <View style={styles.cardlessStack}>
-            <View
-              className="items-center justify-end overflow-hidden bg-card"
-              style={styles.getCardPanel}
-            >
-              <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
-                <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
-                  Get your card
-                </Text>
-                <Image
-                  source={getAsset('images/get-your-card-chevron.svg')}
-                  style={styles.getCardChevron}
-                  contentFit="fill"
-                />
-              </View>
-            </View>
-            <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
-              {/* The artwork bleeds outside the pressable's layout frame for its
-                  baked-in shadow. Keep that visual overflow from becoming a hit
-                  target over the action buttons above. */}
+          {hasCtaBanner ? (
+            // The banner below is the labelled next step, so the card stands on
+            // its own — the same frame the cardholder layout uses, with no stack
+            // reserving room for a strip that isn't there.
+            <View style={styles.cardBodyFrame}>
+              {/* The artwork bleeds outside this frame for its baked-in shadow.
+                  Keep that visual overflow from becoming a hit target over the
+                  action buttons above. */}
               <View pointerEvents="none" style={styles.cardBox}>
                 {card}
               </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.cardlessStack}>
+              <View
+                className="items-center justify-end overflow-hidden bg-card"
+                style={styles.getCardPanel}
+              >
+                <View className="flex-row items-center gap-2" style={styles.getCardLabel}>
+                  {/* The strip is the fallback entry point, so it is also what an
+                      applicant mid-decision sees once they have snoozed the CTA
+                      banner. "Get your card" would be the wrong invitation there;
+                      this is the banner's own copy for the same rung. */}
+                  <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
+                    {awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
+                  </Text>
+                  <Image
+                    source={getAsset('images/get-your-card-chevron.svg')}
+                    style={styles.getCardChevron}
+                    contentFit="fill"
+                  />
+                </View>
+              </View>
+              <View style={[styles.cardBodyFrame, styles.cardlessCardBodyFrame]}>
+                {/* Same shadow-overflow guard as above. */}
+                <View pointerEvents="none" style={styles.cardBox}>
+                  {card}
+                </View>
+              </View>
+            </View>
+          )}
         </Pressable>
         <CardWaitingModal
           isOpen={isVerificationOpen}
@@ -121,9 +186,8 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
       openPane();
       return;
     }
-    // measureInWindow is async, so the open happens from its callback. The card's
-    // live position is needed both to fly from and, later, to fly back to.
-    node.measureInWindow((x, y, width, height) => {
+    // Both directions must use the overlay's root coordinate system.
+    const openFromRect = (x: number, y: number, width: number, height: number) => {
       if (!width || !height) {
         openPane();
         return;
@@ -144,7 +208,18 @@ const HomeWalletCard = ({ hasCard, last4, depositCompleted }: HomeWalletCardProp
         last4 ?? '',
       );
       openPane(from);
-    });
+    };
+
+    if (Platform.OS === 'android') {
+      // Android measureInWindow subtracts the visible-window/status-bar offset.
+      // The absolute overlay and predicted details rect are root-relative, so
+      // use measure's page coordinates to avoid a status-bar-sized jump.
+      node.measure((_x, _y, width, height, pageX, pageY) => {
+        openFromRect(pageX, pageY, width, height);
+      });
+    } else {
+      node.measureInWindow(openFromRect);
+    }
   };
 
   return (

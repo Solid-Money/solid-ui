@@ -83,6 +83,8 @@ export interface ResponsiveModalProps {
    * usual centred modal.
    */
   mobilePresentation?: 'sheet' | 'drawer';
+  /** Present the dialog edge-to-edge on iOS and Android. */
+  nativeFullScreen?: boolean;
 }
 
 const ResponsiveModal = ({
@@ -109,6 +111,7 @@ const ResponsiveModal = ({
   hideHeader = false,
   fillViewportHeight = false,
   mobilePresentation = 'sheet',
+  nativeFullScreen = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
@@ -120,6 +123,7 @@ const ResponsiveModal = ({
   // On web, opt into the flex layout (header fixed, body scrolls) that native
   // small screens already use, capping the card to the viewport (see below).
   const webFill = fillViewportHeight && Platform.OS === 'web';
+  const useNativeFullScreen = nativeFullScreen && Platform.OS !== 'web';
   const useNativeFlexLayout = isNativeSmallScreen || webFill;
   const useFixedHeightLayout = useNativeFlexLayout && !disableScroll;
   const dialogHeight = useSharedValue(0);
@@ -184,6 +188,7 @@ const ResponsiveModal = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
+        style={useNativeFullScreen ? { height: '100%', maxHeight: '100%' } : undefined}
         overlayClassName={overlayClassName}
         webPresentation={isDrawer ? 'bottom-sheet' : 'modal'}
         nativePresentation={isDrawer ? 'bottom-sheet' : 'modal'}
@@ -194,9 +199,13 @@ const ResponsiveModal = ({
           // content container below.
           'px-4 pb-0 pt-4 md:max-w-lg md:px-10 md:pb-0 md:pt-10',
           // `justify-start` is what DialogContent reads to top-align the sheet, so
-          // it is deliberately absent from the drawer, which anchors to the bottom.
-          !isScreenMedium && !isDrawer ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          // it is deliberately absent from the drawer, which anchors to the bottom,
+          // and from the full-screen presentation, which owns the whole viewport.
+          !isScreenMedium && !isDrawer && !useNativeFullScreen
+            ? 'mt-[5vh] w-screen max-w-full justify-start'
+            : '',
           isDrawer ? 'w-screen max-w-full rounded-b-none rounded-t-[30px] pt-3' : '',
+          useNativeFullScreen && 'h-full max-h-full w-full max-w-none rounded-none p-0',
           webFill && 'max-h-[90vh]',
           contentClassName, // Put last so overrides take effect
         )}

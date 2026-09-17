@@ -11,6 +11,7 @@ import Navbar from '@/components/Navbar';
 import WhatsNewButton from '@/components/Navbar/WhatsNewButton';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import TrustpilotReviewCard from '@/components/Trustpilot/TrustpilotReviewCard';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -297,6 +298,8 @@ const MobileSettings = () => {
           {rowGroups.map((rows, index) => (
             <SettingsRowGroup key={index} rows={rows} />
           ))}
+          {/* Web/desktop only — native asks for a rating through the OS sheet. */}
+          <TrustpilotReviewCard analyticsContext="settings" />
         </View>
       </View>
     </PageLayout>

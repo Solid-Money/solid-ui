@@ -18,6 +18,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
@@ -35,7 +36,7 @@ const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
  * the local currencies, whose rails come back from TransFi's payment config.
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
-const FEATURED_LOCAL_CURRENCY_CODES = ['BRL', 'BDT', 'PHP'] as const;
+const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
 /**
@@ -47,7 +48,7 @@ export const DEPOSIT_CASH_CURRENCY_COUNT =
   1 + FEATURED_LOCAL_CURRENCY_CODES.length + ADDITIONAL_LOCAL_CURRENCY_CODES.length;
 
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
-export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-brl.png')];
+export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
 
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens the
@@ -63,9 +64,11 @@ const DepositCashOptions = () => {
   const { data: cardStatus } = useCardStatus();
   const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 
+  const { data: eurPaymentMethods } = useTransfiPaymentMethods('EUR');
   const { data: brlPaymentMethods } = useTransfiPaymentMethods('BRL');
   const { data: bdtPaymentMethods } = useTransfiPaymentMethods('BDT');
   const { data: phpPaymentMethods } = useTransfiPaymentMethods('PHP');
@@ -89,12 +92,19 @@ const DepositCashOptions = () => {
     };
 
     return {
+      EUR: resolve('EUR', eurPaymentMethods),
       BRL: resolve('BRL', brlPaymentMethods),
       BDT: resolve('BDT', bdtPaymentMethods),
       PHP: resolve('PHP', phpPaymentMethods),
       MXN: resolve('MXN', mxnPaymentMethods),
     };
-  }, [bdtPaymentMethods, brlPaymentMethods, mxnPaymentMethods, phpPaymentMethods]);
+  }, [
+    bdtPaymentMethods,
+    brlPaymentMethods,
+    eurPaymentMethods,
+    mxnPaymentMethods,
+    phpPaymentMethods,
+  ]);
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -107,12 +117,20 @@ const DepositCashOptions = () => {
   }, [showAllCurrencies]);
 
   const handleUsdPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'bank_transfer' });
-    if (existingAutomation) {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+      provider: virtualAccountProvider,
+    });
+    // A Wirex user has no Rain automation and never will, so the Rain apply
+    // pitch is not their next step — their details screen owns activation for
+    // both rails. The other entry points into this flow already route on the
+    // provider; this one did not, which is how Wirex users reached a "Verify
+    // now" that could only bounce them off the Rain KYC gate.
+    if (virtualAccountProvider === 'wirex' || existingAutomation) {
       setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
-    } else {
-      setIsVirtualAccountApplyOpen(true);
+      return;
     }
+    setIsVirtualAccountApplyOpen(true);
   };
 
   const handleLocalCurrencyPress = (code: string) => {

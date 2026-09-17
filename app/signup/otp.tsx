@@ -146,9 +146,11 @@ export default function SignupOtp() {
 
         track(TRACKING_EVENTS.EMAIL_OTP_VERIFIED, { email, context: 'signup' });
 
-        const nextStep = isSharedReviewAccessEmail(email) ? 'creating' : 'passkey';
-        setStep(nextStep);
-        router.push(isSharedReviewAccessEmail(email) ? path.SIGNUP_CREATING : path.SIGNUP_PASSKEY);
+        // The shared review account already exists and keeps its own handle,
+        // so it skips the username step the same way it skips the passkey one.
+        const isSharedReviewAccess = isSharedReviewAccessEmail(email);
+        setStep(isSharedReviewAccess ? 'creating' : 'username');
+        router.push(isSharedReviewAccess ? path.SIGNUP_CREATING : path.SIGNUP_USERNAME);
       } catch (err: any) {
         const errorMessage = err?.message || 'Invalid verification code. Please try again.';
         setError(errorMessage);

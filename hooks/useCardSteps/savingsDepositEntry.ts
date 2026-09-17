@@ -1,7 +1,7 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { DepositModal, SavingsFundIntent } from '@/lib/types';
 
-/** Tracking source for the card activation screen's minimum-deposit step. */
+/** Tracking source for the card activation screen's minimum-deposit steps. */
 export const CARD_DEPOSIT_SOURCE = 'card_activation_deposit_step';
 
 /** The deposit-store setters the card's deposit step needs to prime the flow. */
@@ -18,16 +18,22 @@ type OpenDepositFlow = (options: {
 }) => void;
 
 /**
- * Opens the savings direct-deposit flow from the card's "Deposit at least $5"
- * step: token → network → per-session deposit address, polled for the incoming
- * transfer.
+ * Opens the savings direct-deposit flow from the card's minimum-deposit steps
+ * ("Deposit at least $10", and the "top up and hold" step that follows a parked
+ * application): token → network → per-session deposit address, polled for the
+ * incoming transfer.
  *
- * This replaced the legacy `OPEN_OPTIONS` route, which led to the static Safe
- * address ("Share your deposit address" → "Your Solid address"). That address is
- * the same for every chain and every purpose, so nothing tied a transfer to this
- * step and the screen could not tell the user their deposit had been seen — they
- * were left watching an unchanging QR and a "5-10 minutes" note. Point this back
- * at `OPEN_OPTIONS` and Bangladesh card applicants get that screen again.
+ * Deliberately NOT the general "Add funds" sheet (`OPEN_DEPOSIT_TYPE`), and not
+ * the static-Safe-address route (`OPEN_OPTIONS` → "Your Solid address") it
+ * replaced. Both of those fund the WALLET: tokens sent to the Safe stay as the
+ * token that was sent, and this step — like the gate behind it — is judged on
+ * soUSD. Sending a user there would leave them looking at a completed transfer
+ * and an unmoved step, with nothing on screen explaining the difference.
+ *
+ * The savings direct-deposit address is per token + chain and is minted by the
+ * backend against the PROTOCOL destination, which is what makes the arriving
+ * funds mint soUSD, and what lets the screen tell the user their deposit has
+ * been seen rather than leaving them watching an unchanging QR.
  */
 export function openCardSavingsDeposit(
   state: DepositFlowState,

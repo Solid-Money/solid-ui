@@ -15,6 +15,7 @@ import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCowOrder, useCowQuote } from '@/hooks/useCowSwap';
+import { useStocksFee } from '@/hooks/useStocksFee';
 import { sharesToAtoms, USDC_MAINNET, usdcAtomsToUsd } from '@/lib/cowswap';
 
 import { Holding } from './stocksData';
@@ -66,6 +67,14 @@ export default function SellStockModal({
   const sharesAmount = holding ? holding.shares * fraction : 0;
   const sellAmountAtoms = useMemo(() => sharesToAtoms(sharesAmount), [sharesAmount]);
 
+  // Solid's fee comes off the shares being sold, so CoW is quoted on the net —
+  // which is what keeps "sell everything" working rather than needing shares the
+  // user has already committed.
+  const stocksFee = useStocksFee({
+    sellAmountAtoms,
+    sellTokenAddress: holding?.contractAddress,
+  });
+
   const {
     quote,
     slippageBps,
@@ -75,12 +84,18 @@ export default function SellStockModal({
   } = useCowQuote({
     sellToken: holding?.contractAddress ?? '',
     buyToken: USDC_MAINNET,
-    sellAmountBeforeFee: sellAmountAtoms,
+    sellAmountBeforeFee: stocksFee.netSellAmountAtoms,
     kind: 'sell',
     enabled: isOpen && !!holding?.contractAddress && sharesAmount > 0,
   });
 
-  const cowOrder = useCowOrder(holding?.ticker ?? '', 'USDC');
+  const cowOrder = useCowOrder(holding?.ticker ?? '', 'USDC', {
+    fee: stocksFee.fee,
+    feeTransaction: stocksFee.feeTransaction,
+    // The sell side is the stock, so the fee's dollar value is share price × fee.
+    sellTokenPriceUsd: stockPrice,
+    isSellingStock: true,
+  });
 
   const estimatedUsdc = useMemo(() => {
     if (quote) return usdcAtomsToUsd(quote.quote.buyAmount);

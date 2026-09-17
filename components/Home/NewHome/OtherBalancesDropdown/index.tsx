@@ -4,8 +4,10 @@ import { ChevronDown } from 'lucide-react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
+import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { describeCardSpendableAssets } from '@/constants/cardSpendableAssets';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardSpendableBalanceUSD } from '@/hooks/useCardSpendableBalance';
@@ -31,6 +33,19 @@ const WALLET_COLOR = '#FFFFFF';
 const CARD_COLOR = '#94F27F'; // brand green
 const SAVINGS_COLOR = '#7C5CFF'; // purple
 const BANK_COLOR = '#F2B94F'; // amber — the one pot held outside Solid
+
+/**
+ * What the "Spendable" tooltip says. Two sentences, in the order the questions
+ * arrive: what counts, then what to do about the money that doesn't.
+ *
+ * The asset list is interpolated from the same array the figure is summed over, so
+ * the sentence cannot name an asset the card would decline. The route named is
+ * the home "Add Funds" pill, which is where `WalletActions` sends a Wirex
+ * cardholder — not the Card screen, which has no funding entry for them.
+ */
+const SPENDABLE_TOOLTIP =
+  `Your card spends ${describeCardSpendableAssets()}. ` +
+  'Anything on another network stays in Wallet until you move it — Add Funds › Move from wallet.';
 
 /**
  * A bank balance in its own currency.
@@ -135,6 +150,7 @@ const BalanceRow = ({
   value,
   formattedValue,
   caption,
+  labelAccessory,
   isLoading,
   children,
 }: {
@@ -148,6 +164,12 @@ const BalanceRow = ({
   formattedValue?: string;
   /** Optional line under the figure, for a row whose meaning isn't self-evident. */
   caption?: string;
+  /**
+   * Sits beside the label. For a row that needs more explaining than a caption
+   * can carry without crowding the figure it belongs to — see
+   * {@link SpendableBalanceRow}.
+   */
+  labelAccessory?: React.ReactNode;
   isLoading?: boolean;
   children?: React.ReactNode;
 }) => (
@@ -156,6 +178,7 @@ const BalanceRow = ({
       <View className="flex-row items-center gap-2">
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
         <Text className="text-sm font-medium text-muted-foreground">{label}</Text>
+        {labelAccessory}
       </View>
       {isLoading ? (
         <Skeleton className="h-7 w-24 rounded-lg" />
@@ -222,6 +245,13 @@ export const CardBalanceRow = ({
  * No "Add", and not by omission. This is not a pot that can be topped up: the
  * money arrives through Wallet or Savings and shows up here on its own. An "Add"
  * here would imply a third destination.
+ *
+ * The explanation is behind a tooltip rather than a caption under the figure. The
+ * sentence that actually helps is the one about the money this row is *not*
+ * counting — a Wallet balance on Base or BNB Chain is the whole reason someone
+ * reads this row — and that is more than a caption can say without burying the
+ * number it belongs to. So the row states the figure and the tooltip answers
+ * "why isn't my balance here", which is the only question it gets asked.
  */
 export const SpendableBalanceRow = ({
   spendableBalance,
@@ -234,7 +264,9 @@ export const SpendableBalanceRow = ({
     color={CARD_COLOR}
     label="Spendable"
     value={spendableBalance}
-    caption="Stablecoins and savings your card can spend"
+    labelAccessory={
+      <TooltipPopover text={SPENDABLE_TOOLTIP} analyticsContext="home_spendable_balance" />
+    }
     isLoading={isLoading}
   />
 );

@@ -13,7 +13,7 @@ import { useReferralSummary } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { SOLID_WEBSITE_URL } from '@/lib/config';
-import { ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
+import { ReferralPayoutToken, ReferralRewardListItem, ReferralRewardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 /** Environment-aware, so a QA build never shares a production referral link. */
@@ -131,6 +131,10 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const windowDays = summary?.qualification.windowDays ?? 30;
   const hasActiveCard = summary?.hasActiveCard ?? false;
   const referrals = summary?.referrals ?? [];
+  // The reward is quoted in dollars but settled in a token; name it rather than
+  // leaving the user to infer it from the transfer. Omitted on backends that
+  // don't report it.
+  const payoutToken = summary?.rewards.payoutToken;
 
   const handleInvite = useCallback(async () => {
     const message = `Join me on Solid — order a card, spend, and we both earn. Use my link: ${referralLink}`;
@@ -272,9 +276,16 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
             • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants.
           </Text>
           <Text className="text-sm text-white/70">
-            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}, credited about 40
-            days after they qualify. One reward per friend, no cap.
+            You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}
+            {payoutToken ? ` in ${payoutToken}` : ''}, credited about 40 days after they qualify.
+            One reward per friend, no cap.
           </Text>
+          {payoutToken === ReferralPayoutToken.SOFUSE && (
+            <Text className="text-sm text-white/70">
+              Rewards land in your FUSE savings, so they keep earning yield and count towards your
+              FUSE holding for a tier unlock. Swap them for dollars any time.
+            </Text>
+          )}
         </View>
       )}
 

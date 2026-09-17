@@ -1,6 +1,6 @@
 import { getProviderRouting } from '@/lib/api';
 import { detectGeo } from '@/lib/geo';
-import { KycProvider } from '@/lib/types';
+import { CardProvider, KycProvider } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -12,6 +12,11 @@ export interface ResolvedKycProvider {
 
 /**
  * The country to route the KYC provider on, read at call time.
+ *
+ * Exported because the Didit session sends it too: the backend refuses a card
+ * session in a country Wirex serves, and it can only do that with a country in
+ * hand. Both must reach the same answer or the client would be routed to Didit
+ * and then refused by it.
  *
  * Reading the store here rather than through a `useCountryStore` selector is
  * what makes this safe to call straight after the card country gate: the gate
@@ -26,7 +31,7 @@ export interface ResolvedKycProvider {
  * `resolveCountryAccess` knows that answer. `detectGeo` memoises per session, so
  * this costs nothing once the gate has run.
  */
-const resolveRoutingCountry = async (): Promise<string | undefined> => {
+export const resolveRoutingCountry = async (): Promise<string | undefined> => {
   const stored = useCountryStore.getState().countryInfo?.countryCode;
   if (stored) return stored;
 
@@ -73,5 +78,34 @@ export const resolveKycProvider = async (
   } catch {
     // backend unavailable → keep the fallback
     return { kycProvider: fallbackProvider, countryCode };
+  }
+};
+
+/**
+ * Which issuer would serve this user's card application, before one exists.
+ *
+ * `/cards/status` names the issuer only once a card customer does, and it 404s
+ * before that — so a user opening the activation screen for the first time has
+ * no issuer at all. That window is exactly when the deposit steps have to
+ * decide whether to render, and getting it wrong asks a Wirex applicant for
+ * collateral their card never takes.
+ *
+ * Same routing call `resolveKycProvider` uses, read for its card answer instead
+ * of its KYC one. The backend decides per user from the JWT (the country is only
+ * its fallback), so this is a server answer rather than a client guess — and it
+ * must not be cached across accounts.
+ *
+ * Returns null when the answer isn't available, which callers read as "unknown"
+ * rather than as any particular issuer.
+ */
+export const resolveProspectiveCardIssuer = async (): Promise<CardProvider | null> => {
+  const countryCode = await resolveRoutingCountry();
+  if (!countryCode) return null;
+
+  try {
+    const routing = await withRefreshToken(() => getProviderRouting(countryCode, 'card'));
+    return routing?.cardProvider ?? null;
+  } catch {
+    return null;
   }
 };

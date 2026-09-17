@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
+import { MAX_FONT_SCALE } from './landingLayout';
+
 interface WelcomeSheetProps {
   /** Whether the card is presented (slid up). */
   visible: boolean;
@@ -19,7 +21,15 @@ interface WelcomeSheetProps {
   recoveryLink?: React.ReactNode;
 }
 
-const SHEET_HEIGHT = 410;
+/** Sheet height on the Figma frame, which already allows for the home indicator. */
+const BASE_SHEET_HEIGHT = 410;
+/**
+ * Extra room for the help prompt shown after a failed login. It wraps onto two
+ * lines, and the card clips its overflow, so without this the recovery link is
+ * cut off exactly when the user needs it. Mirrors the allowance LegacyOnboarding
+ * makes for the same prompt.
+ */
+const RECOVERY_LINK_HEIGHT = 64;
 
 /**
  * Step 2 of the redesigned mobile onboarding — the "Welcome" auth card that
@@ -39,21 +49,25 @@ export function WelcomeSheet({
   recoveryLink,
 }: WelcomeSheetProps) {
   const progress = useSharedValue(0);
+  const sheetHeight = BASE_SHEET_HEIGHT + (recoveryLink ? RECOVERY_LINK_HEIGHT : 0);
 
   useEffect(() => {
     progress.value = withTiming(visible ? 1 : 0, { duration: 260 });
   }, [visible, progress]);
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - progress.value) * SHEET_HEIGHT }],
-  }));
+  const cardStyle = useAnimatedStyle(
+    () => ({
+      transform: [{ translateY: (1 - progress.value) * sheetHeight }],
+    }),
+    [sheetHeight],
+  );
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       {/* The shared hero already owns the Figma's 30% scrim. */}
-      <Pressable style={styles.dismissArea} onPress={onClose} />
+      <Pressable style={[styles.dismissArea, { bottom: sheetHeight }]} onPress={onClose} />
 
-      <Animated.View style={[styles.card, cardStyle]}>
+      <Animated.View style={[styles.card, { height: sheetHeight }, cardStyle]}>
         {/* Drag handle */}
         <Pressable onPress={onClose} style={styles.handleTouchTarget}>
           <View style={styles.handle} />
@@ -66,7 +80,11 @@ export function WelcomeSheet({
           contentFit="fill"
         />
 
-        <Text className="font-medium text-white" style={styles.title}>
+        <Text
+          className="font-medium text-white"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={styles.title}
+        >
           Welcome
         </Text>
 
@@ -75,14 +93,22 @@ export function WelcomeSheet({
           className="absolute left-[19px] right-[19px] top-[195px] h-[50px] rounded-full active:opacity-90"
           onPress={onCreateAccount}
         >
-          <Text className="text-base font-semibold text-black" style={styles.buttonLabel}>
+          <Text
+            className="text-base font-semibold text-black"
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+            style={styles.buttonLabel}
+          >
             Create an account
           </Text>
         </Button>
 
         {/* OR divider */}
         <View style={[styles.divider, styles.dividerLeft]} />
-        <Text className="text-white/50" style={styles.orLabel}>
+        <Text
+          className="text-white/50"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={styles.orLabel}
+        >
           OR
         </Text>
         <View style={[styles.divider, styles.dividerRight]} />
@@ -106,7 +132,11 @@ export function WelcomeSheet({
                 style={styles.keyIcon}
                 contentFit="fill"
               />
-              <Text className="text-base font-semibold text-black" style={styles.buttonLabel}>
+              <Text
+                className="text-base font-semibold text-black"
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                style={styles.buttonLabel}
+              >
                 Log in
               </Text>
             </View>
@@ -121,11 +151,12 @@ export function WelcomeSheet({
 }
 
 const styles = StyleSheet.create({
+  // `bottom` is supplied per-render so the dismiss area always stops at the top
+  // of the card, which grows to fit the recovery prompt.
   dismissArea: {
     position: 'absolute',
     top: 0,
     right: 0,
-    bottom: SHEET_HEIGHT,
     left: 0,
   },
   card: {
@@ -133,7 +164,6 @@ const styles = StyleSheet.create({
     right: -2,
     bottom: 0,
     left: 0,
-    height: SHEET_HEIGHT,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     backgroundColor: '#1c1c1c',

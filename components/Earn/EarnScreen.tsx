@@ -15,7 +15,11 @@ import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 
 import { EarnInvestSection } from './EarnInvestSection';
-import { calculateEstimatedDailyEarnings, type VaultAmounts } from './earnPortfolio';
+import {
+  calculateEstimatedDailyEarnings,
+  resolveVaultApy,
+  type VaultAmounts,
+} from './earnPortfolio';
 import { EarnVaultTile } from './EarnVaultTile';
 import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 
@@ -72,9 +76,9 @@ export default function EarnScreen() {
   const fuseApy = useMaxAPY(VaultType.FUSE);
 
   const apyByVault: VaultAmounts = {
-    [VaultType.USDC]: usdcApy.maxAPY,
-    [VaultType.ETH]: ethApy.maxAPY,
-    [VaultType.FUSE]: fuseApy.maxAPY,
+    [VaultType.USDC]: resolveVaultApy(VaultType.USDC, usdcApy.maxAPY),
+    [VaultType.ETH]: resolveVaultApy(VaultType.ETH, ethApy.maxAPY),
+    [VaultType.FUSE]: resolveVaultApy(VaultType.FUSE, fuseApy.maxAPY),
   };
   const apyLoadingByVault = {
     [VaultType.USDC]: usdcApy.isAPYsLoading,

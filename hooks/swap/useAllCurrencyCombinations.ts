@@ -1,7 +1,8 @@
-import { BASES_TO_CHECK_TRADES_AGAINST } from '@/constants/routing';
-import { Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { useMemo } from 'react';
+import { Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { fuse } from 'viem/chains';
+
+import { BASES_TO_CHECK_TRADES_AGAINST } from '@/constants/routing';
 
 export function useAllCurrencyCombinations(
   currencyA?: Currency,

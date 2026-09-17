@@ -17,16 +17,15 @@ jest.mock('@/store/useUserStore', () => {
   const { create } = require('zustand');
   return { useUserStore: create(() => ({ users: [{ userId: 'a', selected: true }] })) };
 });
-jest.mock('@/lib/api', () => ({ fetchRewardsUserData: jest.fn() }));
-jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: any) => fn() }));
-jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
-jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-jest.mock('@/components/ui/dialog', () => ({
-  Dialog: 'Dialog',
-  DialogContent: 'DialogContent',
-  DialogTitle: 'DialogTitle',
+jest.mock('@/lib/api', () => ({
+  fetchRewardsUserData: jest.fn(),
+  fetchTierBenefits: jest.fn().mockResolvedValue([]),
 }));
-jest.mock('@/constants/rewards', () => ({ getTierDisplayName: (tier: string) => tier }));
+jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: any) => fn() }));
+// These tests are about the reconciliation and celebrate-once logic, not about
+// what the popup draws. Stubbing the card keeps the animated tier star — and
+// through it expo-video and the asset registry — out of this environment.
+jest.mock('@/components/Rewards/NewRewards/TierPopup', () => 'TierPopup');
 
 const data = (tier: RewardsTier) =>
   ({ currentTier: tier, cashbackRate: 2, maxCashbackMonthly: 100 }) as RewardsUserData;

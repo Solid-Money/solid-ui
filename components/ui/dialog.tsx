@@ -24,6 +24,18 @@ import { cn } from '@/lib/utils';
  */
 export const MOBILE_SHEET_TOP_RATIO = 0.05;
 
+/**
+ * How long a web bottom sheet takes to slide away, and how long its tree is kept
+ * alive so it can. Shared by the exit animation and the unmount that follows it.
+ */
+const WEB_SHEET_EXIT_MS = 180;
+/**
+ * Slack between the animation ending and the unmount, so a frame lost to a busy main
+ * thread cannot cut the slide off at the very end — which looks exactly like the
+ * abrupt close this whole mechanism exists to remove.
+ */
+const WEB_SHEET_UNMOUNT_BUFFER_MS = 60;
+
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -33,13 +45,32 @@ const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrimitive.OverlayProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, closeOnPress, ...props }, ref) => {
+    const { onOpenChange } = DialogPrimitive.useRootContext();
+
     const handlePointerDown = (event: any) => {
       // Check if the clicked element is a toast
       const target = event.target as HTMLElement;
       if (target.closest('[role="alert"]')) {
         event.stopPropagation();
         return;
+      }
+
+      // Dismiss on a backdrop press.
+      //
+      // `closeOnPress` is declared by the primitive as NATIVE ONLY, and the native
+      // overlay honours it while the web one drops it on the floor — so a web bottom
+      // sheet stayed put when you clicked beside it, even though the same component
+      // dismissed on native. Radix's own outside-press dismissal does not cover this
+      // case either: the sheet's content is rendered INSIDE this overlay (see the
+      // `isWebBottomSheet` branch below, which needs the overlay to lay the sheet out),
+      // so a click beside it is not outside the layer Radix is watching.
+      //
+      // `target === currentTarget` is what keeps it to the backdrop: every press from
+      // within the sheet bubbles up to here too, and closing on those would make the
+      // whole sheet dismiss itself on any tap.
+      if (closeOnPress && target === event.currentTarget) {
+        onOpenChange(false);
       }
     };
 
@@ -172,6 +203,38 @@ const DialogContent = React.forwardRef<
       }
     }, [open]);
 
+    /**
+     * Presence for the web bottom sheet, taken over from Radix.
+     *
+     * Radix wraps the portal, the overlay and the content in `Presence`, and each one
+     * unmounts the moment `open` goes false unless a **CSS animation** is running on its
+     * own node. The primitive gives us no way to put one there — our `className` lands on
+     * a child of Radix's wrapper, not on the wrapper — so the `exiting` animation below
+     * never got the chance to run and the sheet simply vanished. Opening looked right
+     * only because `entering` plays *after* mount, which nothing interferes with.
+     *
+     * So the sheet is held here instead: `forceMount` keeps Radix's tree alive, removing
+     * the inner `Animated.View` is what triggers the slide out, and this drops the tree
+     * once the slide has had time to finish.
+     */
+    const [isSheetPresent, setIsSheetPresent] = React.useState(open);
+
+    React.useEffect(() => {
+      if (!isWebBottomSheet) return;
+
+      if (open) {
+        setIsSheetPresent(true);
+        return;
+      }
+
+      const timer = setTimeout(
+        () => setIsSheetPresent(false),
+        WEB_SHEET_EXIT_MS + WEB_SHEET_UNMOUNT_BUFFER_MS,
+      );
+
+      return () => clearTimeout(timer);
+    }, [isWebBottomSheet, open]);
+
     const webBounceStyle = useAnimatedStyle(() => {
       if (!isWebBounce) return {};
       return {
@@ -222,7 +285,9 @@ const DialogContent = React.forwardRef<
         <DialogPortal hostName={portalHost}>
           <DialogOverlay
             className={cn(shouldAlignTop && 'justify-start', overlayClassName)}
-            closeOnPress={false}
+            // A bottom sheet is dismissed by tapping the backdrop; every other
+            // native dialog keeps its explicit control as the only way out.
+            closeOnPress={isNativeBottomSheet}
           />
           <View
             style={StyleSheet.absoluteFill}
@@ -251,16 +316,41 @@ const DialogContent = React.forwardRef<
     }
 
     if (isWebBottomSheet) {
+      // Closed and the slide has finished. Same result as letting Radix unmount, which
+      // is what happened here before presence moved into this component.
+      if (!isSheetPresent) return null;
+
       return (
-        <DialogPortal hostName={portalHost}>
-          <DialogOverlay className={cn('items-stretch justify-end p-0', overlayClassName)}>
-            <Animated.View
-              className="w-full"
-              entering={FadeInDown.springify().stiffness(300).damping(12).mass(0.8)}
-              exiting={FadeOutDown.duration(180)}
-            >
-              {content}
-            </Animated.View>
+        <DialogPortal hostName={portalHost} forceMount>
+          {/* Dismisses on a backdrop click, the same as the native bottom-sheet
+              branch above. Tapping beside a sheet to close it is how every sheet
+              on both platforms behaves, and this was the one that did not.
+
+              The backdrop fades with a plain CSS transition rather than a Reanimated
+              one: it is a DOM element we style directly, so there is nothing to work
+              around, and it keeps the two halves of the exit independent — the sheet
+              slides, the dimming lifts, neither waits on the other. Pointer events go
+              first, so a click during the fade cannot reopen anything underneath. */}
+          <DialogOverlay
+            className={cn(
+              'items-stretch justify-end p-0 web:transition-opacity web:duration-200',
+              !open && 'web:pointer-events-none web:opacity-0',
+              overlayClassName,
+            )}
+            closeOnPress
+          >
+            {/* Removed on close rather than left mounted: an exit animation is
+                triggered by the node going away, and with `forceMount` above holding
+                Radix's tree open this is the only thing that still does. */}
+            {open ? (
+              <Animated.View
+                className="w-full"
+                entering={FadeInDown.springify().stiffness(300).damping(12).mass(0.8)}
+                exiting={FadeOutDown.duration(WEB_SHEET_EXIT_MS)}
+              >
+                {content}
+              </Animated.View>
+            ) : null}
             <Toast {...toastProps} />
           </DialogOverlay>
         </DialogPortal>

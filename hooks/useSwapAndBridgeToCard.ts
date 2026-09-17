@@ -9,7 +9,6 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
 import {
   ADDRESSES,
@@ -156,7 +155,6 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         }
 
         const { transaction } = bridgeStep;
-        const nativeFeeAmount = BigInt(transaction.value);
 
         const sendParam = {
           dstEid: getStargateChainId(EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID) as number,
@@ -165,23 +163,10 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
           }),
           amountLD: parseUnits(minAmount, 6),
           minAmountLD: (parseUnits(minAmount, 6) * 95n) / 100n,
-          extraOptions: '0x',
-          composeMsg: '0x',
-          oftCmd: '0x',
+          extraOptions: '0x' as `0x${string}`,
+          composeMsg: '0x' as `0x${string}`,
+          oftCmd: '0x' as `0x${string}`,
         };
-
-        const calldata = encodeFunctionData({
-          abi: CardDepositManager_ABI,
-          functionName: 'swapAndDepositUsingStargate',
-          args: [
-            transaction.to as Address,
-            user.safeAddress as Address,
-            amountWei,
-            sendParam,
-            nativeFeeAmount,
-            ADDRESSES.fuse.bridgePaymasterAddress,
-          ],
-        });
 
         const transactions = [
           // 1) Approve soUSD from Safe to DepositManager
@@ -194,17 +179,18 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
             }),
             value: 0n,
           },
-          // 2) Perform the Stargate taxi call via BridgePaymaster and DepositManager, forwarding the fee it now holds
+          // 2) Perform the Stargate taxi call via BridgePaymaster, which quotes the fee
+          // on-chain and forwards exactly that, naming itself as the refund address.
           {
             to: ADDRESSES.fuse.bridgePaymasterAddress,
             data: encodeFunctionData({
               abi: BridgePayamster_ABI,
-              functionName: 'callWithValue',
+              functionName: 'sponsorCardSwapAndDeposit',
               args: [
                 ADDRESSES.fuse.cardDepositManager,
-                '0xf5c5bb28', // swapAndDepositUsingStargate function selector
-                calldata,
-                nativeFeeAmount, // the native to forward
+                transaction.to as Address,
+                amountWei,
+                sendParam,
               ],
             }),
             value: 0n,

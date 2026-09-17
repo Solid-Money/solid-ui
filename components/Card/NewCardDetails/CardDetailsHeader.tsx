@@ -42,8 +42,8 @@ const CardDetailsHeader = ({ onBack }: CardDetailsHeaderProps) => {
 };
 
 const styles = StyleSheet.create({
-  // Figma: back button at y=59 with a 44pt status bar above it → 15pt below the
-  // safe area, and the row is exactly as tall as the button. Shared with
+  // Back button sits 15pt below the safe area and uses the shared 50pt control size;
+  // the row is exactly as tall as the button. Shared with
   // getCardHeroDestination, which predicts where the card lands under this header.
   header: { paddingHorizontal: 16, paddingTop: HEADER_TOP_PADDING },
   backButton: { height: HEADER_BUTTON_SIZE, width: HEADER_BUTTON_SIZE },

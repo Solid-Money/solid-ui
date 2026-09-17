@@ -11,6 +11,8 @@ interface Step {
   completed: boolean;
   buttonText?: string;
   onPress?: () => void;
+  /** This step's own action is in flight (e.g. submitting the application). */
+  isLoading?: boolean;
 }
 
 interface AnimatedStepContentProps {
@@ -55,15 +57,18 @@ export function AnimatedStepContent({
         <Button
           variant="brand"
           className={`mb-4 w-full ${isButtonEnabled ? '' : 'bg-gray-500 opacity-50'}`}
-          onPress={isButtonEnabled ? step.onPress : undefined}
-          disabled={!isButtonEnabled || activatingCard}
+          onPress={isButtonEnabled && !step.isLoading ? step.onPress : undefined}
+          // `step.isLoading` is per-step, unlike `activatingCard`: a step whose
+          // own request is in flight must not accept a second press, which for
+          // the application-submit step would mean two submissions.
+          disabled={!isButtonEnabled || activatingCard || step.isLoading}
         >
           <Text
             className={`text-base font-semibold ${
               isButtonEnabled ? 'text-black' : 'text-gray-300'
             }`}
           >
-            {activatingCard ? 'Activating...' : step.buttonText}
+            {activatingCard ? 'Activating...' : step.isLoading ? 'Submitting…' : step.buttonText}
           </Text>
         </Button>
       )}

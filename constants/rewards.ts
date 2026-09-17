@@ -1,14 +1,10 @@
 import { getAsset } from '@/lib/assets';
 import { RewardsTier, RewardsUserData, TierBenefitItem, TierBenefits } from '@/lib/types';
 
-export const getTierDisplayName = (tier: RewardsTier) => {
-  const names: Record<RewardsTier, string> = {
-    [RewardsTier.CORE]: 'Core',
-    [RewardsTier.PRIME]: 'Prime',
-    [RewardsTier.ULTRA]: 'Ultra',
-  };
-  return names[tier] || tier;
-};
+// Re-exported so the many callers that reach for it here keep working, while
+// modules that only need a tier's name can import `@/lib/tierNames` directly
+// and skip the asset registry `getTierIcon` below requires.
+export { getTierDisplayName } from '@/lib/tierNames';
 
 export const getTierIcon = (tier: RewardsTier) => {
   switch (tier) {

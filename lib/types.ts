@@ -279,6 +279,20 @@ export type TokenPriceUsd = {
   }[];
 };
 
+/** Alchemy Prices API `tokens/by-address` response. */
+export type TokenPriceByAddress = {
+  data: {
+    network: string;
+    address: string;
+    prices: {
+      currency: string;
+      value: string;
+      lastUpdatedAt: string;
+    }[];
+    error?: string | null;
+  }[];
+};
+
 export enum RainConsumerType {
   US = 'us',
   INTERNATIONAL = 'international',
@@ -529,11 +543,37 @@ export interface KycWarning {
   node_id?: string;
 }
 
+/**
+ * Why the last card activation attempt did not produce a card.
+ *
+ * `activationBlockedReason` only ever arrived alongside the sticky
+ * `activationBlocked` flag, so the failures that do NOT set it — an unsupported
+ * document country, a name the issuer could not read, an issuer-side decline —
+ * reached this client as nothing at all, and the card screen fell back to
+ * "There was an issue activating your card. Please contact support."
+ */
+export interface CardActivationFailure {
+  /** Server-side `CardActivationBlockCode`. Branch on this, not on prose. */
+  code: string;
+  /** One-line headline, already written for the user. */
+  reason: string;
+  /** What happened and what to do about it. */
+  detail?: string;
+  /** False when retrying is genuinely worth a try; true when it cannot help. */
+  terminal: boolean;
+  occurredAt?: string | null;
+}
+
 export interface CardStatusResponse {
   status?: CardStatus;
   activationBlocked?: boolean;
   activationBlockedReason?: string;
   activationFailedAt?: string;
+  /**
+   * The last activation failure, classified. Present whether or not
+   * `activationBlocked` is set — see {@link CardActivationFailure}.
+   */
+  activationFailure?: CardActivationFailure;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
@@ -552,17 +592,47 @@ export interface CardStatusResponse {
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**
-   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Drives the
-   * country-specific issuance steps (the Bangladesh deposit-first step).
+   * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
+   * Didit decision, which runs proof of address, so it is evidenced rather than
+   * an IP guess.
    */
   country?: string;
   /**
    * Total Rain collateral the user has deposited to their card, in cents. The
-   * Bangladesh deposit-first step now completes from the savings (soUSD) balance
-   * instead; this remains as a backward-compatible fallback so users who funded
-   * a card under the old flow still count as having met the deposit.
+   * deposit step completes from the savings (soUSD) balance instead; this
+   * remains as a backward-compatible fallback so users who funded a card under
+   * the old flow still count as having met the deposit.
    */
   cardCollateralDeposited?: number;
+  /**
+   * Whether this applicant has to deposit before their card application is
+   * paid for. True for every Rain applicant, in every jurisdiction Rain serves;
+   * false for Wirex and the deprecated bridge.xyz card. Server-authoritative —
+   * a client that decides for itself is a client a VPN can talk out of it.
+   */
+  depositRequired?: boolean;
+  /** The savings (soUSD) minimum the deposit step asks for, in USD. */
+  minimumDepositUsd?: number;
+  /**
+   * Identity verification passed, but the application has NOT been sent to the
+   * issuer because the applicant is no longer holding the minimum — typically
+   * they deposited to clear the first step and then moved the funds straight
+   * out. Renders the "deposit and hold" step, which submits the application via
+   * `resumeRainKycForward` once the money is back.
+   */
+  rainForwardPendingDeposit?: boolean;
+}
+
+/** Outcome of {@link resumeRainKycForward}. */
+export interface ResumeRainForwardResponse {
+  status: 'forwarded' | 'already_forwarded' | 'deposit_required' | 'not_ready' | 'failed';
+  reason?: string;
+  /** The soUSD position the server read, in USD. Present on `deposit_required`. */
+  balanceUsd?: number;
+  minimumUsd: number;
+  providerCustomerId?: string;
+  kycStatus?: KycStatus;
+  rainApplicationStatus?: string;
 }
 
 export interface SubmitPersonaKycRequest {
@@ -830,6 +900,26 @@ export interface WirexThreeDsDecisionResponse {
  * Limits are decimal USD strings rather than numbers: they are 6-decimal on-chain
  * values and float rounding on a spending cap is not worth the convenience.
  */
+/**
+ * Whether the app may offer the spend-mode picker and the borrow position to this user.
+ *
+ * Server-decided, because the first cohort is a Mongo collection (`wirexTeamMembers`) that
+ * has to be editable without a release — adding the next tester must not mean shipping a
+ * build. It is a visibility gate and nothing more: the mode is changed by a `setMode`
+ * UserOperation the Safe signs for itself, so this decides what the app offers, never what
+ * the chain allows.
+ */
+export interface CardSpendModeAccessResponse {
+  /** Whether to render the spend-mode card and the borrow position at all. */
+  enabled: boolean;
+  /**
+   * `cohort` — on the list. `open` — the gate is lifted for everyone.
+   * `not-in-cohort` — off, working as intended. `unavailable` — the lookup failed and we
+   * defaulted to closed, which is a bug rather than the feature.
+   */
+  reason: 'cohort' | 'open' | 'not-in-cohort' | 'unavailable';
+}
+
 export interface WirexCardRegistrationResponse {
   /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
   registered: boolean;
@@ -912,6 +1002,14 @@ export interface WirexCardRegistrationConfirmRequest {
   dailyLimitUsd: string;
   monthlyLimitUsd: string;
   timezoneOffset: number;
+  /**
+   * The spend module the Safe is now registered on.
+   *
+   * Sent so the backend records which generation this cardholder is on rather than
+   * inferring it from its own config, which is wrong for exactly as long as the two
+   * cohorts coexist. Omitted means v1, which is what every pre-v2 caller means.
+   */
+  moduleAddress?: string;
 }
 
 // --- Rain contracts (funding) ---
@@ -991,6 +1089,14 @@ export interface CardCollateralAvailableDto {
   spendingPowerUsd?: number;
   /** Which of the two caps is currently binding for the default asset. */
   limitedBy: 'collateral' | 'spendingPower' | 'none';
+  /**
+   * Set when the default asset's balance could not be read (RPC failure,
+   * unsupported chain). `availableUsd` is 0 then because the backend will not
+   * quote a figure it did not read — NOT because the card is empty. A screen
+   * that renders this as "$0 available" tells a funded cardholder their money
+   * is gone; show it as unknown and let them retry.
+   */
+  unavailableReason?: string;
   /** Default asset a withdrawal draws from; absent when the user has none. */
   chainId?: number;
   collateralProxy?: string;
@@ -1191,9 +1297,9 @@ export type DepositFromSafeAccountModal =
 /**
  * Why the savings direct-deposit flow was opened.
  *
- * `card_deposit` is the Bangladesh card gate ("Deposit at least $5"), which
- * completes off the soUSD balance alone — so that entry point only offers the
- * stablecoins that mint soUSD.
+ * `card_deposit` is the card minimum-deposit gate ("Deposit at least $10"),
+ * which completes off the soUSD balance alone — so that entry point only offers
+ * the stablecoins that mint soUSD.
  */
 export type SavingsFundIntent = 'savings' | 'card_deposit';
 
@@ -1369,12 +1475,39 @@ export enum CashbackStatus {
   Canceled = 'Canceled',
   Failed = 'Failed',
   PermanentlyFailed = 'PermanentlyFailed',
+  /**
+   * The purchase earns nothing because of what it was — a cash withdrawal, a
+   * money transfer, a tax payment. Terminal, and never carries an amount.
+   */
+  Ineligible = 'Ineligible',
+}
+
+/** What a cashback row was earned as. Mirrors the backend's `CashbackType`. */
+export enum CashbackType {
+  /** Regular tier-based cashback on any card purchase. */
+  Cashback = 'Cashback',
+  /** Category-based subscription cashback — a Prime/Ultra perk. */
+  SubscriptionDiscount = 'SubscriptionDiscount',
 }
 
 export interface Cashback {
   _id: string;
   transactionId: string;
   status: CashbackStatus;
+  /**
+   * Which programme paid this row.
+   *
+   * Absent on rows written before the field existed, which are all regular
+   * cashback — so treat a missing value as {@link CashbackType.Cashback} rather
+   * than as unknown.
+   */
+  type?: CashbackType;
+  /**
+   * For a subscription row, the category it was billed under ("ai",
+   * "streaming", "music", "gaming"). The set is configured server-side and can
+   * grow, so never assume a key is one the app knows about.
+   */
+  subscriptionCategory?: string;
   /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
   soUsdAmount?: string;
   soUsdRate?: string;
@@ -1406,10 +1539,30 @@ export interface CashbackInfo {
   isPending: boolean;
   isEscrowed: boolean;
   /**
+   * The purchase is excluded from the programme by its merchant category, so
+   * there is no figure and none is coming. Distinct from an absent
+   * `CashbackInfo`, which means we simply have no cashback record: this one is
+   * a definite "not eligible" the receipt can state outright.
+   */
+  isIneligible: boolean;
+  /**
    * Whether the payout has actually landed. The only state that colours the
    * figure: until then it is a projection, and reads as ordinary text.
    */
   isPaid: boolean;
+  /**
+   * This row is subscription cashback (the Prime/Ultra perk), not the tier rate
+   * on the charge.
+   *
+   * Worth naming on the receipt because the two figures are wildly different —
+   * 25% or 50% against 3–5% — and a row labelled only "Cashback" on a $200
+   * subscription reads as the tier rate having been applied and the perk having
+   * been missed. A charge earns one or the other, never both, so this
+   * distinguishes the row rather than adding a second one.
+   */
+  isSubscriptionDiscount?: boolean;
+  /** The category a subscription row was billed under, when it is one. */
+  subscriptionCategory?: string;
   payoutAt?: string;
 }
 
@@ -1515,7 +1668,23 @@ export interface RewardsUserData {
   totalPoints: number;
   nextTierPoints: number;
   nextTier: RewardsTier | null;
+  /**
+   * The cashback % this user actually earns — their tier's rate, unless support
+   * has put them on one of their own.
+   */
   cashbackRate: number;
+  /**
+   * What their tier pays by default, before any per-user rate. Absent on older
+   * backends, where `cashbackRate` is the tier rate anyway.
+   */
+  tierCashbackRate?: number;
+  /**
+   * Whether `cashbackRate` is pinned to this user rather than coming from their
+   * tier. When it is, the app must quote it rather than substituting the launch
+   * rate for their tier — see `resolveUserCashbackRate`. Absent on older
+   * backends, which is the same as false.
+   */
+  hasCustomCashbackRate?: boolean;
   cashbackThisMonth: number;
   /**
    * Cashback earned this month that is still escrowed, in USD, already trimmed
@@ -1558,6 +1727,57 @@ export interface RewardsUserData {
    * which is what hides the section.
    */
   fuseSkipLine?: FuseSkipLine;
+  /**
+   * A tier trial the user has been given and not yet accepted — an admin gift,
+   * or the welcome offer they qualified for.
+   *
+   * The duration only starts once they activate it, so this is an offer to
+   * open, not a clock already running. Absent on older backends, which hides
+   * the gift card.
+   */
+  pendingTierTrial?: TierTrial | null;
+  /**
+   * The trial currently granting the user their tier, with the expiry the
+   * countdown counts down to.
+   *
+   * `currentTier` already accounts for it — a trial only ever raises the tier,
+   * never lowers it — so this is what to show *about* the trial, not a tier to
+   * apply here.
+   */
+  activeTierTrial?: TierTrial | null;
+}
+
+/** The tiers a trial can grant. Core is the floor, not a gift. */
+export type GiftableTier = RewardsTier.PRIME | RewardsTier.ULTRA;
+
+/** Where a trial came from. */
+export type TierTrialSource = 'admin_gift' | 'promotion';
+
+/** A trial's lifecycle. It waits at `pending_activation` until the user opens it. */
+export type TierTrialStatus = 'pending_activation' | 'active' | 'expired' | 'revoked';
+
+/**
+ * A temporary tier upgrade: the user holds `tier` for `durationDays` from the
+ * moment they activate it, then returns to the tier their points and FUSE
+ * balance earn them. Neither of those is touched to grant it.
+ */
+export interface TierTrial {
+  id: string;
+  tier: GiftableTier;
+  source: TierTrialSource;
+  status: TierTrialStatus;
+  /** How long the trial runs once activated. */
+  durationDays: number;
+  /** A note written with an admin gift, when there is one. */
+  giftMessage?: string;
+  /** When an active trial ends. Null while it is still waiting to start. */
+  expiresAt: string | null;
+  /**
+   * Whole hours left on an active trial, 0 otherwise. The countdown reads this
+   * rather than differencing `expiresAt` so the pill and the expiry the backend
+   * enforces can't disagree.
+   */
+  hoursRemaining: number;
 }
 
 /** One "skip the line" rung: what a tier costs in FUSE and how close the user is. */
@@ -1597,6 +1817,40 @@ export interface TierBenefit {
   image?: string;
 }
 
+/** One row of the tier screen's "Fees & Caps" table. */
+export interface TierFeeLine {
+  /**
+   * Stable row key: a FeeProduct value ('swap' | 'fx' | 'offramp' |
+   * 'bank_deposit'), or 'virtual_card' for the row with no fee behind it.
+   */
+  key: string;
+  label: string;
+  /** Rate as a fraction (0.005 = 0.5%). 0 when this tier pays nothing. */
+  rate: number;
+  /** Pre-rendered value: 'Free' when the rate is 0, else '0.5%'. */
+  value: string;
+}
+
+/**
+ * The "Fees & Caps" block for one tier.
+ *
+ * Values arrive pre-rendered from the same config the charge engine bills from,
+ * so the table can't promise "Free" while a fee is being charged, and the three
+ * tier tabs can't round the same rate differently.
+ */
+export interface TierFees {
+  lines: TierFeeLine[];
+  cashbackCap: string;
+  /** FUSE that must be staked to hold this tier outright. 0 when none is. */
+  fuseUnlockAmount: number;
+  /** Rendered requirement, e.g. 'Not required' or '400,000 FUSE'. */
+  fuseUnlock: string;
+  /** True when every fee on this tier is zero — the Ultra promise. */
+  allFree: boolean;
+  /** Copy under the table, absent on a tier that already pays nothing. */
+  footnote?: string;
+}
+
 export interface TierBenefits {
   tier: RewardsTier;
   depositBoost: TierBenefit;
@@ -1605,6 +1859,12 @@ export interface TierBenefits {
   /** Ceiling on yield boost payouts for this tier, in USD. */
   yieldBoostCap?: number;
   cardCashback: TierBenefit;
+  /**
+   * `subscriptionDiscount` as a bare percentage (0 when the tier grants none),
+   * so the tier popups can quote the figure without parsing the prose. Absent
+   * on older backends, which is what hides that stat.
+   */
+  subscriptionDiscountRate?: number;
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;
   subscriptionDiscountCap: TierBenefit | null;
@@ -1612,6 +1872,13 @@ export interface TierBenefits {
   bankDeposit: TierBenefit;
   swapFees: TierBenefit;
   support: TierBenefit;
+  /**
+   * Everything the "Fees & Caps" card needs, in one block.
+   *
+   * Optional because a client can outlive the backend that serves it — a build
+   * pointed at an older API renders the legacy rows rather than an empty card.
+   */
+  fees?: TierFees;
 }
 
 export interface TierBenefitItem {
@@ -1659,7 +1926,11 @@ export interface SubscriptionDiscountConfig {
   /** @deprecated Legacy flat service list; detection uses categories. */
   eligibleServices: string[];
   categories: SubscriptionDiscountCategory[];
-  /** First N dollars of an eligible charge that earn the discount. */
+  /**
+   * Most subscription cashback one eligible service can earn in a month, in USD
+   * (Rewards Terms §5). Caps the cashback, not the charge it is earned on; the
+   * name is left from an earlier reading and is what the API still sends.
+   */
   eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
   tier2: TierSubscriptionDiscountConfig;
@@ -1705,6 +1976,83 @@ export interface FullRewardsConfig {
   subscriptionDiscount: SubscriptionDiscountConfig;
   fuseStaking: FuseStakingConfig;
   referral: ReferralConfig;
+}
+
+/** Products Solid charges a per-tier fee on. Mirrors the backend FeeProduct. */
+export enum FeeProduct {
+  SWAP = 'swap',
+  FX = 'fx',
+  /** Bank withdrawal. Stored under its original `offramp` name. */
+  BANK_WITHDRAWAL = 'offramp',
+  BANK_DEPOSIT = 'bank_deposit',
+  /** Tokenised-equity trade, settled through CoW on mainnet. */
+  STOCKS = 'stocks',
+  /** Buy-crypto order through TransFi's card / local payment rails. */
+  TRANSFI = 'transfi',
+}
+
+/** The fee rates the signed-in user currently pays, from their live tier. */
+export interface ProductFeeRates {
+  tier: number;
+  tierName: string;
+  /** Rate per product, as fractions. 0 means this user pays nothing. */
+  rates: Record<FeeProduct, number>;
+  /** Fees computing below this (USD) are not charged at all. */
+  minChargeUsd: number;
+  /**
+   * Where an on-chain swap fee must be sent.
+   *
+   * Absent when the revenue wallet is unconfigured, which the client must treat
+   * as "do not collect a swap fee": appending a transfer to a zero or guessed
+   * address would burn the user's money.
+   */
+  revenueWalletAddress?: string;
+}
+
+/** What the user will pay on one specific amount. */
+export interface ProductFeeQuote {
+  product: FeeProduct;
+  tier: number;
+  tierName: string;
+  percentage: number;
+  feeAmountUsd: string;
+  waiveReason?: string;
+}
+
+export interface RecordSwapFeeParams {
+  transactionHash: string;
+  baseAmountUsd: number;
+  feeTokenAddress: string;
+  feeTokenSymbol?: string;
+  feeTokenAmount: string;
+  /**
+   * Raw amount the fee came out of, in the same token and unit.
+   *
+   * Lets the server derive the applied rate exactly from the two on-chain
+   * amounts, with no price involved, and value the base itself.
+   */
+  baseTokenAmount?: string;
+  feeAmountUsd: number;
+  percentage?: number;
+}
+
+export interface RecordStocksFeeParams {
+  /** CoW order uid — the idempotency key, since one batch is one order. */
+  orderUid: string;
+  transactionHash?: string;
+  baseAmountUsd: number;
+  feeTokenAddress: string;
+  feeTokenSymbol?: string;
+  feeTokenAmount: string;
+  /**
+   * Raw amount the fee came out of, in the same token and unit.
+   *
+   * Lets the server derive the applied rate exactly from the two on-chain
+   * amounts, with no price involved, and value the base itself.
+   */
+  baseTokenAmount?: string;
+  feeAmountUsd: number;
+  percentage?: number;
 }
 
 export enum LifiOrder {
@@ -1879,6 +2227,41 @@ export interface CardSpendDetails {
   state?: string;
   settled_at?: string;
   decline_reason?: string;
+  /**
+   * The refund leg, when this transaction has one.
+   *
+   * Separate from the fields above because those describe the *purchase* — what
+   * left the Safe and how the claim stands. A refund is its own movement in the
+   * opposite direction, with its own hash and its own arithmetic.
+   */
+  refund?: CardRefundDetails;
+}
+
+/**
+ * What came back on a refunded transaction, and why it is not the round number
+ * the merchant quoted.
+ *
+ * The cashback the purchase earned is withheld from the refund — a refunded
+ * purchase was never a purchase, so the reward comes back with the money. That
+ * is correct and also invisible: the shop says it refunded $40 and $38.80
+ * arrives. These three figures are what makes the shortfall explainable on the
+ * receipt instead of in a support ticket.
+ */
+export interface CardRefundDetails {
+  /** `pending` | `paid` | `failed` — where the refund payout stands. */
+  status: string;
+  /** What the refund is worth before anything is withheld, in USD. */
+  gross_usd: number;
+  /** Cashback withheld from it, in USD. Absent when nothing was withheld. */
+  cashback_deducted_usd?: number;
+  /** What actually reached the Safe, or will. `gross_usd` minus the deduction. */
+  paid_usd: number;
+  /** The USDC.e transfer that paid it, on Fuse. Absent until it lands. */
+  tx_hash?: string;
+  /** Chain the refund was paid on. Fuse (122) — NOT the issuer's chain. */
+  chain_id?: number;
+  /** One sentence explaining the deduction, when there is one to explain. */
+  note?: string;
 }
 
 export interface CardTransaction {
@@ -2391,9 +2774,12 @@ export interface TransfiStatusResponse {
   transfiKycStatus?: string;
   reasons?: string[];
   /**
-   * On `rejected`, whether TransFi will let the user resubmit through its hosted
-   * KYC. False for compliance rejections, where retrying is pointless — the
-   * screen offers a retry only when this is true.
+   * Whether TransFi will let the user verify through its hosted KYC.
+   *
+   * On `rejected`, false for compliance rejections, where retrying is
+   * pointless — the screen offers a retry only when this is true. On
+   * `can_share`, true once a TransFi profile exists, which is what lets a share
+   * that keeps being refused offer the hosted flow instead of looping.
    */
   canRetryKyc?: boolean;
   /**
@@ -2598,14 +2984,40 @@ export interface ReferralRewardListItem {
   merchantCount: number;
   hasActiveCard: boolean;
   rewardUsd: number;
+  /**
+   * Asset this reward settles in, frozen when it qualified. Rows either side of
+   * the soUSD → FUSE switch can differ, so this is per-row rather than a single
+   * program-level value. Absent on backends that predate the switch.
+   */
+  payoutToken?: ReferralPayoutToken;
+  /** Token units actually paid to the referrer, once that leg is on chain. */
+  payoutTokenAmount?: string;
   /** Explorer link for the referrer's payout, once that leg is on chain. */
   payoutTxUrl?: string;
+}
+
+/**
+ * What a referral reward is settled in. The reward itself is always quoted in
+ * USD; this is only the token that lands in the user's wallet.
+ */
+export enum ReferralPayoutToken {
+  SOUSD = 'soUSD',
+  /** Legacy: paid to a handful of rewards before the vault share was chosen. */
+  FUSE = 'FUSE',
+  /**
+   * The FUSE vault share, and the current payout asset. It arrives as a savings
+   * position — earning vault yield, and counting towards the FUSE holding that
+   * unlocks a tier — rather than as a loose balance.
+   */
+  SOFUSE = 'soFUSE',
 }
 
 export interface ReferralSummary {
   rewards: {
     referrerUsd: number;
     newUserUsd: number;
+    /** Asset a reward earned right now would be paid in. */
+    payoutToken?: ReferralPayoutToken;
   };
   qualification: {
     spendTargetUsd: number;
@@ -2630,9 +3042,25 @@ export enum StoreReviewDecisionReason {
   ELIGIBLE = 'eligible',
   UNSUPPORTED_PLATFORM = 'unsupported_platform',
   NOT_ENOUGH_DEPOSITS = 'not_enough_deposits',
+  /** Wirex: nothing the card could spend, in the wallet or in savings. */
+  NOT_ENOUGH_BALANCE = 'not_enough_balance',
+  /** Wirex: the balance could not be read, so eligibility is unknown. */
+  BALANCE_UNAVAILABLE = 'balance_unavailable',
   NOT_ENOUGH_OPENS = 'not_enough_opens',
   COOLDOWN = 'cooldown',
   NO_NEW_DEPOSITS = 'no_new_deposits',
+}
+
+/**
+ * What the backend looked at to decide whether the user's card is in real use.
+ *
+ * Which one applies follows the card issuer: a Rain card is prefunded, so the
+ * evidence is deposits into it; a Wirex card spends the user's own wallet and
+ * savings, so there are no deposits and the evidence is what they hold.
+ */
+export enum StoreReviewSignal {
+  CARD_DEPOSITS = 'card_deposits',
+  SPENDABLE_BALANCE = 'spendable_balance',
 }
 
 /** Response to recording an app open (`POST /accounts/v1/app-opens`). */
@@ -2640,8 +3068,12 @@ export interface AppOpenResponse {
   /** Opens recorded for this user on this platform, including the current one. */
   openCount: number;
   lastOpenedAt: string;
-  /** Deposits the user has made to their card, per the backend. */
+  /** Deposits the user has made to their card, per the backend. Rain only. */
   cardDepositCount: number;
+  /** Wirex only: USD of card-spendable holdings, or null when not looked at. */
+  spendableUsd: number | null;
+  /** Which signal the decision used, or null when it never got that far. */
+  signal: StoreReviewSignal | null;
   /** True when the app should show the native review sheet now. */
   shouldRequestReview: boolean;
   reason: StoreReviewDecisionReason;

@@ -22,7 +22,9 @@ import {
 import { EASE_OUT_EXPO, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CardHolderName, CardProvider } from '@/lib/types';
+import { canRevealCardDetails } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 /** How long a copied card number is allowed to sit on the clipboard. */
@@ -35,6 +37,11 @@ interface CardRevealSectionProps {
   provider?: CardProvider | null;
   /** ISO 3166-1 alpha-2 code of the card's issuing country, when known. */
   issuingCountryCode?: string;
+  /**
+   * Opens the card-spending sheet, which is where a "Show details" tap goes on a Wirex
+   * card that cannot spend yet — see the gate in the body.
+   */
+  onRequireSpendSetup: () => void;
 }
 
 /**
@@ -46,15 +53,24 @@ interface CardRevealSectionProps {
  * If the reveal request fails the card stays on its front face and the reason is
  * surfaced as a toast, so the toggle can be tried again. It must never flip onto
  * stand-in digits: that reads as a working card the user might try to spend.
+ *
+ * On a Wirex card the same rule extends to a card that cannot spend at all — see
+ * `isRevealBlocked`.
  */
 const CardRevealSection = ({
   last4,
   cardholderName,
   provider,
   issuingCountryCode,
+  onRequireSpendSetup,
 }: CardRevealSectionProps) => {
   const { cardDetails, isLoading, error, revealDetails, clearCardDetails } =
     useCardDetailsReveal(provider);
+  const { isRegistered: canCardSpend, isLoading: isSpendStateLoading } = useCardSpendRegistration();
+  // A card whose Safe cannot be debited declines every payment, so its numbers are not
+  // worth revealing — the tap opens the sheet that fixes that instead. The rule itself,
+  // and why it fails closed on a read that has not landed, is in `canRevealCardDetails`.
+  const isRevealBlocked = !canRevealCardDetails({ provider, canCardSpend });
   const isPaneOpen = useCardPaneStore(state => state.isOpen);
   const [isRevealed, setIsRevealed] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
@@ -129,12 +145,18 @@ const CardRevealSection = ({
       clearCardDetails();
       return;
     }
+    // Never reached while the spend state is still loading — the toggle carries the
+    // spinner and is disabled until it is known.
+    if (isRevealBlocked) {
+      onRequireSpendSetup();
+      return;
+    }
     setHasRequested(true);
     void revealDetails().catch(() => {
       // Swallowed: the hook surfaces the failure through `error`, which the effect
       // above turns into a toast.
     });
-  }, [isRevealed, revealDetails, clearCardDetails]);
+  }, [isRevealed, isRevealBlocked, onRequireSpendSetup, revealDetails, clearCardDetails]);
 
   const copy = useCallback((label: string, value: string, autoClear = false) => {
     void (async () => {
@@ -225,7 +247,11 @@ const CardRevealSection = ({
       <HeroEnter spec={HERO_ENTER.showDetails}>
         <CardDetailsPanel
           isRevealed={isRevealed}
-          isLoading={isLoading}
+          // Spinning while the spend read is in flight, so the gate above is never
+          // decided on a state nobody has read yet. Only ever true on a Wirex card:
+          // the read is disabled for any other issuer, and a disabled query does not
+          // report loading.
+          isLoading={isLoading || isSpendStateLoading}
           onToggle={handleToggle}
           values={values}
           onCopyName={() => copy('Name on card', values.nameOnCard)}

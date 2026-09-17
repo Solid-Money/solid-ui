@@ -27,6 +27,7 @@ type Path = {
   // Email-first signup flow
   SIGNUP_EMAIL: Href;
   SIGNUP_OTP: Href;
+  SIGNUP_USERNAME: Href;
   SIGNUP_CREATING: Href;
   SIGNUP_PASSKEY: Href;
   SAVINGS: Href;
@@ -113,6 +114,8 @@ export const path: Path = {
   // Email-first signup flow
   SIGNUP_EMAIL: '/signup/email',
   SIGNUP_OTP: '/signup/otp',
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  SIGNUP_USERNAME: '/signup/username' as Href,
   SIGNUP_CREATING: '/signup/creating',
   SIGNUP_PASSKEY: '/signup/passkey',
   SAVINGS: '/savings',
@@ -189,6 +192,19 @@ export const cardInfoWalletGuidePath = (wallet: DigitalWalletType): Href =>
     pathname: '/',
     params: { screen: CARD_INFO_SCREEN, [CARD_INFO_WALLET_PARAM]: wallet },
   }) as Href;
+
+/**
+ * One card transaction's own detail screen.
+ *
+ * The activity detail route is shared by wallet and card rows, and the `card-`
+ * prefix on the id is what tells them apart: `/activity/[clientTxId]` reads it
+ * off the front (`isCardTransaction`) and asks the issuer for the transaction
+ * instead of looking for it on chain. Built here rather than spelled out at each
+ * call site so a card push and a tapped feed row address the same screen the
+ * same way.
+ */
+export const cardTransactionDetailPath = (transactionId: string): Href =>
+  `/activity/card-${transactionId}` as Href;
 
 export const cardThreeDsRequestPath = (
   transactionId: string,

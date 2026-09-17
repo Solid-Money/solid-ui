@@ -8,10 +8,12 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import {
   CARD_FUND_CASH_DEPOSIT_VISIBLE_ROWS,
+  CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKENS,
   CARD_FUND_USD_ICON,
   CardFundSections,
   getCardFundNetworkChips,
+  getCardFundRoutesTooltip,
   RAIN_CARD_FUND_SECTIONS,
 } from '@/components/Card/CardFund/constants';
 import {
@@ -40,6 +42,11 @@ type CardFundOptionsProps = {
    * screen is unchanged for every caller that predates the Wirex flow.
    */
   sections?: CardFundSections;
+  /**
+   * Wording for the "move from Solid" row. Defaults to Rain's, which names
+   * savings — see {@link CARD_FUND_MOVE_COPY} for why Wirex's does not.
+   */
+  moveFromSolidCopy?: { title: string; subtitle: string };
 };
 
 /** Step 1 of the card funding flow — "Fund your card". */
@@ -51,6 +58,7 @@ const CardFundOptions = ({
   onLocalCurrencyPress,
   isExternalWalletLoading,
   sections = RAIN_CARD_FUND_SECTIONS,
+  moveFromSolidCopy = CARD_FUND_MOVE_COPY.rain,
 }: CardFundOptionsProps) => {
   // A local-currency row still needs its handler, so the section flag and the
   // callback both have to be present — the callback alone is how the Rain
@@ -62,7 +70,11 @@ const CardFundOptions = ({
   return (
     <View className="gap-y-8">
       {sections.stablecoins ? (
-        <CardFundGroup label="Stablecoins">
+        <CardFundGroup
+          label="Stablecoins"
+          labelTooltip={getCardFundRoutesTooltip()}
+          labelTooltipContext="card_fund_supported_routes"
+        >
           {CARD_FUND_TOKENS.map(token => (
             <CardFundRow
               key={token.symbol}
@@ -106,8 +118,8 @@ const CardFundOptions = ({
           {sections.moveFromSolid ? (
             <CardFundRow
               icon={<FundMoveSavings width={22} height={25} />}
-              title="Move from wallet or savings"
-              subtitle="Use funds you already hold in Solid"
+              title={moveFromSolidCopy.title}
+              subtitle={moveFromSolidCopy.subtitle}
               onPress={onMoveFromSavingsPress}
             />
           ) : null}

@@ -1,5 +1,6 @@
 import {
   getSavingsFundTokenGroups,
+  offersExternalWalletFunding,
   SAVINGS_FUND_CRYPTO,
   SAVINGS_FUND_STABLECOINS,
 } from '@/components/Savings/SavingsFund/constants';
@@ -43,8 +44,9 @@ describe('getSavingsFundTokenGroups', () => {
     }
   });
 
-  // The card's "Deposit at least $5" gate reads the soUSD balance alone, so a $5
-  // deposit of ETH or WFUSE would fund soETH / soFUSE and leave the step stuck.
+  // The card's minimum-deposit gate reads the soUSD balance alone, so depositing
+  // the whole minimum as ETH or WFUSE would fund soETH / soFUSE and leave the
+  // step stuck at "not met".
   it('offers only the soUSD-minting stablecoins for the card deposit gate', () => {
     const { stablecoins, crypto } = getSavingsFundTokenGroups('card_deposit');
 
@@ -77,5 +79,19 @@ describe('getSavingsFundTokenGroups', () => {
 
     expect(SAVINGS_FUND_STABLECOINS.map(t => t.symbol)).toEqual(['USDC', 'USDT']);
     expect(SAVINGS_FUND_CRYPTO.map(t => t.symbol)).toEqual(['ETH', 'WFUSE']);
+  });
+});
+
+describe('offersExternalWalletFunding', () => {
+  it('offers the connect-wallet routes on a normal savings deposit', () => {
+    expect(offersExternalWalletFunding('savings')).toBe(true);
+  });
+
+  // The card's deposit steps show the direct-deposit path and nothing else:
+  // they exist to get money in before we pay a verification fee, they are
+  // judged solely on the soUSD balance afterwards, and the connect-wallet route
+  // is the least used way of getting there.
+  it('withholds them on the card deposit steps', () => {
+    expect(offersExternalWalletFunding('card_deposit')).toBe(false);
   });
 });

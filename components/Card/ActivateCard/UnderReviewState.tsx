@@ -1,28 +1,29 @@
-import { View } from 'react-native';
-import { Image } from 'expo-image';
+import { CardStatusPage } from '@/components/Card/CardStatusPage';
 
-import { Text } from '@/components/ui/text';
-import { getAsset } from '@/lib/assets';
-
+/**
+ * "Your card is on its way" — what the issuance flow shows once an applicant's
+ * identity verification has been submitted and is waiting on a decision
+ * (Figma 16412:2842).
+ *
+ * It replaces the whole activation screen rather than sitting inside it. While a
+ * decision is being made there is no step for the user to take, and the steps
+ * list led with "Complete KYC" behind a disabled button — which reads as "verify
+ * again" to someone who has just finished verifying.
+ *
+ * Nothing is styled here: `CardStatusPage`'s own defaults are the drawn design —
+ * the "Solid card" header, the faded card artwork, and the same panel every
+ * other card status screen uses. The copy is left to wrap rather than carrying
+ * the design's hard line breaks, which would fall in the wrong places on a
+ * phone.
+ *
+ * The drawn copy's typos are fixed here, as they are on the home banner: "on
+ * it's way", and "by mail" for what is the email the KYC webhooks send.
+ */
 export function UnderReviewState() {
   return (
-    <View className="mb-10 mt-8">
-      <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
-        <View className="mb-4">
-          <Image
-            source={getAsset('images/kyc_under_review.png')}
-            alt="KYC under review"
-            style={{ width: 144, height: 144 }}
-            contentFit="contain"
-          />
-        </View>
-
-        <Text className="mt-6 text-2xl font-bold text-white">Thank you for your submission!</Text>
-        <Text className="my-3 text-center text-[#ACACAC]">
-          Your identity is now being verified. You{'\n'}will be notified by mail once you get{'\n'}
-          approved
-        </Text>
-      </View>
-    </View>
+    <CardStatusPage
+      title="Your card is on its way!"
+      description="Thanks for your submission. Your identity is now being verified. You will be notified by email once you get approved"
+    />
   );
 }

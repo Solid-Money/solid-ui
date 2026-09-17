@@ -1,5 +1,5 @@
-import { getConfirmedUpgradeBenefits, getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
-import { RewardsTier, RewardsUserData } from '@/lib/types';
+import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
+import { RewardsTier } from '@/lib/types';
 
 const { CORE, PRIME, ULTRA } = RewardsTier;
 
@@ -21,26 +21,5 @@ describe('tier actions', () => {
     expect(getTierAction(PRIME)).toBe('unavailable');
     expect(getTierAction(ULTRA, CORE, true)).toBe('unavailable');
     expect(isHigherTier(PRIME, undefined)).toBe(false);
-  });
-  it('uses the actual response values and omits absent or unavailable benefits', () => {
-    const data = {
-      cashbackRate: 1.75,
-      maxCashbackMonthly: 87,
-      yieldBoostPercentage: 0,
-      subscriptionDiscountRate: 25,
-      subscriptionCategoryLimit: 0,
-    } as RewardsUserData;
-    expect(getConfirmedUpgradeBenefits(data)).toEqual([
-      '1.75% card cashback',
-      '$87 monthly cashback cap',
-    ]);
-    expect(
-      getConfirmedUpgradeBenefits({
-        ...data,
-        yieldBoostPercentage: 2.1,
-        yieldBoostCap: 123,
-        subscriptionCategoryLimit: 2,
-      }),
-    ).toContain('Yield boost payouts capped at $123');
   });
 });

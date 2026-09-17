@@ -1,6 +1,7 @@
 import { fuse } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ADDRESSES } from '@/lib/config';
 
 /**
@@ -72,3 +73,36 @@ export const CARD_SPENDABLE_ASSETS: CardSpendableAsset[] = [
   { symbol: 'USDT', chainIds: [fuse.id], addresses: [USDT_STARGATE.toLowerCase()] },
   { symbol: 'soUSD', chainIds: [fuse.id], addresses: [ADDRESSES.fuse.vault.toLowerCase()] },
 ];
+
+/**
+ * The spendable set in words, for the "Spendable" tooltip — "USDC, USDT and soUSD
+ * on Fuse".
+ *
+ * Derived from {@link CARD_SPENDABLE_ASSETS} rather than written out, because a
+ * hardcoded sentence beside a list that is expected to change is a sentence that
+ * will eventually name an asset the card cannot reach. That is the same
+ * over-reporting failure the list's own doc warns about, just in prose: the user
+ * is told they can spend something, and the terminal disagrees.
+ *
+ * Chain-name resolution is deliberately narrow. Every entry is Fuse-only today and
+ * the settlement mechanism is chain-bound, so a multi-chain entry would be a change
+ * worth writing copy for rather than one to interpolate blindly — an entry with no
+ * `chainIds`, or with more than one, contributes its symbol and no network clause.
+ */
+export const describeCardSpendableAssets = (
+  assets: CardSpendableAsset[] = CARD_SPENDABLE_ASSETS,
+): string => {
+  const symbols = assets.map(asset => asset.symbol).filter((symbol): symbol is string => !!symbol);
+  if (!symbols.length) return '';
+
+  const list =
+    symbols.length === 1
+      ? symbols[0]
+      : `${symbols.slice(0, -1).join(', ')} and ${symbols[symbols.length - 1]}`;
+
+  const chainIds = new Set(assets.flatMap(asset => asset.chainIds ?? []));
+  const isSingleChain = chainIds.size === 1 && assets.every(asset => asset.chainIds?.length === 1);
+  const chainName = isSingleChain ? BRIDGE_TOKENS[[...chainIds][0]]?.name : undefined;
+
+  return chainName ? `${list} on ${chainName}` : list;
+};

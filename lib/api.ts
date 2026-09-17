@@ -4,6 +4,11 @@ import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
 
+import {
+  ALCHEMY_NETWORKS,
+  ALCHEMY_PRICE_BATCH_SIZE,
+  ALCHEMY_PRICES_URL,
+} from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -22,7 +27,6 @@ import {
 import { useUserStore } from '@/store/useUserStore';
 
 import {
-  EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
   EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
@@ -56,6 +60,7 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardSpendModeAccessResponse,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
@@ -75,6 +80,7 @@ import {
   EphemeralKeyResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
+  FeeProduct,
   FromCurrency,
   FullRewardsConfig,
   GenerateAgentApiKeyResponse,
@@ -95,6 +101,8 @@ import {
   OnrampAutomationRail,
   OnrampAutomationResponseDto,
   Points,
+  ProductFeeQuote,
+  ProductFeeRates,
   PromotionsBannerResponse,
   ProviderRoutingResponse,
   ProvisioningActivity,
@@ -105,8 +113,11 @@ import {
   RainConsumerType,
   RainContractResponseDto,
   RainKycSubmitResponse,
+  RecordStocksFeeParams,
+  RecordSwapFeeParams,
   ReferralSummary,
   RegionInterestPayload,
+  ResumeRainForwardResponse,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
@@ -122,6 +133,7 @@ import {
   SyncActivitiesResponse,
   TierBenefits,
   ToCurrency,
+  TokenPriceByAddress,
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
@@ -434,9 +446,70 @@ export const fetchTokenPriceUsd = async (token: string) => {
   // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
   // attached, which zeroes out every price on native builds.
   const response = await externalAxios.get<TokenPriceUsd>(
-    `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`,
+    `${ALCHEMY_PRICES_URL}/by-symbol?symbols=${token}`,
   );
   return response?.data?.data[0]?.prices[0]?.value;
+};
+
+/**
+ * USD prices for ERC-20s from Alchemy's Prices API, keyed by
+ * `${chainId}:${lowercased address}`.
+ *
+ * Preferred over {@link fetchTokenPriceUsd} for ERC-20s: a contract address
+ * identifies a token exactly, where a symbol does not (every chain has its own
+ * "USDC", and plenty of scam tokens borrow a real ticker), and one POST covers
+ * a whole batch instead of a request per symbol. Alchemy's own token balances
+ * carry no price, so without this every Alchemy-sourced ERC-20 arrives at
+ * quoteRate 0.
+ *
+ * Never throws: a failed batch resolves to no prices for that batch so the
+ * remaining price sources still get their turn.
+ */
+export const fetchTokenPricesByAddress = async (
+  tokens: { chainId: number; address: string }[],
+): Promise<Record<string, number>> => {
+  const pairs = [
+    ...new Map(
+      tokens
+        .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
+        .map(({ chainId, address }) => [
+          `${chainId}:${address.toLowerCase()}`,
+          { chainId, network: ALCHEMY_NETWORKS[chainId], address: address.toLowerCase() },
+        ]),
+    ).values(),
+  ];
+  if (pairs.length === 0) return {};
+
+  const batches: (typeof pairs)[] = [];
+  for (let i = 0; i < pairs.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+    batches.push(pairs.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+  }
+
+  const responses = await Promise.allSettled(
+    batches.map(batch =>
+      externalAxios.post<TokenPriceByAddress>(`${ALCHEMY_PRICES_URL}/by-address`, {
+        addresses: batch.map(({ network, address }) => ({ network, address })),
+      }),
+    ),
+  );
+
+  const prices: Record<string, number> = {};
+  responses.forEach((response, i) => {
+    if (response.status !== 'fulfilled') return;
+    // Alchemy echoes the network slug back, not the chain id, so map the
+    // response entries onto the batch we sent to recover the chain id.
+    const chainIdByNetwork = new Map(batches[i].map(({ network, chainId }) => [network, chainId]));
+    for (const entry of response.value.data?.data ?? []) {
+      const chainId = chainIdByNetwork.get(entry.network);
+      const value = Number(entry.prices?.find(price => price.currency === 'usd')?.value);
+      if (chainId === undefined || !entry.address || !Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+      prices[`${chainId}:${entry.address.toLowerCase()}`] = value;
+    }
+  });
+
+  return prices;
 };
 
 export const createKycLink = async (
@@ -591,7 +664,10 @@ export const submitCardConsents = async (consents: {
     body: JSON.stringify(consents),
   });
 
-  if (!response.ok) throw response;
+  // Same reason as `createCard` below: this runs inside the same activation
+  // try-block, so a bare Response here is rendered as the generic
+  // "Something went wrong. Please try again." too.
+  if (!response.ok) throw await toApiError(response, 'Failed to record your card agreements');
 
   return response.json();
 };
@@ -660,10 +736,30 @@ export const toApiError = async (
   return new ApiError(response.status, message ?? fallbackMessage, code);
 };
 
-/** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
+/**
+ * Create a Didit verification session. Backend creates the session and returns
+ * session_id, session_token, verification_url.
+ *
+ * `flow` says which product is asking, and the backend gates on it: a `card`
+ * session is the first paid step of a card application and is refused unless the
+ * applicant holds the minimum savings deposit. `onramp` runs the same workflow
+ * ungated — buying crypto with fiat is how a fiat-only user funds their savings
+ * in the first place, so requiring a balance to verify for it would leave them
+ * unable to fund the balance it requires. `va` is the virtual-account workflow.
+ *
+ * `countryCode` is read for the CARD flow only, and only to be REFUSED on: a
+ * Didit session is a card application to Rain, and Rain must not take an
+ * applicant Wirex serves. The backend prefers the user's stored country and
+ * falls back to this one, which matters for the case that produced the bug —
+ * an account seconds old has no stored country, so without this the server has
+ * nothing to check and the applicant is pinned to Rain for good. Nothing here
+ * is written as the user's residence, so an IP-detected country is safe to
+ * send; the worst it can do is send a traveller to confirm where they live.
+ */
 export const createDiditSession = async (
   callback?: string,
-  flow: 'card' | 'va' = 'card',
+  flow: 'card' | 'va' | 'onramp' = 'card',
+  countryCode?: string,
 ): Promise<DiditSessionResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
@@ -674,10 +770,44 @@ export const createDiditSession = async (
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-    body: JSON.stringify({ ...(callback ? { callback } : {}), flow }),
+    body: JSON.stringify({
+      ...(callback ? { callback } : {}),
+      flow,
+      ...(countryCode ? { countryCode } : {}),
+    }),
   });
   if (!response.ok) {
     throw await toApiError(response, 'Failed to create verification session');
+  }
+  return response.json();
+};
+
+/**
+ * Submit an already-approved identity verification to the card issuer, now that
+ * the applicant is holding the minimum savings deposit again.
+ *
+ * Backs the "deposit and hold" step: verification passed, but the application
+ * was parked because the deposit that cleared step one had been moved out. The
+ * server re-reads the savings balance on-chain — once, at the moment of the
+ * decision, never from a cache — and only submits if the money is really there.
+ *
+ * Resolves rather than throwing when the applicant is still short: the answer
+ * comes back as `status: 'deposit_required'` with the balance the server read,
+ * which the step renders as its own state.
+ */
+export const resumeRainKycForward = async (): Promise<ResumeRainForwardResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/rain-forward`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    throw await toApiError(response, 'Failed to submit your application');
   }
   return response.json();
 };
@@ -938,7 +1068,12 @@ export const createCard = async (): Promise<CardResponse> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  // Throwing the bare Response here is why every activation failure reached the
+  // user as "Something went wrong. Please try again.": the caller renders
+  // `error instanceof Error ? error.message : <fallback>`, and a Response is not
+  // an Error, so the backend's reason — "Cards are not available in Bangladesh
+  // (BD) yet.", "KYC is not approved." — was discarded unread every time.
+  if (!response.ok) throw await toApiError(response, 'Failed to activate your card');
 
   return response.json();
 };
@@ -1830,6 +1965,35 @@ export const optInToRewards = async (): Promise<RewardsUserData> => {
   return response.json();
 };
 
+/**
+ * Start the tier trial the user has been given — an admin gift, or the welcome
+ * offer they qualified for.
+ *
+ * The duration runs from this call rather than from when the trial was issued,
+ * so nothing is lost by leaving a gift unopened. Idempotent server-side: a
+ * double tap reports the running trial instead of restarting its clock.
+ *
+ * Returns the whole rewards payload so the new tier and its countdown can be
+ * painted from one response.
+ */
+export const activateTierTrial = async (): Promise<RewardsUserData> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/trial/activate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
   return Promise.resolve(MOCK_TIER_BENEFITS);
 };
@@ -1844,6 +2008,101 @@ export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
         ...getPlatformHeaders(),
       },
       credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The product fee rates this user currently pays.
+ *
+ * Read per user rather than from a published table: the rate depends on the
+ * tier, and the tier depends on points and FUSE staking that only the server
+ * can resolve. One call returns every product so a screen renders its whole fee
+ * table from a single snapshot.
+ */
+export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/rates`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** What this user would pay on a given amount, right now. */
+export const fetchProductFeeQuote = async (
+  product: FeeProduct,
+  baseAmountUsd: number,
+): Promise<ProductFeeQuote> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/quote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ product, baseAmountUsd }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Tell the backend a swap fee was collected on-chain.
+ *
+ * Idempotent on the transaction hash, so a retry after a dropped response
+ * records the fee once. The server re-checks the amount against the user's live
+ * tier, so this reports what moved rather than asserting what was owed.
+ */
+export const recordSwapFee = async (
+  params: RecordSwapFeeParams,
+): Promise<{ recorded: boolean; feeAmountUsd: string }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/swap`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Tell the backend a stocks trading fee was collected on-chain.
+ *
+ * Keyed on the CoW order uid rather than a transaction hash: the pre-sign batch
+ * is what we broadcast, but the order is what fills, and one batch is one order.
+ */
+export const recordStocksFee = async (
+  params: RecordStocksFeeParams,
+): Promise<{ recorded: boolean; feeAmountUsd: string }> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/product-fees/stocks`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(params),
     },
   );
   if (!response.ok) throw response;
@@ -2522,6 +2781,28 @@ export const verifySignupOtp = async (
 };
 
 /**
+ * Whether a username can be claimed, and the reason when it cannot (public).
+ * The server owns the reserved-name list and uniqueness, so this is the only
+ * way the signup form can report either.
+ */
+export const checkUsernameAvailability = async (
+  username: string,
+): Promise<{ available: boolean; reason?: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username-availability/${encodeURIComponent(username)}`,
+    {
+      method: 'GET',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { available: boolean; reason?: string };
+};
+
+/**
  * Step 3: Create account with email auth proof and optional passkey data (public)
  */
 export const emailSignUp = async (
@@ -2532,6 +2813,7 @@ export const emailSignUp = async (
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,
+  username?: string,
 ) => {
   const body: Record<string, any> = {
     email,
@@ -2542,6 +2824,10 @@ export const emailSignUp = async (
   };
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
+  // Omitted rather than sent empty: the server derives a name from the email
+  // when no username is supplied, which is the path the reviewer account and
+  // any older client still take.
+  if (username) body.username = username;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
     method: 'POST',
@@ -2552,7 +2838,22 @@ export const emailSignUp = async (
     credentials: 'include',
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw response;
+  if (!response.ok) {
+    // Surface the server's reason: the caller decides which step to return to
+    // from it (a taken username is fixed on a different screen than a failed
+    // account creation), and it is what the user is shown.
+    const data = await response.json().catch(() => null);
+    // Nest reports a single failure as a string and validation failures as an
+    // array of them.
+    const message = Array.isArray(data?.message) ? data.message.join('. ') : data?.message;
+    const error = new Error(message || 'Failed to create account. Please try again.') as Error & {
+      status: number;
+      data: unknown;
+    };
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
   return response.json();
 };
 
@@ -3117,6 +3418,32 @@ export const getWirexCardRegistration = async (
 };
 
 /**
+ * Whether this user may see the spend-mode picker and the borrow position.
+ *
+ * Its own request rather than a field on the registration read, and deliberately so: that
+ * read is a live chain call, and a rollout gate has no business being unavailable because
+ * Fuse is lagging. This is one indexed Mongo lookup.
+ */
+export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-mode/access`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
  * Record a completed registration and get the re-read status back.
  *
  * This grants nothing — the Safe registered itself with its own owner signature — it
@@ -3434,7 +3761,17 @@ export const verifyRecoveryOtp = async (
   otpCode: string,
   email: string,
   publicKey: string,
-): Promise<{ credentialBundle: string; userId: string; organizationId: string }> => {
+): Promise<{
+  credentialBundle: string;
+  userId: string;
+  organizationId: string;
+  /**
+   * When the session minted here stops being able to act, as epoch ms. The
+   * add-passkey step that follows cannot renew it, so it checks this rather
+   * than offering a retry that cannot succeed.
+   */
+  expiresAt?: number;
+}> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-recovery-otp`,
     {

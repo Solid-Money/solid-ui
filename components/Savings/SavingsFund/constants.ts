@@ -80,11 +80,11 @@ export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
  * WFUSE for soFUSE. `vaultToken` omitted means "no vault picked": the full list,
  * which is what the tests and any caller predating per-vault screens expect.
  *
- * `card_deposit` is the card's "Deposit at least $5" gate, which completes off
- * the soUSD balance alone — so it offers only the stablecoins that mint soUSD,
+ * `card_deposit` is the card's minimum-deposit gate, which completes off the
+ * soUSD balance alone — so it offers only the stablecoins that mint soUSD,
  * whichever vault happens to be selected. Were ETH or WFUSE on offer there, a
- * user could deposit the full $5, fund soETH / soFUSE instead, and leave the
- * step stuck at "not met" with nothing on screen explaining why.
+ * user could deposit the whole minimum, fund soETH / soFUSE instead, and leave
+ * the step stuck at "not met" with nothing on screen explaining why.
  */
 export const getSavingsFundTokenGroups = (
   intent: SavingsFundIntent,
@@ -99,6 +99,22 @@ export const getSavingsFundTokenGroups = (
     crypto: intent === 'card_deposit' ? [] : forVault(SAVINGS_FUND_CRYPTO),
   };
 };
+
+/**
+ * Whether this intent offers the connect-an-external-wallet routes — the
+ * desktop "Connect wallet" row and the mobile "Deposit from an external wallet"
+ * sub-screen, which are two doors onto the same WalletConnect flow.
+ *
+ * Off for `card_deposit`. That step exists to get money in before we pay a
+ * verification fee, and it is judged on one thing: does the applicant hold soUSD
+ * afterwards. Every extra route on the screen is another way to end up somewhere
+ * that does not answer that question, and this one is the least used of them, so
+ * the card's steps show the direct-deposit path and nothing else. "Move from
+ * wallet" survives because it is the fastest route of all for someone already
+ * holding stablecoins in Solid, and it lands in the same place.
+ */
+export const offersExternalWalletFunding = (intent: SavingsFundIntent): boolean =>
+  intent !== 'card_deposit';
 
 /** Deposits are credited within roughly this window on every supported chain. */
 export const SAVINGS_FUND_ESTIMATED_TIME = '~3 min';

@@ -16,6 +16,7 @@ import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdo
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
 import PageLayout from '@/components/PageLayout';
+import TierTrialSlot from '@/components/Rewards/NewRewards/TierTrialSlot';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
@@ -266,6 +267,7 @@ export default function HomeScreenNew() {
               hasCard={userHasCard}
               last4={cardDetails?.card_details?.last_4}
               depositCompleted={depositCompleted}
+              hasCtaBanner={isPromptReady}
             />
           )}
           {isPromptReady && promptKey && (
@@ -277,6 +279,9 @@ export default function HomeScreenNew() {
               />
             </HeroExit>
           )}
+          {/* A tier trial the user has been given or is running. Renders
+              nothing when they have neither, which is the common case. */}
+          <TierTrialSlot />
           {/* Renders nothing at all when no banner is targeted at this build and
               the hardcoded cashback promo is still paused, so the slot leaves no
               gap behind. */}

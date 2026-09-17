@@ -86,9 +86,9 @@ export const resolveCardIssuer = ({
 
 /**
  * Where an active-card user should land: always the card details surface (the
- * wallet with its card pane open, `/?screen=card-info`). Bangladesh's
- * minimum-deposit gate now runs BEFORE card issuance (into savings), so anyone
- * who already holds a card has cleared it — there's no reason to bounce them
- * back to the issuance flow.
+ * wallet with its card pane open, `/?screen=card-info`). The minimum-deposit
+ * gate runs BEFORE card issuance (into savings), so anyone who already holds a
+ * card has cleared it — there's no reason to bounce them back to the issuance
+ * flow.
  */
 export const getActiveCardRoute = (_cardStatus?: CardStatusResponse | null): Href => path.CARD_INFO;

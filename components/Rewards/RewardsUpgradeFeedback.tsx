@@ -1,23 +1,37 @@
-import { useEffect } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
 
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Text } from '@/components/ui/text';
-import { getTierDisplayName } from '@/constants/rewards';
-import { useRewardsUserData } from '@/hooks/useRewards';
+import TierPopup from '@/components/Rewards/NewRewards/TierPopup';
 import {
-  getConfirmedUpgradeBenefits,
-  REWARDS_RECONCILIATION_INTERVAL_MS,
-} from '@/lib/rewardsUpgrade';
+  benefitsForTier,
+  tierPopupStats,
+  upgradeCelebrationCopy,
+} from '@/components/Rewards/NewRewards/tierTrialCopy';
+import { path } from '@/constants/path';
+import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
+import { REWARDS_RECONCILIATION_INTERVAL_MS } from '@/lib/rewardsUpgrade';
 import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
+/**
+ * The tier-upgrade celebration, shown once per observed promotion.
+ *
+ * Mounted on the protected layout rather than on the rewards screen, because a
+ * tier can arrive from anywhere: a points milestone reached while spending, a
+ * FUSE deposit confirming in Savings, or a trial the user just activated from a
+ * banner on the wallet screen. Whichever it was, `useRewardsUpgradeStore`
+ * notices `currentTier` rising between two reads of the rewards payload and
+ * hands it here — so all three routes get the same celebration and none of them
+ * has to open it itself.
+ *
+ * The words change with the route (see `upgradeCelebrationCopy`); the card does
+ * not (Figma 25480:2355).
+ */
 export default function RewardsUpgradeFeedback() {
-  const { height } = useWindowDimensions();
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const state = useRewardsUpgradeStore();
   const active = userId === state.userId;
+  const { data: tierBenefits } = useTierBenefits();
   useRewardsUserData({
     refetchInterval: active && state.pendingUntil ? REWARDS_RECONCILIATION_INTERVAL_MS : false,
   });
@@ -29,40 +43,38 @@ export default function RewardsUpgradeFeedback() {
   }, [active, state.pendingUntil, state.finishWaiting]);
 
   const success = active ? state.success : undefined;
+
+  // Held after dismissal so the card can animate out: `dismiss` clears
+  // `success`, and unmounting the popup on that would make it vanish rather
+  // than fade. Only ever moves forward onto a real upgrade.
+  const [shown, setShown] = useState(success);
+  useEffect(() => {
+    if (success) setShown(success);
+  }, [success]);
+
+  if (!shown) return null;
+
+  const copy = upgradeCelebrationCopy(shown);
+
   return (
-    <Dialog
-      open={!!success}
-      onOpenChange={open => {
-        if (!open) state.dismiss();
+    <TierPopup
+      isOpen={!!success}
+      tier={shown.currentTier}
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      body={copy.body}
+      // The tier's own benefits, not this user's rates: an override pinned to
+      // one cardholder is not what "Welcome to Prime" is announcing.
+      stats={tierPopupStats(benefitsForTier(tierBenefits, shown.currentTier))}
+      note={copy.note}
+      primaryLabel="Explore benefits"
+      onPrimary={() => {
+        state.dismiss();
+        router.push(path.REWARDS_BENEFITS);
       }}
-    >
-      <DialogContent className="w-[90%] max-w-md rounded-3xl bg-[#1C1C1C] p-6">
-        <DialogTitle className="text-2xl text-white">
-          {success ? `${getTierDisplayName(success.currentTier)} unlocked` : 'Tier upgraded'}
-        </DialogTitle>
-        <ScrollView style={{ maxHeight: height * 0.6 }}>
-          <Text className="text-white/70">
-            Your new tier is confirmed. Your benefits now include:
-          </Text>
-          <View className="gap-3 py-3">
-            {success &&
-              getConfirmedUpgradeBenefits(success).map(benefit => (
-                <Text key={benefit} className="text-base text-white">
-                  {benefit}
-                </Text>
-              ))}
-          </View>
-          {success?.fuseSkipLine?.enabled &&
-            success.fuseSkipLine.unlockedTier === success.currentTier && (
-              <Text className="text-sm text-white/70">
-                Keep the required FUSE in Savings to retain this tier through FUSE eligibility.
-              </Text>
-            )}
-        </ScrollView>
-        <Button variant="brand" onPress={state.dismiss}>
-          <Text>Got it</Text>
-        </Button>
-      </DialogContent>
-    </Dialog>
+      secondaryLabel="Done"
+      onSecondary={state.dismiss}
+      footnote="Benefits and monthly limits apply."
+    />
   );
 }

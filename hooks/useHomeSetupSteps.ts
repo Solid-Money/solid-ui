@@ -5,6 +5,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useDepositStore } from '@/store/useDepositStore';
 
 export interface HomeSetupStep {
@@ -40,18 +41,45 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
   const { steps: cardSteps } = useCardSteps(cardStatus?.kycStatus, cardStatus);
 
   return useMemo(() => {
-    // Look these up by key, not index: for deposit-required (BD) users the card
-    // flow now leads with a "deposit first" step, so KYC/activate aren't at
-    // fixed positions anymore.
+    // Look these up by key, not index: the card flow leads with a "deposit
+    // first" step for gated applicants and can grow a "deposit and hold" step
+    // after it, so KYC/activate aren't at fixed positions anymore.
     const kycStep = cardSteps.find(step => step.key === 'kyc');
     const cardStep = cardSteps.find(step => step.key === 'activate');
+    // Whether the card flow is currently blocked on the minimum savings deposit
+    // — either the first step is unmet, or an approved verification is parked
+    // waiting for the money to come back.
+    //
+    // This card is a side entrance: it invokes each step's action directly and
+    // so does NOT inherit the activation screen's sequential gating, which is
+    // what stops KYC being started before the deposit is in. Without this check,
+    // "Verify your identity" from here opens a verification the backend refuses,
+    // and the user meets the requirement as an error rather than as a step.
+    //
+    // These CTAs deliberately route into the card flow rather than firing the
+    // deposit action from here: the step's own copy is what explains why money
+    // is being asked for, and a bare deposit sheet under a button labelled
+    // "Verify your identity" explains nothing.
+    const blockedOnDeposit = cardSteps.some(
+      step => (step.key === 'deposit' || step.key === 'hold') && !step.completed,
+    );
 
     const openDeposit = () => useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     // Card onboarding starts at country selection (same entry ReserveCardButton and
     // useCountryCheck use). These steps used to fall back to `/card`, the deprecated
     // waitlist page — and they fall back often: `activate` has no onPress until KYC
     // is complete, and `kyc` has none while its button is disabled.
-    const startCardOnboarding = () => router.push(path.CARD_COUNTRY_SELECTION);
+    //
+    // "While its button is disabled" includes a verification that is submitted and
+    // waiting on a decision, and for that case country selection is the wrong
+    // fallback in both directions: it restarts onboarding the applicant finished,
+    // and the KYC session it leads to is refused once a provider consumer exists.
+    // The issuance screen is where that state belongs — it renders "your card is
+    // on its way".
+    const startCardOnboarding = () =>
+      router.push(
+        isKycAwaitingDecision(cardStatus) ? path.CARD_ACTIVATE : path.CARD_COUNTRY_SELECTION,
+      );
 
     const steps: HomeSetupStep[] = [
       {
@@ -60,7 +88,7 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         description: '3 min to unlock all features',
         cta: 'Verify your identity',
         completed: Boolean(kycStep?.completed),
-        onPress: kycStep?.onPress ?? startCardOnboarding,
+        onPress: (blockedOnDeposit ? undefined : kycStep?.onPress) ?? startCardOnboarding,
       },
       {
         key: 'card',
@@ -69,7 +97,10 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
         cta: 'Get your card',
         completed: Boolean(cardStep?.completed),
         // No activate action means KYC isn't done yet, so send them to that instead.
-        onPress: cardStep?.onPress ?? kycStep?.onPress ?? startCardOnboarding,
+        onPress:
+          cardStep?.onPress ??
+          (blockedOnDeposit ? undefined : kycStep?.onPress) ??
+          startCardOnboarding,
       },
       {
         key: 'deposit',
@@ -85,5 +116,5 @@ export function useHomeSetupSteps(depositCompleted: boolean): HomeSetupStepsResu
     const firstIncomplete = steps.find(step => !step.completed);
 
     return { steps, completedCount, total: steps.length, firstIncomplete };
-  }, [cardSteps, depositCompleted, router]);
+  }, [cardSteps, cardStatus, depositCompleted, router]);
 }

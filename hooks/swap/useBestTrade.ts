@@ -1,7 +1,8 @@
-import { Currency, CurrencyAmount, Route, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 import { useMemo } from 'react';
+import { Currency, CurrencyAmount, Route, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 
 import { TradeState, TradeStateType } from '@/lib/types/trade-state';
+
 import { useAllRoutes } from './useAllRoutes';
 import { useQuotesResults } from './useQuotesResults';
 

@@ -2,6 +2,7 @@ import React, { Children, Fragment, ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Minus, Plus } from 'lucide-react-native';
 
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,15 @@ const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
 type CardFundGroupProps = {
   /** Section heading rendered above the card (e.g. "Stablecoins"). */
   label?: string;
+  /**
+   * Explains the group, behind a "?" beside the heading. For the constraints a
+   * user only discovers by breaking them — which token on which network, and to
+   * which address — where a permanent line of copy would push the rows off the
+   * first screen.
+   */
+  labelTooltip?: string;
+  /** Analytics context for {@link labelTooltip}. */
+  labelTooltipContext?: string;
   /**
    * Rows to show before a "Show more" footer takes over; the rest stay hidden
    * until it is tapped. Omit to always render every row.
@@ -26,7 +36,14 @@ const Divider = () => <View className="h-px bg-white/[0.06]" />;
  * Rounded card that stacks `CardFundRow`s, hairline-divided, under an optional
  * section label.
  */
-const CardFundGroup = ({ label, maxVisibleRows, children, className }: CardFundGroupProps) => {
+const CardFundGroup = ({
+  label,
+  labelTooltip,
+  labelTooltipContext,
+  maxVisibleRows,
+  children,
+  className,
+}: CardFundGroupProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const rows = Children.toArray(children).filter(Boolean);
 
@@ -35,7 +52,14 @@ const CardFundGroup = ({ label, maxVisibleRows, children, className }: CardFundG
 
   return (
     <View className={cn('gap-y-4', className)}>
-      {label ? <Text className="text-base leading-4 text-white/50">{label}</Text> : null}
+      {label ? (
+        <View className="flex-row items-center gap-x-2">
+          <Text className="text-base leading-4 text-white/50">{label}</Text>
+          {labelTooltip ? (
+            <TooltipPopover text={labelTooltip} analyticsContext={labelTooltipContext} />
+          ) : null}
+        </View>
+      ) : null}
       <View className="overflow-hidden rounded-[15px] bg-card">
         {visibleRows.map((row, index) => (
           <Fragment key={index}>

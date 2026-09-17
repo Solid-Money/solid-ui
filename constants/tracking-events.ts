@@ -226,6 +226,11 @@ export const TRACKING_EVENTS = {
   EMAIL_VERIFICATION_FAILED: 'email_verification_failed',
   EMAIL_SKIPPED: 'email_skipped',
 
+  // Username Events
+  USERNAME_STEP_VIEWED: 'username_step_viewed',
+  USERNAME_SUBMITTED: 'username_submitted',
+  USERNAME_UNAVAILABLE: 'username_unavailable',
+
   // Passkey Events
   PASSKEY_ADDED: 'passkey_added',
   PASSKEY_SKIPPED: 'passkey_skipped',
@@ -241,6 +246,15 @@ export const TRACKING_EVENTS = {
 
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
+
+  // Push notification events. The backend stamps every push with the campaign
+  // that sent it (utm_source / utm_medium=push / utm_campaign) and the deep
+  // link it points at; the tap handler records the open and writes that
+  // campaign into the attribution store, so the deposit and card-payment events
+  // that follow in the same session carry it too. Before this, `utm_medium` in
+  // Amplitude had sixteen values and `push` was not one of them — no push had
+  // ever been credited with a deposit.
+  PUSH_NOTIFICATION_OPENED: 'push_notification_opened',
 
   // Home CTA banner events — the one next-step card under the wallet card,
   // whichever rung of the funnel the user is on (Figma 25141:6965).
@@ -337,6 +351,14 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_DISABLE_COMPLETED: 'card_spend_disable_completed',
   CARD_SPEND_DISABLE_FAILED: 'card_spend_disable_failed',
   CARD_SPEND_DISABLE_CANCELLED: 'card_spend_disable_cancelled',
+  // Changing how the card is funded — cash, credit, or smart. The first change off cash
+  // also migrates the Safe from the v1 module to v2, which `migrated` on the completed
+  // event distinguishes: a first switch costs a four-call batch and every later one is a
+  // single `setMode`, and they are worth telling apart in the funnel.
+  CARD_SPEND_MODE_CHANGE_PRESSED: 'card_spend_mode_change_pressed',
+  CARD_SPEND_MODE_CHANGE_COMPLETED: 'card_spend_mode_change_completed',
+  CARD_SPEND_MODE_CHANGE_FAILED: 'card_spend_mode_change_failed',
+  CARD_SPEND_MODE_CHANGE_CANCELLED: 'card_spend_mode_change_cancelled',
   // Changing the caps on an existing registration. Separate from the register funnel
   // because it is a returning user tuning a live card, not a new one being set up, and
   // the two directions are genuinely different products of the contract: a decrease
@@ -379,6 +401,11 @@ export const TRACKING_EVENTS = {
   STORE_REVIEW_SKIPPED: 'store_review_skipped',
   STORE_REVIEW_UNAVAILABLE: 'store_review_unavailable',
   STORE_REVIEW_ERROR: 'store_review_error',
+
+  // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
+  TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
+  TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
+  TRUSTPILOT_REVIEW_LINK_OPENED: 'trustpilot_review_link_opened',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

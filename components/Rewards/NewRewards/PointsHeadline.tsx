@@ -27,10 +27,16 @@ const SUFFIX_STYLE: TextStyle = {
 interface PointsHeadlineProps {
   tier: RewardsTier;
   points: number;
+  /**
+   * Rendered between the tier name and the points count — where the design puts
+   * the trial countdown, because a tier the user holds only temporarily is the
+   * first thing to say about the tier just above it.
+   */
+  badge?: React.ReactNode;
 }
 
 /** Current-tier badge + compact points count (e.g. "Prime" / "10.5M Points"). */
-const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
+const PointsHeadline = ({ tier, points, badge }: PointsHeadlineProps) => {
   const formattedPoints = compactNumberFormat(points ?? 0);
   const numberParts = formattedPoints.match(/^([\d,]+)(\.\d+)?(.*)$/);
   const fadedNumberPart = numberParts ? `${numberParts[2] ?? ''}${numberParts[3] ?? ''}` : '';
@@ -51,6 +57,7 @@ const PointsHeadline = ({ tier, points }: PointsHeadlineProps) => {
           {getTierDisplayName(tier)}
         </Text>
       </View>
+      {badge}
       <View className="flex-row items-baseline">
         <Text style={NUMBER_STYLE}>{numberParts ? numberParts[1] : formattedPoints}</Text>
         {fadedNumberPart ? <Text style={DECIMAL_STYLE}>{fadedNumberPart}</Text> : null}

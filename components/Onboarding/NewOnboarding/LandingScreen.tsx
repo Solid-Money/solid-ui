@@ -1,11 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
+
+import { getLandingLayout, LOGO_LOCKUP_HEIGHT, MAX_FONT_SCALE } from './landingLayout';
 
 interface LandingScreenProps {
   /** Advances the flow to the Welcome step (opens the auth sheet). */
@@ -21,37 +23,75 @@ interface LandingScreenProps {
  * The hero image and dark scrim are provided by the parent (OnboardingNew) so
  * they persist while the Welcome sheet animates in on top.
  *
+ * The hero text is laid out in flow rather than pinned to the Figma frame's
+ * absolute offsets, so a headline that wraps onto an extra line pushes the
+ * description down instead of overlapping it. See `landingLayout` for the
+ * metrics and the reasoning.
+ *
  * Figma: node 20048-2441.
  */
 export function LandingScreen({ onGetStarted, onLogin, isLoginPending }: LandingScreenProps) {
   const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 20);
+  const { width, height } = useWindowDimensions();
+  const layout = getLandingLayout({
+    width,
+    height,
+    topInset: insets.top,
+    bottomInset: insets.bottom,
+  });
+  const bottomInset = layout.bottomInset;
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      {/* Solid logo lockup */}
-      <View accessible accessibilityLabel="Solid" style={styles.logoLockup}>
-        <Image
-          source={getAsset('images/onboarding-landing-mark.svg')}
-          alt=""
-          style={styles.logoMark}
-          contentFit="fill"
-        />
-        <Image
-          source={getAsset('images/onboarding-landing-solid.svg')}
-          alt=""
-          style={styles.logoWord}
-          contentFit="fill"
-        />
+      <View style={[styles.heroContent, { paddingTop: layout.paddingTop }]}>
+        {/* Solid logo lockup */}
+        <View accessible accessibilityLabel="Solid" style={styles.logoLockup}>
+          <Image
+            source={getAsset('images/onboarding-landing-mark.svg')}
+            alt=""
+            style={styles.logoMark}
+            contentFit="fill"
+          />
+          <Image
+            source={getAsset('images/onboarding-landing-solid.svg')}
+            alt=""
+            style={styles.logoWord}
+            contentFit="fill"
+          />
+        </View>
+
+        <Text
+          className="font-normal text-white"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[
+            styles.title,
+            {
+              width: layout.textWidth,
+              marginTop: layout.titleMarginTop,
+              fontSize: layout.titleFontSize,
+              lineHeight: layout.titleLineHeight,
+            },
+          ]}
+        >
+          The stablecoin money app
+        </Text>
+
+        <Text
+          className="font-normal text-white/70"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[
+            styles.description,
+            {
+              width: layout.textWidth,
+              marginTop: layout.descriptionMarginTop,
+              fontSize: layout.descriptionFontSize,
+              lineHeight: layout.descriptionLineHeight,
+            },
+          ]}
+        >
+          A dollar account for anyone, anywhere. Save, earn, and spend globally with your Solid card
+        </Text>
       </View>
-
-      <Text className="font-normal text-white" style={styles.title}>
-        The stablecoin money app
-      </Text>
-
-      <Text className="font-normal text-white/70" style={styles.description}>
-        A dollar account for anyone, anywhere. Save, earn, and spend globally with your Solid card
-      </Text>
 
       <Button
         variant="secondary"
@@ -59,7 +99,12 @@ export function LandingScreen({ onGetStarted, onLogin, isLoginPending }: Landing
         style={{ bottom: bottomInset + 48 }}
         onPress={onGetStarted}
       >
-        <Text className="text-[18px] font-semibold text-black">Get started</Text>
+        <Text
+          className="text-[18px] font-semibold text-black"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+        >
+          Get started
+        </Text>
       </Button>
 
       <Pressable
@@ -71,7 +116,11 @@ export function LandingScreen({ onGetStarted, onLogin, isLoginPending }: Landing
         disabled={isLoginPending}
         hitSlop={12}
       >
-        <Text className="text-center font-normal text-white" style={styles.loginLink}>
+        <Text
+          className="text-center font-normal text-white"
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={styles.loginLink}
+        >
           Already have an account? Log in
         </Text>
       </Pressable>
@@ -80,13 +129,15 @@ export function LandingScreen({ onGetStarted, onLogin, isLoginPending }: Landing
 }
 
 const styles = StyleSheet.create({
+  // Top-anchored flow column. Sized to its content, so it never covers the
+  // bottom-anchored CTA or swallows its touches.
+  heroContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
   logoLockup: {
-    position: 'absolute',
-    top: 97,
-    left: '50%',
     width: 92.046,
-    height: 27.092,
-    marginLeft: -46.023,
+    height: LOGO_LOCKUP_HEIGHT,
   },
   logoMark: {
     position: 'absolute',
@@ -102,29 +153,17 @@ const styles = StyleSheet.create({
     width: 63.516,
     height: 24.903,
   },
+  // fontSize, lineHeight, width and the gap above are supplied per-device by
+  // `getLandingLayout`.
   title: {
-    position: 'absolute',
-    top: 157,
-    left: '50%',
-    width: 303,
-    marginLeft: -151.5,
     color: '#fff',
     fontFamily: 'MonaSans_400Regular',
-    fontSize: 44,
-    lineHeight: 44,
     letterSpacing: -2,
     textAlign: 'center',
   },
   description: {
-    position: 'absolute',
-    top: 268,
-    left: '50%',
-    width: 303,
-    marginLeft: -151.5,
     color: 'rgba(255, 255, 255, 0.7)',
     fontFamily: 'MonaSans_400Regular',
-    fontSize: 18,
-    lineHeight: 21.6,
     textAlign: 'center',
   },
   loginLink: {
