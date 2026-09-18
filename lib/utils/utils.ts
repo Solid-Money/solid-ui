@@ -123,6 +123,32 @@ let globalLogoutHandler: (() => void) | null = null;
 
 let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
 
+/**
+ * Ensures a single token-refresh HTTP request is in flight at any time.
+ * Tokens are persisted to the store exactly once by the originating call.
+ * Any concurrent caller attaches to the same promise instead of firing a
+ * second HTTP request.
+ */
+export const ensureTokenRefreshed = (): Promise<AuthTokens | null> => {
+  if (!refreshTokenPromise) {
+    refreshTokenPromise = refreshToken()
+      .then(async response => {
+        const data: { tokens: AuthTokens } = await response.json();
+        const tokens = data.tokens;
+        // Save tokens exactly once, here inside the chain, so that every
+        // concurrent waiter on this promise does NOT call saveNewTokens again.
+        if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
+          saveNewTokens(tokens);
+        }
+        return tokens;
+      })
+      .finally(() => {
+        refreshTokenPromise = null;
+      });
+  }
+  return refreshTokenPromise;
+};
+
 // Flag to suppress session-expired handler during intentional logout
 let isLoggingOut = false;
 
@@ -164,28 +190,22 @@ export const withRefreshToken = async <T>(
     }
 
     try {
-      // Use existing refresh token promise if one is in progress
+      // Track whether this caller is the one starting the refresh so we can
+      // stagger non-originating waiters after the promise resolves.
       const isNewRefresh = !refreshTokenPromise;
-      if (isNewRefresh) {
-        refreshTokenPromise = refreshToken()
-          .then(async response => {
-            const data: { tokens: AuthTokens } = await response.json();
-            return data.tokens;
-          })
-          .finally(() => {
-            refreshTokenPromise = null;
-          });
-      } else {
+      if (!isNewRefresh) {
         console.warn('[TokenRefresh] Reusing in-flight token refresh');
       }
 
-      const tokens = await refreshTokenPromise;
+      // ensureTokenRefreshed deduplicates the HTTP call and saves tokens once.
+      await ensureTokenRefreshed();
 
-      // Only save new tokens on mobile platforms
-      // On web, we don't need to save new tokens
-      // because the browser will handle it
-      if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
-        saveNewTokens(tokens);
+      // Non-originating callers yield one event-loop tick before retrying their
+      // original request. This spreads the fan-out of concurrent retries across
+      // multiple ticks, preventing a single microtask avalanche on the JS thread
+      // that can cause GC pressure and an ANR on the Android main thread.
+      if (!isNewRefresh) {
+        await new Promise<void>(r => setTimeout(r, 0));
       }
     } catch (refreshTokenError) {
       if (onError) {

@@ -3,7 +3,7 @@ import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
-import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { fetchActivityEvents, getActivityStreamUrl } from '@/lib/api';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
 import {
   ActivityEvent,
@@ -13,7 +13,7 @@ import {
   SSEEventData,
   SSEPingData,
 } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { ensureTokenRefreshed, withRefreshToken } from '@/lib/utils';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -308,38 +308,17 @@ class SSEConnectionManager {
       return this.refreshPromise;
     }
 
-    // Create a new refresh promise to prevent race conditions
+    // Delegate to the app-wide shared token-refresh mechanism so that a
+    // concurrent SSE 401 and API 401 share a single HTTP refresh request
+    // rather than firing two independent ones.
     this.refreshPromise = (async () => {
       try {
-        const { users, updateUser } = useUserStore.getState();
-        const currentUser = users.find(user => user.selected);
-
-        if (!currentUser?.tokens?.refreshToken) {
-          return false;
-        }
-
-        // refreshToken() gets the refresh token internally and returns a Response
-        const response = await refreshToken();
-        const data = (await response.json()) as {
-          tokens: { accessToken: string; refreshToken: string };
-        };
-
-        if (data?.tokens?.accessToken && data?.tokens?.refreshToken) {
-          // Update tokens in store
-          updateUser({
-            ...currentUser,
-            tokens: {
-              accessToken: data.tokens.accessToken,
-              refreshToken: data.tokens.refreshToken,
-            },
-          });
-
+        const tokens = await ensureTokenRefreshed();
+        if (tokens) {
           // Properly disconnect and reconnect with new token
-          // This ensures clean state and prevents race conditions
           this.reconnect();
           return true;
         }
-
         return false;
       } catch (error) {
         Sentry.captureException(error, {
