@@ -26,6 +26,7 @@ import {
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
+import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { useIntercom } from '@/lib/intercom';
 import { destroyOnramper } from '@/lib/onramper';
 import { pimlicoClient } from '@/lib/pimlico';
@@ -431,7 +432,7 @@ const useUser = (): UseUserReturn => {
             ? 'User not found, please sign up'
             : error?.message || 'Network request timed out';
 
-      if (error?.name === 'NotAllowedError') {
+      if (isWebAuthnUserCancelledError(error)) {
         errorMessage = 'User cancelled login';
         Sentry.captureMessage(errorMessage, {
           level: 'warning',
