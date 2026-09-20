@@ -89,6 +89,12 @@ export interface ExternalWalletState {
   disconnect?: (wallet: Wallet) => void;
 }
 
+/** Chain and currency the wallet deposit address screen is showing. */
+export interface WalletDepositSelection {
+  chainId?: number;
+  symbol?: string;
+}
+
 interface DepositState {
   currentModal: DepositModal;
   previousModal: DepositModal;
@@ -107,6 +113,16 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
+  /**
+   * Chain and currency chosen for the wallet deposit address ("Show deposit
+   * address" -> "Select chain" -> the address).
+   *
+   * In the store rather than in the address screen's own state because the chain
+   * is picked on the step before it, and the deposit modal renders each step
+   * without props. Not persisted: which chain someone last looked at is not worth
+   * restoring a week later, and `resetDepositFlow` returns it to the default.
+   */
+  walletDeposit: WalletDepositSelection;
   /** Transient (not persisted) — populated only on desktop by ThirdwebConnectionBridge. */
   externalWallet: ExternalWalletState;
   setExternalWallet: (data: ExternalWalletState) => void;
@@ -118,6 +134,7 @@ interface DepositState {
   clearBankTransferData: () => void;
   setKycData: (data: Partial<KycData>) => void;
   clearKycData: () => void;
+  setWalletDeposit: (data: Partial<WalletDepositSelection>) => void;
   setSrcChainId: (srcChainId: number) => void;
   setPrincipalToken: (token: string) => void;
   setDirectDepositSession: (data: Partial<DirectDepositSession>) => void;
@@ -141,6 +158,7 @@ export const useDepositStore = create<DepositState>()(
       sessionStartTime: undefined,
       depositFromSolid: false,
       savingsFundIntent: 'savings',
+      walletDeposit: {},
       externalWallet: {
         address: undefined,
         status: 'unknown',
@@ -164,6 +182,7 @@ export const useDepositStore = create<DepositState>()(
       clearBankTransferData: () => set({ bankTransfer: {} }),
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
+      setWalletDeposit: data => set({ walletDeposit: { ...get().walletDeposit, ...data } }),
       setSrcChainId: srcChainId => set({ srcChainId }),
       setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>
@@ -184,6 +203,7 @@ export const useDepositStore = create<DepositState>()(
           sessionStartTime: undefined,
           depositFromSolid: false,
           savingsFundIntent: 'savings',
+          walletDeposit: {},
         }),
     }),
     {

@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
 import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  FadeOutUp,
+  useAnimatedStyle,
+  useReducedMotion,
+  withTiming,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
 
@@ -19,6 +27,8 @@ const ROW_ICON_STYLE = { width: 28, height: 28, borderRadius: 14 };
 const LIST_TOP = 35 + 12;
 /** Tall enough to cover the QR card the open list floats over. */
 const BACKDROP_HEIGHT = 900;
+const OPEN_DURATION_MS = 180;
+const CLOSE_DURATION_MS = 140;
 
 const styles = StyleSheet.create({
   overlay: {
@@ -31,6 +41,8 @@ const styles = StyleSheet.create({
     height: BACKDROP_HEIGHT,
   },
 });
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Option = {
   key: string;
@@ -62,13 +74,34 @@ const Pill = ({
       <View style={PILL_ICON_STYLE} />
     )}
     <Text className="text-base font-semibold leading-none text-white">{option?.label ?? '—'}</Text>
-    <ChevronDown
-      size={16}
-      color="rgba(255,255,255,0.6)"
-      style={isOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
-    />
+    <Chevron isOpen={isOpen} />
   </Pressable>
 );
+
+/** The pill's chevron, turning over as its list opens and closes. */
+const Chevron = ({ isOpen }: { isOpen: boolean }) => {
+  const reduceMotion = useReducedMotion();
+  const style = useAnimatedStyle(() => {
+    const rotate = `${isOpen ? 180 : 0}deg`;
+    return {
+      transform: [
+        {
+          rotate: reduceMotion
+            ? rotate
+            : withTiming(rotate, {
+                duration: isOpen ? OPEN_DURATION_MS : CLOSE_DURATION_MS,
+              }),
+        },
+      ],
+    };
+  }, [isOpen, reduceMotion]);
+
+  return (
+    <Animated.View style={style}>
+      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+    </Animated.View>
+  );
+};
 
 const OptionList = ({
   options,
@@ -79,7 +112,11 @@ const OptionList = ({
   selectedKey: string;
   onSelect: (key: string) => void;
 }) => (
-  <View
+  <Animated.View
+    // Entering/exiting rather than a mounted-and-hidden list: the two pills share
+    // one open slot, so switching between them unmounts one and mounts the other.
+    entering={FadeIn.duration(OPEN_DURATION_MS)}
+    exiting={FadeOutUp.duration(CLOSE_DURATION_MS)}
     className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
     style={styles.overlay}
   >
@@ -97,7 +134,7 @@ const OptionList = ({
         {option.key === selectedKey ? <Check size={18} color="#94F27F" /> : null}
       </Pressable>
     ))}
-  </View>
+  </Animated.View>
 );
 
 type WalletDepositSelectorsProps = {
@@ -174,8 +211,10 @@ const WalletDepositSelectors = ({
       {openPicker ? (
         // Tapping the content the list now covers dismisses it, the way tapping
         // outside a popover would.
-        <Pressable
+        <AnimatedPressable
           accessibilityLabel="Close the list"
+          entering={FadeIn.duration(OPEN_DURATION_MS)}
+          exiting={FadeOut.duration(CLOSE_DURATION_MS)}
           style={[styles.overlay, styles.backdrop]}
           onPress={() => setOpenPicker(null)}
         />

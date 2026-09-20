@@ -12,13 +12,14 @@ import { Text } from '@/components/ui/text';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 
 import {
   getDefaultWalletDepositSelection,
   getWalletDepositMinimum,
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
-  getWalletDepositTokens,
+  resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
 import WalletDepositSelectors from './WalletDepositSelectors';
@@ -50,8 +51,13 @@ const WalletDepositAddress = () => {
   const { user } = useUser();
   const address = user?.safeAddress;
 
-  const [selection, setSelection] = useState(getDefaultWalletDepositSelection);
-  const { chainId, symbol } = selection;
+  // The chain arrives from the "Select chain" step before this one, so the
+  // selection lives in the store rather than here (see `walletDeposit`).
+  const walletDeposit = useDepositStore(state => state.walletDeposit);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
+  const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
+  const chainId = walletDeposit.chainId ?? fallback.chainId;
+  const symbol = walletDeposit.symbol ?? fallback.symbol;
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
 
@@ -67,24 +73,18 @@ const WalletDepositAddress = () => {
   const isScanning = !!address;
   const { isDetected } = useDetectedDirectDeposit({ enabled: isScanning });
 
-  // Switching chain can strand a currency the new one does not carry (USDT off
-  // Fuse, ETH off Base), which would leave the screen quoting a minimum for a
-  // pairing that does not exist.
-  const selectChain = useCallback((nextChainId: number) => {
-    setSelection(current => {
-      const tokens = getWalletDepositTokens(nextChainId);
-      const symbolStillOffered = tokens.some(token => token.symbol === current.symbol);
-
-      return {
+  const selectChain = useCallback(
+    (nextChainId: number) =>
+      setWalletDeposit({
         chainId: nextChainId,
-        symbol: symbolStillOffered ? current.symbol : (tokens[0]?.symbol ?? current.symbol),
-      };
-    });
-  }, []);
+        symbol: resolveWalletDepositSymbol(nextChainId, symbol) ?? symbol,
+      }),
+    [setWalletDeposit, symbol],
+  );
 
   const selectSymbol = useCallback(
-    (nextSymbol: string) => setSelection(current => ({ ...current, symbol: nextSymbol })),
-    [],
+    (nextSymbol: string) => setWalletDeposit({ symbol: nextSymbol }),
+    [setWalletDeposit],
   );
 
   useEffect(() => {

@@ -34,6 +34,7 @@ import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAcco
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
+import WalletDepositNetworks from '@/components/DepositOption/WalletDepositAddress/WalletDepositNetworks';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScreen';
@@ -178,6 +179,7 @@ const useDepositOption = ({
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
+  const isDepositChain = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -398,6 +400,10 @@ const useDepositOption = ({
       return <DepositCashOptions />;
     }
 
+    if (isDepositChain) {
+      return <WalletDepositNetworks />;
+    }
+
     return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
   };
 
@@ -438,6 +444,7 @@ const useDepositOption = ({
     if (isWalletConnector) return 'deposit-wallet-connector';
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
+    if (isDepositChain) return 'deposit-chain';
     return 'deposit-type-selection';
   };
 
@@ -481,6 +488,7 @@ const useDepositOption = ({
     if (isDepositTypeSelection) return undefined;
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
+    if (isDepositChain) return 'Select chain';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -496,7 +504,13 @@ const useDepositOption = ({
     // content than a phone has, and rows wrapped tighter on the wider screen.
     // `md:pb-6` sits under the scroll area's own md:pb-10: these screens end on a
     // card or a button, and on desktop that landed too close to the modal's edge.
-    if (isDepositTypeSelection || isDepositCrypto || isDepositCash || isPublicAddress) {
+    if (
+      isDepositTypeSelection ||
+      isDepositCrypto ||
+      isDepositCash ||
+      isDepositChain ||
+      isPublicAddress
+    ) {
       return 'md:max-w-[480px] md:pb-6';
     }
 
@@ -572,6 +586,7 @@ const useDepositOption = ({
       // two-row list padded out to 40rem is mostly empty card.
       !isDepositCrypto &&
       !isDepositCash &&
+      !isDepositChain &&
       !isPublicAddress
     ) {
       return 'min-h-[40rem]';
@@ -796,13 +811,16 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      // Reached from the crypto branch of the chooser, and from the savings
-      // flow's own external-wallet list — each step back to where it came from.
+      // Reached through the chain list from the crypto branch, and directly from
+      // the savings flow's own external-wallet list — each step back to where it
+      // came from.
       setModal(
         previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
-          : DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO,
+          : DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN,
       );
+    } else if (isDepositChain) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
@@ -927,6 +945,7 @@ const useDepositOption = ({
     isPublicAddress ||
     isDepositCrypto ||
     isDepositCash ||
+    isDepositChain ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -953,7 +972,7 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositCrypto || isDepositCash || isPublicAddress,
+    compactHeader: isDepositCrypto || isDepositCash || isDepositChain || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),

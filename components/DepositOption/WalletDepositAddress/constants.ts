@@ -16,6 +16,9 @@ export type WalletDepositToken = {
   icon: ImageSourcePropType;
 };
 
+/** Deposits land on the Safe within roughly the same window on every chain. */
+export const WALLET_DEPOSIT_ESTIMATED_TIME = '~3 min';
+
 export const WALLET_DEPOSIT_LEARN_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
 
@@ -93,6 +96,23 @@ export const getWalletDepositNetworks = (): WalletDepositNetwork[] => {
     .filter(({ chainId }) => getWalletDepositTokens(chainId).length > 0)
     .sort((a, b) => a.chain.sort - b.chain.sort)
     .map(({ chainId, chain }) => ({ chainId, name: chain.name, icon: chain.icon }));
+};
+
+/**
+ * The currency to show once `chainId` is chosen.
+ *
+ * A currency carries over between chains when the new one accepts it, so picking
+ * a chain does not silently reset a deliberate choice. When it does not — USDT
+ * is not offered on Base, ETH only exists on Ethereum — it falls back to what
+ * the chain does carry, rather than leaving the screen quoting a minimum for a
+ * pairing that does not exist.
+ */
+export const resolveWalletDepositSymbol = (
+  chainId: number,
+  symbol?: string,
+): string | undefined => {
+  const tokens = getWalletDepositTokens(chainId);
+  return tokens.some(token => token.symbol === symbol) ? symbol : tokens[0]?.symbol;
 };
 
 export const getWalletDepositMinimum = (chainId: number, symbol: string): number =>

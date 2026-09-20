@@ -89,19 +89,14 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     bridgeSpeed: 2,
   },
   [base.id]: {
+    // USDC only. Base USDT is deliberately absent, not missed: every surface that
+    // offers a token on a chain reads this map, so listing it here is what would
+    // offer it for deposit, bridging and card funding.
     tokens: {
       USDC: {
         name: 'USDC',
         address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
         version: '2',
-        isPermit: false,
-      },
-      USDT: {
-        name: 'USDT',
-        fullName: 'Tether USD',
-        address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
-        icon: require('@/assets/images/usdt.png'),
-        version: '1',
         isPermit: false,
       },
     },

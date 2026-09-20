@@ -6,6 +6,7 @@ import {
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  resolveWalletDepositSymbol,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
 
 // The module resolves icons through the asset barrel; what is under test is
@@ -40,7 +41,8 @@ describe('getWalletDepositTokens', () => {
       'ETH',
       'WETH',
     ]);
-    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual(['USDC', 'USDT']);
+    // Base is USDC only — USDT there is deliberately not offered.
+    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual(['USDC']);
   });
 
   it('returns nothing for a chain that is not supported', () => {
@@ -69,6 +71,28 @@ describe('getWalletDepositNetworks', () => {
       true,
     );
     expect(networks[0].chainId).toBe(mainnet.id);
+  });
+});
+
+describe('resolveWalletDepositSymbol', () => {
+  it('carries a currency over to a chain that accepts it', () => {
+    expect(resolveWalletDepositSymbol(base.id, 'USDC')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(mainnet.id, 'USDT')).toBe('USDT');
+  });
+
+  // Otherwise the screen would quote a minimum for a pairing that does not exist.
+  it('falls back when the chain does not carry it', () => {
+    expect(resolveWalletDepositSymbol(base.id, 'USDT')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(base.id, 'ETH')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(fuse.id, 'ETH')).toBe('FUSE');
+  });
+
+  it("picks the chain's first currency when none was chosen yet", () => {
+    expect(resolveWalletDepositSymbol(mainnet.id, undefined)).toBe('USDC');
+  });
+
+  it('has nothing to offer for an unsupported chain', () => {
+    expect(resolveWalletDepositSymbol(999_999, 'USDC')).toBeUndefined();
   });
 });
 
