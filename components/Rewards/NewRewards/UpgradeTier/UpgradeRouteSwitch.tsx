@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -48,11 +48,15 @@ const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchPr
               isSelected && 'bg-white',
             )}
           >
+            {/* The colour is a style, not a class. `Text` composes its own
+                class with whatever the surrounding text context provides, and
+                a selected label that loses that merge is white on white — an
+                empty pill, which is what this rendered as. An inline style
+                cannot be merged away. Every other black-on-light label in the
+                rewards screens is written the same way. */}
             <Text
-              className={cn(
-                'text-[16px] leading-5',
-                isSelected ? 'font-semibold text-black' : 'font-medium text-white',
-              )}
+              className={cn('text-[16px] leading-5', isSelected ? 'font-semibold' : 'font-medium')}
+              style={isSelected ? styles.selectedLabel : styles.label}
             >
               {ROUTE_LABEL[route]}
             </Text>
@@ -62,5 +66,10 @@ const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchPr
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  label: { color: '#FFFFFF' },
+  selectedLabel: { color: '#000000' },
+});
 
 export default UpgradeRouteSwitch;

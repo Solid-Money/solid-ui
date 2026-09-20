@@ -14,7 +14,12 @@ import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
-import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import {
+  useOptInToRewards,
+  useReferralSummary,
+  useRewardsUserData,
+  useTierBenefits,
+} from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
@@ -27,6 +32,7 @@ import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
+import JoinTierClubCard from './JoinTierClubCard';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
@@ -36,6 +42,7 @@ import TierBenefitsGrid from './TierBenefitsGrid';
 import TierMembershipSheet from './TierMembershipSheet';
 import TierTrialPill from './TierTrialPill';
 import TierUpgradeCard from './TierUpgradeCard';
+import { findTierBenefits, resolveTierUpgradeBenefits } from './UpgradeTier/tierUpgradeBenefits';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -55,6 +62,7 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
+  const { data: tierBenefits } = useTierBenefits();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
@@ -145,6 +153,21 @@ export default function RewardsScreenNew() {
     skipLine: rewardsData?.fuseSkipLine,
     allowFallback: isDevFeatureEnabled,
   });
+
+  /**
+   * The membership teaser, and the tier it points at.
+   *
+   * Shown only once the backend says points no longer unlock tiers AND there is
+   * something to sell — a tier on offer that the user does not already hold.
+   * Both halves matter: without the first this would duplicate v2's card, and
+   * without the second it would invite an Ultra member to join a club they are
+   * already in.
+   */
+  const joinClubTier = nextPurchasableTier(membership);
+  const showJoinClubCard = Boolean(membership && !membership.pointsUnlockEnabled && joinClubTier);
+  const joinClubBenefits = joinClubTier
+    ? resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, joinClubTier)).slice(0, 3)
+    : [];
 
   if (rewardsLocked) {
     return (
@@ -295,9 +318,23 @@ export default function RewardsScreenNew() {
           />
         </View>
 
-        {/* The compact card presents both routes to the next tier: normal points
-            progress and the optional FUSE shortcut configured by the backend. */}
-        {showTierUpgradeCard && (
+        {/* Two cards for the same job, and which one shows is decided by
+            whether points still unlock a tier.
+
+            v2's card offers a points bar and a FUSE "shortcut". Under v3 the
+            first of those climbs toward something points no longer grant, and
+            the second is a year-long lock with a price — so once
+            `pointsUnlockEnabled` is off, that card advertises a route the
+            backend refuses, and the membership teaser takes its place. */}
+        {showJoinClubCard && joinClubTier ? (
+          <View className="mt-8 px-4">
+            <JoinTierClubCard
+              tier={joinClubTier}
+              benefits={joinClubBenefits}
+              onPress={() => handleUpgradeTier(joinClubTier)}
+            />
+          </View>
+        ) : showTierUpgradeCard ? (
           <View className="mt-8 px-4">
             <TierUpgradeCard
               currentPoints={totalPoints}
@@ -307,7 +344,7 @@ export default function RewardsScreenNew() {
               onUpgradeTier={() => handleUpgradeTier(nextTier)}
             />
           </View>
-        )}
+        ) : null}
       </View>
 
       <ReferralProgramModalNew
