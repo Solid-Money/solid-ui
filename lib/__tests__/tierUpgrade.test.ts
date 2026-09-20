@@ -29,7 +29,7 @@ const offer = (overrides: Partial<TierOffer> = {}): TierOffer => ({
 const membership = (overrides: Partial<TierMembershipState> = {}): TierMembershipState => ({
   enabled: true,
   pointsUnlockEnabled: false,
-  offers: [offer(), offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: 0 })],
+  offers: [offer(), offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null })],
   lock: {
     enabled: true,
     lockAddress: '0xlock',
@@ -158,7 +158,7 @@ describe('canAffordUpgrade', () => {
       canAffordUpgrade({
         ...base,
         route: 'cash',
-        offer: offer({ annualFeeUsd: 0 }),
+        offer: offer({ annualFeeUsd: null }),
         availableUsdc: 1_000,
       }),
     ).toBe(false);
@@ -176,7 +176,7 @@ describe('nextPurchasableTier', () => {
         membership({
           offers: [
             offer({ held: true }),
-            offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: 0 }),
+            offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null }),
           ],
         }),
       ),
@@ -299,6 +299,12 @@ describe('formatting', () => {
   it('writes USD with cents', () => {
     expect(formatUsd(199)).toBe('$199.00');
     expect(formatUsd(2_400.5)).toBe('$2,400.50');
+  });
+
+  it('renders nothing for a tier that is not sold for cash', () => {
+    // Null, not 0 — "$0.00" is the one output a user would read as a price.
+    expect(formatUsd(null)).toBe('');
+    expect(formatUsd(undefined)).toBe('');
   });
 
   it('writes a lock term in months', () => {
