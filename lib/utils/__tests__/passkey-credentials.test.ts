@@ -59,6 +59,7 @@ describe('mergeCredentialIds', () => {
 describe('isPasskeyPromptError', () => {
   it.each([
     ['iOS cancellation', { message: 'The user cancelled the request.' }],
+    ['Turnkey UserCancelled', { error: 'UserCancelled', message: 'The user cancelled the request.' }],
     ['Android Credential Manager', { message: '[16] Cancelled by user.' }],
     ['WebAuthn DOMException', { name: 'NotAllowedError', message: 'not allowed' }],
     ['aborted ceremony', { name: 'AbortError', message: 'aborted' }],
