@@ -81,6 +81,25 @@ export const availableRoutes = (offer: TierOffer | undefined): TierUpgradeRoute[
 };
 
 /**
+ * Below this, a shortfall is not a shortfall.
+ *
+ * Both sides come out of on-chain bigints through a decimal string and a
+ * double, so a position worth exactly the threshold can land a few ulps under
+ * it. A billionth of a FUSE is nine orders of magnitude below anything anyone
+ * could deposit to fix, so treating it as a shortfall only ever strands a user
+ * who does have enough.
+ *
+ * Kept this small on purpose: a loose tolerance would wave through someone who
+ * is genuinely short, and locking short of the threshold succeeds on-chain
+ * while granting no tier.
+ */
+const AMOUNT_EPSILON = 1e-9;
+
+/** Whether `available` covers `required`, ignoring representation noise. */
+export const covers = (available: number, required: number): boolean =>
+  available + AMOUNT_EPSILON >= required;
+
+/**
  * Whether the user can complete the upgrade now, or has to top up first.
  *
  * This is what decides between the two CTAs in the design — "Top up" and
@@ -102,8 +121,10 @@ export const canAffordUpgrade = ({
   availableUsdc: number;
 }): boolean =>
   route === 'cash'
-    ? offer.annualFeeUsd !== null && offer.annualFeeUsd > 0 && availableUsdc >= offer.annualFeeUsd
-    : availableFuse >= remainingFuseForTier(offer, lockedFuse);
+    ? offer.annualFeeUsd !== null &&
+      offer.annualFeeUsd > 0 &&
+      covers(availableUsdc, offer.annualFeeUsd)
+    : covers(availableFuse, remainingFuseForTier(offer, lockedFuse));
 
 /** The offer for one tier, or undefined when it is not sold. */
 export const findOffer = (
@@ -190,6 +211,26 @@ export const formatFuse = (amount: number): string =>
   amount.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 /**
+ * A balance the user holds, rounded DOWN.
+ *
+ * The screen shows whole FUSE while it compares to the sixth decimal, and
+ * rounding a balance to nearest is how those two disagree in public: a Safe
+ * holding 14,999.6 FUSE displayed "15,000", sat beside a requirement of
+ * "15,000", and still offered "Top up" — the screen contradicting its own
+ * numbers. Rounding held amounts down and shortfalls up means the displayed
+ * numbers can never claim the user has enough when they do not.
+ *
+ * Deliberately not solved by loosening the comparison instead. Locking 14,999.6
+ * FUSE succeeds on-chain and grants no tier — the backend measures the locked
+ * position against the threshold — so a user waved through on a rounded balance
+ * commits their FUSE for a year and gets nothing for it.
+ */
+export const formatFuseHeld = (amount: number): string => formatFuse(Math.floor(amount));
+
+/** A shortfall, rounded UP — so topping it up always clears it. */
+export const formatFuseShortfall = (amount: number): string => formatFuse(Math.ceil(amount));
+
+/**
  * A USD figure with cents: "$199.00".
  *
  * Renders nothing at all for a tier that is not sold for cash, which arrives as
@@ -200,6 +241,9 @@ export const formatUsd = (amount: number | null | undefined): string =>
   amount === null || amount === undefined
     ? ''
     : `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** A USDC balance, rounded down to the cent — see `formatFuseHeld`. */
+export const formatUsdHeld = (amount: number): string => formatUsd(Math.floor(amount * 100) / 100);
 
 /** A lock term in the words the design uses: "12 months". */
 export const formatLockDuration = (days: number): string => {

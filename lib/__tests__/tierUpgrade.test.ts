@@ -2,10 +2,13 @@ import {
   availableRoutes,
   canAffordUpgrade,
   formatFuse,
+  formatFuseHeld,
+  formatFuseShortfall,
   formatLockDuration,
   formatMembershipDate,
   formatMembershipDay,
   formatUsd,
+  formatUsdHeld,
   fuseForShares,
   fuseSharesForAmount,
   membershipDateLabel,
@@ -135,6 +138,44 @@ describe('availableRoutes', () => {
 
 describe('canAffordUpgrade', () => {
   const base = { offer: offer(), lockedFuse: 0, availableFuse: 0, availableUsdc: 0 };
+
+  /**
+   * The bug behind "0 FUSE short — add more to Savings".
+   *
+   * Both sides of this come out of on-chain bigints through a decimal string
+   * and a double, so a position worth exactly the threshold can land a few ulps
+   * under it. Strict >= then said "Top up" to someone holding precisely enough,
+   * and the shortfall — far too small to render — printed as zero.
+   */
+  it('treats a position a few ulps under the threshold as enough', () => {
+    const offerAt = offer({ lockFuse: 50_000 });
+
+    expect(
+      canAffordUpgrade({
+        ...base,
+        offer: offerAt,
+        route: 'lock',
+        availableFuse: 50_000 - 1e-12,
+      }),
+    ).toBe(true);
+  });
+
+  /**
+   * And the other side of it, which matters more: locking short of the
+   * threshold succeeds on-chain and grants no tier, because the backend
+   * measures the locked position against the threshold. A user waved through
+   * here commits their FUSE for a year and gets nothing, so the tolerance has
+   * to stay far below anything anyone could actually be short by.
+   */
+  it('does not wave through a real shortfall, however small', () => {
+    const offerAt = offer({ lockFuse: 50_000 });
+
+    for (const availableFuse of [49_999.9, 49_999.99, 49_999.999]) {
+      expect(canAffordUpgrade({ ...base, offer: offerAt, route: 'lock', availableFuse })).toBe(
+        false,
+      );
+    }
+  });
 
   it('needs the whole annual fee in USDC', () => {
     expect(canAffordUpgrade({ ...base, route: 'cash', availableUsdc: 198.99 })).toBe(false);
@@ -305,6 +346,36 @@ describe('formatting', () => {
     // Null, not 0 — "$0.00" is the one output a user would read as a price.
     expect(formatUsd(null)).toBe('');
     expect(formatUsd(undefined)).toBe('');
+  });
+
+  /**
+   * The display half of the same bug. The screen compares to the sixth decimal
+   * and shows whole FUSE, so rounding a held balance to nearest let it print
+   * "15,000" beside a requirement of "15,000" and still offer "Top up" — the
+   * screen contradicting its own numbers.
+   */
+  it('rounds a held balance down, so it never claims enough', () => {
+    expect(formatFuseHeld(14_999.6)).toBe('14,999');
+    expect(formatFuseHeld(15_000)).toBe('15,000');
+    expect(formatFuseHeld(15_000.9)).toBe('15,000');
+  });
+
+  it('rounds a shortfall up, so topping it up always clears it', () => {
+    expect(formatFuseShortfall(0.4)).toBe('1');
+    expect(formatFuseShortfall(1)).toBe('1');
+    expect(formatFuseShortfall(1.1)).toBe('2');
+  });
+
+  it('never writes a held balance above what is held, or a shortfall below it', () => {
+    for (const amount of [0.1, 0.9, 1.5, 14_999.6, 50_000.4]) {
+      expect(Number(formatFuseHeld(amount).replace(/,/g, ''))).toBeLessThanOrEqual(amount);
+      expect(Number(formatFuseShortfall(amount).replace(/,/g, ''))).toBeGreaterThanOrEqual(amount);
+    }
+  });
+
+  it('rounds a USDC balance down to the cent', () => {
+    expect(formatUsdHeld(198.999)).toBe('$198.99');
+    expect(formatUsdHeld(199)).toBe('$199.00');
   });
 
   it('writes a lock term in months', () => {

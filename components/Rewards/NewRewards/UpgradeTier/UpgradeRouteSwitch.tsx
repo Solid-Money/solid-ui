@@ -48,16 +48,15 @@ const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchPr
               isSelected && 'bg-white',
             )}
           >
-            {/* The colour is a style, not a class. `Text` composes its own
-                class with whatever the surrounding text context provides, and
-                a selected label that loses that merge is white on white — an
-                empty pill, which is what this rendered as. An inline style
-                cannot be merged away. Every other black-on-light label in the
-                rewards screens is written the same way. */}
-            <Text
-              className={cn('text-[16px] leading-5', isSelected ? 'font-semibold' : 'font-medium')}
-              style={isSelected ? styles.selectedLabel : styles.label}
-            >
+            {/* Styled entirely through StyleSheet, with no className at all.
+                `Text` composes its own class with whatever the surrounding text
+                context provides, and a selected label whose colour is lost in
+                that merge is black-on-white turning white-on-white — an empty
+                pill, which is how this shipped. An inline style cannot be
+                merged away, and the weight goes with it so nothing about this
+                label depends on class resolution. Matches how TierUpgradeCard
+                and TierSwitcher write their labels. */}
+            <Text style={isSelected ? styles.selectedLabel : styles.label}>
               {ROUTE_LABEL[route]}
             </Text>
           </Pressable>
@@ -67,9 +66,11 @@ const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchPr
   );
 };
 
+const LABEL_BASE = { fontSize: 16, lineHeight: 20 } as const;
+
 const styles = StyleSheet.create({
-  label: { color: '#FFFFFF' },
-  selectedLabel: { color: '#000000' },
+  label: { ...LABEL_BASE, color: '#FFFFFF', fontFamily: 'MonaSans_500Medium' },
+  selectedLabel: { ...LABEL_BASE, color: '#000000', fontFamily: 'MonaSans_600SemiBold' },
 });
 
 export default UpgradeRouteSwitch;
