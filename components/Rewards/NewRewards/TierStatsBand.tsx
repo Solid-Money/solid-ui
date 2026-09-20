@@ -5,6 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
+import { TOP_RIGHT_WASH } from './tierGradients';
+
 /** Total height of the band. Its foot is tucked behind the perks card below. */
 export const TIER_STATS_BAND_HEIGHT = 137;
 /** How much of that foot the perks card covers. */
@@ -12,6 +14,12 @@ export const TIER_STATS_BAND_TUCK = 41;
 /** The part that stays on screen — the stats sit here so nothing is tucked away. */
 const VISIBLE_HEIGHT = TIER_STATS_BAND_HEIGHT - TIER_STATS_BAND_TUCK;
 
+/**
+ * Green off the top-right corner, dissolving to the near-black screen at the
+ * bottom-left — the direction every v3 wash runs (see `tierGradients`). The
+ * band has no background of its own, so the faded end is the page showing
+ * through.
+ */
 const BAND_GRADIENT = ['rgba(148, 242, 127, 0.28)', 'rgba(148, 242, 127, 0.05)'] as const;
 const DIVIDER_COLOR = 'rgba(255, 255, 255, 0.25)';
 
@@ -64,7 +72,7 @@ const TierStatsBand = ({ stats }: { stats: readonly TierStat[] }) => (
     style={{ height: TIER_STATS_BAND_HEIGHT }}
     pointerEvents="none"
   >
-    <LinearGradient colors={BAND_GRADIENT} style={StyleSheet.absoluteFill} />
+    <LinearGradient colors={BAND_GRADIENT} {...TOP_RIGHT_WASH} style={StyleSheet.absoluteFill} />
     <WaveTexture />
 
     <View className="flex-row" style={{ height: VISIBLE_HEIGHT }}>

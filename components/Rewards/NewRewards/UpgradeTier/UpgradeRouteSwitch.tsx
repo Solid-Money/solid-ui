@@ -3,12 +3,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
+import { ROUTE_LABEL, upgradeRouteLabelClass } from './upgradeRouteLabel';
 
-const ROUTE_LABEL: Record<TierUpgradeRoute, string> = {
-  cash: 'Cash',
-  lock: 'Locked FUSE',
-};
+import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
 
 interface UpgradeRouteSwitchProps {
   routes: TierUpgradeRoute[];
@@ -21,7 +18,7 @@ interface UpgradeRouteSwitchProps {
  *
  * Renders whatever routes are actually on offer, which is why it takes a list
  * rather than a boolean: Prime is sold both ways and shows two segments, Ultra
- * is FUSE-only and shows one full-width segment. A disabled second segment
+ * is soFUSE-only and shows one full-width segment. A disabled second segment
  * would advertise a way to buy Ultra that does not exist.
  *
  * Draws nothing at all for a single route on a tier that has no alternative —
@@ -48,15 +45,13 @@ const UpgradeRouteSwitch = ({ routes, selected, onSelect }: UpgradeRouteSwitchPr
               isSelected && 'bg-white',
             )}
           >
-            {/* Styled entirely through StyleSheet, with no className at all.
-                `Text` composes its own class with whatever the surrounding text
-                context provides, and a selected label whose colour is lost in
-                that merge is black-on-white turning white-on-white — an empty
-                pill, which is how this shipped. An inline style cannot be
-                merged away, and the weight goes with it so nothing about this
-                label depends on class resolution. Matches how TierUpgradeCard
-                and TierSwitcher write their labels. */}
-            <Text style={isSelected ? styles.selectedLabel : styles.label}>
+            {/* Metrics and weight in the style, colour in both layers — see
+                `upgradeRouteLabelClass` for why the class is not optional. The
+                same shape TierSwitcher uses for the tier tabs beside this. */}
+            <Text
+              className={upgradeRouteLabelClass(isSelected)}
+              style={isSelected ? styles.selectedLabel : styles.label}
+            >
               {ROUTE_LABEL[route]}
             </Text>
           </Pressable>
