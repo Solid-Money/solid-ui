@@ -4,8 +4,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
+import TierSwitcher from '@/components/Rewards/NewRewards/TierSwitcher';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTierBenefits } from '@/hooks/useRewards';
@@ -35,6 +37,13 @@ import UpgradeRouteSwitch from './UpgradeRouteSwitch';
 import UpgradeTierHeader from './UpgradeTierHeader';
 import UpgradeTierHeroCard from './UpgradeTierHeroCard';
 
+/** Tab labels for the tier switch, which takes every tier's name up front. */
+const TIER_LABELS: Record<RewardsTier, string> = {
+  [RewardsTier.CORE]: getTierDisplayName(RewardsTier.CORE),
+  [RewardsTier.PRIME]: getTierDisplayName(RewardsTier.PRIME),
+  [RewardsTier.ULTRA]: getTierDisplayName(RewardsTier.ULTRA),
+};
+
 /** Where "Learn more" and "How to earn points?" send the user. */
 const MEMBERSHIP_HELP_URL = 'https://docs.solid.money/rewards/tiers';
 
@@ -54,12 +63,34 @@ export default function UpgradeTierScreen() {
   const { data: chain } = useTierUpgradeChainState(membership?.contracts);
   const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
 
-  // The tier from the deep link when it names one, else the cheapest the user
-  // does not already hold — so "Upgrade" from anywhere lands somewhere useful.
+  /**
+   * The tiers actually on sale to this user, cheapest first.
+   *
+   * A tier they already hold is not one of them, which is what collapses the
+   * switch as they climb: a Core user is choosing between Prime and Ultra, a
+   * Prime user has only Ultra left, and an Ultra user has nothing to buy.
+   */
+  const purchasableTiers = useMemo(
+    () =>
+      (membership?.offers ?? [])
+        .filter(
+          candidate => !candidate.held && (candidate.lockAvailable || candidate.cashAvailable),
+        )
+        .map(candidate => candidate.tier),
+    [membership],
+  );
+
+  const [pickedTier, setPickedTier] = useState<RewardsTier | null>(null);
+
+  // The tier the user picked, else the one the deep link names, else the
+  // cheapest they do not already hold — so "Upgrade" from anywhere lands
+  // somewhere useful. A pick is dropped once it stops being on offer, which is
+  // what happens the moment they buy it.
   const tier = useMemo<RewardsTier | null>(() => {
+    if (pickedTier && purchasableTiers.includes(pickedTier)) return pickedTier;
     if (tierParam === RewardsTier.PRIME || tierParam === RewardsTier.ULTRA) return tierParam;
     return nextPurchasableTier(membership);
-  }, [membership, tierParam]);
+  }, [membership, pickedTier, purchasableTiers, tierParam]);
 
   const offer = tier ? findOffer(membership, tier) : undefined;
   // Memoised because the effect below depends on it: a fresh array every render
@@ -150,6 +181,11 @@ export default function UpgradeTierScreen() {
     availableUsdc,
   });
 
+  const handleTier = (next: RewardsTier) => {
+    setPickedTier(next);
+    track(TRACKING_EVENTS.TIER_UPGRADE_TIER_SELECTED, { tier: next });
+  };
+
   const handleRoute = (next: TierUpgradeRoute) => {
     setRoute(next);
     track(TRACKING_EVENTS.TIER_UPGRADE_ROUTE_SELECTED, { tier, route: next });
@@ -158,8 +194,11 @@ export default function UpgradeTierScreen() {
   /**
    * Short of what the upgrade costs, so the press has to fix that first.
    *
-   * Each route tops up in its own currency and through the flow that already
-   * exists for it: FUSE through the savings funding flow, USDC through deposit.
+   * Each route tops up in its own currency, and both of them open over this
+   * screen rather than navigating away from it: the user is mid-decision, and
+   * coming back from a pushed route means finding their way here again. FUSE
+   * opens the savings funding sheet; USDC opens the deposit chooser, which is
+   * the same drawer the wallet uses.
    */
   const handleTopUp = () => {
     const depositStore = useDepositStore.getState();
@@ -172,7 +211,7 @@ export default function UpgradeTierScreen() {
       return;
     }
 
-    router.push(path.DEPOSIT);
+    depositStore.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
   };
 
   const handleReview = () => {
@@ -188,6 +227,19 @@ export default function UpgradeTierScreen() {
       <UpgradeTierHeader title="Upgrade tier" />
 
       <View className="mx-auto w-full max-w-[414px] px-4 pb-10">
+        {/* Only when there is a choice to make. A Prime user can only buy
+            Ultra, and a one-tab switch is a label. */}
+        {purchasableTiers.length > 1 ? (
+          <View className="mb-5">
+            <TierSwitcher
+              tiers={purchasableTiers}
+              labels={TIER_LABELS}
+              selected={tier}
+              onSelect={handleTier}
+            />
+          </View>
+        ) : null}
+
         <UpgradeTierHeroCard
           tier={tier}
           benefits={benefits}
@@ -233,7 +285,7 @@ export default function UpgradeTierScreen() {
 
         <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
           {route === 'cash'
-            ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with an annual fee. `
+            ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
             : `Lock FUSE for ${formatLockDuration(membership.lock.durationDays)} to hold the tier — it keeps earning while it is locked. `}
           <Text
             accessibilityRole="link"
