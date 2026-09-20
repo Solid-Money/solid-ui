@@ -98,11 +98,20 @@ export const getWalletDepositNetworks = (): WalletDepositNetwork[] => {
 export const getWalletDepositMinimum = (chainId: number, symbol: string): number =>
   MINIMUM_DEPOSIT_BY_TOKEN[symbol] ?? MINIMUM_DEPOSIT_BY_CHAIN[chainId] ?? DEFAULT_MINIMUM_DEPOSIT;
 
-/** The pairing the screen opens on: USDC on Ethereum, falling back if either is off. */
+/**
+ * The pairing the screen opens on: USDC on Fuse, falling back if either is off.
+ *
+ * Fuse rather than Ethereum because this address is the user's Safe on the
+ * chain they pick, not a bridge — what lands on Ethereum stays on Ethereum.
+ * Everything the app then spends that balance on lives on Fuse: the card, the
+ * vaults, and the annual membership charge, which can only ever move Fuse
+ * USDC.e. Opening on Ethereum put the most expensive gas and the one chain the
+ * balance cannot be used from in front of the user by default.
+ */
 export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: string } => {
   const networks = getWalletDepositNetworks();
-  const chainId = networks.some(network => network.chainId === mainnet.id)
-    ? mainnet.id
+  const chainId = networks.some(network => network.chainId === fuse.id)
+    ? fuse.id
     : (networks[0]?.chainId ?? mainnet.id);
   const tokens = getWalletDepositTokens(chainId);
   const symbol =

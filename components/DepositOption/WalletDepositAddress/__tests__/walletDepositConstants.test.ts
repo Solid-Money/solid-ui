@@ -73,7 +73,19 @@ describe('getWalletDepositNetworks', () => {
 });
 
 describe('getDefaultWalletDepositSelection', () => {
-  it('opens on USDC over Ethereum', () => {
-    expect(getDefaultWalletDepositSelection()).toEqual({ chainId: mainnet.id, symbol: 'USDC' });
+  /**
+   * Fuse, not Ethereum. The address shown is the user's Safe on whichever chain
+   * is picked — it is not a bridge — so a deposit made on the default lands on
+   * the default. Everything the balance is then spent on (the card, the vaults,
+   * the annual membership charge) is on Fuse, and the membership charge can
+   * only ever move Fuse USDC.e.
+   */
+  it('opens on USDC over Fuse', () => {
+    expect(getDefaultWalletDepositSelection()).toEqual({ chainId: fuse.id, symbol: 'USDC' });
+  });
+
+  it('offers USDC on the chain it opens on', () => {
+    const { chainId, symbol } = getDefaultWalletDepositSelection();
+    expect(getWalletDepositTokens(chainId).map(token => token.symbol)).toContain(symbol);
   });
 });
