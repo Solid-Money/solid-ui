@@ -20,9 +20,12 @@ import {
   canAffordUpgrade,
   findOffer,
   formatFuse,
+  formatFuseHeld,
+  formatFuseShortfall,
   formatLockDuration,
   formatMembershipDate,
   formatUsd,
+  formatUsdHeld,
   membershipDateLabel,
   nextPurchasableTier,
   remainingFuseForTier,
@@ -173,6 +176,7 @@ export default function UpgradeTierScreen() {
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
   const availableFuse = chain?.fuse ?? 0;
   const availableUsdc = chain?.usdcAmount ?? 0;
+  const shortfallFuse = Math.max(0, remainingFuse - availableFuse);
 
   const affordable = canAffordUpgrade({
     route,
@@ -263,7 +267,7 @@ export default function UpgradeTierScreen() {
               <TierDetailRow label="Annual Fee" value={formatUsd(offer.annualFeeUsd)} withDivider />
               <TierDetailRow
                 label="Balance"
-                value={`${formatUsd(availableUsdc).replace('$', '')} USDC`}
+                value={`${formatUsdHeld(availableUsdc).replace('$', '')} USDC`}
               />
             </>
           ) : (
@@ -279,7 +283,7 @@ export default function UpgradeTierScreen() {
                 onExplain={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
                 withDivider
               />
-              <TierDetailRow label="Balance" value={`${formatFuse(availableFuse)} FUSE`} />
+              <TierDetailRow label="Balance" value={`${formatFuseHeld(availableFuse)} FUSE`} />
             </>
           )}
         </View>
@@ -307,16 +311,22 @@ export default function UpgradeTierScreen() {
           </Text>
         </Button>
 
-        {/* Only ever shown when it changes the decision: the user has the money
-            but it is in the wrong place, which "Top up" does not describe. */}
-        {!affordable && route === 'lock' && availableFuse > 0 ? (
+        {/* Only when it changes the decision: the user has some FUSE but not
+            enough, which "Top up" alone does not describe.
+
+            `shortfallFuse > 0` is what stops the line this screen used to end
+            on — "0 FUSE short — add more to Savings" — which appeared whenever
+            the gap was under half a unit, told the user nothing, and pointed at
+            a top-up of nothing. Affordable hides it outright; a sub-unit gap is
+            rounded up to the 1 FUSE that would actually clear it. */}
+        {!affordable && route === 'lock' && availableFuse > 0 && shortfallFuse > 0 ? (
           <Pressable
             accessibilityRole="button"
             onPress={handleTopUp}
             className="mt-4 transition-opacity active:opacity-60"
           >
             <Text className="text-center text-[14px] leading-5 text-white/50">
-              {formatFuse(remainingFuse - availableFuse)} FUSE short — add more to Savings
+              {formatFuseShortfall(shortfallFuse)} FUSE short — add more to Savings
             </Text>
           </Pressable>
         ) : null}
