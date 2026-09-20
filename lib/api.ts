@@ -452,6 +452,43 @@ export const fetchTokenPriceUsd = async (token: string) => {
 };
 
 /**
+ * USD prices for a batch of token symbols from Alchemy's Prices API.
+ *
+ * Issues a **single** GET request with all symbols in one query string instead
+ * of one request per symbol, avoiding Alchemy's 10,000 req/hr rate limit when
+ * many tokens need pricing simultaneously.
+ *
+ * Returns a Record mapping each symbol (uppercased as returned by Alchemy) to
+ * its USD price as a number.  Symbols Alchemy cannot price are omitted.
+ *
+ * Never throws: a failed request resolves to an empty record so callers
+ * degrade gracefully.
+ */
+export const fetchTokenPricesUsdBatch = async (
+  symbols: string[],
+): Promise<Record<string, number>> => {
+  if (symbols.length === 0) return {};
+  try {
+    const params = new URLSearchParams(symbols.map(s => ['symbols', s]));
+    const response = await externalAxios.get<TokenPriceUsd>(
+      `${ALCHEMY_PRICES_URL}/by-symbol?${params.toString()}`,
+    );
+    const result: Record<string, number> = {};
+    for (const entry of response?.data?.data ?? []) {
+      const raw = entry?.prices?.[0]?.value;
+      if (raw == null) continue;
+      const price = parseFloat(raw);
+      if (Number.isFinite(price) && price > 0) {
+        result[entry.symbol] = price;
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+};
+
+/**
  * USD prices for ERC-20s from Alchemy's Prices API, keyed by
  * `${chainId}:${lowercased address}`.
  *
