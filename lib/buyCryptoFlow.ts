@@ -30,6 +30,8 @@ export const getBuyCryptoTitle = (modal: DepositModal) => {
       return 'Order status';
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name:
       return 'Complete your details';
+    case DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name:
+      return 'Buy crypto';
     default:
       return undefined;
   }
@@ -40,6 +42,9 @@ export const getBuyCryptoBackTarget = (modal: DepositModal): BuyCryptoBackTarget
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_CONSENT.name:
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING.name:
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT.name:
+    // Onramper's widget is a single screen: everything inside it is the
+    // provider's own, so the only way back is out to the funding options.
+    case DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name:
       return 'entry';
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_CURRENCY.name:
     case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PAYMENT_METHOD.name:
