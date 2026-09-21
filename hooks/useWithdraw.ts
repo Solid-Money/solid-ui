@@ -194,25 +194,23 @@ const useWithdraw = (): WithdrawResult => {
         source: 'withdraw_hook',
       });
 
-      if (!isUserCancelledError(error)) {
-        Sentry.captureException(error, {
-          tags: {
-            type: 'withdraw_error',
-            userId: user?.userId,
-            revert_reason: revertReason,
-          },
-          extra: {
-            amount,
-            allowance: currentAllowance?.toString(),
-            needsApproval,
-            userAddress: user?.safeAddress,
-          },
-          user: {
-            id: user?.userId,
-            address: user?.safeAddress,
-          },
-        });
-      }
+      Sentry.captureException(error, {
+        tags: {
+          type: 'withdraw_error',
+          userId: user?.userId,
+          revert_reason: revertReason,
+        },
+        extra: {
+          amount,
+          allowance: currentAllowance?.toString(),
+          needsApproval,
+          userAddress: user?.safeAddress,
+        },
+        user: {
+          id: user?.userId,
+          address: user?.safeAddress,
+        },
+      });
       setWithdrawStatus(Status.ERROR);
       setError(describeWithdrawError(error));
       throw error;
