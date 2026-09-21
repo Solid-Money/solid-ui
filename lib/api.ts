@@ -71,6 +71,7 @@ import {
   CoinHistoricalChart,
   CustomerFromBridgeResponse,
   Deposit,
+  DepositAssetsResponse,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -4052,6 +4053,26 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
   });
 
   if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Every (chain, token) a deposit may be sent in, with the minimum worth sending.
+ *
+ * Unauthenticated, like the other config endpoints — the answer is the same for
+ * everyone. Callers must cope with it failing: the deposit screens fall back to
+ * their committed table rather than showing no minimum at all.
+ */
+export const getDepositAssets = async (): Promise<DepositAssetsResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/assets`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+    },
+  });
+
+  if (!response.ok) throw response;
+
   return response.json();
 };
 

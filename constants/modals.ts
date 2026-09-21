@@ -27,6 +27,15 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_cash',
     number: 1.8,
   },
+  /**
+   * "Select chain" — which chain the wallet deposit address is for, chosen before
+   * the address itself so the minimum and the currencies on offer are settled by
+   * the time it is shown.
+   */
+  OPEN_DEPOSIT_CHAIN: {
+    name: 'open_deposit_chain',
+    number: 1.9,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
