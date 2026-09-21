@@ -1,11 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeIn,
-  FadeOut,
-  FadeOutUp,
   useAnimatedStyle,
   useReducedMotion,
+  useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
@@ -42,7 +40,8 @@ const styles = StyleSheet.create({
   },
 });
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+/** How far the list slides down into place. */
+const LIST_TRAVEL = 8;
 
 /** Which pill's list is open, if either. */
 export type WalletDepositPickerKind = 'chain' | 'token' | null;
@@ -137,31 +136,45 @@ const OptionList = ({
   options: Option[];
   selectedKey: string;
   onSelect: (key: string) => void;
-}) => (
-  <Animated.View
-    // Entering/exiting rather than a mounted-and-hidden list: the two pills share
-    // one open slot, so switching between them unmounts one and mounts the other.
-    entering={FadeIn.duration(OPEN_DURATION_MS)}
-    exiting={FadeOutUp.duration(CLOSE_DURATION_MS)}
-    className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
-    style={styles.overlay}
-  >
-    {options.map((option, index) => (
-      <Pressable
-        key={option.key}
-        onPress={() => onSelect(option.key)}
-        className={cn(
-          'flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover',
-          index > 0 && 'border-t border-white/[0.06]',
-        )}
-      >
-        <Image source={option.icon} style={ROW_ICON_STYLE} contentFit="cover" />
-        <Text className="flex-1 text-base font-semibold text-white">{option.label}</Text>
-        {option.key === selectedKey ? <Check size={18} color="#94F27F" /> : null}
-      </Pressable>
-    ))}
-  </Animated.View>
-);
+}) => {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(reduceMotion ? 1 : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.value = 1;
+      return;
+    }
+    progress.value = withTiming(1, { duration: OPEN_DURATION_MS });
+  }, [progress, reduceMotion]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (progress.value - 1) * LIST_TRAVEL }],
+  }));
+
+  return (
+    <Animated.View
+      className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+      style={[styles.overlay, style]}
+    >
+      {options.map((option, index) => (
+        <Pressable
+          key={option.key}
+          onPress={() => onSelect(option.key)}
+          className={cn(
+            'flex-row items-center gap-x-3 px-[18px] py-3 web:transition-colors web:hover:bg-card-hover',
+            index > 0 && 'border-t border-white/[0.06]',
+          )}
+        >
+          <Image source={option.icon} style={ROW_ICON_STYLE} contentFit="cover" />
+          <Text className="flex-1 text-base font-semibold text-white">{option.label}</Text>
+          {option.key === selectedKey ? <Check size={18} color="#94F27F" /> : null}
+        </Pressable>
+      ))}
+    </Animated.View>
+  );
+};
 
 type WalletDepositSelectorsProps = {
   chainId: number;
@@ -219,10 +232,14 @@ type WalletDepositPickerProps = {
 /**
  * The open pill's list, floating over the content below it.
  *
- * Positioned against the screen's root and rendered as its last child, so paint
- * order alone puts it on top — no dependence on `zIndex`, which React Native
- * honours between siblings but not between a nested child and a later sibling,
- * and which Android treats differently again.
+ * Two things keep it in front, and both were learnt the hard way:
+ *
+ * 1. It is rendered as the screen's last child, so paint order alone puts it on
+ *    top. `zIndex` does not: React Native honours it between siblings, not
+ *    between a nested child and a later sibling, and Android differs again.
+ * 2. It animates from a shared value rather than with Reanimated's `entering` /
+ *    `exiting` layout animations. Those re-parent the view as they run, which
+ *    dropped the list behind the QR card even once the order was right.
  *
  * `LIST_TOP` measures from the top of that root, which is where the pill row
  * starts, so the list lands just under the pills.
@@ -243,10 +260,8 @@ export const WalletDepositPicker = ({
     <>
       {/* Tapping the content the list covers dismisses it, as tapping outside a
           popover would. */}
-      <AnimatedPressable
+      <Pressable
         accessibilityLabel="Close the list"
-        entering={FadeIn.duration(OPEN_DURATION_MS)}
-        exiting={FadeOut.duration(CLOSE_DURATION_MS)}
         style={[styles.overlay, styles.backdrop]}
         onPress={onDismiss}
       />
