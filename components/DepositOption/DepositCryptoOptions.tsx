@@ -27,7 +27,9 @@ const DepositCryptoOptions = () => {
 
   const handleShowAddressPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'deposit_directly' });
-    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+    // Via the chain list: the address is the same on every chain, but which
+    // currencies it accepts and the minimum worth sending are not.
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
   };
 
   const handleConnectWalletPress = () => {

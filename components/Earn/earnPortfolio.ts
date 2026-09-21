@@ -2,7 +2,7 @@ import { VaultType } from '@/lib/types';
 
 export type VaultAmounts = Record<VaultType, number>;
 
-export const formatVaultApyLabel = (apy: number) => `${apy.toFixed(1)} APY`;
+export const formatVaultApyLabel = (apy: number) => `${apy.toFixed(1)}% APY`;
 
 /**
  * Shown when the analytics API reports no yield for a vault, so a vault card
