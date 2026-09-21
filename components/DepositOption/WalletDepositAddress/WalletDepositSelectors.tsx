@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -44,10 +44,61 @@ const styles = StyleSheet.create({
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+/** Which pill's list is open, if either. */
+export type WalletDepositPickerKind = 'chain' | 'token' | null;
+
 type Option = {
   key: string;
   label: string;
   icon: ImageSourcePropType;
+};
+
+const useOptions = (chainId: number) => {
+  const chainOptions: Option[] = useMemo(
+    () =>
+      getWalletDepositNetworks().map((network: WalletDepositNetwork) => ({
+        key: String(network.chainId),
+        label: network.name,
+        icon: network.icon,
+      })),
+    [],
+  );
+  const tokenOptions: Option[] = useMemo(
+    () =>
+      getWalletDepositTokens(chainId).map((token: WalletDepositToken) => ({
+        key: token.symbol,
+        label: token.symbol,
+        icon: token.icon,
+      })),
+    [chainId],
+  );
+
+  return { chainOptions, tokenOptions };
+};
+
+/** The pill's chevron, turning over as its list opens and closes. */
+const Chevron = ({ isOpen }: { isOpen: boolean }) => {
+  const reduceMotion = useReducedMotion();
+  const style = useAnimatedStyle(() => {
+    const rotate = `${isOpen ? 180 : 0}deg`;
+    return {
+      transform: [
+        {
+          rotate: reduceMotion
+            ? rotate
+            : withTiming(rotate, {
+                duration: isOpen ? OPEN_DURATION_MS : CLOSE_DURATION_MS,
+              }),
+        },
+      ],
+    };
+  }, [isOpen, reduceMotion]);
+
+  return (
+    <Animated.View style={style}>
+      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+    </Animated.View>
+  );
 };
 
 const Pill = ({
@@ -77,31 +128,6 @@ const Pill = ({
     <Chevron isOpen={isOpen} />
   </Pressable>
 );
-
-/** The pill's chevron, turning over as its list opens and closes. */
-const Chevron = ({ isOpen }: { isOpen: boolean }) => {
-  const reduceMotion = useReducedMotion();
-  const style = useAnimatedStyle(() => {
-    const rotate = `${isOpen ? 180 : 0}deg`;
-    return {
-      transform: [
-        {
-          rotate: reduceMotion
-            ? rotate
-            : withTiming(rotate, {
-                duration: isOpen ? OPEN_DURATION_MS : CLOSE_DURATION_MS,
-              }),
-        },
-      ],
-    };
-  }, [isOpen, reduceMotion]);
-
-  return (
-    <Animated.View style={style}>
-      <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
-    </Animated.View>
-  );
-};
 
 const OptionList = ({
   options,
@@ -140,85 +166,90 @@ const OptionList = ({
 type WalletDepositSelectorsProps = {
   chainId: number;
   symbol: string;
-  onChainChange: (chainId: number) => void;
-  onSymbolChange: (symbol: string) => void;
+  openPicker: WalletDepositPickerKind;
+  onToggle: (picker: Exclude<WalletDepositPickerKind, null>) => void;
 };
 
 /**
- * The chain and currency pills above the QR, with their option lists expanding
- * inline underneath.
+ * The chain and currency pills above the QR.
  *
- * The list is positioned over the content rather than expanding in flow: pushing
- * the QR and the copy below it down the screen every time the picker opens makes
- * the whole screen jump, and the QR is the thing the user is looking at.
- *
- * It is drawn in this component rather than in a popover or bottom sheet because
- * the screen is already inside the deposit modal, and a second overlay on top of
- * one is the arrangement that behaves differently on each platform.
+ * The lists they open are `WalletDepositPicker`, deliberately a separate
+ * component: it has to be the screen's last child to paint over the QR card, and
+ * a `zIndex` on this one is not enough to lift a child of an earlier sibling
+ * above a later one — which is exactly how the list ended up behind the QR.
  */
 const WalletDepositSelectors = ({
   chainId,
   symbol,
-  onChainChange,
-  onSymbolChange,
+  openPicker,
+  onToggle,
 }: WalletDepositSelectorsProps) => {
-  const [openPicker, setOpenPicker] = useState<'chain' | 'token' | null>(null);
-
-  const chainOptions: Option[] = useMemo(
-    () =>
-      getWalletDepositNetworks().map((network: WalletDepositNetwork) => ({
-        key: String(network.chainId),
-        label: network.name,
-        icon: network.icon,
-      })),
-    [],
-  );
-  const tokenOptions: Option[] = useMemo(
-    () =>
-      getWalletDepositTokens(chainId).map((token: WalletDepositToken) => ({
-        key: token.symbol,
-        label: token.symbol,
-        icon: token.icon,
-      })),
-    [chainId],
-  );
+  const { chainOptions, tokenOptions } = useOptions(chainId);
 
   const selectedChain = chainOptions.find(option => option.key === String(chainId));
   const selectedToken = tokenOptions.find(option => option.key === symbol);
 
-  const toggle = (picker: 'chain' | 'token') =>
-    setOpenPicker(current => (current === picker ? null : picker));
+  return (
+    <View className="flex-row items-center justify-center gap-x-2">
+      <Pill
+        option={selectedChain}
+        isOpen={openPicker === 'chain'}
+        onPress={() => onToggle('chain')}
+        accessibilityLabel="Choose network"
+      />
+      <Pill
+        option={selectedToken}
+        isOpen={openPicker === 'token'}
+        onPress={() => onToggle('token')}
+        accessibilityLabel="Choose currency"
+      />
+    </View>
+  );
+};
+
+type WalletDepositPickerProps = {
+  chainId: number;
+  symbol: string;
+  openPicker: WalletDepositPickerKind;
+  onChainChange: (chainId: number) => void;
+  onSymbolChange: (symbol: string) => void;
+  onDismiss: () => void;
+};
+
+/**
+ * The open pill's list, floating over the content below it.
+ *
+ * Positioned against the screen's root and rendered as its last child, so paint
+ * order alone puts it on top — no dependence on `zIndex`, which React Native
+ * honours between siblings but not between a nested child and a later sibling,
+ * and which Android treats differently again.
+ *
+ * `LIST_TOP` measures from the top of that root, which is where the pill row
+ * starts, so the list lands just under the pills.
+ */
+export const WalletDepositPicker = ({
+  chainId,
+  symbol,
+  openPicker,
+  onChainChange,
+  onSymbolChange,
+  onDismiss,
+}: WalletDepositPickerProps) => {
+  const { chainOptions, tokenOptions } = useOptions(chainId);
+
+  if (!openPicker) return null;
 
   return (
-    // zIndex lifts the open list over the QR card, which is a later sibling and
-    // would otherwise paint on top of it.
-    <View style={{ zIndex: 20 }}>
-      <View className="flex-row items-center justify-center gap-x-2">
-        <Pill
-          option={selectedChain}
-          isOpen={openPicker === 'chain'}
-          onPress={() => toggle('chain')}
-          accessibilityLabel="Choose network"
-        />
-        <Pill
-          option={selectedToken}
-          isOpen={openPicker === 'token'}
-          onPress={() => toggle('token')}
-          accessibilityLabel="Choose currency"
-        />
-      </View>
-
-      {openPicker ? (
-        // Tapping the content the list now covers dismisses it, the way tapping
-        // outside a popover would.
-        <AnimatedPressable
-          accessibilityLabel="Close the list"
-          entering={FadeIn.duration(OPEN_DURATION_MS)}
-          exiting={FadeOut.duration(CLOSE_DURATION_MS)}
-          style={[styles.overlay, styles.backdrop]}
-          onPress={() => setOpenPicker(null)}
-        />
-      ) : null}
+    <>
+      {/* Tapping the content the list covers dismisses it, as tapping outside a
+          popover would. */}
+      <AnimatedPressable
+        accessibilityLabel="Close the list"
+        entering={FadeIn.duration(OPEN_DURATION_MS)}
+        exiting={FadeOut.duration(CLOSE_DURATION_MS)}
+        style={[styles.overlay, styles.backdrop]}
+        onPress={onDismiss}
+      />
 
       {openPicker === 'chain' ? (
         <OptionList
@@ -226,22 +257,20 @@ const WalletDepositSelectors = ({
           selectedKey={String(chainId)}
           onSelect={key => {
             onChainChange(Number(key));
-            setOpenPicker(null);
+            onDismiss();
           }}
         />
-      ) : null}
-
-      {openPicker === 'token' ? (
+      ) : (
         <OptionList
           options={tokenOptions}
           selectedKey={symbol}
           onSelect={key => {
             onSymbolChange(key);
-            setOpenPicker(null);
+            onDismiss();
           }}
         />
-      ) : null}
-    </View>
+      )}
+    </>
   );
 };
 

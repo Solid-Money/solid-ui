@@ -23,7 +23,10 @@ import {
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
-import WalletDepositSelectors from './WalletDepositSelectors';
+import WalletDepositSelectors, {
+  WalletDepositPicker,
+  type WalletDepositPickerKind,
+} from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -61,6 +64,9 @@ const WalletDepositAddress = () => {
   const symbol = walletDeposit.symbol ?? fallback.symbol;
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
+  // Owned here, not in the pills, because the open list is rendered last so it
+  // paints over the QR card (see WalletDepositPicker).
+  const [openPicker, setOpenPicker] = useState<WalletDepositPickerKind>(null);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -108,8 +114,8 @@ const WalletDepositAddress = () => {
       <WalletDepositSelectors
         chainId={chainId}
         symbol={symbol}
-        onChainChange={selectChain}
-        onSymbolChange={selectSymbol}
+        openPicker={openPicker}
+        onToggle={picker => setOpenPicker(current => (current === picker ? null : picker))}
       />
 
       {/* The card's own padding sits on each section rather than the card, so the
@@ -209,6 +215,16 @@ const WalletDepositAddress = () => {
           {copied ? 'Address copied' : 'Copy address'}
         </Text>
       </Button>
+
+      {/* Last child, so it paints over everything above it. */}
+      <WalletDepositPicker
+        chainId={chainId}
+        symbol={symbol}
+        openPicker={openPicker}
+        onChainChange={selectChain}
+        onSymbolChange={selectSymbol}
+        onDismiss={() => setOpenPicker(null)}
+      />
     </View>
   );
 };
