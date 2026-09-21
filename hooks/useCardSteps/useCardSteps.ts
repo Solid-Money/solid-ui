@@ -18,6 +18,7 @@ import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
 import { hasMetSavingsDeposit, requiresCardDeposit, withRefreshToken } from '@/lib/utils';
+import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -390,13 +391,18 @@ export function useCardSteps(
         cardsEndorsement,
         customer?.rejection_reasons,
         cardActivated,
-        // A terminal issuance failure gates the activate step exactly like the
-        // sticky block does: pressing "Activate card" on an unsupported country
-        // or an issuer decline can only reproduce the same failure, and that
-        // retry loop is what the support tickets are made of. Non-terminal
-        // failures (an issuer blip, provisioning still running) leave the button
-        // alone on purpose — there, retrying is the right move.
-        cardStatusResponse?.activationBlocked || cardStatusResponse?.activationFailure?.terminal,
+        // A failure nothing on this screen can clear gates the activate step
+        // exactly like the sticky block does: pressing "Activate card" on an
+        // unsupported document country or an unreadable name can only reproduce
+        // the same failure, and that retry loop is what the support tickets are
+        // made of. Retryable failures — an issuer outage, a blip, provisioning
+        // still running — leave the button alone on purpose: there, retrying is
+        // the whole point, and disabling it is how the September 2026 i2C
+        // outage kept stranding applicants after the issuer had already fixed
+        // it. See `blocksCardActivation` for why the code is consulted and not
+        // just the `terminal` flag.
+        cardStatusResponse?.activationBlocked ||
+          blocksCardActivation(cardStatusResponse?.activationFailure),
         handleProceedToKyc,
         pushCardReady,
         pushCardDetails,
@@ -421,7 +427,7 @@ export function useCardSteps(
       customer?.rejection_reasons,
       cardActivated,
       cardStatusResponse?.activationBlocked,
-      cardStatusResponse?.activationFailure?.terminal,
+      cardStatusResponse?.activationFailure,
       cardStatusResponse?.rainApplicationStatus,
       cardStatusResponse?.kycStatus,
       cardStatusResponse?.kycWarnings,
@@ -452,5 +458,8 @@ export function useCardSteps(
     canToggleStep,
     activatingCard,
     cardsEndorsement,
+    // Exposed so the failure banner can offer the same action the activate
+    // step does, rather than owning a second, divergent route to issuance.
+    pushCardReady,
   };
 }

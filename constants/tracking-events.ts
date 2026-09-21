@@ -282,6 +282,10 @@ export const TRACKING_EVENTS = {
   REGION_UNAVAILABLE_CONTINUE_PRESSED: 'region_unavailable_continue_pressed',
   REGION_UNAVAILABLE_CHANGE_COUNTRY_PRESSED: 'region_unavailable_change_country_pressed',
   CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
+  // Pressed from the failure banner on /card/activate. Carries the failure
+  // code, so a retry wave after an issuer outage is separable from a user
+  // pressing again at a failure that will not clear.
+  CARD_ACTIVATION_RETRIED: 'card_activation_retried',
   USER_KYC_INFO_PAGE_VIEWED: 'user_kyc_info_page_viewed',
   USER_KYC_INFO_FORM_STARTED: 'user_kyc_info_form_started',
   KYC_STEP_STARTED: 'kyc_step_started',
