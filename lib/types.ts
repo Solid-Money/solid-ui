@@ -1208,6 +1208,16 @@ export enum TransactionType {
   AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
   GOODDOLLAR_CLAIM = 'gooddollar_claim',
   GOODDOLLAR_SWEEP = 'gooddollar_sweep',
+  /**
+   * The two ways a rewards v3 membership tier is bought.
+   *
+   * `TIER_LOCK` is soFUSE committed to the lock for a fixed term — the user
+   * still owns it and gets it back, so it reads as a movement out of the wallet
+   * rather than a charge. `TIER_SUBSCRIPTION` is the annual USDC the
+   * subscription module draws, which is spent.
+   */
+  TIER_LOCK = 'tier_lock',
+  TIER_SUBSCRIPTION = 'tier_subscription',
 }
 
 export enum TransactionDirection {
@@ -1235,6 +1245,7 @@ export enum TransactionCategory {
   CARD_WELCOME_BONUS = 'Card welcome bonus',
   DEPOSIT_BONUS = 'Deposit bonus',
   GOODDOLLAR_UBI = 'GoodDollar UBI',
+  TIER_MEMBERSHIP = 'Tier membership',
   RECEIVE = 'Receive',
 }
 
