@@ -9,6 +9,7 @@ import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanning
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -16,9 +17,9 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import {
   getDefaultWalletDepositSelection,
-  getWalletDepositMinimum,
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
+  resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
@@ -66,7 +67,10 @@ const WalletDepositAddress = () => {
     [chainId],
   );
   const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
-  const minimum = getWalletDepositMinimum(chainId, symbol);
+  // The pipeline's own floor when it has answered, the committed estimate until
+  // then — never a blank, which is the one thing this line must not show.
+  const { data: depositAssets } = useDepositAssets();
+  const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
 
   // Polling only runs once there is an address to watch, so the chip below has to
   // follow the same condition rather than claiming to scan with nothing to scan.

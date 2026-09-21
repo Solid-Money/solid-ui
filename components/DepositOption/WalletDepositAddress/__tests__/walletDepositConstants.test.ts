@@ -6,8 +6,10 @@ import {
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
+import { DepositAsset } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
@@ -71,6 +73,52 @@ describe('getWalletDepositNetworks', () => {
       true,
     );
     expect(networks[0].chainId).toBe(mainnet.id);
+  });
+});
+
+describe('resolveWalletDepositMinimum', () => {
+  const asset = (over: Partial<DepositAsset>): DepositAsset => ({
+    chainId: mainnet.id,
+    chainName: 'Ethereum',
+    symbol: 'USDC',
+    address: '0x0',
+    decimals: 6,
+    minimum: '10',
+    ...over,
+  });
+
+  // The pipeline's figure is the only enforced one, so it wins whenever present.
+  it('prefers the published minimum over the committed estimate', () => {
+    const assets = [asset({ symbol: 'USDC', minimum: '25' })];
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe(25);
+  });
+
+  it('falls back when the pipeline has not answered', () => {
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', undefined)).toBe(10);
+    expect(resolveWalletDepositMinimum(base.id, 'USDC', [])).toBe(1);
+  });
+
+  // The pipeline credits the wrapped contract; the screen offers the native.
+  it('matches a native asset through its wrapped equivalent', () => {
+    const assets = [
+      asset({ symbol: 'WETH', minimum: '0.004', decimals: 18 }),
+      asset({ chainId: fuse.id, chainName: 'Fuse', symbol: 'WFUSE', minimum: '500' }),
+    ];
+
+    expect(resolveWalletDepositMinimum(mainnet.id, 'ETH', assets)).toBe(0.004);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'WETH', assets)).toBe(0.004);
+    expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe(500);
+  });
+
+  it('does not take a published minimum from the wrong chain', () => {
+    const assets = [asset({ chainId: base.id, chainName: 'Base', minimum: '99' })];
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe(10);
+  });
+
+  // A malformed or zero figure would quote "Send at least 0", which is no floor.
+  it('ignores a published minimum that is not a usable number', () => {
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: '0' })])).toBe(10);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: 'n/a' })])).toBe(10);
   });
 });
 

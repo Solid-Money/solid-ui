@@ -3,6 +3,7 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
+import { DepositAsset } from '@/lib/types';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
 export type WalletDepositNetwork = {
@@ -57,6 +58,15 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
 const DEFAULT_MINIMUM_DEPOSIT = 1;
+
+/**
+ * The contract the pipeline credits for a native asset. It lists WETH and WFUSE;
+ * the deposit screen offers ETH and FUSE, which are the same floor.
+ */
+const WRAPPED_EQUIVALENT: Record<string, string> = {
+  ETH: 'WETH',
+  FUSE: 'WFUSE',
+};
 
 /** Icons for tokens whose `BRIDGE_TOKENS` entry carries none (e.g. USDC off mainnet). */
 const TOKEN_ICON_FALLBACKS: Record<string, ImageSourcePropType> = {
@@ -115,8 +125,40 @@ export const resolveWalletDepositSymbol = (
   return tokens.some(token => token.symbol === symbol) ? symbol : tokens[0]?.symbol;
 };
 
+/**
+ * The committed estimate, used when the pipeline has not answered.
+ *
+ * Kept as the fallback rather than deleted: a screen that shows no minimum while
+ * a request is in flight, or when it fails, is worse than one showing an
+ * approximate figure immediately. `resolveWalletDepositMinimum` prefers the
+ * live number whenever there is one.
+ */
 export const getWalletDepositMinimum = (chainId: number, symbol: string): number =>
   MINIMUM_DEPOSIT_BY_TOKEN[symbol] ?? MINIMUM_DEPOSIT_BY_CHAIN[chainId] ?? DEFAULT_MINIMUM_DEPOSIT;
+
+/**
+ * The minimum to show for a pairing, preferring what the deposit pipeline says.
+ *
+ * The pipeline's figure is the only one that is enforced, and it is derived from
+ * a dollar floor at a price the backend controls — so quoting it is the only way
+ * the screen and the service cannot disagree. `assets` being absent (loading,
+ * failed, or an older backend) falls back to the committed table.
+ *
+ * Native assets are matched through their wrapped equivalents: the pipeline
+ * credits WETH and WFUSE contracts, while the screen offers ETH and FUSE, and
+ * the floor is the same either way.
+ */
+export const resolveWalletDepositMinimum = (
+  chainId: number,
+  symbol: string,
+  assets?: DepositAsset[],
+): number => {
+  const wanted = WRAPPED_EQUIVALENT[symbol] ?? symbol;
+  const published = assets?.find(asset => asset.chainId === chainId && asset.symbol === wanted);
+  const parsed = published ? Number(published.minimum) : NaN;
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : getWalletDepositMinimum(chainId, symbol);
+};
 
 /**
  * The pairing the screen opens on: USDC on Fuse, falling back if either is off.
