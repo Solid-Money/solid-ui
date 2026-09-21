@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import {
@@ -8,8 +9,8 @@ import {
   YieldBoostIcon,
 } from '@/components/Rewards/NewRewards/tierBenefitIcons';
 import { TOP_RIGHT_WASH } from '@/components/Rewards/NewRewards/tierGradients';
-import TierSparkleIcon from '@/components/Rewards/NewRewards/TierSparkleIcon';
 import { Text } from '@/components/ui/text';
+import { getTierIcon } from '@/constants/rewards';
 import { getTierDisplayName } from '@/lib/tierNames';
 import { RewardsTier } from '@/lib/types';
 
@@ -38,6 +39,9 @@ const TIER_BACKDROP: Record<RewardsTier, readonly [string, string]> = {
 /** The benefit glyphs, at the 33px the tier card draws them. */
 const BENEFIT_ICON_SIZE = 33;
 
+/** The tier mark, at the size the heading beside it is set in. */
+const TIER_ICON_SIZE = 28;
+
 interface UpgradeTierHeroCardProps {
   tier: RewardsTier;
   benefits: TierUpgradeBenefit[];
@@ -58,10 +62,17 @@ const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCar
     <View className="p-5">
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-2">
-          {/* The still, not the animated star: this is a label beside a
-              heading, and the WebP is a 235px hero's worth of bundle and
-              decoding for a 28px glyph. */}
-          <TierSparkleIcon tier={tier} size={28} />
+          {/* The rewards screen's mark, tinted white rather than the benefits
+              screen's outline, which is stroked at half opacity and reads grey
+              against this heading. Still artwork either way: the animated star
+              is a 235px hero's worth of bundle and decoding for a 28px glyph. */}
+          <Image
+            source={getTierIcon(tier)}
+            alt=""
+            style={{ width: TIER_ICON_SIZE, height: TIER_ICON_SIZE }}
+            contentFit="contain"
+            tintColor="#FFFFFF"
+          />
           <Text className="text-[28px] font-medium leading-8 text-white">
             {getTierDisplayName(tier)}
           </Text>

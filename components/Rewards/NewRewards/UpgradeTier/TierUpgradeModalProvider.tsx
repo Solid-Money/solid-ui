@@ -4,6 +4,7 @@ import ResponsiveModal from '@/components/ResponsiveModal';
 import { TIER_UPGRADE_MODAL } from '@/constants/modals';
 import { isTierUpgradeOpen, useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
+import LockTokenSelector from './LockTokenSelector';
 import UpgradeReviewContent from './UpgradeReviewContent';
 import UpgradeTierContent from './UpgradeTierContent';
 
@@ -32,6 +33,7 @@ const TierUpgradeModalProvider = () => {
   const close = useTierUpgradeStore(state => state.close);
 
   const isReview = currentModal.name === TIER_UPGRADE_MODAL.OPEN_REVIEW.name;
+  const isTokenSelector = currentModal.name === TIER_UPGRADE_MODAL.OPEN_TOKEN_SELECTOR.name;
 
   return (
     <ResponsiveModal
@@ -42,16 +44,23 @@ const TierUpgradeModalProvider = () => {
         if (!open) close();
       }}
       trigger={null}
-      title="Upgrade tier"
-      // The review step is a step, not a destination: the back arrow returns to
-      // the offer rather than closing the flow, which is the one thing a user
-      // who has just read a one-year commitment is most likely to want.
-      showBackButton={isReview}
+      title={isTokenSelector ? 'Select token' : 'Upgrade tier'}
+      // Both the review and the picker are steps, not destinations: the back
+      // arrow returns to the offer rather than closing the flow, which is the
+      // one thing a user who has just read a one-year commitment — or opened
+      // the picker to compare balances — is most likely to want.
+      showBackButton={isReview || isTokenSelector}
       onBackPress={back}
       contentKey={currentModal.name}
       contentClassName="md:max-w-[480px]"
     >
-      {isReview ? <UpgradeReviewContent /> : <UpgradeTierContent />}
+      {isReview ? (
+        <UpgradeReviewContent />
+      ) : isTokenSelector ? (
+        <LockTokenSelector />
+      ) : (
+        <UpgradeTierContent />
+      )}
     </ResponsiveModal>
   );
 };

@@ -3,9 +3,11 @@ import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
 /** What each payment route is called on the switch. */
 export const ROUTE_LABEL: Record<TierUpgradeRoute, string> = {
   cash: 'Cash',
-  // soFUSE, not FUSE: what gets locked is the Savings position, and a tab that
-  // says "FUSE" sends people looking for native FUSE in their wallet.
-  lock: 'Locked soFUSE',
+  // FUSE, not soFUSE. The tab used to name the share token because that was the
+  // only thing the lock accepted; the zap now takes native FUSE and WFUSE too,
+  // and all three are priced in FUSE — so the token belongs in the picker
+  // inside the tab, not in the tab's own name.
+  lock: 'Locked FUSE',
 };
 
 /**
