@@ -1,5 +1,12 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
 
@@ -19,6 +26,10 @@ const ROW_ICON_STYLE = { width: 28, height: 28, borderRadius: 14 };
 const LIST_TOP = 35 + 12;
 /** Tall enough to cover the QR card the open list floats over. */
 const BACKDROP_HEIGHT = 900;
+const OPEN_DURATION_MS = 180;
+const CLOSE_DURATION_MS = 140;
+/** How far the list slides as it opens. */
+const LIST_TRAVEL = 8;
 
 const styles = StyleSheet.create({
   overlay: {
@@ -105,10 +116,7 @@ const OptionList = ({
   selectedKey: string;
   onSelect: (key: string) => void;
 }) => (
-  <View
-    className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
-    style={styles.overlay}
-  >
+  <View className="overflow-hidden rounded-[15px] bg-card web:shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
     {options.map((option, index) => (
       <Pressable
         key={option.key}
@@ -182,14 +190,18 @@ type WalletDepositPickerProps = {
 /**
  * The open pill's list, floating over the content below it.
  *
- * Plain views, deliberately. Wrapping the card in an `Animated.View` broke it
- * twice over: Reanimated's layout animations re-parent the view as they run, so
- * the list fell behind the QR card, and nativewind's `className` does not
- * resolve through it, so the card lost `bg-card` and rendered transparent.
+ * It fades and slides in and out, and two rules keep that from breaking it:
  *
- * It is rendered as the screen's last child, which is what puts it in front —
- * `zIndex` does not, since React Native honours it between siblings but not
- * between a nested child and a later sibling.
+ * 1. The animation is on the wrapper, never on the card. An `Animated.View`
+ *    does not resolve nativewind's `className`, so moving the card's styling up
+ *    here would silently drop its `bg-card` and render it transparent.
+ * 2. It is driven by a shared value, not Reanimated's `entering` / `exiting`.
+ *    Layout animations re-parent the view while they run, which drops the list
+ *    behind the QR card however it is ordered.
+ *
+ * Being the screen's last child is what puts it in front. `zIndex` does not:
+ * React Native honours it between siblings, but not between a nested child and
+ * a later sibling.
  *
  * `LIST_TOP` measures from the top of that root, which is where the pill row
  * starts, so the list lands just under the pills.
@@ -203,38 +215,80 @@ export const WalletDepositPicker = ({
   onDismiss,
 }: WalletDepositPickerProps) => {
   const { chainOptions, tokenOptions } = useOptions(chainId);
+  const reduceMotion = useReducedMotion();
+  /**
+   * Which list to draw. It follows `openPicker` while open and then lingers
+   * through the close, because a list unmounted the instant it is dismissed has
+   * nothing left to fade out.
+   */
+  const [rendered, setRendered] = useState<WalletDepositPickerKind>(null);
+  const progress = useSharedValue(0);
 
-  if (!openPicker) return null;
+  useEffect(() => {
+    if (openPicker) {
+      setRendered(openPicker);
+      progress.value = reduceMotion ? 1 : withTiming(1, { duration: OPEN_DURATION_MS });
+      return;
+    }
+
+    if (reduceMotion) {
+      progress.value = 0;
+      setRendered(null);
+      return;
+    }
+
+    progress.value = withTiming(0, { duration: CLOSE_DURATION_MS }, finished => {
+      if (finished) runOnJS(setRendered)(null);
+    });
+  }, [openPicker, progress, reduceMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (progress.value - 1) * LIST_TRAVEL }],
+  }));
+
+  if (!rendered) return null;
 
   return (
     <>
       {/* Tapping the content the list covers dismisses it, as tapping outside a
-          popover would. */}
-      <Pressable
-        accessibilityLabel="Close the list"
-        style={[styles.overlay, styles.backdrop]}
-        onPress={onDismiss}
-      />
+          popover would. Tied to `openPicker`, not `rendered`, so it stops taking
+          taps the moment it is dismissed rather than through the fade. */}
+      {openPicker ? (
+        <Pressable
+          accessibilityLabel="Close the list"
+          style={[styles.overlay, styles.backdrop]}
+          onPress={onDismiss}
+        />
+      ) : null}
 
-      {openPicker === 'chain' ? (
-        <OptionList
-          options={chainOptions}
-          selectedKey={String(chainId)}
-          onSelect={key => {
-            onChainChange(Number(key));
-            onDismiss();
-          }}
-        />
-      ) : (
-        <OptionList
-          options={tokenOptions}
-          selectedKey={symbol}
-          onSelect={key => {
-            onSymbolChange(key);
-            onDismiss();
-          }}
-        />
-      )}
+      {/* The animation lives on this wrapper, never on the card inside it: an
+          `Animated.View` does not resolve nativewind's `className`, so styling
+          the card here would drop its background. */}
+      <Animated.View
+        style={[styles.overlay, animatedStyle]}
+        pointerEvents={openPicker ? 'auto' : 'none'}
+      >
+        {rendered === 'chain' ? (
+          <OptionList
+            options={chainOptions}
+            selectedKey={String(chainId)}
+            onSelect={key => {
+              onChainChange(Number(key));
+              onDismiss();
+            }}
+          />
+        ) : (
+          <OptionList
+            options={tokenOptions}
+            selectedKey={symbol}
+            onSelect={key => {
+              onSymbolChange(key);
+              onDismiss();
+            }}
+          />
+        )}
+      </Animated.View>
     </>
   );
 };
