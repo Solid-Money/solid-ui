@@ -475,4 +475,11 @@ export const TIER_UPGRADE_MODAL = {
     name: 'open_review',
     number: 2,
   },
+  // Half a step, not a third one: the picker is opened from the offer and
+  // returns to it, so the slide animation reads as a detour rather than as
+  // progress towards the signature.
+  OPEN_TOKEN_SELECTOR: {
+    name: 'open_token_selector',
+    number: 1.5,
+  },
 };

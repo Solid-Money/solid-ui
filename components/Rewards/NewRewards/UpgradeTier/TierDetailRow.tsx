@@ -5,7 +5,8 @@ import { Text } from '@/components/ui/text';
 
 interface TierDetailRowProps {
   label: string;
-  value: string;
+  /** The value, as text. Omitted only when `children` renders it instead. */
+  value?: string;
   /** The smaller grey line under the value, e.g. a FUSE amount's USD worth. */
   secondaryValue?: string;
   /** A "?" the user can tap for an explanation, as on the lock-duration row. */

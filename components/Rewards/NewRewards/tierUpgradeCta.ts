@@ -13,8 +13,8 @@ export interface TierUpgradeCta {
 
 /** What the routes on offer are worth saying, above the button. */
 const ROUTE_SUBTITLE: Record<string, string> = {
-  'cash,lock': 'Lock soFUSE or pay the annual fee',
-  lock: 'Lock soFUSE from your Savings to hold the tier',
+  'cash,lock': 'Lock FUSE or pay the annual fee',
+  lock: 'Lock FUSE to hold the tier',
   cash: 'Pay the annual fee to hold the tier',
 };
 
