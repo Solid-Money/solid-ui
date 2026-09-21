@@ -2296,46 +2296,6 @@ export const createMercuryoTransaction = async (
 };
 
 /**
- * Credentials the Onramper SDK is bootstrapped with. Minted by our backend, never
- * derived on the client — the partner secret that signs them must stay server-side.
- * Structurally matches the SDK's `SessionCredentials`; kept local so this module
- * has no dependency on the iOS-only Onramper package.
- */
-export interface OnramperSession {
-  sessionId: string;
-  sessionToken: string;
-}
-
-/**
- * Mints a fresh Onramper session for the signed-in user. Used both for the initial
- * `initialize()` bootstrap and as the SDK's `onSessionExpired` handler, so it must
- * stay cheap and idempotent. Wrap calls in `withRefreshToken` so an expired Solid
- * JWT is refreshed and retried rather than surfacing as a checkout failure.
- */
-export const fetchOnramperSession = async (): Promise<OnramperSession> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/create-session`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  const data = await response.json();
-
-  return data;
-};
-
-/**
  * A signed Onramper widget URL.
  *
  * Minted per open, never cached: Onramper caps the signature at 15 minutes and

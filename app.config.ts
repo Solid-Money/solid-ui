@@ -209,10 +209,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-build-properties',
       {
         ios: {
-          // 16.0 is the floor declared by OnramperReactNative.podspec
-          // (@onramper/onramper-react-native). CocoaPods fails resolution if the
-          // app target is lower, so this cannot go back below 16.0 while that
-          // dependency is installed.
+          // Was raised to 16.0 for OnramperReactNative's podspec floor. That
+          // package is gone, but the target is left where it is: lowering it is
+          // a product decision about which iOS versions we support, not a
+          // consequence of dropping a dependency.
           deploymentTarget: '16.0',
           useFrameworks: 'static',
           // Static frameworks with precompiled RN core have been flaky in EAS iOS builds.
@@ -306,13 +306,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // does not fail. See plugins/withMlkitVisionDependencies.js.
     './plugins/withMlkitVisionDependencies.js',
     // Sets SWIFT_ENABLE_EXPLICIT_MODULES=NO so the Swift pods (NitroModules,
-    // OnramperReactNative) don't fail the app target's "Emit Swift module" phase
-    // on Xcode 16+. Referenced by file path, not as '@onramper/onramper-react-native':
-    // the package ships app.plugin.js but omits it from its package.json "exports"
-    // map, so resolving it as a package subpath fails with
-    // ERR_PACKAGE_PATH_NOT_EXPORTED. Switch to the bare package name once
-    // onramper fixes that upstream.
-    './node_modules/@onramper/onramper-react-native/app.plugin.js',
+    // RCTSwiftUI) don't fail the app target's "Emit Swift module" phase on
+    // Xcode 16+. Vendored from @onramper/onramper-react-native's own plugin
+    // when that package was removed — the fix was never Onramper-specific, and
+    // NitroModules is still here via react-native-mmkv.
+    './plugins/withSwiftExplicitModulesDisabled.js',
   ],
   experiments: {
     typedRoutes: true,
