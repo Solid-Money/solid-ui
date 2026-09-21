@@ -11,6 +11,7 @@ import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
 import {
+  bestLockPaymentAsset,
   bestLockPaymentBalance,
   chooseLockPayment,
   LOCK_PAYMENT_LABEL,
@@ -143,6 +144,8 @@ const UpgradeTierContent = () => {
   // transaction. Without it the only thing that can be locked is Savings.
   const zapAvailable = Boolean(membership.contracts.lockZapAddress);
   const paymentAsset = chooseLockPayment(remainingFuse, balances, zapAvailable);
+  // What the row shows when nothing covers the tier — see the row itself.
+  const shownPaymentAsset = paymentAsset ?? bestLockPaymentAsset(balances, zapAvailable);
   // Measured against the largest single balance, not against Savings alone:
   // telling a user holding 80,000 FUSE that they are 90,000 short — because
   // their Savings are empty — is worse than telling them nothing.
@@ -239,12 +242,17 @@ const UpgradeTierContent = () => {
             />
             {/* Which balance is paying, and how much of it there is. Named
                 rather than assumed: a user who keeps FUSE liquid on purpose
-                should be able to see that it is about to be spent. */}
+                should be able to see that it is about to be spent.
+
+                When nothing covers the tier this falls back to the largest
+                balance rather than to soFUSE, so the row cannot say "soFUSE ·
+                0 FUSE available" above a shortfall measured against the
+                80,000 FUSE the user is actually holding. */}
             <TierDetailRow
               label="Paying with"
-              value={LOCK_PAYMENT_LABEL[paymentAsset ?? 'soFUSE']}
+              value={LOCK_PAYMENT_LABEL[shownPaymentAsset]}
               secondaryValue={`${formatFuseHeld(
-                lockPaymentBalance(paymentAsset ?? 'soFUSE', balances),
+                lockPaymentBalance(shownPaymentAsset, balances),
               )} FUSE available`}
             />
           </>
@@ -254,9 +262,9 @@ const UpgradeTierContent = () => {
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
           ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
-          : paymentAsset === 'soFUSE' || paymentAsset === null
+          : shownPaymentAsset === 'soFUSE'
             ? `Locks soFUSE from your Savings — not native FUSE — for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
-            : `Deposits your ${LOCK_PAYMENT_LABEL[paymentAsset]} into Savings and locks the soFUSE it becomes, in one transaction, for ${formatLockDuration(membership.lock.durationDays)}. It keeps earning while it is locked. `}
+            : `Deposits your ${LOCK_PAYMENT_LABEL[shownPaymentAsset]} into Savings and locks the soFUSE it becomes, in one transaction, for ${formatLockDuration(membership.lock.durationDays)}. It keeps earning while it is locked. `}
         <Text
           accessibilityRole="link"
           onPress={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}

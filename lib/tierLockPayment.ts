@@ -61,6 +61,26 @@ export const chooseLockPayment = (
 };
 
 /**
+ * The asset the lock would come from if it could be paid at all.
+ *
+ * `chooseLockPayment` answers "what pays for this", and returns null when
+ * nothing does. This answers the different question the screen still has to
+ * show something for: which balance is the one worth talking about. Ties go to
+ * soFUSE, for the same reason it is preferred when it covers the tier.
+ */
+export const bestLockPaymentAsset = (
+  balances: LockPaymentBalances,
+  zapAvailable: boolean,
+): LockPaymentAsset => {
+  if (!zapAvailable) return 'soFUSE';
+
+  if (balances.native > balances.sofuse && balances.native >= balances.wrapped) return 'FUSE';
+  if (balances.wrapped > balances.sofuse && balances.wrapped > balances.native) return 'WFUSE';
+
+  return 'soFUSE';
+};
+
+/**
  * The largest single balance the lock could be paid from.
  *
  * What the shortfall is measured against: telling a user holding 80,000 FUSE
@@ -70,5 +90,4 @@ export const chooseLockPayment = (
 export const bestLockPaymentBalance = (
   balances: LockPaymentBalances,
   zapAvailable: boolean,
-): number =>
-  zapAvailable ? Math.max(balances.sofuse, balances.native, balances.wrapped) : balances.sofuse;
+): number => lockPaymentBalance(bestLockPaymentAsset(balances, zapAvailable), balances);
