@@ -9,6 +9,16 @@ export interface TierUpgradeCta {
   subtitle: string;
   /** Whether pressing it does anything. */
   enabled: boolean;
+  /**
+   * The user already has this tier — either it is the one they hold, or it is
+   * below it and comes with theirs.
+   *
+   * The footer hides outright on this rather than disabling itself. A greyed-out
+   * "Current tier" button is a call to action that says there is no action, put
+   * where the eye goes last on the page, and it costs the benefits list the
+   * bottom of the screen to say nothing.
+   */
+  held: boolean;
 }
 
 /** What the routes on offer are worth saying, above the button. */
@@ -58,13 +68,23 @@ export const tierUpgradeCta = ({
       label: 'Confirming tier…',
       subtitle: 'Savings changed. Waiting for rewards confirmation.',
       enabled: false,
+      held: false,
     };
   }
 
   const action = getTierAction(selectedTier, currentTier, unavailable);
 
+  // Both of these are "you have this already", and the footer hides on `held`
+  // rather than rendering either label. They keep their copy because the flag
+  // is what the caller acts on, not the text, and a label that only ever shows
+  // in a test is a label that quietly rots.
   if (action === 'current') {
-    return { label: 'Current tier', subtitle: 'Your membership benefits', enabled: false };
+    return {
+      label: 'Current tier',
+      subtitle: 'Your membership benefits',
+      enabled: false,
+      held: true,
+    };
   }
 
   if (action === 'included') {
@@ -72,14 +92,19 @@ export const tierUpgradeCta = ({
       label: 'Included in your tier',
       subtitle: 'Your membership benefits',
       enabled: false,
+      held: true,
     };
   }
 
+  // Not "you have it" — we do not yet know what they have. The membership is
+  // still loading or the call failed, so the footer stays put and says so
+  // rather than vanishing and reappearing under the user's thumb.
   if (action === 'unavailable') {
     return {
       label: 'Tier unavailable',
       subtitle: 'Checking your current membership',
       enabled: false,
+      held: false,
     };
   }
 
@@ -89,6 +114,7 @@ export const tierUpgradeCta = ({
       // Sorted so the key does not depend on the order the offer listed them in.
       subtitle: ROUTE_SUBTITLE[[...routes].sort().join(',')] ?? 'Upgrade to hold the tier',
       enabled: true,
+      held: false,
     };
   }
 
@@ -97,10 +123,21 @@ export const tierUpgradeCta = ({
       label: 'Upgrade',
       subtitle: `Deposit ${remainingFuse.toLocaleString('en-US')} FUSE to Savings to upgrade`,
       enabled: true,
+      held: false,
     };
   }
 
-  // A higher tier that neither program is selling: the offer is switched off,
-  // or this user is not eligible for it.
-  return { label: 'Tier unavailable', subtitle: 'Your membership benefits', enabled: false };
+  // A higher tier that neither program is selling: both routes are switched
+  // off, or this user is not eligible for it.
+  //
+  // The subtitle used to read "Your membership benefits", borrowed from the two
+  // held cases above — which told a user looking at a tier they do NOT have
+  // that they were looking at their own benefits. This is the one case where
+  // "Tier unavailable" is literally true, so it says why.
+  return {
+    label: 'Tier unavailable',
+    subtitle: 'Not on sale right now',
+    enabled: false,
+    held: false,
+  };
 };
