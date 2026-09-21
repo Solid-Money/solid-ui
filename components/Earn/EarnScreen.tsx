@@ -9,13 +9,13 @@ import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { type AssetPath } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
+import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import { EarnInvestSection } from './EarnInvestSection';
 import {
@@ -78,6 +78,7 @@ export default function EarnScreen() {
   // withdrawn, and adding it to a headline the withdraw flow then refuses is
   // worse than showing it as its own line.
   const { data: membership } = useTierMembership();
+  const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
   const fuseApy = useMaxAPY(VaultType.FUSE);
@@ -168,7 +169,10 @@ export default function EarnScreen() {
           {membership?.lock ? (
             <LockedFuseTile
               lock={membership.lock}
-              onPress={() => router.push(path.REWARDS_UPGRADE)}
+              // No tier named: this screen knows the user wants to top up a
+              // lock and not which tier that buys. The flow resolves it to the
+              // cheapest one they do not already hold.
+              onPress={() => openTierUpgrade()}
             />
           ) : null}
         </View>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
-import { Href, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
@@ -30,6 +30,7 @@ import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
+import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import JoinTierClubCard from './JoinTierClubCard';
@@ -75,27 +76,26 @@ export default function RewardsScreenNew() {
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const [isMembershipSheetOpen, setIsMembershipSheetOpen] = useState(false);
 
   /**
    * Opens the upgrade flow on a specific tier.
    *
-   * A screen rather than the old sheet: v3 sells the tier outright, so the
-   * decision now carries a price, a term and a choice of how to pay — more than
-   * a 470px sheet can put in front of someone before they sign for it.
+   * A modal rather than a route: this screen is where the user came to read
+   * their rewards, and pricing an upgrade they may not buy is not worth taking
+   * the page away and handing them a back stack to unwind.
    */
   const handleUpgradeTier = useCallback(
     (tier: RewardsTier | null) => {
-      const target =
-        tier === RewardsTier.PRIME || tier === RewardsTier.ULTRA
-          ? tier
-          : nextPurchasableTier(membership);
-
-      if (!target) return;
-
-      router.push({ pathname: '/rewards/upgrade', params: { tier: target } } as Href);
+      // Prime and Ultra are the tiers that are for sale. Anything else — Core,
+      // or no tier at all — means "whichever one is next", which the flow
+      // resolves from the membership it already holds. Passing it on rather
+      // than resolving it here also means a press that turns out to have
+      // nothing to sell says so, instead of doing nothing at all.
+      openTierUpgrade(tier === RewardsTier.PRIME || tier === RewardsTier.ULTRA ? tier : null);
     },
-    [membership],
+    [openTierUpgrade],
   );
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
