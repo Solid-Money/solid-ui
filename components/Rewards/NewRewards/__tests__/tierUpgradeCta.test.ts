@@ -24,6 +24,7 @@ describe('tierUpgradeCta', () => {
       label: 'Upgrade',
       subtitle: 'Lock FUSE or pay the annual fee',
       enabled: true,
+      held: false,
     });
   });
 
@@ -45,14 +46,22 @@ describe('tierUpgradeCta', () => {
       label: 'Upgrade',
       subtitle: 'Deposit 50,000 FUSE to Savings to upgrade',
       enabled: true,
+      held: false,
     });
   });
 
-  it('is unavailable when neither program sells the tier', () => {
+  /**
+   * Says why, rather than borrowing the held cases' "Your membership benefits"
+   * — which told a user looking at a tier they do not have that they were
+   * looking at their own. And `held` stays false: the footer has something to
+   * say here, so it stays on screen.
+   */
+  it('is unavailable, and says so, when neither program sells the tier', () => {
     expect(cta({ routes: [], remainingFuse: undefined })).toEqual({
       label: 'Tier unavailable',
-      subtitle: 'Your membership benefits',
+      subtitle: 'Not on sale right now',
       enabled: false,
+      held: false,
     });
   });
 
@@ -66,6 +75,7 @@ describe('tierUpgradeCta', () => {
       label: 'Included in your tier',
       subtitle: 'Your membership benefits',
       enabled: false,
+      held: true,
     });
   });
 
@@ -75,6 +85,39 @@ describe('tierUpgradeCta', () => {
       label: 'Confirming tier…',
       subtitle: 'Savings changed. Waiting for rewards confirmation.',
       enabled: false,
+      held: false,
+    });
+  });
+
+  /**
+   * What the footer hides on. The old rule was `selectedTier !== currentTier`,
+   * which hid it on exactly one tab — so a user on Ultra swiping to Prime, or
+   * to Core, got a full-width dead button over benefits they already had.
+   */
+  describe('held', () => {
+    it('covers the tier the user is on and every tier under it', () => {
+      expect(cta({ selectedTier: ULTRA, currentTier: ULTRA }).held).toBe(true);
+      expect(cta({ selectedTier: PRIME, currentTier: ULTRA }).held).toBe(true);
+      expect(cta({ selectedTier: CORE, currentTier: ULTRA }).held).toBe(true);
+      expect(cta({ selectedTier: CORE, currentTier: PRIME }).held).toBe(true);
+    });
+
+    /** A tier still to be bought keeps its footer, sellable or not. */
+    it('is false for a tier above the one held', () => {
+      expect(cta({ selectedTier: ULTRA, currentTier: PRIME, routes: ['lock'] }).held).toBe(false);
+      expect(cta({ selectedTier: ULTRA, currentTier: PRIME, routes: [] }).held).toBe(false);
+      expect(cta({ selectedTier: PRIME, currentTier: CORE, routes: ['cash'] }).held).toBe(false);
+    });
+
+    /**
+     * Not knowing is not the same as having it. Hiding the footer on a
+     * membership that has not loaded would pull it out from under the user's
+     * thumb and put it back a moment later.
+     */
+    it('is false while the membership is unknown or reconciling', () => {
+      expect(cta({ selectedTier: ULTRA, currentTier: ULTRA, unavailable: true }).held).toBe(false);
+      expect(cta({ selectedTier: ULTRA, currentTier: undefined }).held).toBe(false);
+      expect(cta({ selectedTier: ULTRA, currentTier: ULTRA, pending: true }).held).toBe(false);
     });
   });
 
@@ -83,6 +126,7 @@ describe('tierUpgradeCta', () => {
       label: 'Tier unavailable',
       subtitle: 'Checking your current membership',
       enabled: false,
+      held: false,
     });
     expect(cta({ currentTier: undefined, routes: ['cash', 'lock'] }).enabled).toBe(false);
   });
