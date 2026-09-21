@@ -87,7 +87,6 @@ type Path = {
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
-  REWARDS_UPGRADE: Href;
   OVERVIEW: Href;
   /**
    * @deprecated Same story as `CARD` — `/card-onboard` served the standalone card
@@ -151,7 +150,6 @@ export const path: Path = {
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',
-  REWARDS_UPGRADE: '/rewards/upgrade',
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-onboard',
   CARD_WAITLIST_SUCCESS: '/card-onboard/success',

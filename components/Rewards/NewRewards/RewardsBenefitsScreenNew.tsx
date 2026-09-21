@@ -18,7 +18,6 @@ import {
   CoreCardPerkIcon,
   CoreGlobePerkIcon,
   CoreRocketPerkIcon,
-  CoreTierSparkle,
 } from '@/assets/images/rewards-tiers/core-tier-icons';
 import { SIDEBAR_BODY_WIDTH, useIsSidebarShell, usePageWidth } from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
@@ -27,12 +26,15 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
-import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
+import { useTierMembership } from '@/hooks/useTierMembership';
+import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
+import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
+import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
@@ -40,8 +42,10 @@ import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
 import { resolveTierFees } from './tierFees';
 import TierHero from './TierHero';
 import TierPointsSheet from './TierPointsSheet';
+import TierSparkleIcon from './TierSparkleIcon';
 import TierStatsBand from './TierStatsBand';
 import TierSwitcher from './TierSwitcher';
+import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
 import UpgradeTierSheet from './UpgradeTierSheet';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
@@ -52,8 +56,6 @@ const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.ULTRA]: 'Ultra',
 };
 
-const PRIME_TIER_SPARKLE = require('@/assets/images/rewards-tiers/prime-tier-sparkle.png');
-const ULTRA_TIER_SPARKLE = require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png');
 const TIER_INFO = require('@/assets/images/rewards-tiers/tier-info.png');
 const YIELD_BOOST_ICON = require('@/assets/images/rewards-tiers/yield-boost.png');
 const CASHBACK_CAP_ICON = require('@/assets/images/rewards-tiers/cashback-cap.png');
@@ -498,30 +500,17 @@ const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
   currentTier,
-  unavailable,
-  pending,
-  remainingFuse,
+  cta,
 }: {
   selectedTier: RewardsTier;
   currentTier?: RewardsTier;
-  unavailable: boolean;
-  pending: boolean;
-  remainingFuse?: number;
+  /** The button, its subtitle and whether it does anything — see `tierUpgradeCta`. */
+  cta: TierUpgradeCta;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const action = getTierAction(selectedTier, currentTier, unavailable);
-  const canUpgrade = action === 'upgrade' && !pending && remainingFuse !== undefined;
-  const label = pending
-    ? 'Confirming tier…'
-    : action === 'current'
-      ? 'Current tier'
-      : action === 'included'
-        ? 'Included in your tier'
-        : canUpgrade
-          ? 'Upgrade'
-          : 'Tier unavailable';
+  const { label, subtitle: ctaSubtitle, enabled: canUpgrade } = cta;
   const isVisible = selectedTier !== currentTier;
   const lastPremiumTier = useRef<RewardsTier.PRIME | RewardsTier.ULTRA>(RewardsTier.PRIME);
 
@@ -530,7 +519,6 @@ const PremiumUpgradeFooter = ({
   }
 
   const tier = lastPremiumTier.current;
-  const fuseAmount = remainingFuse?.toLocaleString('en-US');
   const bottomSpacing =
     Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) + PREMIUM_FOOTER_VERTICAL_OFFSET;
   const footerHeight = PREMIUM_FOOTER_BUTTON_TOP + PREMIUM_FOOTER_BUTTON_HEIGHT + bottomSpacing;
@@ -592,13 +580,7 @@ const PremiumUpgradeFooter = ({
             lineHeight: 23,
           }}
         >
-          {pending
-            ? 'Savings changed. Waiting for rewards confirmation.'
-            : canUpgrade
-              ? `Deposit ${fuseAmount} FUSE to Savings to upgrade`
-              : action === 'unavailable'
-                ? 'Checking your current membership'
-                : 'Your membership benefits'}
+          {ctaSubtitle}
         </Text>
         <View className={`${SIDEBAR_BODY_WIDTH} px-[18px]`}>
           <Pressable
@@ -654,7 +636,7 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
           <TierHero tier={tier} />
 
           <View className="-mt-1 flex-row items-center gap-1">
-            <CoreTierSparkle />
+            <TierSparkleIcon tier={RewardsTier.CORE} />
             <Text
               className="text-white/70"
               style={{
@@ -715,11 +697,7 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
         <TierHero tier={tier} />
 
         <View className="-mt-1 flex-row items-center gap-1">
-          <Image
-            source={tier === RewardsTier.PRIME ? PRIME_TIER_SPARKLE : ULTRA_TIER_SPARKLE}
-            style={{ width: 20, height: 20 }}
-            contentFit="contain"
-          />
+          <TierSparkleIcon tier={tier} />
           <Text
             className="text-white/70"
             style={{
@@ -793,6 +771,8 @@ function RewardsBenefitsForAccount() {
           target => target.tier === tier && target.requiredFuse > 0,
         )
       : undefined;
+  const { data: membership } = useTierMembership();
+  const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(null);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
   const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
@@ -831,8 +811,43 @@ function RewardsBenefitsForAccount() {
     transform: [{ translateX: translateX.value }],
   }));
 
+  /**
+   * The routes v3 is selling a tier by, or none.
+   *
+   * A tier the user already holds has no routes: the offer still carries its
+   * price, and offering to sell it again would price an upgrade at nothing.
+   */
+  const upgradeRoutes = (tier: RewardsTier) => {
+    const offer = findOffer(membership, tier);
+    if (!membership?.enabled || !offer || offer.held) return [];
+    return availableRoutes(offer);
+  };
+
+  const ctaFor = (tier: RewardsTier) =>
+    tierUpgradeCta({
+      selectedTier: tier,
+      currentTier,
+      unavailable: !currentTier || isError,
+      pending,
+      routes: upgradeRoutes(tier),
+      remainingFuse: upgradeTarget(tier)?.remainingFuse,
+    });
+
+  /**
+   * Whichever program is selling this tier gets the press.
+   *
+   * v3 first: it sells the tier outright, for a lock or an annual fee, and its
+   * flow is the one that can take the money. v2's sheet only points at a
+   * savings deposit, which under v3 unlocks nothing.
+   */
   const handleUpgradePress = (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => {
-    if (!isHigherTier(tier, currentTier) || pending || !upgradeTarget(tier)) return;
+    if (!ctaFor(tier).enabled) return;
+
+    if (upgradeRoutes(tier).length > 0) {
+      openTierUpgrade(tier);
+      return;
+    }
+
     setUpgradeTier(tier);
     setIsUpgradeSheetOpen(true);
   };
@@ -909,9 +924,7 @@ function RewardsBenefitsForAccount() {
       <PremiumUpgradeFooter
         selectedTier={selectedTier}
         currentTier={currentTier}
-        unavailable={!currentTier || isError}
-        pending={pending}
-        remainingFuse={upgradeTarget(selectedTier)?.remainingFuse}
+        cta={ctaFor(selectedTier)}
         onUpgradePress={handleUpgradePress}
       />
       <UpgradeTierSheet

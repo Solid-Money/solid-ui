@@ -1233,6 +1233,16 @@ export enum TransactionType {
   AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
   GOODDOLLAR_CLAIM = 'gooddollar_claim',
   GOODDOLLAR_SWEEP = 'gooddollar_sweep',
+  /**
+   * The two ways a rewards v3 membership tier is bought.
+   *
+   * `TIER_LOCK` is soFUSE committed to the lock for a fixed term — the user
+   * still owns it and gets it back, so it reads as a movement out of the wallet
+   * rather than a charge. `TIER_SUBSCRIPTION` is the annual USDC the
+   * subscription module draws, which is spent.
+   */
+  TIER_LOCK = 'tier_lock',
+  TIER_SUBSCRIPTION = 'tier_subscription',
 }
 
 export enum TransactionDirection {
@@ -1260,6 +1270,7 @@ export enum TransactionCategory {
   CARD_WELCOME_BONUS = 'Card welcome bonus',
   DEPOSIT_BONUS = 'Deposit bonus',
   GOODDOLLAR_UBI = 'GoodDollar UBI',
+  TIER_MEMBERSHIP = 'Tier membership',
   RECEIVE = 'Receive',
 }
 
@@ -3191,9 +3202,20 @@ export interface TierSubscription {
 export interface TierMembershipContracts {
   chainId: number;
   lockAddress: string | null;
+  /**
+   * `SolidTierLockZap`, which deposits and locks in one transaction.
+   *
+   * Null means the one-press upgrade is not available and the user has to fund
+   * Savings first and come back once the shares have landed. It is a backend
+   * switch rather than a deployment fact — the zap also has to hold the lock's
+   * `lockFor` role — so the app treats null as "offer the two-step flow".
+   */
+  lockZapAddress: string | null;
   subscriptionModuleAddress: string | null;
   /** The soFUSE share token that is locked. */
   shareTokenAddress: string | null;
+  /** WFUSE. Par with native FUSE, so the two are one choice to the user. */
+  wrappedNativeAddress: string | null;
   /** The USDC the membership is billed in. */
   billingTokenAddress: string | null;
 }
