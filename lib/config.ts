@@ -93,6 +93,45 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
+
+/**
+ * Flashnet Orchestra — the Lightning fiat onramp (https://docs.flashnet.xyz/orchestra/onramp).
+ *
+ * Only the client key lives here. Orchestra issues two kinds: server keys
+ * (`fn_...`), which reach history, webhooks and lookup by quote or tx hash, and
+ * client keys (`fnp_...`), scoped to `orders:onramp`, `orders:read` and
+ * `orders:sse` — exactly the three calls this flow makes. EXPO_PUBLIC_* values
+ * are inlined into the JS bundle, so the server key is deliberately absent from
+ * this file: it belongs to the backend that owns webhooks, and is declared in
+ * .env.example as ORCHESTRA_SERVER_KEY without the prefix so Expo cannot inline
+ * it by accident.
+ *
+ * Client keys are origin-checked. A key in `browser` mode 403s any request
+ * without a matching Origin, which native builds never send — so a key serving
+ * both platforms has to be in `both` mode.
+ */
+export const EXPO_PUBLIC_ORCHESTRA_API_BASE_URL =
+  process.env.EXPO_PUBLIC_ORCHESTRA_API_BASE_URL ?? 'https://orchestration.flashnet.xyz';
+export const EXPO_PUBLIC_ORCHESTRA_CLIENT_KEY = (
+  process.env.EXPO_PUBLIC_ORCHESTRA_CLIENT_KEY ?? ''
+).trim();
+/**
+ * Where the onramp delivers. Orchestra's destinations are `<chain>:<asset>` ids
+ * from GET /v2/orchestration/routes; Base USDC is the app's default because it
+ * is already a funded deposit route for the user's Safe. Configurable so a
+ * corridor can be moved without a release — but read /routes and /limits for
+ * live availability rather than trusting these to stay routable.
+ */
+export const EXPO_PUBLIC_ORCHESTRA_DESTINATION_CHAIN =
+  process.env.EXPO_PUBLIC_ORCHESTRA_DESTINATION_CHAIN ?? 'base';
+export const EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET =
+  process.env.EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET ?? 'USDC';
+/**
+ * Whether the onramp can be offered at all. The whole flow authenticates with
+ * the client key, so without one every call 401s — the entry point checks this
+ * rather than showing a row that can only fail.
+ */
+export const isOrchestraConfigured = Boolean(EXPO_PUBLIC_ORCHESTRA_CLIENT_KEY);
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 // In-development features: visible on qa/preview builds, hidden in production.
 export const isDevFeatureEnabled = !isProduction;

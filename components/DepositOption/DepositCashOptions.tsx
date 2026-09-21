@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Minus, Plus } from 'lucide-react-native';
+import { Minus, Plus, Zap } from 'lucide-react-native';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -21,8 +21,10 @@ import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { isOrchestraConfigured } from '@/lib/config';
 import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useOrchestraStore } from '@/store/useOrchestraStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 import { getPaymentMethodChips } from './depositPaymentMethods';
@@ -36,6 +38,12 @@ const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
  * the local currencies, whose rails come back from TransFi's payment config.
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
+/**
+ * The Lightning onramp is a payment method rather than a currency, so it sits
+ * under the rail the user recognises. Cash App is named because it is the one
+ * the pay link launches directly; any Lightning wallet takes the same invoice.
+ */
+const LIGHTNING_PAYMENT_METHOD_CHIPS = ['Lightning', 'Instant'];
 const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
@@ -58,6 +66,7 @@ export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/
 const DepositCashOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetTransfi = useTransfiStore(state => state.reset);
+  const resetOrchestra = useOrchestraStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
   const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
@@ -133,6 +142,18 @@ const DepositCashOptions = () => {
     setIsVirtualAccountApplyOpen(true);
   };
 
+  const handleLightningPress = () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+      provider: 'orchestra',
+      currency: 'USD',
+    });
+    // A previous order's invoice and read token would otherwise still be in the
+    // store, and the status screen would track it instead of the new one.
+    resetOrchestra();
+    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+  };
+
   const handleLocalCurrencyPress = (code: string) => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'buy_crypto',
@@ -165,6 +186,24 @@ const DepositCashOptions = () => {
           chips={USD_PAYMENT_METHOD_CHIPS}
           onPress={handleUsdPress}
         />
+        {/* Hidden rather than disabled without a client key: every call the flow
+            makes authenticates with it, so the row could only ever fail. */}
+        {isOrchestraConfigured ? (
+          <CardFundRow
+            className="min-h-[93px]"
+            icon={
+              <View
+                className="items-center justify-center rounded-full bg-[#333333]"
+                style={{ width: ICON_SIZE, height: ICON_SIZE }}
+              >
+                <Zap size={18} color="#94F27F" />
+              </View>
+            }
+            title="Cash App"
+            chips={LIGHTNING_PAYMENT_METHOD_CHIPS}
+            onPress={handleLightningPress}
+          />
+        ) : null}
         {localCurrencies.map(currency => (
           <CardFundRow
             key={currency.code}

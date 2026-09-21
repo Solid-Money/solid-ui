@@ -183,6 +183,29 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_profile',
     number: 27,
   },
+  // Flashnet Orchestra Lightning onramp: enter an amount, pay the invoice, watch
+  // it settle. Numbered after the TransFi steps so moving between the two
+  // onramps from the cash screen always animates forward.
+  OPEN_ORCHESTRA_AMOUNT: {
+    name: 'open_orchestra_amount',
+    number: 28,
+  },
+  OPEN_ORCHESTRA_INVOICE: {
+    name: 'open_orchestra_invoice',
+    number: 29,
+  },
+  OPEN_ORCHESTRA_STATUS: {
+    name: 'open_orchestra_status',
+    number: 30,
+  },
+  /**
+   * Failure screen for the onramp. Numbered past every other step so arriving
+   * at it always animates forward, whichever step failed.
+   */
+  OPEN_ORCHESTRA_ERROR: {
+    name: 'open_orchestra_error',
+    number: 31,
+  },
 };
 
 export const SEND_MODAL = {
