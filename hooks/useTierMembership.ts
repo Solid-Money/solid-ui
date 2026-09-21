@@ -7,7 +7,6 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidSubscriptionModule_ABI } from '@/lib/abis/SolidSubscriptionModule';
-import { SolidTierLock_ABI } from '@/lib/abis/SolidTierLock';
 import { track } from '@/lib/analytics';
 import {
   cancelTierSubscription,
@@ -18,11 +17,13 @@ import {
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { fuseSharesForAmount } from '@/lib/tierUpgrade';
+import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
+
+import type { LockPaymentAsset } from '@/lib/tierLockPayment';
 
 export const TIER_MEMBERSHIP_QUERY_KEY = 'tierMembership';
 export /**
@@ -50,6 +51,10 @@ export interface TierUpgradeChainState {
   shares: bigint;
   /** That position in FUSE. */
   fuse: number;
+  /** Native FUSE the Safe holds. */
+  nativeFuse: number;
+  /** WFUSE the Safe holds. Par with native FUSE, so it reads as the same unit. */
+  wrappedFuse: number;
   /** soFUSE→FUSE rate, raw (18 decimals). */
   rate: bigint;
   /** USDC the Safe holds, raw (6 decimals). */
@@ -94,6 +99,7 @@ export const useTierUpgradeChainState = (contracts?: {
   lockAddress: string | null;
   subscriptionModuleAddress: string | null;
   shareTokenAddress: string | null;
+  wrappedNativeAddress: string | null;
   billingTokenAddress: string | null;
 }) => {
   const { user } = useUser();
@@ -101,6 +107,7 @@ export const useTierUpgradeChainState = (contracts?: {
   const shareToken = (contracts?.shareTokenAddress ?? ADDRESSES.fuse.fuseVault) as Address;
   const billingToken = contracts?.billingTokenAddress as Address | undefined;
   const moduleAddress = contracts?.subscriptionModuleAddress as Address | undefined;
+  const wrappedNative = contracts?.wrappedNativeAddress as Address | undefined;
 
   return useQuery<TierUpgradeChainState>({
     queryKey: [
@@ -109,6 +116,7 @@ export const useTierUpgradeChainState = (contracts?: {
       shareToken,
       billingToken,
       moduleAddress,
+      wrappedNative,
     ],
     enabled: Boolean(safeAddress),
     // Polled, not cached-and-forgotten. This drives the difference between
@@ -129,10 +137,10 @@ export const useTierUpgradeChainState = (contracts?: {
     queryFn: async () => {
       const client = publicClient(fuse.id);
 
-      // All five in flight together: this drives a screen that has to price an
-      // offer against a balance, and fetching them in sequence is how the two
-      // end up describing different moments.
-      const [shares, rate, usdc, moduleEnabled, subscription] = await Promise.all([
+      // All of them in flight together: this drives a screen that has to price
+      // an offer against a balance, and fetching them in sequence is how the
+      // two end up describing different moments.
+      const [shares, rate, usdc, moduleEnabled, subscription, native, wrapped] = await Promise.all([
         client.readContract({
           address: shareToken,
           abi: erc20Abi,
@@ -176,6 +184,18 @@ export const useTierUpgradeChainState = (contracts?: {
               args: [safeAddress!],
             })
           : Promise.resolve(undefined),
+        // Both read whether or not the zap is deployed. They cost one multicall
+        // slot each, and a balance the screen does not know about is a "Top up"
+        // button in front of a user who is holding the FUSE.
+        client.getBalance({ address: safeAddress! }),
+        wrappedNative
+          ? client.readContract({
+              address: wrappedNative,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [safeAddress!],
+            })
+          : Promise.resolve(0n),
       ]);
 
       return {
@@ -183,6 +203,11 @@ export const useTierUpgradeChainState = (contracts?: {
         // Shares are yield-bearing, so a raw balance understates the position —
         // it has to go through the accountant rate to read as FUSE.
         fuse: Number(formatUnits((shares * rate) / 10n ** BigInt(SHARE_DECIMALS), SHARE_DECIMALS)),
+        // Native FUSE and WFUSE are the same unit as the FUSE a tier is priced
+        // in — the wrapper holds exactly its own total supply — so neither
+        // needs the rate.
+        nativeFuse: Number(formatUnits(native, SHARE_DECIMALS)),
+        wrappedFuse: Number(formatUnits(wrapped, SHARE_DECIMALS)),
         rate,
         usdc,
         usdcAmount: Number(formatUnits(usdc, BILLING_DECIMALS)),
@@ -226,20 +251,18 @@ const useInvalidateAfterUpgrade = () => {
 };
 
 /**
- * Lock soFUSE to hold a tier.
+ * Lock to hold a tier, paying with whatever the user has.
  *
- * soFUSE, not native FUSE: the lock takes the Savings position's shares, and
- * every figure the screens quote is the FUSE those shares are worth.
+ * soFUSE, native FUSE or WFUSE — all three priced in FUSE, because that is the
+ * unit a tier threshold is measured in. Which one is chosen is decided by
+ * `chooseLockPayment`; what each one costs in calls is decided by
+ * `buildLockTransactions`.
  *
- * Two calls in one user operation: approve the shares to the lock, then lock
- * them. Batched so the user signs once and so neither half can land without the
- * other — an approval left standing with no lock behind it is a permission the
- * user did not mean to leave lying around.
- *
- * The amount is worked out in shares, not FUSE. The tier threshold is measured
- * in FUSE and the vault's rate converts between them, so the share count is
- * rounded *up*: locking a share too few would leave the position a wei short of
- * the threshold and buy nothing.
+ * Always one user operation. For soFUSE that is approve-then-lock, batched so
+ * neither half can land without the other — an approval left standing with no
+ * lock behind it is a permission the user did not mean to leave lying around.
+ * For FUSE and WFUSE it is the zap, which deposits and locks in one call so the
+ * user no longer has to fund Savings, wait for the shares, and come back.
  */
 export const useLockFuseForTier = () => {
   const { user, safeAA } = useUser();
@@ -249,56 +272,53 @@ export const useLockFuseForTier = () => {
   const mutation = useMutation({
     mutationFn: async ({
       tier,
+      asset,
       fuseAmount,
       rate,
       lockAddress,
       shareTokenAddress,
+      zapAddress,
+      wrappedNativeAddress,
     }: {
       tier: RewardsTier;
+      /** What is paying for the lock. */
+      asset: LockPaymentAsset;
       /** FUSE the user is committing. */
       fuseAmount: number;
       /** soFUSE→FUSE rate, raw. */
       rate: bigint;
       lockAddress: string;
       shareTokenAddress: string;
+      /** `SolidTierLockZap`. Required for anything that is not already soFUSE. */
+      zapAddress?: string | null;
+      /** WFUSE. Required to pay with WFUSE. */
+      wrappedNativeAddress?: string | null;
     }) => {
       if (!user?.suborgId || !user?.signWith) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
-      const shares = fuseSharesForAmount(fuseAmount, rate);
-      if (shares <= 0n) throw new Error('Enter an amount to lock.');
+      const transactions = buildLockTransactions({
+        asset,
+        fuseAmount,
+        rate,
+        lockAddress: lockAddress as Address,
+        shareTokenAddress: shareTokenAddress as Address,
+        zapAddress: (zapAddress as Address) || undefined,
+        wrappedNativeAddress: (wrappedNativeAddress as Address) || undefined,
+      });
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
       const result = await executeTransactions(
         smartAccountClient,
-        [
-          {
-            to: shareTokenAddress as Address,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: 'approve',
-              args: [lockAddress as Address, shares],
-            }),
-            value: 0n,
-          },
-          {
-            to: lockAddress as Address,
-            data: encodeFunctionData({
-              abi: SolidTierLock_ABI,
-              functionName: 'lock',
-              args: [shares],
-            }),
-            value: 0n,
-          },
-        ],
+        transactions,
         'Failed to lock your soFUSE',
         fuse,
       );
 
       if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.TIER_LOCK_CANCELLED, { tier, fuse_amount: fuseAmount });
+        track(TRACKING_EVENTS.TIER_LOCK_CANCELLED, { tier, fuse_amount: fuseAmount, asset });
         return null;
       }
 
@@ -308,7 +328,7 @@ export const useLockFuseForTier = () => {
       // return when the term is up.
       const state = await confirmTierLock({ transactionHash: result.transactionHash });
 
-      return { state, transactionHash: result.transactionHash, fuseAmount, tier };
+      return { state, transactionHash: result.transactionHash, fuseAmount, tier, asset };
     },
     onSuccess: result => {
       if (!result) return;
@@ -316,6 +336,7 @@ export const useLockFuseForTier = () => {
       track(TRACKING_EVENTS.TIER_LOCK_COMPLETED, {
         tier: result.tier,
         fuse_amount: result.fuseAmount,
+        asset: result.asset,
         transaction_hash: result.transactionHash,
       });
     },

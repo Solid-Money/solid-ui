@@ -3177,9 +3177,20 @@ export interface TierSubscription {
 export interface TierMembershipContracts {
   chainId: number;
   lockAddress: string | null;
+  /**
+   * `SolidTierLockZap`, which deposits and locks in one transaction.
+   *
+   * Null means the one-press upgrade is not available and the user has to fund
+   * Savings first and come back once the shares have landed. It is a backend
+   * switch rather than a deployment fact — the zap also has to hold the lock's
+   * `lockFor` role — so the app treats null as "offer the two-step flow".
+   */
+  lockZapAddress: string | null;
   subscriptionModuleAddress: string | null;
   /** The soFUSE share token that is locked. */
   shareTokenAddress: string | null;
+  /** WFUSE. Par with native FUSE, so the two are one choice to the user. */
+  wrappedNativeAddress: string | null;
   /** The USDC the membership is billed in. */
   billingTokenAddress: string | null;
 }
