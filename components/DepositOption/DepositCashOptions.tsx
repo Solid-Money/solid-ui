@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Minus, Plus } from 'lucide-react-native';
+import { CreditCard, Minus, Plus } from 'lucide-react-native';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -49,6 +49,12 @@ export const DEPOSIT_CASH_CURRENCY_COUNT =
 
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
 export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
+
+const CryptoIcon = ({ children }: { children: React.ReactNode }) => (
+  <View className="h-[37px] w-[37px] items-center justify-center rounded-full bg-[#333333]">
+    {children}
+  </View>
+);
 
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens the
@@ -133,6 +139,14 @@ const DepositCashOptions = () => {
     setIsVirtualAccountApplyOpen(true);
   };
 
+  const handleBuyWithCardPress = () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+      provider: 'onramper',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
+  };
+
   const handleLocalCurrencyPress = (code: string) => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'buy_crypto',
@@ -191,6 +205,23 @@ const DepositCashOptions = () => {
             {showAllCurrencies ? 'Show less' : 'Show more'}
           </Text>
         </Pressable>
+      </CardFundGroup>
+
+      {/* Onramper's aggregator, in its own hosted widget. No platform or region
+          gate: it runs in an iframe on web and a WebView on native, and an
+          unserved country is something the widget itself reports — honestly and
+          in context — rather than something we predict by hiding the row. */}
+      <CardFundGroup label="Other">
+        <CardFundRow
+          icon={
+            <CryptoIcon>
+              <CreditCard color="white" size={22} strokeWidth={1.5} />
+            </CryptoIcon>
+          }
+          title="Buy crypto"
+          subtitle="Card, Apple Pay, Google Pay and more"
+          onPress={handleBuyWithCardPress}
+        />
       </CardFundGroup>
 
       <VirtualAccountApplyDialog

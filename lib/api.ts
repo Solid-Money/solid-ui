@@ -2335,6 +2335,49 @@ export const fetchOnramperSession = async (): Promise<OnramperSession> => {
   return data;
 };
 
+/**
+ * A signed Onramper widget URL.
+ *
+ * Minted per open, never cached: Onramper caps the signature at 15 minutes and
+ * treats each URL as single-use, so a stored one fails at checkout rather than
+ * at load — the worst place to find out.
+ */
+export interface OnramperWidgetSession {
+  url: string;
+  /** ISO timestamp. Past this, the URL must be re-minted. */
+  expiresAt: string;
+}
+
+/**
+ * Mints a signed widget URL for the signed-in user.
+ *
+ * The destination address is not sent — the backend reads it from the
+ * authenticated user, so nothing the client says can redirect the delivery.
+ */
+export const fetchOnramperWidgetSession = async (
+  platform: 'web' | 'native',
+): Promise<OnramperWidgetSession> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/widget-session`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ platform }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const bridgeDeposit = async (
   bridge: BridgeDeposit,
 ): Promise<{ transactionHash: string }> => {

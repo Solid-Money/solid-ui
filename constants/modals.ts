@@ -183,6 +183,11 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_profile',
     number: 27,
   },
+  /** Onramper's hosted widget — iframe on web, WebView on native. */
+  OPEN_ONRAMPER_WIDGET: {
+    name: 'open_onramper_widget',
+    number: 28,
+  },
 };
 
 export const SEND_MODAL = {

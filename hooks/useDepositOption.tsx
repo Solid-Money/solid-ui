@@ -8,6 +8,7 @@ import Trash from '@/assets/images/trash';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
+import { OnramperWidget } from '@/components/BuyCrypto/OnramperWidget/OnramperWidget';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
 import { TransfiError } from '@/components/BuyCrypto/Transfi/TransfiError';
@@ -159,6 +160,7 @@ const useDepositOption = ({
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isBuyCryptoProfile = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name;
   const isBuyCryptoError = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name;
+  const isOnramperWidget = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
@@ -326,6 +328,10 @@ const useDepositOption = ({
       return <TransfiError />;
     }
 
+    if (isOnramperWidget) {
+      return <OnramperWidget onOutcome={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH)} />;
+    }
+
     if (isPublicAddress) {
       return <WalletDepositAddress />;
     }
@@ -429,6 +435,7 @@ const useDepositOption = ({
     if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isBuyCryptoProfile) return 'buy-crypto-profile';
     if (isBuyCryptoError) return 'buy-crypto-error';
+    if (isOnramperWidget) return 'onramper-widget';
     if (isPublicAddress) return 'public-address';
     if (isSavingsFund) return 'savings-fund-options';
     if (isSavingsFundNetworks) return 'savings-fund-networks';
@@ -474,6 +481,7 @@ const useDepositOption = ({
     // The error screen carries its own headline and icon; a second title above
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
+    if (isOnramperWidget) return 'Buy crypto';
     if (isPublicAddress) return 'Deposit address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
@@ -792,6 +800,9 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
       // The onramp is only ever entered by picking a currency on the cash screen.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
+    } else if (isOnramperWidget) {
+      // Entered from the cash screen's "Buy crypto" row.
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
