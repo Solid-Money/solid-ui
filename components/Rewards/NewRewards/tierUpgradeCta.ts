@@ -51,6 +51,7 @@ export const tierUpgradeCta = ({
   pending,
   routes,
   remainingFuse,
+  offerHeld = false,
 }: {
   selectedTier: RewardsTier;
   currentTier?: RewardsTier;
@@ -62,37 +63,42 @@ export const tierUpgradeCta = ({
   routes: TierUpgradeRoute[];
   /** v2: the FUSE still needed to unlock it, or undefined when that is off. */
   remainingFuse?: number;
+  /**
+   * The membership endpoint's own verdict on whether this tier is already the
+   * user's (`offer.held`).
+   *
+   * A second opinion on purpose. `currentTier` comes from the rewards endpoint
+   * and this from the membership one; both are the backend's single answer, but
+   * they are two requests with two caches, so one can be a beat behind the
+   * other. Either saying "they have it" is enough to stop offering it, because
+   * offering a tier someone already holds is the worse of the two mistakes.
+   */
+  offerHeld?: boolean;
 }): TierUpgradeCta => {
+  const action = getTierAction(selectedTier, currentTier, unavailable);
+  const held = offerHeld || action === 'current' || action === 'included';
+
+  // Checked before `pending`: a reconciliation that has landed is over, and
+  // holding "Confirming tier…" on screen after the membership has agreed is
+  // just a slower way of saying nothing.
+  if (held) {
+    return {
+      // The footer hides on `held` rather than rendering either of these. They
+      // keep their copy because the flag is what the caller acts on, not the
+      // text, and so the labels are still right if it ever renders them again.
+      label: action === 'included' ? 'Included in your tier' : 'Current tier',
+      subtitle: 'Your membership benefits',
+      enabled: false,
+      held: true,
+    };
+  }
+
   if (pending) {
     return {
       label: 'Confirming tier…',
       subtitle: 'Savings changed. Waiting for rewards confirmation.',
       enabled: false,
       held: false,
-    };
-  }
-
-  const action = getTierAction(selectedTier, currentTier, unavailable);
-
-  // Both of these are "you have this already", and the footer hides on `held`
-  // rather than rendering either label. They keep their copy because the flag
-  // is what the caller acts on, not the text, and a label that only ever shows
-  // in a test is a label that quietly rots.
-  if (action === 'current') {
-    return {
-      label: 'Current tier',
-      subtitle: 'Your membership benefits',
-      enabled: false,
-      held: true,
-    };
-  }
-
-  if (action === 'included') {
-    return {
-      label: 'Included in your tier',
-      subtitle: 'Your membership benefits',
-      enabled: false,
-      held: true,
     };
   }
 
