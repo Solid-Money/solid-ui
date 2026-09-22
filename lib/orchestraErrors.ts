@@ -81,6 +81,14 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   [ORCHESTRA_ERROR_CODE.SPOT_UNAVAILABLE]:
     'We can’t price a USD amount at the moment. Please try again shortly.',
   [ORCHESTRA_ERROR_CODE.RATE_LIMITED]: 'Too many attempts. Please wait a moment and try again.',
+  // Not a user problem and not retryable: Flashnet reviews new partner accounts
+  // before activating their keys, so the key is valid and simply not live yet.
+  // Without this it fell through to "try again in a moment", which is advice
+  // that can only waste the reader's time.
+  [ORCHESTRA_ERROR_CODE.ACCOUNT_PENDING_APPROVAL]:
+    'This deposit method isn’t live yet. (Flashnet hasn’t approved the account.)',
+  [ORCHESTRA_ERROR_CODE.ORIGIN_NOT_ALLOWED]: 'This deposit method isn’t available here.',
+  [ORCHESTRA_ERROR_CODE.SCOPE_REQUIRED]: 'This deposit method isn’t available right now.',
   [ORCHESTRA_ERROR_CODE.NOT_CONFIGURED]:
     'This deposit method isn’t available yet. (The server has no Orchestra key.)',
   [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'Your wallet isn’t ready yet. Try again in a moment.',
