@@ -32,6 +32,45 @@ const STALE_MS = 5 * 60 * 1000;
 const DEFAULT_LIMITS = 0n;
 
 /**
+ * How many times the confirm is retried, and how long between attempts.
+ *
+ * The enable transaction and the backend's verifying read go to different nodes, so the read can
+ * land before the block carrying the enablement has propagated. The backend answers 503 in that
+ * case and records nothing — and without a retry here that is a user who enabled euro spending
+ * on-chain, paid the gas, and has no record of it anywhere that routing can see.
+ *
+ * Bounded rather than indefinite: if it has not propagated within this window something is
+ * genuinely wrong, and the user is better told so than left watching a spinner. Re-pressing enable
+ * recovers from there, since both on-chain halves are already done and the hook goes straight back
+ * to the confirm.
+ */
+const CONFIRM_RETRIES = 4;
+const CONFIRM_RETRY_DELAY_MS = 2_000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Confirms the enablement, retrying while the backend reports it cannot yet see it on-chain.
+ *
+ * Only 503 is retried. A 400 means the request itself is wrong — an unknown chain, or a module
+ * address this backend does not operate — and repeating it would just be slower.
+ */
+const confirmWithRetry = async (
+  chainId: number,
+  body: Parameters<typeof confirmCardSpendDeployment>[1],
+) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await confirmCardSpendDeployment(chainId, body);
+    } catch (error) {
+      const status = (error as Response)?.status;
+      if (status !== 503 || attempt >= CONFIRM_RETRIES) throw error;
+      await sleep(CONFIRM_RETRY_DELAY_MS);
+    }
+  }
+};
+
+/**
  * Seconds from UTC this device's day boundary sits at, for the rolling spend windows.
  *
  * Negated because `getTimezoneOffset` reports minutes to ADD to local time to reach UTC, and the
@@ -210,7 +249,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
           return null;
         }
 
-        await confirmCardSpendDeployment(BASE_SPEND_DEPLOYMENT.chainId, {
+        await confirmWithRetry(BASE_SPEND_DEPLOYMENT.chainId, {
           transactionHash: result.transactionHash,
           moduleAddress,
         });
@@ -218,7 +257,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
         return { transactionHash: result.transactionHash };
       }
 
-      await confirmCardSpendDeployment(BASE_SPEND_DEPLOYMENT.chainId, { moduleAddress });
+      await confirmWithRetry(BASE_SPEND_DEPLOYMENT.chainId, { moduleAddress });
 
       return { transactionHash: undefined };
     },
