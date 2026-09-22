@@ -7,7 +7,6 @@ import BuyStockModal from '@/components/Stocks/BuyStockModal';
 import SellStockModal from '@/components/Stocks/SellStockModal';
 import { Holding, STOCKS } from '@/components/Stocks/stocksData';
 import StocksDiscoverSection from '@/components/Stocks/StocksDiscoverSection';
-import { XStockToken } from '@/hooks/useXStocksTokens';
 import StocksEmptyHoldings from '@/components/Stocks/StocksEmptyHoldings';
 import StocksHoldingsList from '@/components/Stocks/StocksHoldingsList';
 import StocksPendingStrip from '@/components/Stocks/StocksPendingStrip';
@@ -17,6 +16,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useXStockHoldings } from '@/hooks/useXStockHoldings';
 import { useXStockPrices } from '@/hooks/useXStockPrices';
+import { XStockToken } from '@/hooks/useXStocksTokens';
 import { isProduction } from '@/lib/config';
 
 // Stocks is an in-development feature: not accessible in production builds.
@@ -71,7 +71,9 @@ function StocksPageContent() {
   }
 
   const selectedStockPrice = selectedHolding
-    ? (holdingPrices[selectedHolding.ticker] ?? STOCKS.find(s => s.ticker === selectedHolding.ticker)?.price ?? 194.23)
+    ? (holdingPrices[selectedHolding.ticker] ??
+      STOCKS.find(s => s.ticker === selectedHolding.ticker)?.price ??
+      194.23)
     : 194.23;
 
   if (isScreenMedium) {

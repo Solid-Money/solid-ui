@@ -54,9 +54,7 @@ const WalletTokenList: React.FC<WalletTokenListProps> = ({
     <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
       <View className="gap-2">
         {sortedTokens.map(token => {
-          const balance = Number(
-            formatUnits(BigInt(token.balance || '0'), token.contractDecimals),
-          );
+          const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
           const balanceUSD = balance * (token.quoteRate || 0);
           const isSelected =
             selectedToken?.contractAddress === token.contractAddress &&
@@ -91,9 +89,7 @@ const WalletTokenList: React.FC<WalletTokenListProps> = ({
 
               <View className="items-end">
                 <Text className="text-lg font-semibold">${formatNumber(balanceUSD, 2)}</Text>
-                <Text className="text-sm font-medium opacity-50">
-                  {formatNumber(balance, 2)}
-                </Text>
+                <Text className="text-sm font-medium opacity-50">{formatNumber(balance, 2)}</Text>
               </View>
             </Pressable>
           );
