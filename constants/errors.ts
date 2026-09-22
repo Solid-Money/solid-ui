@@ -58,3 +58,30 @@ export const isUnlinkedPasskeyError = (error: unknown): boolean => {
   // reaching an RPC host, say) from being read as "your passkey has no account".
   return err.status === 404 && err.statusCode === 404;
 };
+
+/**
+ * The copy to show for a failed login, derived from the error `handleLogin`
+ * re-throws.
+ *
+ * Deliberately the only place that decides it. `handleLogin` re-throws the
+ * original error so callers keep its `status` and `code`, which means every
+ * caller holds a raw API message alongside the sanitized one — and reading
+ * `error.message` for the toast is how "User not found", the bare 404 of a
+ * backend that predates the codes above and the exact phrasing this exists to
+ * keep off the screen, reached the user anyway.
+ */
+export const loginErrorMessage = (error: unknown): string => {
+  const err = error as { name?: unknown; code?: unknown; message?: unknown } | null;
+  const message = typeof err?.message === 'string' ? err.message : '';
+
+  // WebAuthn reports a dismissed prompt as a failure; the platform's wording for
+  // it describes the machinery, not the thing the user just chose to do.
+  if (err?.name === 'NotAllowedError') return 'User cancelled login';
+
+  if (isUnlinkedPasskeyError(error)) {
+    // A typed reply names which flavour it is, and its copy is the precise one.
+    return typeof err?.code === 'string' && message ? message : PASSKEY_UNLINKED_MESSAGE;
+  }
+
+  return message || 'Something went wrong. Please try again.';
+};

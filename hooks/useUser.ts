@@ -12,7 +12,7 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { isUnlinkedPasskeyError, PASSKEY_UNLINKED_MESSAGE } from '@/constants/errors';
+import { isUnlinkedPasskeyError, loginErrorMessage } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
@@ -421,21 +421,9 @@ const useUser = (): UseUserReturn => {
         router.replace(path.HOME);
       }
     } catch (error: any) {
-      let errorMessage =
-        // A 404 means the passkey that just signed reaches no account. The
-        // backend names which flavour it is (PASSKEY_NOT_REGISTERED /
-        // PASSKEY_ACCOUNT_NOT_FOUND) and its copy is the precise one; only an
-        // older backend answers untyped, and its bare "User not found" reads as
-        // "no such account" to someone whose account exists and works
-        // elsewhere — so that text never reaches the user.
-        isUnlinkedPasskeyError(error)
-          ? error?.code
-            ? error.message
-            : PASSKEY_UNLINKED_MESSAGE
-          : error?.message || 'Network request timed out';
+      const errorMessage = loginErrorMessage(error);
 
       if (error?.name === 'NotAllowedError') {
-        errorMessage = 'User cancelled login';
         Sentry.captureMessage(errorMessage, {
           level: 'warning',
           extra: {

@@ -1,7 +1,9 @@
 import {
   isUnlinkedPasskeyError,
+  loginErrorMessage,
   PASSKEY_ACCOUNT_NOT_FOUND_CODE,
   PASSKEY_NOT_REGISTERED_CODE,
+  PASSKEY_UNLINKED_MESSAGE,
 } from '@/constants/errors';
 
 /** The shape `login()` throws: ApiError sets `status` and `statusCode` alike. */
@@ -46,5 +48,71 @@ describe('isUnlinkedPasskeyError', () => {
 
   it('does not treat the string "404" as a 404', () => {
     expect(isUnlinkedPasskeyError({ status: '404', statusCode: '404' })).toBe(false);
+  });
+});
+
+describe('loginErrorMessage', () => {
+  it('never lets a bare "User not found" reach the user', () => {
+    // The untyped 404 of a backend that predates the codes. Every screen builds
+    // its toast from the thrown error, so reading `error.message` there put this
+    // exact string on screen — the one thing the copy exists to avoid.
+    const raw = Object.assign(new Error('User not found'), {
+      name: 'ApiError',
+      status: 404,
+      statusCode: 404,
+    });
+
+    expect(loginErrorMessage(raw)).toBe(PASSKEY_UNLINKED_MESSAGE);
+  });
+
+  it('prefers the backend copy when the reply is typed', () => {
+    // A typed reply says which flavour it is, so its wording beats ours.
+    expect(
+      loginErrorMessage(
+        Object.assign(new Error('This passkey is not registered to a Solid account.'), {
+          name: 'ApiError',
+          status: 404,
+          statusCode: 404,
+          code: PASSKEY_NOT_REGISTERED_CODE,
+        }),
+      ),
+    ).toBe('This passkey is not registered to a Solid account.');
+  });
+
+  it('falls back to our copy if a typed reply arrives with no message', () => {
+    expect(
+      loginErrorMessage({
+        name: 'ApiError',
+        status: 404,
+        statusCode: 404,
+        code: PASSKEY_ACCOUNT_NOT_FOUND_CODE,
+      }),
+    ).toBe(PASSKEY_UNLINKED_MESSAGE);
+  });
+
+  it("describes a dismissed prompt as the user's own action", () => {
+    expect(
+      loginErrorMessage(
+        Object.assign(new Error('The user cancelled the request.'), { name: 'NotAllowedError' }),
+      ),
+    ).toBe('User cancelled login');
+  });
+
+  it('passes through every other failure', () => {
+    expect(loginErrorMessage(new Error('Network request failed'))).toBe('Network request failed');
+    expect(
+      loginErrorMessage(
+        Object.assign(new Error('This account has been closed'), {
+          name: 'ApiError',
+          status: 403,
+          statusCode: 403,
+        }),
+      ),
+    ).toBe('This account has been closed');
+  });
+
+  it('has something to say for an error carrying no message', () => {
+    expect(loginErrorMessage({})).toBe('Something went wrong. Please try again.');
+    expect(loginErrorMessage(null)).toBe('Something went wrong. Please try again.');
   });
 });

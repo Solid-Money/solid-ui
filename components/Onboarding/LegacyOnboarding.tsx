@@ -24,7 +24,7 @@ import {
 import PasskeyFaqModal from '@/components/PasskeyFaqModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { isUnlinkedPasskeyError } from '@/constants/errors';
+import { isUnlinkedPasskeyError, loginErrorMessage } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -108,7 +108,9 @@ export default function LegacyOnboarding() {
         text1: isUnlinkedPasskeyError(error)
           ? "Passkey isn't linked to an account"
           : 'Login failed',
-        text2: error?.message || 'Something went wrong. Please try again.',
+        // `loginErrorMessage`, not `error.message`: the raw reply is what says
+        // "User not found" when the backend predates the typed codes.
+        text2: loginErrorMessage(error),
       });
       setShowRecoveryLink(true);
     }

@@ -2,7 +2,7 @@ import React from 'react';
 import Toast from 'react-native-toast-message';
 
 import OnboardingNew from '@/components/Onboarding/NewOnboarding/OnboardingNew';
-import { PASSKEY_ACCOUNT_NOT_FOUND_CODE } from '@/constants/errors';
+import { PASSKEY_ACCOUNT_NOT_FOUND_CODE, PASSKEY_UNLINKED_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -110,6 +110,29 @@ describe('onboarding, when a passkey login fails', () => {
         type: 'error',
         text1: "Passkey isn't linked to an account",
         text2: 'This passkey is not linked to a Solid account.',
+      }),
+    );
+  });
+
+  it('keeps the raw "User not found" of an untyped 404 off the screen', async () => {
+    // What the deployed backend still answers. The toast is built from the
+    // thrown error, so reading its `message` put the alarming wording in front
+    // of a user whose account is fine.
+    mockHandleLogin.mockRejectedValue(
+      Object.assign(new Error('User not found'), {
+        name: 'ApiError',
+        status: 404,
+        statusCode: 404,
+      }),
+    );
+
+    await renderOnboarding();
+    await pressLogin();
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: "Passkey isn't linked to an account",
+        text2: PASSKEY_UNLINKED_MESSAGE,
       }),
     );
   });
