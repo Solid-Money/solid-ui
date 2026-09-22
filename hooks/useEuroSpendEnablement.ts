@@ -10,7 +10,6 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
-import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { track } from '@/lib/analytics';
 import { confirmCardSpendDeployment, getCardSpendDeployments } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -128,12 +127,37 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
       // Read the chain immediately before building the batch, so a partially completed enablement
       // — one call landed, the other reverted or was abandoned — resumes rather than reverting on
       // the half that is already done.
-      const state = await publicClient(BASE_SPEND_DEPLOYMENT.chainId).readContract({
-        address: BASE_SPEND_DEPLOYMENT.spendLensAddress as Address,
-        abi: SolidSpendLens_ABI,
-        functionName: 'availableToSpendWith',
-        args: [safeAddress, []],
-      });
+      //
+      // ## Read the MODULE, not the lens
+      //
+      // `SolidSpendLens.availableToSpendWith` is the obvious call and it does not work here.
+      // `cohortOf` short-circuits on a Safe already live on v2 and otherwise falls through to
+      // `v1.isRegistered(safe)` — and on Base the v1 sentinel is the burn address, which has no
+      // code, so that call reverts. Every Safe that is not already registered therefore reverts,
+      // which is precisely every Safe arriving at this screen. Verified against the deployed
+      // contracts: the Base lens reverts for an unregistered Safe where the Fuse lens returns
+      // clean zeros.
+      //
+      // The module answers both facts directly and has code, so it is both correct and cheaper.
+      // They are separate reads because they are separate facts: registration is permanent
+      // (`registerSafe` reverts `AlreadyRegistered` and there is no deregister) while module
+      // consent can be withdrawn at any time, so a Safe can be registered with the module off.
+      const [moduleEnabled, registered] = await Promise.all([
+        publicClient(BASE_SPEND_DEPLOYMENT.chainId).readContract({
+          address: moduleAddress,
+          abi: SolidCashModuleV2_ABI,
+          functionName: 'isModuleEnabledOn',
+          args: [safeAddress],
+        }),
+        publicClient(BASE_SPEND_DEPLOYMENT.chainId).readContract({
+          address: moduleAddress,
+          abi: SolidCashModuleV2_ABI,
+          functionName: 'isRegistered',
+          args: [safeAddress],
+        }),
+      ]);
+
+      const state = { moduleEnabled, registered };
 
       const transactions = [
         ...(state.moduleEnabled
