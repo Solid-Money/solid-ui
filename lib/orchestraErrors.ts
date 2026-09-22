@@ -29,7 +29,10 @@ export const ORCHESTRA_ERROR_CODE = {
   INVALID_READ_TOKEN: 'invalid_read_token',
   SCOPE_REQUIRED: 'scope_required',
   ACCOUNT_PENDING_APPROVAL: 'account_pending_approval',
-  NOT_CONFIGURED: 'client_not_configured',
+  // Codes our own backend raises, as opposed to Orchestra's.
+  NOT_CONFIGURED: 'ORCHESTRA_NOT_CONFIGURED',
+  NO_WALLET_ADDRESS: 'ORCHESTRA_NO_WALLET_ADDRESS',
+  ORDER_NOT_YOURS: 'ORCHESTRA_ORDER_NOT_YOURS',
   UNKNOWN: 'unknown_error',
 } as const;
 
@@ -78,7 +81,10 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   [ORCHESTRA_ERROR_CODE.SPOT_UNAVAILABLE]:
     'We can’t price a USD amount at the moment. Please try again shortly.',
   [ORCHESTRA_ERROR_CODE.RATE_LIMITED]: 'Too many attempts. Please wait a moment and try again.',
-  [ORCHESTRA_ERROR_CODE.NOT_CONFIGURED]: 'This deposit method isn’t available yet.',
+  [ORCHESTRA_ERROR_CODE.NOT_CONFIGURED]:
+    'This deposit method isn’t available yet. (The server has no Orchestra key.)',
+  [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'Your wallet isn’t ready yet. Try again in a moment.',
+  [ORCHESTRA_ERROR_CODE.ORDER_NOT_YOURS]: 'We couldn’t find that deposit.',
   // Order-level failures, read off order.errorCode rather than an HTTP body.
   slippage_exceeded: 'The rate moved while we were converting. Your payment is being refunded.',
   refund_address_missing: 'Something went wrong and we couldn’t refund automatically.',
@@ -94,6 +100,8 @@ const ACTION_BY_CODE: Record<string, OrchestraErrorAction> = {
   [ORCHESTRA_ERROR_CODE.ROUTE_DISABLED]: 'none',
   [ORCHESTRA_ERROR_CODE.UNSUPPORTED_ROUTE]: 'none',
   [ORCHESTRA_ERROR_CODE.NOT_CONFIGURED]: 'none',
+  [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'retry',
+  [ORCHESTRA_ERROR_CODE.ORDER_NOT_YOURS]: 'none',
   [ORCHESTRA_ERROR_CODE.ORIGIN_NOT_ALLOWED]: 'contact_support',
   [ORCHESTRA_ERROR_CODE.ORIGIN_REQUIRED]: 'contact_support',
   [ORCHESTRA_ERROR_CODE.SCOPE_REQUIRED]: 'contact_support',

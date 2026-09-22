@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { useOrchestraNavigation } from '@/components/BuyCrypto/Orchestra/OrchestraNavigation';
@@ -42,8 +42,19 @@ export const OrchestraAmount = () => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
   }, []);
 
-  const { data: config } = useOrchestraConfig();
+  const { data: config, error: configError, isPending: configPending } = useOrchestraConfig();
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrchestraOnramp();
+
+  // Without config there is no band to validate against and no asset to name,
+  // so the screen can only render an inert form. Whatever went wrong — the
+  // server has no Orchestra key, the backend is unreachable, the session
+  // lapsed — the error screen states it, which is the whole reason this step
+  // is reachable at all rather than hidden behind a vanishing row.
+  useEffect(() => {
+    if (!configError) return;
+    setError(asOrchestraError(configError), DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
+  }, [configError, setError, setModal]);
 
   // The backend already merged the live band with Orchestra's published floor,
   // so these are the bounds to enforce, not a starting point to second-guess.
@@ -95,6 +106,14 @@ export const OrchestraAmount = () => {
       },
     });
   };
+
+  if (configPending) {
+    return (
+      <View className="flex-1 items-center justify-center py-16">
+        <ActivityIndicator size="large" color="#94F27F" />
+      </View>
+    );
+  }
 
   return (
     <View className="shrink-0 gap-6">
