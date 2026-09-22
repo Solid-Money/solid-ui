@@ -25,6 +25,7 @@ import {
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
+import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
@@ -42,6 +43,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { CardSpendRegistrationSource } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
+import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
@@ -115,6 +117,7 @@ const CardDetailsPane = () => {
   // Which funds the card draws on — cash, credit or both. UI only for now: the
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
+  const euroSpend = useEuroSpendEnablement();
   const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
   // The borrow position's own sheet, opened by tapping the card that shows it.
   const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
@@ -285,6 +288,19 @@ const CardDetailsPane = () => {
               />
             </HeroEnter>
           ) : null}
+          {/* Cohort-only, and gone for good once enabled — the backend stores the enablement per
+              chain, so it does not come back on another device. Placed directly under the spend
+              mode row because it is the same kind of thing: a property of how this card spends,
+              not a promotion. */}
+          {euroSpend.shouldOffer ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.euroSpendCard}>
+              <EnableEuroSpendCard
+                isEnabling={euroSpend.isEnabling}
+                error={euroSpend.error}
+                onEnable={euroSpend.enable}
+              />
+            </HeroEnter>
+          ) : null}
           {/* Shown to anyone who has a credit line, not only to someone already in debt —
               see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
               spend against BEFORE they spend it; gating on the loan meant the first thing
@@ -397,6 +413,7 @@ const styles = StyleSheet.create({
   // to the spend-mode row, then 20 between each card down the stack.
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
+  euroSpendCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },

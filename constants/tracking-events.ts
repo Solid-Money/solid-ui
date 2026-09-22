@@ -348,6 +348,14 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
   CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',
   CARD_SPEND_REGISTER_CANCELLED: 'card_spend_register_cancelled',
+  // Enabling the Base instance so the card can spend a EURC balance. Its own funnel
+  // rather than properties on the register events above, because it is a SECOND
+  // enablement on a second chain by users who already finished that one — folding them
+  // together would make a completion rate that mixes first-time setup with an upsell.
+  CARD_EURO_SPEND_ENABLE_STARTED: 'card_euro_spend_enable_started',
+  CARD_EURO_SPEND_ENABLE_COMPLETED: 'card_euro_spend_enable_completed',
+  CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
+  CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
   // Turning card spending back off: `Safe.disableModule`. Its own events rather than a
   // property on the register ones, because this is the funnel leaving — a user who
   // disables is a different signal from one who never set up.
