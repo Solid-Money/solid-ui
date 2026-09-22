@@ -149,14 +149,14 @@ const WalletDepositAddress = () => {
 
       <View className="gap-y-3">
         <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-          <Text className="text-sm text-white">Send at least</Text>
+          <Text className="text-base font-medium text-white">Send at least</Text>
           <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
           {/* Up to 4 decimals, none forced: "10 USDC" and "0.005 ETH" both read right. */}
-          <Text className="text-sm text-white">{`${formatNumber(minimum, 4, 0)} ${symbol} on the`}</Text>
+          <Text className="text-base font-medium text-white">{`${formatNumber(minimum, 4, 0)} ${symbol} on the`}</Text>
           {network?.icon ? (
             <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />
           ) : null}
-          <Text className="text-sm text-white">{`${network?.name ?? ''} chain to this address`}</Text>
+          <Text className="text-base font-medium text-white">{`${network?.name ?? ''} chain to this address`}</Text>
         </View>
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
