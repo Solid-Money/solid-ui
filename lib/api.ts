@@ -60,6 +60,8 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardSpendDeploymentConfirmRequest,
+  CardSpendDeploymentsResponse,
   CardSpendModeAccessResponse,
   CardStatusResponse,
   CardTransaction,
@@ -3409,6 +3411,68 @@ export const getWirexCardRegistration = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Every spend-module deployment and whether this user has already enabled each one.
+ *
+ * Its own request rather than a field on the registration read, for the same reason the
+ * spend-mode gate is: that read is a live Fuse chain call, and whether to offer a card for Base
+ * must not be unavailable because Fuse is lagging.
+ *
+ * The enablement half is served from the backend's durable record, which is what stops the enable
+ * card reappearing for someone who has already enabled it.
+ */
+export const getCardSpendDeployments = async (): Promise<CardSpendDeploymentsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-deployments`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Records that the user enabled the spend module on one chain.
+ *
+ * Grants nothing: the Safe enabled the module with its own owner signature, and the backend reads
+ * that chain to verify it before writing anything. What it buys is that the enable card is not
+ * offered again — and the fresh deployment list comes back, so the UI flips on the same
+ * interaction rather than waiting out a cache.
+ */
+export const confirmCardSpendDeployment = async (
+  chainId: number,
+  body: CardSpendDeploymentConfirmRequest,
+): Promise<CardSpendDeploymentsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-deployments/${chainId}/confirm`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
     },
   );
 
