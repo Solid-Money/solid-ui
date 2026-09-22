@@ -36,6 +36,7 @@ import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAc
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
 import WalletDepositNetworks from '@/components/DepositOption/WalletDepositAddress/WalletDepositNetworks';
+import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import SavingsFundScreen from '@/components/Savings/SavingsFund/SavingsFundScreen';
@@ -47,6 +48,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { VAULTS } from '@/constants/vaults';
+import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
@@ -58,6 +60,7 @@ import {
   getDefaultDepositSelection,
   getVaultDepositConfig,
 } from '@/lib/vaults';
+import { getDepositChainBackTarget } from '@/lib/walletDepositFlow';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -127,6 +130,7 @@ const useDepositOption = ({
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
+  const { isDesktop } = useDimension();
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(
     isForm && (address || (depositFromSolid && !!user?.safeAddress)),
@@ -182,6 +186,7 @@ const useDepositOption = ({
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
   const isDepositChain = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN.name;
+  const isDepositToken = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -410,6 +415,10 @@ const useDepositOption = ({
       return <WalletDepositNetworks />;
     }
 
+    if (isDepositToken) {
+      return <WalletDepositTokens />;
+    }
+
     return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
   };
 
@@ -452,6 +461,7 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
     if (isDepositChain) return 'deposit-chain';
+    if (isDepositToken) return 'deposit-token';
     return 'deposit-type-selection';
   };
 
@@ -497,6 +507,7 @@ const useDepositOption = ({
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
     if (isDepositChain) return 'Select chain';
+    if (isDepositToken) return 'Select token';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -517,6 +528,7 @@ const useDepositOption = ({
       isDepositCrypto ||
       isDepositCash ||
       isDepositChain ||
+      isDepositToken ||
       isPublicAddress
     ) {
       return 'md:max-w-[480px] md:pb-6';
@@ -595,6 +607,7 @@ const useDepositOption = ({
       !isDepositCrypto &&
       !isDepositCash &&
       !isDepositChain &&
+      !isDepositToken &&
       !isPublicAddress
     ) {
       return 'min-h-[40rem]';
@@ -831,7 +844,9 @@ const useDepositOption = ({
           : DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN,
       );
     } else if (isDepositChain) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
+      setModal(getDepositChainBackTarget(previousModal, isDesktop));
+    } else if (isDepositToken) {
+      setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
@@ -957,6 +972,7 @@ const useDepositOption = ({
     isDepositCrypto ||
     isDepositCash ||
     isDepositChain ||
+    isDepositToken ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -983,7 +999,8 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositCrypto || isDepositCash || isDepositChain || isPublicAddress,
+    compactHeader:
+      isDepositCrypto || isDepositCash || isDepositChain || isDepositToken || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),

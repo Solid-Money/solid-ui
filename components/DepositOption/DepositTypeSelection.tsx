@@ -8,6 +8,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { getCryptoDepositEntry } from '@/lib/walletDepositFlow';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import { DEPOSIT_CASH_CLUSTER_ICONS, DEPOSIT_CASH_CURRENCY_COUNT } from './DepositCashOptions';
@@ -33,12 +34,12 @@ type DepositTypeSelectionProps = {
  * a phone rather than the full-height sheet the later steps use.
  */
 const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
-  const { isScreenMedium } = useDimension();
+  const { isDesktop, isScreenMedium } = useDimension();
   const setModal = useDepositStore(state => state.setModal);
 
   const handleCryptoPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'crypto' });
-    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
+    setModal(getCryptoDepositEntry(isDesktop));
   };
 
   const handleCashPress = () => {

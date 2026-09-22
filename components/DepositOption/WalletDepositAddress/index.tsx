@@ -20,13 +20,9 @@ import {
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
   resolveWalletDepositMinimum,
-  resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
-import WalletDepositSelectors, {
-  WalletDepositPicker,
-  type WalletDepositPickerKind,
-} from './WalletDepositSelectors';
+import WalletDepositSelectors from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -55,18 +51,15 @@ const WalletDepositAddress = () => {
   const { user } = useUser();
   const address = user?.safeAddress;
 
-  // The chain arrives from the "Select chain" step before this one, so the
-  // selection lives in the store rather than here (see `walletDeposit`).
+  // Chain and currency are both chosen on steps of their own, so the selection
+  // lives in the store rather than here (see `walletDeposit`). This screen only
+  // reads it.
   const walletDeposit = useDepositStore(state => state.walletDeposit);
-  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
   const chainId = walletDeposit.chainId ?? fallback.chainId;
   const symbol = walletDeposit.symbol ?? fallback.symbol;
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
-  // Owned here, not in the pills, because the open list is rendered last so it
-  // paints over the QR card (see WalletDepositPicker).
-  const [openPicker, setOpenPicker] = useState<WalletDepositPickerKind>(null);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -83,20 +76,6 @@ const WalletDepositAddress = () => {
   const isScanning = !!address;
   const { isDetected } = useDetectedDirectDeposit({ enabled: isScanning });
 
-  const selectChain = useCallback(
-    (nextChainId: number) =>
-      setWalletDeposit({
-        chainId: nextChainId,
-        symbol: resolveWalletDepositSymbol(nextChainId, symbol) ?? symbol,
-      }),
-    [setWalletDeposit, symbol],
-  );
-
-  const selectSymbol = useCallback(
-    (nextSymbol: string) => setWalletDeposit({ symbol: nextSymbol }),
-    [setWalletDeposit],
-  );
-
   useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 1500);
@@ -111,12 +90,7 @@ const WalletDepositAddress = () => {
 
   return (
     <View className="gap-y-6">
-      <WalletDepositSelectors
-        chainId={chainId}
-        symbol={symbol}
-        openPicker={openPicker}
-        onToggle={picker => setOpenPicker(current => (current === picker ? null : picker))}
-      />
+      <WalletDepositSelectors chainId={chainId} symbol={symbol} />
 
       {/* The card's own padding sits on each section rather than the card, so the
           divider between the QR and the address runs its full width. */}
@@ -215,16 +189,6 @@ const WalletDepositAddress = () => {
           {copied ? 'Address copied' : 'Copy address'}
         </Text>
       </Button>
-
-      {/* Last child, so it paints over everything above it. */}
-      <WalletDepositPicker
-        chainId={chainId}
-        symbol={symbol}
-        openPicker={openPicker}
-        onChainChange={selectChain}
-        onSymbolChange={selectSymbol}
-        onDismiss={() => setOpenPicker(null)}
-      />
     </View>
   );
 };

@@ -36,6 +36,15 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_chain',
     number: 1.9,
   },
+  /**
+   * "Select token" — which currency the deposit address is for. Numbered beside
+   * the chain list because it is the same kind of step: a choice made before the
+   * address, and revisited from it.
+   */
+  OPEN_DEPOSIT_TOKEN: {
+    name: 'open_deposit_token',
+    number: 1.95,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
