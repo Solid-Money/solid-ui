@@ -431,7 +431,7 @@ const useUser = (): UseUserReturn => {
             ? 'User not found, please sign up'
             : error?.message || 'Network request timed out';
 
-      if (error?.name === 'NotAllowedError') {
+      if (isPasskeyPromptError(error)) {
         errorMessage = 'User cancelled login';
         Sentry.captureMessage(errorMessage, {
           level: 'warning',
