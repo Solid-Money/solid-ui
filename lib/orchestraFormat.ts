@@ -8,6 +8,35 @@
  */
 
 /**
+ * The locale's group and decimal separators, discovered once from a plain
+ * Number.
+ *
+ * Intl is only ever handed a Number in this module. `Intl.NumberFormat.format`
+ * is specified to accept a BigInt, but the runtimes this app ships on — Hermes,
+ * and the Intl shim under React Native Web — coerce the argument with ToNumber
+ * first, which throws "Cannot convert a BigInt value to a number". Node's Intl
+ * does accept one, so a unit test will not catch it; only the app will.
+ *
+ * Grouping the digit string ourselves keeps the exactness BigInt was chosen for
+ * and never puts one in front of Intl.
+ */
+const SEPARATORS = (() => {
+  try {
+    const parts = new Intl.NumberFormat(undefined).formatToParts(11111.1);
+    return {
+      group: parts.find(part => part.type === 'group')?.value ?? ',',
+      decimal: parts.find(part => part.type === 'decimal')?.value ?? '.',
+    };
+  } catch {
+    return { group: ',', decimal: '.' };
+  }
+})();
+
+/** Insert the locale's thousands separator into a plain digit string. */
+const groupDigits = (digits: string): string =>
+  digits.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, SEPARATORS.group);
+
+/**
  * Render a smallest-unit integer string as a decimal.
  *
  * Returns undefined for anything that isn't one, so a caller can distinguish
@@ -39,16 +68,16 @@ export const formatSmallestUnits = (
   const unit = rounded / scale;
   const rest = (rounded % scale).toString().padStart(maximumFractionDigits, '0');
 
-  const formattedUnit = new Intl.NumberFormat(undefined).format(unit);
+  const formattedUnit = groupDigits(unit.toString());
   const trimmed = rest.replace(/0+$/, '');
-  return `${negative ? '-' : ''}${formattedUnit}${trimmed ? `.${trimmed}` : ''}`;
+  return `${negative ? '-' : ''}${formattedUnit}${
+    trimmed ? `${SEPARATORS.decimal}${trimmed}` : ''
+  }`;
 };
 
-/** Sats, grouped — "44,210 sats". */
+/** Sats, grouped — "44,210 sats". Already a digit string; no BigInt needed. */
 export const formatSats = (value: string | undefined): string | undefined =>
-  value == null || !/^\d+$/.test(value)
-    ? undefined
-    : `${new Intl.NumberFormat(undefined).format(BigInt(value))} sats`;
+  value == null || !/^\d+$/.test(value) ? undefined : `${groupDigits(value)} sats`;
 
 export const formatUsd = (value: number): string =>
   new Intl.NumberFormat(undefined, {
