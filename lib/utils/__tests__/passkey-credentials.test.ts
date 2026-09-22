@@ -65,6 +65,10 @@ describe('isPasskeyPromptError', () => {
     ['no matching credential', { message: 'No credentials available for this request' }],
     ['Turnkey credential lookup', { code: 'CREDENTIAL_NOT_FOUND', message: 'unknown' }],
     ['native exception', { message: 'androidx.credentials.NoCredentialException' }],
+    [
+      'Turnkey-wrapped cancellation',
+      { name: 'TurnkeyError', message: 'Passkey creation was cancelled by the user.' },
+    ],
   ])('treats a %s as a passkey prompt failure', (_label, error) => {
     expect(isPasskeyPromptError(error)).toBe(true);
   });
