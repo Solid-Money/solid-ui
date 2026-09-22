@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import PasskeyFaqModal from '@/components/PasskeyFaqModal';
 import { Text } from '@/components/ui/text';
+import { isUnlinkedPasskeyError } from '@/constants/errors';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { Status } from '@/lib/types';
@@ -47,20 +48,27 @@ export default function OnboardingNew() {
     try {
       await handleLogin();
     } catch (error: any) {
-      if (error?.status === 404) {
-        // User not found — redirect to signup
-        router.replace(path.SIGNUP_EMAIL);
-      } else {
-        // Other errors — show toast, stay on onboarding, and offer account recovery
-        Toast.show({
-          type: 'error',
-          text1: 'Login failed',
-          text2: error?.message || 'Something went wrong. Please try again.',
-        });
-        setShowRecoveryLink(true);
-      }
+      // A passkey the backend cannot tie to an account is not a new user, and
+      // replacing the screen with signup said it was. The account is usually
+      // fine — it is the passkey that isn't on it, stranded by a signup that
+      // failed after creating the credential — so signup was also a dead end:
+      // it refuses the user's own address as already registered. Stay here,
+      // name what happened, and offer recovery, which is what actually puts a
+      // working passkey on the account they already have.
+      Toast.show({
+        type: 'error',
+        text1: isUnlinkedPasskeyError(error)
+          ? "Passkey isn't linked to an account"
+          : 'Login failed',
+        text2: error?.message || 'Something went wrong. Please try again.',
+      });
+      // The landing step has nowhere to show the recovery prompt, so raise the
+      // Welcome sheet — it carries that prompt, and an explicit "Create an
+      // account" for anyone who did mean to sign up.
+      setShowWelcome(true);
+      setShowRecoveryLink(true);
     }
-  }, [handleLogin, router, setHasSeenOnboarding]);
+  }, [handleLogin, setHasSeenOnboarding]);
 
   const handleCreateAccount = useCallback(() => {
     setHasSeenOnboarding(true);

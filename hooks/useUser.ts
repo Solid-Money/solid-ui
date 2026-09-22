@@ -12,7 +12,7 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
+import { isUnlinkedPasskeyError, PASSKEY_UNLINKED_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
@@ -422,14 +422,17 @@ const useUser = (): UseUserReturn => {
       }
     } catch (error: any) {
       let errorMessage =
-        // The backend's own copy for an unregistered passkey is more precise than
-        // the generic 404 fallback, which reads as "no such account" even when the
-        // account exists and only this passkey is unusable.
-        error?.code === PASSKEY_NOT_REGISTERED_CODE
-          ? error.message
-          : error?.status === 404
-            ? 'User not found, please sign up'
-            : error?.message || 'Network request timed out';
+        // A 404 means the passkey that just signed reaches no account. The
+        // backend names which flavour it is (PASSKEY_NOT_REGISTERED /
+        // PASSKEY_ACCOUNT_NOT_FOUND) and its copy is the precise one; only an
+        // older backend answers untyped, and its bare "User not found" reads as
+        // "no such account" to someone whose account exists and works
+        // elsewhere — so that text never reaches the user.
+        isUnlinkedPasskeyError(error)
+          ? error?.code
+            ? error.message
+            : PASSKEY_UNLINKED_MESSAGE
+          : error?.message || 'Network request timed out';
 
       if (error?.name === 'NotAllowedError') {
         errorMessage = 'User cancelled login';
@@ -451,6 +454,10 @@ const useUser = (): UseUserReturn => {
       track(TRACKING_EVENTS.LOGIN_FAILED, {
         username: user?.username,
         error: error.message,
+        // The message alone cannot separate "the prompt was cancelled" from
+        // "this passkey reaches no account", and the two need very different
+        // answers. Older backends send no code, hence the explicit fallback.
+        error_code: error?.code ?? (isUnlinkedPasskeyError(error) ? 'HTTP_404' : undefined),
         device_id: deviceId,
         ...attributionData,
         attribution_channel: getAttributionChannel(attributionData),
