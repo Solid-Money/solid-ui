@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useOrchestraDestinationAsset } from '@/hooks/useOrchestra';
+import { useOrchestraConfig } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
-import { EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET } from '@/lib/config';
 import { formatSats, formatSmallestUnits, formatUsd } from '@/lib/orchestraFormat';
 import { eclipseAddress } from '@/lib/utils';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
@@ -58,7 +57,7 @@ export const OrchestraInvoice = () => {
   const setModal = useOrchestraNavigation();
   const order = useOrchestraStore(state => state.order);
   const amountUsd = useOrchestraStore(state => state.amountUsd);
-  const { data: destinationAsset } = useOrchestraDestinationAsset();
+  const { data: config } = useOrchestraConfig();
 
   const secondsLeft = useSecondsUntil(order?.expiresAt);
   const hasExpired = secondsLeft === 0;
@@ -81,8 +80,8 @@ export const OrchestraInvoice = () => {
     );
   }
 
-  const symbol = destinationAsset?.assetDisplaySymbol ?? EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET;
-  const receiveAmount = formatSmallestUnits(order.estimatedOut, destinationAsset?.decimals);
+  const symbol = config?.assetDisplaySymbol ?? config?.destinationAsset ?? 'USDC';
+  const receiveAmount = formatSmallestUnits(order.estimatedOut, config?.decimals);
   const payAmount = formatSats(order.amountIn);
   const cashAppUrl = order.paymentLinks?.cashApp;
 
@@ -95,7 +94,7 @@ export const OrchestraInvoice = () => {
    * response that omits the block. `totalFeeAmount` is the figure to show: the
    * bare `feeAmount` leaves out the rounding component the user also pays.
    */
-  const feeDecimals = order.feeAssetDetails?.decimals ?? destinationAsset?.decimals;
+  const feeDecimals = order.feeAssetDetails?.decimals ?? config?.decimals;
   const feeAmount = formatSmallestUnits(order.totalFeeAmount ?? order.feeAmount, feeDecimals);
   const feeLabel = feeAmount ? `${feeAmount} ${order.feeAsset ?? symbol}` : undefined;
 

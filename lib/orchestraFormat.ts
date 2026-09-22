@@ -1,5 +1,3 @@
-import type { OrchestraFiatLimits, OrchestraLimitsResponse } from '@/lib/types/orchestra';
-
 /**
  * Formatting for Orchestra's wire amounts.
  *
@@ -58,16 +56,3 @@ export const formatUsd = (value: number): string =>
     currency: 'USD',
     maximumFractionDigits: 2,
   }).format(value);
-
-/**
- * The fiat band for the Lightning → destination route.
- *
- * /limits is filtered by the four route fields but still answers with a list,
- * and some planner routes are missing from it altogether — so the first entry
- * that actually carries a supported fiat band is the answer, and undefined is a
- * legitimate one.
- */
-export const fiatLimitsFromResponse = (
-  response: OrchestraLimitsResponse | undefined,
-): OrchestraFiatLimits | undefined =>
-  response?.routes?.find(route => route.limits?.fiatUsd?.supported)?.limits?.fiatUsd;

@@ -11,10 +11,9 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useOrchestraDestinationAsset } from '@/hooks/useOrchestra';
+import { useOrchestraConfig } from '@/hooks/useOrchestra';
 import { useOrchestraOrderStream } from '@/hooks/useOrchestraOrderStream';
 import { track } from '@/lib/analytics';
-import { EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET } from '@/lib/config';
 import { orchestraErrorFromCode } from '@/lib/orchestraErrors';
 import { formatSmallestUnits } from '@/lib/orchestraFormat';
 import { ORCHESTRA_FAILED_STATUSES } from '@/lib/types/orchestra';
@@ -59,12 +58,9 @@ export const OrchestraOrderStatus = () => {
   const setModal = useOrchestraNavigation();
   const reset = useOrchestraStore(state => state.reset);
   const storedOrder = useOrchestraStore(state => state.order);
-  const { data: destinationAsset } = useOrchestraDestinationAsset();
+  const { data: config } = useOrchestraConfig();
 
-  const { status, order, isUnreadable } = useOrchestraOrderStream(
-    storedOrder?.orderId,
-    storedOrder?.readToken,
-  );
+  const { status, order, isUnreadable } = useOrchestraOrderStream(storedOrder?.orderId);
 
   // Before the Lightning payment is detected there is no order to read, so the
   // screen holds at "waiting for payment" rather than showing nothing.
@@ -85,10 +81,10 @@ export const OrchestraOrderStatus = () => {
           : 'pending',
   }));
 
-  const symbol = destinationAsset?.assetDisplaySymbol ?? EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET;
+  const symbol = config?.assetDisplaySymbol ?? config?.destinationAsset ?? 'USDC';
   const delivered = formatSmallestUnits(
     order?.amountOut ?? storedOrder?.estimatedOut,
-    destinationAsset?.decimals,
+    config?.decimals,
   );
 
   // The status is streamed and polled, so the terminal event fires once per

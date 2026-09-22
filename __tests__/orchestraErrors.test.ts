@@ -6,10 +6,7 @@ import {
   orchestraErrorTitle,
   toOrchestraError,
 } from '@/lib/orchestraErrors';
-import { fiatLimitsFromResponse } from '@/lib/orchestraFormat';
 import { ORCHESTRA_FAILED_STATUSES, ORCHESTRA_SETTLED_STATUSES } from '@/lib/types/orchestra';
-
-import type { OrchestraLimitsResponse } from '@/lib/types/orchestra';
 
 const responseWith = (status: number, body?: unknown) =>
   ({
@@ -77,29 +74,6 @@ describe('asOrchestraError', () => {
     expect(error.action).toBe('retry');
     expect(error.message).not.toMatch(/fetch/i);
     expect(error.rawMessage).toBe('Failed to fetch');
-  });
-});
-
-describe('fiatLimitsFromResponse', () => {
-  const route = (supported: boolean, min: string, max: string) => ({
-    sourceChain: 'lightning',
-    sourceAsset: 'BTC',
-    destinationChain: 'base',
-    destinationAsset: 'USDC',
-    limits: { fiatUsd: { supported, min, max } },
-  });
-
-  it('picks the first route that actually publishes a fiat band', () => {
-    const response: OrchestraLimitsResponse = {
-      routes: [route(false, '0.00', '0.00'), route(true, '1.00', '50000.00')],
-    };
-    expect(fiatLimitsFromResponse(response)?.max).toBe('50000.00');
-  });
-
-  it('is undefined when nothing supports fiat, or when the call failed', () => {
-    expect(fiatLimitsFromResponse({ routes: [route(false, '1.00', '2.00')] })).toBeUndefined();
-    expect(fiatLimitsFromResponse({ routes: [] })).toBeUndefined();
-    expect(fiatLimitsFromResponse(undefined)).toBeUndefined();
   });
 });
 

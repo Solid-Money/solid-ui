@@ -17,11 +17,11 @@ import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useOrchestraConfig } from '@/hooks/useOrchestra';
 import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { isOrchestraConfigured } from '@/lib/config';
 import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
@@ -76,6 +76,10 @@ const DepositCashOptions = () => {
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
+  // The backend answers 503 when it holds no Orchestra server key, so a
+  // successful config is the availability check — no client-side flag to drift
+  // out of step with what the server can actually do.
+  const { data: orchestraConfig } = useOrchestraConfig();
 
   const { data: eurPaymentMethods } = useTransfiPaymentMethods('EUR');
   const { data: brlPaymentMethods } = useTransfiPaymentMethods('BRL');
@@ -186,9 +190,9 @@ const DepositCashOptions = () => {
           chips={USD_PAYMENT_METHOD_CHIPS}
           onPress={handleUsdPress}
         />
-        {/* Hidden rather than disabled without a client key: every call the flow
-            makes authenticates with it, so the row could only ever fail. */}
-        {isOrchestraConfigured ? (
+        {/* Hidden rather than disabled while unavailable: every step of the flow
+            goes through the backend, so the row could only ever fail. */}
+        {orchestraConfig ? (
           <CardFundRow
             className="min-h-[93px]"
             icon={

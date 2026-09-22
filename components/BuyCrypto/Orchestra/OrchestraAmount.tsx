@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -8,19 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import {
-  ORCHESTRA_FALLBACK_MAX_USD,
-  ORCHESTRA_FALLBACK_MIN_USD,
-  useCreateOrchestraOnramp,
-  useOrchestraDestinationAsset,
-  useOrchestraLimits,
-} from '@/hooks/useOrchestra';
-import useUser from '@/hooks/useUser';
+import { useCreateOrchestraOnramp, useOrchestraConfig } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET } from '@/lib/config';
 import { asOrchestraError } from '@/lib/orchestraErrors';
-import { fiatLimitsFromResponse, formatUsd } from '@/lib/orchestraFormat';
+import { formatUsd } from '@/lib/orchestraFormat';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
 /**
@@ -40,7 +32,6 @@ import { useOrchestraStore } from '@/store/useOrchestraStore';
  */
 export const OrchestraAmount = () => {
   const setModal = useOrchestraNavigation();
-  const { user } = useUser();
 
   const amountUsd = useOrchestraStore(state => state.amountUsd);
   const setAmountUsd = useOrchestraStore(state => state.setAmountUsd);
@@ -51,16 +42,13 @@ export const OrchestraAmount = () => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
   }, []);
 
-  const { data: limits } = useOrchestraLimits();
-  const { data: destinationAsset } = useOrchestraDestinationAsset();
+  const { data: config } = useOrchestraConfig();
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrchestraOnramp();
 
-  const fiat = useMemo(() => fiatLimitsFromResponse(limits), [limits]);
-  // The published band is the guardrail; the documented "1.00" to "50000.00" is
-  // the floor under it, so a /limits call that fails doesn't leave the form with
-  // no bounds at all.
-  const minUsd = Number(fiat?.min ?? ORCHESTRA_FALLBACK_MIN_USD);
-  const maxUsd = Number(fiat?.max ?? ORCHESTRA_FALLBACK_MAX_USD);
+  // The backend already merged the live band with Orchestra's published floor,
+  // so these are the bounds to enforce, not a starting point to second-guess.
+  const minUsd = config?.minUsd ?? 0;
+  const maxUsd = config?.maxUsd ?? 0;
 
   const amountNum = Number(amountUsd);
   const hasAmount = Number.isFinite(amountNum) && amountNum > 0;
@@ -68,53 +56,44 @@ export const OrchestraAmount = () => {
   const aboveMax = hasAmount && amountNum > maxUsd;
   const inRange = hasAmount && !belowMin && !aboveMax;
 
-  const symbol = destinationAsset?.assetDisplaySymbol ?? EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET;
-  const network = destinationAsset?.chainDisplayName;
+  const symbol = config?.assetDisplaySymbol ?? config?.destinationAsset ?? 'USDC';
+  const network = config?.chainDisplayName;
 
-  // No Safe address means nothing to deliver to. It is set during onboarding, so
-  // this only bites a half-provisioned account — which should see a disabled
-  // button, not one that does nothing.
-  const recipientAddress = user?.safeAddress;
-  const continueDisabled = !inRange || creatingOrder || !recipientAddress;
+  // The band is only known once config lands; until then there is nothing to
+  // validate against, so the button stays disabled rather than accepting an
+  // amount that might be out of range.
+  const continueDisabled = !config || !inRange || creatingOrder;
 
   const handleContinue = () => {
-    if (!inRange || !recipientAddress) return;
+    if (!config || !inRange) return;
 
-    createOrder(
-      {
-        recipientAddress,
-        // Two decimal places: the field is a USD string, and sending the raw box
-        // contents would put "10." or "10.999" on the wire.
-        amountFiatUsd: amountNum.toFixed(2),
-        // No refundAddress: the user has no Lightning address to refund to, and
-        // Orchestra only accepts one of those or a BOLT11. A failure before the
-        // swap therefore needs Orchestra-side recovery rather than an automatic
-        // refund — see the refund_address_missing order error.
+    // Only the amount: the recipient is the Safe the backend resolves from the
+    // session, not a field this screen gets to choose.
+    // Two decimal places, because the box holds whatever is being typed and
+    // "10." or "10.999" should not reach the wire.
+    createOrder(amountNum.toFixed(2), {
+      onSuccess: order => {
+        track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATED, {
+          order_id: order.orderId,
+          amount_usd: amountNum,
+          amount_mode: order.amountMode,
+          has_cash_app_link: Boolean(order.paymentLinks?.cashApp),
+        });
+        setOrder(order);
+        setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE);
       },
-      {
-        onSuccess: order => {
-          track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATED, {
-            order_id: order.orderId,
-            amount_usd: amountNum,
-            amount_mode: order.amountMode,
-            has_cash_app_link: Boolean(order.paymentLinks?.cashApp),
-          });
-          setOrder(order);
-          setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE);
-        },
-        onError: error => {
-          const orchestraError = asOrchestraError(error);
-          track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATION_FAILED, {
-            amount_usd: amountNum,
-            error_code: orchestraError.code,
-            error_action: orchestraError.action,
-            error_message: orchestraError.rawMessage,
-          });
-          setError(orchestraError, DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
-          setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
-        },
+      onError: error => {
+        const orchestraError = asOrchestraError(error);
+        track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATION_FAILED, {
+          amount_usd: amountNum,
+          error_code: orchestraError.code,
+          error_action: orchestraError.action,
+          error_message: orchestraError.rawMessage,
+        });
+        setError(orchestraError, DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+        setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
       },
-    );
+    });
   };
 
   return (

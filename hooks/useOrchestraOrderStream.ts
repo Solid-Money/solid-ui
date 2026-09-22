@@ -9,33 +9,25 @@ import { ORCHESTRA_SETTLED_STATUSES } from '@/lib/types/orchestra';
 import type { OrchestraStatus } from '@/lib/types/orchestra';
 
 /**
- * Live status for one Orchestra order: the SSE stream where it exists, the
- * documented 3-second poll everywhere else.
+ * Live status for one Orchestra order: our backend's SSE proxy where it can be
+ * reached, the documented 3-second poll everywhere else.
  *
- * `EventSource` is a browser API. React Native doesn't ship one and the app
- * carries no polyfill, so native builds take the polling path — which the docs
- * name as the supported fallback, not a degraded mode. The poll runs on web too
- * while the stream is down, and drops to a slow backstop once the stream is up:
- * frames carry only `{"status":"..."}`, so the amounts, stages and `errorCode`
- * the screen renders still have to come from /status.
+ * `EventSource` is a browser API — React Native ships none and the app carries
+ * no polyfill — so native builds poll, which the docs name as the supported
+ * fallback rather than a degraded mode. It also cannot set headers, which is
+ * why the stream is cookie-authenticated: that is how web sessions authenticate
+ * here anyway, and native never opens one.
  *
- * The stream is opened directly against Orchestra with the client key rather
- * than through a backend proxy. The proxy the docs prescribe exists to keep a
- * *server* key off the client; this app has neither a server nor a server key,
- * and the order-bound read token is what scopes the stream to this one order.
+ * The poll keeps running underneath at a slow backstop while the stream is
+ * healthy. Frames carry only the status, and a reconnect does not replay missed
+ * transitions, so the snapshot stays the thing that reconciles.
  */
-export function useOrchestraOrderStream(
-  orderId: string | undefined,
-  readToken: string | undefined,
-) {
+export function useOrchestraOrderStream(orderId: string | undefined) {
   const queryClient = useQueryClient();
   const [streamedStatus, setStreamedStatus] = useState<OrchestraStatus>();
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // A healthy stream demotes the poll to its backstop cadence rather than
-  // silencing it: reconnects don't replay missed transitions, so the snapshot
-  // stays the thing that reconciles.
-  const { data, error } = useOrchestraOrderStatus(orderId, readToken, { poll: !isStreaming });
+  const { data, error } = useOrchestraOrderStatus(orderId, { poll: !isStreaming });
 
   // The snapshot wins when it has one. The stream is faster off the mark, but
   // the poll it triggers is what carries the amounts beside the status, and two
@@ -43,17 +35,15 @@ export function useOrchestraOrderStream(
   const status = data?.order?.status ?? streamedStatus;
   const isSettled = status ? ORCHESTRA_SETTLED_STATUSES.includes(status) : false;
 
-  // A 4xx on the snapshot — an expired read token, a revoked key — is not a
-  // hiccup the stream can route around: the same credentials open it. Stop
-  // reconnecting and let the screen say it can't track the order, rather than
-  // leaving a socket retrying against a door that is shut.
+  // A 4xx on the snapshot — a lapsed session, an order that is not ours — is
+  // not a hiccup the stream can route around: the same credentials open it.
   const isUnreadable = error instanceof OrchestraError && error.status >= 400 && error.status < 500;
 
   useEffect(() => {
-    if (!orderId || !readToken || isSettled || isUnreadable) return;
+    if (!orderId || isSettled || isUnreadable) return;
     if (typeof EventSource === 'undefined') return;
 
-    const source = new EventSource(orchestraStreamUrl(orderId, readToken));
+    const source = new EventSource(orchestraStreamUrl(orderId), { withCredentials: true });
 
     const onStatus = (event: MessageEvent) => {
       setIsStreaming(true);
@@ -68,15 +58,9 @@ export function useOrchestraOrderStream(
       if (!next) return;
       setStreamedStatus(next);
       // The frame carries the state and nothing else, so pull the snapshot that
-      // goes with it: amounts and errorCode should land with the change, not a
-      // backstop interval later.
+      // goes with it: amounts and errorCode should land with the change.
       void queryClient.invalidateQueries({ queryKey: [ORCHESTRA_STATUS_KEY, orderId] });
     };
-
-    // Heartbeats arrive every 15 seconds and carry no data. Their only job is
-    // to prove the connection is alive, which is what re-marks it healthy after
-    // EventSource silently reconnects.
-    const onHeartbeat = () => setIsStreaming(true);
 
     // EventSource reconnects on its own, so an error means "not connected right
     // now", not "give up". Dropping the flag hands the screen back to the fast
@@ -84,23 +68,21 @@ export function useOrchestraOrderStream(
     const onError = () => setIsStreaming(false);
 
     source.addEventListener('status', onStatus as EventListener);
-    source.addEventListener('heartbeat', onHeartbeat);
     source.addEventListener('error', onError);
 
     return () => {
       source.removeEventListener('status', onStatus as EventListener);
-      source.removeEventListener('heartbeat', onHeartbeat);
       source.removeEventListener('error', onError);
       source.close();
       setIsStreaming(false);
     };
-  }, [orderId, readToken, isSettled, isUnreadable, queryClient]);
+  }, [orderId, isSettled, isUnreadable, queryClient]);
 
   return {
     status,
     order: data?.order ?? null,
     stages: data?.stages ?? [],
-    /** True once a frame or heartbeat has arrived; always false on native. */
+    /** True once a frame has arrived; always false on native. */
     isStreaming,
     /** Only set when the *snapshot* read failed — a dead stream is not an error. */
     error,

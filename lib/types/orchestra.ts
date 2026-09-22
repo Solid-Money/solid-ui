@@ -100,11 +100,10 @@ export interface OrchestraOnrampOrder {
   feeBps?: number;
   feeAsset?: string;
   /**
-   * The fee asset's own route entry. Carries the `decimals` the fee is
-   * denominated in, which need not match the destination's — read it from here
-   * rather than inferring it from the ticker.
+   * The fee asset's own decimals, which need not match the destination's — read
+   * from here rather than inferred from the ticker.
    */
-  feeAssetDetails?: OrchestraRouteAsset;
+  feeAssetDetails?: { asset?: string; assetDisplaySymbol?: string; decimals: number };
   feeAmountUsd?: string;
   totalFeeAmountUsd?: string;
   /** ISO timestamp. Exact-in invoices last ~24h, exact-out and fixed delivery 5 minutes. */
@@ -113,12 +112,6 @@ export interface OrchestraOnrampOrder {
   effectiveSlippageBps?: number;
   /** BTC/USD spot the USD amount was converted at. */
   spotUsdPerBtc?: string;
-  /**
-   * Order-bound read token, returned to client keys only. Required on every
-   * later status read and on the SSE stream — without it, reads 403 with
-   * `read_token_required`. Valid 24 hours.
-   */
-  readToken?: string;
   /** Fields Orchestra dropped rather than rejecting the request over. */
   ignoredFields?: string[];
 }
@@ -155,61 +148,22 @@ export interface OrchestraStatusResponse {
 }
 
 /** The fiat band from /limits, present only when the source is Lightning BTC. */
-export interface OrchestraFiatLimits {
-  supported: boolean;
-  /** USD strings, e.g. "1.00" and "50000.00". */
-  min?: string;
-  max?: string;
-  surfaces?: string[];
-}
 
-export interface OrchestraRouteLimits {
-  sourceChain: string;
-  sourceAsset: string;
+/**
+ * GET /accounts/v1/orchestra/config — everything the amount screen needs in one
+ * call: where the deposit lands, how that asset's amounts are scaled, and the
+ * band the entered amount has to fall inside.
+ *
+ * The bounds arrive as numbers rather than the USD strings Orchestra publishes,
+ * because the backend has already parsed them and a form compares numbers.
+ */
+export interface OrchestraConfig {
   destinationChain: string;
   destinationAsset: string;
-  direction?: 'buy' | 'sell' | 'xchain';
-  exactOutEligible?: boolean;
-  fixedEligible?: boolean;
-  limits?: {
-    fiatUsd?: OrchestraFiatLimits;
-    dynamicProviderLimits?: { possible?: boolean };
-  };
-}
-
-/** GET /v1/orchestration/limits */
-export interface OrchestraLimitsResponse {
-  generatedAt?: string;
-  routes: OrchestraRouteLimits[];
-}
-
-/** One asset entry from GET /v2/orchestration/routes. */
-export interface OrchestraRouteAsset {
-  /** `<chain>:<asset>`, e.g. "base:USDC". */
-  id: string;
-  chain: string;
-  asset: string;
-  assetDisplayName?: string;
+  /** Smallest-unit exponent for the destination; absent if /routes was unreadable. */
+  decimals?: number;
   assetDisplaySymbol?: string;
   chainDisplayName?: string;
-  contractAddress?: string | null;
-  chainId?: string;
-  /**
-   * Smallest-unit exponent for *this* asset — Base USDC is 6, BSC USDC 18,
-   * Hypercore USDC 8. Never inferred from the ticker.
-   */
-  decimals: number;
-  route?: {
-    to?: OrchestraRouteSet;
-    exactOutTo?: OrchestraRouteSet;
-    fixedTo?: OrchestraRouteSet;
-  };
-}
-
-/** A destination set: everything, an explicit list, or everything but a list. */
-export type OrchestraRouteSet = 'all' | string[] | { except: string[] };
-
-/** GET /v2/orchestration/routes */
-export interface OrchestraRoutesResponse {
-  assets: OrchestraRouteAsset[];
+  minUsd: number;
+  maxUsd: number;
 }
