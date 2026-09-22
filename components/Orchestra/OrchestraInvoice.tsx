@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { useOrchestraNavigation } from '@/components/BuyCrypto/Orchestra/OrchestraNavigation';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import NeedHelp from '@/components/NeedHelp';
+import { useOrchestraNavigation } from '@/components/Orchestra/OrchestraNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';

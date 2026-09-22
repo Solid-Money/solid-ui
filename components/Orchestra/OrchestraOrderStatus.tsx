@@ -3,9 +3,9 @@ import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, Clock, XCircle } from 'lucide-react-native';
 
-import { useOrchestraNavigation } from '@/components/BuyCrypto/Orchestra/OrchestraNavigation';
 import DepositStepper from '@/components/DepositStepper';
 import NeedHelp from '@/components/NeedHelp';
+import { useOrchestraNavigation } from '@/components/Orchestra/OrchestraNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
