@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { useOrchestraNavigation } from '@/components/BuyCrypto/Orchestra/OrchestraNavigation';
@@ -8,13 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import useDebounce from '@/hooks/useDebounce';
 import {
   ORCHESTRA_FALLBACK_MAX_USD,
   ORCHESTRA_FALLBACK_MIN_USD,
   useCreateOrchestraOnramp,
   useOrchestraDestinationAsset,
-  useOrchestraEstimate,
   useOrchestraLimits,
 } from '@/hooks/useOrchestra';
 import useUser from '@/hooks/useUser';
@@ -22,25 +20,23 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET } from '@/lib/config';
 import { asOrchestraError } from '@/lib/orchestraErrors';
-import {
-  fiatLimitsFromResponse,
-  formatSats,
-  formatSmallestUnits,
-  formatUsd,
-} from '@/lib/orchestraFormat';
+import { fiatLimitsFromResponse, formatUsd } from '@/lib/orchestraFormat';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
-
-/** Wait for typing to settle before pricing — each amount is an Orchestra call. */
-const ESTIMATE_DEBOUNCE_MS = 500;
 
 /**
  * First step of the Lightning onramp: how much USD to deposit.
  *
- * The user pays in dollars and Orchestra converts at spot, so the box is in USD
- * and everything under it — sats in, asset out, fee — is what that buys. The
- * band comes from /limits rather than being hardcoded: it is operator-tuned and
- * changes without notice, and an amount inside it can still be refused when the
- * order is created, which is why the failure path exists at all.
+ * There is no live quote on this screen, and that is a property of the API
+ * rather than an omission. GET /estimate prices in sats only — it has no fiat
+ * parameter under any spelling — and the app has no spot source of its own, so
+ * a dollar figure here could only be quoted against a rate Orchestra didn't
+ * agree to. POST /onramp is the first call that accepts `amountFiatUsd`, and it
+ * answers with the real sats, fee and delivery at Orchestra's own spot.
+ *
+ * So the invoice screen is the review step: it shows those numbers, nothing is
+ * charged until the invoice is paid, and back returns here. What this screen
+ * owes the user is the band their amount has to fall in, which /limits gives —
+ * operator-tuned and fetched rather than hardcoded.
  */
 export const OrchestraAmount = () => {
   const setModal = useOrchestraNavigation();
@@ -72,64 +68,14 @@ export const OrchestraAmount = () => {
   const aboveMax = hasAmount && amountNum > maxUsd;
   const inRange = hasAmount && !belowMin && !aboveMax;
 
-  // Price on the settled amount, not on every keystroke: typing "400" would
-  // otherwise fire estimates for 4, 40 and 400 and leave the first two racing.
-  const debouncedAmount = useDebounce(amountUsd, ESTIMATE_DEBOUNCE_MS);
-  // Quote the same number the order will be created for. The box holds whatever
-  // is being typed — "10." on the way to "10.50", or "10.999" — and pricing the
-  // raw string while minting the invoice from a rounded one is how a user comes
-  // to be shown one total and charged another.
-  const quotedAmount = useMemo(() => {
-    const value = Number(debouncedAmount);
-    return Number.isFinite(value) && value > 0 ? value.toFixed(2) : '';
-  }, [debouncedAmount]);
-
-  const {
-    data: estimate,
-    isFetching: estimateFetching,
-    error: estimateError,
-  } = useOrchestraEstimate(quotedAmount, inRange);
-
-  // A failed estimate is a settled question, not a pending one. Without the
-  // error term this stays true forever — react-query clears `data` on error and
-  // nothing refetches — leaving the card spinning under its own error message.
-  const isEstimatePending =
-    inRange && !estimateError && (estimateFetching || amountUsd !== debouncedAmount || !estimate);
-  const liveEstimate = isEstimatePending ? undefined : estimate;
-
   const symbol = destinationAsset?.assetDisplaySymbol ?? EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET;
   const network = destinationAsset?.chainDisplayName;
-  const receiveAmount = formatSmallestUnits(liveEstimate?.estimatedOut, destinationAsset?.decimals);
-  const payAmount = formatSats(liveEstimate?.amountIn);
-
-  /**
-   * The fee is denominated in whatever asset the route settles it in — this
-   * corridor's is USDC, but a BTC destination is charged in sats — so the fee's
-   * own asset picks the decimals. Scaling sats by the destination's six places
-   * would print a 1,500-sat fee as "0", and an asset we have no exponent for is
-   * left unstated rather than stated wrongly.
-   */
-  const feeLabel = (() => {
-    const feeAmount = liveEstimate?.feeAmount;
-    if (!feeAmount) return undefined;
-    const feeAsset = liveEstimate?.feeAsset;
-    if (!feeAsset || feeAsset === destinationAsset?.asset || feeAsset === symbol) {
-      const formatted = formatSmallestUnits(feeAmount, destinationAsset?.decimals);
-      return formatted ? `${formatted} ${symbol}` : undefined;
-    }
-    if (feeAsset === 'BTC') return formatSats(feeAmount);
-    return undefined;
-  })();
 
   // No Safe address means nothing to deliver to. It is set during onboarding, so
   // this only bites a half-provisioned account — which should see a disabled
   // button, not one that does nothing.
   const recipientAddress = user?.safeAddress;
-  // A failed estimate does not block the order. /estimate is indicative and needs
-  // no key; /onramp is what actually decides, and its refusal reaches the user as
-  // an error screen that says why — which beats a Continue button that can never
-  // be pressed.
-  const continueDisabled = !inRange || isEstimatePending || creatingOrder || !recipientAddress;
+  const continueDisabled = !inRange || creatingOrder || !recipientAddress;
 
   const handleContinue = () => {
     if (!inRange || !recipientAddress) return;
@@ -137,8 +83,8 @@ export const OrchestraAmount = () => {
     createOrder(
       {
         recipientAddress,
-        // Normalised to two places, matching `quotedAmount` above, so the
-        // invoice is minted for exactly the figure the quote priced.
+        // Two decimal places: the field is a USD string, and sending the raw box
+        // contents would put "10." or "10.999" on the wire.
         amountFiatUsd: amountNum.toFixed(2),
         // No refundAddress: the user has no Lightning address to refund to, and
         // Orchestra only accepts one of those or a BOLT11. A failure before the
@@ -205,42 +151,19 @@ export const OrchestraAmount = () => {
       </View>
 
       <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
-        <Text className="text-base font-semibold leading-[22px] text-white">Your quote</Text>
-        {!liveEstimate ? (
-          <View className="min-h-10 justify-center">
-            {isEstimatePending ? (
-              <View className="flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#94F27F" />
-                <Text className="text-sm font-medium leading-5 text-white/70">
-                  Getting your rate, fees, and total…
-                </Text>
-              </View>
-            ) : !estimateError ? (
-              <Text className="text-sm font-medium leading-5 text-white/70">
-                Enter an amount to see your rate,{`\n`}fees, and total.
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <View className="gap-2.5">
-            <QuoteRow label="You pay over Lightning" value={payAmount ?? 'Not available'} />
-            <QuoteRow label="Fee" value={feeLabel ?? 'Not available'} />
-            <View className="h-px bg-white/10" />
-            <QuoteRow
-              label="You receive"
-              value={receiveAmount ? `${receiveAmount} ${symbol}` : 'Not available'}
-              emphasize
-            />
-          </View>
-        )}
+        <Text className="text-base font-semibold leading-[22px] text-white">How this works</Text>
+        <Text className="text-sm font-medium leading-5 text-white/70">
+          We&apos;ll create a Lightning invoice for this amount. You&apos;ll see the exact rate,
+          fee, and what you receive before you pay anything.
+        </Text>
+        <Text className="text-xs font-medium leading-[18px] text-white/50">
+          Between {formatUsd(minUsd)} and {formatUsd(maxUsd)} per deposit
+        </Text>
         {belowMin ? (
           <Text className="text-xs text-red-500">Enter at least {formatUsd(minUsd)}.</Text>
         ) : null}
         {aboveMax ? (
           <Text className="text-xs text-red-500">Enter at most {formatUsd(maxUsd)}.</Text>
-        ) : null}
-        {estimateError ? (
-          <Text className="text-xs text-red-500">{asOrchestraError(estimateError).message}</Text>
         ) : null}
       </View>
 
@@ -266,9 +189,7 @@ export const OrchestraAmount = () => {
               ? 'Creating invoice…'
               : belowMin || aboveMax
                 ? 'Amount out of limits'
-                : isEstimatePending
-                  ? 'Getting quote…'
-                  : 'Continue'}
+                : 'Continue'}
           </Text>
         </Button>
 
@@ -277,28 +198,5 @@ export const OrchestraAmount = () => {
     </View>
   );
 };
-
-const QuoteRow = ({
-  label,
-  value,
-  emphasize,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-}) => (
-  <View className="flex-row items-center justify-between">
-    <Text
-      className={
-        emphasize ? 'text-base font-semibold text-primary' : 'text-sm text-muted-foreground'
-      }
-    >
-      {label}
-    </Text>
-    <Text className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}>
-      {value}
-    </Text>
-  </View>
-);
 
 export default OrchestraAmount;

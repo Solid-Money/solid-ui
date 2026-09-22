@@ -90,8 +90,23 @@ export interface OrchestraOnrampOrder {
   amountIn: string;
   /** Destination smallest units expected on delivery. */
   estimatedOut: string;
+  /** The swap fee alone. `totalFeeAmount` is the one to show a user. */
   feeAmount?: string;
+  /** Rounding applied on top of the swap fee; already included in the total. */
+  roundingFeeAmount?: string;
+  /** feeAmount + roundingFeeAmount — what the deposit actually costs. */
+  totalFeeAmount?: string;
+  /** The route's fee rate in basis points, e.g. 60 for 0.6%. */
+  feeBps?: number;
   feeAsset?: string;
+  /**
+   * The fee asset's own route entry. Carries the `decimals` the fee is
+   * denominated in, which need not match the destination's — read it from here
+   * rather than inferring it from the ticker.
+   */
+  feeAssetDetails?: OrchestraRouteAsset;
+  feeAmountUsd?: string;
+  totalFeeAmountUsd?: string;
   /** ISO timestamp. Exact-in invoices last ~24h, exact-out and fixed delivery 5 minutes. */
   expiresAt: string;
   amountMode?: OrchestraAmountMode;
@@ -137,16 +152,6 @@ export interface OrchestraOrder {
 export interface OrchestraStatusResponse {
   order: OrchestraOrder | null;
   stages?: OrchestraStage[];
-}
-
-/** GET /v1/orchestration/estimate — indicative pricing, no order created. */
-export interface OrchestraEstimate {
-  amountIn?: string;
-  estimatedOut?: string;
-  feeAmount?: string;
-  feeAsset?: string;
-  amountMode?: OrchestraAmountMode;
-  spotUsdPerBtc?: string;
 }
 
 /** The fiat band from /limits, present only when the source is Lightning BTC. */

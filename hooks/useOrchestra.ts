@@ -1,8 +1,7 @@
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import {
   createOrchestraOnramp,
-  getOrchestraEstimate,
   getOrchestraLimits,
   getOrchestraRoutes,
   getOrchestraStatus,
@@ -15,7 +14,6 @@ import type { OrchestraOnrampRequest } from '@/lib/types/orchestra';
 
 export const ORCHESTRA_ROUTES_KEY = 'orchestraRoutes';
 export const ORCHESTRA_LIMITS_KEY = 'orchestraLimits';
-export const ORCHESTRA_ESTIMATE_KEY = 'orchestraEstimate';
 export const ORCHESTRA_STATUS_KEY = 'orchestraStatus';
 
 /** Orchestra's published fiat band, when it doesn't answer or doesn't say. */
@@ -77,27 +75,6 @@ export function useOrchestraLimits(enabled = true) {
     enabled,
     staleTime: 5 * 60 * 1000,
     retry: 1,
-  });
-}
-
-/**
- * Indicative pricing for the entered USD amount.
- *
- * Pass a debounced amount — every distinct value is a separate request. The
- * queryFn consumes react-query's AbortSignal so a superseded estimate (the user
- * typed another digit) is cancelled rather than left in flight. The previous
- * estimate is kept as placeholder data so the breakdown doesn't collapse
- * between keystrokes; callers check `isFetching` before trusting it for the
- * current input.
- */
-export function useOrchestraEstimate(amountUsd: string, enabled = true) {
-  const numeric = Number(amountUsd);
-  return useQuery({
-    queryKey: [ORCHESTRA_ESTIMATE_KEY, amountUsd],
-    queryFn: ({ signal }) => getOrchestraEstimate(amountUsd, signal),
-    enabled: enabled && Number.isFinite(numeric) && numeric > 0,
-    placeholderData: keepPreviousData,
-    retry: retryUnlessRefused,
   });
 }
 

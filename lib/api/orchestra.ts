@@ -9,7 +9,6 @@ import {
 import { ORCHESTRA_ERROR_CODE, OrchestraError, toOrchestraError } from '@/lib/orchestraErrors';
 
 import type {
-  OrchestraEstimate,
   OrchestraLimitsResponse,
   OrchestraOnrampOrder,
   OrchestraOnrampRequest,
@@ -61,30 +60,6 @@ export const orchestraDestination = () => ({
   destinationChain: EXPO_PUBLIC_ORCHESTRA_DESTINATION_CHAIN,
   destinationAsset: EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET,
 });
-
-/**
- * Indicative pricing. Stateless, allocates no invoice, and needs no key — so it
- * is safe to call on every settled keystroke while the user picks an amount.
- */
-export const getOrchestraEstimate = async (
-  amountFiatUsd: string,
-  signal?: AbortSignal,
-): Promise<OrchestraEstimate> => {
-  const params = new URLSearchParams({
-    ...LIGHTNING_SOURCE,
-    ...orchestraDestination(),
-    amountFiatUsd,
-  });
-
-  const response = await fetch(`${baseUrl()}/v1/orchestration/estimate?${params}`, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    signal,
-  });
-
-  if (!response.ok) throw await toOrchestraError(response);
-  return response.json();
-};
 
 /**
  * Asset capabilities and — the reason this flow calls it — the destination's

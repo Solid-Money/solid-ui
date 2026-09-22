@@ -12,7 +12,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOrchestraDestinationAsset } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_ORCHESTRA_DESTINATION_ASSET } from '@/lib/config';
-import { formatSats, formatSmallestUnits } from '@/lib/orchestraFormat';
+import { formatSats, formatSmallestUnits, formatUsd } from '@/lib/orchestraFormat';
 import { eclipseAddress } from '@/lib/utils';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
@@ -86,6 +86,19 @@ export const OrchestraInvoice = () => {
   const payAmount = formatSats(order.amountIn);
   const cashAppUrl = order.paymentLinks?.cashApp;
 
+  /**
+   * The fee, in the asset Orchestra settles it in.
+   *
+   * `feeAssetDetails` carries that asset's own `decimals`, which need not match
+   * the destination's — so it is read from the response rather than inferred
+   * from the ticker, and the destination's exponent is only the fallback for a
+   * response that omits the block. `totalFeeAmount` is the figure to show: the
+   * bare `feeAmount` leaves out the rounding component the user also pays.
+   */
+  const feeDecimals = order.feeAssetDetails?.decimals ?? destinationAsset?.decimals;
+  const feeAmount = formatSmallestUnits(order.totalFeeAmount ?? order.feeAmount, feeDecimals);
+  const feeLabel = feeAmount ? `${feeAmount} ${order.feeAsset ?? symbol}` : undefined;
+
   // The docs' own split: on a phone the pay link launches Cash App, on a desktop
   // it is something to scan with one. A phone camera pointed at that URL opens
   // Cash App, which a raw BOLT11 does not — so the desktop QR is the link and
@@ -104,10 +117,10 @@ export const OrchestraInvoice = () => {
     <View className="flex-1 gap-5">
       <View className="items-center gap-2">
         <Text className="text-center text-2xl font-bold text-primary">
-          {payAmount ?? 'Pay this invoice'}
+          {amountUsd ? `Pay ${formatUsd(Number(amountUsd))}` : 'Pay this invoice'}
         </Text>
         <Text className="text-center text-base text-muted-foreground">
-          {receiveAmount ? `for about ${receiveAmount} ${symbol}` : `to receive ${symbol}`}
+          Scan or open in Cash App to finish your deposit
         </Text>
       </View>
 
@@ -137,6 +150,20 @@ export const OrchestraInvoice = () => {
               : `Expires in ${formatCountdown(secondsLeft)}`}
           </Text>
         ) : null}
+      </View>
+
+      {/* The review the amount screen could not give: /estimate prices in sats
+          only, so these are the first real numbers in the flow — and nothing is
+          charged until the invoice below is paid. */}
+      <View className="gap-2.5 rounded-2xl bg-card p-4">
+        <BreakdownRow label="You pay" value={payAmount ?? 'Not available'} />
+        {feeLabel ? <BreakdownRow label="Fee" value={feeLabel} /> : null}
+        <View className="h-px bg-white/10" />
+        <BreakdownRow
+          label="You receive"
+          value={receiveAmount ? `${receiveAmount} ${symbol}` : 'Not available'}
+          emphasize
+        />
       </View>
 
       <View className="flex-row items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3">
@@ -188,5 +215,28 @@ export const OrchestraInvoice = () => {
     </View>
   );
 };
+
+const BreakdownRow = ({
+  label,
+  value,
+  emphasize,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) => (
+  <View className="flex-row items-center justify-between">
+    <Text
+      className={
+        emphasize ? 'text-base font-semibold text-primary' : 'text-sm text-muted-foreground'
+      }
+    >
+      {label}
+    </Text>
+    <Text className={emphasize ? 'text-base font-bold text-primary' : 'text-sm text-primary'}>
+      {value}
+    </Text>
+  </View>
+);
 
 export default OrchestraInvoice;
