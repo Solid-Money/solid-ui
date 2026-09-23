@@ -93,6 +93,12 @@ export interface ExternalWalletState {
 export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
+  /**
+   * Set while "Select chain" is open from the address screen's network button,
+   * so back returns to the address. Back from the address also lands on "Select
+   * chain", so the previous step alone cannot tell the two apart.
+   */
+  isChangingChain?: boolean;
 }
 
 interface DepositState {

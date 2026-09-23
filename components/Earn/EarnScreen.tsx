@@ -13,11 +13,9 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { type AssetPath } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
-import { EarnInvestSection } from './EarnInvestSection';
 import {
   calculateEstimatedDailyEarnings,
   resolveVaultApy,
@@ -176,11 +174,6 @@ export default function EarnScreen() {
             />
           ) : null}
         </View>
-
-        {/* Tokenized assets are still an in-development feature (the Stocks
-            screen itself redirects in production), so the catalog stays out of
-            production builds until it ships. */}
-        {isDevFeatureEnabled && <EarnInvestSection />}
       </View>
     </PageLayout>
   );

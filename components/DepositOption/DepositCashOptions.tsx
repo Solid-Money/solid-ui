@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { CreditCard, Minus, Plus } from 'lucide-react-native';
+import { Minus, Plus } from 'lucide-react-native';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -17,23 +17,21 @@ import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
-import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
+import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-import { getPaymentMethodChips } from './depositPaymentMethods';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
 /** Matches the muted row text the "Show more" footer sits beside. */
 const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
 /**
- * USD is funded by the virtual account, which only takes ACH and wire — unlike
- * the local currencies, whose rails come back from TransFi's payment config.
+ * USD is funded by the virtual account, which only takes ACH and wire. The
+ * local currencies show their committed corridor list (localCurrencies.tsx).
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
 const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
@@ -49,12 +47,6 @@ export const DEPOSIT_CASH_CURRENCY_COUNT =
 
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
 export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
-
-const CryptoIcon = ({ children }: { children: React.ReactNode }) => (
-  <View className="h-[37px] w-[37px] items-center justify-center rounded-full bg-[#333333]">
-    {children}
-  </View>
-);
 
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens the
@@ -73,44 +65,6 @@ const DepositCashOptions = () => {
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
-
-  const { data: eurPaymentMethods } = useTransfiPaymentMethods('EUR');
-  const { data: brlPaymentMethods } = useTransfiPaymentMethods('BRL');
-  const { data: bdtPaymentMethods } = useTransfiPaymentMethods('BDT');
-  const { data: phpPaymentMethods } = useTransfiPaymentMethods('PHP');
-  const { data: mxnPaymentMethods } = useTransfiPaymentMethods(
-    showAllCurrencies ? 'MXN' : undefined,
-  );
-
-  /**
-   * Rails to show on a currency's row.
-   *
-   * TransFi's payment config is the live answer, but it is a request that can be
-   * pending, geo-refused or simply unavailable, and a row with no chips reads as
-   * a currency with no way to pay for it. So the committed corridor list is the
-   * baseline — the same one the card funding screen shows — and the live config
-   * replaces it once it arrives.
-   */
-  const paymentMethodChips = useMemo(() => {
-    const resolve = (code: string, methods: TransfiPaymentMethodOption[] | undefined) => {
-      const live = getPaymentMethodChips(methods);
-      return live.length ? live : getCardFundLocalPaymentMethods(code);
-    };
-
-    return {
-      EUR: resolve('EUR', eurPaymentMethods),
-      BRL: resolve('BRL', brlPaymentMethods),
-      BDT: resolve('BDT', bdtPaymentMethods),
-      PHP: resolve('PHP', phpPaymentMethods),
-      MXN: resolve('MXN', mxnPaymentMethods),
-    };
-  }, [
-    bdtPaymentMethods,
-    brlPaymentMethods,
-    eurPaymentMethods,
-    mxnPaymentMethods,
-    phpPaymentMethods,
-  ]);
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -137,14 +91,6 @@ const DepositCashOptions = () => {
       return;
     }
     setIsVirtualAccountApplyOpen(true);
-  };
-
-  const handleBuyWithCardPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-      provider: 'onramper',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -185,7 +131,7 @@ const DepositCashOptions = () => {
             className="min-h-[93px]"
             icon={currency.icon}
             title={currency.code}
-            chips={paymentMethodChips[currency.code as keyof typeof paymentMethodChips]}
+            chips={getCardFundLocalPaymentMethods(currency.code)}
             onPress={() => handleLocalCurrencyPress(currency.code)}
           />
         ))}
@@ -205,23 +151,6 @@ const DepositCashOptions = () => {
             {showAllCurrencies ? 'Show less' : 'Show more'}
           </Text>
         </Pressable>
-      </CardFundGroup>
-
-      {/* Onramper's aggregator, in its own hosted widget. No platform or region
-          gate: it runs in an iframe on web and a WebView on native, and an
-          unserved country is something the widget itself reports — honestly and
-          in context — rather than something we predict by hiding the row. */}
-      <CardFundGroup label="Other">
-        <CardFundRow
-          icon={
-            <CryptoIcon>
-              <CreditCard color="white" size={22} strokeWidth={1.5} />
-            </CryptoIcon>
-          }
-          title="Buy crypto"
-          subtitle="Card, Apple Pay, Google Pay and more"
-          onPress={handleBuyWithCardPress}
-        />
       </CardFundGroup>
 
       <VirtualAccountApplyDialog

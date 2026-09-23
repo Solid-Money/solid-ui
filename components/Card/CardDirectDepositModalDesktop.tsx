@@ -233,14 +233,6 @@ export default function CardDirectDepositModal({
   // Onramper's hosted widget, rendered inside this modal by the same embedded
   // navigator the TransFi screens use — so back and the title come from
   // lib/buyCryptoFlow, not from a step of our own.
-  const handleOnramperPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-      provider: 'onramper',
-    });
-    setBuyCryptoModal(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
-  }, []);
-
   // "Deposit from an external wallet" — connect a crypto wallet, then send.
   const handleConnectWallet = useCallback(async () => {
     try {
@@ -387,7 +379,6 @@ export default function CardDirectDepositModal({
           onExternalWalletPress={handleConnectWallet}
           onUsdPress={handleUsdPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
-          onBuyCryptoPress={handleOnramperPress}
           isExternalWalletLoading={isWalletOpen}
         />
       );

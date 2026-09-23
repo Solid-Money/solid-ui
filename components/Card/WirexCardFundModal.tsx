@@ -19,7 +19,6 @@ import {
   WirexMoveHoldings,
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -215,14 +214,6 @@ export default function WirexCardFundModal({
   // Onramper's hosted widget, rendered inside this modal by the same embedded
   // navigator the TransFi screens use — so back and the title come from
   // lib/buyCryptoFlow, not from a step of our own.
-  const handleOnramperPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-      provider: 'onramper',
-    });
-    setBuyCryptoModal(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
-  }, []);
-
   const handleMoveFromWalletPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'wirex_move_from_wallet',
@@ -307,7 +298,6 @@ export default function WirexCardFundModal({
         <CardFundOptions
           onTokenPress={handleTokenPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
-          onBuyCryptoPress={handleOnramperPress}
           onMoveFromSavingsPress={handleMoveFromWalletPress}
           sections={WIREX_CARD_FUND_SECTIONS}
           moveFromSolidCopy={CARD_FUND_MOVE_COPY.wirex}
