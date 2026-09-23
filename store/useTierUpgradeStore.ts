@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
 import { TIER_UPGRADE_MODAL } from '@/constants/modals';
-import { DEFAULT_LOCK_ASSET, type LockPaymentAsset } from '@/lib/tierLockPayment';
 import { RewardsTier } from '@/lib/types';
 
 import type { ModalState } from '@/components/ResponsiveModal';
@@ -29,22 +28,11 @@ interface TierUpgradeState {
    * provider would make the provider know what a payment route is.
    */
   route: TierUpgradeRoute | null;
-  /**
-   * The token the lock is paid with.
-   *
-   * Deliberately the user's choice rather than a balance the app picks for
-   * them: all three are FUSE to the tier, but they are not interchangeable to
-   * the person holding them — someone keeping FUSE liquid on purpose should not
-   * have their Savings spent instead, and vice versa.
-   */
-  lockAsset: LockPaymentAsset;
   open: (tier?: PurchasableTier | null) => void;
   review: () => void;
-  selectToken: () => void;
   back: () => void;
   close: () => void;
   setRoute: (route: TierUpgradeRoute) => void;
-  setLockAsset: (asset: LockPaymentAsset) => void;
 }
 
 /**
@@ -59,7 +47,6 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
   previousModal: TIER_UPGRADE_MODAL.CLOSE,
   tier: null,
   route: null,
-  lockAsset: DEFAULT_LOCK_ASSET,
 
   open: (tier = null) =>
     set({
@@ -70,21 +57,12 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
       // tab held over from a previous tier is a payment method this one may not
       // sell. The upgrade step settles it again from the offer.
       route: null,
-      // Back to the default too. A token picked for one upgrade is not a
-      // standing preference, and the balances behind it have moved since.
-      lockAsset: DEFAULT_LOCK_ASSET,
     }),
 
   review: () =>
     set({
       previousModal: get().currentModal,
       currentModal: TIER_UPGRADE_MODAL.OPEN_REVIEW,
-    }),
-
-  selectToken: () =>
-    set({
-      previousModal: get().currentModal,
-      currentModal: TIER_UPGRADE_MODAL.OPEN_TOKEN_SELECTOR,
     }),
 
   back: () =>
@@ -100,16 +78,6 @@ export const useTierUpgradeStore = create<TierUpgradeState>()((set, get) => ({
     }),
 
   setRoute: route => set({ route }),
-
-  // Picking one closes the picker: it is a one-tap choice, and making the user
-  // press back afterwards is a step that exists only because the screen is a
-  // separate one.
-  setLockAsset: asset =>
-    set({
-      lockAsset: asset,
-      previousModal: get().currentModal,
-      currentModal: TIER_UPGRADE_MODAL.OPEN_UPGRADE,
-    }),
 }));
 
 /** Whether the upgrade flow is on screen. */

@@ -45,12 +45,8 @@ describe('upgradeRouteLabelClass', () => {
 });
 
 describe('ROUTE_LABEL', () => {
-  /**
-   * The tab names the unit, not the token. Every tier figure is a FUSE amount,
-   * and the tab used to say "soFUSE" back when that was the only thing the lock
-   * would take — which is now one of three choices made by the picker inside it.
-   */
-  it('names the route in the unit the tier is priced in', () => {
-    expect(ROUTE_LABEL.lock).toBe('Locked FUSE');
+  /** The lock takes soFUSE shares from Savings, never native FUSE. */
+  it('names the token the lock actually takes', () => {
+    expect(ROUTE_LABEL.lock).toBe('Locked soFUSE');
   });
 });

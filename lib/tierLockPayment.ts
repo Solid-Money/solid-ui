@@ -1,27 +1,7 @@
 import { covers } from '@/lib/tierUpgrade';
 
-/**
- * What the lock can be paid with.
- *
- * All three are FUSE as far as the tier is concerned — the threshold is
- * measured in FUSE, native and wrapped are par with it, and soFUSE is priced
- * through the vault's rate — which is why the screens quote every amount in
- * FUSE and only this picker mentions the token.
- */
-export type LockPaymentAsset = 'FUSE' | 'WFUSE' | 'soFUSE';
-
-/** In the order the picker lists them. */
-export const LOCK_PAYMENT_ASSETS: readonly LockPaymentAsset[] = ['FUSE', 'WFUSE', 'soFUSE'];
-
-/**
- * What the picker opens on.
- *
- * Native FUSE: it is what a user holding FUSE has, it needs no prior deposit,
- * and it is the one the zap was built for. soFUSE is the specialist choice —
- * it is already in Savings and locks without a deposit at all — so it is
- * offered rather than assumed.
- */
-export const DEFAULT_LOCK_ASSET: LockPaymentAsset = 'FUSE';
+/** What the lock can be paid with. All three are worth FUSE, one way or another. */
+export type LockPaymentAsset = 'soFUSE' | 'FUSE' | 'WFUSE';
 
 /** The Safe's holdings, every one of them denominated in FUSE. */
 export interface LockPaymentBalances {
@@ -33,18 +13,11 @@ export interface LockPaymentBalances {
   wrapped: number;
 }
 
-/** The ticker, as the picker and the rows show it. */
+/** How each asset is named to the user. */
 export const LOCK_PAYMENT_LABEL: Record<LockPaymentAsset, string> = {
+  soFUSE: 'soFUSE in Savings',
   FUSE: 'FUSE',
   WFUSE: 'WFUSE',
-  soFUSE: 'soFUSE',
-};
-
-/** The line under the ticker in the picker, saying where the balance lives. */
-export const LOCK_PAYMENT_DESCRIPTION: Record<LockPaymentAsset, string> = {
-  FUSE: 'Native FUSE in your wallet',
-  WFUSE: 'Wrapped FUSE in your wallet',
-  soFUSE: 'Already in Savings, locked as-is',
 };
 
 /** That asset's balance, in FUSE. */
@@ -55,38 +28,66 @@ export const lockPaymentBalance = (
   asset === 'soFUSE' ? balances.sofuse : asset === 'FUSE' ? balances.native : balances.wrapped;
 
 /**
- * The assets the picker can offer.
+ * Which asset pays for the lock.
  *
- * FUSE and WFUSE are payable only because the zap deposits and locks in one
- * transaction. Without it the only thing that can be locked is what is already
- * in Savings, so the picker collapses to a single row rather than offering two
- * choices that would revert.
- */
-export const availableLockAssets = (zapAvailable: boolean): readonly LockPaymentAsset[] =>
-  zapAvailable ? LOCK_PAYMENT_ASSETS : ['soFUSE'];
-
-/**
- * The asset actually in force, given what the user picked.
+ * soFUSE first, always. It is already in Savings, so it needs no deposit and no
+ * rate conversion — the shares that exist are the shares that get locked — and
+ * it is the only asset that works when the zap is not deployed. Preferring it
+ * also means a user who keeps FUSE liquid on purpose is not quietly spent out
+ * of it while their Savings sit untouched.
  *
- * A stored choice outlives the thing that made it possible: the zap can be
- * switched off between one session and the next, and a Safe that still
- * remembers "FUSE" would otherwise build a transaction against a contract the
- * backend no longer names.
- */
-export const resolveLockAsset = (
-  selected: LockPaymentAsset,
-  zapAvailable: boolean,
-): LockPaymentAsset => (availableLockAssets(zapAvailable).includes(selected) ? selected : 'soFUSE');
-
-/**
- * Whether that asset's balance covers the lock.
+ * Then native FUSE, then WFUSE. Both go through the zap, which deposits and
+ * locks in one transaction; the order between them is arbitrary and native is
+ * first only because it is what a user is more likely to be holding.
  *
- * One asset, not a combination: the zap takes a single deposit, so an account
- * that could only afford the tier by pooling two of these has to pick one and
- * top it up.
+ * One asset, not a combination. The zap takes a single deposit, so an account
+ * that can only afford the tier by pooling two of these has to top one up —
+ * which is what the shortfall line says, measured against the best of them.
+ *
+ * Returns null when nothing covers it on its own.
  */
-export const canPayLockWith = (
-  asset: LockPaymentAsset,
+export const chooseLockPayment = (
   requiredFuse: number,
   balances: LockPaymentBalances,
-): boolean => covers(lockPaymentBalance(asset, balances), requiredFuse);
+  /** Whether the deposit-and-lock zap is available. Without it, only soFUSE works. */
+  zapAvailable: boolean,
+): LockPaymentAsset | null => {
+  if (covers(balances.sofuse, requiredFuse)) return 'soFUSE';
+  if (!zapAvailable) return null;
+  if (covers(balances.native, requiredFuse)) return 'FUSE';
+  if (covers(balances.wrapped, requiredFuse)) return 'WFUSE';
+
+  return null;
+};
+
+/**
+ * The asset the lock would come from if it could be paid at all.
+ *
+ * `chooseLockPayment` answers "what pays for this", and returns null when
+ * nothing does. This answers the different question the screen still has to
+ * show something for: which balance is the one worth talking about. Ties go to
+ * soFUSE, for the same reason it is preferred when it covers the tier.
+ */
+export const bestLockPaymentAsset = (
+  balances: LockPaymentBalances,
+  zapAvailable: boolean,
+): LockPaymentAsset => {
+  if (!zapAvailable) return 'soFUSE';
+
+  if (balances.native > balances.sofuse && balances.native >= balances.wrapped) return 'FUSE';
+  if (balances.wrapped > balances.sofuse && balances.wrapped > balances.native) return 'WFUSE';
+
+  return 'soFUSE';
+};
+
+/**
+ * The largest single balance the lock could be paid from.
+ *
+ * What the shortfall is measured against: telling a user holding 80,000 FUSE
+ * that they are 90,000 short — because the shortfall was measured against their
+ * empty Savings — is worse than telling them nothing.
+ */
+export const bestLockPaymentBalance = (
+  balances: LockPaymentBalances,
+  zapAvailable: boolean,
+): number => lockPaymentBalance(bestLockPaymentAsset(balances, zapAvailable), balances);

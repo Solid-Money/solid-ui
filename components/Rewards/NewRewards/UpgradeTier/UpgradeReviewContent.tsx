@@ -13,12 +13,7 @@ import {
   useTierUpgradeChainState,
 } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import {
-  canPayLockWith,
-  LOCK_PAYMENT_LABEL,
-  type LockPaymentBalances,
-  resolveLockAsset,
-} from '@/lib/tierLockPayment';
+import { chooseLockPayment, LOCK_PAYMENT_LABEL } from '@/lib/tierLockPayment';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
   canAffordUpgrade,
@@ -36,7 +31,7 @@ import TierDetailRow from './TierDetailRow';
  * The last step before the signature: exactly what is being committed, and for
  * how long.
  *
- * Separate from the offer step on purpose. Locking FUSE for a year is not
+ * Separate from the offer step on purpose. Locking soFUSE for a year is not
  * reversible by asking nicely, and the term is the part a user is most likely
  * to have skimmed — so it gets a step where it is one of four lines rather than
  * one row among a price, a balance and a toggle.
@@ -50,7 +45,6 @@ const UpgradeReviewContent = () => {
 
   const tier = useTierUpgradeStore(state => state.tier);
   const route = useTierUpgradeStore(state => state.route) ?? 'lock';
-  const chosenAsset = useTierUpgradeStore(state => state.lockAsset);
   const back = useTierUpgradeStore(state => state.back);
   const close = useTierUpgradeStore(state => state.close);
 
@@ -79,47 +73,42 @@ const UpgradeReviewContent = () => {
   const message = failure ?? lockError ?? subscribeError;
 
   /**
-   * The token the user picked, re-checked against what is still on offer.
-   *
-   * Not re-decided here: the step before this named a token and priced the
-   * upgrade against that balance, and quietly signing a different one would
-   * spend a balance the user was keeping. `resolveLockAsset` only steps in when
-   * the choice has become impossible — the zap switched off between steps —
-   * where the alternative is a transaction that can only revert.
-   */
-  const paymentAsset = resolveLockAsset(chosenAsset, Boolean(membership.contracts.lockZapAddress));
-
-  /**
-   * Re-checked here rather than trusted from the step before.
+   * Re-decided here rather than carried from the step before, and allowed to
+   * come back empty.
    *
    * The balances are polled every few seconds and the user may have been
    * reading the term for a while — a concurrent spend from another tab or
-   * device is enough to make the offer step's answer stale, and the only thing
-   * downstream of a wrong answer is an on-chain revert.
+   * device is enough. Defaulting to soFUSE when nothing covers the tier is how
+   * this screen let someone sign a transaction that could only revert, with an
+   * on-chain error message to explain it.
    *
-   * `chain === undefined` is "the balances have not loaded", which blocks the
-   * button without claiming the user is short: saying so while the balance is
-   * still being read would be wrong about half the time.
+   * `undefined` is "the balances have not loaded", which is not the same answer
+   * as `null`, "nothing covers it". Both block the button; only the second says
+   * so, because telling a user their balance is short while it is still being
+   * read would be wrong about half the time.
    */
-  const balances: LockPaymentBalances | undefined = chain
-    ? { sofuse: chain.fuse, native: chain.nativeFuse, wrapped: chain.wrappedFuse }
+  const paymentAsset = chain
+    ? chooseLockPayment(
+        remainingFuse,
+        { sofuse: chain.fuse, native: chain.nativeFuse, wrapped: chain.wrappedFuse },
+        Boolean(membership.contracts.lockZapAddress),
+      )
     : undefined;
 
   // The cash route has the same hole and closes it the same way: the offer step
   // checked the USDC balance, and that check is minutes old by the time anyone
   // presses this.
   const canPay =
-    chain !== undefined &&
-    balances !== undefined &&
-    (route === 'lock'
-      ? canPayLockWith(paymentAsset, remainingFuse, balances)
-      : canAffordUpgrade({
+    route === 'lock'
+      ? Boolean(paymentAsset)
+      : chain !== undefined &&
+        canAffordUpgrade({
           route,
           offer,
           lockedFuse: membership.lock.lockedFuse,
           availableFuse: chain.fuse,
           availableUsdc: chain.usdcAmount,
-        }));
+        });
 
   // Only once we have actually read the balances. Nothing to say while they load.
   const shortOfFunds = chain !== undefined && !canPay;
@@ -134,13 +123,8 @@ const UpgradeReviewContent = () => {
         }
         track(TRACKING_EVENTS.TIER_LOCK_PRESSED, { tier, fuse_amount: remainingFuse });
 
-        // The button is disabled while this is false, but the balances move
-        // under it on a poll — and the only thing downstream of a stale yes is
-        // a revert the user pays gas for.
-        if (!balances || !canPayLockWith(paymentAsset, remainingFuse, balances)) {
-          throw new Error(
-            `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} balance no longer covers this upgrade.`,
-          );
+        if (!paymentAsset) {
+          throw new Error('Your balance no longer covers this upgrade.');
         }
 
         const result = await lockFuse({
@@ -169,7 +153,7 @@ const UpgradeReviewContent = () => {
       // never have offered this, so reaching it means the offer changed under
       // the user between steps — say so rather than charging them nothing.
       if (offer.annualFeeUsd === null) {
-        throw new Error('This tier cannot be bought with an annual fee. Lock FUSE to hold it.');
+        throw new Error('This tier cannot be bought with an annual fee. Lock soFUSE to hold it.');
       }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
 
@@ -193,24 +177,24 @@ const UpgradeReviewContent = () => {
 
         {route === 'lock' ? (
           <>
-            {/* The token first, as on the step before: the last screen before
-                the signature has to say which balance this comes out of, and
-                it is the line the rest of the rows are priced against. */}
+            {/* soFUSE in the label, FUSE in the value — the lock takes the
+                Savings position, which is denominated in the FUSE it is worth.
+                Same wording as the row on the step before this. */}
             <TierDetailRow
-              label="Paying with"
-              value={LOCK_PAYMENT_LABEL[paymentAsset]}
-              withDivider
-            />
-            {/* Priced in FUSE whichever token pays: the tier's threshold is a
-                FUSE figure, and soFUSE is quoted at the FUSE it is worth. */}
-            <TierDetailRow
-              label="Amount to lock"
+              label="soFUSE to lock"
               value={`${formatFuse(remainingFuse)} FUSE`}
               withDivider
             />
             <TierDetailRow
               label="Lock duration"
               value={formatLockDuration(membership.lock.durationDays)}
+              withDivider
+            />
+            {/* The last screen before the signature says which balance it
+                comes out of. */}
+            <TierDetailRow
+              label="Paying with"
+              value={paymentAsset ? LOCK_PAYMENT_LABEL[paymentAsset] : '—'}
               withDivider
             />
             <TierDetailRow label="Fee" value="Free" />
@@ -227,10 +211,10 @@ const UpgradeReviewContent = () => {
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'lock'
           ? `${
-              paymentAsset === 'soFUSE'
-                ? 'Your FUSE in Savings is locked.'
-                : `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} is moved into Savings and locked, in one transaction.`
-            } It unlocks automatically ${formatLockDuration(
+              !paymentAsset || paymentAsset === 'soFUSE'
+                ? 'Your soFUSE'
+                : `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} is deposited into Savings, and the soFUSE it becomes`
+            } will be unlocked automatically ${formatLockDuration(
               membership.lock.durationDays,
             )} from now, and keeps earning until then.`
           : 'Your membership renews once a year. Cancel any time — you keep the tier to the end of the period you have paid for.'}
@@ -240,9 +224,7 @@ const UpgradeReviewContent = () => {
         <Text className="mt-4 text-center text-[14px] leading-5 text-red-400">{message}</Text>
       ) : shortOfFunds ? (
         <Text className="mt-4 text-center text-[14px] leading-5 text-white/50">
-          {route === 'lock'
-            ? `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} balance no longer covers this upgrade. Go back to top up or pick another token.`
-            : 'Your balance no longer covers this upgrade. Go back to top up.'}
+          Your balance no longer covers this upgrade. Go back to top up.
         </Text>
       ) : null}
 

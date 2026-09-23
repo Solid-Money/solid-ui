@@ -1,9 +1,8 @@
 import {
-  availableLockAssets,
-  canPayLockWith,
-  DEFAULT_LOCK_ASSET,
+  bestLockPaymentAsset,
+  bestLockPaymentBalance,
+  chooseLockPayment,
   lockPaymentBalance,
-  resolveLockAsset,
   type LockPaymentBalances,
 } from '@/lib/tierLockPayment';
 
@@ -14,60 +13,46 @@ const balances = (over: Partial<LockPaymentBalances> = {}): LockPaymentBalances 
   ...over,
 });
 
-describe('availableLockAssets', () => {
-  it('offers all three once the zap can deposit and lock in one transaction', () => {
-    expect(availableLockAssets(true)).toEqual(['FUSE', 'WFUSE', 'soFUSE']);
+describe('chooseLockPayment', () => {
+  it('spends Savings first, so liquid FUSE is left where the user put it', () => {
+    expect(chooseLockPayment(90_000, balances({ sofuse: 100_000, native: 500_000 }), true)).toBe(
+      'soFUSE',
+    );
+  });
+
+  it('falls through to native FUSE when Savings cannot cover it alone', () => {
+    expect(chooseLockPayment(90_000, balances({ sofuse: 50_000, native: 100_000 }), true)).toBe(
+      'FUSE',
+    );
+  });
+
+  it('falls through to WFUSE last', () => {
+    expect(chooseLockPayment(90_000, balances({ sofuse: 50_000, wrapped: 100_000 }), true)).toBe(
+      'WFUSE',
+    );
   });
 
   /**
-   * FUSE and WFUSE are payable only through the zap. Without it the picker has
-   * to collapse rather than offer two choices that would revert.
+   * The zap is what makes FUSE and WFUSE payable at all. Without it the only
+   * thing that can be locked is what is already in Savings.
    */
-  it('collapses to Savings when the zap is not deployed', () => {
-    expect(availableLockAssets(false)).toEqual(['soFUSE']);
-  });
-
-  it('opens on native FUSE, which is what a user holding FUSE has', () => {
-    expect(DEFAULT_LOCK_ASSET).toBe('FUSE');
-    expect(availableLockAssets(true)[0]).toBe(DEFAULT_LOCK_ASSET);
-  });
-});
-
-describe('resolveLockAsset', () => {
-  it('keeps the choice the user made', () => {
-    expect(resolveLockAsset('WFUSE', true)).toBe('WFUSE');
-    expect(resolveLockAsset('soFUSE', true)).toBe('soFUSE');
-  });
-
-  /**
-   * A stored choice outlives the thing that made it possible — the zap can be
-   * switched off between sessions — and a Safe still remembering "FUSE" would
-   * build a transaction against a contract the backend no longer names.
-   */
-  it('falls back to Savings when the zap is switched off under it', () => {
-    expect(resolveLockAsset('FUSE', false)).toBe('soFUSE');
-    expect(resolveLockAsset('WFUSE', false)).toBe('soFUSE');
-  });
-});
-
-describe('canPayLockWith', () => {
-  it('reads the balance the chosen asset is denominated by', () => {
-    const held = balances({ sofuse: 90_000, native: 0, wrapped: 0 });
-
-    expect(canPayLockWith('soFUSE', 90_000, held)).toBe(true);
-    expect(canPayLockWith('FUSE', 90_000, held)).toBe(false);
-    expect(canPayLockWith('WFUSE', 90_000, held)).toBe(false);
+  it('offers only Savings when the zap is not deployed', () => {
+    expect(
+      chooseLockPayment(90_000, balances({ sofuse: 50_000, native: 500_000 }), false),
+    ).toBeNull();
+    expect(chooseLockPayment(90_000, balances({ sofuse: 90_000, native: 500_000 }), false)).toBe(
+      'soFUSE',
+    );
   });
 
   /**
    * The zap takes one deposit. Two balances that only cover the tier together
-   * are not an upgrade anyone can make in one press.
+   * are not an upgrade the user can make in one press.
    */
   it('does not pool two balances that only cover it together', () => {
-    const held = balances({ native: 50_000, wrapped: 50_000 });
-
-    expect(canPayLockWith('FUSE', 90_000, held)).toBe(false);
-    expect(canPayLockWith('WFUSE', 90_000, held)).toBe(false);
+    expect(
+      chooseLockPayment(90_000, balances({ sofuse: 50_000, native: 50_000 }), true),
+    ).toBeNull();
   });
 
   /**
@@ -76,20 +61,66 @@ describe('canPayLockWith', () => {
    * tolerance `canAffordUpgrade` uses, and for the same reason.
    */
   it('treats a balance a hair under the threshold as covering it', () => {
-    expect(canPayLockWith('FUSE', 90_000, balances({ native: 90_000 - 1e-12 }))).toBe(true);
+    expect(chooseLockPayment(90_000, balances({ sofuse: 90_000 - 1e-12 }), true)).toBe('soFUSE');
   });
 
   it('is not fooled by a balance that is genuinely short', () => {
-    expect(canPayLockWith('FUSE', 90_000, balances({ native: 89_999 }))).toBe(false);
+    expect(chooseLockPayment(90_000, balances({ sofuse: 89_999 }), true)).toBeNull();
+  });
+});
+
+describe('bestLockPaymentBalance', () => {
+  /**
+   * What the shortfall is measured against. Measuring it against Savings alone
+   * told a user holding 80,000 FUSE that they were 90,000 short.
+   */
+  it('is the largest single balance the lock could be paid from', () => {
+    expect(bestLockPaymentBalance(balances({ sofuse: 10, native: 80_000 }), true)).toBe(80_000);
+  });
+
+  it('is the Savings balance alone when the zap is not deployed', () => {
+    expect(bestLockPaymentBalance(balances({ sofuse: 10, native: 80_000 }), false)).toBe(10);
   });
 });
 
 describe('lockPaymentBalance', () => {
-  it('maps each asset to the balance it is held as', () => {
+  it('reads the balance the chosen asset is denominated by', () => {
     const held = balances({ sofuse: 1, native: 2, wrapped: 3 });
 
     expect(lockPaymentBalance('soFUSE', held)).toBe(1);
     expect(lockPaymentBalance('FUSE', held)).toBe(2);
     expect(lockPaymentBalance('WFUSE', held)).toBe(3);
+  });
+});
+
+describe('bestLockPaymentAsset', () => {
+  /**
+   * What the "Paying with" row falls back to when nothing covers the tier.
+   * Falling back to soFUSE instead put "soFUSE · 0 FUSE available" above a
+   * shortfall measured against the 80,000 FUSE the user was actually holding —
+   * the screen contradicting its own numbers again.
+   */
+  it('is the largest balance, so the row agrees with the shortfall below it', () => {
+    expect(bestLockPaymentAsset(balances({ sofuse: 0, native: 80_000 }), true)).toBe('FUSE');
+    expect(bestLockPaymentAsset(balances({ sofuse: 0, wrapped: 80_000 }), true)).toBe('WFUSE');
+    expect(bestLockPaymentAsset(balances({ sofuse: 90_000, native: 80_000 }), true)).toBe('soFUSE');
+  });
+
+  it('ties go to Savings, for the same reason it is preferred', () => {
+    expect(bestLockPaymentAsset(balances({ sofuse: 10, native: 10, wrapped: 10 }), true)).toBe(
+      'soFUSE',
+    );
+  });
+
+  it('is Savings whatever else is held when the zap is not deployed', () => {
+    expect(bestLockPaymentAsset(balances({ sofuse: 0, native: 80_000 }), false)).toBe('soFUSE');
+  });
+
+  it('agrees with the balance it reports', () => {
+    const held = balances({ sofuse: 1, native: 80_000, wrapped: 3 });
+
+    expect(lockPaymentBalance(bestLockPaymentAsset(held, true), held)).toBe(
+      bestLockPaymentBalance(held, true),
+    );
   });
 });

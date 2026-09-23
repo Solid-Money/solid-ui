@@ -4,19 +4,18 @@ import { Linking, Pressable, View } from 'react-native';
 import Loading from '@/components/Loading';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import { lockTokenRow } from '@/lib/lockTokenRows';
 import {
-  availableLockAssets,
-  canPayLockWith,
+  bestLockPaymentAsset,
+  bestLockPaymentBalance,
+  chooseLockPayment,
+  LOCK_PAYMENT_LABEL,
   lockPaymentBalance,
-  resolveLockAsset,
 } from '@/lib/tierLockPayment';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
@@ -71,8 +70,6 @@ const UpgradeTierContent = () => {
   const route = useTierUpgradeStore(state => state.route);
   const setRoute = useTierUpgradeStore(state => state.setRoute);
   const review = useTierUpgradeStore(state => state.review);
-  const selectToken = useTierUpgradeStore(state => state.selectToken);
-  const chosenAsset = useTierUpgradeStore(state => state.lockAsset);
   const close = useTierUpgradeStore(state => state.close);
 
   // The tier the opener named, else the cheapest they do not already hold — so
@@ -144,23 +141,15 @@ const UpgradeTierContent = () => {
     wrapped: chain?.wrappedFuse ?? 0,
   };
   // FUSE and WFUSE are only payable because the zap deposits and locks in one
-  // transaction. Without it the only thing that can be locked is Savings, and
-  // the picker collapses to that one row.
+  // transaction. Without it the only thing that can be locked is Savings.
   const zapAvailable = Boolean(membership.contracts.lockZapAddress);
-  const paymentAsset = resolveLockAsset(chosenAsset, zapAvailable);
-  const paymentBalance = lockPaymentBalance(paymentAsset, balances);
-  // Built by the same helper the picker's rows come from, so the chip here and
-  // the row the user tapped there cannot disagree about a ticker or an icon.
-  // No price: this chip has no dollar column to fill.
-  const paymentToken = lockTokenRow({
-    asset: paymentAsset,
-    balances,
-    chainId: membership.contracts.chainId,
-    addresses: membership.contracts,
-  });
-  // Measured against the token that is actually paying, which is the one the
-  // row above the shortfall names.
-  const shortfallFuse = Math.max(0, remainingFuse - paymentBalance);
+  const paymentAsset = chooseLockPayment(remainingFuse, balances, zapAvailable);
+  // What the row shows when nothing covers the tier — see the row itself.
+  const shownPaymentAsset = paymentAsset ?? bestLockPaymentAsset(balances, zapAvailable);
+  // Measured against the largest single balance, not against Savings alone:
+  // telling a user holding 80,000 FUSE that they are 90,000 short — because
+  // their Savings are empty — is worse than telling them nothing.
+  const shortfallFuse = Math.max(0, remainingFuse - bestLockPaymentBalance(balances, zapAvailable));
 
   const affordable =
     route === 'cash'
@@ -171,7 +160,7 @@ const UpgradeTierContent = () => {
           availableFuse: balances.sofuse,
           availableUsdc,
         })
-      : canPayLockWith(paymentAsset, remainingFuse, balances);
+      : paymentAsset !== null;
 
   const handleRoute = (next: typeof route) => {
     setRoute(next);
@@ -180,13 +169,6 @@ const UpgradeTierContent = () => {
 
   /**
    * Short of what the upgrade costs, so the press has to fix that first.
-   *
-   * Which flow depends on which balance is short, and the two are not
-   * interchangeable: the savings direct deposit mints share tokens, while the
-   * "Add funds" sheet funds the wallet, where a token stays the token that was
-   * sent. Sending a user short of native FUSE to the savings flow would hand
-   * them more soFUSE and leave the row they were looking at unmoved, with
-   * nothing on screen explaining why.
    *
    * Closes this modal before opening the funding one. Both are dialogs, and a
    * dialog opened over a dialog leaves two overlays and a back gesture that
@@ -198,7 +180,7 @@ const UpgradeTierContent = () => {
     const depositStore = useDepositStore.getState();
     depositStore.resetDepositFlow();
 
-    if (route === 'lock' && paymentAsset === 'soFUSE') {
+    if (route === 'lock') {
       depositStore.setSavingsFundIntent('savings');
       depositStore.setDepositFromSolid(false);
       selectSavingsFundToken('WFUSE');
@@ -242,35 +224,36 @@ const UpgradeTierContent = () => {
           </>
         ) : (
           <>
-            {/* The token comes first because it decides every number under
-                it — which balance the cost is checked against, the shortfall,
-                and the calls the Safe signs.
-
-                Static when there is only one token on offer, which is what
-                this shows while the zap is not deployed: a picker with one row
-                is a label, and a chevron that opens nothing is a promise the
-                screen cannot keep. */}
-            <TierDetailRow label="Pay with" withDivider>
-              <WalletTokenButton
-                selectedToken={paymentToken}
-                onPress={selectToken}
-                disabled={availableLockAssets(zapAvailable).length < 2}
-              />
-            </TierDetailRow>
-            <TierDetailRow label="Amount" value={`${formatFuse(remainingFuse)} FUSE`} withDivider />
-            {/* Paired with "Amount" the way the cash tab pairs a fee with a
-                balance: the CTA below flips between "Review upgrade" and "Top
-                up" on the difference between these two rows, so both are on
-                screen when it does. */}
+            {/* Labelled soFUSE, priced in FUSE. What the lock takes is the
+                Savings position — soFUSE shares — while the tier threshold and
+                every figure here are denominated in the FUSE those shares are
+                worth. Saying only "FUSE" sent people looking for native FUSE in
+                their wallet. */}
             <TierDetailRow
-              label="Balance"
-              value={`${formatFuseHeld(paymentBalance)} FUSE`}
+              label="soFUSE to lock"
+              value={`${formatFuse(remainingFuse)} FUSE`}
               withDivider
             />
             <TierDetailRow
               label="Lock duration"
               value={formatLockDuration(membership.lock.durationDays)}
               onExplain={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
+              withDivider
+            />
+            {/* Which balance is paying, and how much of it there is. Named
+                rather than assumed: a user who keeps FUSE liquid on purpose
+                should be able to see that it is about to be spent.
+
+                When nothing covers the tier this falls back to the largest
+                balance rather than to soFUSE, so the row cannot say "soFUSE ·
+                0 FUSE available" above a shortfall measured against the
+                80,000 FUSE the user is actually holding. */}
+            <TierDetailRow
+              label="Paying with"
+              value={LOCK_PAYMENT_LABEL[shownPaymentAsset]}
+              secondaryValue={`${formatFuseHeld(
+                lockPaymentBalance(shownPaymentAsset, balances),
+              )} FUSE available`}
             />
           </>
         )}
@@ -279,9 +262,9 @@ const UpgradeTierContent = () => {
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
           ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
-          : paymentAsset === 'soFUSE'
-            ? `Locks the FUSE already in your Savings for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
-            : `Deposits your ${paymentAsset} into Savings and locks it for ${formatLockDuration(membership.lock.durationDays)} to hold the tier, in one transaction. It keeps earning while it is locked. `}
+          : shownPaymentAsset === 'soFUSE'
+            ? `Locks soFUSE from your Savings — not native FUSE — for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
+            : `Deposits your ${LOCK_PAYMENT_LABEL[shownPaymentAsset]} into Savings and locks the soFUSE it becomes, in one transaction, for ${formatLockDuration(membership.lock.durationDays)}. It keeps earning while it is locked. `}
         <Text
           accessibilityRole="link"
           onPress={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
@@ -309,14 +292,17 @@ const UpgradeTierContent = () => {
           gap was under half a unit, told the user nothing, and pointed at a
           top-up of nothing. Affordable hides it outright; a sub-unit gap is
           rounded up to the 1 FUSE that would actually clear it. */}
-      {!affordable && route === 'lock' && paymentBalance > 0 && shortfallFuse > 0 ? (
+      {!affordable &&
+      route === 'lock' &&
+      bestLockPaymentBalance(balances, zapAvailable) > 0 &&
+      shortfallFuse > 0 ? (
         <Pressable
           accessibilityRole="button"
           onPress={handleTopUp}
           className="mt-4 transition-opacity active:opacity-60"
         >
           <Text className="text-center text-[14px] leading-5 text-white/50">
-            {formatFuseShortfall(shortfallFuse)} {paymentAsset} short — top up or pick another token
+            {formatFuseShortfall(shortfallFuse)} FUSE short — add more to Savings
           </Text>
         </Pressable>
       ) : null}

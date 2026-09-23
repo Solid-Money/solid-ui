@@ -313,7 +313,7 @@ export const useLockFuseForTier = () => {
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
-        'Failed to lock your FUSE',
+        'Failed to lock your soFUSE',
         fuse,
       );
 
@@ -341,7 +341,7 @@ export const useLockFuseForTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to lock your FUSE';
+      const message = mutationError?.message || 'Failed to lock your soFUSE';
       setError(message);
       track(TRACKING_EVENTS.TIER_LOCK_FAILED, { error: message });
     },

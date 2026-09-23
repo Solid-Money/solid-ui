@@ -89,13 +89,10 @@ const TierMembershipSheetContent = ({
 
       {lock && lock.lockedFuse > 0 ? (
         <View className="mt-4 overflow-hidden rounded-[20px] bg-[#232323]">
-          {/* Priced in FUSE, like every other tier figure. The lock holds
-              soFUSE shares, but the share count is not what anyone locked
-              against — the threshold is a FUSE amount, and naming the share
-              token here would have the user compare it to a number that is not
-              on this screen. */}
+          {/* soFUSE is what the lock holds; FUSE is what it is worth. Both are
+              on the row for the same reason the upgrade screen carries both. */}
           <TierDetailRow
-            label="Locked FUSE"
+            label="Locked soFUSE"
             value={`${formatFuse(lock.lockedFuse)} FUSE`}
             withDivider
           />

@@ -22,14 +22,14 @@ describe('tierUpgradeCta', () => {
   it('offers a tier that v3 is selling, with v2 switched off', () => {
     expect(cta({ routes: ['cash', 'lock'], remainingFuse: undefined })).toEqual({
       label: 'Upgrade',
-      subtitle: 'Lock FUSE or pay the annual fee',
+      subtitle: 'Lock soFUSE or pay the annual fee',
       enabled: true,
     });
   });
 
   it('names the only route when a tier is sold just one way', () => {
     expect(cta({ selectedTier: ULTRA, routes: ['lock'] }).subtitle).toBe(
-      'Lock FUSE to hold the tier',
+      'Lock soFUSE from your Savings to hold the tier',
     );
     expect(cta({ routes: ['cash'] }).subtitle).toBe('Pay the annual fee to hold the tier');
   });
