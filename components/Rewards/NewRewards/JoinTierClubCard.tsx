@@ -6,32 +6,16 @@ import { Text } from '@/components/ui/text';
 import { getTierDisplayName } from '@/lib/tierNames';
 import { RewardsTier } from '@/lib/types';
 
-import { BOTTOM_RIGHT_WASH } from './tierGradients';
-
 import type { TierUpgradeBenefit } from './UpgradeTier/tierUpgradeBenefits';
 
 const CHEVRON_COLOR = 'rgba(255,255,255,0.4)';
 
-/**
- * The tier's own tint, lit from the bottom-right and falling away to black.
- *
- * Deliberately stronger than it was. At 0.16 over `#1C1C1C` the brand green
- * lands on rgb(47,62,44) — a couple of points off the card it sits on, which
- * read as grey rather than as the tier's colour. A third of the way up it is
- * unmistakably green and the white copy on top still clears contrast easily.
- *
- * The third stop is what makes the far corner black rather than merely
- * untinted: the heading sits there, and black behind it is the most legible
- * thing to put under white text.
- */
-const TIER_GRADIENT: Record<RewardsTier, readonly [string, string, string]> = {
-  [RewardsTier.CORE]: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.45)'],
-  [RewardsTier.PRIME]: ['rgba(148,242,127,0.30)', 'rgba(148,242,127,0.07)', 'rgba(0,0,0,0.45)'],
-  [RewardsTier.ULTRA]: ['rgba(148,242,127,0.36)', 'rgba(148,242,127,0.09)', 'rgba(0,0,0,0.45)'],
+/** The tier's own tint, dissolved off the top-right corner. */
+const TIER_GRADIENT: Record<RewardsTier, readonly [string, string]> = {
+  [RewardsTier.CORE]: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0)'],
+  [RewardsTier.PRIME]: ['rgba(148,242,127,0.16)', 'rgba(148,242,127,0)'],
+  [RewardsTier.ULTRA]: ['rgba(148,242,127,0.22)', 'rgba(148,242,127,0)'],
 };
-
-/** Tint held through the first stretch, then given over to the black. */
-const TIER_GRADIENT_STOPS = [0, 0.4, 1] as const;
 
 interface JoinTierClubCardProps {
   tier: RewardsTier;
@@ -65,8 +49,8 @@ const JoinTierClubCard = ({ tier, benefits, onPress }: JoinTierClubCardProps) =>
     >
       <LinearGradient
         colors={TIER_GRADIENT[tier]}
-        locations={TIER_GRADIENT_STOPS}
-        {...BOTTOM_RIGHT_WASH}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />

@@ -6,7 +6,6 @@ import { Text } from '@/components/ui/text';
 import { formatBalanceUSD } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
-import { TOP_RIGHT_WASH } from './tierGradients';
 
 import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
 
@@ -95,7 +94,8 @@ const RewardsSummaryCard = ({
       <LinearGradient
         colors={CORNER_GRADIENT}
         locations={CORNER_GRADIENT_STOPS}
-        {...TOP_RIGHT_WASH}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />

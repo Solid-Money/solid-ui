@@ -7,7 +7,6 @@ import {
   SubscriptionIcon,
   YieldBoostIcon,
 } from '@/components/Rewards/NewRewards/tierBenefitIcons';
-import { TOP_RIGHT_WASH } from '@/components/Rewards/NewRewards/tierGradients';
 import TierStar from '@/components/Rewards/NewRewards/TierHero/TierStar';
 import { Text } from '@/components/ui/text';
 import { getTierDisplayName } from '@/lib/tierNames';
@@ -24,15 +23,13 @@ import type { TierUpgradeBenefit } from './tierUpgradeBenefits';
  * copy of the same words, half-covered.
  *
  * The design asks for a plain grey gradient, so it is a gradient — two stops,
- * grey at the top-right corner falling to near-black at the bottom-left, which
- * is the direction every v3 wash runs (see `tierGradients`). It lifts slightly
- * for the higher tiers so Prime and Ultra still read as distinct without
- * spelling anything out.
+ * top-left to bottom-right, lifting slightly for the higher tiers so Prime and
+ * Ultra still read as distinct without spelling anything out.
  */
 const TIER_BACKDROP: Record<RewardsTier, readonly [string, string]> = {
-  [RewardsTier.CORE]: ['#3A3A3A', '#141414'],
-  [RewardsTier.PRIME]: ['#454545', '#151515'],
-  [RewardsTier.ULTRA]: ['#505050', '#161616'],
+  [RewardsTier.CORE]: ['#2A2A2A', '#1C1C1C'],
+  [RewardsTier.PRIME]: ['#3A3A3A', '#1F1F1F'],
+  [RewardsTier.ULTRA]: ['#454545', '#212121'],
 };
 
 /** The benefit glyphs, at the 33px the tier card draws them. */
@@ -50,7 +47,8 @@ const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCar
   <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
     <LinearGradient
       colors={TIER_BACKDROP[tier]}
-      {...TOP_RIGHT_WASH}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
     />
