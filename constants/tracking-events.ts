@@ -413,7 +413,6 @@ export const TRACKING_EVENTS = {
   // the passkey prompt has made a decision, not hit an error.
   TIER_UPGRADE_OPENED: 'tier_upgrade_opened',
   TIER_UPGRADE_ROUTE_SELECTED: 'tier_upgrade_route_selected',
-  TIER_UPGRADE_TIER_SELECTED: 'tier_upgrade_tier_selected',
   TIER_UPGRADE_REVIEWED: 'tier_upgrade_reviewed',
   TIER_LOCK_PRESSED: 'tier_lock_pressed',
   TIER_LOCK_CANCELLED: 'tier_lock_cancelled',

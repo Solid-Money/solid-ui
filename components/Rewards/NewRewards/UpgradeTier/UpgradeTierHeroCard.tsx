@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 
 import {
   CashbackIcon,
@@ -9,27 +9,17 @@ import {
 } from '@/components/Rewards/NewRewards/tierBenefitIcons';
 import TierStar from '@/components/Rewards/NewRewards/TierHero/TierStar';
 import { Text } from '@/components/ui/text';
+import { type AssetPath, getAsset } from '@/lib/assets';
 import { getTierDisplayName } from '@/lib/tierNames';
 import { RewardsTier } from '@/lib/types';
 
 import type { TierUpgradeBenefit } from './tierUpgradeBenefits';
 
-/**
- * The card's backdrop, per tier.
- *
- * Was `rewards-tiers/*-summary.png`, which is the wrong asset: those are the
- * finished marketing cards, with "+2% Yield boost" and the rest set into the
- * artwork. Behind this card's own benefit list they showed as a second, larger
- * copy of the same words, half-covered.
- *
- * The design asks for a plain grey gradient, so it is a gradient — two stops,
- * top-left to bottom-right, lifting slightly for the higher tiers so Prime and
- * Ultra still read as distinct without spelling anything out.
- */
-const TIER_BACKDROP: Record<RewardsTier, readonly [string, string]> = {
-  [RewardsTier.CORE]: ['#2A2A2A', '#1C1C1C'],
-  [RewardsTier.PRIME]: ['#3A3A3A', '#1F1F1F'],
-  [RewardsTier.ULTRA]: ['#454545', '#212121'],
+/** The per-tier card texture. Already in the asset registry, unused until now. */
+const TIER_TEXTURE: Record<RewardsTier, AssetPath> = {
+  [RewardsTier.CORE]: 'images/rewards-tiers/core-summary.png',
+  [RewardsTier.PRIME]: 'images/rewards-tiers/prime-summary.png',
+  [RewardsTier.ULTRA]: 'images/rewards-tiers/ultra-summary.png',
 };
 
 /** The benefit glyphs, at the 33px the tier card draws them. */
@@ -42,13 +32,19 @@ interface UpgradeTierHeroCardProps {
   statusLabel?: string;
 }
 
-/** The tier being bought, and what it gets you. */
+/**
+ * The tier being bought, and what it gets you.
+ *
+ * The texture behind it is the tier's own, from the asset registry rather than
+ * a gradient written here — Prime's silver sheen and Ultra's darker one are
+ * design assets, and reproducing them in code is how they stop matching the
+ * rest of the rewards screens.
+ */
 const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCardProps) => (
   <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
-    <LinearGradient
-      colors={TIER_BACKDROP[tier]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <Image
+      source={getAsset(TIER_TEXTURE[tier])}
+      contentFit="cover"
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
     />
