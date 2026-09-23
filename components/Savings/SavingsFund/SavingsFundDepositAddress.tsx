@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import {
   getSavingsFundNetworks,
   getSavingsFundToken,
@@ -162,6 +163,8 @@ const SavingsFundDepositAddress = ({
       <Text className="text-center text-sm text-white/70">
         {`Send ${symbol} on ${network?.name ?? 'the selected network'} — it is deposited into savings as ${vaultToken}.`}
       </Text>
+
+      <DepositFeeNotice product="savings" chainId={chainId} vaultToken={vaultToken} />
 
       <Pressable
         className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
