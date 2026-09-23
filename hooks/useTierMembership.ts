@@ -25,17 +25,7 @@ import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useReward
 import { useUserStore } from '@/store/useUserStore';
 
 export const TIER_MEMBERSHIP_QUERY_KEY = 'tierMembership';
-export /**
- * How often the upgrade screen re-reads the Safe's balances.
- *
- * Five seconds: a Fuse block is ~5s, so this is roughly one read per block —
- * fast enough that a deposit landing while the user watches flips the CTA
- * within a block or two, and slow enough not to hammer the node from a screen
- * someone may leave open.
- */
-const BALANCE_POLL_MS = 5_000;
-
-const TIER_UPGRADE_BALANCES_QUERY_KEY = 'tierUpgradeBalances';
+export const TIER_UPGRADE_BALANCES_QUERY_KEY = 'tierUpgradeBalances';
 
 /** soFUSE shares, the accountant rate and the share token all use 18 decimals. */
 const SHARE_DECIMALS = 18;
@@ -111,21 +101,7 @@ export const useTierUpgradeChainState = (contracts?: {
       moduleAddress,
     ],
     enabled: Boolean(safeAddress),
-    // Polled, not cached-and-forgotten. This drives the difference between
-    // "Top up" and "Review upgrade", and the top-up it sends the user to
-    // settles somewhere else entirely — a savings deposit or the deposit
-    // drawer — so nothing invalidates this on the way back. Without a poll the
-    // screen kept showing the pre-deposit balance, and the CTA stayed "Top up"
-    // with the FUSE already sitting in the Safe.
-    //
-    // `staleTime` is under the interval so a remount mid-flow refetches rather
-    // than serving the balance the user is standing there watching for.
-    staleTime: BALANCE_POLL_MS / 2,
-    refetchInterval: BALANCE_POLL_MS,
-    // The interesting case is the user coming back from topping up, which is
-    // exactly a remount or a refocus.
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 15_000,
     queryFn: async () => {
       const client = publicClient(fuse.id);
 
