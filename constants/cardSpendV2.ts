@@ -1,3 +1,4 @@
+import { USDC_STARGATE } from '@/constants/addresses';
 import { ADDRESSES, EXPO_PUBLIC_CARD_SPEND_V2 } from '@/lib/config';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
@@ -79,6 +80,18 @@ export enum SpendCohort {
    */
   Both = 3,
 }
+
+/**
+ * Tokens offered for repaying a credit position when the module cannot say itself.
+ *
+ * The module's own answer is `repayTender(token)`, and that is always read first. The build
+ * deployed today predates it — the call reverts — and on that build `repay` accepts every
+ * allowlisted token, USDT included. The tender list exists because a bare USDT peg is sound
+ * for valuing one bounded settlement but not for deciding how much debt a payment retires, so
+ * where the chain cannot answer the app offers the set the list launches with: soUSD and
+ * USDC.e, the accountant's own base asset.
+ */
+export const REPAY_TENDER_FALLBACK: readonly Address[] = [USDC_STARGATE, ADDRESSES.fuse.vault];
 
 /** What `ADDRESSES` holds for a contract this build has no deployment for. */
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;

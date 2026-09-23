@@ -1,10 +1,19 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  FadeInLeft,
+  FadeInRight,
+  FadeOutLeft,
+  FadeOutRight,
+} from 'react-native-reanimated';
 
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
+import RepaySheetContent from '@/components/Card/NewCardDetails/SpendMode/RepaySheetContent';
 import { BorrowedSummary } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import { Text } from '@/components/ui/text';
 
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import type { CardRepayRequest, CardRepayState } from '@/hooks/useCardRepay';
 
 /**
  * Vertical rhythm, measured off Figma 26134:23880 (419 × 670 on the artboard).
@@ -23,34 +32,149 @@ const RISK_TO_CANCEL = 36;
 /** Figma puts Repay 29 below the track and 23 above the card's bottom edge. */
 const TRACK_TO_REPAY = 29;
 
+/** The same slide the spend-mode sheet swaps its panels on, so the two sheets move alike. */
+const SWAP_DURATION = 240;
+
+/** Everything the repay step needs, owned by the sheet so this file stays presentation. */
+export interface BorrowPositionRepay {
+  state: CardRepayState | null;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+  /** Resolves true once the repayment is on-chain, false when it did not happen. */
+  onRepay: (request: CardRepayRequest) => Promise<boolean>;
+  isRepaying: boolean;
+  error: string | null;
+  onClearError: () => void;
+}
+
 interface BorrowPositionSheetContentProps {
   figures: SpendModeFigures;
   onDismiss: () => void;
-  /** Opens the repay flow. Not wired yet — see the note below. */
-  onRepay?: () => void;
+  repay: BorrowPositionRepay;
+  /**
+   * Bumped every time the sheet opens, which sends it back to the position — a sheet
+   * reopened after backing out of a repayment should not come back halfway through one.
+   */
+  session: number;
   /** Space above the headline; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
+}
+
+type SheetView = 'position' | 'repay';
+
+/**
+ * The borrow-position sheet: the position itself, and the repay step behind its Repay button.
+ *
+ * Both live in one sheet rather than a second one stacked on top, because repaying is a
+ * continuation of reading the position, not a new task — and a sheet that slides its content
+ * sideways keeps the cardholder's place, where a second sheet rising over the first hides it.
+ * It slides like the spend-mode sheet: forward into Repay, back out of it, and back on its
+ * own once a repayment lands, so the updated figures are the first thing seen after one.
+ */
+const BorrowPositionSheetContent = ({
+  figures,
+  onDismiss,
+  repay,
+  session,
+  topPadding = BORROW_POSITION_SHEET_TOP,
+}: BorrowPositionSheetContentProps) => {
+  // `hasMoved` keeps the sheet's own entrance free of a sideways slide: only a move between
+  // the two views animates, never the first paint of a sheet that has just opened.
+  const [navigation, setNavigation] = useState<{ view: SheetView; hasMoved: boolean }>({
+    view: 'position',
+    hasMoved: false,
+  });
+
+  useEffect(() => {
+    setNavigation({ view: 'position', hasMoved: false });
+  }, [session]);
+
+  const { onRepay, onClearError } = repay;
+
+  const openRepay = useCallback(() => {
+    onClearError();
+    setNavigation({ view: 'repay', hasMoved: true });
+  }, [onClearError]);
+
+  const backToPosition = useCallback(() => {
+    setNavigation({ view: 'position', hasMoved: true });
+  }, []);
+
+  const confirmRepay = useCallback(
+    async (request: CardRepayRequest) => {
+      const repaid = await onRepay(request);
+      if (repaid) backToPosition();
+      return repaid;
+    },
+    [backToPosition, onRepay],
+  );
+
+  const { view, hasMoved } = navigation;
+
+  return (
+    // Clipped, so the view sliding out does not paint over the sheet's rounded edge.
+    //
+    // Each view's directions are fixed rather than read from the last press. The position
+    // sits to the left of Repay and is only ever left by going forward into it, and Repay is
+    // only ever left by going back, so every direction is known in advance. It also has to
+    // be: a removed view animates out with the `exiting` it was last RENDERED with, which a
+    // direction held in state would still have at its previous value.
+    <View style={styles.stage}>
+      {view === 'position' ? (
+        <Animated.View
+          key="position"
+          entering={hasMoved ? FadeInLeft.duration(SWAP_DURATION) : undefined}
+          exiting={FadeOutLeft.duration(SWAP_DURATION)}
+        >
+          <PositionView
+            figures={figures}
+            onDismiss={onDismiss}
+            onRepay={openRepay}
+            topPadding={topPadding}
+          />
+        </Animated.View>
+      ) : (
+        <Animated.View
+          key="repay"
+          entering={FadeInRight.duration(SWAP_DURATION)}
+          exiting={FadeOutRight.duration(SWAP_DURATION)}
+        >
+          <RepaySheetContent
+            state={repay.state}
+            isLoading={repay.isLoading}
+            isError={repay.isError}
+            onRetry={repay.onRetry}
+            onRepay={confirmRepay}
+            isRepaying={repay.isRepaying}
+            error={repay.error}
+            onClearError={onClearError}
+            onBack={backToPosition}
+            onDismiss={onDismiss}
+            topPadding={topPadding}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+};
+
+interface PositionViewProps {
+  figures: SpendModeFigures;
+  onDismiss: () => void;
+  onRepay: () => void;
+  topPadding: number;
 }
 
 /**
  * The borrow position (Figma 26134:23880): what is still available to borrow, at
  * what rate, the loan itself with a Repay button, and the liquidation warning.
  *
- * Every figure is live. **Repay is not** — it still just closes the sheet, which is
- * the one thing on this screen that does not do what it says. Repaying needs an
- * amount, a token choice and its own confirmation, and is a separate pass; until it
- * lands, a cardholder who needs to reduce a position does it from the borrow flow.
- *
  * The risk panel reads the health factor rather than always showing: the module
  * liquidates below 1.0, and the two bands above that are presentation — warning at
  * the boundary would tell someone their assets are being sold as it happens.
  */
-const BorrowPositionSheetContent = ({
-  figures,
-  onDismiss,
-  onRepay,
-  topPadding = BORROW_POSITION_SHEET_TOP,
-}: BorrowPositionSheetContentProps) => (
+const PositionView = ({ figures, onDismiss, onRepay, topPadding }: PositionViewProps) => (
   <View style={[styles.body, { paddingTop: topPadding }]}>
     <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
       Available to borrow
@@ -79,7 +203,7 @@ const BorrowPositionSheetContent = ({
           accessibilityLabel="Repay"
           accessibilityRole="button"
           className="bg-brand transition-all active:scale-95 active:opacity-80"
-          onPress={onRepay ?? onDismiss}
+          onPress={onRepay}
           style={styles.repay}
         >
           <Text className="text-[16px] font-bold text-black">Repay</Text>
@@ -121,6 +245,7 @@ const BorrowPositionSheetContent = ({
 );
 
 const styles = StyleSheet.create({
+  stage: { overflow: 'hidden' },
   // 17pt inset either side, which is the 385pt content block on the 419pt frame.
   body: { paddingHorizontal: 17 },
   apy: {

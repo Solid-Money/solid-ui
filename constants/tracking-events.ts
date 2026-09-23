@@ -371,6 +371,13 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_MODE_CHANGE_COMPLETED: 'card_spend_mode_change_completed',
   CARD_SPEND_MODE_CHANGE_FAILED: 'card_spend_mode_change_failed',
   CARD_SPEND_MODE_CHANGE_CANCELLED: 'card_spend_mode_change_cancelled',
+  // Repaying a v2 credit position, from the wallet or from escrowed collateral. `source`
+  // and `is_full` on the completed event split the two paths and tell a pay-down from a
+  // closed loan, which also returns the remaining collateral in the same signature.
+  CARD_CREDIT_REPAY_PRESSED: 'card_credit_repay_pressed',
+  CARD_CREDIT_REPAY_COMPLETED: 'card_credit_repay_completed',
+  CARD_CREDIT_REPAY_FAILED: 'card_credit_repay_failed',
+  CARD_CREDIT_REPAY_CANCELLED: 'card_credit_repay_cancelled',
   // Changing the caps on an existing registration. Separate from the register funnel
   // because it is a returning user tuning a live card, not a new one being set up, and
   // the two directions are genuinely different products of the contract: a decrease
