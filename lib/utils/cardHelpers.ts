@@ -141,13 +141,12 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
 /**
  * Whether this cardholder is shown the redesigned deposit flows.
  *
- * Wirex only, and deliberately narrow: the redesign — the token/network/address
- * funding flow and the savings direct deposit behind it — went out with Wirex,
- * whose cardholders have never seen anything else. Rain cardholders have years of
- * habit in the older screens, and their deposits land somewhere different (a
- * prefunded card rather than a Safe), so moving them is a change of behaviour and
- * not just of appearance. They stay on the flows they know until that is a
- * decision someone makes on purpose.
+ * Wirex only, and it follows from where their money goes rather than from taste.
+ * A Wirex card holds no balance: settlement takes the stablecoin from the Safe,
+ * so funding the wallet is funding the card, and the wallet's own flows are the
+ * right ones to hand them. A Rain card is prefunded and separate, so its money
+ * has to land on the card itself — which is what "Fund your card" does and what
+ * the wallet flow would not.
  *
  * `null`/`undefined` means the issuer has not resolved yet, and reads as Rain —
  * the same default {@link canDepositToCard} takes, so a slow query never flips a

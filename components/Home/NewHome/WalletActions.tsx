@@ -1,19 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
-import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 // IMPORTANT: these trigger components MUST forward props (…props) to their root
 // Pressable. The Deposit/Swap/Send modals inject their open handler via
@@ -106,50 +104,33 @@ interface WalletActionsProps {
  *
  * - Rain cardholder → the card's direct-deposit address. The card is prefunded, so
  *   money has to land on the card itself before it can be spent.
- * - Wirex cardholder → the same "Fund your card" flow over the same deposit address,
- *   stablecoins only. Their card holds no balance of its own (Wirex pays the merchant
- *   and we take the stablecoin from their Safe on settlement), so the backend delivers
- *   the deposit to their Safe on Fuse rather than to a card — see `WirexCardFundModal`.
- *   `canDepositToCard` stays false for them: it answers "does this card hold a
- *   balance", which still governs the card action row and the balance breakdown.
- * - No card → the wallet deposit flow, unchanged.
+ * - Wirex cardholder → the wallet deposit flow, the same as someone with no card at
+ *   all. Their card holds no balance of its own: Wirex pays the merchant and we take
+ *   the stablecoin from their Safe on settlement, so funding the wallet IS funding the
+ *   card and a separate card-funding flow would be the same destination under another
+ *   name. `canDepositToCard` stays false for them, which is what routes them here.
+ * - No card → the wallet deposit flow.
  */
 const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const { width } = useWindowDimensions();
   const { provider } = useCardProvider();
   const fundsGoToCard = Boolean(hasCard) && canDepositToCard(provider);
-  // Only a cardholder whose card cannot be deposited into, i.e. Wirex. A user with
-  // no card keeps the wallet route: savings is one of the places their money can
-  // go, not the only one.
-  const fundsGoToWirexCard = Boolean(hasCard) && !fundsGoToCard;
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
   const showSwap = hasFunds && Platform.OS !== 'ios';
   const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
-  const [isWirexModalOpen, setIsWirexModalOpen] = useState(false);
-  const setCardDepositModal = useCardDepositStore(state => state.setModal);
-  // The legacy provider's own open handler lands on the internal form, which is
-  // where its options screen sends the wallet/savings route anyway.
-  const openLegacyCardDeposit = useCallback(
-    () => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM),
-    [setCardDepositModal],
-  );
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
       <View className={hasFunds ? 'h-14' : 'w-full'} style={hasFunds && styles.equalActionSlot}>
         {fundsGoToCard ? (
-          // A Rain cardholder gets the older card deposit screens (see
-          // `usesNewDepositDesign`), which live behind the global
-          // CardDepositModalProvider rather than a modal mounted here.
-          <SlotTrigger onPress={openLegacyCardDeposit}>{addFundsTrigger}</SlotTrigger>
-        ) : fundsGoToWirexCard ? (
-          // Same SlotTrigger + controlled isOpen as the Rain branch above, and for
-          // the same reason: ResponsiveModal's own trigger prop routes through an
-          // asChild Slot chain that drops the pill's padding classes.
+          // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
+          // own trigger prop - that goes through ResponsiveModal's rn-primitives
+          // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.
           <>
-            <SlotTrigger onPress={() => setIsWirexModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
-            <WirexCardFundModal isOpen={isWirexModalOpen} onOpenChange={setIsWirexModalOpen} />
+            <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
+            <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
           </>
         ) : (
           <DepositOptionModal trigger={addFundsTrigger} />

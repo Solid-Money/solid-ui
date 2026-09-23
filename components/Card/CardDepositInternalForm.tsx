@@ -46,7 +46,6 @@ import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import useCardDeposit from '@/hooks/useCardDeposit';
 import { useCardDetails } from '@/hooks/useCardDetails';
-import { useCardDirectDepositAddress } from '@/hooks/useCardDirectDepositAddress';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
@@ -61,6 +60,7 @@ import {
   isProduction,
 } from '@/lib/config';
 import {
+  CardProvider,
   DepositCategory,
   Status,
   TokenBalance,
@@ -465,7 +465,7 @@ export default function CardDepositInternalForm() {
   );
   const { data: cardDetails } = useCardDetails();
   const { provider } = useCardProvider();
-  const { data: contracts } = useCardContracts();
+  const { data: contracts, isLoading: contractsLoading } = useCardContracts();
   const fundingChainId = EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID;
   const depositTokenAddressForBalance =
     !isProduction && provider ? (getCardDepositTokenAddress(fundingChainId) as Address) : undefined;
@@ -521,16 +521,6 @@ export default function CardDepositInternalForm() {
 
   const watchedAmount = watch('amount');
   const watchedFrom = watch('from');
-
-  // The address an external wallet sends to. Not the card's funding contract,
-  // which `getCardFundingAddress` gives and the in-app deposit still uses: that
-  // contract takes a transfer but nothing watches it, so a deposit sent there is
-  // credited by hand with no activity for the user to follow in the meantime.
-  const {
-    address: fundingAddress,
-    isLoading: isFundingAddressLoading,
-    isError: hasFundingAddressError,
-  } = useCardDirectDepositAddress(watchedFrom === CardDepositSource.EXTERNAL);
 
   // Testnet Wallet: rUSD balance on funding chain
   const { data: testnetDepositBalance, isLoading: isTestnetBalanceLoading } = useReadContract({
@@ -853,6 +843,7 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, schema]);
 
+  const isFundingAddressLoading = provider === CardProvider.RAIN && contractsLoading;
   const isWalletDepositPending =
     !isProduction && watchedFrom === CardDepositSource.WALLET && depositStatus === Status.PENDING;
   const isWalletCardDepositPending =
@@ -945,6 +936,11 @@ export default function CardDepositInternalForm() {
     }
   }, [source, isBalancesLoading, isUsdcBalanceLoading, defaultSource, watchedFrom, setValue]);
 
+  const fundingAddress = useMemo(
+    () => getCardFundingAddress(cardDetails, provider, contracts ?? undefined),
+    [cardDetails, provider, contracts],
+  );
+
   const externalWalletDescription = useMemo(
     () => (
       <View className="items-center gap-2">
@@ -982,14 +978,6 @@ export default function CardDepositInternalForm() {
           {isFundingAddressLoading ? (
             <View className="items-center py-8">
               <ActivityIndicator color="white" />
-            </View>
-          ) : hasFundingAddressError || !fundingAddress ? (
-            // Better an explicit failure than a screen offering an address it
-            // does not have, or the contract address as a silent stand-in.
-            <View className="items-center py-8">
-              <Text className="text-center text-sm text-muted-foreground">
-                Could not load the deposit address. Please try again.
-              </Text>
             </View>
           ) : (
             <DepositPublicAddress

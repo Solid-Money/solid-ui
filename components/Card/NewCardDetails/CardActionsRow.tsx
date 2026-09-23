@@ -2,14 +2,13 @@ import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
-import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 interface CircleActionProps {
   label: string;
@@ -94,7 +93,6 @@ const CardActionsRow = ({
   canAddFunds,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
-  const setCardDepositModal = useCardDepositStore(state => state.setModal);
   const { requests: threeDsRequests } = useWirexThreeDs();
   const showDeposit = canAddFunds && canDepositToCard(provider);
 
@@ -102,7 +100,11 @@ const CardActionsRow = ({
     <View className="flex-row items-start justify-center">
       {canAddFunds && !canDepositToCard(provider) && (
         <View style={styles.item}>
-          <WirexCardFundModal
+          {/* A Wirex card holds no balance of its own — settlement takes the
+              stablecoin from the Safe — so funding the wallet is funding the
+              card, and they get the wallet deposit flow rather than one of
+              their own. */}
+          <DepositOptionModal
             trigger={
               <CircleAction label="Add funds">
                 <Image
@@ -117,18 +119,17 @@ const CardActionsRow = ({
       )}
       {showDeposit && (
         <View style={styles.item}>
-          {/* Only reached on a card that holds a balance, i.e. Rain, which keeps
-              the older deposit screens (`usesNewDepositDesign`). */}
-          <CircleAction
-            label="Add funds"
-            onPress={() => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM)}
-          >
-            <Image
-              source={getAsset('images/card-action-add-funds.png')}
-              style={styles.actionIcon}
-              contentFit="contain"
-            />
-          </CircleAction>
+          <CardDirectDepositModal
+            trigger={
+              <CircleAction label="Add funds">
+                <Image
+                  source={getAsset('images/card-action-add-funds.png')}
+                  style={styles.actionIcon}
+                  contentFit="contain"
+                />
+              </CircleAction>
+            }
+          />
         </View>
       )}
       {canToggleFreeze && (

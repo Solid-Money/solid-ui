@@ -1,7 +1,6 @@
 import React from 'react';
 
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { CardProvider } from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -16,16 +15,9 @@ jest.mock('@/hooks/useWirexThreeDs', () => ({
   useWirexThreeDs: () => ({ requests: [] }),
 }));
 jest.mock('@/lib/assets', () => ({ getAsset: (asset: string) => asset }));
-jest.mock('@/components/Card/WirexCardFundModal', () => 'WirexCardFundModal');
+jest.mock('@/components/DepositOption/DepositOptionModal', () => 'DepositOptionModal');
+jest.mock('@/components/Card/CardDirectDepositModal', () => 'CardDirectDepositModal');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-
-// The store reaches MMKV, which has no native module under jest; the row only
-// ever calls setModal on it.
-const mockSetCardDepositModal = jest.fn();
-jest.mock('@/store/useCardDepositStore', () => ({
-  useCardDepositStore: (selector: (state: unknown) => unknown) =>
-    selector({ setModal: mockSetCardDepositModal }),
-}));
 
 const render = () => {
   let tree: any;
@@ -46,36 +38,27 @@ const render = () => {
 
 afterEach(() => {
   mockProvider = CardProvider.WIREX;
-  mockSetCardDepositModal.mockClear();
 });
 
-const pressAddFunds = (tree: any) => {
-  const button = tree.root
-    .findAll((node: any) => node.props?.accessibilityLabel === 'Add funds')
-    .find((node: any) => typeof node.props?.onPress === 'function');
-  act(() => button.props.onPress());
-};
-
-test('opens Wirex Add funds in the card funding popup instead of a route', () => {
+// A Wirex card holds no balance of its own, so funding the wallet is funding the
+// card — they get the wallet deposit flow, not a card-funding one.
+test('sends Wirex Add funds to the wallet deposit flow', () => {
   const tree = render();
 
-  expect(tree.root.findAllByType('WirexCardFundModal')).toHaveLength(1);
-  expect(mockSetCardDepositModal).not.toHaveBeenCalled();
+  expect(tree.root.findAllByType('DepositOptionModal')).toHaveLength(1);
+  expect(tree.root.findAllByType('CardDirectDepositModal')).toHaveLength(0);
 
   act(() => tree.unmount());
 });
 
-// Rain cardholders stay on the older deposit screens, which the global
-// CardDepositModalProvider renders — so the row opens them through the store
-// rather than mounting a modal of its own.
-test('sends Rain Add funds to the older card deposit screens', () => {
+// A Rain card is prefunded and separate from the Safe, so it keeps "Fund your
+// card" — the wallet flow would put the money somewhere it cannot be spent from.
+test('keeps Rain Add funds on the card funding flow', () => {
   mockProvider = CardProvider.RAIN;
   const tree = render();
 
-  expect(tree.root.findAllByType('WirexCardFundModal')).toHaveLength(0);
-
-  pressAddFunds(tree);
-  expect(mockSetCardDepositModal).toHaveBeenCalledWith(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  expect(tree.root.findAllByType('DepositOptionModal')).toHaveLength(0);
+  expect(tree.root.findAllByType('CardDirectDepositModal')).toHaveLength(1);
 
   act(() => tree.unmount());
 });
