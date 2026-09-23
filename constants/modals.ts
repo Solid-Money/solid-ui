@@ -28,18 +28,17 @@ export const DEPOSIT_MODAL = {
     number: 1.8,
   },
   /**
-   * "Select chain" — which chain the wallet deposit address is for, chosen before
-   * the address itself so the minimum and the currencies on offer are settled by
-   * the time it is shown.
+   * "Select chain" — which chain the wallet deposit address is for. The address
+   * opens on a default chain for the chosen currency; this changes it, from the
+   * address screen's network pill.
    */
   OPEN_DEPOSIT_CHAIN: {
     name: 'open_deposit_chain',
     number: 1.9,
   },
   /**
-   * "Select token" — which currency the deposit address is for. Numbered beside
-   * the chain list because it is the same kind of step: a choice made before the
-   * address, and revisited from it.
+   * "Select token" — which currency the deposit address is for: the first step
+   * after "Show deposit address", and revisited from the address screen.
    */
   OPEN_DEPOSIT_TOKEN: {
     name: 'open_deposit_token',
