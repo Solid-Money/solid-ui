@@ -20,7 +20,7 @@ const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; s
     style={{
       width: size,
       height: size,
-      transform: tierStarOffset(tier, size),
+      transform: tierStarOffset(tier),
     }}
     contentFit="contain"
     autoplay

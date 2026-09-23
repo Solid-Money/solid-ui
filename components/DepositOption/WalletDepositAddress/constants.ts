@@ -181,3 +181,63 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
 
   return { chainId, symbol };
 };
+
+/**
+ * Every currency the deposit address can take, each once, for "Select token" —
+ * the first step now, taken before any chain is chosen.
+ *
+ * The default currency leads, then the rest of the default chain's in its own
+ * order, then whatever only other chains carry, in network order. Each is drawn
+ * with the icon of the first chain here that carries it.
+ */
+export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
+  const { chainId: defaultChainId, symbol: defaultSymbol } = getDefaultWalletDepositSelection();
+  const chainIds = [
+    defaultChainId,
+    ...getWalletDepositNetworks()
+      .map(network => network.chainId)
+      .filter(chainId => chainId !== defaultChainId),
+  ];
+  const seen = new Set<string>();
+  const tokens = chainIds.flatMap(chainId =>
+    getWalletDepositTokens(chainId).filter(token => {
+      if (seen.has(token.symbol)) return false;
+      seen.add(token.symbol);
+      return true;
+    }),
+  );
+
+  return [
+    ...tokens.filter(token => token.symbol === defaultSymbol),
+    ...tokens.filter(token => token.symbol !== defaultSymbol),
+  ];
+};
+
+/**
+ * The chains "Select chain" offers once a currency is chosen: only those that
+ * carry it, so switching chain can never quietly switch the currency too. All of
+ * them when nothing is chosen yet, or no chain carries it.
+ */
+export const getWalletDepositNetworksForToken = (symbol?: string): WalletDepositNetwork[] => {
+  const networks = getWalletDepositNetworks();
+  const carrying = networks.filter(network =>
+    getWalletDepositTokens(network.chainId).some(token => token.symbol === symbol),
+  );
+
+  return carrying.length ? carrying : networks;
+};
+
+/**
+ * The chain the address opens on once `symbol` is picked.
+ *
+ * The current chain when it carries the currency, so changing only the currency
+ * from the address screen keeps the chain. Otherwise the default chain (see
+ * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
+ */
+export const resolveWalletDepositChain = (symbol: string, currentChainId?: number): number => {
+  const carrying = getWalletDepositNetworksForToken(symbol).map(network => network.chainId);
+  if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
+
+  const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
+  return carrying.includes(defaultChainId) ? defaultChainId : (carrying[0] ?? defaultChainId);
+};

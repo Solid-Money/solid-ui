@@ -10,7 +10,7 @@ import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import {
-  getWalletDepositNetworks,
+  getWalletDepositNetworksForToken,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_ESTIMATED_TIME,
 } from './constants';
@@ -18,17 +18,19 @@ import {
 const NETWORK_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 /**
- * "Select chain" — the step between "Show deposit address" and the address.
+ * "Select chain" — opened from the address screen's network pill, to change the
+ * chain the address was given by default.
  *
  * The address is the user's Safe and is the same on every chain, so this is not
- * choosing where the money lands. It settles which currencies are on offer and
- * what the minimum transfer is, so the address screen can state both instead of
- * hedging across six chains.
+ * choosing where the money lands. It settles the minimum transfer and which
+ * chain the QR is labelled for, and only lists chains that carry the chosen
+ * currency.
  */
 const WalletDepositNetworks = () => {
   const setModal = useDepositStore(state => state.setModal);
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
-  const networks = useMemo(() => getWalletDepositNetworks(), []);
+  const symbol = useDepositStore(state => state.walletDeposit.symbol);
+  const networks = useMemo(() => getWalletDepositNetworksForToken(symbol), [symbol]);
 
   const handleSelect = (chainId: number) => {
     track(TRACKING_EVENTS.NETWORK_SELECTED, {
@@ -36,12 +38,7 @@ const WalletDepositNetworks = () => {
       deposit_type: 'wallet_deposit_address',
     });
 
-    const { symbol } = useDepositStore.getState().walletDeposit;
-    setWalletDeposit({
-      chainId,
-      symbol: resolveWalletDepositSymbol(chainId, symbol),
-      isChangingChain: false,
-    });
+    setWalletDeposit({ chainId, symbol: resolveWalletDepositSymbol(chainId, symbol) });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   };
 

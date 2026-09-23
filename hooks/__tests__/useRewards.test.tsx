@@ -5,10 +5,7 @@ import RewardsUpgradeFeedback from '@/components/Rewards/RewardsUpgradeFeedback'
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { fetchRewardsUserData } from '@/lib/api';
 import { RewardsTier, RewardsUserData } from '@/lib/types';
-import {
-  REWARDS_UPGRADE_CLEARED_STATE,
-  useRewardsUpgradeStore,
-} from '@/store/useRewardsUpgradeStore';
+import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 // react-test-renderer is supplied by jest-expo without bundled declarations.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -51,7 +48,10 @@ beforeEach(() => {
   useRewardsUpgradeStore.setState({
     userId: 'a',
     session: 0,
-    ...REWARDS_UPGRADE_CLEARED_STATE,
+    confirmed: undefined,
+    success: undefined,
+    pendingUntil: undefined,
+    timedOut: false,
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });

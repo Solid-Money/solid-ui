@@ -28,18 +28,17 @@ export const DEPOSIT_MODAL = {
     number: 1.8,
   },
   /**
-   * "Select chain" — which chain the wallet deposit address is for, chosen before
-   * the address itself so the minimum and the currencies on offer are settled by
-   * the time it is shown.
+   * "Select chain" — which chain the wallet deposit address is for. The address
+   * opens on a default chain for the chosen currency; this changes it, from the
+   * address screen's network pill.
    */
   OPEN_DEPOSIT_CHAIN: {
     name: 'open_deposit_chain',
     number: 1.9,
   },
   /**
-   * "Select token" — which currency the deposit address is for. Numbered beside
-   * the chain list because it is the same kind of step: a choice made before the
-   * address, and revisited from it.
+   * "Select token" — which currency the deposit address is for: the first step
+   * after "Show deposit address", and revisited from the address screen.
    */
   OPEN_DEPOSIT_TOKEN: {
     name: 'open_deposit_token',
@@ -464,36 +463,5 @@ export const CARD_REPAY_MODAL = {
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 3,
-  },
-};
-
-/**
- * Buying a tier: the offer, then the confirmation.
- *
- * Two steps rather than two routes. The flow is opened from three places that
- * are themselves already somewhere — the rewards screen, the benefits pager,
- * the Earn screen — and pushing a route from each of them took the user off the
- * page they were reading to make a decision they might not make. A modal hands
- * them back where they were.
- */
-export const TIER_UPGRADE_MODAL = {
-  CLOSE: {
-    name: 'close',
-    number: 0,
-  },
-  OPEN_UPGRADE: {
-    name: 'open_upgrade',
-    number: 1,
-  },
-  OPEN_REVIEW: {
-    name: 'open_review',
-    number: 2,
-  },
-  // Half a step, not a third one: the picker is opened from the offer and
-  // returns to it, so the slide animation reads as a detour rather than as
-  // progress towards the signature.
-  OPEN_TOKEN_SELECTOR: {
-    name: 'open_token_selector',
-    number: 1.5,
   },
 };

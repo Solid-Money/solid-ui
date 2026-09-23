@@ -119,7 +119,6 @@ import {
   ReferralSummary,
   RegionInterestPayload,
   ResumeRainForwardResponse,
-  RewardsTier,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
@@ -134,8 +133,6 @@ import {
   SyncActivitiesOptions,
   SyncActivitiesResponse,
   TierBenefits,
-  TierMembershipState,
-  TierSubscription,
   ToCurrency,
   TokenPriceByAddress,
   TokenPriceUsd,
@@ -1984,126 +1981,6 @@ export const activateTierTrial = async (): Promise<RewardsUserData> => {
   const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/trial/activate`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-/**
- * What each tier costs by either route, what the user has already locked or
- * bought, and the addresses to build the transactions against.
- *
- * One request rather than three: the upgrade screen prices an offer against a
- * balance, and fetching those apart is how a screen ends up showing one from a
- * moment the other no longer belongs to.
- */
-export const fetchTierMembership = async (): Promise<TierMembershipState> => {
-  const jwt = getJWTToken();
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-    },
-    credentials: 'include',
-  });
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-/**
- * Report that a FUSE lock landed.
- *
- * Nothing about the lock is stored server-side — the chain has it — but this is
- * what drops the cached position so the tier just bought shows up immediately,
- * and what registers the user for the automatic return when the term is up.
- */
-export const confirmTierLock = async (body: {
-  transactionHash: string;
-}): Promise<TierMembershipState> => {
-  const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/lock/confirm`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-/**
- * Report that the subscribe transaction landed, and take the first payment.
- *
- * Fails when the first charge cannot be taken, with the module's own reason —
- * "insufficient balance" rather than "something went wrong".
- */
-export const confirmTierSubscription = async (body: {
-  tier: RewardsTier;
-  transactionHash: string;
-}): Promise<TierMembershipState> => {
-  const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/confirm`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-/** Stop a membership renewing. The tier runs to the end of the paid period. */
-export const cancelTierSubscription = async (body: {
-  reason?: string;
-}): Promise<TierSubscription> => {
-  const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/cancel`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-/** Undo a cancellation while the paid period is still running. */
-export const resumeTierSubscription = async (): Promise<TierSubscription> => {
-  const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/tier-membership/subscription/resume`,
     {
       method: 'POST',
       headers: {

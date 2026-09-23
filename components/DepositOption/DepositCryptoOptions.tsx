@@ -27,9 +27,10 @@ const DepositCryptoOptions = () => {
 
   const handleShowAddressPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'deposit_directly' });
-    // Via the chain list: the address is the same on every chain, but which
-    // currencies it accepts and the minimum worth sending are not.
-    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
+    // Via the token list: the address is the same on every chain, so the
+    // currency is the choice that matters. The chain follows from it by default
+    // and can be changed from the address screen.
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
   };
 
   const handleConnectWalletPress = () => {

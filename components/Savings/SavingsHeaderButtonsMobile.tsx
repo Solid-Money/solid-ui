@@ -50,11 +50,11 @@ const SavingsHeaderButtonsMobile = ({
   return (
     <View className="flex-row items-center justify-center gap-8">
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
+        modal={DEPOSIT_MODAL.OPEN_FORM}
         preserveSelectedVault
         source="savings_mobile"
         onBeforeOpen={() => {
-          useDepositStore.getState().setDepositFromSolid(false);
+          useDepositStore.getState().setDepositFromSolid(true);
         }}
         trigger={
           <CircleButton

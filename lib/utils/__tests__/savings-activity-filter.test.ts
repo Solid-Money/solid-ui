@@ -141,11 +141,6 @@ describe('isSavingsVaultActivity — other surfaces stay out', () => {
     [TransactionType.AGENT_WALLET_DEPOSIT, 'Agent wallet deposit'],
     [TransactionType.GOODDOLLAR_CLAIM, 'GoodDollar claim'],
     [TransactionType.RESCUE_TOKEN, 'Recovered 5 USDC'],
-    // Buying a tier moves soFUSE out of Savings and into the lock, which is a
-    // membership purchase rather than a withdrawal — the savings balance is not
-    // what changed.
-    [TransactionType.TIER_LOCK, 'Locked 50000 FUSE for a membership'],
-    [TransactionType.TIER_SUBSCRIPTION, 'Prime membership'],
   ])('excludes %s activity', (type, title) => {
     expect(isSavingsVaultActivity(makeActivity({ type, title }))).toBe(false);
   });
