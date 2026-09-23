@@ -8,7 +8,7 @@ import {
   YieldBoostIcon,
 } from '@/components/Rewards/NewRewards/tierBenefitIcons';
 import { TOP_RIGHT_WASH } from '@/components/Rewards/NewRewards/tierGradients';
-import TierSparkleIcon from '@/components/Rewards/NewRewards/TierSparkleIcon';
+import TierStar from '@/components/Rewards/NewRewards/TierHero/TierStar';
 import { Text } from '@/components/ui/text';
 import { getTierDisplayName } from '@/lib/tierNames';
 import { RewardsTier } from '@/lib/types';
@@ -58,10 +58,7 @@ const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCar
     <View className="p-5">
       <View className="flex-row items-start justify-between">
         <View className="flex-row items-center gap-2">
-          {/* The still, not the animated star: this is a label beside a
-              heading, and the WebP is a 235px hero's worth of bundle and
-              decoding for a 28px glyph. */}
-          <TierSparkleIcon tier={tier} size={28} />
+          <TierStar tier={tier} size={28} />
           <Text className="text-[28px] font-medium leading-8 text-white">
             {getTierDisplayName(tier)}
           </Text>
