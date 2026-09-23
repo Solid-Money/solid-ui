@@ -14,7 +14,14 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
+import {
+  type CardSheetPresentation,
+  sheetBodyInset,
+} from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
+import SheetIconButton, {
+  MODAL_CONTROL_SIZE,
+} from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import {
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
@@ -81,6 +88,8 @@ interface SpendModeSheetContentProps {
   onAddFunds?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
+  /** The desktop modal adds a close button to the heading row and drops the side inset. */
+  presentation?: CardSheetPresentation;
 }
 
 /**
@@ -104,6 +113,7 @@ const SpendModeSheetContent = ({
   onDismiss,
   onAddFunds,
   topPadding = SPEND_MODE_SHEET_TOP,
+  presentation = 'sheet',
 }: SpendModeSheetContentProps) => {
   // The direction of travel is kept with the selection rather than derived on
   // render, so the swap animation always matches the tap that caused it.
@@ -171,10 +181,20 @@ const SpendModeSheetContent = ({
   }, [isActiveSelected, isSwitching, onConfirm, onDismiss, selected]);
 
   return (
-    <View style={[styles.body, { paddingTop: topPadding }]}>
-      <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
-        Select spend mode
-      </Text>
+    <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
+      <View style={styles.heading}>
+        <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
+          Select spend mode
+        </Text>
+        {presentation === 'modal' ? (
+          <SheetIconButton
+            icon="close"
+            accessibilityLabel="Close"
+            onPress={onDismiss}
+            style={styles.close}
+          />
+        ) : null}
+      </View>
 
       <View style={styles.control}>
         <SpendModeSegmentedControl
@@ -285,8 +305,10 @@ const SpendModeSheetContent = ({
 };
 
 const styles = StyleSheet.create({
-  // 17pt inset either side, which is the 385pt content block on the 419pt frame.
-  body: { paddingHorizontal: 17 },
+  // The close button sits in the heading's row, centred on its 36pt line box, so the modal
+  // spends no height on a row of its own.
+  heading: { justifyContent: 'center' },
+  close: { position: 'absolute', right: 0, top: (36 - MODAL_CONTROL_SIZE) / 2 },
   control: { marginTop: HEADING_TO_CONTROL },
   caption: {
     alignItems: 'center',

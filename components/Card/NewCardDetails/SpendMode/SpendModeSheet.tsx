@@ -48,7 +48,7 @@ const SpendModeSheet = ({
       designTop={SPEND_MODE_SHEET_TOP}
       designBottom={SPEND_MODE_SHEET_BOTTOM}
     >
-      {({ session, topPadding }) => (
+      {({ session, topPadding, presentation }) => (
         <SpendModeSheetContent
           activeMode={activeMode}
           figures={figures}
@@ -59,6 +59,7 @@ const SpendModeSheet = ({
           onDismiss={dismiss}
           onAddFunds={onAddFunds}
           topPadding={topPadding}
+          presentation={presentation}
         />
       )}
     </CardBottomSheet>

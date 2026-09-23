@@ -7,8 +7,13 @@ import Animated, {
   FadeOutRight,
 } from 'react-native-reanimated';
 
+import {
+  type CardSheetPresentation,
+  sheetBodyInset,
+} from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import RepaySheetContent from '@/components/Card/NewCardDetails/SpendMode/RepaySheetContent';
+import SheetIconButton from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import { BorrowedSummary } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import { Text } from '@/components/ui/text';
 
@@ -59,6 +64,8 @@ interface BorrowPositionSheetContentProps {
   session: number;
   /** Space above the headline; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
+  /** The desktop modal draws its close button in the body and drops the side inset. */
+  presentation?: CardSheetPresentation;
 }
 
 type SheetView = 'position' | 'repay';
@@ -78,6 +85,7 @@ const BorrowPositionSheetContent = ({
   repay,
   session,
   topPadding = BORROW_POSITION_SHEET_TOP,
+  presentation = 'sheet',
 }: BorrowPositionSheetContentProps) => {
   // `hasMoved` keeps the sheet's own entrance free of a sideways slide: only a move between
   // the two views animates, never the first paint of a sheet that has just opened.
@@ -132,6 +140,7 @@ const BorrowPositionSheetContent = ({
             onDismiss={onDismiss}
             onRepay={openRepay}
             topPadding={topPadding}
+            presentation={presentation}
           />
         </Animated.View>
       ) : (
@@ -152,6 +161,7 @@ const BorrowPositionSheetContent = ({
             onBack={backToPosition}
             onDismiss={onDismiss}
             topPadding={topPadding}
+            presentation={presentation}
           />
         </Animated.View>
       )}
@@ -164,6 +174,7 @@ interface PositionViewProps {
   onDismiss: () => void;
   onRepay: () => void;
   topPadding: number;
+  presentation: CardSheetPresentation;
 }
 
 /**
@@ -174,8 +185,25 @@ interface PositionViewProps {
  * liquidates below 1.0, and the two bands above that are presentation — warning at
  * the boundary would tell someone their assets are being sold as it happens.
  */
-const PositionView = ({ figures, onDismiss, onRepay, topPadding }: PositionViewProps) => (
-  <View style={[styles.body, { paddingTop: topPadding }]}>
+const PositionView = ({
+  figures,
+  onDismiss,
+  onRepay,
+  topPadding,
+  presentation,
+}: PositionViewProps) => (
+  <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
+    {/* Level with the headline rather than on a row above it: the figures are centred and
+        narrow, so the corner is free, and a row of its own is the height the modal was
+        wasting. Drawn first and absolute, so it lays out nothing. */}
+    {presentation === 'modal' ? (
+      <SheetIconButton
+        icon="close"
+        accessibilityLabel="Close"
+        onPress={onDismiss}
+        style={[styles.close, { top: topPadding }]}
+      />
+    ) : null}
     <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
       Available to borrow
     </Text>
@@ -246,8 +274,7 @@ const PositionView = ({ figures, onDismiss, onRepay, topPadding }: PositionViewP
 
 const styles = StyleSheet.create({
   stage: { overflow: 'hidden' },
-  // 17pt inset either side, which is the 385pt content block on the 419pt frame.
-  body: { paddingHorizontal: 17 },
+  close: { position: 'absolute', right: 0, zIndex: 1 },
   apy: {
     alignItems: 'center',
     alignSelf: 'center',
