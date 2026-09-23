@@ -26,6 +26,7 @@ import {
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
+import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { useIntercom } from '@/lib/intercom';
 import { destroyOnramper } from '@/lib/onramper';
 import { pimlicoClient } from '@/lib/pimlico';
@@ -423,7 +424,7 @@ const useUser = (): UseUserReturn => {
     } catch (error: any) {
       const errorMessage = loginErrorMessage(error);
 
-      if (error?.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError' || isWebAuthnUserCancelledError(error)) {
         Sentry.captureMessage(errorMessage, {
           level: 'warning',
           extra: {
