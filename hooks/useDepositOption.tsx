@@ -736,10 +736,8 @@ const useDepositOption = ({
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
       } else if (modal.name === DEPOSIT_MODAL.OPEN_SAVINGS_FUND.name) {
-        // The card's minimum-deposit step, which still funds savings by sending
-        // new money in: hold it on the token list rather than the form a
+        // Explicit savings entry point: show the token list, never a form that a
         // connected wallet or a stale chain selection would otherwise jump to.
-        // The savings screens themselves now open OPEN_FORM directly.
         setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND);
       } else if (depositFromSolid && user?.safeAddress) {
         // Savings deposit: open form directly — token selector is inline
