@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { formatUnits } from 'viem';
+import { fuse } from 'viem/chains';
 
 import Loading from '@/components/Loading';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
+import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
@@ -70,6 +72,7 @@ const UpgradeTierContent = () => {
   const { maxAPY: fuseSavingsApy } = useMaxAPY(VaultType.FUSE);
   const requestedTier = useTierUpgradeStore(state => state.tier);
   const route = useTierUpgradeStore(state => state.route);
+  const fusePriceUsd = useNativePriceUsd(fuse.id, 'fusePriceUsd', route === 'lock');
   const setRoute = useTierUpgradeStore(state => state.setRoute);
   const review = useTierUpgradeStore(state => state.review);
   const selectToken = useTierUpgradeStore(state => state.selectToken);
@@ -270,7 +273,14 @@ const UpgradeTierContent = () => {
                 tickerFontSize={16}
               />
             </TierDetailRow>
-            <TierDetailRow label="Amount" value={`${formatFuse(remainingFuse)} FUSE`} withDivider />
+            <TierDetailRow
+              label="Amount"
+              value={`${formatFuse(remainingFuse)} FUSE`}
+              secondaryValue={
+                fusePriceUsd > 0 ? formatUsd(remainingFuse * fusePriceUsd) : undefined
+              }
+              withDivider
+            />
             <TierDetailRow
               label="FUSE APY"
               value={fuseSavingsApy > 0 ? `${fuseSavingsApy.toFixed(1)}%` : '—'}
