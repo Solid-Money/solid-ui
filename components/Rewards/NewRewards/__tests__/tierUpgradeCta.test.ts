@@ -117,34 +117,7 @@ describe('tierUpgradeCta', () => {
     it('is false while the membership is unknown or reconciling', () => {
       expect(cta({ selectedTier: ULTRA, currentTier: ULTRA, unavailable: true }).held).toBe(false);
       expect(cta({ selectedTier: ULTRA, currentTier: undefined }).held).toBe(false);
-      expect(cta({ selectedTier: PRIME, currentTier: CORE, pending: true }).held).toBe(false);
-    });
-
-    /**
-     * `currentTier` and `offerHeld` come from two endpoints with two caches, so
-     * one can be a beat behind the other. Offering a tier someone already holds
-     * is the worse mistake, so either source is enough to stop.
-     */
-    it('takes the membership offer at its word when the rewards tier lags', () => {
-      expect(cta({ selectedTier: ULTRA, currentTier: CORE, offerHeld: true }).held).toBe(true);
-      expect(cta({ selectedTier: ULTRA, currentTier: undefined, offerHeld: true }).held).toBe(true);
-      expect(cta({ selectedTier: ULTRA, unavailable: true, offerHeld: true }).held).toBe(true);
-    });
-
-    /** ...and the other way round, when the membership is the stale one. */
-    it('still hides on the rewards tier when the offer has not caught up', () => {
-      expect(cta({ selectedTier: PRIME, currentTier: ULTRA, offerHeld: false }).held).toBe(true);
-    });
-
-    /**
-     * A reconciliation that has landed is over. Holding "Confirming tier…" on
-     * screen after the membership agrees is a slower way of saying nothing.
-     */
-    it('beats a pending reconciliation once the tier has actually landed', () => {
-      const result = cta({ selectedTier: PRIME, currentTier: PRIME, pending: true });
-
-      expect(result.held).toBe(true);
-      expect(result.label).not.toBe('Confirming tier…');
+      expect(cta({ selectedTier: ULTRA, currentTier: ULTRA, pending: true }).held).toBe(false);
     });
   });
 

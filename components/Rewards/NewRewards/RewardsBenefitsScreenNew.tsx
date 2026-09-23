@@ -835,9 +835,6 @@ function RewardsBenefitsForAccount() {
       pending,
       routes: upgradeRoutes(tier),
       remainingFuse: upgradeTarget(tier)?.remainingFuse,
-      // The membership endpoint's own verdict, so a skew between it and the
-      // rewards endpoint cannot leave an upgrade CTA on a tier the user has.
-      offerHeld: findOffer(membership, tier)?.held,
     });
 
   /**
