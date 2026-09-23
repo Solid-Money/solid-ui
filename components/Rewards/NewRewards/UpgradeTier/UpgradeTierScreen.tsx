@@ -45,8 +45,7 @@ const TIER_LABELS: Record<RewardsTier, string> = {
 };
 
 /** Where "Learn more" and "How to earn points?" send the user. */
-const MEMBERSHIP_HELP_URL =
-  'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
+const MEMBERSHIP_HELP_URL = 'https://docs.solid.money/rewards/tiers';
 
 /**
  * Buying a tier: what it costs by each route, what the user has, and one action.
