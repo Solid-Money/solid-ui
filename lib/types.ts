@@ -3137,13 +3137,8 @@ export interface TierOffer {
   lockFuse: number;
   /** Whether the lock route can be taken right now. */
   lockAvailable: boolean;
-  /**
-   * Annual fee in USD, or null when this tier is not sold for cash.
-   *
-   * Null rather than 0 so a missing price can never be rendered as "free".
-   * `cashAvailable` is the flag to branch on; this is only ever the amount.
-   */
-  annualFeeUsd: number | null;
+  /** Annual fee in USD. 0 when this tier is not sold for cash. */
+  annualFeeUsd: number;
   /** Whether the annual-fee route can be taken right now. */
   cashAvailable: boolean;
   /** Whether the user already holds this tier. */

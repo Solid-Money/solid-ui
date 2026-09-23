@@ -121,12 +121,6 @@ export default function UpgradeTierReviewScreen() {
       if (!membership.contracts.subscriptionModuleAddress) {
         throw new Error('Memberships are not available right now.');
       }
-      // A tier with no price is not sold for cash. The route switch should
-      // never have offered this, so reaching it means the offer changed under
-      // the user between screens — say so rather than charging them nothing.
-      if (offer.annualFeeUsd === null) {
-        throw new Error('This tier cannot be bought with an annual fee. Lock FUSE to hold it.');
-      }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
 
       const result = await subscribe({

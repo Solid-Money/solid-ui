@@ -102,7 +102,7 @@ export const canAffordUpgrade = ({
   availableUsdc: number;
 }): boolean =>
   route === 'cash'
-    ? offer.annualFeeUsd !== null && offer.annualFeeUsd > 0 && availableUsdc >= offer.annualFeeUsd
+    ? offer.annualFeeUsd > 0 && availableUsdc >= offer.annualFeeUsd
     : availableFuse >= remainingFuseForTier(offer, lockedFuse);
 
 /** The offer for one tier, or undefined when it is not sold. */
@@ -189,17 +189,9 @@ export const formatMembershipDay = (iso: string | null | undefined): string => {
 export const formatFuse = (amount: number): string =>
   amount.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-/**
- * A USD figure with cents: "$199.00".
- *
- * Renders nothing at all for a tier that is not sold for cash, which arrives as
- * null. The alternative — "$0.00" — is the one output that would be read as a
- * price, and it would be the wrong one.
- */
-export const formatUsd = (amount: number | null | undefined): string =>
-  amount === null || amount === undefined
-    ? ''
-    : `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** A USD figure with cents: "$199.00". */
+export const formatUsd = (amount: number): string =>
+  `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** A lock term in the words the design uses: "12 months". */
 export const formatLockDuration = (days: number): string => {
