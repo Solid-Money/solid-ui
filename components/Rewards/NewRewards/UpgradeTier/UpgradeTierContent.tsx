@@ -10,12 +10,6 @@ import { useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import {
-  bestLockPaymentBalance,
-  chooseLockPayment,
-  LOCK_PAYMENT_LABEL,
-  lockPaymentBalance,
-} from '@/lib/tierLockPayment';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
   availableRoutes,
@@ -126,38 +120,17 @@ const UpgradeTierContent = () => {
   const benefits = resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, tier));
   const dateLabel = membershipDateLabel(membership);
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
+  const availableFuse = chain?.fuse ?? 0;
   const availableUsdc = chain?.usdcAmount ?? 0;
+  const shortfallFuse = Math.max(0, remainingFuse - availableFuse);
 
-  /**
-   * Everything the lock could be paid from, all of it priced in FUSE.
-   *
-   * soFUSE goes through the vault's rate; native FUSE and WFUSE do not, because
-   * the wrapper holds exactly its own total supply and one WFUSE is one FUSE.
-   */
-  const balances = {
-    sofuse: chain?.fuse ?? 0,
-    native: chain?.nativeFuse ?? 0,
-    wrapped: chain?.wrappedFuse ?? 0,
-  };
-  // FUSE and WFUSE are only payable because the zap deposits and locks in one
-  // transaction. Without it the only thing that can be locked is Savings.
-  const zapAvailable = Boolean(membership.contracts.lockZapAddress);
-  const paymentAsset = chooseLockPayment(remainingFuse, balances, zapAvailable);
-  // Measured against the largest single balance, not against Savings alone:
-  // telling a user holding 80,000 FUSE that they are 90,000 short — because
-  // their Savings are empty — is worse than telling them nothing.
-  const shortfallFuse = Math.max(0, remainingFuse - bestLockPaymentBalance(balances, zapAvailable));
-
-  const affordable =
-    route === 'cash'
-      ? canAffordUpgrade({
-          route,
-          offer,
-          lockedFuse: membership.lock.lockedFuse,
-          availableFuse: balances.sofuse,
-          availableUsdc,
-        })
-      : paymentAsset !== null;
+  const affordable = canAffordUpgrade({
+    route,
+    offer,
+    lockedFuse: membership.lock.lockedFuse,
+    availableFuse,
+    availableUsdc,
+  });
 
   const handleRoute = (next: typeof route) => {
     setRoute(next);
@@ -237,16 +210,7 @@ const UpgradeTierContent = () => {
               onExplain={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
               withDivider
             />
-            {/* Which balance is paying, and how much of it there is. Named
-                rather than assumed: a user who keeps FUSE liquid on purpose
-                should be able to see that it is about to be spent. */}
-            <TierDetailRow
-              label="Paying with"
-              value={LOCK_PAYMENT_LABEL[paymentAsset ?? 'soFUSE']}
-              secondaryValue={`${formatFuseHeld(
-                lockPaymentBalance(paymentAsset ?? 'soFUSE', balances),
-              )} FUSE available`}
-            />
+            <TierDetailRow label="soFUSE balance" value={`${formatFuseHeld(availableFuse)} FUSE`} />
           </>
         )}
       </View>
@@ -254,9 +218,7 @@ const UpgradeTierContent = () => {
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
           ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
-          : paymentAsset === 'soFUSE' || paymentAsset === null
-            ? `Locks soFUSE from your Savings — not native FUSE — for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
-            : `Deposits your ${LOCK_PAYMENT_LABEL[paymentAsset]} into Savings and locks the soFUSE it becomes, in one transaction, for ${formatLockDuration(membership.lock.durationDays)}. It keeps earning while it is locked. `}
+          : `Locks soFUSE from your Savings — not native FUSE — for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `}
         <Text
           accessibilityRole="link"
           onPress={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
@@ -284,10 +246,7 @@ const UpgradeTierContent = () => {
           gap was under half a unit, told the user nothing, and pointed at a
           top-up of nothing. Affordable hides it outright; a sub-unit gap is
           rounded up to the 1 FUSE that would actually clear it. */}
-      {!affordable &&
-      route === 'lock' &&
-      bestLockPaymentBalance(balances, zapAvailable) > 0 &&
-      shortfallFuse > 0 ? (
+      {!affordable && route === 'lock' && availableFuse > 0 && shortfallFuse > 0 ? (
         <Pressable
           accessibilityRole="button"
           onPress={handleTopUp}

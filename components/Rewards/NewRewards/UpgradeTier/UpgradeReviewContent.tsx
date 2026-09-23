@@ -13,7 +13,6 @@ import {
   useTierUpgradeChainState,
 } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
-import { chooseLockPayment, LOCK_PAYMENT_LABEL } from '@/lib/tierLockPayment';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
   findOffer,
@@ -71,21 +70,6 @@ const UpgradeReviewContent = () => {
   const isPending = isLocking || isSubscribing;
   const message = failure ?? lockError ?? subscribeError;
 
-  // Re-decided here rather than carried from the step before. The balances are
-  // polled every few seconds and the user may have been reading the term for a
-  // while; signing against the asset that was payable a minute ago is how a
-  // confirmation reverts on a balance that has since moved.
-  const paymentAsset =
-    chooseLockPayment(
-      remainingFuse,
-      {
-        sofuse: chain?.fuse ?? 0,
-        native: chain?.nativeFuse ?? 0,
-        wrapped: chain?.wrappedFuse ?? 0,
-      },
-      Boolean(membership.contracts.lockZapAddress),
-    ) ?? 'soFUSE';
-
   const handleUpgrade = async () => {
     setFailure(null);
 
@@ -98,15 +82,12 @@ const UpgradeReviewContent = () => {
 
         const result = await lockFuse({
           tier,
-          asset: paymentAsset,
           fuseAmount: remainingFuse,
           // The rate read alongside the balances this step was built from, so
           // the share count matches the FUSE figure the user has just approved.
           rate: chain?.rate ?? 0n,
           lockAddress: membership.contracts.lockAddress,
           shareTokenAddress: membership.contracts.shareTokenAddress,
-          zapAddress: membership.contracts.lockZapAddress,
-          wrappedNativeAddress: membership.contracts.wrappedNativeAddress,
         });
 
         // Null is the passkey prompt being dismissed — a decision, not a
@@ -159,13 +140,6 @@ const UpgradeReviewContent = () => {
               value={formatLockDuration(membership.lock.durationDays)}
               withDivider
             />
-            {/* The last screen before the signature says which balance it
-                comes out of. */}
-            <TierDetailRow
-              label="Paying with"
-              value={LOCK_PAYMENT_LABEL[paymentAsset]}
-              withDivider
-            />
             <TierDetailRow label="Fee" value="Free" />
           </>
         ) : (
@@ -179,11 +153,7 @@ const UpgradeReviewContent = () => {
 
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'lock'
-          ? `${
-              paymentAsset === 'soFUSE'
-                ? 'Your soFUSE'
-                : `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} is deposited into Savings, and the soFUSE it becomes`
-            } will be unlocked automatically ${formatLockDuration(
+          ? `Your soFUSE will be unlocked automatically ${formatLockDuration(
               membership.lock.durationDays,
             )} from now, and keeps earning until then.`
           : 'Your membership renews once a year. Cancel any time — you keep the tier to the end of the period you have paid for.'}

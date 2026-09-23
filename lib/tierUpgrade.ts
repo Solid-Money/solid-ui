@@ -15,13 +15,7 @@ export type TierUpgradeRoute = 'cash' | 'lock';
  * the share maths must never go. Going via the decimal string keeps it exact
  * for the whole-FUSE thresholds the tiers are priced in.
  */
-export const fuseToWei = (amount: number): bigint => {
-  // Zero rather than a crash for anything that is not a positive amount. This
-  // is called directly now — a NaN reaching `BigInt()` threw "Cannot convert
-  // NaN to a BigInt" at the caller, which is not an error anyone can act on —
-  // and every caller already treats 0 as "there is nothing to lock".
-  if (!Number.isFinite(amount) || amount <= 0) return 0n;
-
+const toFuseWei = (amount: number): bigint => {
   const fixed = amount.toFixed(18);
 
   // `toFixed` gives up and returns exponential notation at 1e21, which BigInt
@@ -47,27 +41,9 @@ export const fuseToWei = (amount: number): bigint => {
 export const fuseSharesForAmount = (fuseAmount: number, rate: bigint): bigint => {
   if (!Number.isFinite(fuseAmount) || fuseAmount <= 0 || rate <= 0n) return 0n;
 
-  const fuseWei = fuseToWei(fuseAmount);
+  const fuseWei = toFuseWei(fuseAmount);
 
   return (fuseWei * ONE_SHARE + rate - 1n) / rate;
-};
-
-/**
- * The shares a deposit of `fuseAmount` actually mints.
- *
- * Rounded **down**, because that is what the Teller does — and this number is
- * the zap's floor on what it will accept, so quoting it rounded up would revert
- * every deposit that does not divide exactly.
- *
- * The difference from `fuseSharesForAmount` is one wei of shares, worth a wei
- * of FUSE against a threshold measured in tens of thousands: the lock still
- * clears it. What the two must never do is swap places — a floor where the
- * ceiling belongs locks a share too few and buys nothing.
- */
-export const fuseSharesMintedFor = (fuseAmount: number, rate: bigint): bigint => {
-  if (!Number.isFinite(fuseAmount) || fuseAmount <= 0 || rate <= 0n) return 0n;
-
-  return (fuseToWei(fuseAmount) * ONE_SHARE) / rate;
 };
 
 /**

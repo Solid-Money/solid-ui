@@ -51,10 +51,8 @@ const membership = (overrides: Partial<TierMembershipState> = {}): TierMembershi
   contracts: {
     chainId: 122,
     lockAddress: '0xlock',
-    lockZapAddress: '0xzap',
     subscriptionModuleAddress: '0xmodule',
     shareTokenAddress: '0xshare',
-    wrappedNativeAddress: '0xwfuse',
     billingTokenAddress: '0xusdc',
   },
   ...overrides,
