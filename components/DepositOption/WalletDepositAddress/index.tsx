@@ -20,9 +20,10 @@ import {
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
   resolveWalletDepositMinimum,
+  resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
-import WalletDepositSelectors from './WalletDepositSelectors';
+import WalletDepositSelectors, { WalletDepositNetworkList } from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -55,11 +56,13 @@ const WalletDepositAddress = () => {
   // lives in the store rather than here (see `walletDeposit`). This screen only
   // reads it.
   const walletDeposit = useDepositStore(state => state.walletDeposit);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
   const chainId = walletDeposit.chainId ?? fallback.chainId;
   const symbol = walletDeposit.symbol ?? fallback.symbol;
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
+  const [isNetworkOpen, setIsNetworkOpen] = useState(false);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -88,9 +91,27 @@ const WalletDepositAddress = () => {
     setCopied(true);
   }, [address]);
 
+  // The list only offers chains carrying the current currency, so this should
+  // never have to change it — resolved anyway rather than trusting that.
+  const handleSelectNetwork = useCallback(
+    (nextChainId: number) => {
+      setWalletDeposit({
+        chainId: nextChainId,
+        symbol: resolveWalletDepositSymbol(nextChainId, symbol) ?? symbol,
+      });
+      setIsNetworkOpen(false);
+    },
+    [setWalletDeposit, symbol],
+  );
+
   return (
     <View className="gap-y-6">
-      <WalletDepositSelectors chainId={chainId} symbol={symbol} />
+      <WalletDepositSelectors
+        chainId={chainId}
+        symbol={symbol}
+        isNetworkOpen={isNetworkOpen}
+        onToggleNetwork={() => setIsNetworkOpen(open => !open)}
+      />
 
       {/* The card's own padding sits on each section rather than the card, so the
           divider between the QR and the address runs its full width. */}
@@ -189,6 +210,16 @@ const WalletDepositAddress = () => {
           {copied ? 'Address copied' : 'Copy address'}
         </Text>
       </Button>
+
+      {/* Last child, so paint order puts the open list over everything above. */}
+      {isNetworkOpen ? (
+        <WalletDepositNetworkList
+          chainId={chainId}
+          symbol={symbol}
+          onSelect={handleSelectNetwork}
+          onDismiss={() => setIsNetworkOpen(false)}
+        />
+      ) : null}
     </View>
   );
 };

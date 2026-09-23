@@ -8,11 +8,7 @@ import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositStore } from '@/store/useDepositStore';
 
-import {
-  getAllWalletDepositTokens,
-  getDefaultWalletDepositSelection,
-  resolveWalletDepositChain,
-} from './constants';
+import { getAllWalletDepositTokens, resolveWalletDepositChain } from './constants';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -29,8 +25,10 @@ const WalletDepositTokens = () => {
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const walletDeposit = useDepositStore(state => state.walletDeposit);
 
-  const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
-  const selected = walletDeposit.symbol ?? fallback.symbol;
+  // Only marked when the user is coming back to change it. Arriving here on the
+  // way in, nothing has been chosen yet, and a tick against a currency they never
+  // picked reads as a decision already made for them.
+  const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
   const tokens = useMemo(() => getAllWalletDepositTokens(), []);
 

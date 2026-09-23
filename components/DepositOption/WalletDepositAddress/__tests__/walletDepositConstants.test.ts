@@ -30,7 +30,7 @@ describe('getWalletDepositMinimum', () => {
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe(0.005);
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(100);
+    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(500);
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
@@ -166,11 +166,17 @@ describe('getDefaultWalletDepositSelection', () => {
 });
 
 describe('getAllWalletDepositTokens', () => {
-  it('lists every currency some chain accepts, once, leading with the default', () => {
+  it('lists every currency some chain accepts, once', () => {
     const symbols = getAllWalletDepositTokens().map(token => token.symbol);
-    expect(symbols[0]).toBe('USDC');
     expect(new Set(symbols).size).toBe(symbols.length);
     expect(symbols).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'FUSE']));
+  });
+
+  // Derived from chain order alone this read USDC, FUSE, USDT, WFUSE, ETH —
+  // Fuse's pair riding up the list purely because Fuse is the default chain.
+  it("leads with the currencies people look for, not the default chain's", () => {
+    const symbols = getAllWalletDepositTokens().map(token => token.symbol);
+    expect(symbols.slice(0, 3)).toEqual(['USDC', 'USDT', 'ETH']);
   });
 });
 
