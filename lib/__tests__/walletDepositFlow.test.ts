@@ -16,28 +16,24 @@ describe('getDepositChainBackTarget', () => {
   // Opened from the address screen's network button: back belongs there, not at
   // the start of the flow.
   it('returns to the address when that is where it was opened from', () => {
-    expect(getDepositChainBackTarget(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS, true)).toBe(
-      DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS,
-    );
-    expect(getDepositChainBackTarget(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS, false)).toBe(
-      DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS,
-    );
+    expect(getDepositChainBackTarget(true, true)).toBe(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+    expect(getDepositChainBackTarget(true, false)).toBe(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   });
 
   it('returns to "Receive crypto" on the way in, on desktop', () => {
-    expect(getDepositChainBackTarget(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO, true)).toBe(
-      DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO,
-    );
+    expect(getDepositChainBackTarget(false, true)).toBe(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
   });
 
   // A phone never sees "Receive crypto", so sending it back there would land the
   // user on a screen that is not in their flow.
   it('returns to the chooser on the way in, on a phone', () => {
-    expect(getDepositChainBackTarget(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE, false)).toBe(
-      DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
-    );
-    expect(getDepositChainBackTarget(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO, false)).toBe(
-      DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE,
-    );
+    expect(getDepositChainBackTarget(false, false)).toBe(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+  });
+
+  // Back from the address lands on the chain list with the address as the
+  // previous step; back again must leave, not bounce forward to the address.
+  it('leaves the flow after stepping back from the address', () => {
+    expect(getDepositChainBackTarget(false, false)).toBe(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+    expect(getDepositChainBackTarget(false, true)).toBe(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
   });
 });

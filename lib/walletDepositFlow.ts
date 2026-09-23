@@ -20,12 +20,17 @@ export const getCryptoDepositEntry = (isDesktop: boolean): DepositModal =>
  * Returning to whichever opened it is the only behaviour that works for both. A
  * fixed target sends the second case to a screen the user was not on, and on a
  * phone it would be a screen that does not exist in their flow at all.
+ *
+ * Which one opened it is recorded by the network button (`isChangingChain`)
+ * rather than read from the previous step: stepping back from the address also
+ * lands here with the address as the previous step, and treating that as the
+ * network button sent back straight forward to the address again.
  */
 export const getDepositChainBackTarget = (
-  previousModal: DepositModal,
+  isChangingChain: boolean,
   isDesktop: boolean,
 ): DepositModal => {
-  if (previousModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name) {
+  if (isChangingChain) {
     return DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS;
   }
 

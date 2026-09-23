@@ -842,7 +842,9 @@ const useDepositOption = ({
           : DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN,
       );
     } else if (isDepositChain) {
-      setModal(getDepositChainBackTarget(previousModal, isDesktop));
+      const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
+      setWalletDeposit({ isChangingChain: false });
+      setModal(getDepositChainBackTarget(!!walletDeposit.isChangingChain, isDesktop));
     } else if (isDepositToken) {
       setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
     } else if (isSavingsFundAddress) {

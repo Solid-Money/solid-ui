@@ -54,6 +54,7 @@ type WalletDepositSelectorsProps = {
  */
 const WalletDepositSelectors = ({ chainId, symbol }: WalletDepositSelectorsProps) => {
   const setModal = useDepositStore(state => state.setModal);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
@@ -65,7 +66,10 @@ const WalletDepositSelectors = ({ chainId, symbol }: WalletDepositSelectorsProps
       <Pill
         icon={network?.icon}
         label={network?.name ?? '—'}
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN)}
+        onPress={() => {
+          setWalletDeposit({ isChangingChain: true });
+          setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
+        }}
         accessibilityLabel="Choose network"
       />
       <Pill

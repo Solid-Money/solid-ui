@@ -37,7 +37,11 @@ const WalletDepositNetworks = () => {
     });
 
     const { symbol } = useDepositStore.getState().walletDeposit;
-    setWalletDeposit({ chainId, symbol: resolveWalletDepositSymbol(chainId, symbol) });
+    setWalletDeposit({
+      chainId,
+      symbol: resolveWalletDepositSymbol(chainId, symbol),
+      isChangingChain: false,
+    });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   };
 
