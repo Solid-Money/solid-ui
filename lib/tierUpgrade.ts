@@ -16,14 +16,7 @@ export type TierUpgradeRoute = 'cash' | 'lock';
  * for the whole-FUSE thresholds the tiers are priced in.
  */
 const toFuseWei = (amount: number): bigint => {
-  const fixed = amount.toFixed(18);
-
-  // `toFixed` gives up and returns exponential notation at 1e21, which BigInt
-  // cannot parse. No tier is priced anywhere near that, so this is a guard
-  // against a crash rather than a case to support.
-  if (fixed.includes('e') || fixed.includes('E')) return 0n;
-
-  const [whole, fraction = ''] = fixed.split('.');
+  const [whole, fraction = ''] = amount.toFixed(18).split('.');
   return BigInt(whole) * ONE_SHARE + BigInt(fraction.padEnd(18, '0'));
 };
 

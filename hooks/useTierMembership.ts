@@ -104,9 +104,8 @@ export const useTierUpgradeChainState = (contracts?: {
     queryFn: async () => {
       const client = publicClient(fuse.id);
 
-      // All five in flight together: this drives a screen that has to price an
-      // offer against a balance, and fetching them in sequence is how the two
-      // end up describing different moments.
+      // One multicall: this drives a screen that has to price an offer against a
+      // balance, and reading them separately is how the two stop agreeing.
       const [shares, rate, usdc, moduleEnabled, subscription] = await Promise.all([
         client.readContract({
           address: shareToken,
