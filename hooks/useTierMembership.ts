@@ -21,7 +21,6 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { fuseSharesForAmount } from '@/lib/tierUpgrade';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
-import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export const TIER_MEMBERSHIP_QUERY_KEY = 'tierMembership';
@@ -181,23 +180,6 @@ const useInvalidateAfterUpgrade = () => {
     // shape `refreshRewardsAfterSavings` invalidates, minus the user id, so one
     // upgrade refreshes whichever account is selected.
     queryClient.invalidateQueries({ queryKey: ['rewards', 'userData'] });
-
-    // And open the reconciliation window, which is what actually gets the
-    // "You're on Prime now!" card shown.
-    //
-    // `RewardsUpgradeFeedback` celebrates a tier it sees *rise* between two
-    // reads of the rewards payload. One invalidation gives it a single read,
-    // taken the instant the transaction lands — before the backend has
-    // re-derived the tier from a lock it has not indexed yet, or a
-    // subscription row written in the same breath. That read returns the old
-    // tier, nothing appears to have risen, and the upgrade the user just paid
-    // for is never acknowledged.
-    //
-    // Arming the window makes it poll until the new tier arrives, exactly as a
-    // savings deposit does. Same mechanism, so all four routes into a tier —
-    // points, savings, a lock, an annual fee — get the identical celebration.
-    const userId = selectedRewardsUserId();
-    if (userId) useRewardsUpgradeStore.getState().savingsChanged(userId);
   }, [queryClient]);
 };
 
