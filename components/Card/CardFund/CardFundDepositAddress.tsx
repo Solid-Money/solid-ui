@@ -14,6 +14,7 @@ import {
 } from '@/components/Card/CardFund/constants';
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
@@ -125,6 +126,8 @@ const CardFundDepositAddress = ({
           <DepositScanningIndicator />
         </View>
       </View>
+
+      <DepositFeeNotice product="card" chainId={chainId} />
 
       <Pressable
         className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
