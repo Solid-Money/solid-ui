@@ -3,15 +3,12 @@ import { View } from 'react-native';
 import { Href, router } from 'expo-router';
 
 import { BalanceHeadline, BalancePillRow } from '@/components/BalanceHeadline';
-import LockedFuseTile from '@/components/Earn/LockedFuseTile';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { type AssetPath } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
@@ -72,10 +69,6 @@ export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   useVaultDetailPrefetch();
   const { data: portfolioTotal, valuesByVault, isLoading } = useTotalSavingsUSD();
-  // Deliberately outside the portfolio total: a locked position cannot be
-  // withdrawn, and adding it to a headline the withdraw flow then refuses is
-  // worse than showing it as its own line.
-  const { data: membership } = useTierMembership();
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
   const fuseApy = useMaxAPY(VaultType.FUSE);
@@ -162,13 +155,6 @@ export default function EarnScreen() {
               {row.length === 1 && <View className="flex-1" />}
             </View>
           ))}
-
-          {membership?.lock ? (
-            <LockedFuseTile
-              lock={membership.lock}
-              onPress={() => router.push(path.REWARDS_UPGRADE)}
-            />
-          ) : null}
         </View>
       </View>
     </PageLayout>

@@ -406,25 +406,6 @@ export const TRACKING_EVENTS = {
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
   TRUSTPILOT_REVIEW_LINK_OPENED: 'trustpilot_review_link_opened',
-
-  // Tier membership (rewards v3): buying a tier by locking FUSE or paying an
-  // annual fee. Both routes carry `tier` so they can be compared directly, and
-  // the funnel is deliberately split at the signature — a user who dismisses
-  // the passkey prompt has made a decision, not hit an error.
-  TIER_UPGRADE_OPENED: 'tier_upgrade_opened',
-  TIER_UPGRADE_ROUTE_SELECTED: 'tier_upgrade_route_selected',
-  TIER_UPGRADE_REVIEWED: 'tier_upgrade_reviewed',
-  TIER_LOCK_PRESSED: 'tier_lock_pressed',
-  TIER_LOCK_CANCELLED: 'tier_lock_cancelled',
-  TIER_LOCK_COMPLETED: 'tier_lock_completed',
-  TIER_LOCK_FAILED: 'tier_lock_failed',
-  TIER_SUBSCRIBE_PRESSED: 'tier_subscribe_pressed',
-  TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
-  TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
-  TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
-  TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
-  TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
-  TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
