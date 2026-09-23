@@ -1,8 +1,27 @@
 import type { ReactNode } from 'react';
 
+/**
+ * Where the body is being drawn.
+ *
+ * `sheet` is the bottom sheet on native and on phone-width web: Figma's 17pt inset, and no
+ * close button, because the handle and a pan down close it. `modal` is the desktop dialog,
+ * which brings its own inset and hides its header, so the body draws a compact close button
+ * in its own first row instead of the dialog spending a whole row on one.
+ */
+export type CardSheetPresentation = 'sheet' | 'modal';
+
+/** Side inset of a sheet body: the 385pt content block on Figma's 419pt frame. */
+export const SHEET_BODY_INSET = 17;
+
+/** The body's own side inset. The desktop modal already pads its content. */
+export const sheetBodyInset = (presentation: CardSheetPresentation = 'sheet'): number =>
+  presentation === 'modal' ? 0 : SHEET_BODY_INSET;
+
 export interface CardSheetBody {
   /** Bumped each time the sheet opens, for state that should reset per visit. */
   session: number;
+  /** Omitted by the bottom sheets, which is `sheet`. */
+  presentation?: CardSheetPresentation;
   /**
    * Padding the body should put above its first element. The drag handle already
    * eats into Figma's measurement on native, and the desktop modal brings its own

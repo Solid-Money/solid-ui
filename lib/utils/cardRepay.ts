@@ -267,6 +267,45 @@ const returnedOnFullRepay = (
   });
 };
 
+/**
+ * How many tokens a dollar figure is, for the line under the amount field.
+ *
+ * Exact only for a partial wallet repayment, where the quote carries the very token amount
+ * that gets sent. Everywhere else the module sizes it at execution — a max, a full repayment,
+ * anything from collateral — so the figure is the same round-up the module will apply, at
+ * the price read a moment ago, and is marked as an estimate. A figure the quote refuses (too
+ * much, say) still converts, because seeing what it is worth in tokens is part of seeing why.
+ *
+ * Null when there is nothing entered or no price to convert at.
+ */
+export const repayTokenEstimate = ({
+  source,
+  quote,
+  debtUsd,
+  amountUsd,
+  isMax,
+}: {
+  source: RepaySource;
+  quote: RepayQuote | null;
+  debtUsd: bigint;
+  amountUsd: bigint | null;
+  isMax: boolean;
+}): { amount: bigint; isExact: boolean } | null => {
+  if (source.priceUsd === 0n) return null;
+
+  if (quote?.ok) {
+    if (quote.tokenAmount !== null) return { amount: quote.tokenAmount, isExact: true };
+    return {
+      amount: usdToTokenCeil(quote.repayUsd, source.priceUsd, source.decimals),
+      isExact: false,
+    };
+  }
+
+  const usd = isMax ? maxRepayableUsd(debtUsd, source) : amountUsd;
+  if (usd === null || usd === 0n) return null;
+  return { amount: usdToTokenCeil(usd, source.priceUsd, source.decimals), isExact: false };
+};
+
 export interface RepayCall {
   to: Address;
   data: Hex;

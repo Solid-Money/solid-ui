@@ -89,13 +89,14 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
       designTop={BORROW_POSITION_SHEET_TOP}
       designBottom={BORROW_POSITION_SHEET_BOTTOM}
     >
-      {({ session, topPadding }) => (
+      {({ session, topPadding, presentation }) => (
         <BorrowPositionSheetContent
           figures={figures}
           onDismiss={dismiss}
           repay={repayProps}
           session={session}
           topPadding={topPadding}
+          presentation={presentation}
         />
       )}
     </CardBottomSheet>

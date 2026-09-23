@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextStyle, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Check, ChevronDown, ChevronLeft } from 'lucide-react-native';
+import { Check, ChevronDown } from 'lucide-react-native';
 
+import {
+  type CardSheetPresentation,
+  sheetBodyInset,
+} from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
+import SheetIconButton, {
+  MODAL_CONTROL_SIZE,
+} from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import SheetTextInput from '@/components/Card/NewCardDetails/SpendMode/SheetTextInput';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
@@ -14,6 +21,7 @@ import {
   parseUsdAmountText,
   quoteRepay,
   type RepaySource,
+  repayTokenEstimate,
   sanitizeUsdAmountText,
   usdToAmountText,
 } from '@/lib/utils/cardRepay';
@@ -25,6 +33,9 @@ import type { CardRepayRequest, CardRepayState } from '@/hooks/useCardRepay';
  * and card language as the borrow position this step slides in from.
  */
 const HEADER_TO_SUMMARY = 35;
+const HEADER_HEIGHT = 40;
+/** The bottom sheet's back button, as it has always been drawn there. */
+const SHEET_BACK_SIZE = 40;
 const CARD_GAP = 12;
 const INPUT_TO_NOTE = 16;
 /** The note's `leading-[18px]`. */
@@ -56,6 +67,11 @@ interface RepaySheetContentProps {
   /** Close the sheet. */
   onDismiss: () => void;
   topPadding: number;
+  /**
+   * The desktop modal puts back, the title and close in one row, with both controls at the
+   * modal's compact size, and drops the side inset.
+   */
+  presentation?: CardSheetPresentation;
 }
 
 /**
@@ -81,6 +97,7 @@ const RepaySheetContent = ({
   onBack,
   onDismiss,
   topPadding,
+  presentation = 'sheet',
 }: RepaySheetContentProps) => {
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -155,22 +172,34 @@ const RepaySheetContent = ({
   }, [amountUsd, canSubmit, isMax, onRepay, source]);
 
   const note = describeQuote(quote, source, error);
+  const tokenEstimate = source
+    ? repayTokenEstimate({ source, quote, debtUsd, amountUsd, isMax })
+    : null;
+  const isModal = presentation === 'modal';
+  const controlSize = isModal ? MODAL_CONTROL_SIZE : SHEET_BACK_SIZE;
 
   return (
-    <View style={[styles.body, { paddingTop: topPadding }]}>
+    <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
       <View style={styles.header}>
-        <Pressable
+        <SheetIconButton
+          icon="back"
           accessibilityLabel="Back to borrow position"
-          accessibilityRole="button"
-          className="transition-all active:scale-95 active:opacity-80"
           disabled={isRepaying}
-          hitSlop={8}
           onPress={onBack}
-          style={styles.back}
-        >
-          <ChevronLeft color="#FFFFFF" size={22} />
-        </Pressable>
+          size={controlSize}
+          style={[styles.headerControl, { left: 0, top: (HEADER_HEIGHT - controlSize) / 2 }]}
+        />
         <Text className="text-center text-[30px] font-medium leading-[36px] text-white">Repay</Text>
+        {isModal ? (
+          <SheetIconButton
+            icon="close"
+            accessibilityLabel="Close"
+            disabled={isRepaying}
+            onPress={onDismiss}
+            size={controlSize}
+            style={[styles.headerControl, { right: 0, top: (HEADER_HEIGHT - controlSize) / 2 }]}
+          />
+        ) : null}
       </View>
 
       {!state ? (
@@ -239,6 +268,23 @@ const RepaySheetContent = ({
                     value={text}
                   />
                 </View>
+                {/* What the dollar figure is in the token paying it. Always drawn, greyed
+                    while empty, so the card does not grow on the first keystroke. */}
+                <Text
+                  className={
+                    tokenEstimate
+                      ? 'text-[14px] font-normal leading-[16px] text-white/50'
+                      : 'text-[14px] font-normal leading-[16px] text-white/30'
+                  }
+                  numberOfLines={1}
+                  style={styles.tokenEstimate}
+                >
+                  {source
+                    ? tokenEstimate
+                      ? `${tokenEstimate.isExact ? '' : '≈ '}${formatRepayTokenAmount(tokenEstimate.amount, source.decimals)} ${source.displaySymbol}`
+                      : `0.00 ${source.displaySymbol}`
+                    : ' '}
+                </Text>
               </View>
 
               <View style={styles.withColumn}>
@@ -290,17 +336,12 @@ const RepaySheetContent = ({
                 className="transition-all active:scale-95 active:opacity-80"
                 disabled={!source || isRepaying}
                 onPress={() => source && fillMax(source)}
-                style={[styles.max, isMax && styles.maxActive]}
+                // Always the same outlined pill. It used to invert to white while MAX was
+                // driving the figure, which read as a stuck control rather than a state — and
+                // the field already shows what MAX filled in.
+                style={styles.max}
               >
-                <Text
-                  className={
-                    isMax
-                      ? 'text-[14px] font-semibold text-black'
-                      : 'text-[14px] font-semibold text-white'
-                  }
-                >
-                  MAX
-                </Text>
+                <Text className="text-[14px] font-semibold text-white">MAX</Text>
               </Pressable>
             </View>
           </View>
@@ -479,18 +520,8 @@ const amountInputStyle: TextStyle = {
 };
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: 17 },
-  header: { alignItems: 'center', height: 40, justifyContent: 'center' },
-  back: {
-    alignItems: 'center',
-    backgroundColor: '#2B2B2B',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    width: 40,
-  },
+  header: { alignItems: 'center', height: HEADER_HEIGHT, justifyContent: 'center' },
+  headerControl: { position: 'absolute', zIndex: 1 },
   loading: {
     alignItems: 'center',
     gap: 16,
@@ -513,6 +544,7 @@ const styles = StyleSheet.create({
   amountColumn: { flex: 1, minWidth: 0 },
   amountRow: { alignItems: 'center', flexDirection: 'row', height: 52, marginTop: 8 },
   currency: { marginRight: 2 },
+  tokenEstimate: { marginTop: 4 },
   withColumn: { alignItems: 'flex-end' },
   selector: {
     alignItems: 'center',
@@ -535,7 +567,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
-  maxActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   picker: { marginTop: CARD_GAP, paddingVertical: 6 },
   sourceRow: {
     alignItems: 'center',

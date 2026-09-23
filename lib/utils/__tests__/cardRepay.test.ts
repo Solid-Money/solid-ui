@@ -9,6 +9,7 @@ import {
   quoteRepay,
   repayDisplaySymbol,
   type RepaySource,
+  repayTokenEstimate,
   sanitizeUsdAmountText,
   tokenToUsdFloor,
   usdToTokenCeil,
@@ -198,6 +199,47 @@ describe('quoteRepay', () => {
     const held = [{ ...collateral[0], amount: escrowed }];
     const result = quote(source({ kind: 'collateral', balance: escrowed }), null, true, DEBT, held);
     expect(result).toMatchObject({ ok: true, isFull: true, returnedCollateral: [] });
+  });
+});
+
+describe('repayTokenEstimate', () => {
+  const estimate = (from: RepaySource, amountUsd: bigint | null, isMax = false) =>
+    repayTokenEstimate({
+      source: from,
+      quote: quote(from, amountUsd, isMax),
+      debtUsd: DEBT,
+      amountUsd,
+      isMax,
+    });
+
+  it('is the exact amount sent for a partial wallet repayment', () => {
+    expect(estimate(source({ kind: 'wallet' }), 50_000_000n)).toEqual({
+      amount: 46_258_819n,
+      isExact: true,
+    });
+  });
+
+  it('estimates what the module will size for a full or collateral repayment', () => {
+    expect(estimate(source({ kind: 'wallet' }), null, true)).toEqual({
+      amount: 281_962_989n,
+      isExact: false,
+    });
+    expect(estimate(source({ kind: 'collateral' }), 100_000_000n)).toEqual({
+      amount: usdToTokenCeil(100_000_000n, SOUSD_PRICE, 6),
+      isExact: false,
+    });
+  });
+
+  it('still converts a figure the quote refuses', () => {
+    const thin = source({ kind: 'wallet', balance: 10_000_000n });
+    expect(estimate(thin, 50_000_000n)).toEqual({ amount: 46_258_819n, isExact: false });
+  });
+
+  it('shows nothing without an amount or a price', () => {
+    expect(estimate(source({ kind: 'wallet' }), null)).toBeNull();
+    expect(
+      estimate(source({ kind: 'wallet', priceUsd: 0n, valueUsd: 0n }), 50_000_000n),
+    ).toBeNull();
   });
 });
 
