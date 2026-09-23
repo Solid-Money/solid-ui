@@ -5,13 +5,14 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
+import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants';
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
-import useUser from '@/hooks/useUser';
+import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -49,9 +50,6 @@ const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
  * the copy under the QR is there to prevent.
  */
 const WalletDepositAddress = () => {
-  const { user } = useUser();
-  const address = user?.safeAddress;
-
   // Chain and currency are both chosen on steps of their own, so the selection
   // lives in the store rather than here (see `walletDeposit`). This screen only
   // reads it.
@@ -68,16 +66,23 @@ const WalletDepositAddress = () => {
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
     [chainId],
   );
+  // Stablecoins get an address the pipeline mints and watches; ETH and FUSE get
+  // the Safe, which is where they land and stay.
+  const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
   const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
   // then — never a blank, which is the one thing this line must not show.
   const { data: depositAssets } = useDepositAssets();
   const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
 
-  // Polling only runs once there is an address to watch, so the chip below has to
-  // follow the same condition rather than claiming to scan with nothing to scan.
-  const isScanning = !!address;
-  const { isDetected } = useDetectedDirectDeposit({ enabled: isScanning });
+  // Only a minted address is watched, so only then is there anything to scan for.
+  // The Safe is not registered with the pipeline; saying "scanning" over it would
+  // be describing a poll that can never come back positive.
+  const isScanning = !!address && isMinted;
+  const { isDetected } = useDetectedDirectDeposit({
+    enabled: isScanning,
+    destinationType: CARD_FUND_DESTINATION_TYPE,
+  });
 
   useEffect(() => {
     if (!copied) return;
@@ -129,7 +134,11 @@ const WalletDepositAddress = () => {
             className="items-center justify-center overflow-hidden rounded-[20px]"
             style={{ width: qrSize, height: qrSize }}
           >
-            {address ? (
+            {hasAddressError ? (
+              <Text className="px-6 text-center text-sm text-white/70">
+                Could not load the deposit address. Close and try again.
+              </Text>
+            ) : address ? (
               <QRCode
                 value={address}
                 size={qrSize}

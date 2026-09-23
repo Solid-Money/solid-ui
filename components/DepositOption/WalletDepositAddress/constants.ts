@@ -60,6 +60,20 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
 const DEFAULT_MINIMUM_DEPOSIT = 1;
 
 /**
+ * Currencies the deposit address is minted for, rather than being the Safe.
+ *
+ * The stablecoins, and only them, because they are the ones the deposit pipeline
+ * has a route for: a minted address is watched, so the transfer is detected,
+ * credited and shown as activity. ETH, WETH, FUSE and WFUSE have no such route —
+ * they are sent to the Safe and simply sit there as what was sent — so for those
+ * the Safe address is not a fallback, it is the right answer.
+ */
+const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
+
+export const usesDirectDepositAddress = (symbol: string): boolean =>
+  DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+
+/**
  * The order "Select token" leads with. The stablecoins people actually deposit
  * come first, then ETH; everything else follows in network order.
  */

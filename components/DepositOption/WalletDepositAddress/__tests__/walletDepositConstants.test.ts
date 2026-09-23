@@ -11,6 +11,7 @@ import {
   resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
+  usesDirectDepositAddress,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
 import { DepositAsset } from '@/lib/types';
 
@@ -76,6 +77,27 @@ describe('getWalletDepositNetworks', () => {
       true,
     );
     expect(networks[0].chainId).toBe(mainnet.id);
+  });
+});
+
+/**
+ * Which address the screen hands out. A minted address is watched by the deposit
+ * pipeline; the Safe is not. Getting this wrong either strands a transfer or
+ * makes the screen promise a detection that can never happen.
+ */
+describe('usesDirectDepositAddress', () => {
+  it('mints an address for the stablecoins the pipeline has a route for', () => {
+    expect(usesDirectDepositAddress('USDC')).toBe(true);
+    expect(usesDirectDepositAddress('USDT')).toBe(true);
+  });
+
+  // These land in the Safe and stay as the token that was sent, so the Safe
+  // address is the right answer rather than a fallback.
+  it('keeps the Safe for the currencies with no route', () => {
+    expect(usesDirectDepositAddress('ETH')).toBe(false);
+    expect(usesDirectDepositAddress('WETH')).toBe(false);
+    expect(usesDirectDepositAddress('FUSE')).toBe(false);
+    expect(usesDirectDepositAddress('WFUSE')).toBe(false);
   });
 });
 
