@@ -33,7 +33,7 @@ interface TierMembershipSheetContentProps {
  *
  * Opened by tapping the tier anywhere it is shown, and deliberately readable
  * rather than promotional — this is the screen someone comes to when they want
- * to know when their soFUSE comes back or when they will next be charged, so
+ * to know when their FUSE comes back or when they will next be charged, so
  * every line is a fact with a date on it.
  */
 const TierMembershipSheetContent = ({
@@ -89,10 +89,8 @@ const TierMembershipSheetContent = ({
 
       {lock && lock.lockedFuse > 0 ? (
         <View className="mt-4 overflow-hidden rounded-[20px] bg-[#232323]">
-          {/* soFUSE is what the lock holds; FUSE is what it is worth. Both are
-              on the row for the same reason the upgrade screen carries both. */}
           <TierDetailRow
-            label="Locked soFUSE"
+            label="Locked FUSE"
             value={`${formatFuse(lock.lockedFuse)} FUSE`}
             withDivider
           />

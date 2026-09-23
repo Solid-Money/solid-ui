@@ -226,10 +226,7 @@ const useInvalidateAfterUpgrade = () => {
 };
 
 /**
- * Lock soFUSE to hold a tier.
- *
- * soFUSE, not native FUSE: the lock takes the Savings position's shares, and
- * every figure the screens quote is the FUSE those shares are worth.
+ * Lock FUSE to hold a tier.
  *
  * Two calls in one user operation: approve the shares to the lock, then lock
  * them. Batched so the user signs once and so neither half can land without the
@@ -293,7 +290,7 @@ export const useLockFuseForTier = () => {
             value: 0n,
           },
         ],
-        'Failed to lock your soFUSE',
+        'Failed to lock your FUSE',
         fuse,
       );
 
@@ -320,7 +317,7 @@ export const useLockFuseForTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to lock your soFUSE';
+      const message = mutationError?.message || 'Failed to lock your FUSE';
       setError(message);
       track(TRACKING_EVENTS.TIER_LOCK_FAILED, { error: message });
     },

@@ -125,7 +125,7 @@ export default function UpgradeTierReviewScreen() {
       // never have offered this, so reaching it means the offer changed under
       // the user between screens — say so rather than charging them nothing.
       if (offer.annualFeeUsd === null) {
-        throw new Error('This tier cannot be bought with an annual fee. Lock soFUSE to hold it.');
+        throw new Error('This tier cannot be bought with an annual fee. Lock FUSE to hold it.');
       }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
 
@@ -152,11 +152,8 @@ export default function UpgradeTierReviewScreen() {
 
           {route === 'lock' ? (
             <>
-              {/* soFUSE in the label, FUSE in the value — the lock takes the
-                  Savings position, which is denominated in the FUSE it is
-                  worth. Same wording as the row on the screen before this. */}
               <TierDetailRow
-                label="soFUSE to lock"
+                label="Amount"
                 value={`${formatFuse(remainingFuse)} FUSE`}
                 withDivider
               />
@@ -178,7 +175,7 @@ export default function UpgradeTierReviewScreen() {
 
         <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
           {route === 'lock'
-            ? `Your soFUSE will be unlocked automatically ${formatLockDuration(
+            ? `Your FUSE will be unlocked automatically ${formatLockDuration(
                 membership.lock.durationDays,
               )} from now, and keeps earning until then.`
             : 'Your membership renews once a year. Cancel any time — you keep the tier to the end of the period you have paid for.'}

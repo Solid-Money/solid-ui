@@ -272,13 +272,8 @@ export default function UpgradeTierScreen() {
             </>
           ) : (
             <>
-              {/* Labelled soFUSE, priced in FUSE. What the lock takes is the
-                  Savings position — soFUSE shares — while the tier threshold
-                  and every figure on this screen are denominated in the FUSE
-                  those shares are worth. Saying only "FUSE" sent people looking
-                  for native FUSE in their wallet. */}
               <TierDetailRow
-                label="soFUSE to lock"
+                label="Fuse amount"
                 value={`${formatFuse(remainingFuse)} FUSE`}
                 withDivider
               />
@@ -288,10 +283,7 @@ export default function UpgradeTierScreen() {
                 onExplain={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
                 withDivider
               />
-              <TierDetailRow
-                label="soFUSE balance"
-                value={`${formatFuseHeld(availableFuse)} FUSE`}
-              />
+              <TierDetailRow label="Balance" value={`${formatFuseHeld(availableFuse)} FUSE`} />
             </>
           )}
         </View>
@@ -299,7 +291,7 @@ export default function UpgradeTierScreen() {
         <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
           {route === 'cash'
             ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
-            : `Locks soFUSE from your Savings — not native FUSE — for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `}
+            : `Lock FUSE for ${formatLockDuration(membership.lock.durationDays)} to hold the tier — it keeps earning while it is locked. `}
           <Text
             accessibilityRole="link"
             onPress={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
