@@ -139,21 +139,27 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
   provider !== CardProvider.WIREX;
 
 /**
- * Whether this cardholder is shown the redesigned deposit flows.
+ * Whether the savings Deposit button opens the direct-deposit flow — currency,
+ * then chain, then an address to send to — rather than the amount form that
+ * moves a balance already held in Solid.
  *
- * Wirex only, and it follows from where their money goes rather than from taste.
- * A Wirex card holds no balance: settlement takes the stablecoin from the Safe,
- * so funding the wallet is funding the card, and the wallet's own flows are the
- * right ones to hand them. A Rain card is prefunded and separate, so its money
- * has to land on the card itself — which is what "Fund your card" does and what
- * the wallet flow would not.
+ * Everyone but Wirex. The two are not one screen in two styles: one brings new
+ * money in from outside, the other moves money that is already here, so this
+ * decides what the button can do and not only how it looks.
  *
- * `null`/`undefined` means the issuer has not resolved yet, and reads as Rain —
- * the same default {@link canDepositToCard} takes, so a slow query never flips a
- * cardholder onto the other design for a frame.
+ * A Wirex cardholder funds savings by funding their wallet — settlement draws on
+ * the Safe, so the wallet deposit flow already covers them — which leaves the
+ * savings button for the one thing that flow does not do: moving an existing
+ * balance across. A Rain cardholder's wallet and card are separate pots, and
+ * neither is savings, so their savings button is the only way new money reaches
+ * the vault directly.
+ *
+ * `null`/`undefined` means the issuer has not resolved yet, and reads as not
+ * Wirex — the same default {@link canDepositToCard} takes, and the same one a
+ * user with no card falls under.
  */
-export const usesNewDepositDesign = (provider: CardProvider | null | undefined): boolean =>
-  provider === CardProvider.WIREX;
+export const usesDirectSavingsDeposit = (provider: CardProvider | null | undefined): boolean =>
+  provider !== CardProvider.WIREX;
 
 /**
  * Whether the card carries a balance of its own, i.e. one that belongs in a total
