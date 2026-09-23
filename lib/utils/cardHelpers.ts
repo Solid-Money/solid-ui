@@ -139,6 +139,24 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
   provider !== CardProvider.WIREX;
 
 /**
+ * Whether this cardholder is shown the redesigned deposit flows.
+ *
+ * Wirex only, and deliberately narrow: the redesign — the token/network/address
+ * funding flow and the savings direct deposit behind it — went out with Wirex,
+ * whose cardholders have never seen anything else. Rain cardholders have years of
+ * habit in the older screens, and their deposits land somewhere different (a
+ * prefunded card rather than a Safe), so moving them is a change of behaviour and
+ * not just of appearance. They stay on the flows they know until that is a
+ * decision someone makes on purpose.
+ *
+ * `null`/`undefined` means the issuer has not resolved yet, and reads as Rain —
+ * the same default {@link canDepositToCard} takes, so a slow query never flips a
+ * cardholder onto the other design for a frame.
+ */
+export const usesNewDepositDesign = (provider: CardProvider | null | undefined): boolean =>
+  provider === CardProvider.WIREX;
+
+/**
  * Whether the card carries a balance of its own, i.e. one that belongs in a total
  * of what the user holds.
  *

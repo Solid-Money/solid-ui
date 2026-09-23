@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 // IMPORTANT: these trigger components MUST forward props (…props) to their root
 // Pressable. The Deposit/Swap/Send modals inject their open handler via
@@ -125,20 +126,23 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
   const showSwap = hasFunds && Platform.OS !== 'ios';
   const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
-  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [isWirexModalOpen, setIsWirexModalOpen] = useState(false);
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
+  // The legacy provider's own open handler lands on the internal form, which is
+  // where its options screen sends the wallet/savings route anyway.
+  const openLegacyCardDeposit = useCallback(
+    () => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM),
+    [setCardDepositModal],
+  );
 
   return (
     <View className={cn('flex-row items-center', compact ? 'gap-2 px-3' : 'gap-3 px-4')}>
       <View className={hasFunds ? 'h-14' : 'w-full'} style={hasFunds && styles.equalActionSlot}>
         {fundsGoToCard ? (
-          // Rendered via SlotTrigger + controlled isOpen, not CardDirectDepositModal's
-          // own trigger prop - that goes through ResponsiveModal's rn-primitives
-          // DialogTrigger, whose asChild Slot chain drops the pill's padding classes.
-          <>
-            <SlotTrigger onPress={() => setIsCardModalOpen(true)}>{addFundsTrigger}</SlotTrigger>
-            <CardDirectDepositModal isOpen={isCardModalOpen} onOpenChange={setIsCardModalOpen} />
-          </>
+          // A Rain cardholder gets the older card deposit screens (see
+          // `usesNewDepositDesign`), which live behind the global
+          // CardDepositModalProvider rather than a modal mounted here.
+          <SlotTrigger onPress={openLegacyCardDeposit}>{addFundsTrigger}</SlotTrigger>
         ) : fundsGoToWirexCard ? (
           // Same SlotTrigger + controlled isOpen as the Rain branch above, and for
           // the same reason: ResponsiveModal's own trigger prop routes through an

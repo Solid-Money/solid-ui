@@ -2,13 +2,14 @@ import { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { Text } from '@/components/ui/text';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
 import { getAsset } from '@/lib/assets';
 import { canDepositToCard } from '@/lib/utils/cardHelpers';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 interface CircleActionProps {
   label: string;
@@ -93,6 +94,7 @@ const CardActionsRow = ({
   canAddFunds,
 }: CardActionsRowProps) => {
   const { provider } = useCardProvider();
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
   const { requests: threeDsRequests } = useWirexThreeDs();
   const showDeposit = canAddFunds && canDepositToCard(provider);
 
@@ -115,17 +117,18 @@ const CardActionsRow = ({
       )}
       {showDeposit && (
         <View style={styles.item}>
-          <CardDirectDepositModal
-            trigger={
-              <CircleAction label="Add funds">
-                <Image
-                  source={getAsset('images/card-action-add-funds.png')}
-                  style={styles.actionIcon}
-                  contentFit="contain"
-                />
-              </CircleAction>
-            }
-          />
+          {/* Only reached on a card that holds a balance, i.e. Rain, which keeps
+              the older deposit screens (`usesNewDepositDesign`). */}
+          <CircleAction
+            label="Add funds"
+            onPress={() => setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM)}
+          >
+            <Image
+              source={getAsset('images/card-action-add-funds.png')}
+              style={styles.actionIcon}
+              contentFit="contain"
+            />
+          </CircleAction>
         </View>
       )}
       {canToggleFreeze && (

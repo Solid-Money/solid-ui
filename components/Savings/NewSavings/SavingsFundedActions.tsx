@@ -3,11 +3,8 @@ import { Pressable, View } from 'react-native';
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { VAULTS } from '@/constants/vaults';
+import { useVaultDepositEntry } from '@/hooks/useVaultDepositEntry';
 import { VaultType } from '@/lib/types';
-import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 // Both DepositTrigger and UnstakeModal inject onPress via SlotTrigger.cloneElement,
 // so these trigger components MUST forward props to their root Pressable.
@@ -39,19 +36,15 @@ interface SavingsFundedActionsProps {
  * (unstake). Deposit pre-selects the currently chosen vault.
  */
 const SavingsFundedActions = ({ vaultType }: SavingsFundedActionsProps) => {
+  const { modal, onBeforeOpen } = useVaultDepositEntry(vaultType);
+
   return (
     <View className="flex-row items-center gap-3 px-4">
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_FORM}
+        modal={modal}
         preserveSelectedVault
         source="savings_add_funds"
-        onBeforeOpen={() => {
-          const index = VAULTS.findIndex(vault => vault.type === vaultType);
-          if (index >= 0) {
-            useSavingStore.getState().selectVaultForDeposit(index);
-          }
-          useDepositStore.getState().setDepositFromSolid(true);
-        }}
+        onBeforeOpen={onBeforeOpen}
         trigger={<DepositTriggerButton />}
       />
       <UnstakeModal trigger={<WithdrawTrigger />} />

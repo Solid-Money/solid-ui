@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 import {
   BalanceBreakdownRows,
@@ -25,7 +26,6 @@ const OtherBalancesDropdown = ({
   isLoading,
 }: OtherBalances) => {
   const [open, setOpen] = useState(false);
-  const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
   // A Wirex card has no balance of its own, so it gets a Spendable row and no
   // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
   const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
@@ -33,9 +33,12 @@ const OtherBalancesDropdown = ({
   // without a Wirex bank account, so the rows simply do not appear.
   const { balances: bankBalances } = useWirexUnifiedBalances();
   const dismiss = () => setOpen(false);
+  // "Add" only shows on a card that holds a balance, i.e. Rain — so this opens
+  // the older deposit screens those cardholders keep (`usesNewDepositDesign`).
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
   const openCardDeposit = () => {
     dismiss();
-    setIsCardDepositOpen(true);
+    setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   };
 
   return (
@@ -67,11 +70,6 @@ const OtherBalancesDropdown = ({
           />
         </DialogContent>
       </Dialog>
-      <CardDirectDepositModal
-        trigger={null}
-        isOpen={isCardDepositOpen}
-        onOpenChange={setIsCardDepositOpen}
-      />
     </View>
   );
 };

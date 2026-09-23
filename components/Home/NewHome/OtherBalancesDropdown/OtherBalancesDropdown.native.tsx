@@ -1,11 +1,12 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
-import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
 import { Text } from '@/components/ui/text';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 import {
   BalanceBreakdownRows,
@@ -29,7 +30,6 @@ const OtherBalancesDropdown = ({
   const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const shouldOpenCardDepositRef = useRef(false);
-  const [isCardDepositOpen, setIsCardDepositOpen] = useState(false);
   // A Wirex card has no balance of its own, so it gets a Spendable row and no
   // "Add" — see `cardHoldsBalance` / `canDepositToCard`.
   const { cardHoldsOwnBalance, canAddToCard, spendableBalance } = useCardBalanceDisplay();
@@ -43,11 +43,15 @@ const OtherBalancesDropdown = ({
     shouldOpenCardDepositRef.current = true;
     dismiss();
   }, [dismiss]);
+  // "Add" only shows on a card that holds a balance, i.e. Rain — so this opens
+  // the older deposit screens those cardholders keep (`usesNewDepositDesign`).
+  // Deferred to the dismiss so the sheet is gone before the modal arrives.
+  const setCardDepositModal = useCardDepositStore(state => state.setModal);
   const handleDismiss = useCallback(() => {
     if (!shouldOpenCardDepositRef.current) return;
     shouldOpenCardDepositRef.current = false;
-    setIsCardDepositOpen(true);
-  }, []);
+    setCardDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  }, [setCardDepositModal]);
 
   const renderBackdrop = useCallback(
     (props: any) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />,
@@ -92,11 +96,6 @@ const OtherBalancesDropdown = ({
           />
         </BottomSheetView>
       </BottomSheetModal>
-      <CardDirectDepositModal
-        trigger={null}
-        isOpen={isCardDepositOpen}
-        onOpenChange={setIsCardDepositOpen}
-      />
     </View>
   );
 };
