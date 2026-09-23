@@ -1,4 +1,4 @@
-import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
+import { getTierAction, isHigherTier, isUpgradeFlowRoute } from '@/lib/rewardsUpgrade';
 import { RewardsTier } from '@/lib/types';
 
 const { CORE, PRIME, ULTRA } = RewardsTier;
@@ -21,5 +21,26 @@ describe('tier actions', () => {
     expect(getTierAction(PRIME)).toBe('unavailable');
     expect(getTierAction(ULTRA, CORE, true)).toBe('unavailable');
     expect(isHigherTier(PRIME, undefined)).toBe(false);
+  });
+});
+
+describe('isUpgradeFlowRoute', () => {
+  it('covers both screens that buy a tier, trailing slash or not', () => {
+    expect(isUpgradeFlowRoute('/rewards/upgrade')).toBe(true);
+    expect(isUpgradeFlowRoute('/rewards/upgrade-review')).toBe(true);
+    expect(isUpgradeFlowRoute('/rewards/upgrade/')).toBe(true);
+  });
+
+  /** Where the celebration is supposed to land. */
+  it('leaves the rewards screen itself alone', () => {
+    expect(isUpgradeFlowRoute('/rewards')).toBe(false);
+    expect(isUpgradeFlowRoute('/rewards/benefits')).toBe(false);
+  });
+
+  it('draws everywhere else, including before the router has a path', () => {
+    expect(isUpgradeFlowRoute('/')).toBe(false);
+    expect(isUpgradeFlowRoute('/savings')).toBe(false);
+    expect(isUpgradeFlowRoute(undefined)).toBe(false);
+    expect(isUpgradeFlowRoute(null)).toBe(false);
   });
 });

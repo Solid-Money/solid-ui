@@ -465,27 +465,3 @@ export const CARD_REPAY_MODAL = {
     number: 3,
   },
 };
-
-/**
- * Buying a tier: the offer, then the confirmation.
- *
- * Two steps rather than two routes. The flow is opened from three places that
- * are themselves already somewhere — the rewards screen, the benefits pager,
- * the Earn screen — and pushing a route from each of them took the user off the
- * page they were reading to make a decision they might not make. A modal hands
- * them back where they were.
- */
-export const TIER_UPGRADE_MODAL = {
-  CLOSE: {
-    name: 'close',
-    number: 0,
-  },
-  OPEN_UPGRADE: {
-    name: 'open_upgrade',
-    number: 1,
-  },
-  OPEN_REVIEW: {
-    name: 'open_review',
-    number: 2,
-  },
-};
