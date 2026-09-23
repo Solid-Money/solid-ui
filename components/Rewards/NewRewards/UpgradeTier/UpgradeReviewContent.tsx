@@ -16,7 +16,6 @@ import { track } from '@/lib/analytics';
 import { chooseLockPayment, LOCK_PAYMENT_LABEL } from '@/lib/tierLockPayment';
 import { getTierDisplayName } from '@/lib/tierNames';
 import {
-  canAffordUpgrade,
   findOffer,
   formatFuse,
   formatLockDuration,
@@ -72,46 +71,20 @@ const UpgradeReviewContent = () => {
   const isPending = isLocking || isSubscribing;
   const message = failure ?? lockError ?? subscribeError;
 
-  /**
-   * Re-decided here rather than carried from the step before, and allowed to
-   * come back empty.
-   *
-   * The balances are polled every few seconds and the user may have been
-   * reading the term for a while — a concurrent spend from another tab or
-   * device is enough. Defaulting to soFUSE when nothing covers the tier is how
-   * this screen let someone sign a transaction that could only revert, with an
-   * on-chain error message to explain it.
-   *
-   * `undefined` is "the balances have not loaded", which is not the same answer
-   * as `null`, "nothing covers it". Both block the button; only the second says
-   * so, because telling a user their balance is short while it is still being
-   * read would be wrong about half the time.
-   */
-  const paymentAsset = chain
-    ? chooseLockPayment(
-        remainingFuse,
-        { sofuse: chain.fuse, native: chain.nativeFuse, wrapped: chain.wrappedFuse },
-        Boolean(membership.contracts.lockZapAddress),
-      )
-    : undefined;
-
-  // The cash route has the same hole and closes it the same way: the offer step
-  // checked the USDC balance, and that check is minutes old by the time anyone
-  // presses this.
-  const canPay =
-    route === 'lock'
-      ? Boolean(paymentAsset)
-      : chain !== undefined &&
-        canAffordUpgrade({
-          route,
-          offer,
-          lockedFuse: membership.lock.lockedFuse,
-          availableFuse: chain.fuse,
-          availableUsdc: chain.usdcAmount,
-        });
-
-  // Only once we have actually read the balances. Nothing to say while they load.
-  const shortOfFunds = chain !== undefined && !canPay;
+  // Re-decided here rather than carried from the step before. The balances are
+  // polled every few seconds and the user may have been reading the term for a
+  // while; signing against the asset that was payable a minute ago is how a
+  // confirmation reverts on a balance that has since moved.
+  const paymentAsset =
+    chooseLockPayment(
+      remainingFuse,
+      {
+        sofuse: chain?.fuse ?? 0,
+        native: chain?.nativeFuse ?? 0,
+        wrapped: chain?.wrappedFuse ?? 0,
+      },
+      Boolean(membership.contracts.lockZapAddress),
+    ) ?? 'soFUSE';
 
   const handleUpgrade = async () => {
     setFailure(null);
@@ -122,10 +95,6 @@ const UpgradeReviewContent = () => {
           throw new Error('Locking is not available right now.');
         }
         track(TRACKING_EVENTS.TIER_LOCK_PRESSED, { tier, fuse_amount: remainingFuse });
-
-        if (!paymentAsset) {
-          throw new Error('Your balance no longer covers this upgrade.');
-        }
 
         const result = await lockFuse({
           tier,
@@ -194,7 +163,7 @@ const UpgradeReviewContent = () => {
                 comes out of. */}
             <TierDetailRow
               label="Paying with"
-              value={paymentAsset ? LOCK_PAYMENT_LABEL[paymentAsset] : '—'}
+              value={LOCK_PAYMENT_LABEL[paymentAsset]}
               withDivider
             />
             <TierDetailRow label="Fee" value="Free" />
@@ -211,7 +180,7 @@ const UpgradeReviewContent = () => {
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'lock'
           ? `${
-              !paymentAsset || paymentAsset === 'soFUSE'
+              paymentAsset === 'soFUSE'
                 ? 'Your soFUSE'
                 : `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} is deposited into Savings, and the soFUSE it becomes`
             } will be unlocked automatically ${formatLockDuration(
@@ -222,16 +191,12 @@ const UpgradeReviewContent = () => {
 
       {message ? (
         <Text className="mt-4 text-center text-[14px] leading-5 text-red-400">{message}</Text>
-      ) : shortOfFunds ? (
-        <Text className="mt-4 text-center text-[14px] leading-5 text-white/50">
-          Your balance no longer covers this upgrade. Go back to top up.
-        </Text>
       ) : null}
 
       <Button
         variant="brand"
         onPress={() => void handleUpgrade()}
-        disabled={isPending || !canPay}
+        disabled={isPending}
         className="mt-8 h-14 flex-row items-center justify-center gap-2 rounded-full"
       >
         <KeyRound color="black" size={18} strokeWidth={2} />

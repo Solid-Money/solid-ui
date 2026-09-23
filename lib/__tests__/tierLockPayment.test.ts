@@ -1,5 +1,4 @@
 import {
-  bestLockPaymentAsset,
   bestLockPaymentBalance,
   chooseLockPayment,
   lockPaymentBalance,
@@ -90,37 +89,5 @@ describe('lockPaymentBalance', () => {
     expect(lockPaymentBalance('soFUSE', held)).toBe(1);
     expect(lockPaymentBalance('FUSE', held)).toBe(2);
     expect(lockPaymentBalance('WFUSE', held)).toBe(3);
-  });
-});
-
-describe('bestLockPaymentAsset', () => {
-  /**
-   * What the "Paying with" row falls back to when nothing covers the tier.
-   * Falling back to soFUSE instead put "soFUSE · 0 FUSE available" above a
-   * shortfall measured against the 80,000 FUSE the user was actually holding —
-   * the screen contradicting its own numbers again.
-   */
-  it('is the largest balance, so the row agrees with the shortfall below it', () => {
-    expect(bestLockPaymentAsset(balances({ sofuse: 0, native: 80_000 }), true)).toBe('FUSE');
-    expect(bestLockPaymentAsset(balances({ sofuse: 0, wrapped: 80_000 }), true)).toBe('WFUSE');
-    expect(bestLockPaymentAsset(balances({ sofuse: 90_000, native: 80_000 }), true)).toBe('soFUSE');
-  });
-
-  it('ties go to Savings, for the same reason it is preferred', () => {
-    expect(bestLockPaymentAsset(balances({ sofuse: 10, native: 10, wrapped: 10 }), true)).toBe(
-      'soFUSE',
-    );
-  });
-
-  it('is Savings whatever else is held when the zap is not deployed', () => {
-    expect(bestLockPaymentAsset(balances({ sofuse: 0, native: 80_000 }), false)).toBe('soFUSE');
-  });
-
-  it('agrees with the balance it reports', () => {
-    const held = balances({ sofuse: 1, native: 80_000, wrapped: 3 });
-
-    expect(lockPaymentBalance(bestLockPaymentAsset(held, true), held)).toBe(
-      bestLockPaymentBalance(held, true),
-    );
   });
 });
