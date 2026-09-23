@@ -35,11 +35,11 @@ export default function SavingsEmptyState() {
                 <DashboardHeaderButtons hideSend hideDeposit />
                 <DepositTrigger
                   buttonText="Deposit"
-                  modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
+                  modal={DEPOSIT_MODAL.OPEN_FORM}
                   preserveSelectedVault
                   source="savings_empty_state_header"
                   onBeforeOpen={() => {
-                    useDepositStore.getState().setDepositFromSolid(false);
+                    useDepositStore.getState().setDepositFromSolid(true);
                   }}
                 />
               </View>

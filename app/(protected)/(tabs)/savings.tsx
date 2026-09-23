@@ -171,11 +171,11 @@ function LegacySavings() {
             />
             <DepositTrigger
               buttonText="Deposit"
-              modal={DEPOSIT_MODAL.OPEN_SAVINGS_FUND}
+              modal={DEPOSIT_MODAL.OPEN_FORM}
               preserveSelectedVault
               source="savings_header"
               onBeforeOpen={() => {
-                useDepositStore.getState().setDepositFromSolid(false);
+                useDepositStore.getState().setDepositFromSolid(true);
               }}
             />
           </View>
