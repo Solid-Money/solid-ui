@@ -499,23 +499,19 @@ interface TierPageProps {
 const PremiumUpgradeFooter = ({
   selectedTier,
   onUpgradePress,
+  currentTier,
   cta,
 }: {
   selectedTier: RewardsTier;
+  currentTier?: RewardsTier;
   /** The button, its subtitle and whether it does anything — see `tierUpgradeCta`. */
   cta: TierUpgradeCta;
   onUpgradePress: (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => void;
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { label, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
-  // Gone, not greyed out, for any tier the user already has.
-  //
-  // Was `selectedTier !== currentTier`, which only ever hid the footer on the
-  // one tab that matched exactly — so someone on Ultra swiping to Prime, or to
-  // Core, still got a full-width dead button over the benefits they had just
-  // paid for. `held` covers the tier they hold and every tier under it.
-  const isVisible = !held;
+  const { label, subtitle: ctaSubtitle, enabled: canUpgrade } = cta;
+  const isVisible = selectedTier !== currentTier;
   const lastPremiumTier = useRef<RewardsTier.PRIME | RewardsTier.ULTRA>(RewardsTier.PRIME);
 
   if (selectedTier === RewardsTier.PRIME || selectedTier === RewardsTier.ULTRA) {
@@ -927,6 +923,7 @@ function RewardsBenefitsForAccount() {
       />
       <PremiumUpgradeFooter
         selectedTier={selectedTier}
+        currentTier={currentTier}
         cta={ctaFor(selectedTier)}
         onUpgradePress={handleUpgradePress}
       />
