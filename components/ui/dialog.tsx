@@ -290,7 +290,12 @@ const DialogContent = React.forwardRef<
             closeOnPress={isNativeBottomSheet}
           />
           <View
-            style={StyleSheet.absoluteFill}
+            // Give Android hit testing an explicit order: the visible dialog
+            // stays above its full-screen Pressable backdrop.
+            style={[
+              StyleSheet.absoluteFill,
+              Platform.OS === 'android' ? { zIndex: 1, elevation: 1 } : undefined,
+            ]}
             pointerEvents="box-none"
             className={cn(
               'flex items-center',

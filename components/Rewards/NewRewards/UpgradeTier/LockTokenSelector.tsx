@@ -64,6 +64,7 @@ const LockTokenSelector = () => {
       <WalletTokenList
         tokens={tokens}
         selectedToken={selectedToken}
+        showChainLabel={false}
         onSelect={token => {
           const asset = lockAssetFromRow(token);
           if (asset) setLockAsset(asset);

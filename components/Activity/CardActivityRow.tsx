@@ -71,11 +71,8 @@ const CardActivityRow = ({
 
   const formattedTimestamp = formatActivityTimestamp(getCardTransactionTimestamp(transaction));
 
-  const cashbackLabel = cashbackInfo?.isEscrowed
-    ? 'Cashback (Escrowed)'
-    : cashbackInfo?.isPending
-      ? 'Cashback (Pending)'
-      : 'Cashback';
+  const cashbackLabel =
+    cashbackInfo?.isPending && !cashbackInfo.isEscrowed ? 'Cashback (Pending)' : 'Cashback';
 
   return (
     <Pressable
@@ -134,8 +131,7 @@ const CardActivityRow = ({
         </Text>
         {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
         {/* Green whether or not the payout has landed: it is money coming back
-            either way, and the label on the left already carries the escrow
-            status, so the figure does not repeat it. */}
+            either way. The receipt shows when escrowed cashback releases. */}
         {cashbackInfo?.amount && (
           <Text className="text-sm font-medium text-brand">{cashbackInfo.amount}</Text>
         )}

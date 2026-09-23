@@ -21,6 +21,7 @@ interface TooltipProps {
   side?: 'top' | 'right' | 'bottom' | 'left';
   sideOffset?: number;
   analyticsContext?: string;
+  accessibilityLabel?: string;
   classNames?: TooltipClassNames;
 }
 
@@ -31,6 +32,7 @@ const TooltipPopover = ({
   side = 'bottom',
   sideOffset = 4,
   analyticsContext,
+  accessibilityLabel,
   classNames,
 }: TooltipProps) => {
   const insets = useSafeAreaInsets();
@@ -44,6 +46,9 @@ const TooltipPopover = ({
   const getTrigger = () => {
     return (
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? 'Show explanation'}
+        hitSlop={10}
         onPress={() => {
           track(TRACKING_EVENTS.TOOLTIP_OPENED, {
             context: analyticsContext || 'unknown',

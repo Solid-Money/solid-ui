@@ -14,12 +14,7 @@ import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
-import {
-  useOptInToRewards,
-  useReferralSummary,
-  useRewardsUserData,
-  useTierBenefits,
-} from '@/hooks/useRewards';
+import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
@@ -43,7 +38,6 @@ import TierBenefitsGrid from './TierBenefitsGrid';
 import TierMembershipSheet from './TierMembershipSheet';
 import TierTrialPill from './TierTrialPill';
 import TierUpgradeCard from './TierUpgradeCard';
-import { findTierBenefits, resolveTierUpgradeBenefits } from './UpgradeTier/tierUpgradeBenefits';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -63,7 +57,6 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
-  const { data: tierBenefits } = useTierBenefits();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
@@ -164,10 +157,7 @@ export default function RewardsScreenNew() {
    * already in.
    */
   const joinClubTier = nextPurchasableTier(membership);
-  const showJoinClubCard = Boolean(membership && !membership.pointsUnlockEnabled && joinClubTier);
-  const joinClubBenefits = joinClubTier
-    ? resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, joinClubTier)).slice(0, 3)
-    : [];
+  const showJoinClubCard = Boolean(membership && !membership.pointsUnlockEnabled);
 
   if (rewardsLocked) {
     return (
@@ -326,13 +316,10 @@ export default function RewardsScreenNew() {
             the second is a year-long lock with a price — so once
             `pointsUnlockEnabled` is off, that card advertises a route the
             backend refuses, and the membership teaser takes its place. */}
-        {showJoinClubCard && joinClubTier ? (
+        {showJoinClubCard &&
+        (joinClubTier === RewardsTier.PRIME || joinClubTier === RewardsTier.ULTRA) ? (
           <View className="mt-8 px-4">
-            <JoinTierClubCard
-              tier={joinClubTier}
-              benefits={joinClubBenefits}
-              onPress={() => handleUpgradeTier(joinClubTier)}
-            />
+            <JoinTierClubCard tier={joinClubTier} onPress={() => handleUpgradeTier(joinClubTier)} />
           </View>
         ) : showTierUpgradeCard ? (
           <View className="mt-8 px-4">

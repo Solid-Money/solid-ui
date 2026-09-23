@@ -2,45 +2,22 @@ import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import {
-  CashbackIcon,
-  IconBadge,
-  SubscriptionIcon,
-  YieldBoostIcon,
-} from '@/components/Rewards/NewRewards/tierBenefitIcons';
-import { TOP_RIGHT_WASH } from '@/components/Rewards/NewRewards/tierGradients';
+import { IconBadge } from '@/components/Rewards/NewRewards/tierBenefitIcons';
 import { Text } from '@/components/ui/text';
 import { getTierIcon } from '@/constants/rewards';
 import { getTierDisplayName } from '@/lib/tierNames';
 import { RewardsTier } from '@/lib/types';
 
+import UpgradeTierCashbackIcon from './UpgradeTierCashbackIcon';
+
 import type { TierUpgradeBenefit } from './tierUpgradeBenefits';
 
-/**
- * The card's backdrop, per tier.
- *
- * Was `rewards-tiers/*-summary.png`, which is the wrong asset: those are the
- * finished marketing cards, with "+2% Yield boost" and the rest set into the
- * artwork. Behind this card's own benefit list they showed as a second, larger
- * copy of the same words, half-covered.
- *
- * The design asks for a plain grey gradient, so it is a gradient — two stops,
- * grey at the top-right corner falling to near-black at the bottom-left, which
- * is the direction every v3 wash runs (see `tierGradients`). It lifts slightly
- * for the higher tiers so Prime and Ultra still read as distinct without
- * spelling anything out.
- */
-const TIER_BACKDROP: Record<RewardsTier, readonly [string, string]> = {
-  [RewardsTier.CORE]: ['#3A3A3A', '#141414'],
-  [RewardsTier.PRIME]: ['#454545', '#151515'],
-  [RewardsTier.ULTRA]: ['#505050', '#161616'],
-};
-
-/** The benefit glyphs, at the 33px the tier card draws them. */
 const BENEFIT_ICON_SIZE = 33;
-
-/** The tier mark, at the size the heading beside it is set in. */
-const TIER_ICON_SIZE = 28;
+const cardTexture = require('@/assets/images/rewards-welcome-texture.png');
+const tierStar = require('@/assets/images/rewards-tiers/upgrade-card-star.svg');
+const yieldIcon = require('@/assets/images/rewards-tiers/upgrade-card-yield.svg');
+const subscriptionIcon = require('@/assets/images/rewards-tiers/upgrade-card-subscription.svg');
+const cashbackCapIcon = require('@/assets/images/rewards-tiers/upgrade-card-cap.svg');
 
 interface UpgradeTierHeroCardProps {
   tier: RewardsTier;
@@ -51,45 +28,63 @@ interface UpgradeTierHeroCardProps {
 
 /** The tier being bought, and what it gets you. */
 const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCardProps) => (
-  <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+  <View className="min-h-[303px] overflow-hidden rounded-[23px] bg-[#1C1C1C]">
     <LinearGradient
-      colors={TIER_BACKDROP[tier]}
-      {...TOP_RIGHT_WASH}
+      colors={['#505050', '#1C1C1C']}
+      start={{ x: 1, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+    />
+    <Image
+      source={cardTexture}
+      alt=""
+      contentFit="fill"
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: -86,
+        width: 848,
+        height: 565,
+        opacity: 0.06,
+        transform: [{ translateX: -424 }],
+      }}
+    />
+    <LinearGradient
+      colors={['rgba(28,28,28,0)', '#1C1C1C', '#1C1C1C']}
+      locations={[0, 0.7, 1]}
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
     />
 
-    <View className="p-5">
-      <View className="flex-row items-start justify-between">
+    <View className="px-[23px] pb-6 pt-[23px]">
+      <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          {/* The rewards screen's mark, tinted white rather than the benefits
-              screen's outline, which is stroked at half opacity and reads grey
-              against this heading. Still artwork either way: the animated star
-              is a 235px hero's worth of bundle and decoding for a 28px glyph. */}
           <Image
-            source={getTierIcon(tier)}
+            source={tier === RewardsTier.PRIME ? tierStar : getTierIcon(tier)}
             alt=""
-            style={{ width: TIER_ICON_SIZE, height: TIER_ICON_SIZE }}
+            style={{ width: 24.7275, height: 23.5172 }}
             contentFit="contain"
-            tintColor="#FFFFFF"
+            tintColor={tier === RewardsTier.PRIME ? undefined : '#FFFFFF'}
           />
-          <Text className="text-[28px] font-medium leading-8 text-white">
+          <Text className="text-[26px] font-medium leading-[31px] text-white">
             {getTierDisplayName(tier)}
           </Text>
         </View>
 
         {statusLabel ? (
-          <View className="rounded-full bg-white/10 px-3 py-2">
-            <Text className="text-[13px] leading-4 text-white/70">{statusLabel}</Text>
+          <View className="-mr-[6px] rounded-full bg-white/10 px-[11px] py-2">
+            <Text className="text-[14px] font-medium leading-[14px] text-white">{statusLabel}</Text>
           </View>
         ) : null}
       </View>
 
-      <Text className="mt-1 text-[16px] leading-5 text-white/50">Membership</Text>
+      <Text className="mt-[7px] text-[16px] leading-5 text-white/70">Membership</Text>
 
-      <View className="mt-6 gap-3">
+      <View className="mt-[35px] gap-[10px]">
         {benefits.map(benefit => (
-          <View key={benefit.key} className="flex-row items-center gap-3">
+          <View key={benefit.key} className="flex-row items-center gap-2">
             <BenefitIcon benefitKey={benefit.key} />
             <Text className="flex-1 text-[16px] font-medium leading-5 text-white">
               {benefit.label}
@@ -112,15 +107,34 @@ const UpgradeTierHeroCard = ({ tier, benefits, statusLabel }: UpgradeTierHeroCar
 const BenefitIcon = ({ benefitKey }: { benefitKey: TierUpgradeBenefit['key'] }) => {
   switch (benefitKey) {
     case 'cashback':
-      return <CashbackIcon size={BENEFIT_ICON_SIZE} />;
+      return <UpgradeTierCashbackIcon />;
     case 'yield-boost':
-      return <YieldBoostIcon size={BENEFIT_ICON_SIZE} />;
+      return (
+        <Image
+          source={yieldIcon}
+          alt=""
+          contentFit="contain"
+          style={{ width: 33, height: 32.3774 }}
+        />
+      );
     case 'subscription':
-      return <SubscriptionIcon rate="%" size={BENEFIT_ICON_SIZE} />;
+      return (
+        <Image
+          source={subscriptionIcon}
+          alt=""
+          contentFit="contain"
+          style={{ width: 33, height: 32.3774 }}
+        />
+      );
     case 'cashback-cap':
       return (
         <IconBadge size={BENEFIT_ICON_SIZE}>
-          <Text className="text-[13px] font-medium text-white">$</Text>
+          <Image
+            source={cashbackCapIcon}
+            alt=""
+            contentFit="contain"
+            style={{ width: 19, height: 18.6604 }}
+          />
         </IconBadge>
       );
   }

@@ -13,6 +13,9 @@ interface WalletTokenButtonProps {
   onPress: () => void;
   /** When true the button is static (no chevron, not pressable). */
   disabled?: boolean;
+  /** Hide the chain name under the token ticker. */
+  showChainName?: boolean;
+  tickerFontSize?: 16 | 18;
 }
 
 /**
@@ -25,6 +28,8 @@ const WalletTokenButton = ({
   selectedToken,
   onPress,
   disabled = false,
+  showChainName = true,
+  tickerFontSize = 18,
 }: WalletTokenButtonProps) => {
   return (
     <Pressable
@@ -46,10 +51,16 @@ const WalletTokenButton = ({
             size={28}
           />
           <View className="flex-col">
-            <Text className="text-lg/5 font-semibold">{selectedToken.contractTickerSymbol}</Text>
-            <Text className="text-sm/4 font-medium opacity-50">
-              {getBridgeChain(selectedToken.chainId)?.name}
+            <Text
+              className={cn('font-semibold', tickerFontSize === 16 ? 'text-base/5' : 'text-lg/5')}
+            >
+              {selectedToken.contractTickerSymbol}
             </Text>
+            {showChainName && (
+              <Text className="text-sm/4 font-medium opacity-50">
+                {getBridgeChain(selectedToken.chainId)?.name}
+              </Text>
+            )}
           </View>
           {!disabled && <ChevronDown size={20} color="white" />}
         </>

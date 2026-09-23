@@ -53,6 +53,7 @@ const TierUpgradeModalProvider = () => {
       onBackPress={back}
       contentKey={currentModal.name}
       contentClassName="md:max-w-[480px]"
+      gradientHeader={!isReview && !isTokenSelector}
     >
       {isReview ? (
         <UpgradeReviewContent />

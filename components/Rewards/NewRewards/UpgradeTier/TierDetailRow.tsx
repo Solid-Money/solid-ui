@@ -1,16 +1,20 @@
 import { type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 interface TierDetailRowProps {
   label: string;
   /** The value, as text. Omitted only when `children` renders it instead. */
   value?: string;
+  valueClassName?: string;
   /** The smaller grey line under the value, e.g. a FUSE amount's USD worth. */
   secondaryValue?: string;
-  /** A "?" the user can tap for an explanation, as on the lock-duration row. */
-  onExplain?: () => void;
+  /** A short explanation opened from the question mark beside the label. */
+  tooltip?: string;
+  tooltipAnalyticsContext?: string;
   /** Drawn under the row. The last row in a card does not have one. */
   withDivider?: boolean;
   /** Replaces the value, for a row that renders something other than text. */
@@ -28,31 +32,38 @@ interface TierDetailRowProps {
 const TierDetailRow = ({
   label,
   value,
+  valueClassName,
   secondaryValue,
-  onExplain,
+  tooltip,
+  tooltipAnalyticsContext,
   withDivider = false,
   children,
 }: TierDetailRowProps) => (
   <View>
     <View className="min-h-[66px] flex-row items-center justify-between px-5">
       <View className="flex-row items-center gap-1.5">
-        <Text className="text-[16px] leading-5 text-white/70">{label}</Text>
-        {onExplain ? (
-          <Pressable
-            accessibilityRole="button"
+        <Text className="text-[16px] leading-6 text-white/70">{label}</Text>
+        {tooltip ? (
+          <TooltipPopover
+            text={tooltip}
+            side="top"
+            analyticsContext={tooltipAnalyticsContext}
             accessibilityLabel={`What is ${label}?`}
-            onPress={onExplain}
-            hitSlop={12}
-            className="h-[18px] w-[18px] items-center justify-center rounded-full bg-white/10 transition-opacity active:opacity-60"
-          >
-            <Text className="text-[11px] leading-[13px] text-white/60">?</Text>
-          </Pressable>
+            classNames={{ trigger: '-mt-[3px]' }}
+          />
         ) : null}
       </View>
 
       {children ?? (
         <View className="ml-4 flex-1 items-end">
-          <Text className="text-right text-[16px] font-semibold leading-5 text-white">{value}</Text>
+          <Text
+            className={cn(
+              'text-right text-[16px] font-semibold leading-6 text-white',
+              valueClassName,
+            )}
+          >
+            {value}
+          </Text>
           {secondaryValue ? (
             <Text className="mt-0.5 text-right text-[13px] leading-4 text-white/50">
               {secondaryValue}

@@ -1,22 +1,77 @@
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  LinearGradient as SvgLinearGradient,
+  Path,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
 import { formatBalanceUSD } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
-import { TOP_RIGHT_WASH } from './tierGradients';
 
 import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
 
-/** #94F27F, the rewards green, dissolved to nothing. */
-const CORNER_GRADIENT = [
-  'rgba(148,242,127,0.18)',
-  'rgba(148,242,127,0.05)',
-  'rgba(148,242,127,0)',
-] as const;
-const CORNER_GRADIENT_STOPS = [0, 0.35, 0.75] as const;
+/**
+ * The two green washes from Figma node 26080:21244.
+ *
+ * This is intentionally an SVG rather than a full-card `LinearGradient`: the
+ * design uses an oversized, partly off-canvas circle plus a shallow rotated
+ * strip. A corner-to-corner gradient keeps gaining colour down the right edge,
+ * which is why the native card looked much greener than the Figma reference.
+ */
+const RewardsGradient = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 385 160"
+    preserveAspectRatio="none"
+    pointerEvents="none"
+    style={StyleSheet.absoluteFill}
+  >
+    <Defs>
+      <SvgLinearGradient
+        id="rewardsCircleGradient"
+        x1={134.378}
+        y1={75.1874}
+        x2={194.367}
+        y2={187.969}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop offset={0} stopColor="#94F27F" stopOpacity={0} />
+        <Stop offset={1} stopColor="#94F27F" stopOpacity={1} />
+      </SvgLinearGradient>
+      <SvgLinearGradient
+        id="rewardsStripGradient"
+        x1={0}
+        y1={0}
+        x2={0}
+        y2={87.569}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop offset={0} stopColor="#94F27F" stopOpacity={0} />
+        <Stop offset={1} stopColor="#94F27F" stopOpacity={0.1} />
+      </SvgLinearGradient>
+    </Defs>
+
+    <G transform="translate(371.5585 -100.2615) rotate(12.27) scale(1 -1) translate(-219.1635 -219.1635)">
+      <Circle
+        cx={219.1635}
+        cy={219.1635}
+        r={219.1635}
+        fill="url(#rewardsCircleGradient)"
+        opacity={0.2}
+      />
+    </G>
+    <G transform="translate(252.2925 -16.8275) rotate(10.46) scale(1 -1) translate(-221.0165 -43.7845)">
+      <Rect width={442.033} height={87.569} fill="url(#rewardsStripGradient)" />
+    </G>
+  </Svg>
+);
 
 interface RewardsSummaryCardProps {
   /** This month's cashback, settled and escrowed together. */
@@ -87,18 +142,7 @@ const RewardsSummaryCard = ({
 }: RewardsSummaryCardProps) => {
   return (
     <View className="relative mx-4 h-40 overflow-hidden rounded-twice bg-card">
-      {/* The design's wash off the top-right corner, in the same green as the
-          card's own glyph. Drawn corner-to-corner and faded out well before the
-          middle, so it is a tint on the header rather than a band across the
-          figures — those have to stay legible, and a gradient that reaches them
-          is the version that makes them harder to read. */}
-      <LinearGradient
-        colors={CORNER_GRADIENT}
-        locations={CORNER_GRADIENT_STOPS}
-        {...TOP_RIGHT_WASH}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
+      <RewardsGradient />
 
       <View className="h-16 flex-row items-center px-3">
         <RewardsIcon />

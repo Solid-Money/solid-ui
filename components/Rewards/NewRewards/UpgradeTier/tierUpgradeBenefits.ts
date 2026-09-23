@@ -38,7 +38,13 @@ export const resolveTierUpgradeBenefits = (
         }
       : null,
     benefits.cardCashbackCap?.title
-      ? { key: 'cashback-cap', label: benefits.cardCashbackCap.title }
+      ? {
+          key: 'cashback-cap',
+          label: benefits.cardCashbackCap.title
+            .replace(/\s*\n\s*/g, ' ')
+            .replace(/^Up to\s+/i, '')
+            .replace(/\bmonthly$/, 'monthly cashback cap'),
+        }
       : null,
   ];
 

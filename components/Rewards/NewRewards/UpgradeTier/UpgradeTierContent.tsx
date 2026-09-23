@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import { formatUnits } from 'viem';
 
 import Loading from '@/components/Loading';
 import { Button } from '@/components/ui/button';
@@ -7,8 +8,8 @@ import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useTierBenefits } from '@/hooks/useRewards';
-import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
 import { lockTokenRow } from '@/lib/lockTokenRows';
@@ -34,7 +35,7 @@ import {
   nextPurchasableTier,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
-import { RewardsTier } from '@/lib/types';
+import { RewardsTier, VaultType } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
@@ -66,7 +67,7 @@ const UpgradeTierContent = () => {
   const { data: membership, isLoading } = useTierMembership();
   const { data: tierBenefits } = useTierBenefits();
   const { data: chain } = useTierUpgradeChainState(membership?.contracts);
-  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
+  const { maxAPY: fuseSavingsApy } = useMaxAPY(VaultType.FUSE);
   const requestedTier = useTierUpgradeStore(state => state.tier);
   const route = useTierUpgradeStore(state => state.route);
   const setRoute = useTierUpgradeStore(state => state.setRoute);
@@ -148,7 +149,11 @@ const UpgradeTierContent = () => {
   // the picker collapses to that one row.
   const zapAvailable = Boolean(membership.contracts.lockZapAddress);
   const paymentAsset = resolveLockAsset(chosenAsset, zapAvailable);
-  const paymentBalance = lockPaymentBalance(paymentAsset, balances);
+  const paymentBalanceFuse = lockPaymentBalance(paymentAsset, balances);
+  // soFUSE is a yield-bearing share token. Its FUSE value decides affordability,
+  // but a row named "Balance" must show the number of tokens the user holds.
+  const paymentTokenBalance =
+    paymentAsset === 'soFUSE' ? Number(formatUnits(chain?.shares ?? 0n, 18)) : paymentBalanceFuse;
   // Built by the same helper the picker's rows come from, so the chip here and
   // the row the user tapped there cannot disagree about a ticker or an icon.
   // No price: this chip has no dollar column to fill.
@@ -160,7 +165,7 @@ const UpgradeTierContent = () => {
   });
   // Measured against the token that is actually paying, which is the one the
   // row above the shortfall names.
-  const shortfallFuse = Math.max(0, remainingFuse - paymentBalance);
+  const shortfallFuse = Math.max(0, remainingFuse - paymentBalanceFuse);
 
   const affordable =
     route === 'cash'
@@ -193,19 +198,19 @@ const UpgradeTierContent = () => {
    * dismisses the wrong one.
    */
   const handleTopUp = () => {
+    const depositToSavings = route === 'lock' && paymentAsset === 'soFUSE';
     close();
 
-    const depositStore = useDepositStore.getState();
-    depositStore.resetDepositFlow();
-
-    if (route === 'lock' && paymentAsset === 'soFUSE') {
-      depositStore.setSavingsFundIntent('savings');
-      depositStore.setDepositFromSolid(false);
-      selectSavingsFundToken('WFUSE');
-      return;
-    }
-
-    depositStore.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+    // The upgrade modal's native exit animation takes 180ms. Opening a second
+    // portal during that same render can leave Android with a black surface.
+    // Let the first dialog finish leaving before mounting the deposit flow.
+    setTimeout(() => {
+      const depositStore = useDepositStore.getState();
+      depositStore.resetDepositFlow();
+      // A cash upgrade is paid in USDC; buying FUSE would not fill that balance.
+      if (route === 'lock') depositStore.setUpgradeTopUp({ tier, depositToSavings });
+      depositStore.setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE);
+    }, 200);
   };
 
   const handleReview = () => {
@@ -221,22 +226,28 @@ const UpgradeTierContent = () => {
         statusLabel={
           dateLabel && membership.currentTier === tier
             ? `${dateLabel.label} ${formatMembershipDate(dateLabel.date)}`
-            : undefined
+            : route === 'cash'
+              ? 'Renews annually'
+              : undefined
         }
       />
 
-      <Text className="mb-3 mt-7 text-center text-[16px] leading-5 text-white/50">
-        Upgrade tier with
-      </Text>
+      {tier !== RewardsTier.ULTRA && (
+        <>
+          <Text className="mb-3 mt-7 text-center text-[16px] leading-5 text-white/70">
+            Upgrade tier with
+          </Text>
 
-      <UpgradeRouteSwitch routes={routes} selected={route} onSelect={handleRoute} />
+          <UpgradeRouteSwitch routes={routes} selected={route} onSelect={handleRoute} />
+        </>
+      )}
 
       <View className="mt-5 overflow-hidden rounded-[20px] bg-[#1C1C1C]">
         {route === 'cash' ? (
           <>
             <TierDetailRow label="Annual Fee" value={formatUsd(offer.annualFeeUsd)} withDivider />
             <TierDetailRow
-              label="Balance"
+              label="Your balance"
               value={`${formatUsdHeld(availableUsdc).replace('$', '')} USDC`}
             />
           </>
@@ -250,27 +261,41 @@ const UpgradeTierContent = () => {
                 this shows while the zap is not deployed: a picker with one row
                 is a label, and a chevron that opens nothing is a promise the
                 screen cannot keep. */}
-            <TierDetailRow label="Pay with" withDivider>
+            <TierDetailRow label="Upgrade with" withDivider>
               <WalletTokenButton
                 selectedToken={paymentToken}
                 onPress={selectToken}
                 disabled={availableLockAssets(zapAvailable).length < 2}
+                showChainName={false}
+                tickerFontSize={16}
               />
             </TierDetailRow>
             <TierDetailRow label="Amount" value={`${formatFuse(remainingFuse)} FUSE`} withDivider />
-            {/* Paired with "Amount" the way the cash tab pairs a fee with a
-                balance: the CTA below flips between "Review upgrade" and "Top
-                up" on the difference between these two rows, so both are on
-                screen when it does. */}
             <TierDetailRow
-              label="Balance"
-              value={`${formatFuseHeld(paymentBalance)} FUSE`}
+              label="FUSE APY"
+              value={fuseSavingsApy > 0 ? `${fuseSavingsApy.toFixed(1)}%` : '—'}
+              valueClassName="text-[#94F27F]"
+              tooltip="The FUSE Savings APY is based on recent vault performance and can change. It does not include a tier yield boost."
+              tooltipAnalyticsContext="tier_upgrade_fuse_apy"
               withDivider
             />
             <TierDetailRow
               label="Lock duration"
               value={formatLockDuration(membership.lock.durationDays)}
-              onExplain={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
+              tooltip={`Your FUSE stays in Savings and keeps earning while locked for ${formatLockDuration(membership.lock.durationDays)}. It unlocks automatically when the term ends.`}
+              tooltipAnalyticsContext="tier_upgrade_lock_duration"
+              withDivider
+            />
+            {/* Keep the balance next to the funding action: the CTA below flips
+                between "Review upgrade" and "Top up" based on this amount. */}
+            <TierDetailRow
+              label="Your balance"
+              value={`${formatFuseHeld(paymentTokenBalance)} ${paymentAsset}`}
+              secondaryValue={
+                paymentAsset === 'soFUSE'
+                  ? `≈ ${formatFuseHeld(paymentBalanceFuse)} FUSE`
+                  : undefined
+              }
             />
           </>
         )}
@@ -309,7 +334,7 @@ const UpgradeTierContent = () => {
           gap was under half a unit, told the user nothing, and pointed at a
           top-up of nothing. Affordable hides it outright; a sub-unit gap is
           rounded up to the 1 FUSE that would actually clear it. */}
-      {!affordable && route === 'lock' && paymentBalance > 0 && shortfallFuse > 0 ? (
+      {!affordable && route === 'lock' && paymentBalanceFuse > 0 && shortfallFuse > 0 ? (
         <Pressable
           accessibilityRole="button"
           onPress={handleTopUp}

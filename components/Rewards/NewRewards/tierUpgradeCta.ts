@@ -48,19 +48,28 @@ export const tierUpgradeCta = ({
   selectedTier,
   currentTier,
   unavailable,
+  loadFailed = false,
   pending,
   routes,
+  annualFeeUsd,
+  lockFuse,
   remainingFuse,
   offerHeld = false,
 }: {
   selectedTier: RewardsTier;
   currentTier?: RewardsTier;
-  /** No confirmed tier to compare against — the membership is still loading, or failed. */
+  /** No confirmed tier to compare against. */
   unavailable: boolean;
+  /** The rewards request settled unsuccessfully, so the CTA should offer recovery. */
+  loadFailed?: boolean;
   /** An upgrade is already in flight and being reconciled. */
   pending: boolean;
   /** v3: the ways this tier is on sale right now. Empty when it is not. */
   routes: TierUpgradeRoute[];
+  /** The membership offer's cash price, used in the combined-route subtitle. */
+  annualFeeUsd?: number | null;
+  /** The membership offer's full lock requirement. */
+  lockFuse?: number;
   /** v2: the FUSE still needed to unlock it, or undefined when that is off. */
   remainingFuse?: number;
   /**
@@ -102,9 +111,18 @@ export const tierUpgradeCta = ({
     };
   }
 
+  if (loadFailed) {
+    return {
+      label: 'Try again',
+      subtitle: 'Unable to load your membership',
+      enabled: true,
+      held: false,
+    };
+  }
+
   // Not "you have it" — we do not yet know what they have. The membership is
-  // still loading or the call failed, so the footer stays put and says so
-  // rather than vanishing and reappearing under the user's thumb.
+  // still loading. The caller keeps the footer out of the layout during this
+  // state, so this is a fail-closed fallback rather than user-facing copy.
   if (action === 'unavailable') {
     return {
       label: 'Tier unavailable',
@@ -115,10 +133,19 @@ export const tierUpgradeCta = ({
   }
 
   if (routes.length > 0) {
+    const routeKey = [...routes].sort().join(',');
+    const fuseAmount = lockFuse != null && lockFuse > 0 ? `${lockFuse / 1000}k` : undefined;
+    const pricedSubtitle =
+      routeKey === 'cash,lock' && annualFeeUsd != null && annualFeeUsd > 0 && fuseAmount
+        ? `${annualFeeUsd}$/Year or ${fuseAmount} FUSE to upgrade`
+        : routeKey === 'lock' && fuseAmount
+          ? `Deposit ${fuseAmount} FUSE to upgrade`
+          : undefined;
+
     return {
       label: 'Upgrade',
       // Sorted so the key does not depend on the order the offer listed them in.
-      subtitle: ROUTE_SUBTITLE[[...routes].sort().join(',')] ?? 'Upgrade to hold the tier',
+      subtitle: pricedSubtitle ?? ROUTE_SUBTITLE[routeKey] ?? 'Upgrade to hold the tier',
       enabled: true,
       held: false,
     };

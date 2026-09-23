@@ -764,7 +764,12 @@ export default function RewardsBenefitsScreenNew() {
 }
 
 function RewardsBenefitsForAccount() {
-  const { data: rewardsData, isError } = useRewardsUserData();
+  const {
+    data: rewardsData,
+    isError,
+    isFetching: isRewardsFetching,
+    refetch: refetchRewards,
+  } = useRewardsUserData();
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
   const timedOut = useRewardsUpgradeStore(state => state.timedOut);
@@ -827,18 +832,24 @@ function RewardsBenefitsForAccount() {
     return availableRoutes(offer);
   };
 
-  const ctaFor = (tier: RewardsTier) =>
-    tierUpgradeCta({
+  const ctaFor = (tier: RewardsTier) => {
+    const offer = findOffer(membership, tier);
+
+    return tierUpgradeCta({
       selectedTier: tier,
       currentTier,
       unavailable: !currentTier || isError,
+      loadFailed: isError && !isRewardsFetching,
       pending,
       routes: upgradeRoutes(tier),
+      annualFeeUsd: offer?.annualFeeUsd,
+      lockFuse: offer?.lockFuse,
       remainingFuse: upgradeTarget(tier)?.remainingFuse,
       // The membership endpoint's own verdict, so a skew between it and the
       // rewards endpoint cannot leave an upgrade CTA on a tier the user has.
-      offerHeld: findOffer(membership, tier)?.held,
+      offerHeld: offer?.held,
     });
+  };
 
   /**
    * Whichever program is selling this tier gets the press.
@@ -848,6 +859,11 @@ function RewardsBenefitsForAccount() {
    * savings deposit, which under v3 unlocks nothing.
    */
   const handleUpgradePress = (tier: RewardsTier.PRIME | RewardsTier.ULTRA) => {
+    if (isError) {
+      void refetchRewards();
+      return;
+    }
+
     if (!ctaFor(tier).enabled) return;
 
     if (upgradeRoutes(tier).length > 0) {
@@ -928,11 +944,13 @@ function RewardsBenefitsForAccount() {
           height: insets.bottom + FADE_EXTENT,
         }}
       />
-      <PremiumUpgradeFooter
-        selectedTier={selectedTier}
-        cta={ctaFor(selectedTier)}
-        onUpgradePress={handleUpgradePress}
-      />
+      {(currentTier || (isError && !isRewardsFetching)) && (
+        <PremiumUpgradeFooter
+          selectedTier={selectedTier}
+          cta={ctaFor(selectedTier)}
+          onUpgradePress={handleUpgradePress}
+        />
+      )}
       <UpgradeTierSheet
         open={isUpgradeSheetOpen && canUseUpgradeSheet}
         remainingFuse={upgradeTarget(upgradeTier)?.remainingFuse}

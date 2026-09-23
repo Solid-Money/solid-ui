@@ -20,17 +20,24 @@ describe('tierUpgradeCta', () => {
    * user could actually buy read "Tier unavailable".
    */
   it('offers a tier that v3 is selling, with v2 switched off', () => {
-    expect(cta({ routes: ['cash', 'lock'], remainingFuse: undefined })).toEqual({
+    expect(
+      cta({
+        routes: ['cash', 'lock'],
+        annualFeeUsd: 250,
+        lockFuse: 50_000,
+        remainingFuse: undefined,
+      }),
+    ).toEqual({
       label: 'Upgrade',
-      subtitle: 'Lock FUSE or pay the annual fee',
+      subtitle: '250$/Year or 50k FUSE to upgrade',
       enabled: true,
       held: false,
     });
   });
 
   it('names the only route when a tier is sold just one way', () => {
-    expect(cta({ selectedTier: ULTRA, routes: ['lock'] }).subtitle).toBe(
-      'Lock FUSE to hold the tier',
+    expect(cta({ selectedTier: ULTRA, routes: ['lock'], lockFuse: 400_000 }).subtitle).toBe(
+      'Deposit 400k FUSE to upgrade',
     );
     expect(cta({ routes: ['cash'] }).subtitle).toBe('Pay the annual fee to hold the tier');
   });
@@ -156,5 +163,14 @@ describe('tierUpgradeCta', () => {
       held: false,
     });
     expect(cta({ currentTier: undefined, routes: ['cash', 'lock'] }).enabled).toBe(false);
+  });
+
+  it('offers a retry when loading the current membership failed', () => {
+    expect(cta({ unavailable: true, loadFailed: true, routes: ['cash', 'lock'] })).toEqual({
+      label: 'Try again',
+      subtitle: 'Unable to load your membership',
+      enabled: true,
+      held: false,
+    });
   });
 });
