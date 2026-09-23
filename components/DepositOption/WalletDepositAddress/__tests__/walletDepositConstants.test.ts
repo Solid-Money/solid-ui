@@ -1,11 +1,14 @@
 import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
 
 import {
+  getAllWalletDepositTokens,
   getDefaultWalletDepositSelection,
   getWalletDepositMinimum,
   getWalletDepositNetworks,
+  getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
@@ -159,5 +162,45 @@ describe('getDefaultWalletDepositSelection', () => {
   it('offers USDC on the chain it opens on', () => {
     const { chainId, symbol } = getDefaultWalletDepositSelection();
     expect(getWalletDepositTokens(chainId).map(token => token.symbol)).toContain(symbol);
+  });
+});
+
+describe('getAllWalletDepositTokens', () => {
+  it('lists every currency some chain accepts, once, leading with the default', () => {
+    const symbols = getAllWalletDepositTokens().map(token => token.symbol);
+    expect(symbols[0]).toBe('USDC');
+    expect(new Set(symbols).size).toBe(symbols.length);
+    expect(symbols).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'FUSE']));
+  });
+});
+
+describe('getWalletDepositNetworksForToken', () => {
+  it('only offers the chains that carry the currency', () => {
+    expect(getWalletDepositNetworksForToken('ETH').map(network => network.chainId)).toEqual([
+      mainnet.id,
+    ]);
+    expect(getWalletDepositNetworksForToken('USDT').map(network => network.chainId)).not.toContain(
+      base.id,
+    );
+  });
+
+  it('offers every chain when no currency is chosen', () => {
+    expect(getWalletDepositNetworksForToken(undefined)).toEqual(getWalletDepositNetworks());
+  });
+});
+
+describe('resolveWalletDepositChain', () => {
+  it('opens on Fuse when Fuse carries the currency', () => {
+    expect(resolveWalletDepositChain('USDC')).toBe(fuse.id);
+  });
+
+  it('falls back to a chain that carries it when Fuse does not', () => {
+    expect(resolveWalletDepositChain('ETH')).toBe(mainnet.id);
+  });
+
+  // Changing only the currency from the address screen should not move the chain.
+  it('keeps the current chain when it carries the currency', () => {
+    expect(resolveWalletDepositChain('USDC', polygon.id)).toBe(polygon.id);
+    expect(resolveWalletDepositChain('ETH', polygon.id)).toBe(mainnet.id);
   });
 });

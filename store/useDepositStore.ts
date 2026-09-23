@@ -94,11 +94,11 @@ export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
   /**
-   * Set while "Select chain" is open from the address screen's network button,
+   * Set while "Select token" is open from the address screen's currency pill,
    * so back returns to the address. Back from the address also lands on "Select
-   * chain", so the previous step alone cannot tell the two apart.
+   * token", so the previous step alone cannot tell the two apart.
    */
-  isChangingChain?: boolean;
+  isChangingToken?: boolean;
 }
 
 interface DepositState {

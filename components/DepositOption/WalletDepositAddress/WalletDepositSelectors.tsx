@@ -66,16 +66,16 @@ const WalletDepositSelectors = ({ chainId, symbol }: WalletDepositSelectorsProps
       <Pill
         icon={network?.icon}
         label={network?.name ?? '—'}
-        onPress={() => {
-          setWalletDeposit({ isChangingChain: true });
-          setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
-        }}
+        onPress={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN)}
         accessibilityLabel="Choose network"
       />
       <Pill
         icon={getWalletDepositTokenIcon(chainId, symbol)}
         label={symbol}
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN)}
+        onPress={() => {
+          setWalletDeposit({ isChangingToken: true });
+          setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
+        }}
         accessibilityLabel="Choose currency"
       />
     </View>

@@ -60,7 +60,7 @@ import {
   getDefaultDepositSelection,
   getVaultDepositConfig,
 } from '@/lib/vaults';
-import { getDepositChainBackTarget } from '@/lib/walletDepositFlow';
+import { getDepositTokenBackTarget } from '@/lib/walletDepositFlow';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -835,20 +835,21 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      // Reached through the chain list from the crypto branch, and directly from
+      // Reached through the token list from the crypto branch, and directly from
       // the savings flow's own external-wallet list — each step back to where it
       // came from.
       setModal(
         previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
-          : DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN,
+          : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
       );
     } else if (isDepositChain) {
-      const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
-      setWalletDeposit({ isChangingChain: false });
-      setModal(getDepositChainBackTarget(!!walletDeposit.isChangingChain, isDesktop));
-    } else if (isDepositToken) {
+      // Only ever opened from the address screen's network pill.
       setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+    } else if (isDepositToken) {
+      const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
+      setWalletDeposit({ isChangingToken: false });
+      setModal(getDepositTokenBackTarget(!!walletDeposit.isChangingToken, isDesktop));
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
