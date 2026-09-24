@@ -34,7 +34,7 @@ import {
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
-import { DepositModal, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -394,6 +394,7 @@ export default function CardDirectDepositModal({
           address={depositAddress}
           symbol={selectedToken}
           chainId={selectedChainId ?? 0}
+          cardProvider={CardProvider.RAIN}
           onChangeNetwork={handleBack}
           onDepositDetected={handleDepositDetected}
         />

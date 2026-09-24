@@ -7,15 +7,12 @@ import { CardProvider } from '@/lib/types';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 
-let mockProvider: CardProvider | null = null;
-
-jest.mock('@/hooks/useCardProvider', () => ({
-  useCardProvider: () => ({ provider: mockProvider }),
-}));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
+
+const FEE_LINE = '0.03% fee will be charged for deposits on this network';
 
 const render = (element: React.ReactElement) => {
   let tree: any;
@@ -27,29 +24,58 @@ const render = (element: React.ReactElement) => {
   return texts;
 };
 
-afterEach(() => {
-  mockProvider = null;
+test('warns a Rain cardholder funding their card off Base, and not on it', () => {
+  const notice = (chainId: number) =>
+    render(
+      <DepositFeeNotice
+        product="card"
+        provider={CardProvider.RAIN}
+        chainId={chainId}
+        symbol="USDC"
+      />,
+    );
+
+  expect(notice(mainnet.id)).toEqual([FEE_LINE]);
+  expect(notice(fuse.id)).toEqual([FEE_LINE]);
+  expect(notice(base.id)).toEqual([]);
 });
 
-test('warns about the fee on a chain the deposit is charged from', () => {
-  expect(render(<DepositFeeNotice product="card" chainId={mainnet.id} />)).toEqual([
-    '0.03% fee will be charged for deposits on this network',
-  ]);
+test('warns a Wirex cardholder sending a stablecoin to the wallet off Fuse, and only then', () => {
+  const notice = (chainId: number, symbol: string) =>
+    render(
+      <DepositFeeNotice
+        product="wallet"
+        provider={CardProvider.WIREX}
+        chainId={chainId}
+        symbol={symbol}
+      />,
+    );
+
+  expect(notice(base.id, 'USDC')).toEqual([FEE_LINE]);
+  expect(notice(mainnet.id, 'USDT')).toEqual([FEE_LINE]);
+  expect(notice(fuse.id, 'USDC')).toEqual([]);
+  expect(notice(mainnet.id, 'ETH')).toEqual([]);
 });
 
-test('shows nothing on the chain the deposit is free from', () => {
-  expect(render(<DepositFeeNotice product="card" chainId={base.id} />)).toEqual([]);
+test('shows nothing on the wallet deposit to someone with no card', () => {
   expect(
-    render(<DepositFeeNotice product="savings" chainId={mainnet.id} vaultToken="soUSD" />),
+    render(
+      <DepositFeeNotice product="wallet" provider={null} chainId={mainnet.id} symbol="USDC" />,
+    ),
   ).toEqual([]);
 });
 
-test("follows the user's card program", () => {
-  mockProvider = CardProvider.WIREX;
+test("follows the vault's chain on a savings deposit", () => {
+  const notice = (chainId: number) =>
+    render(
+      <DepositFeeNotice
+        product="savings"
+        provider={CardProvider.RAIN}
+        chainId={chainId}
+        vaultToken="soUSD"
+      />,
+    );
 
-  expect(render(<DepositFeeNotice product="card" chainId={fuse.id} />)).toEqual([]);
-  expect(render(<DepositFeeNotice product="card" chainId={base.id} />)).toHaveLength(1);
-  expect(
-    render(<DepositFeeNotice product="savings" chainId={base.id} vaultToken="soUSD" />),
-  ).toEqual([]);
+  expect(notice(mainnet.id)).toEqual([]);
+  expect(notice(base.id)).toEqual([FEE_LINE]);
 });

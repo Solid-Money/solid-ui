@@ -362,6 +362,7 @@ export default function WirexCardFundModal({
         address={depositAddress}
         symbol={selectedToken}
         chainId={selectedChainId ?? 0}
+        cardProvider={CardProvider.WIREX}
         onChangeNetwork={handleBack}
         onDepositDetected={handleDepositDetected}
       />
