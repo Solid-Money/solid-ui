@@ -142,17 +142,27 @@ const CardDetailsPane = () => {
    * only ever put Safes on v1, so it has nothing to be unsure about.
    */
   const showsEnableSpending =
-    spendRegistration.isRevoked &&
-    (spendRegistration.registration?.v2Available === true || !isCardSpendV2Configured());
+    // A cohort card with nothing working is waiting on v2, which only a v2 read can report,
+    // so it needs no guard of its own.
+    spendRegistration.isAwaitingV2 ||
+    (spendRegistration.isRevoked &&
+      (spendRegistration.registration?.v2Available === true || !isCardSpendV2Configured()));
   const enableCardSpending = useCallback(async () => {
-    const limit = spendRegistration.limit;
+    const carried = spendRegistration.carriedLimit;
+    const limit = carried ?? spendRegistration.limit;
     if (!limit) return;
     try {
       // Registered already, so `register` sends only `enableModule` for the module the Safe
       // is registered on, and the daily figure is ignored — it is passed for the funnel.
-      // False means the signature prompt was dismissed: nothing changed, so say nothing.
+      // A Safe awaiting v2 is not registered there, so both carried caps are sent and
+      // written. False means the signature prompt was dismissed: nothing changed, so say
+      // nothing.
       if (
-        !(await spendRegistration.register(onChainToUsd(limit.dailyLimitUsd), 'spending_banner'))
+        !(await spendRegistration.register(
+          onChainToUsd(limit.dailyLimitUsd),
+          'spending_banner',
+          carried ? onChainToUsd(carried.monthlyLimitUsd) : undefined,
+        ))
       ) {
         return;
       }
