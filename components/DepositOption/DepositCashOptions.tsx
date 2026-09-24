@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { Minus, Plus, Zap } from 'lucide-react-native';
+import { Minus, Plus } from 'lucide-react-native';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -14,16 +14,14 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
-import { useCardStatus } from '@/hooks/useCardStatus';
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
-import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
-import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
+import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { RainApplicationStatus, TransfiPaymentMethodOption } from '@/lib/types';
+import { TransfiPaymentMethodOption } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useOrchestraStore } from '@/store/useOrchestraStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 import { getPaymentMethodChips } from './depositPaymentMethods';
@@ -37,12 +35,8 @@ const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
  * the local currencies, whose rails come back from TransFi's payment config.
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
-/**
- * The Lightning onramp is a payment method rather than a currency, so it sits
- * under the rail the user recognises. Cash App is named because it is the one
- * the pay link launches directly; any Lightning wallet takes the same invoice.
- */
-const LIGHTNING_PAYMENT_METHOD_CHIPS = ['Lightning', 'Instant'];
+/** In the US the same row also leads to Cash App, so the chips say so. */
+const USD_PAYMENT_METHOD_CHIPS_US = ['ACH', 'Wire', 'Cash App'];
 const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
@@ -65,14 +59,11 @@ export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/
 const DepositCashOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetTransfi = useTransfiStore(state => state.reset);
-  const resetOrchestra = useOrchestraStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
-  const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
+
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
-  const { data: cardStatus } = useCardStatus();
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
-  const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
-  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
+  const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
+  const { isAvailable: isCashAppAvailable } = useCashAppDepositAvailability();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 
@@ -125,32 +116,15 @@ const DepositCashOptions = () => {
   }, [showAllCurrencies]);
 
   const handleUsdPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'bank_transfer',
-      provider: virtualAccountProvider,
-    });
-    // A Wirex user has no Rain automation and never will, so the Rain apply
-    // pitch is not their next step — their details screen owns activation for
-    // both rails. The other entry points into this flow already route on the
-    // provider; this one did not, which is how Wirex users reached a "Verify
-    // now" that could only bounce them off the Rain KYC gate.
-    if (virtualAccountProvider === 'wirex' || existingAutomation) {
-      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+    // Two USD rails in the US, one everywhere else. Showing a chooser outside
+    // the US would ask a question with a single answer, so USD goes straight to
+    // the bank rail there — which is exactly what it did before Cash App
+    // existed.
+    if (isCashAppAvailable) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
       return;
     }
-    setIsVirtualAccountApplyOpen(true);
-  };
-
-  const handleLightningPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-      provider: 'orchestra',
-      currency: 'USD',
-    });
-    // A previous order's invoice and read token would otherwise still be in the
-    // store, and the status screen would track it instead of the new one.
-    resetOrchestra();
-    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+    openVirtualAccount();
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -182,26 +156,8 @@ const DepositCashOptions = () => {
             />
           }
           title="USD"
-          chips={USD_PAYMENT_METHOD_CHIPS}
+          chips={isCashAppAvailable ? USD_PAYMENT_METHOD_CHIPS_US : USD_PAYMENT_METHOD_CHIPS}
           onPress={handleUsdPress}
-        />
-        {/* Always shown, never gated on the backend being reachable. A row that
-            vanishes when something upstream is misconfigured is indistinguishable
-            from a row that was never built — the amount screen says what is
-            actually wrong instead. */}
-        <CardFundRow
-          className="min-h-[93px]"
-          icon={
-            <View
-              className="items-center justify-center rounded-full bg-[#333333]"
-              style={{ width: ICON_SIZE, height: ICON_SIZE }}
-            >
-              <Zap size={18} color="#94F27F" />
-            </View>
-          }
-          title="Cash App"
-          chips={LIGHTNING_PAYMENT_METHOD_CHIPS}
-          onPress={handleLightningPress}
         />
         {localCurrencies.map(currency => (
           <CardFundRow
@@ -231,10 +187,7 @@ const DepositCashOptions = () => {
         </Pressable>
       </CardFundGroup>
 
-      <VirtualAccountApplyDialog
-        isOpen={isVirtualAccountApplyOpen}
-        onClose={() => setIsVirtualAccountApplyOpen(false)}
-      />
+      <VirtualAccountApplyDialog isOpen={isApplyOpen} onClose={closeApply} />
     </>
   );
 };

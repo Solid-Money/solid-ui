@@ -29,6 +29,7 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositTypeSelection from '@/components/DepositOption/DepositTypeSelection';
+import DepositUsdOptions from '@/components/DepositOption/DepositUsdOptions';
 import DepositWalletConnector from '@/components/DepositOption/DepositWalletConnector';
 import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyModal';
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
@@ -164,6 +165,7 @@ const useDepositOption = ({
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isBuyCryptoProfile = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name;
   const isBuyCryptoError = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name;
+  const isDepositUsdMethod = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD.name;
   const isOrchestraAmount = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT.name;
   const isOrchestraInvoice = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE.name;
   const isOrchestraStatus = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_STATUS.name;
@@ -335,6 +337,10 @@ const useDepositOption = ({
       return <TransfiError />;
     }
 
+    if (isDepositUsdMethod) {
+      return <DepositUsdOptions />;
+    }
+
     if (isOrchestraAmount) {
       return <OrchestraAmount />;
     }
@@ -454,6 +460,7 @@ const useDepositOption = ({
     if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isBuyCryptoProfile) return 'buy-crypto-profile';
     if (isBuyCryptoError) return 'buy-crypto-error';
+    if (isDepositUsdMethod) return 'deposit-usd-method';
     if (isOrchestraAmount) return 'orchestra-amount';
     if (isOrchestraInvoice) return 'orchestra-invoice';
     if (isOrchestraStatus) return 'orchestra-status';
@@ -503,6 +510,7 @@ const useDepositOption = ({
     // The error screen carries its own headline and icon; a second title above
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
+    if (isDepositUsdMethod) return 'Deposit US Dollars';
     if (isOrchestraAmount) return 'Deposit with Lightning';
     if (isOrchestraInvoice) return 'Pay this invoice';
     if (isOrchestraStatus) return 'Deposit status';
@@ -542,6 +550,7 @@ const useDepositOption = ({
       isDepositTypeSelection ||
       isDepositCrypto ||
       isDepositCash ||
+      isDepositUsdMethod ||
       isDepositChain ||
       isPublicAddress
     ) {
@@ -624,6 +633,7 @@ const useDepositOption = ({
       // two-row list padded out to 40rem is mostly empty card.
       !isDepositCrypto &&
       !isDepositCash &&
+      !isDepositUsdMethod &&
       !isDepositChain &&
       !isPublicAddress
     ) {
@@ -848,9 +858,12 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.CLOSE);
       resetDepositFlow();
       clearSessionStartTime();
-    } else if (isOrchestraAmount) {
-      // The onramp is only ever entered from the cash screen.
+    } else if (isDepositUsdMethod) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
+    } else if (isOrchestraAmount) {
+      // Entered from the USD method chooser, which is itself only reachable
+      // from the cash list.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
     } else if (isOrchestraInvoice) {
       // The invoice is already allocated, but going back only abandons it — the
       // amount screen mints a new order rather than reusing this one.

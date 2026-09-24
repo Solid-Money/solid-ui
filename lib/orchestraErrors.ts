@@ -31,6 +31,8 @@ export const ORCHESTRA_ERROR_CODE = {
   ACCOUNT_PENDING_APPROVAL: 'account_pending_approval',
   // Codes our own backend raises, as opposed to Orchestra's.
   NOT_CONFIGURED: 'ORCHESTRA_NOT_CONFIGURED',
+  /** Raised by the client, not the server: the rail is US-only. */
+  REGION_UNSUPPORTED: 'ORCHESTRA_REGION_UNSUPPORTED',
   NO_WALLET_ADDRESS: 'ORCHESTRA_NO_WALLET_ADDRESS',
   ORDER_NOT_YOURS: 'ORCHESTRA_ORDER_NOT_YOURS',
   UNKNOWN: 'unknown_error',
@@ -109,6 +111,7 @@ const ACTION_BY_CODE: Record<string, OrchestraErrorAction> = {
   [ORCHESTRA_ERROR_CODE.UNSUPPORTED_ROUTE]: 'none',
   [ORCHESTRA_ERROR_CODE.NOT_CONFIGURED]: 'none',
   [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'retry',
+  [ORCHESTRA_ERROR_CODE.REGION_UNSUPPORTED]: 'none',
   [ORCHESTRA_ERROR_CODE.ORDER_NOT_YOURS]: 'none',
   [ORCHESTRA_ERROR_CODE.ORIGIN_NOT_ALLOWED]: 'contact_support',
   [ORCHESTRA_ERROR_CODE.ORIGIN_REQUIRED]: 'contact_support',

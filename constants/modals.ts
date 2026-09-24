@@ -28,6 +28,17 @@ export const DEPOSIT_MODAL = {
     number: 1.8,
   },
   /**
+   * "Deposit US Dollars" — how to fund in USD: the bank rail (the virtual
+   * account's own wire/ACH details) or Cash App over Lightning. Only reached
+   * where Cash App is available; elsewhere the cash list opens the virtual
+   * account directly, since a chooser with one option asks a question with one
+   * answer.
+   */
+  OPEN_DEPOSIT_USD_METHOD: {
+    name: 'open_deposit_usd_method',
+    number: 1.85,
+  },
+  /**
    * "Select chain" — which chain the wallet deposit address is for, chosen before
    * the address itself so the minimum and the currencies on offer are settled by
    * the time it is shown.

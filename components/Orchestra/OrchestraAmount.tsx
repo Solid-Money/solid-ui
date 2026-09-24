@@ -8,10 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import { useCreateOrchestraOnramp, useOrchestraConfig } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { asOrchestraError } from '@/lib/orchestraErrors';
+import {
+  asOrchestraError,
+  ORCHESTRA_ERROR_CODE,
+  orchestraErrorFromCode,
+} from '@/lib/orchestraErrors';
 import { formatUsd } from '@/lib/orchestraFormat';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
@@ -42,6 +47,8 @@ export const OrchestraAmount = () => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
   }, []);
 
+  const { isAvailable: isCashAppAvailable, isResolved: isCountryResolved } =
+    useCashAppDepositAvailability();
   const { data: config, error: configError, isPending: configPending } = useOrchestraConfig();
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrchestraOnramp();
 
@@ -50,6 +57,18 @@ export const OrchestraAmount = () => {
   // server has no Orchestra key, the backend is unreachable, the session
   // lapsed — the error screen states it, which is the whole reason this step
   // is reachable at all rather than hidden behind a vanishing row.
+  // The entry row is gated on the same check, but this step is reachable by
+  // other routes — a restored modal step, a user whose IP moved between
+  // sessions — and the rail genuinely does not work outside the US.
+  useEffect(() => {
+    if (!isCountryResolved || isCashAppAvailable) return;
+    setError(
+      orchestraErrorFromCode(ORCHESTRA_ERROR_CODE.REGION_UNSUPPORTED),
+      DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT,
+    );
+    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
+  }, [isCountryResolved, isCashAppAvailable, setError, setModal]);
+
   useEffect(() => {
     if (!configError) return;
     setError(asOrchestraError(configError), DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
@@ -168,8 +187,8 @@ export const OrchestraAmount = () => {
       <View className="gap-[18px]">
         <Text className="text-xs font-medium leading-[17px] text-white/50">
           You&apos;ll pay a Lightning invoice with Cash App, Strike, or any Lightning wallet.
-          Conversion is provided by Flashnet; rates and fees are set by Flashnet and may change. Not
-          available to residents of New York City.
+          Conversion is provided by Flashnet; rates and fees are set by Flashnet and may change.
+          Available in the US only, excluding New York.
         </Text>
 
         <Button
