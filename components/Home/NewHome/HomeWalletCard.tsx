@@ -51,8 +51,8 @@ interface HomeWalletCardProps {
    * The cardholder's spend mode, when the "Spend mode" strip should show under the card
    * (Figma 26134:22854) — or null to leave the card on its own.
    *
-   * The caller decides, from `useSpendModeFigures().canChangeMode`: a Wirex cardholder in
-   * the spend-mode cohort on a build that can reach v2. Everyone else has one way to fund
+   * The caller decides, from `useSpendModeFigures().canChangeMode`: a Wirex cardholder with
+   * working card spending on a build that can reach v2. Everyone else has one way to fund
    * the card and nothing to change, so the strip would be a control with nothing behind it.
    */
   spendMode?: SpendMode | null;

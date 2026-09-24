@@ -20,7 +20,6 @@ import {
 } from '@/constants/cardSpendV2';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendModeAccess } from '@/hooks/useCardSpendModeAccess';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModule_ABI } from '@/lib/abis/SolidCashModule';
@@ -198,12 +197,13 @@ export interface CardSpendRegistration {
    */
   v2Available: boolean;
   /**
-   * A spend-mode cohort member with no working module, about to be set up on v2.
+   * A Safe with no working module, about to be set up on v2.
    *
-   * The state every cohort Safe is in after a v2 redeploy: whatever it was registered on
-   * before is off, and the new core has never seen it. It is reported as the v2 Safe it is
-   * about to become, so every write here targets v2 — not v1, which is where a Safe with no
-   * v2 registration would otherwise be sent.
+   * v2 is where every new registration goes: a cardholder setting up for the first time, one
+   * whose v1 module is off, and one whose earlier v2 core was replaced by a redeploy. It is
+   * reported as the v2 Safe it is about to become, so every write here targets v2 — not v1,
+   * which is where a Safe with no v2 registration would otherwise be sent. It registers in
+   * Debit mode, which is where v2's `registerSafe` starts every Safe.
    */
   awaitingV2: boolean;
   /** v1 is enabled on the Safe. v2's `registerSafe` refuses until it is disabled. */
@@ -737,7 +737,7 @@ const foldMaturedRaise = (limit: RawSpendingLimit) => {
  */
 const readCardSpendRegistration = async (
   safeAddress: Address,
-  /** The cardholder is in the spend-mode cohort, so a Safe with no working module goes to v2. */
+  /** This build can reach v2, so a Safe with no working module is set up there. */
   preferV2 = false,
 ): Promise<CardSpendRegistration> => {
   const client = publicClient(fuse.id);
@@ -780,10 +780,10 @@ const readCardSpendRegistration = async (
   // card, so that Safe is reported as the v1 cardholder it is behaving like.
   const isV2Active = v2 !== null && v2.registeredOnChain && !v2.legacyEnabled;
 
-  // The cohort's case: nothing operates the Safe and v2 has never registered it. Reporting v1
-  // here would send the enable action to v1 — `enableModule(v1)` for a Safe that was once on
-  // v1, a fresh v1 registration for one that never was — and put a cohort cardholder back on
-  // cash with the credit modes out of reach.
+  // Nothing operates the Safe and v2 has never registered it. Reporting v1 here would send the
+  // enable action to v1 — `enableModule(v1)` for a Safe that was once on v1, a fresh v1
+  // registration for one that never was — and leave the credit modes a migration away. A Safe
+  // whose v1 still works is left on v1; the mode picker migrates it.
   const awaitingV2 =
     preferV2 && v2 !== null && cohort === SpendCohort.None && !v2.registeredOnChain;
 
@@ -1016,15 +1016,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   // would answer the question does not exist yet.
   const isEnabled = (provider === CardProvider.WIREX || enabled === true) && Boolean(safeAddress);
 
-  // Which module a Safe with nothing working is set up on: v2 for the spend-mode cohort, v1
-  // for everyone else. The read waits for the answer, because reading first would report a
-  // cohort Safe as v1 — and an enable pressed in that window would re-enable v1.
-  const spendModeAccess = useCardSpendModeAccess();
-  const preferV2 = spendModeAccess.isEnabled && isCardSpendV2Configured();
+  // Which module a Safe with nothing working is set up on: v2 whenever this build can reach
+  // it, for every cardholder. v1 only for a build without v2.
+  const preferV2 = isCardSpendV2Configured();
 
   const query = useQuery<CardSpendRegistration>({
     ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
-    enabled: isEnabled && !spendModeAccess.isLoading,
+    enabled: isEnabled,
   });
 
   const registration = query.data ?? null;
@@ -1121,14 +1119,14 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       //
       // Building the batch from what is actually missing makes this one action cover
       // first-time setup and re-enabling, instead of stranding the user in either state.
-      // Whichever generation this Safe belongs to. For a new cardholder that is v1, which
-      // is where everyone starts, unless they are in the spend-mode cohort (`awaitingV2`);
-      // for a migrated cardholder who revoked the module it is v2, and re-enabling v1
-      // instead would silently return them to cash spending while v2 still held their
-      // collateral.
+      // Whichever generation this Safe belongs to. For a new cardholder, or one with no
+      // working module, that is v2 (`awaitingV2`) whenever this build can reach it; v1 only
+      // when it cannot. For a migrated cardholder who revoked the module it is v2 too, and
+      // re-enabling v1 instead would silently return them to cash spending while v2 still
+      // held their collateral.
       const target = fresh.moduleAddress;
 
-      // A cohort Safe headed for v2 with v1 still switched on: v2's `registerSafe` reverts
+      // A Safe headed for v2 with v1 still switched on: v2's `registerSafe` reverts
       // `LegacyModuleStillEnabled`, so v1 comes off first, in the same batch.
       const prevLegacyModule =
         fresh.awaitingV2 && fresh.legacyEnabled
@@ -1745,7 +1743,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
      */
     isLegacyConflict: registration?.cohort === SpendCohort.Both,
     /**
-     * A cohort cardholder whose card has no working module and will be set up on v2. Shown
+     * A cardholder whose card has no working module and will be set up on v2. Shown
      * the same "enable" prompt as a revoked Safe, with {@link carriedLimit} as the caps.
      */
     isAwaitingV2: registration?.awaitingV2 === true,
