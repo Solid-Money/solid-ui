@@ -8,6 +8,7 @@ import Trash from '@/assets/images/trash';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
+import { OnramperWidget } from '@/components/BuyCrypto/OnramperWidget/OnramperWidget';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
 import { TransfiError } from '@/components/BuyCrypto/Transfi/TransfiError';
@@ -35,7 +36,7 @@ import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAcco
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
-import WalletDepositNetworks from '@/components/DepositOption/WalletDepositAddress/WalletDepositNetworks';
+import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import { OrchestraAmount } from '@/components/Orchestra/OrchestraAmount';
@@ -51,6 +52,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { VAULTS } from '@/constants/vaults';
+import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
@@ -62,6 +64,7 @@ import {
   getDefaultDepositSelection,
   getVaultDepositConfig,
 } from '@/lib/vaults';
+import { getDepositTokenBackTarget } from '@/lib/walletDepositFlow';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 import { useSavingStore } from '@/store/useSavingStore';
@@ -132,6 +135,7 @@ const useDepositOption = ({
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
+  const { isDesktop } = useDimension();
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(
     isForm && (address || (depositFromSolid && !!user?.safeAddress)),
@@ -165,6 +169,7 @@ const useDepositOption = ({
   const isBuyCryptoStatus = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_STATUS.name;
   const isBuyCryptoProfile = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_PROFILE.name;
   const isBuyCryptoError = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name;
+  const isOnramperWidget = currentModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name;
   const isDepositUsdMethod = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD.name;
   const isOrchestraAmount = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT.name;
   const isOrchestraInvoice = currentModal.name === DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE.name;
@@ -190,7 +195,7 @@ const useDepositOption = ({
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
-  const isDepositChain = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN.name;
+  const isDepositToken = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -337,6 +342,10 @@ const useDepositOption = ({
       return <TransfiError />;
     }
 
+    if (isOnramperWidget) {
+      return <OnramperWidget onOutcome={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH)} />;
+    }
+
     if (isDepositUsdMethod) {
       return <DepositUsdOptions />;
     }
@@ -431,8 +440,8 @@ const useDepositOption = ({
       return <DepositCashOptions />;
     }
 
-    if (isDepositChain) {
-      return <WalletDepositNetworks />;
+    if (isDepositToken) {
+      return <WalletDepositTokens />;
     }
 
     return <DepositTypeSelection onClose={() => handleOpenChange(false)} />;
@@ -460,6 +469,7 @@ const useDepositOption = ({
     if (isBuyCryptoStatus) return 'buy-crypto-status';
     if (isBuyCryptoProfile) return 'buy-crypto-profile';
     if (isBuyCryptoError) return 'buy-crypto-error';
+    if (isOnramperWidget) return 'onramper-widget';
     if (isDepositUsdMethod) return 'deposit-usd-method';
     if (isOrchestraAmount) return 'orchestra-amount';
     if (isOrchestraInvoice) return 'orchestra-invoice';
@@ -480,7 +490,7 @@ const useDepositOption = ({
     if (isWalletConnector) return 'deposit-wallet-connector';
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
-    if (isDepositChain) return 'deposit-chain';
+    if (isDepositToken) return 'deposit-token';
     return 'deposit-type-selection';
   };
 
@@ -510,6 +520,7 @@ const useDepositOption = ({
     // The error screen carries its own headline and icon; a second title above
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
+    if (isOnramperWidget) return 'Buy crypto';
     if (isDepositUsdMethod) return 'Deposit US Dollars';
     if (isOrchestraAmount) return 'Deposit with Cash App';
     if (isOrchestraInvoice) return 'Pay with Cash App';
@@ -530,7 +541,7 @@ const useDepositOption = ({
     if (isDepositTypeSelection) return undefined;
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
-    if (isDepositChain) return 'Select chain';
+    if (isDepositToken) return 'Select token';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
   };
@@ -550,8 +561,8 @@ const useDepositOption = ({
       isDepositTypeSelection ||
       isDepositCrypto ||
       isDepositCash ||
+      isDepositToken ||
       isDepositUsdMethod ||
-      isDepositChain ||
       isPublicAddress
     ) {
       return 'md:max-w-[480px] md:pb-6';
@@ -633,8 +644,8 @@ const useDepositOption = ({
       // two-row list padded out to 40rem is mostly empty card.
       !isDepositCrypto &&
       !isDepositCash &&
+      !isDepositToken &&
       !isDepositUsdMethod &&
-      !isDepositChain &&
       !isPublicAddress
     ) {
       return 'min-h-[40rem]';
@@ -841,6 +852,9 @@ const useDepositOption = ({
     } else if (isBuyCryptoKycConsent || isBuyCryptoKycPending || isBuyCryptoAmount) {
       // The onramp is only ever entered by picking a currency on the cash screen.
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
+    } else if (isOnramperWidget) {
+      // Entered from the cash screen's "Buy crypto" row.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {
@@ -876,16 +890,18 @@ const useDepositOption = ({
       resetDepositFlow();
       clearSessionStartTime();
     } else if (isPublicAddress) {
-      // Reached through the chain list from the crypto branch, and directly from
+      // Reached through the token list from the crypto branch, and directly from
       // the savings flow's own external-wallet list — each step back to where it
       // came from.
       setModal(
         previousModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
-          : DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN,
+          : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
       );
-    } else if (isDepositChain) {
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO);
+    } else if (isDepositToken) {
+      const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
+      setWalletDeposit({ isChangingToken: false });
+      setModal(getDepositTokenBackTarget(!!walletDeposit.isChangingToken, isDesktop));
     } else if (isSavingsFundAddress) {
       setModal(DEPOSIT_MODAL.OPEN_SAVINGS_FUND_NETWORKS);
     } else if (isSavingsFundNetworks) {
@@ -1010,7 +1026,7 @@ const useDepositOption = ({
     isPublicAddress ||
     isDepositCrypto ||
     isDepositCash ||
-    isDepositChain ||
+    isDepositToken ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
     isDepositDirectly ||
@@ -1037,7 +1053,7 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader: isDepositCrypto || isDepositCash || isDepositChain || isPublicAddress,
+    compactHeader: isDepositCrypto || isDepositCash || isDepositToken || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),

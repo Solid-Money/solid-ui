@@ -29,23 +29,21 @@ export const DEPOSIT_MODAL = {
   },
   /**
    * "Deposit US Dollars" — how to fund in USD: the bank rail (the virtual
-   * account's own wire/ACH details) or Cash App over Lightning. Only reached
-   * where Cash App is available; elsewhere the cash list opens the virtual
-   * account directly, since a chooser with one option asks a question with one
-   * answer.
+   * account's own wire/ACH details) or Cash App. Only reached where Cash App is
+   * available; elsewhere the cash list opens the virtual account directly,
+   * since a chooser with one option asks a question with one answer.
    */
   OPEN_DEPOSIT_USD_METHOD: {
     name: 'open_deposit_usd_method',
     number: 1.85,
   },
   /**
-   * "Select chain" — which chain the wallet deposit address is for, chosen before
-   * the address itself so the minimum and the currencies on offer are settled by
-   * the time it is shown.
+   * "Select token" — which currency the deposit address is for: the first step
+   * after "Show deposit address", and revisited from the address screen.
    */
-  OPEN_DEPOSIT_CHAIN: {
-    name: 'open_deposit_chain',
-    number: 1.9,
+  OPEN_DEPOSIT_TOKEN: {
+    name: 'open_deposit_token',
+    number: 1.95,
   },
   OPEN_OPTIONS: {
     name: 'open_options',
@@ -194,20 +192,25 @@ export const DEPOSIT_MODAL = {
     name: 'open_buy_crypto_profile',
     number: 27,
   },
+  /** Onramper's hosted widget — iframe on web, WebView on native. */
+  OPEN_ONRAMPER_WIDGET: {
+    name: 'open_onramper_widget',
+    number: 28,
+  },
   // Flashnet Orchestra Lightning onramp: enter an amount, pay the invoice, watch
-  // it settle. Numbered after the TransFi steps so moving between the two
-  // onramps from the cash screen always animates forward.
+  // it settle. Numbered after every other deposit step so moving
+  // between the onramps from the cash screen always animates forward.
   OPEN_ORCHESTRA_AMOUNT: {
     name: 'open_orchestra_amount',
-    number: 28,
+    number: 29,
   },
   OPEN_ORCHESTRA_INVOICE: {
     name: 'open_orchestra_invoice',
-    number: 29,
+    number: 30,
   },
   OPEN_ORCHESTRA_STATUS: {
     name: 'open_orchestra_status',
-    number: 30,
+    number: 31,
   },
   /**
    * Failure screen for the onramp. Numbered past every other step so arriving
@@ -215,7 +218,7 @@ export const DEPOSIT_MODAL = {
    */
   OPEN_ORCHESTRA_ERROR: {
     name: 'open_orchestra_error',
-    number: 31,
+    number: 32,
   },
 };
 
@@ -484,36 +487,5 @@ export const CARD_REPAY_MODAL = {
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 3,
-  },
-};
-
-/**
- * Buying a tier: the offer, then the confirmation.
- *
- * Two steps rather than two routes. The flow is opened from three places that
- * are themselves already somewhere — the rewards screen, the benefits pager,
- * the Earn screen — and pushing a route from each of them took the user off the
- * page they were reading to make a decision they might not make. A modal hands
- * them back where they were.
- */
-export const TIER_UPGRADE_MODAL = {
-  CLOSE: {
-    name: 'close',
-    number: 0,
-  },
-  OPEN_UPGRADE: {
-    name: 'open_upgrade',
-    number: 1,
-  },
-  OPEN_REVIEW: {
-    name: 'open_review',
-    number: 2,
-  },
-  // Half a step, not a third one: the picker is opened from the offer and
-  // returns to it, so the slide animation reads as a detour rather than as
-  // progress towards the signature.
-  OPEN_TOKEN_SELECTOR: {
-    name: 'open_token_selector',
-    number: 1.5,
   },
 };

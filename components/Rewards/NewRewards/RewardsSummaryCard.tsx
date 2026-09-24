@@ -1,22 +1,12 @@
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text } from '@/components/ui/text';
 import { formatBalanceUSD } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
-import { TOP_RIGHT_WASH } from './tierGradients';
 
 import type { CashbackDetailsData } from './CashbackDetailsSheet.types';
-
-/** #94F27F, the rewards green, dissolved to nothing. */
-const CORNER_GRADIENT = [
-  'rgba(148,242,127,0.18)',
-  'rgba(148,242,127,0.05)',
-  'rgba(148,242,127,0)',
-] as const;
-const CORNER_GRADIENT_STOPS = [0, 0.35, 0.75] as const;
 
 interface RewardsSummaryCardProps {
   /** This month's cashback, settled and escrowed together. */
@@ -87,19 +77,6 @@ const RewardsSummaryCard = ({
 }: RewardsSummaryCardProps) => {
   return (
     <View className="relative mx-4 h-40 overflow-hidden rounded-twice bg-card">
-      {/* The design's wash off the top-right corner, in the same green as the
-          card's own glyph. Drawn corner-to-corner and faded out well before the
-          middle, so it is a tint on the header rather than a band across the
-          figures — those have to stay legible, and a gradient that reaches them
-          is the version that makes them harder to read. */}
-      <LinearGradient
-        colors={CORNER_GRADIENT}
-        locations={CORNER_GRADIENT_STOPS}
-        {...TOP_RIGHT_WASH}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
-
       <View className="h-16 flex-row items-center px-3">
         <RewardsIcon />
         <Text

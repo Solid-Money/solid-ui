@@ -3,21 +3,16 @@ import { View } from 'react-native';
 import { Href, router } from 'expo-router';
 
 import { BalanceHeadline, BalancePillRow } from '@/components/BalanceHeadline';
-import LockedFuseTile from '@/components/Earn/LockedFuseTile';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { type AssetPath } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { VaultType } from '@/lib/types';
-import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
-import { EarnInvestSection } from './EarnInvestSection';
 import {
   calculateEstimatedDailyEarnings,
   resolveVaultApy,
@@ -74,11 +69,6 @@ export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   useVaultDetailPrefetch();
   const { data: portfolioTotal, valuesByVault, isLoading } = useTotalSavingsUSD();
-  // Deliberately outside the portfolio total: a locked position cannot be
-  // withdrawn, and adding it to a headline the withdraw flow then refuses is
-  // worse than showing it as its own line.
-  const { data: membership } = useTierMembership();
-  const openTierUpgrade = useTierUpgradeStore(state => state.open);
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
   const fuseApy = useMaxAPY(VaultType.FUSE);
@@ -165,22 +155,7 @@ export default function EarnScreen() {
               {row.length === 1 && <View className="flex-1" />}
             </View>
           ))}
-
-          {membership?.lock ? (
-            <LockedFuseTile
-              lock={membership.lock}
-              // No tier named: this screen knows the user wants to top up a
-              // lock and not which tier that buys. The flow resolves it to the
-              // cheapest one they do not already hold.
-              onPress={() => openTierUpgrade()}
-            />
-          ) : null}
         </View>
-
-        {/* Tokenized assets are still an in-development feature (the Stocks
-            screen itself redirects in production), so the catalog stays out of
-            production builds until it ships. */}
-        {isDevFeatureEnabled && <EarnInvestSection />}
       </View>
     </PageLayout>
   );

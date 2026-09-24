@@ -3,7 +3,7 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
-import { DepositAsset } from '@/lib/types';
+import { CardProvider, DepositAsset } from '@/lib/types';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
 export type WalletDepositNetwork = {
@@ -52,12 +52,40 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, number> = {
 const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
   ETH: 0.005,
   WETH: 0.005,
-  FUSE: 100,
-  WFUSE: 100,
+  FUSE: 500,
+  WFUSE: 500,
 };
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
 const DEFAULT_MINIMUM_DEPOSIT = 1;
+
+/** The stablecoins the deposit pipeline has a route for. */
+const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
+
+/**
+ * Whether the deposit address is one the pipeline mints, rather than the Safe.
+ *
+ * Both halves have to hold:
+ *
+ * - A Wirex cardholder. The address is minted against the card destination, and
+ *   the backend resolves that by issuer: for Wirex it delivers to their Safe on
+ *   Fuse, which is the same balance their card settles from. For a Rain
+ *   cardholder it would deliver to the card, and for someone with no card there
+ *   is no issuer to resolve — so everyone else is shown the Safe, everywhere.
+ * - A stablecoin. ETH, WETH, FUSE and WFUSE have no route through the pipeline;
+ *   they land in the Safe and stay as the token that was sent, so there the Safe
+ *   address is the right answer rather than a fallback.
+ */
+export const usesDirectDepositAddress = (
+  symbol: string,
+  provider: CardProvider | null | undefined,
+): boolean => provider === CardProvider.WIREX && DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+
+/**
+ * The order "Select token" leads with. The stablecoins people actually deposit
+ * come first, then ETH; everything else follows in network order.
+ */
+const TOKEN_DISPLAY_ORDER = ['USDC', 'USDT', 'ETH'];
 
 /**
  * The contract the pipeline credits for a native asset. It lists WETH and WFUSE;
@@ -180,4 +208,67 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
     tokens.find(token => token.symbol === 'USDC')?.symbol ?? tokens[0]?.symbol ?? 'USDC';
 
   return { chainId, symbol };
+};
+
+/**
+ * Every currency the deposit address can take, each once, for "Select token" —
+ * the first step, taken before any chain is chosen.
+ *
+ * `TOKEN_DISPLAY_ORDER` leads, because a list derived from chain order put FUSE
+ * and WFUSE above USDT and ETH purely because Fuse is the default chain, which
+ * is not the order anyone looks for them in. Whatever is not named there follows
+ * in network order. Each is drawn with the icon of the first chain carrying it.
+ */
+export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
+  const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
+  const chainIds = [
+    defaultChainId,
+    ...getWalletDepositNetworks()
+      .map(network => network.chainId)
+      .filter(chainId => chainId !== defaultChainId),
+  ];
+  const seen = new Set<string>();
+  const tokens = chainIds.flatMap(chainId =>
+    getWalletDepositTokens(chainId).filter(token => {
+      if (seen.has(token.symbol)) return false;
+      seen.add(token.symbol);
+      return true;
+    }),
+  );
+
+  const rank = (symbol: string) => {
+    const index = TOKEN_DISPLAY_ORDER.indexOf(symbol);
+    return index === -1 ? TOKEN_DISPLAY_ORDER.length : index;
+  };
+
+  return [...tokens].sort((a, b) => rank(a.symbol) - rank(b.symbol));
+};
+
+/**
+ * The chains "Select chain" offers once a currency is chosen: only those that
+ * carry it, so switching chain can never quietly switch the currency too. All of
+ * them when nothing is chosen yet, or no chain carries it.
+ */
+export const getWalletDepositNetworksForToken = (symbol?: string): WalletDepositNetwork[] => {
+  const networks = getWalletDepositNetworks();
+  const carrying = networks.filter(network =>
+    getWalletDepositTokens(network.chainId).some(token => token.symbol === symbol),
+  );
+
+  return carrying.length ? carrying : networks;
+};
+
+/**
+ * The chain the address opens on once `symbol` is picked.
+ *
+ * The current chain when it carries the currency, so changing only the currency
+ * from the address screen keeps the chain. Otherwise the default chain (see
+ * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
+ */
+export const resolveWalletDepositChain = (symbol: string, currentChainId?: number): number => {
+  const carrying = getWalletDepositNetworksForToken(symbol).map(network => network.chainId);
+  if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
+
+  const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
+  return carrying.includes(defaultChainId) ? defaultChainId : (carrying[0] ?? defaultChainId);
 };

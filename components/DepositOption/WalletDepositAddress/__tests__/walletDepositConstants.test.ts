@@ -1,15 +1,19 @@
 import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
 
 import {
+  getAllWalletDepositTokens,
   getDefaultWalletDepositSelection,
   getWalletDepositMinimum,
   getWalletDepositNetworks,
+  getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
+  usesDirectDepositAddress,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
-import { DepositAsset } from '@/lib/types';
+import { CardProvider, DepositAsset } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
@@ -27,7 +31,7 @@ describe('getWalletDepositMinimum', () => {
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe(0.005);
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(100);
+    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(500);
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
@@ -73,6 +77,36 @@ describe('getWalletDepositNetworks', () => {
       true,
     );
     expect(networks[0].chainId).toBe(mainnet.id);
+  });
+});
+
+/**
+ * Which address the screen hands out. The minted one is watched by the deposit
+ * pipeline and resolves by issuer; the Safe is neither. Getting this wrong
+ * either strands a transfer or sends it to someone's card instead of their
+ * wallet.
+ */
+describe('usesDirectDepositAddress', () => {
+  it('mints for a Wirex cardholder sending a stablecoin', () => {
+    expect(usesDirectDepositAddress('USDC', CardProvider.WIREX)).toBe(true);
+    expect(usesDirectDepositAddress('USDT', CardProvider.WIREX)).toBe(true);
+  });
+
+  // Minting resolves by issuer: for Rain it would deliver to the card, and with
+  // no card there is no issuer to resolve. Both see the Safe, for everything.
+  it('keeps the Safe for everyone who is not a Wirex cardholder', () => {
+    expect(usesDirectDepositAddress('USDC', CardProvider.RAIN)).toBe(false);
+    expect(usesDirectDepositAddress('USDC', null)).toBe(false);
+    expect(usesDirectDepositAddress('USDC', undefined)).toBe(false);
+  });
+
+  // These have no route through the pipeline — they land in the Safe and stay as
+  // the token that was sent, so there the Safe is the right answer.
+  it('keeps the Safe for the currencies with no route, even for Wirex', () => {
+    expect(usesDirectDepositAddress('ETH', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('WETH', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('FUSE', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('WFUSE', CardProvider.WIREX)).toBe(false);
   });
 });
 
@@ -159,5 +193,51 @@ describe('getDefaultWalletDepositSelection', () => {
   it('offers USDC on the chain it opens on', () => {
     const { chainId, symbol } = getDefaultWalletDepositSelection();
     expect(getWalletDepositTokens(chainId).map(token => token.symbol)).toContain(symbol);
+  });
+});
+
+describe('getAllWalletDepositTokens', () => {
+  it('lists every currency some chain accepts, once', () => {
+    const symbols = getAllWalletDepositTokens().map(token => token.symbol);
+    expect(new Set(symbols).size).toBe(symbols.length);
+    expect(symbols).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'FUSE']));
+  });
+
+  // Derived from chain order alone this read USDC, FUSE, USDT, WFUSE, ETH —
+  // Fuse's pair riding up the list purely because Fuse is the default chain.
+  it("leads with the currencies people look for, not the default chain's", () => {
+    const symbols = getAllWalletDepositTokens().map(token => token.symbol);
+    expect(symbols.slice(0, 3)).toEqual(['USDC', 'USDT', 'ETH']);
+  });
+});
+
+describe('getWalletDepositNetworksForToken', () => {
+  it('only offers the chains that carry the currency', () => {
+    expect(getWalletDepositNetworksForToken('ETH').map(network => network.chainId)).toEqual([
+      mainnet.id,
+    ]);
+    expect(getWalletDepositNetworksForToken('USDT').map(network => network.chainId)).not.toContain(
+      base.id,
+    );
+  });
+
+  it('offers every chain when no currency is chosen', () => {
+    expect(getWalletDepositNetworksForToken(undefined)).toEqual(getWalletDepositNetworks());
+  });
+});
+
+describe('resolveWalletDepositChain', () => {
+  it('opens on Fuse when Fuse carries the currency', () => {
+    expect(resolveWalletDepositChain('USDC')).toBe(fuse.id);
+  });
+
+  it('falls back to a chain that carries it when Fuse does not', () => {
+    expect(resolveWalletDepositChain('ETH')).toBe(mainnet.id);
+  });
+
+  // Changing only the currency from the address screen should not move the chain.
+  it('keeps the current chain when it carries the currency', () => {
+    expect(resolveWalletDepositChain('USDC', polygon.id)).toBe(polygon.id);
+    expect(resolveWalletDepositChain('ETH', polygon.id)).toBe(mainnet.id);
   });
 });

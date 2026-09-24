@@ -27,7 +27,6 @@ import {
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
-import { destroyOnramper } from '@/lib/onramper';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
@@ -548,10 +547,6 @@ const useUser = (): UseUserReturn => {
     useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
-    // The Onramper session is minted against this user's JWT; release the native
-    // client so it can't carry over into the next account.
-    destroyOnramper();
-
     const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 
     // Go to onboarding on native, welcome on web
@@ -715,10 +710,6 @@ const useUser = (): UseUserReturn => {
     useStoreReviewStore.getState().reset();
     intercom?.shutdown();
     intercom?.boot();
-    // The Onramper session is minted against this user's JWT; release the native
-    // client so it can't carry over into the next account.
-    destroyOnramper();
-
     const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
 
     if (hasPasskeyUsers) {

@@ -93,6 +93,12 @@ export interface ExternalWalletState {
 export interface WalletDepositSelection {
   chainId?: number;
   symbol?: string;
+  /**
+   * Set while "Select token" is open from the address screen's currency pill,
+   * so back returns to the address. Back from the address also lands on "Select
+   * token", so the previous step alone cannot tell the two apart.
+   */
+  isChangingToken?: boolean;
 }
 
 interface DepositState {

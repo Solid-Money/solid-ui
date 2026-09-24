@@ -211,6 +211,9 @@ export default function WirexCardFundModal({
     [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
+  // Onramper's hosted widget, rendered inside this modal by the same embedded
+  // navigator the TransFi screens use — so back and the title come from
+  // lib/buyCryptoFlow, not from a step of our own.
   const handleMoveFromWalletPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'wirex_move_from_wallet',
@@ -359,6 +362,7 @@ export default function WirexCardFundModal({
         address={depositAddress}
         symbol={selectedToken}
         chainId={selectedChainId ?? 0}
+        cardProvider={CardProvider.WIREX}
         onChangeNetwork={handleBack}
         onDepositDetected={handleDepositDetected}
       />

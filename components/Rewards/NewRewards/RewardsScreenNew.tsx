@@ -14,36 +14,29 @@ import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
-import {
-  useOptInToRewards,
-  useReferralSummary,
-  useRewardsUserData,
-  useTierBenefits,
-} from '@/hooks/useRewards';
+import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
+import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useSpinStatus } from '@/hooks/useSpinWin';
-import { useTierMembership } from '@/hooks/useTierMembership';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { nextPurchasableTier } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
+import { useSwapState } from '@/store/swapStore';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
-import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import JoinTierClubCard from './JoinTierClubCard';
 import PointsHeadline from './PointsHeadline';
 import RewardsHelpModal from './RewardsHelpModal';
 import RewardsSummaryCard from './RewardsSummaryCard';
 import { resolveTierUpgradeCardData } from './skipTheLine';
 import { resolveTierBenefitRates } from './tierBenefitCards';
 import TierBenefitsGrid from './TierBenefitsGrid';
-import TierMembershipSheet from './TierMembershipSheet';
 import TierTrialPill from './TierTrialPill';
 import TierUpgradeCard from './TierUpgradeCard';
-import { findTierBenefits, resolveTierUpgradeBenefits } from './UpgradeTier/tierUpgradeBenefits';
+import UpgradeTierSheet from './UpgradeTierSheet';
 
 /**
  * Redesigned rewards screen (Apple "glass" style), shown only on qa/preview
@@ -62,9 +55,9 @@ export default function RewardsScreenNew() {
   const { data: referralSummary } = useReferralSummary();
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
-  const { data: membership } = useTierMembership();
-  const { data: tierBenefits } = useTierBenefits();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
+  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
     state => !selectedUserId || Boolean(state.completedByUserId[selectedUserId]),
@@ -76,27 +69,32 @@ export default function RewardsScreenNew() {
   const { referral: referralParam } = useLocalSearchParams<{ referral?: string }>();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const openTierUpgrade = useTierUpgradeStore(state => state.open);
-  const [isMembershipSheetOpen, setIsMembershipSheetOpen] = useState(false);
-
-  /**
-   * Opens the upgrade flow on a specific tier.
-   *
-   * A modal rather than a route: this screen is where the user came to read
-   * their rewards, and pricing an upgrade they may not buy is not worth taking
-   * the page away and handing them a back stack to unwind.
-   */
-  const handleUpgradeTier = useCallback(
-    (tier: RewardsTier | null) => {
-      // Prime and Ultra are the tiers that are for sale. Anything else — Core,
-      // or no tier at all — means "whichever one is next", which the flow
-      // resolves from the membership it already holds. Passing it on rather
-      // than resolving it here also means a press that turns out to have
-      // nothing to sell says so, instead of doing nothing at all.
-      openTierUpgrade(tier === RewardsTier.PRIME || tier === RewardsTier.ULTRA ? tier : null);
-    },
-    [openTierUpgrade],
+  const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
+  const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
+    RewardsTier.PRIME,
   );
+
+  const handleUpgradeTier = useCallback((tier: RewardsTier | null) => {
+    if (tier !== RewardsTier.PRIME && tier !== RewardsTier.ULTRA) return;
+
+    setUpgradeTier(tier);
+    setIsUpgradeSheetOpen(true);
+  }, []);
+
+  const handleDepositFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+
+    const depositStore = useDepositStore.getState();
+    depositStore.resetDepositFlow();
+    depositStore.setSavingsFundIntent('savings');
+    depositStore.setDepositFromSolid(false);
+    selectSavingsFundToken('WFUSE');
+  }, [selectSavingsFundToken]);
+
+  const handleBuyFuse = useCallback(() => {
+    setIsUpgradeSheetOpen(false);
+    openBuyFuse(upgradeTier);
+  }, [openBuyFuse, upgradeTier]);
 
   // The rewards program requires an explicit opt-in; `hasOptedIn` defaults to
   // true when the backend doesn't send it, so we never prompt prematurely.
@@ -153,21 +151,6 @@ export default function RewardsScreenNew() {
     skipLine: rewardsData?.fuseSkipLine,
     allowFallback: isDevFeatureEnabled,
   });
-
-  /**
-   * The membership teaser, and the tier it points at.
-   *
-   * Shown only once the backend says points no longer unlock tiers AND there is
-   * something to sell — a tier on offer that the user does not already hold.
-   * Both halves matter: without the first this would duplicate v2's card, and
-   * without the second it would invite an Ultra member to join a club they are
-   * already in.
-   */
-  const joinClubTier = nextPurchasableTier(membership);
-  const showJoinClubCard = Boolean(membership && !membership.pointsUnlockEnabled && joinClubTier);
-  const joinClubBenefits = joinClubTier
-    ? resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, joinClubTier)).slice(0, 3)
-    : [];
 
   if (rewardsLocked) {
     return (
@@ -247,7 +230,6 @@ export default function RewardsScreenNew() {
             tier={currentTier}
             points={totalPoints}
             badge={<TierTrialPill trial={rewardsData?.activeTierTrial} />}
-            onPressTier={() => setIsMembershipSheetOpen(true)}
           />
           <View className="flex-row gap-3 px-4">
             <Pressable
@@ -318,23 +300,9 @@ export default function RewardsScreenNew() {
           />
         </View>
 
-        {/* Two cards for the same job, and which one shows is decided by
-            whether points still unlock a tier.
-
-            v2's card offers a points bar and a FUSE "shortcut". Under v3 the
-            first of those climbs toward something points no longer grant, and
-            the second is a year-long lock with a price — so once
-            `pointsUnlockEnabled` is off, that card advertises a route the
-            backend refuses, and the membership teaser takes its place. */}
-        {showJoinClubCard && joinClubTier ? (
-          <View className="mt-8 px-4">
-            <JoinTierClubCard
-              tier={joinClubTier}
-              benefits={joinClubBenefits}
-              onPress={() => handleUpgradeTier(joinClubTier)}
-            />
-          </View>
-        ) : showTierUpgradeCard ? (
+        {/* The compact card presents both routes to the next tier: normal points
+            progress and the optional FUSE shortcut configured by the backend. */}
+        {showTierUpgradeCard && (
           <View className="mt-8 px-4">
             <TierUpgradeCard
               currentPoints={totalPoints}
@@ -344,14 +312,20 @@ export default function RewardsScreenNew() {
               onUpgradeTier={() => handleUpgradeTier(nextTier)}
             />
           </View>
-        ) : null}
+        )}
       </View>
 
       <ReferralProgramModalNew
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
       />
-      <TierMembershipSheet open={isMembershipSheetOpen} onOpenChange={setIsMembershipSheetOpen} />
+      <UpgradeTierSheet
+        open={isUpgradeSheetOpen}
+        tier={upgradeTier}
+        onOpenChange={setIsUpgradeSheetOpen}
+        onDepositFuse={handleDepositFuse}
+        onBuyFuse={handleBuyFuse}
+      />
     </PageLayout>
   );
 }

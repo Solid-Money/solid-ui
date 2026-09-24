@@ -32,8 +32,6 @@ export const EXPO_PUBLIC_CARD_SPEND_V2 = process.env.EXPO_PUBLIC_CARD_SPEND_V2 =
 // Onramper buy-crypto (iOS only — the SDK has no Android/web implementation).
 // `apiKey` is Onramper's publishable partner key: EXPO_PUBLIC_* values are inlined
 // into the JS bundle, so only ever put a publishable key here, never a secret.
-export const EXPO_PUBLIC_ONRAMPER_API_KEY = process.env.EXPO_PUBLIC_ONRAMPER_API_KEY ?? '';
-export const EXPO_PUBLIC_ONRAMPER_CLIENT_ID = process.env.EXPO_PUBLIC_ONRAMPER_CLIENT_ID ?? '';
 export const EXPO_PUBLIC_THIRDWEB_CLIENT_ID = process.env.EXPO_PUBLIC_THIRDWEB_CLIENT_ID ?? '';
 export const EXPO_PUBLIC_TURNKEY_API_BASE_URL = process.env.EXPO_PUBLIC_TURNKEY_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID =

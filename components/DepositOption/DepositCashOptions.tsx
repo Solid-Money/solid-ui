@@ -17,23 +17,20 @@ import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useOrchestraConfig } from '@/hooks/useOrchestra';
-import { useTransfiPaymentMethods } from '@/hooks/useTransfi';
 import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { TransfiPaymentMethodOption } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-import { getPaymentMethodChips } from './depositPaymentMethods';
 import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApplyDialog';
 
 const ICON_SIZE = 36;
 /** Matches the muted row text the "Show more" footer sits beside. */
 const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
 /**
- * USD is funded by the virtual account, which only takes ACH and wire — unlike
- * the local currencies, whose rails come back from TransFi's payment config.
+ * USD is funded by the virtual account, which only takes ACH and wire. The
+ * local currencies show their committed corridor list (localCurrencies.tsx).
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
 /** In the US the same row also leads to Cash App, so the chips say so. */
@@ -72,44 +69,6 @@ const DepositCashOptions = () => {
   const isCashAppAvailable = orchestraConfig?.isAvailable === true;
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
-
-  const { data: eurPaymentMethods } = useTransfiPaymentMethods('EUR');
-  const { data: brlPaymentMethods } = useTransfiPaymentMethods('BRL');
-  const { data: bdtPaymentMethods } = useTransfiPaymentMethods('BDT');
-  const { data: phpPaymentMethods } = useTransfiPaymentMethods('PHP');
-  const { data: mxnPaymentMethods } = useTransfiPaymentMethods(
-    showAllCurrencies ? 'MXN' : undefined,
-  );
-
-  /**
-   * Rails to show on a currency's row.
-   *
-   * TransFi's payment config is the live answer, but it is a request that can be
-   * pending, geo-refused or simply unavailable, and a row with no chips reads as
-   * a currency with no way to pay for it. So the committed corridor list is the
-   * baseline — the same one the card funding screen shows — and the live config
-   * replaces it once it arrives.
-   */
-  const paymentMethodChips = useMemo(() => {
-    const resolve = (code: string, methods: TransfiPaymentMethodOption[] | undefined) => {
-      const live = getPaymentMethodChips(methods);
-      return live.length ? live : getCardFundLocalPaymentMethods(code);
-    };
-
-    return {
-      EUR: resolve('EUR', eurPaymentMethods),
-      BRL: resolve('BRL', brlPaymentMethods),
-      BDT: resolve('BDT', bdtPaymentMethods),
-      PHP: resolve('PHP', phpPaymentMethods),
-      MXN: resolve('MXN', mxnPaymentMethods),
-    };
-  }, [
-    bdtPaymentMethods,
-    brlPaymentMethods,
-    eurPaymentMethods,
-    mxnPaymentMethods,
-    phpPaymentMethods,
-  ]);
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -171,7 +130,7 @@ const DepositCashOptions = () => {
             className="min-h-[93px]"
             icon={currency.icon}
             title={currency.code}
-            chips={paymentMethodChips[currency.code as keyof typeof paymentMethodChips]}
+            chips={getCardFundLocalPaymentMethods(currency.code)}
             onPress={() => handleLocalCurrencyPress(currency.code)}
           />
         ))}
