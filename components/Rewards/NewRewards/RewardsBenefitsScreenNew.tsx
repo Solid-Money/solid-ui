@@ -494,6 +494,14 @@ interface TierPageProps {
   isDesktopLayout: boolean;
   /** Width of the page column — the window on mobile, the body column on desktop. */
   pageWidth: number;
+  /**
+   * Whether points can still take this user to a higher tier — the membership
+   * state's per-user verdict. False for everyone the grandfather list leaves
+   * nothing to, and once the ladder is switched off.
+   */
+  pointsUnlockTiers: boolean;
+  /** Whether this tier is on sale through v3 — a lock or an annual charge. */
+  purchasable: boolean;
 }
 
 const PremiumUpgradeFooter = ({
@@ -620,10 +628,26 @@ const PremiumUpgradeFooter = ({
  * between real, already-rendered pages instead of faking it with a fade/slide
  * of a single swapped-out content block.
  */
-const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageProps) => {
+const TierPage = ({
+  tier,
+  isCurrentTier,
+  isDesktopLayout,
+  pageWidth,
+  pointsUnlockTiers,
+  purchasable,
+}: TierPageProps) => {
   const insets = useSafeAreaInsets();
   const content = TIER_CONTENT[tier];
-  const subtitle = isCurrentTier ? 'Your current tier' : content.unlockCopy;
+  // "Unlocks at 5M points" is only true while points can still take this user
+  // there. Past that the tier is bought, so the line says so when it is on
+  // sale and says nothing when it is not, and the points explainer goes too.
+  const subtitle = isCurrentTier
+    ? 'Your current tier'
+    : pointsUnlockTiers || tier === RewardsTier.CORE
+      ? content.unlockCopy
+      : purchasable
+        ? 'Unlocks with a membership'
+        : null;
   const pageTopSpacing =
     insets.top + HEADER_ROW_HEIGHT - (isDesktopLayout ? DESKTOP_HERO_TOP_REDUCTION : 0);
 
@@ -727,28 +751,41 @@ const TierPage = ({ tier, isCurrentTier, isDesktopLayout, pageWidth }: TierPageP
           {content.headline}
         </Text>
 
-        <TierPointsSheet
-          trigger={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${subtitle}. Learn how to earn points`}
-              hitSlop={8}
-              className="mt-[14px] flex-row items-center gap-1"
-            >
-              <Text
-                className="text-white/70"
-                style={{
-                  fontFamily: 'MonaSans_400Regular',
-                  fontSize: 16,
-                  lineHeight: 20,
-                }}
+        {pointsUnlockTiers ? (
+          <TierPointsSheet
+            trigger={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${subtitle}. Learn how to earn points`}
+                hitSlop={8}
+                className="mt-[14px] flex-row items-center gap-1"
               >
-                {subtitle}
-              </Text>
-              <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
-            </Pressable>
-          }
-        />
+                <Text
+                  className="text-white/70"
+                  style={{
+                    fontFamily: 'MonaSans_400Regular',
+                    fontSize: 16,
+                    lineHeight: 20,
+                  }}
+                >
+                  {subtitle}
+                </Text>
+                <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
+              </Pressable>
+            }
+          />
+        ) : subtitle ? (
+          <Text
+            className="mt-[14px] text-white/70"
+            style={{
+              fontFamily: 'MonaSans_400Regular',
+              fontSize: 16,
+              lineHeight: 20,
+            }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
 
       <PremiumSummaryAndPerks tier={tier} />
@@ -1036,6 +1073,10 @@ function RewardsBenefitsForAccount() {
                 isCurrentTier={currentTier === tier}
                 isDesktopLayout={isSidebarShell}
                 pageWidth={pageWidth}
+                // Until the membership state arrives, v2's copy — which is what
+                // an older backend without per-user gating also means.
+                pointsUnlockTiers={membership?.pointsUnlockEnabled ?? true}
+                purchasable={upgradeRoutes(tier).length > 0}
               />
             ))}
           </Animated.View>
