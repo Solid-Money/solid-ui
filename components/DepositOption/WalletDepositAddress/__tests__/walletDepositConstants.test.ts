@@ -13,7 +13,7 @@ import {
   resolveWalletDepositSymbol,
   usesDirectDepositAddress,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
-import { DepositAsset } from '@/lib/types';
+import { CardProvider, DepositAsset } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
 // which chains and currencies are offered and what each pairing's floor is.
@@ -81,23 +81,32 @@ describe('getWalletDepositNetworks', () => {
 });
 
 /**
- * Which address the screen hands out. A minted address is watched by the deposit
- * pipeline; the Safe is not. Getting this wrong either strands a transfer or
- * makes the screen promise a detection that can never happen.
+ * Which address the screen hands out. The minted one is watched by the deposit
+ * pipeline and resolves by issuer; the Safe is neither. Getting this wrong
+ * either strands a transfer or sends it to someone's card instead of their
+ * wallet.
  */
 describe('usesDirectDepositAddress', () => {
-  it('mints an address for the stablecoins the pipeline has a route for', () => {
-    expect(usesDirectDepositAddress('USDC')).toBe(true);
-    expect(usesDirectDepositAddress('USDT')).toBe(true);
+  it('mints for a Wirex cardholder sending a stablecoin', () => {
+    expect(usesDirectDepositAddress('USDC', CardProvider.WIREX)).toBe(true);
+    expect(usesDirectDepositAddress('USDT', CardProvider.WIREX)).toBe(true);
   });
 
-  // These land in the Safe and stay as the token that was sent, so the Safe
-  // address is the right answer rather than a fallback.
-  it('keeps the Safe for the currencies with no route', () => {
-    expect(usesDirectDepositAddress('ETH')).toBe(false);
-    expect(usesDirectDepositAddress('WETH')).toBe(false);
-    expect(usesDirectDepositAddress('FUSE')).toBe(false);
-    expect(usesDirectDepositAddress('WFUSE')).toBe(false);
+  // Minting resolves by issuer: for Rain it would deliver to the card, and with
+  // no card there is no issuer to resolve. Both see the Safe, for everything.
+  it('keeps the Safe for everyone who is not a Wirex cardholder', () => {
+    expect(usesDirectDepositAddress('USDC', CardProvider.RAIN)).toBe(false);
+    expect(usesDirectDepositAddress('USDC', null)).toBe(false);
+    expect(usesDirectDepositAddress('USDC', undefined)).toBe(false);
+  });
+
+  // These have no route through the pipeline — they land in the Safe and stay as
+  // the token that was sent, so there the Safe is the right answer.
+  it('keeps the Safe for the currencies with no route, even for Wirex', () => {
+    expect(usesDirectDepositAddress('ETH', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('WETH', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('FUSE', CardProvider.WIREX)).toBe(false);
+    expect(usesDirectDepositAddress('WFUSE', CardProvider.WIREX)).toBe(false);
   });
 });
 

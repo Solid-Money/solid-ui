@@ -3,7 +3,7 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
-import { DepositAsset } from '@/lib/types';
+import { CardProvider, DepositAsset } from '@/lib/types';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
 export type WalletDepositNetwork = {
@@ -59,19 +59,27 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
 const DEFAULT_MINIMUM_DEPOSIT = 1;
 
-/**
- * Currencies the deposit address is minted for, rather than being the Safe.
- *
- * The stablecoins, and only them, because they are the ones the deposit pipeline
- * has a route for: a minted address is watched, so the transfer is detected,
- * credited and shown as activity. ETH, WETH, FUSE and WFUSE have no such route —
- * they are sent to the Safe and simply sit there as what was sent — so for those
- * the Safe address is not a fallback, it is the right answer.
- */
+/** The stablecoins the deposit pipeline has a route for. */
 const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
 
-export const usesDirectDepositAddress = (symbol: string): boolean =>
-  DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+/**
+ * Whether the deposit address is one the pipeline mints, rather than the Safe.
+ *
+ * Both halves have to hold:
+ *
+ * - A Wirex cardholder. The address is minted against the card destination, and
+ *   the backend resolves that by issuer: for Wirex it delivers to their Safe on
+ *   Fuse, which is the same balance their card settles from. For a Rain
+ *   cardholder it would deliver to the card, and for someone with no card there
+ *   is no issuer to resolve — so everyone else is shown the Safe, everywhere.
+ * - A stablecoin. ETH, WETH, FUSE and WFUSE have no route through the pipeline;
+ *   they land in the Safe and stay as the token that was sent, so there the Safe
+ *   address is the right answer rather than a fallback.
+ */
+export const usesDirectDepositAddress = (
+  symbol: string,
+  provider: CardProvider | null | undefined,
+): boolean => provider === CardProvider.WIREX && DIRECT_DEPOSIT_SYMBOLS.has(symbol);
 
 /**
  * The order "Select token" leads with. The stablecoins people actually deposit
