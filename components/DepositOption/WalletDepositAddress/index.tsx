@@ -8,8 +8,10 @@ import { ChevronRight } from 'lucide-react-native';
 import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants';
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
@@ -69,6 +71,9 @@ const WalletDepositAddress = () => {
   // Stablecoins get an address the pipeline mints and watches; ETH and FUSE get
   // the Safe, which is where they land and stay.
   const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
+  // Wirex cardholders and people with no card both land here, and only the
+  // cardholders are charged — see `getDepositFeeBps`.
+  const { provider } = useCardProvider();
   const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
   // then — never a blank, which is the one thing this line must not show.
@@ -191,6 +196,13 @@ const WalletDepositAddress = () => {
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
         </Text>
+        <DepositFeeNotice
+          product="wallet"
+          provider={provider}
+          chainId={chainId}
+          symbol={symbol}
+          className="mt-2"
+        />
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
           onPress={() => Linking.openURL(WALLET_DEPOSIT_LEARN_URL)}

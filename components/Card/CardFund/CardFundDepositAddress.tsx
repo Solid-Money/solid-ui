@@ -18,7 +18,7 @@ import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
-import { DetectedDirectDepositResponse } from '@/lib/types';
+import { CardProvider, DetectedDirectDepositResponse } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
@@ -30,6 +30,11 @@ type CardFundDepositAddressProps = {
   address?: string;
   symbol: string;
   chainId: number;
+  /**
+   * The issuer this funding flow is for. It decides which chains the deposit is
+   * charged on, so each modal names its own rather than this screen asking.
+   */
+  cardProvider: CardProvider;
   /** Returns to network selection — the chevron on the network summary row. */
   onChangeNetwork: () => void;
   /**
@@ -44,6 +49,7 @@ const CardFundDepositAddress = ({
   address,
   symbol,
   chainId,
+  cardProvider,
   onChangeNetwork,
   onDepositDetected,
 }: CardFundDepositAddressProps) => {
@@ -127,7 +133,7 @@ const CardFundDepositAddress = ({
         </View>
       </View>
 
-      <DepositFeeNotice product="card" chainId={chainId} />
+      <DepositFeeNotice product="card" provider={cardProvider} chainId={chainId} symbol={symbol} />
 
       <Pressable
         className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"

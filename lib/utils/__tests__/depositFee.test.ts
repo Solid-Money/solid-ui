@@ -6,6 +6,10 @@ import { DEPOSIT_FEE_BPS, formatDepositFeePercent, getDepositFeeBps } from '@/li
 /** Every chain the deposit screens offer. */
 const CHAIN_IDS = [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id];
 
+const STABLECOINS = ['USDC', 'USDT'];
+/** What the wallet flow sends straight to the Safe, with no pipeline in between. */
+const NON_STABLECOINS = ['ETH', 'WETH', 'FUSE', 'WFUSE'];
+
 /** The chains a rule is free on, and the fee it charges on every other one. */
 const expectFreeOnlyOn = (freeChainIds: number[], feeFor: (chainId: number) => number) => {
   for (const chainId of CHAIN_IDS) {
@@ -16,15 +20,58 @@ const expectFreeOnlyOn = (freeChainIds: number[], feeFor: (chainId: number) => n
   }
 };
 
+// No card, and the deprecated Bridge card the app treats as no card.
+const NO_CARD: [string, CardProvider | null | undefined][] = [
+  ['no card', null],
+  ['an unresolved issuer', undefined],
+  ['a Bridge card', CardProvider.BRIDGE],
+];
+
 describe('getDepositFeeBps', () => {
-  describe('Wirex', () => {
-    it('charges card deposits everywhere but Fuse', () => {
-      expectFreeOnlyOn([fuse.id], chainId =>
-        getDepositFeeBps({ provider: CardProvider.WIREX, product: 'card', chainId }),
+  describe('"Fund your card"', () => {
+    it.each(STABLECOINS)('charges a Rain card %s deposit everywhere but Base', symbol => {
+      expectFreeOnlyOn([base.id], chainId =>
+        getDepositFeeBps({ provider: CardProvider.RAIN, product: 'card', chainId, symbol }),
       );
     });
 
-    it('charges no savings deposit, on any chain or vault', () => {
+    it.each(STABLECOINS)('charges a Wirex card %s deposit everywhere but Fuse', symbol => {
+      expectFreeOnlyOn([fuse.id], chainId =>
+        getDepositFeeBps({ provider: CardProvider.WIREX, product: 'card', chainId, symbol }),
+      );
+    });
+  });
+
+  describe('wallet deposit', () => {
+    it.each(STABLECOINS)('charges a Wirex cardholder %s everywhere but Fuse', symbol => {
+      expectFreeOnlyOn([fuse.id], chainId =>
+        getDepositFeeBps({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),
+      );
+    });
+
+    it.each(NON_STABLECOINS)('never charges a Wirex cardholder %s', symbol => {
+      expectFreeOnlyOn(CHAIN_IDS, chainId =>
+        getDepositFeeBps({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),
+      );
+    });
+
+    it('never charges a Wirex cardholder when the currency is not known', () => {
+      expectFreeOnlyOn(CHAIN_IDS, chainId =>
+        getDepositFeeBps({ provider: CardProvider.WIREX, product: 'wallet', chainId }),
+      );
+    });
+
+    it.each(NO_CARD)('never charges someone with %s', (_label, provider) => {
+      for (const symbol of [...STABLECOINS, ...NON_STABLECOINS]) {
+        expectFreeOnlyOn(CHAIN_IDS, chainId =>
+          getDepositFeeBps({ provider, product: 'wallet', chainId, symbol }),
+        );
+      }
+    });
+  });
+
+  describe('savings deposit', () => {
+    it('never charges a Wirex cardholder, on any chain or vault', () => {
       for (const vaultToken of ['soUSD', 'soETH', 'soFUSE']) {
         expectFreeOnlyOn(CHAIN_IDS, chainId =>
           getDepositFeeBps({
@@ -36,40 +83,30 @@ describe('getDepositFeeBps', () => {
         );
       }
     });
-  });
 
-  // No card and a Rain card share the table's rows, and so does the deprecated
-  // Bridge card, which the app treats as no card.
-  describe.each([
-    ['no card', null],
-    ['no card yet (loading)', undefined],
-    ['a Rain card', CardProvider.RAIN],
-    ['a Bridge card', CardProvider.BRIDGE],
-  ])('with %s', (_label, provider) => {
-    it('charges card deposits everywhere but Base', () => {
-      expectFreeOnlyOn([base.id], chainId =>
-        getDepositFeeBps({ provider, product: 'card', chainId }),
-      );
-    });
+    describe.each([...NO_CARD, ['a Rain card', CardProvider.RAIN]] as const)(
+      'with %s',
+      (_label, provider) => {
+        it.each([
+          ['soUSD', mainnet.id],
+          ['soETH', mainnet.id],
+          ['soFUSE', fuse.id],
+        ])('charges %s deposits everywhere but its vault chain', (vaultToken, vaultChainId) => {
+          expectFreeOnlyOn([vaultChainId], chainId =>
+            getDepositFeeBps({ provider, product: 'savings', chainId, vaultToken }),
+          );
+        });
 
-    it.each([
-      ['soUSD', mainnet.id],
-      ['soETH', mainnet.id],
-      ['soFUSE', fuse.id],
-    ])('charges %s deposits everywhere but its vault chain', (vaultToken, vaultChainId) => {
-      expectFreeOnlyOn([vaultChainId], chainId =>
-        getDepositFeeBps({ provider, product: 'savings', chainId, vaultToken }),
-      );
-    });
-
-    it('quotes no fee for a vault it cannot place', () => {
-      expectFreeOnlyOn(CHAIN_IDS, chainId =>
-        getDepositFeeBps({ provider, product: 'savings', chainId, vaultToken: 'soBTC' }),
-      );
-      expectFreeOnlyOn(CHAIN_IDS, chainId =>
-        getDepositFeeBps({ provider, product: 'savings', chainId }),
-      );
-    });
+        it('quotes no fee for a vault it cannot place', () => {
+          expectFreeOnlyOn(CHAIN_IDS, chainId =>
+            getDepositFeeBps({ provider, product: 'savings', chainId, vaultToken: 'soBTC' }),
+          );
+          expectFreeOnlyOn(CHAIN_IDS, chainId =>
+            getDepositFeeBps({ provider, product: 'savings', chainId }),
+          );
+        });
+      },
+    );
   });
 });
 
