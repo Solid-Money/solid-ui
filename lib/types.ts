@@ -3034,6 +3034,15 @@ export interface ReferralRewardListItem {
   paidAt?: string;
   spendUsd: number;
   merchantCount: number;
+  /**
+   * The bar this row is measured against. For a friend who has qualified it is
+   * the bar they cleared, which can be lower than today's — the target moved
+   * from $75 to $150 while rewards were still in their payout delay, and
+   * "$80/$150 spent" next to "Qualified" reads as a mistake. Absent on backends
+   * that predate it, where the program-level target applies.
+   */
+  spendTargetUsd?: number;
+  merchantTarget?: number;
   hasActiveCard: boolean;
   rewardUsd: number;
   /**
