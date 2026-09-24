@@ -158,6 +158,12 @@ export interface OrchestraStatusResponse {
  * because the backend has already parsed them and a form compares numbers.
  */
 export interface OrchestraConfig {
+  /**
+   * Whether this account may use the onramp — the backend's answer, covering
+   * the launch flag and the allowlist. The row is hidden on `false`, but the
+   * gate that matters is on order creation, which checks again.
+   */
+  isAvailable: boolean;
   destinationChain: string;
   destinationAsset: string;
   /** Smallest-unit exponent for the destination; absent if /routes was unreadable. */

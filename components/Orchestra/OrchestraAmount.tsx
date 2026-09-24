@@ -69,6 +69,17 @@ export const OrchestraAmount = () => {
     setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
   }, [isCountryResolved, isCashAppAvailable, setError, setModal]);
 
+  // The backend's own verdict on this account: launch flag plus allowlist. It
+  // refuses order creation too, so this only saves the user a round trip.
+  useEffect(() => {
+    if (!config || config.isAvailable) return;
+    setError(
+      orchestraErrorFromCode(ORCHESTRA_ERROR_CODE.NOT_IN_ALLOWLIST),
+      DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT,
+    );
+    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
+  }, [config, setError, setModal]);
+
   useEffect(() => {
     if (!configError) return;
     setError(asOrchestraError(configError), DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);

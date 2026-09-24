@@ -35,6 +35,7 @@ export const ORCHESTRA_ERROR_CODE = {
   REGION_UNSUPPORTED: 'ORCHESTRA_REGION_UNSUPPORTED',
   NO_WALLET_ADDRESS: 'ORCHESTRA_NO_WALLET_ADDRESS',
   ORDER_NOT_YOURS: 'ORCHESTRA_ORDER_NOT_YOURS',
+  NOT_IN_ALLOWLIST: 'ORCHESTRA_NOT_IN_ALLOWLIST',
   UNKNOWN: 'unknown_error',
 } as const;
 
@@ -95,6 +96,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     'This deposit method isn’t available yet. (The server has no Orchestra key.)',
   [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'Your wallet isn’t ready yet. Try again in a moment.',
   [ORCHESTRA_ERROR_CODE.ORDER_NOT_YOURS]: 'We couldn’t find that deposit.',
+  [ORCHESTRA_ERROR_CODE.NOT_IN_ALLOWLIST]:
+    'Cash App deposits aren’t switched on for your account yet.',
   // Order-level failures, read off order.errorCode rather than an HTTP body.
   slippage_exceeded: 'The rate moved while we were converting. Your payment is being refunded.',
   refund_address_missing: 'Something went wrong and we couldn’t refund automatically.',
@@ -113,6 +116,7 @@ const ACTION_BY_CODE: Record<string, OrchestraErrorAction> = {
   [ORCHESTRA_ERROR_CODE.NO_WALLET_ADDRESS]: 'retry',
   [ORCHESTRA_ERROR_CODE.REGION_UNSUPPORTED]: 'none',
   [ORCHESTRA_ERROR_CODE.ORDER_NOT_YOURS]: 'none',
+  [ORCHESTRA_ERROR_CODE.NOT_IN_ALLOWLIST]: 'none',
   [ORCHESTRA_ERROR_CODE.ORIGIN_NOT_ALLOWED]: 'contact_support',
   [ORCHESTRA_ERROR_CODE.ORIGIN_REQUIRED]: 'contact_support',
   [ORCHESTRA_ERROR_CODE.SCOPE_REQUIRED]: 'contact_support',
