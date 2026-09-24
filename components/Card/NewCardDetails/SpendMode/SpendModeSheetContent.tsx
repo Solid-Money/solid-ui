@@ -23,6 +23,8 @@ import SheetIconButton, {
   MODAL_CONTROL_SIZE,
 } from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import {
+  BALANCE_PANEL_HEIGHT,
+  BORROWED_PANEL_HEIGHT,
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
@@ -30,6 +32,7 @@ import {
   SPEND_MODE_COPY,
   SPEND_MODES,
   type SpendMode,
+  type SpendModePanel,
 } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import SpendModeSegmentedControl from '@/components/Card/NewCardDetails/SpendMode/SpendModeSegmentedControl';
 import { Text } from '@/components/ui/text';
@@ -59,6 +62,26 @@ const PANEL_TO_ACTION = 48;
 export const SPEND_MODE_SHEET_TOP = 55;
 /** The sheet keeps this much below the button, before any safe-area inset. */
 export const SPEND_MODE_SHEET_BOTTOM = 57;
+
+const PANEL_HEIGHT: Record<SpendModePanel, number> = {
+  balance: BALANCE_PANEL_HEIGHT,
+  borrowed: BORROWED_PANEL_HEIGHT,
+};
+
+/**
+ * Room held for the panels: the tallest mode's stack, which is Smart's two cards.
+ *
+ * Without it the sheet changed height on every tap — Cash and Credit show one card and
+ * Smart two — so the drawer and its button jumped under the thumb that was browsing. Held
+ * at the tallest, a shorter mode leaves space below its card and nothing else moves.
+ */
+const PANELS_MIN_HEIGHT = Math.max(
+  ...SPEND_MODES.map(mode => {
+    const panels = SPEND_MODE_COPY[mode].panels;
+    const cards = panels.reduce((sum, panel) => sum + PANEL_HEIGHT[panel], 0);
+    return cards + PANEL_GAP * Math.max(0, panels.length - 1);
+  }),
+);
 
 const SWAP_DURATION = 240;
 const ACTION_FADE_DURATION = 260;
@@ -199,7 +222,6 @@ const SpendModeSheetContent = ({
       <View style={styles.control}>
         <SpendModeSegmentedControl
           selected={selected}
-          activeMode={activeMode}
           segmentValue={figures.segmentValue}
           onSelect={handleSelect}
           // Locked while committing, for the same reason the button is. `onConfirm`
@@ -223,22 +245,24 @@ const SpendModeSheetContent = ({
         <HelpBadge />
       </Animated.View>
 
-      <Animated.View key={`panels-${selected}`} entering={entering} exiting={exiting}>
-        {SPEND_MODE_COPY[selected].panels.map((panel, index) => (
-          <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
-            {panel === 'balance' ? (
-              <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
-            ) : (
-              <SpendModeBorrowedPanel
-                borrowed={figures.borrowed}
-                creditLimit={figures.creditLimit}
-                borrowApy={figures.borrowApy}
-                borrowedProgress={figures.borrowedProgress}
-              />
-            )}
-          </View>
-        ))}
-      </Animated.View>
+      <View style={styles.panels}>
+        <Animated.View key={`panels-${selected}`} entering={entering} exiting={exiting}>
+          {SPEND_MODE_COPY[selected].panels.map((panel, index) => (
+            <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
+              {panel === 'balance' ? (
+                <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
+              ) : (
+                <SpendModeBorrowedPanel
+                  borrowed={figures.borrowed}
+                  creditLimit={figures.creditLimit}
+                  borrowApy={figures.borrowApy}
+                  borrowedProgress={figures.borrowedProgress}
+                />
+              )}
+            </View>
+          ))}
+        </Animated.View>
+      </View>
 
       {error ? (
         <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-[#D96167]">
@@ -318,6 +342,8 @@ const styles = StyleSheet.create({
     marginBottom: CAPTION_TO_PANEL,
     marginTop: CONTROL_TO_CAPTION,
   },
+  // Not keyed, so it holds its height while the keyed panels swap inside it.
+  panels: { minHeight: PANELS_MIN_HEIGHT },
   stackedPanel: { marginTop: PANEL_GAP },
   action: { borderRadius: 100, marginTop: PANEL_TO_ACTION, overflow: 'hidden' },
   actionPress: { alignItems: 'center', height: 50, justifyContent: 'center' },

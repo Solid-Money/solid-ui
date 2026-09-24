@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
-import Animated, {
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
 import {
@@ -57,14 +52,13 @@ const SegmentLabels = ({ mode, value, tone }: SegmentLabelsProps) => (
 );
 
 interface SpendModeSegmentedControlProps {
-  /** The segment the sheet is currently showing. */
-  selected: SpendMode;
   /**
-   * The mode actually in force. The pill goes solid white on it and stays
-   * translucent everywhere else, which is how the sheet says "this is the one
-   * you are on" without a second label.
+   * The segment the sheet is currently showing. The white pill sits on it whether or
+   * not it is the mode in force — the button under the panels already says which one
+   * that is ("Cancel" on it, "Change to …" anywhere else), and a translucent pill on a
+   * mode being considered read as a control that had not taken the tap.
    */
-  activeMode: SpendMode;
+  selected: SpendMode;
   /** The figure under each segment name. */
   segmentValue: Record<SpendMode, string>;
   onSelect: (mode: SpendMode) => void;
@@ -90,7 +84,6 @@ interface SpendModeSegmentedControlProps {
  */
 const SpendModeSegmentedControl = ({
   selected,
-  activeMode,
   segmentValue,
   onSelect,
   disabled = false,
@@ -99,10 +92,9 @@ const SpendModeSegmentedControl = ({
   const segmentWidth = trackWidth > 0 ? (trackWidth - CONTROL_INSET * 2) / SPEND_MODES.length : 0;
 
   const selectedIndex = SPEND_MODES.indexOf(selected);
-  const activeIndex = SPEND_MODES.indexOf(activeMode);
 
-  // 0 → 2 as the pill travels. Its position, its colour and the two label tones
-  // all read from this one value, so they can never arrive out of step.
+  // 0 → 2 as the pill travels. Its position and the label tones all read from this
+  // one value, so the dark copy can never arrive out of step with the pill.
   const position = useSharedValue(selectedIndex);
 
   useEffect(() => {
@@ -120,13 +112,6 @@ const SpendModeSegmentedControl = ({
   const pillStyle = useAnimatedStyle(() => ({
     width: segmentWidth,
     transform: [{ translateX: position.value * segmentWidth }],
-    // Solid white only while the pill is over the mode in force; anywhere else
-    // it is the faint highlight the design uses for a mode being considered.
-    backgroundColor: interpolateColor(
-      Math.max(0, 1 - Math.abs(position.value - activeIndex)),
-      [0, 1],
-      ['rgba(255,255,255,0.1)', '#FFFFFF'],
-    ),
   }));
 
   return (
@@ -138,7 +123,6 @@ const SpendModeSegmentedControl = ({
           mode={mode}
           value={segmentValue[mode]}
           index={index}
-          activeIndex={activeIndex}
           position={position}
           onSelect={onSelect}
           disabled={disabled}
@@ -152,7 +136,6 @@ interface SegmentProps {
   mode: SpendMode;
   value: string;
   index: number;
-  activeIndex: number;
   position: ReturnType<typeof useSharedValue<number>>;
   onSelect: (mode: SpendMode) => void;
   disabled: boolean;
@@ -161,19 +144,12 @@ interface SegmentProps {
 /**
  * One third of the control. The dark copy is a second, stacked layer rather than
  * an animated text colour: it fades up exactly as the white pill arrives, so the
- * label flips with the background instead of a step behind it.
+ * label flips with the background instead of a step behind it — including on the
+ * segments the pill only passes over on its way.
  */
-const Segment = ({
-  mode,
-  value,
-  index,
-  activeIndex,
-  position,
-  onSelect,
-  disabled,
-}: SegmentProps) => {
+const Segment = ({ mode, value, index, position, onSelect, disabled }: SegmentProps) => {
   const darkStyle = useAnimatedStyle(() => ({
-    opacity: index === activeIndex ? Math.max(0, 1 - Math.abs(position.value - index)) : 0,
+    opacity: Math.max(0, 1 - Math.abs(position.value - index)),
   }));
 
   return (
@@ -203,6 +179,7 @@ const styles = StyleSheet.create({
     padding: CONTROL_INSET,
   },
   pill: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 200,
     bottom: CONTROL_INSET,
     left: CONTROL_INSET,

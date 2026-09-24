@@ -11,7 +11,12 @@ import {
   CARD_TOP_SHADOW_RATIO,
   getCardHeroDestination,
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
+import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import NewCardArt, { NEW_CARD_ASPECT_RATIO } from '@/components/Card/NewCardDetails/NewCardArt';
+import {
+  SPEND_MODE_COPY,
+  type SpendMode,
+} from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import CardWaitingModal from '@/components/Home/CardWaitingModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
@@ -42,6 +47,15 @@ interface HomeWalletCardProps {
    * setup prompt is still one tap from here.
    */
   hasCtaBanner?: boolean;
+  /**
+   * The cardholder's spend mode, when the "Spend mode" strip should show under the card
+   * (Figma 26134:22854) — or null to leave the card on its own.
+   *
+   * The caller decides, from `useSpendModeFigures().canChangeMode`: a Wirex cardholder in
+   * the spend-mode cohort on a build that can reach v2. Everyone else has one way to fund
+   * the card and nothing to change, so the strip would be a control with nothing behind it.
+   */
+  spendMode?: SpendMode | null;
 }
 
 const CARD_BODY_ASPECT_RATIO =
@@ -54,6 +68,22 @@ const GET_CARD_PANEL_HEIGHT = 140;
 const GET_CARD_PANEL_COVER = 98;
 const GET_CARD_CTA_TOP_GAP = 8;
 const GET_CARD_LABEL_BOTTOM = 13;
+/**
+ * The "Spend mode" strip (Figma 26134:22854): a 387x138 panel whose top 80pt sits
+ * behind the card, leaving a 58pt strip below it. Unlike the cardless panel above,
+ * these are held in points rather than scaled with the width — the strip carries a
+ * row of 16pt text and a toggle, and scaled up to the desktop column it grew to twice
+ * the height its contents need.
+ */
+const SPEND_MODE_PANEL_HEIGHT = 138;
+const SPEND_MODE_PANEL_COVER = 80;
+const SPEND_MODE_STRIP_HEIGHT = SPEND_MODE_PANEL_HEIGHT - SPEND_MODE_PANEL_COVER;
+/** The toggle's bottom edge; both labels end 2pt above it (y 120 against 122). */
+const SPEND_MODE_ROW_BOTTOM = 16;
+const SPEND_MODE_TOGGLE_WIDTH = 40;
+const SPEND_MODE_TOGGLE_HEIGHT = 24;
+const SPEND_MODE_KNOB_SIZE = 20;
+const SPEND_MODE_KNOB_INSET = 2;
 const GET_CARD_PANEL_ASPECT_RATIO = GET_CARD_PANEL_WIDTH / GET_CARD_PANEL_HEIGHT;
 const CARDLESS_STACK_ASPECT_RATIO =
   GET_CARD_PANEL_WIDTH /
@@ -79,10 +109,12 @@ const HomeWalletCard = ({
   last4,
   depositCompleted,
   hasCtaBanner,
+  spendMode = null,
 }: HomeWalletCardProps) => {
   const start = useCardHeroStore(state => state.start);
   const heroActive = useCardHeroStore(state => state.active);
   const openPane = useCardPaneStore(state => state.open);
+  const openSpendMode = useCardPaneStore(state => state.openSpendMode);
   const isPaneOpen = useCardPaneStore(state => state.isOpen);
   const ref = useRef<View>(null);
   const { width: windowWidth } = useWindowDimensions();
@@ -180,16 +212,23 @@ const HomeWalletCard = ({
     );
   }
 
-  const handlePress = () => {
+  /**
+   * Fly the card up into the pane. With `withSpendMode` the pane also puts the
+   * spend-mode sheet up once the card lands — the strip under the card is a shortcut to
+   * that sheet, and it takes the same flight so the card page it opens over is the one
+   * the cardholder watched arrive.
+   */
+  const flyToPane = (withSpendMode: boolean) => {
+    const open = withSpendMode ? openSpendMode : openPane;
     const node = ref.current;
     if (!node) {
-      openPane();
+      open();
       return;
     }
     // Both directions must use the overlay's root coordinate system.
     const openFromRect = (x: number, y: number, width: number, height: number) => {
       if (!width || !height) {
-        openPane();
+        open();
         return;
       }
       const from = { x, y, width, height };
@@ -207,7 +246,7 @@ const HomeWalletCard = ({
         }),
         last4 ?? '',
       );
-      openPane(from);
+      open(from);
     };
 
     if (Platform.OS === 'android') {
@@ -222,13 +261,83 @@ const HomeWalletCard = ({
     }
   };
 
+  const isCardHidden = heroActive || isPaneOpen;
+
+  if (spendMode) {
+    const isCreditOn = spendMode !== 'cash';
+    const modeLabel = SPEND_MODE_COPY[spendMode].label;
+
+    return (
+      <View className="px-4">
+        <View style={styles.spendModeStack}>
+          {/* Behind the card, and leaving with the section below it rather than with the
+              card: only the card is handed to the flight, so the strip fades and lifts
+              like everything else under it instead of vanishing on the tap. */}
+          <HeroExit spec={HERO_EXIT.belowCard} style={styles.spendModePanel}>
+            <Pressable
+              accessibilityLabel={`Spend mode: ${modeLabel}. Change spend mode`}
+              accessibilityRole="button"
+              className="flex-1 overflow-hidden rounded-[23px] bg-card active:opacity-80"
+              onPress={() => flyToPane(true)}
+              style={styles.spendModeRow}
+            >
+              <View style={styles.spendModeLabel}>
+                <Text className="text-[16px] font-medium text-white" style={styles.stripText}>
+                  Spend mode
+                </Text>
+                <Image
+                  source={getAsset('images/get-your-card-chevron.svg')}
+                  style={styles.spendModeChevron}
+                  contentFit="fill"
+                />
+              </View>
+              <View style={styles.spendModeValue}>
+                <Text
+                  className="text-[16px] font-medium text-white"
+                  style={[styles.stripText, styles.spendModeValueText]}
+                >
+                  {modeLabel}
+                </Text>
+                {/* Whether the card can borrow: on for Credit and Smart, off for Cash. It
+                    reports the mode rather than switching it — the strip opens the
+                    spend-mode sheet, which is where a change is made and signed. */}
+                <View style={styles.spendModeToggle}>
+                  <View
+                    style={[
+                      styles.spendModeKnob,
+                      {
+                        left: isCreditOn
+                          ? SPEND_MODE_TOGGLE_WIDTH - SPEND_MODE_KNOB_SIZE - SPEND_MODE_KNOB_INSET
+                          : SPEND_MODE_KNOB_INSET,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            </Pressable>
+          </HeroExit>
+          <Pressable
+            onPress={() => flyToPane(false)}
+            style={[styles.cardBodyFrame, isCardHidden && styles.hidden]}
+          >
+            <View ref={ref} collapsable={false} pointerEvents="none" style={styles.cardBox}>
+              {card}
+            </View>
+          </Pressable>
+          {/* Reserves the strip's height in the layout; taps fall through to it. */}
+          <View pointerEvents="none" style={styles.spendModeStripSpace} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     // Hidden for as long as the pane owns the card — while it flies, and while the
     // pane is open — so no copy is left behind under the (background-less) pane.
     <Pressable
-      onPress={handlePress}
+      onPress={() => flyToPane(false)}
       className="px-4"
-      style={heroActive || isPaneOpen ? styles.hidden : undefined}
+      style={isCardHidden ? styles.hidden : undefined}
     >
       {/* The measured node is the artwork box, not this gutter — the hero flight's
           `from` rect has to be the same box getCardHeroDestination predicts. */}
@@ -270,6 +379,47 @@ const styles = StyleSheet.create({
   getCardLabel: { minHeight: 23, transform: [{ translateY: -2 }] },
   getCardText: { fontFamily: 'MonaSans_500Medium', lineHeight: 23 },
   getCardChevron: { height: 12, width: 7 },
+  // Figma 26134:22854 — see SPEND_MODE_PANEL_HEIGHT.
+  spendModeStack: { position: 'relative' },
+  spendModePanel: {
+    bottom: 0,
+    height: SPEND_MODE_PANEL_HEIGHT,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  spendModeStripSpace: { height: SPEND_MODE_STRIP_HEIGHT },
+  // Bottom-aligned so each item's bottom edge lands where Figma puts it: the toggle
+  // 16pt above the panel's edge, the two 23pt label boxes 2pt above that.
+  spendModeRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingBottom: SPEND_MODE_ROW_BOTTOM,
+    paddingLeft: 17,
+    paddingRight: 16,
+  },
+  spendModeLabel: { alignItems: 'center', flexDirection: 'row', gap: 10, marginBottom: 2 },
+  // The chevron's box sits 1.5pt below the label's centre line (y 105–115 in a 97–120
+  // row), which is where the design draws it.
+  spendModeChevron: { height: 11.5, marginTop: 3, width: 6.81066 },
+  spendModeValue: { alignItems: 'flex-end', flexDirection: 'row', gap: 10 },
+  spendModeValueText: { marginBottom: 2 },
+  spendModeToggle: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: SPEND_MODE_TOGGLE_HEIGHT / 2,
+    height: SPEND_MODE_TOGGLE_HEIGHT,
+    width: SPEND_MODE_TOGGLE_WIDTH,
+  },
+  spendModeKnob: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: SPEND_MODE_KNOB_SIZE / 2,
+    height: SPEND_MODE_KNOB_SIZE,
+    position: 'absolute',
+    top: SPEND_MODE_KNOB_INSET,
+    width: SPEND_MODE_KNOB_SIZE,
+  },
+  stripText: { fontFamily: 'MonaSans_500Medium', lineHeight: 23 },
   hidden: { opacity: 0 },
 });
 

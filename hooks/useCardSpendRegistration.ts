@@ -59,8 +59,15 @@ const MODULE_PAGE_SIZE = 50n;
  * handing over the PAN. Worth telling apart from `spending_sheet` — someone who came
  * looking for their card number is being asked a question they did not go there to
  * answer, and how many of them finish it is the thing to watch.
+ *
+ * `spending_banner` is the "Card spending isn't set up" row on the card pane, shown to a Safe that
+ * set up card spending and then had its module turned off. It only ever re-enables.
  */
-export type CardSpendRegistrationSource = 'spending_sheet' | 'card_activation' | 'card_reveal';
+export type CardSpendRegistrationSource =
+  | 'spending_sheet'
+  | 'card_activation'
+  | 'card_reveal'
+  | 'spending_banner';
 
 /** The Safe's live limit state, with every matured transition already applied. */
 export interface CardSpendLimit {

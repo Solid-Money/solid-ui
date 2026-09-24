@@ -11,8 +11,17 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  * same block shows the same number wherever it is placed.
  */
 
+/** Figma 25950:2984. Fixed, so the sheet can reserve room for any stack of these. */
+export const BALANCE_PANEL_HEIGHT = 106;
+/** Figma 25961:3504. See {@link BALANCE_PANEL_HEIGHT}. */
+export const BORROWED_PANEL_HEIGHT = 126;
+
 interface BalancePanelProps {
   balance: string;
+  /**
+   * Opens the add-funds flow. Without one the pill is not drawn: it used to render with
+   * nothing behind it, and a button that ignores the tap reads as broken.
+   */
   onAddFunds?: () => void;
 }
 
@@ -25,15 +34,17 @@ export const SpendModeBalancePanel = ({ balance, onAddFunds }: BalancePanelProps
       </Text>
       <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
     </View>
-    <Pressable
-      accessibilityLabel="Add funds"
-      accessibilityRole="button"
-      className="transition-all active:scale-95 active:opacity-80"
-      onPress={onAddFunds}
-      style={styles.addFunds}
-    >
-      <Text className="text-[16px] font-semibold text-black">Add funds</Text>
-    </Pressable>
+    {onAddFunds ? (
+      <Pressable
+        accessibilityLabel="Add funds"
+        accessibilityRole="button"
+        className="transition-all active:scale-95 active:opacity-80"
+        onPress={onAddFunds}
+        style={styles.addFunds}
+      >
+        <Text className="text-[16px] font-semibold text-black">Add funds</Text>
+      </Pressable>
+    ) : null}
   </View>
 );
 
@@ -85,11 +96,11 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#2B2B2B', borderRadius: 20, overflow: 'hidden' },
 
-  // Figma 25950:2984 — 106pt tall, the text block and the pill both centred in it.
+  // The text block and the pill both centred in the panel.
   balancePanel: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: 106,
+    height: BALANCE_PANEL_HEIGHT,
     paddingLeft: 23,
     paddingRight: 24,
   },
@@ -104,7 +115,7 @@ const styles = StyleSheet.create({
   },
 
   // 126pt tall: the title at 23, the figures 35 below it, the track 15 below those.
-  borrowedPanel: { height: 126, paddingTop: 23 },
+  borrowedPanel: { height: BORROWED_PANEL_HEIGHT, paddingTop: 23 },
   borrowedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
