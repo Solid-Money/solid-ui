@@ -3236,6 +3236,16 @@ export interface TierMembershipState {
   lock: TierLockState;
   subscription: TierSubscription | null;
   currentTier: RewardsTier;
+  /**
+   * Whether that tier rests on the legacy "skip the line" route alone — FUSE
+   * sitting in Savings, granting a tier without being committed to anything.
+   *
+   * The migration flag. That route is being retired, and when it is switched
+   * off everyone it was carrying drops to Core in the same instant. False for
+   * anyone who has also locked or subscribed, because nothing about the change
+   * can reach them — so this is exactly the set of users worth warning.
+   */
+  legacyFuseOnly: boolean;
   memberSince: string | null;
   contracts: TierMembershipContracts;
 }

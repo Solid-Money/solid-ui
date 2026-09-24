@@ -32,6 +32,8 @@ const offer = (overrides: Partial<TierOffer> = {}): TierOffer => ({
 const membership = (overrides: Partial<TierMembershipState> = {}): TierMembershipState => ({
   enabled: true,
   pointsUnlockEnabled: false,
+  // Nothing resting on the legacy skip-the-line route by default.
+  legacyFuseOnly: false,
   offers: [offer(), offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null })],
   lock: {
     enabled: true,
