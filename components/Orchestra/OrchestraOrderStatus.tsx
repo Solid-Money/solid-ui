@@ -226,7 +226,7 @@ export const OrchestraOrderStatus = () => {
             : isRefunding
               ? 'This deposit couldn’t be completed, so your payment is on its way back to you.'
               : isWaitingForPayment
-                ? 'This updates as soon as your Lightning payment lands.'
+                ? 'This updates as soon as your Cash App payment lands.'
                 : `Your ${symbol} is on its way.`}
         </Text>
       </View>

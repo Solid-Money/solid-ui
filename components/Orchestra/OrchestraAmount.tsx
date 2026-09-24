@@ -170,8 +170,8 @@ export const OrchestraAmount = () => {
       <View className="gap-2 rounded-[15px] bg-[#1C1C1C] p-4">
         <Text className="text-base font-semibold leading-[22px] text-white">How this works</Text>
         <Text className="text-sm font-medium leading-5 text-white/70">
-          We&apos;ll create a Lightning invoice for this amount. You&apos;ll see the exact rate,
-          fee, and what you receive before you pay anything.
+          We&apos;ll create a Cash App payment request for this amount. You&apos;ll see the exact
+          rate, fee, and what you receive before you pay anything.
         </Text>
         <Text className="text-xs font-medium leading-[18px] text-white/50">
           Between {formatUsd(minUsd)} and {formatUsd(maxUsd)} per deposit
@@ -186,9 +186,8 @@ export const OrchestraAmount = () => {
 
       <View className="gap-[18px]">
         <Text className="text-xs font-medium leading-[17px] text-white/50">
-          You&apos;ll pay a Lightning invoice with Cash App, Strike, or any Lightning wallet.
-          Conversion is provided by Flashnet; rates and fees are set by Flashnet and may change.
-          Available in the US only, excluding New York.
+          You&apos;ll pay with Cash App. Conversion is provided by Flashnet; rates and fees are set
+          by Flashnet and may change. Available in the US only, excluding New York.
         </Text>
 
         <Button

@@ -16,7 +16,8 @@ import VirtualAccountApplyDialog from './VirtualAccountDetails/VirtualAccountApp
 const ICON_SIZE = 36;
 
 const BANK_CHIPS = ['Wire', 'ACH'];
-const CASH_APP_CHIPS = ['Lightning', 'Instant'];
+// The row is already titled Cash App; the chip says how fast, not how.
+const CASH_APP_CHIPS = ['Instant'];
 
 /**
  * How to fund in USD: the bank rail, or Cash App over Lightning.
@@ -75,7 +76,7 @@ const DepositUsdOptions = () => {
             </View>
           }
           title="Cash App"
-          subtitle="Pay a Lightning invoice"
+          subtitle="Pay from your Cash App balance"
           onPress={handleCashAppPress}
           chips={CASH_APP_CHIPS}
         />

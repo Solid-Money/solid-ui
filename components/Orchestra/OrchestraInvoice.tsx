@@ -136,9 +136,7 @@ export const OrchestraInvoice = () => {
           />
         </View>
         <Text className="text-center text-sm text-muted-foreground">
-          {showsCashAppQr
-            ? 'Scan with your phone to pay in Cash App'
-            : 'Scan with a Lightning wallet'}
+          {showsCashAppQr ? 'Scan with your phone to pay in Cash App' : 'Scan with Cash App'}
         </Text>
         {secondsLeft != null ? (
           <Text
@@ -167,7 +165,7 @@ export const OrchestraInvoice = () => {
 
       <View className="flex-row items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3">
         <View className="min-w-0 flex-1 gap-0.5">
-          <Text className="text-sm text-muted-foreground">Lightning invoice</Text>
+          <Text className="text-sm text-muted-foreground">Payment request</Text>
           <Text className="text-base font-medium text-primary" numberOfLines={1}>
             {eclipseAddress(order.depositAddress)}
           </Text>
@@ -181,8 +179,8 @@ export const OrchestraInvoice = () => {
       </View>
 
       <Text className="px-1 text-xs text-muted-foreground">
-        Pay with Cash App, Strike, or any Lightning wallet. Don&apos;t close this window — your
-        deposit is tracked here once the payment is detected.
+        Pay with Cash App. Don&apos;t close this window — your deposit is tracked here once the
+        payment is detected.
       </Text>
 
       <View className="mt-auto gap-3">

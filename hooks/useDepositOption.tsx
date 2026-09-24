@@ -511,8 +511,8 @@ const useDepositOption = ({
     // it would say the same thing twice.
     if (isBuyCryptoError) return undefined;
     if (isDepositUsdMethod) return 'Deposit US Dollars';
-    if (isOrchestraAmount) return 'Deposit with Lightning';
-    if (isOrchestraInvoice) return 'Pay this invoice';
+    if (isOrchestraAmount) return 'Deposit with Cash App';
+    if (isOrchestraInvoice) return 'Pay with Cash App';
     if (isOrchestraStatus) return 'Deposit status';
     // Same reasoning as the TransFi error screen above.
     if (isOrchestraError) return undefined;
