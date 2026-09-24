@@ -3291,7 +3291,11 @@ export interface TierMembershipContracts {
 export interface TierMembershipState {
   /** Whether either purchase route is available. False hides the upgrade UI. */
   enabled: boolean;
-  /** Whether points still unlock a tier. False in v3. */
+  /**
+   * Whether points can still take this user to a higher tier. Per user: false
+   * once the ladder is switched off, for anyone not on the grandfather list,
+   * and for a grandfathered user already at the tier the list caps them at.
+   */
   pointsUnlockEnabled: boolean;
   offers: TierOffer[];
   lock: TierLockState;
