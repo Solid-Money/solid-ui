@@ -7,6 +7,7 @@ import { Address } from 'viem';
 import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
@@ -73,6 +74,13 @@ export default function HomeScreenNew() {
   const { provider: cardProvider } = useCardProvider();
 
   const userHasCard = hasCard(cardStatus);
+  // The "Spend mode" strip under the card. `canChangeMode` already carries all three
+  // gates — a Wirex card (the registration read only runs for Wirex), the spend-mode
+  // cohort, and a build that can reach v2 — the same condition the card page shows its
+  // own spend-mode row on, so the shortcut never leads to a sheet that is not there.
+  const spendModeFigures = useSpendModeFigures();
+  const homeSpendMode =
+    userHasCard && spendModeFigures.canChangeMode ? spendModeFigures.mode : null;
   // Whether the card balance is a pot of its own or a view onto savings (Wirex).
   const cardHoldsOwnBalance = cardHoldsBalance(cardProvider);
 
@@ -283,6 +291,7 @@ export default function HomeScreenNew() {
               last4={cardDetails?.card_details?.last_4}
               depositCompleted={depositCompleted}
               hasCtaBanner={isPromptReady}
+              spendMode={homeSpendMode}
             />
           )}
           {isPromptReady && promptKey && (
