@@ -5,7 +5,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
 import {
   SPEND_MODE_COPY,
-  SPEND_MODES,
   type SpendMode,
 } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import { Text } from '@/components/ui/text';
@@ -53,6 +52,11 @@ const SegmentLabels = ({ mode, value, tone }: SegmentLabelsProps) => (
 
 interface SpendModeSegmentedControlProps {
   /**
+   * The segments to show, left to right. Every width and the pill's position are derived
+   * from this list, so a hidden mode leaves no gap.
+   */
+  modes: readonly SpendMode[];
+  /**
    * The segment the sheet is currently showing. The white pill sits on it whether or
    * not it is the mode in force — the button under the panels already says which one
    * that is ("Cancel" on it, "Change to …" anywhere else), and a translucent pill on a
@@ -74,26 +78,28 @@ interface SpendModeSegmentedControlProps {
 }
 
 /**
- * The three-way spend-mode switch (Figma 25961:3490).
+ * The spend-mode switch (Figma 25961:3490).
  *
  * Figma draws the pill 140pt wide under "Cash" and 122pt under the other two,
  * because each one was sized to its own caption on a 385pt artboard. Here the
- * segments are even thirds of whatever width the sheet gets: the control has to
+ * segments are even shares of whatever width the sheet gets: the control has to
  * hold its proportions from a narrow phone to the desktop modal, and hand-fitting
  * the pill to the text would either overflow or leave a gap at every other size.
  */
 const SpendModeSegmentedControl = ({
+  modes,
   selected,
   segmentValue,
   onSelect,
   disabled = false,
 }: SpendModeSegmentedControlProps) => {
   const [trackWidth, setTrackWidth] = useState(0);
-  const segmentWidth = trackWidth > 0 ? (trackWidth - CONTROL_INSET * 2) / SPEND_MODES.length : 0;
+  const segmentWidth = trackWidth > 0 ? (trackWidth - CONTROL_INSET * 2) / modes.length : 0;
 
-  const selectedIndex = SPEND_MODES.indexOf(selected);
+  // Never -1: the caller always includes the selected mode (see `offeredSpendModes`).
+  const selectedIndex = Math.max(0, modes.indexOf(selected));
 
-  // 0 → 2 as the pill travels. Its position and the label tones all read from this
+  // 0 → last index as the pill travels. Its position and the label tones all read from this
   // one value, so the dark copy can never arrive out of step with the pill.
   const position = useSharedValue(selectedIndex);
 
@@ -117,7 +123,7 @@ const SpendModeSegmentedControl = ({
   return (
     <View onLayout={handleLayout} style={styles.track}>
       <Animated.View pointerEvents="none" style={[styles.pill, pillStyle]} />
-      {SPEND_MODES.map((mode, index) => (
+      {modes.map((mode, index) => (
         <Segment
           key={mode}
           mode={mode}
@@ -142,7 +148,7 @@ interface SegmentProps {
 }
 
 /**
- * One third of the control. The dark copy is a second, stacked layer rather than
+ * One segment of the control. The dark copy is a second, stacked layer rather than
  * an animated text colour: it fades up exactly as the white pill arrives, so the
  * label flips with the background instead of a step behind it — including on the
  * segments the pill only passes over on its way.
