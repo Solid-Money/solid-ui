@@ -375,6 +375,16 @@ export interface CardBorrowPosition {
    * number a card tap then declines.
    */
   availableToBorrowUsd: bigint;
+  /**
+   * What the credit line leaves to draw: {@link availableToBorrowUsd} without the Safe's
+   * rolling spending limit.
+   *
+   * Still clamped by the per-Safe and global debt caps, which bound borrowing itself. The
+   * spending limit bounds the card instead, so it binds every mode alike — the cash figure
+   * beside this one is not reduced by it either, and a credit figure that was would quote the
+   * daily limit as if it were the line.
+   */
+  creditHeadroomUsd: bigint;
   /** WAD. The module reports `type(uint256).max` when there is no debt. */
   healthFactorWad: bigint;
   /**
@@ -485,6 +495,31 @@ const lensCredit = (
 };
 
 /**
+ * The lens's borrowable figure with the rolling spending limit taken back out.
+ *
+ * Re-applies the lens's other clamps rather than trying to undo one: collateral headroom,
+ * then the per-Safe debt cap, then the global cap's remaining room. The lens figure is a floor
+ * because it can only be lower, except under a limits waiver — which lifts the per-Safe cap
+ * here too, and which only the lens knows about.
+ */
+const creditHeadroom = (
+  credit: NonNullable<ReturnType<typeof lensCredit>>,
+  caps: { maxDebtPerSafeUsd: bigint; maxGlobalDebtUsd: bigint },
+  totalDebtUsd: bigint,
+): bigint => {
+  const room = (cap: bigint, used: bigint) => (cap > used ? cap - used : 0n);
+  const min = (a: bigint, b: bigint) => (a < b ? a : b);
+
+  const line = credit.borrowingPowerUsd + credit.prospectiveCollateralUsd;
+  const headroom = min(
+    min(room(line, credit.debtUsd), room(caps.maxDebtPerSafeUsd, credit.debtUsd)),
+    room(caps.maxGlobalDebtUsd, totalDebtUsd),
+  );
+
+  return headroom > credit.availableToBorrowUsd ? headroom : credit.availableToBorrowUsd;
+};
+
+/**
  * v2's answer for this Safe, or null when there is nothing to ask.
  *
  * `allowFailure` is on and any failed call collapses the whole thing to null, which is
@@ -521,6 +556,8 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
         { ...module, functionName: 'positionValue', args: [safeAddress] },
         { ...module, functionName: 'maxCanSpendUsd', args: [safeAddress] },
         { ...module, functionName: 'borrowApyPerSecond' },
+        // For the global debt cap's remaining room, which bounds the credit headroom below.
+        { ...module, functionName: 'totalDebtUsd' },
         // The lens, for the credit figures the module cannot answer on its own — above all
         // `prospectiveCollateralUsd`, the power the Safe's LOOSE balance would give it.
         // Without this the card offered Credit at $0 to a cardholder holding soUSD, because
@@ -560,6 +597,7 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
       positionValue,
       ,
       borrowApyPerSecond,
+      totalDebtUsd,
     ] = results.map(result => result.result) as never[];
 
     const p = params as unknown as {
@@ -570,6 +608,8 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
       defaultMonthlyLimitUsd: bigint;
       limitRaiseDelay: bigint;
       modeDelay: bigint;
+      maxDebtPerSafeUsd: bigint;
+      maxGlobalDebtUsd: bigint;
     };
     const [powerUsd, capacityUsd, fullyPriced] = positionValue as unknown as [
       bigint,
@@ -611,6 +651,10 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
         // in both directions. Zero says "we do not know" and the UI shows a line of zero
         // rather than one it cannot stand behind.
         availableToBorrowUsd: credit?.availableToBorrowUsd ?? 0n,
+        // Zero without the lens for the same reason: the line it is cut from is the lens's.
+        creditHeadroomUsd: credit
+          ? creditHeadroom(credit, p, totalDebtUsd as unknown as bigint)
+          : 0n,
         healthFactorWad: healthFactorWad as unknown as bigint,
         fullyPriced: credit?.fullyPriced ?? fullyPriced,
       },
