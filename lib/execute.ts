@@ -34,7 +34,9 @@ export const isWebAuthnUserCancelledError = (error: any): boolean => {
     message.includes('user denied') ||
     message.includes('user rejected') ||
     message.includes('aborted by the user') ||
-    message.includes('not allowed')
+    message.includes('not allowed') ||
+    // Turnkey iOS SDK signals cancellation via a dedicated field rather than message
+    error?.error === 'UserCancelled'
   );
 };
 
