@@ -25,7 +25,17 @@ interface CardPaneState {
    * plain redirect and still land the user on the instructions.
    */
   walletGuide: DigitalWalletType | null;
+  /**
+   * Whether the pane should put the spend-mode sheet up once it has opened. Set by the
+   * home screen's "Spend mode" strip under the card, which is a shortcut to that sheet
+   * rather than to the card page itself. One-shot, like {@link walletGuide}.
+   */
+  spendModeRequested: boolean;
   open: (originRect?: CardHeroRect | null) => void;
+  /** Open the pane — flying from `originRect` when given — and then the spend-mode sheet. */
+  openSpendMode: (originRect?: CardHeroRect | null) => void;
+  /** Mark the spend-mode request handled, leaving the pane open. */
+  dismissSpendModeRequest: () => void;
   /** Open the pane with the wallet guide already up on `wallet`'s tab. */
   openWalletGuide: (wallet: DigitalWalletType) => void;
   /** Close the guide, leaving the pane itself open. */
@@ -37,7 +47,10 @@ export const useCardPaneStore = create<CardPaneState>(set => ({
   isOpen: false,
   originRect: null,
   walletGuide: null,
+  spendModeRequested: false,
   open: (originRect = null) => set({ isOpen: true, originRect }),
+  openSpendMode: (originRect = null) => set({ isOpen: true, originRect, spendModeRequested: true }),
+  dismissSpendModeRequest: () => set({ spendModeRequested: false }),
   openWalletGuide: (wallet: DigitalWalletType) =>
     // No origin rect: the user arrived by link, so there is no card on screen to
     // fly from — or back to when they close the pane.
@@ -46,5 +59,5 @@ export const useCardPaneStore = create<CardPaneState>(set => ({
   // Clear the guide too: it was a one-shot instruction from the link that
   // opened the pane, and re-opening the pane by tapping the card should not
   // resurrect it.
-  close: () => set({ isOpen: false, walletGuide: null }),
+  close: () => set({ isOpen: false, walletGuide: null, spendModeRequested: false }),
 }));

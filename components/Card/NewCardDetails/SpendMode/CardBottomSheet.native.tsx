@@ -61,6 +61,9 @@ const CardBottomSheet = ({
       ref={sheetRef}
       enableDynamicSizing
       enablePanDownToClose
+      // The repay step has a field. Without this the sheet stays lifted after the keyboard
+      // is dismissed, floating over a gap where the keyboard used to be.
+      keyboardBlurBehavior="restore"
       onDismiss={dismiss}
       backdropComponent={renderBackdrop}
       backgroundStyle={{

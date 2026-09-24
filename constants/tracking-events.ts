@@ -282,6 +282,10 @@ export const TRACKING_EVENTS = {
   REGION_UNAVAILABLE_CONTINUE_PRESSED: 'region_unavailable_continue_pressed',
   REGION_UNAVAILABLE_CHANGE_COUNTRY_PRESSED: 'region_unavailable_change_country_pressed',
   CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
+  // Pressed from the failure banner on /card/activate. Carries the failure
+  // code, so a retry wave after an issuer outage is separable from a user
+  // pressing again at a failure that will not clear.
+  CARD_ACTIVATION_RETRIED: 'card_activation_retried',
   USER_KYC_INFO_PAGE_VIEWED: 'user_kyc_info_page_viewed',
   USER_KYC_INFO_FORM_STARTED: 'user_kyc_info_form_started',
   KYC_STEP_STARTED: 'kyc_step_started',
@@ -344,6 +348,14 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_REGISTER_COMPLETED: 'card_spend_register_completed',
   CARD_SPEND_REGISTER_FAILED: 'card_spend_register_failed',
   CARD_SPEND_REGISTER_CANCELLED: 'card_spend_register_cancelled',
+  // Enabling the Base instance so the card can spend a EURC balance. Its own funnel
+  // rather than properties on the register events above, because it is a SECOND
+  // enablement on a second chain by users who already finished that one — folding them
+  // together would make a completion rate that mixes first-time setup with an upsell.
+  CARD_EURO_SPEND_ENABLE_STARTED: 'card_euro_spend_enable_started',
+  CARD_EURO_SPEND_ENABLE_COMPLETED: 'card_euro_spend_enable_completed',
+  CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
+  CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
   // Turning card spending back off: `Safe.disableModule`. Its own events rather than a
   // property on the register ones, because this is the funnel leaving — a user who
   // disables is a different signal from one who never set up.
@@ -359,6 +371,13 @@ export const TRACKING_EVENTS = {
   CARD_SPEND_MODE_CHANGE_COMPLETED: 'card_spend_mode_change_completed',
   CARD_SPEND_MODE_CHANGE_FAILED: 'card_spend_mode_change_failed',
   CARD_SPEND_MODE_CHANGE_CANCELLED: 'card_spend_mode_change_cancelled',
+  // Repaying a v2 credit position, from the wallet or from escrowed collateral. `source`
+  // and `is_full` on the completed event split the two paths and tell a pay-down from a
+  // closed loan, which also returns the remaining collateral in the same signature.
+  CARD_CREDIT_REPAY_PRESSED: 'card_credit_repay_pressed',
+  CARD_CREDIT_REPAY_COMPLETED: 'card_credit_repay_completed',
+  CARD_CREDIT_REPAY_FAILED: 'card_credit_repay_failed',
+  CARD_CREDIT_REPAY_CANCELLED: 'card_credit_repay_cancelled',
   // Changing the caps on an existing registration. Separate from the register funnel
   // because it is a returning user tuning a live card, not a new one being set up, and
   // the two directions are genuinely different products of the contract: a decrease

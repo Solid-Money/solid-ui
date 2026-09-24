@@ -1,6 +1,8 @@
 import { Pressable, View } from 'react-native';
 
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { isActivationFailureRetryable } from '@/lib/utils/cardActivationRetry';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 import type { CardActivationFailure } from '@/lib/types';
@@ -11,14 +13,22 @@ interface CardStatusBannerProps {
   blockedReason: string;
   /** The classified failure, when the server could name one. */
   failure?: CardActivationFailure;
+  /**
+   * Starts the activation flow again — the same destination as the "Activate
+   * card" step. Rendered as the banner's primary action whenever the failure is
+   * retryable, because on a retryable failure this IS the next step and the
+   * steps list below is collapsed behind a disabled-looking row.
+   */
+  onRetry?: () => void;
 }
 
 /**
- * A blocker the user is expected to fix themselves rather than escalate.
+ * A blocker the user is expected to wait out rather than escalate.
  *
- * Everything else — an unsupported country, an issuer decline, a name the
- * issuer cannot read — is ours to resolve, so the support action is the point
- * of the card rather than a footnote.
+ * Only these two suppress the support action outright. Everything else offers
+ * support, and a retryable failure offers a retry alongside it — an issuer
+ * decline is ours to chase, but it is also the one the user can simply try
+ * again once the issuer is back.
  */
 const SELF_SERVICE_CODES = new Set(['ACTIVATION_PENDING', 'TEMPORARY_FAILURE']);
 
@@ -40,7 +50,7 @@ const FALLBACK_DETAIL_BY_CODE: Record<string, string> = {
   MISSING_VERIFIED_NAME: 'This has to be corrected on our side — retrying will not fix it.',
   INVALID_PROFILE_DATA: 'This has to be corrected on our side — retrying will not fix it.',
   ISSUER_DECLINED:
-    'This is a problem at our card issuer, not with your account or your verification. We are already tracking it.',
+    'This was a problem at our card issuer, not with your account or your verification. Please try again — if it keeps failing, contact support.',
   ACTIVATION_PENDING: 'This page updates itself — there is no need to keep retrying.',
   TEMPORARY_FAILURE: 'Please try again in a few minutes.',
 };
@@ -50,6 +60,7 @@ export function CardStatusBanner({
   isBlocked,
   blockedReason,
   failure,
+  onRetry,
 }: CardStatusBannerProps) {
   // A recorded failure outranks the pending state: a card that is "on its way"
   // and an issuance that just failed are the same screen, and the failure is
@@ -57,6 +68,13 @@ export function CardStatusBanner({
   if (failure) {
     const selfService = SELF_SERVICE_CODES.has(failure.code);
     const detail = failure.detail || FALLBACK_DETAIL_BY_CODE[failure.code];
+    // ACTIVATION_PENDING is the one retryable code with nothing to press: the
+    // card account is mid-provisioning and the page polls itself, so a button
+    // would only invite the retry loop the copy is talking the user out of.
+    const canRetry =
+      Boolean(onRetry) &&
+      failure.code !== 'ACTIVATION_PENDING' &&
+      isActivationFailureRetryable(failure);
 
     return (
       <View
@@ -69,12 +87,26 @@ export function CardStatusBanner({
 
         {!!detail && <Text className="mt-2 text-sm leading-5 text-white/70">{detail}</Text>}
 
+        {canRetry && (
+          <Button
+            variant="brand"
+            accessibilityRole="button"
+            accessibilityLabel="Try activating your card again"
+            onPress={onRetry}
+            className="mt-4 self-start px-5"
+          >
+            <Text className="text-base font-semibold text-black">Try again</Text>
+          </Button>
+        )}
+
+        {/* Support stays available next to a retry, not instead of it: an issuer
+            decline is still ours to chase if trying again does not clear it. */}
         {!selfService && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Contact support about card activation"
             onPress={() => openSupportDrawer()}
-            className="mt-4 self-start rounded-lg bg-white/10 px-4 py-2"
+            className={`self-start rounded-lg bg-white/10 px-4 py-2 ${canRetry ? 'mt-3' : 'mt-4'}`}
           >
             <Text className="text-sm font-semibold text-white">Contact support</Text>
           </Pressable>

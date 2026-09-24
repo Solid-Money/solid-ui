@@ -45,10 +45,21 @@ const CardBottomSheet = ({
         trigger={null}
         contentKey={contentKey}
         shouldAnimate={false}
-        contentClassName="md:max-w-[420px]"
+        // The modal's stock chrome is sized for phones blown up: a 40px inset on every side,
+        // then a 50px close button on a row of its own and a 32px gap under it, all before
+        // the body's own 17pt inset. At 420px that left ~306px for a body built for 385, so
+        // figures wrapped and the amount field clipped. Here the header is hidden — the body
+        // puts a compact close button in its own first row — the inset is 24px all round,
+        // and the body drops its 17pt inset, which leaves 432px of content.
+        hideHeader
+        // The body scrolls in its own view below, so the bottom inset can match the top one;
+        // the stock scroll view adds a fixed 40px under the content.
+        disableScroll
+        contentClassName="md:max-w-[480px] md:px-6 md:pt-6 md:pb-6"
       >
-        {/* The modal brings its own header padding, so the body starts flush. */}
-        {children({ session, topPadding: 0 })}
+        <ScrollView className="web:max-h-[85vh]" showsVerticalScrollIndicator={false}>
+          {children({ session, topPadding: 0, presentation: 'modal' })}
+        </ScrollView>
       </ResponsiveModal>
     );
   }

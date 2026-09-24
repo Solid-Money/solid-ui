@@ -59,8 +59,15 @@ const MODULE_PAGE_SIZE = 50n;
  * handing over the PAN. Worth telling apart from `spending_sheet` — someone who came
  * looking for their card number is being asked a question they did not go there to
  * answer, and how many of them finish it is the thing to watch.
+ *
+ * `spending_banner` is the "Card spending isn't set up" row on the card pane, shown to a Safe that
+ * set up card spending and then had its module turned off. It only ever re-enables.
  */
-export type CardSpendRegistrationSource = 'spending_sheet' | 'card_activation' | 'card_reveal';
+export type CardSpendRegistrationSource =
+  | 'spending_sheet'
+  | 'card_activation'
+  | 'card_reveal'
+  | 'spending_banner';
 
 /** The Safe's live limit state, with every matured transition already applied. */
 export interface CardSpendLimit {
@@ -189,6 +196,23 @@ export interface CardSpendRegistration {
    * modes, so it must not present them as choices.
    */
   v2Available: boolean;
+  /**
+   * A Safe with no working module, about to be set up on v2.
+   *
+   * v2 is where every new registration goes: a cardholder setting up for the first time, one
+   * whose v1 module is off, and one whose earlier v2 core was replaced by a redeploy. It is
+   * reported as the v2 Safe it is about to become, so every write here targets v2 — not v1,
+   * which is where a Safe with no v2 registration would otherwise be sent. It registers in
+   * Debit mode, which is where v2's `registerSafe` starts every Safe.
+   */
+  awaitingV2: boolean;
+  /** v1 is enabled on the Safe. v2's `registerSafe` refuses until it is disabled. */
+  legacyEnabled: boolean;
+  /**
+   * The caps an {@link awaitingV2} Safe registers with: its v1 caps where it had them,
+   * clamped to v2's ceilings, otherwise v2's defaults. Null in every other state.
+   */
+  carriedLimit: Pick<CardSpendLimit, 'dailyLimitUsd' | 'monthlyLimitUsd' | 'timezoneOffset'> | null;
 }
 
 /**
@@ -368,6 +392,16 @@ export interface CardBorrowPosition {
    * number a card tap then declines.
    */
   availableToBorrowUsd: bigint;
+  /**
+   * What the credit line leaves to draw: {@link availableToBorrowUsd} without the Safe's
+   * rolling spending limit.
+   *
+   * Still clamped by the per-Safe and global debt caps, which bound borrowing itself. The
+   * spending limit bounds the card instead, so it binds every mode alike — the cash figure
+   * beside this one is not reduced by it either, and a credit figure that was would quote the
+   * daily limit as if it were the line.
+   */
+  creditHeadroomUsd: bigint;
   /** WAD. The module reports `type(uint256).max` when there is no debt. */
   healthFactorWad: bigint;
   /**
@@ -478,6 +512,31 @@ const lensCredit = (
 };
 
 /**
+ * The lens's borrowable figure with the rolling spending limit taken back out.
+ *
+ * Re-applies the lens's other clamps rather than trying to undo one: collateral headroom,
+ * then the per-Safe debt cap, then the global cap's remaining room. The lens figure is a floor
+ * because it can only be lower, except under a limits waiver — which lifts the per-Safe cap
+ * here too, and which only the lens knows about.
+ */
+const creditHeadroom = (
+  credit: NonNullable<ReturnType<typeof lensCredit>>,
+  caps: { maxDebtPerSafeUsd: bigint; maxGlobalDebtUsd: bigint },
+  totalDebtUsd: bigint,
+): bigint => {
+  const room = (cap: bigint, used: bigint) => (cap > used ? cap - used : 0n);
+  const min = (a: bigint, b: bigint) => (a < b ? a : b);
+
+  const line = credit.borrowingPowerUsd + credit.prospectiveCollateralUsd;
+  const headroom = min(
+    min(room(line, credit.debtUsd), room(caps.maxDebtPerSafeUsd, credit.debtUsd)),
+    room(caps.maxGlobalDebtUsd, totalDebtUsd),
+  );
+
+  return headroom > credit.availableToBorrowUsd ? headroom : credit.availableToBorrowUsd;
+};
+
+/**
  * v2's answer for this Safe, or null when there is nothing to ask.
  *
  * `allowFailure` is on and any failed call collapses the whole thing to null, which is
@@ -514,6 +573,8 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
         { ...module, functionName: 'positionValue', args: [safeAddress] },
         { ...module, functionName: 'maxCanSpendUsd', args: [safeAddress] },
         { ...module, functionName: 'borrowApyPerSecond' },
+        // For the global debt cap's remaining room, which bounds the credit headroom below.
+        { ...module, functionName: 'totalDebtUsd' },
         // The lens, for the credit figures the module cannot answer on its own — above all
         // `prospectiveCollateralUsd`, the power the Safe's LOOSE balance would give it.
         // Without this the card offered Credit at $0 to a cardholder holding soUSD, because
@@ -553,6 +614,7 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
       positionValue,
       ,
       borrowApyPerSecond,
+      totalDebtUsd,
     ] = results.map(result => result.result) as never[];
 
     const p = params as unknown as {
@@ -563,6 +625,8 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
       defaultMonthlyLimitUsd: bigint;
       limitRaiseDelay: bigint;
       modeDelay: bigint;
+      maxDebtPerSafeUsd: bigint;
+      maxGlobalDebtUsd: bigint;
     };
     const [powerUsd, capacityUsd, fullyPriced] = positionValue as unknown as [
       bigint,
@@ -604,6 +668,10 @@ const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
         // in both directions. Zero says "we do not know" and the UI shows a line of zero
         // rather than one it cannot stand behind.
         availableToBorrowUsd: credit?.availableToBorrowUsd ?? 0n,
+        // Zero without the lens for the same reason: the line it is cut from is the lens's.
+        creditHeadroomUsd: credit
+          ? creditHeadroom(credit, p, totalDebtUsd as unknown as bigint)
+          : 0n,
         healthFactorWad: healthFactorWad as unknown as bigint,
         fullyPriced: credit?.fullyPriced ?? fullyPriced,
       },
@@ -667,7 +735,11 @@ const foldMaturedRaise = (limit: RawSpendingLimit) => {
  * or an increase), and reading that from a render closure means signing against whatever
  * was true when the sheet last rendered.
  */
-const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpendRegistration> => {
+const readCardSpendRegistration = async (
+  safeAddress: Address,
+  /** This build can reach v2, so a Safe with no working module is set up there. */
+  preferV2 = false,
+): Promise<CardSpendRegistration> => {
   const client = publicClient(fuse.id);
   const module = { address: MODULE as Address, abi: SolidCashModule_ABI } as const;
 
@@ -708,7 +780,14 @@ const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpen
   // card, so that Safe is reported as the v1 cardholder it is behaving like.
   const isV2Active = v2 !== null && v2.registeredOnChain && !v2.legacyEnabled;
 
-  if (isV2Active && v2 !== null) {
+  // Nothing operates the Safe and v2 has never registered it. Reporting v1 here would send the
+  // enable action to v1 — `enableModule(v1)` for a Safe that was once on v1, a fresh v1
+  // registration for one that never was — and leave the credit modes a migration away. A Safe
+  // whose v1 still works is left on v1; the mode picker migrates it.
+  const awaitingV2 =
+    preferV2 && v2 !== null && cohort === SpendCohort.None && !v2.registeredOnChain;
+
+  if ((isV2Active || awaitingV2) && v2 !== null) {
     const folded = foldMaturedRaise(v2.rawLimit);
     // Pending only while the clock has not reached it. The module stamps an activation
     // instant on every up-rank including a zero-delay one, so `!== 0` would show a
@@ -738,6 +817,9 @@ const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpen
       position: v2.position,
       borrowApyPerSecond: v2.borrowApyPerSecond,
       v2Available: true,
+      awaitingV2,
+      legacyEnabled: v2.legacyEnabled,
+      carriedLimit: awaitingV2 ? carriedLimits(foldMaturedRaise(v1.rawLimit).limit, v2) : null,
     };
   }
 
@@ -768,6 +850,9 @@ const readCardSpendRegistration = async (safeAddress: Address): Promise<CardSpen
     position: null,
     borrowApyPerSecond: v2?.borrowApyPerSecond ?? 0n,
     v2Available: v2 !== null,
+    awaitingV2: false,
+    legacyEnabled: false,
+    carriedLimit: null,
   };
 };
 
@@ -835,9 +920,10 @@ const readV1State = async (
 const cardSpendRegistrationQueryOptions = (
   selectedUserId: string | undefined,
   safeAddress: Address | undefined,
+  preferV2: boolean,
 ) => ({
-  queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, selectedUserId, safeAddress],
-  queryFn: () => readCardSpendRegistration(safeAddress!),
+  queryKey: [CARD_SPEND_REGISTRATION_QUERY_KEY, selectedUserId, safeAddress, preferV2],
+  queryFn: () => readCardSpendRegistration(safeAddress!, preferV2),
   retry: false,
   staleTime: 15_000,
 });
@@ -854,9 +940,10 @@ const readFresh = (
   queryClient: QueryClient,
   selectedUserId: string | undefined,
   safeAddress: Address,
+  preferV2: boolean,
 ) =>
   queryClient.fetchQuery({
-    ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress),
+    ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
     staleTime: 0,
   });
 
@@ -929,8 +1016,12 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   // would answer the question does not exist yet.
   const isEnabled = (provider === CardProvider.WIREX || enabled === true) && Boolean(safeAddress);
 
+  // Which module a Safe with nothing working is set up on: v2 whenever this build can reach
+  // it, for every cardholder. v1 only for a build without v2.
+  const preferV2 = isCardSpendV2Configured();
+
   const query = useQuery<CardSpendRegistration>({
-    ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress),
+    ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
     enabled: isEnabled,
   });
 
@@ -986,7 +1077,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       }
       if (dailyLimitUsd === undefined) throw new Error('Pick a daily limit first.');
 
-      const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
+      const fresh = await readFresh(queryClient, selectedUserId, safeAddress, preferV2);
       if (fresh.registered) throw new Error('Card spending is already set up.');
 
       const daily = usdToOnChain(dailyLimitUsd);
@@ -1028,13 +1119,36 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       //
       // Building the batch from what is actually missing makes this one action cover
       // first-time setup and re-enabling, instead of stranding the user in either state.
-      // Whichever generation this Safe belongs to. For a new cardholder that is v1, which
-      // is where everyone starts; for a migrated cardholder who revoked the module it is
-      // v2, and re-enabling v1 instead would silently return them to cash spending while
-      // v2 still held their collateral.
+      // Whichever generation this Safe belongs to. For a new cardholder, or one with no
+      // working module, that is v2 (`awaitingV2`) whenever this build can reach it; v1 only
+      // when it cannot. For a migrated cardholder who revoked the module it is v2 too, and
+      // re-enabling v1 instead would silently return them to cash spending while v2 still
+      // held their collateral.
       const target = fresh.moduleAddress;
 
+      // A Safe headed for v2 with v1 still switched on: v2's `registerSafe` reverts
+      // `LegacyModuleStillEnabled`, so v1 comes off first, in the same batch.
+      const prevLegacyModule =
+        fresh.awaitingV2 && fresh.legacyEnabled
+          ? await findModulePredecessor(safeAddress, MODULE as Address)
+          : null;
+      if (fresh.awaitingV2 && fresh.legacyEnabled && !prevLegacyModule) {
+        throw new Error('Could not read your Safe. Please try again.');
+      }
+
       const transactions = [
+        ...(prevLegacyModule
+          ? [
+              {
+                to: safeAddress,
+                data: encodeFunctionData({
+                  abi: Safe_ABI,
+                  functionName: 'disableModule',
+                  args: [prevLegacyModule, MODULE as Address],
+                }),
+              },
+            ]
+          : []),
         ...(fresh.moduleEnabled
           ? []
           : [
@@ -1078,6 +1192,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
         dailyLimitUsd: fresh.registeredOnChain ? fresh.limit.dailyLimitUsd : daily,
         monthlyLimitUsd: fresh.registeredOnChain ? fresh.limit.monthlyLimitUsd : monthly,
         timezoneOffset: fresh.registeredOnChain ? fresh.limit.timezoneOffset : timezoneOffset,
+        moduleAddress: target,
       });
 
       return { transactionHash: result.transactionHash, dailyLimitUsd, timezoneOffset };
@@ -1117,7 +1232,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
-      const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
+      const fresh = await readFresh(queryClient, selectedUserId, safeAddress, preferV2);
       if (!fresh.registeredOnChain) throw new Error('Set up card spending first.');
 
       // A cap the caller did not name is left exactly where it was. The two are stored
@@ -1215,7 +1330,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
-      const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
+      const fresh = await readFresh(queryClient, selectedUserId, safeAddress, preferV2);
       // Either it matured while the sheet sat open, or another client cancelled it.
       // Sending the call anyway would succeed and change nothing, which is a signature
       // spent to tell the user something the re-read already told them.
@@ -1291,7 +1406,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
-      const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
+      const fresh = await readFresh(queryClient, selectedUserId, safeAddress, preferV2);
 
       // Read directly rather than off `fresh`, which reports whichever module operates the
       // Safe today — for a cardholder still on v1 that is v1, and the migration needs v2's
@@ -1437,7 +1552,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
 
-      const fresh = await readFresh(queryClient, selectedUserId, safeAddress);
+      const fresh = await readFresh(queryClient, selectedUserId, safeAddress, preferV2);
       if (!fresh.moduleEnabled) throw new Error('Card spending is already off.');
 
       const prevModule = await findModulePredecessor(safeAddress, fresh.moduleAddress);
@@ -1627,6 +1742,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
      * changing mode does.
      */
     isLegacyConflict: registration?.cohort === SpendCohort.Both,
+    /**
+     * A cardholder whose card has no working module and will be set up on v2. Shown
+     * the same "enable" prompt as a revoked Safe, with {@link carriedLimit} as the caps.
+     */
+    isAwaitingV2: registration?.awaitingV2 === true,
+    /** The caps an {@link isAwaitingV2} Safe registers on v2 with, or null. */
+    carriedLimit: registration?.carriedLimit ?? null,
 
     isLoading: query.isLoading,
     isSwitchingMode: switchModeMutation.isPending,

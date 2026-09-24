@@ -945,6 +945,58 @@ export interface CardSpendModeAccessResponse {
   reason: 'cohort' | 'open' | 'not-in-cohort' | 'unavailable';
 }
 
+/**
+ * One spend-module deployment, as the card screen needs to see it.
+ *
+ * `available` and `enabled` answer different questions and the enable card needs both: the first
+ * is "does this environment have a working deployment here", the second is "has this user already
+ * consented to it". The card shows when `available && !enabled`.
+ */
+export interface CardSpendDeployment {
+  chainId: number;
+  /** Human name for the chain chip — "Fuse", "Base". */
+  name: string;
+  /**
+   * The accounting unit of the instance.
+   *
+   * `USD` for Base too: Base is the EURC deployment, but its unit is dollars and EURC is priced
+   * within it as a floating asset. Rendering this as the currency of a balance is correct; reading
+   * it as "this is the euro card" is not.
+   */
+  currency: 'USD' | 'EUR';
+  /** The address to `enableModule` and `registerSafe` against. Null when unavailable. */
+  moduleAddress: string | null;
+  /** Whether this environment can support enabling here at all. */
+  available: boolean;
+  /**
+   * Whether the backend has recorded this user enabling the module here.
+   *
+   * Served from the durable record rather than from a chain read, deliberately: an enable card
+   * that reappears after a successful enablement — because an RPC was slow — would offer a
+   * transaction that reverts with `AlreadyRegistered`.
+   */
+  enabled: boolean;
+  enabledAt: string | null;
+  enableTxHash: string | null;
+  safeAddress: string | null;
+  /** Assets this instance may draw from, lowercased, in draw order. */
+  spendTokens: string[];
+}
+
+export interface CardSpendDeploymentsResponse {
+  /** Whether this user is in the rollout cohort (`wirexTeamMembers`) at all. */
+  cohortEnabled: boolean;
+  cohortReason: 'cohort' | 'open' | 'not-in-cohort' | 'unavailable';
+  deployments: CardSpendDeployment[];
+}
+
+/** What the app reports after its enable + register user operation lands on a chain. */
+export interface CardSpendDeploymentConfirmRequest {
+  transactionHash?: string;
+  /** Cross-checked server-side against the module that chain is configured with. */
+  moduleAddress?: string;
+}
+
 export interface WirexCardRegistrationResponse {
   /** Both halves done: the module is enabled on the Safe *and* the Safe is registered. */
   registered: boolean;
@@ -3018,6 +3070,15 @@ export interface ReferralRewardListItem {
   paidAt?: string;
   spendUsd: number;
   merchantCount: number;
+  /**
+   * The bar this row is measured against. For a friend who has qualified it is
+   * the bar they cleared, which can be lower than today's — the target moved
+   * from $75 to $150 while rewards were still in their payout delay, and
+   * "$80/$150 spent" next to "Qualified" reads as a mistake. Absent on backends
+   * that predate it, where the program-level target applies.
+   */
+  spendTargetUsd?: number;
+  merchantTarget?: number;
   hasActiveCard: boolean;
   rewardUsd: number;
   /**

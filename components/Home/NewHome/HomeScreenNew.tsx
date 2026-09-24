@@ -7,11 +7,15 @@ import { Address } from 'viem';
 import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
-import { getTotalBalance } from '@/components/Home/NewHome/OtherBalancesDropdown';
+import {
+  getTotalBalance,
+  holdsFundsAnywhere,
+} from '@/components/Home/NewHome/OtherBalancesDropdown';
 import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
@@ -70,6 +74,13 @@ export default function HomeScreenNew() {
   const { provider: cardProvider } = useCardProvider();
 
   const userHasCard = hasCard(cardStatus);
+  // The "Spend mode" strip under the card. `canChangeMode` already carries both gates — a
+  // Wirex card (the registration read only runs for Wirex) and a build that can reach v2 —
+  // the same condition the card page shows its own spend-mode row on, so the shortcut never
+  // leads to a sheet that is not there.
+  const spendModeFigures = useSpendModeFigures();
+  const homeSpendMode =
+    userHasCard && spendModeFigures.canChangeMode ? spendModeFigures.mode : null;
   // Whether the card balance is a pot of its own or a view onto savings (Wirex).
   const cardHoldsOwnBalance = cardHoldsBalance(cardProvider);
 
@@ -195,6 +206,18 @@ export default function HomeScreenNew() {
     userHasCard,
     cardHoldsOwnBalance,
   });
+  // Whether the action row offers Swap and Send at all. Deliberately NOT
+  // `depositCompleted` on its own: that only knows about wallet funding, and a
+  // cardholder who funds their card directly has none of it — see
+  // `holdsFundsAnywhere`.
+  const hasFunds = holdsFundsAnywhere({
+    depositCompleted,
+    walletBalance,
+    cardBalance,
+    savingsBalance,
+    userHasCard,
+    cardHoldsOwnBalance,
+  });
   const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(totalBalance);
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
   // Which rung of the card funnel belongs under the card, if any — null once the
@@ -253,7 +276,7 @@ export default function HomeScreenNew() {
               </BalancePillRow>
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
-              <WalletActions hasFunds={depositCompleted} hasCard={userHasCard} />
+              <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
             </HeroExit>
           </View>
         )}
@@ -268,6 +291,7 @@ export default function HomeScreenNew() {
               last4={cardDetails?.card_details?.last_4}
               depositCompleted={depositCompleted}
               hasCtaBanner={isPromptReady}
+              spendMode={homeSpendMode}
             />
           )}
           {isPromptReady && promptKey && (

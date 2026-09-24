@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
@@ -25,6 +26,8 @@ import {
 } from '@/components/Card/NewCardDetails/cardHeroLayout';
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
+import EnableCardSpendingCard from '@/components/Card/NewCardDetails/EnableCardSpendingCard';
+import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
@@ -33,21 +36,29 @@ import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/Borr
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
+import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
+import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
+import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { CardSpendRegistrationSource } from '@/hooks/useCardSpendRegistration';
+import {
+  CardSpendRegistrationSource,
+  useCardSpendRegistration,
+} from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
+import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
+  canDepositToCard,
   canToggleCardFreeze,
   canWithdrawFromCard,
   isCustomerFundsRestricted,
@@ -87,6 +98,9 @@ const CardDetailsPane = () => {
   const walletGuide = useCardPaneStore(state => state.walletGuide);
   const dismissWalletGuide = useCardPaneStore(state => state.dismissWalletGuide);
   const startFlight = useCardHeroStore(state => state.start);
+  const isHeroFlying = useCardHeroStore(state => state.active);
+  const spendModeRequested = useCardPaneStore(state => state.spendModeRequested);
+  const dismissSpendModeRequest = useCardPaneStore(state => state.dismissSpendModeRequest);
 
   // Shown here rather than on the old details route: card issuance sets this flag
   // and sends the user to /card/details, which on mobile now lands on this pane.
@@ -115,9 +129,81 @@ const CardDetailsPane = () => {
   // Which funds the card draws on — cash, credit or both. UI only for now: the
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
+  const euroSpend = useEuroSpendEnablement();
+  // Its own instance, so a failed enable reports here rather than in the Manage sheet.
+  const spendRegistration = useCardSpendRegistration();
+  /**
+   * Card spending was set up and both modules are now off, so the card declines everything.
+   *
+   * Only when the read can say WHICH module the Safe belongs to. A build that is configured
+   * for v2 but could not read it (`v2Available` false) cannot tell a migrated Safe from a v1
+   * one — the registration falls back to reporting v1 — and re-enabling v1 on a migrated Safe
+   * would leave v2 inert while it still holds the collateral. A build with v2 switched off has
+   * only ever put Safes on v1, so it has nothing to be unsure about.
+   */
+  const showsEnableSpending =
+    // A card with nothing working is waiting on v2, which only a v2 read can report,
+    // so it needs no guard of its own.
+    spendRegistration.isAwaitingV2 ||
+    (spendRegistration.isRevoked &&
+      (spendRegistration.registration?.v2Available === true || !isCardSpendV2Configured()));
+  const enableCardSpending = useCallback(async () => {
+    const carried = spendRegistration.carriedLimit;
+    const limit = carried ?? spendRegistration.limit;
+    if (!limit) return;
+    try {
+      // Registered already, so `register` sends only `enableModule` for the module the Safe
+      // is registered on, and the daily figure is ignored — it is passed for the funnel.
+      // A Safe awaiting v2 is not registered there, so both carried caps are sent and
+      // written. False means the signature prompt was dismissed: nothing changed, so say
+      // nothing.
+      if (
+        !(await spendRegistration.register(
+          onChainToUsd(limit.dailyLimitUsd),
+          'spending_banner',
+          carried ? onChainToUsd(carried.monthlyLimitUsd) : undefined,
+        ))
+      ) {
+        return;
+      }
+      Toast.show({
+        type: 'success',
+        text1: 'Card spending is on',
+        text2: `Your card can spend up to ${formatUsd(limit.dailyLimitUsd)} a day again.`,
+        props: { badgeText: '' },
+      });
+    } catch {
+      // The hook recorded the reason as `error`, which the row shows in place of its subtitle.
+    }
+  }, [spendRegistration]);
   const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
   // The borrow position's own sheet, opened by tapping the card that shows it.
   const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
+  // Add funds from inside the spend-mode sheet. Its own instance of the fund modal, driven
+  // from here, because the actions row's instance only opens from its own trigger.
+  const [isSpendModeFundOpen, setIsSpendModeFundOpen] = useState(false);
+  // The spend-mode sheet closes first: a funding flow opened over it would leave a sheet
+  // behind the modal that the cardholder has to dismiss again afterwards.
+  // The home screen's "Spend mode" strip opens the pane and asks for this sheet. It waits
+  // for the card to land: a sheet rising while the card is still flying up covers the
+  // flight, and the two animations fight for the same frames. Guarded on the mode being
+  // changeable, which is what the strip itself is gated on — a request that arrives for a
+  // card that can no longer change mode (spending since turned off) just opens the card page.
+  useEffect(() => {
+    if (!isOpen || !spendModeRequested || isHeroFlying) return;
+    if (spendModeFigures.canChangeMode) setIsSpendModeOpen(true);
+    dismissSpendModeRequest();
+  }, [
+    isOpen,
+    spendModeRequested,
+    isHeroFlying,
+    spendModeFigures.canChangeMode,
+    dismissSpendModeRequest,
+  ]);
+  const openFundsFromSpendMode = useCallback(() => {
+    setIsSpendModeOpen(false);
+    setIsSpendModeFundOpen(true);
+  }, []);
   // Stable identities: the reveal section folds its opener into the memoised toggle
   // handler, which would be rebuilt on every render of this pane otherwise.
   const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
@@ -159,6 +245,7 @@ const CardDetailsPane = () => {
     setIsAddToWalletOpen(false);
     setIsSpendModeOpen(false);
     setIsBorrowPositionOpen(false);
+    setIsSpendModeFundOpen(false);
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
@@ -272,6 +359,18 @@ const CardDetailsPane = () => {
               canAddFunds={canAddFundsToCard(fundsAccess)}
             />
           </HeroEnter>
+          {/* In the spend-mode row's place, which cannot show at the same time: that row needs
+              card spending to be on, and this one is only here while it is off. */}
+          {showsEnableSpending ? (
+            <HeroEnter spec={HERO_ENTER.spendMode} style={styles.spendModeCard}>
+              <EnableCardSpendingCard
+                isEnabling={spendRegistration.isRegistering}
+                isPaused={spendRegistration.isPaused}
+                error={spendRegistration.error}
+                onEnable={enableCardSpending}
+              />
+            </HeroEnter>
+          ) : null}
           {/* Hidden outright rather than shown inert while the card has only one way to be
               funded. Until this build can reach the v2 module there is nothing to change to,
               and a "Spend mode: Cash [Change]" row that cannot change anything is worse than
@@ -282,6 +381,19 @@ const CardDetailsPane = () => {
               <SpendingModeCard
                 mode={spendModeFigures.mode}
                 onChangeMode={() => setIsSpendModeOpen(true)}
+              />
+            </HeroEnter>
+          ) : null}
+          {/* Cohort-only, and gone for good once enabled — the backend stores the enablement per
+              chain, so it does not come back on another device. Placed directly under the spend
+              mode row because it is the same kind of thing: a property of how this card spends,
+              not a promotion. */}
+          {euroSpend.shouldOffer ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.euroSpendCard}>
+              <EnableEuroSpendCard
+                isEnabling={euroSpend.isEnabling}
+                error={euroSpend.error}
+                onEnable={euroSpend.enable}
               />
             </HeroEnter>
           ) : null}
@@ -353,6 +465,19 @@ const CardDetailsPane = () => {
         isOpen={isOpen && isSpendModeOpen}
         onOpenChange={setIsSpendModeOpen}
         activeMode={spendModeFigures.mode}
+        // Same gate as the actions row's Add funds, so the two never disagree about whether
+        // funds can move right now. Spend modes are Wirex-only, and a Wirex card is funded
+        // through its Safe (`WirexCardFundModal`) rather than by deposit; the provider check
+        // just keeps this from ever opening the wrong flow.
+        onAddFunds={
+          canAddFundsToCard(fundsAccess) && !canDepositToCard(provider)
+            ? openFundsFromSpendMode
+            : undefined
+        }
+      />
+      <WirexCardFundModal
+        isOpen={isOpen && isSpendModeFundOpen}
+        onOpenChange={setIsSpendModeFundOpen}
       />
       <BorrowPositionSheet
         isOpen={isOpen && isBorrowPositionOpen}
@@ -397,6 +522,7 @@ const styles = StyleSheet.create({
   // to the spend-mode row, then 20 between each card down the stack.
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
+  euroSpendCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },

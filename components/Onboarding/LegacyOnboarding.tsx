@@ -24,6 +24,7 @@ import {
 import PasskeyFaqModal from '@/components/PasskeyFaqModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { isUnlinkedPasskeyError, loginErrorMessage } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -96,20 +97,24 @@ export default function LegacyOnboarding() {
     try {
       await handleLogin();
     } catch (error: any) {
-      if (error?.status === 404) {
-        // User not found — redirect to signup
-        router.replace(path.SIGNUP_EMAIL);
-      } else {
-        // Other errors — show toast, stay on onboarding, and offer account recovery
-        Toast.show({
-          type: 'error',
-          text1: 'Login failed',
-          text2: error?.message || 'Something went wrong. Please try again.',
-        });
-        setShowRecoveryLink(true);
-      }
+      // A passkey the backend cannot tie to an account is not a new user, and
+      // replacing the screen with signup said it was. The account is usually
+      // fine — it is the passkey that isn't on it — and signup refuses that
+      // user's own address as already registered, so the redirect dead-ended.
+      // Stay here and offer recovery, which does put a working passkey on the
+      // account they already have.
+      Toast.show({
+        type: 'error',
+        text1: isUnlinkedPasskeyError(error)
+          ? "Passkey isn't linked to an account"
+          : 'Login failed',
+        // `loginErrorMessage`, not `error.message`: the raw reply is what says
+        // "User not found" when the backend predates the typed codes.
+        text2: loginErrorMessage(error),
+      });
+      setShowRecoveryLink(true);
     }
-  }, [handleLogin, router, setHasSeenOnboarding]);
+  }, [handleLogin, setHasSeenOnboarding]);
 
   const handleCreateAccount = useCallback(() => {
     setHasSeenOnboarding(true);

@@ -11,7 +11,7 @@ import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopHero } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
+import { loginErrorMessage, PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -100,7 +100,9 @@ export default function Welcome() {
         Toast.show({
           type: 'error',
           text1: 'Authentication failed',
-          text2: error?.message || 'Please try again',
+          // Same login call, same raw 404 — this screen showed "User not found"
+          // for it too, next to the account row the user just tapped.
+          text2: loginErrorMessage(error),
           props: {
             badgeText: '',
           },
