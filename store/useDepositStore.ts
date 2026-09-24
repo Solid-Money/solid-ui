@@ -11,6 +11,7 @@ import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import {
   DepositModal,
+  RewardsTier,
   SavingsFundIntent,
   SourceDepositInstructions,
   TransactionStatusModal,
@@ -119,6 +120,8 @@ interface DepositState {
    * one flow and is cleared by `resetDepositFlow`.
    */
   savingsFundIntent: SavingsFundIntent;
+  /** Only set while the deposit chooser was opened by an upgrade Top up action. */
+  upgradeTopUp?: { tier: RewardsTier; depositToSavings: boolean };
   /**
    * Chain and currency chosen for the wallet deposit address ("Show deposit
    * address" -> "Select chain" -> the address).
@@ -134,6 +137,7 @@ interface DepositState {
   setExternalWallet: (data: ExternalWalletState) => void;
   setDepositFromSolid: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
+  setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -164,6 +168,7 @@ export const useDepositStore = create<DepositState>()(
       sessionStartTime: undefined,
       depositFromSolid: false,
       savingsFundIntent: 'savings',
+      upgradeTopUp: undefined,
       walletDeposit: {},
       externalWallet: {
         address: undefined,
@@ -175,6 +180,7 @@ export const useDepositStore = create<DepositState>()(
       setExternalWallet: data => set({ externalWallet: data }),
       setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
+      setUpgradeTopUp: context => set({ upgradeTopUp: context }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -209,6 +215,7 @@ export const useDepositStore = create<DepositState>()(
           sessionStartTime: undefined,
           depositFromSolid: false,
           savingsFundIntent: 'savings',
+          upgradeTopUp: undefined,
           walletDeposit: {},
         }),
     }),

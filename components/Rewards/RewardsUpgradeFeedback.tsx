@@ -11,6 +11,7 @@ import { path } from '@/constants/path';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { REWARDS_RECONCILIATION_INTERVAL_MS } from '@/lib/rewardsUpgrade';
 import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
+import { isTierUpgradeOpen, useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
@@ -26,8 +27,14 @@ import { useUserStore } from '@/store/useUserStore';
  *
  * The words change with the route (see `upgradeCelebrationCopy`); the card does
  * not (Figma 25480:2355).
+ *
+ * The one place it does not draw is over the upgrade flow itself. Both are
+ * dialogs, so a celebration opening while the flow is up is two stacked
+ * overlays — and it announced a tier over a review step where the user had not
+ * bought anything yet.
  */
 export default function RewardsUpgradeFeedback() {
+  const upgradeFlowOpen = useTierUpgradeStore(isTierUpgradeOpen);
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   const state = useRewardsUpgradeStore();
   const active = userId === state.userId;
@@ -52,7 +59,9 @@ export default function RewardsUpgradeFeedback() {
     if (success) setShown(success);
   }, [success]);
 
-  if (!shown) return null;
+  // Held, not dropped: `success` survives in the store, so the card appears the
+  // moment the flow closes — which a completed purchase does itself.
+  if (!shown || upgradeFlowOpen) return null;
 
   const copy = upgradeCelebrationCopy(shown);
 
