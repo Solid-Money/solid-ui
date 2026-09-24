@@ -32,6 +32,7 @@ const TokenSelector: React.FC = () => {
     baseTokens,
     arbitrumTokens,
     bscTokens,
+    isLoading,
   } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
@@ -70,6 +71,19 @@ const TokenSelector: React.FC = () => {
       <View className="gap-4">
         <Text className="text-base font-medium opacity-70">Select an asset</Text>
         <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
+          {/* An empty wallet is a normal state here — a cardholder who funds their
+              card directly holds a balance with us and nothing in their wallet —
+              and an unexplained blank list under "Select an asset" reads as a
+              screen that failed to load. */}
+          {!isLoading && allTokens.length === 0 ? (
+            <View className="gap-1 rounded-2xl bg-card px-4 py-6">
+              <Text className="text-base font-semibold">No assets in your wallet yet</Text>
+              <Text className="text-sm opacity-50">
+                Money held on your card or in savings has to reach your wallet before it can be
+                sent. Use Add Funds to top your wallet up.
+              </Text>
+            </View>
+          ) : null}
           <View className="gap-2">
             {allTokens.map(token => {
               const balance = Number(

@@ -148,6 +148,7 @@ interface StagePresentation {
 interface ReferralFriendRowProps {
   item: ReferralRewardListItem;
   index: number;
+  /** Program-level targets, for rows the API sends without their own bar. */
   spendTargetUsd: number;
   merchantTarget: number;
   /** Called when a countdown reaches zero, so the screen can re-fetch. */
@@ -157,10 +158,15 @@ interface ReferralFriendRowProps {
 export default function ReferralFriendRow({
   item,
   index,
-  spendTargetUsd,
-  merchantTarget,
+  spendTargetUsd: programSpendTargetUsd,
+  merchantTarget: programMerchantTarget,
   onPayoutDue,
 }: ReferralFriendRowProps) {
+  // The row's own bar when the API sends one: a friend who qualified before the
+  // target moved is measured against the bar they cleared, not today's.
+  const spendTargetUsd = item.spendTargetUsd ?? programSpendTargetUsd;
+  const merchantTarget = item.merchantTarget ?? programMerchantTarget;
+
   const countdown = useReferralCountdown(
     item.stage === ReferralFriendStage.REWARD_UNLOCKING ? item.payoutEtaAt : null,
   );

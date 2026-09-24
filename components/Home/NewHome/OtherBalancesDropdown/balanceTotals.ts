@@ -108,3 +108,33 @@ export const getTotalBalance = ({
   (walletBalance || 0) +
   (shouldShowCard({ cardBalance, userHasCard, cardHoldsOwnBalance }) ? cardBalance || 0 : 0) +
   (savingsBalance || 0);
+
+/**
+ * Whether the home action row shows Swap and Send beside "Add Funds".
+ *
+ * It used to ask only whether the *wallet* had ever been funded — a deposit on
+ * record, a token balance, or a vault balance. A cardholder who funds their card
+ * directly (the card's own deposit address, which never touches their Safe)
+ * satisfies none of those, so a user holding money on their card opened the app
+ * to a single "Add Funds" button and two features that had silently disappeared.
+ * That is the support report this predicate exists to answer.
+ *
+ * So the question is "does this person hold anything with us", across every pot
+ * the breakdown shows. `depositCompleted` stays in front of it because it answers
+ * the same question from history rather than from balances, and survives a
+ * balance query that is erroring or briefly empty.
+ *
+ * Swap and Send work off wallet tokens, so a card-only balance opens them on an
+ * empty asset list — which is why that list says so and points at Add Funds.
+ * A named action doing little is still a better answer than a home screen that
+ * quietly drops it: the user in the report could see their balance and had no way
+ * to tell what had happened to the buttons.
+ */
+export const holdsFundsAnywhere = ({
+  depositCompleted,
+  ...balances
+}: Omit<OtherBalances, 'isLoading'> &
+  Partial<Pick<CardBalanceDisplay, 'cardHoldsOwnBalance'>> & {
+    /** Wallet funding proven by history: a deposit, a token, a vault balance. */
+    depositCompleted: boolean;
+  }): boolean => depositCompleted || getTotalBalance(balances) > 0;

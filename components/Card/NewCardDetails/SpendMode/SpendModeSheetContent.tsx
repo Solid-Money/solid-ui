@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInLeft,
@@ -14,15 +14,28 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
-import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import {
+  type CardSheetPresentation,
+  sheetBodyInset,
+} from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
+import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
+import SheetIconButton, {
+  MODAL_CONTROL_SIZE,
+} from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
+import {
+  BALANCE_PANEL_HEIGHT,
+  BORROWED_PANEL_HEIGHT,
+  SPEND_MODE_NOTICE_HEIGHT,
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
+  SpendModeNotice,
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import {
+  offeredSpendModes,
   SPEND_MODE_COPY,
   SPEND_MODES,
   type SpendMode,
+  type SpendModePanel,
 } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import SpendModeSegmentedControl from '@/components/Card/NewCardDetails/SpendMode/SpendModeSegmentedControl';
 import { Text } from '@/components/ui/text';
@@ -31,13 +44,17 @@ import { cn } from '@/lib/utils';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 
 /**
- * Vertical rhythm, measured off the Figma sheets (419pt artboard, 568pt tall for
- * the Credit frame). Everything below is the gap from the element above it, so
- * Smart's second card can push the button down without the rest drifting.
+ * Vertical rhythm, measured off the Figma sheets (419pt artboard; the Credit frame,
+ * 26974:12806, is 628pt tall). Everything below is the gap from the element above it, so
+ * a taller stack pushes the button down without the rest drifting.
  *
- *   drag handle ends   20      heading top       55
- *   control            126     caption           218
- *   first panel        287     action button     461
+ *   heading top        55      control           126
+ *   caption            218     notice            255   (Credit only)
+ *   first panel        360     action button     520
+ *
+ * That frame sits 1pt lower than the earlier ones throughout; the gaps are what carry
+ * over. A mode with no notice starts its first card {@link CAPTION_TO_PANEL} below the
+ * caption instead.
  *
  * The heading is given a 36pt line box rather than Figma's 24, which would clip
  * a 30pt face on Android; starting it at 55 puts that taller box back on the
@@ -46,12 +63,43 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 const HEADING_TO_CONTROL = 35;
 const CONTROL_TO_CAPTION = 19;
 const CAPTION_TO_PANEL = 49;
+const CAPTION_TO_NOTICE = 17;
+const NOTICE_TO_PANEL = 42;
 const PANEL_GAP = 12;
-const PANEL_TO_ACTION = 48;
+const PANEL_TO_ACTION = 34;
 /** Where the heading starts, measured from the sheet's top edge. */
 export const SPEND_MODE_SHEET_TOP = 55;
 /** The sheet keeps this much below the button, before any safe-area inset. */
 export const SPEND_MODE_SHEET_BOTTOM = 57;
+
+const PANEL_HEIGHT: Record<SpendModePanel, number> = {
+  balance: BALANCE_PANEL_HEIGHT,
+  borrowed: BORROWED_PANEL_HEIGHT,
+};
+
+/** Space from the caption to the first card, through the notice when the mode has one. */
+const leadHeight = (mode: SpendMode, noticeHeight: number) =>
+  SPEND_MODE_COPY[mode].notice
+    ? CAPTION_TO_NOTICE + noticeHeight + NOTICE_TO_PANEL
+    : CAPTION_TO_PANEL;
+
+/**
+ * Room held below the caption: the tallest stack among the modes the picker offers —
+ * Credit's notice and card while Smart is hidden, Smart's two cards when it is shown.
+ *
+ * Without it the sheet changed height on every tap — the modes stack different cards — so
+ * the drawer and its button jumped under the thumb that was browsing. Held at the tallest
+ * offered, a shorter mode leaves space below its card and nothing else moves, and a hidden
+ * mode reserves no space at all.
+ */
+const panelsMinHeight = (modes: readonly SpendMode[], noticeHeight: number) =>
+  Math.max(
+    ...modes.map(mode => {
+      const panels = SPEND_MODE_COPY[mode].panels;
+      const cards = panels.reduce((sum, panel) => sum + PANEL_HEIGHT[panel], 0);
+      return leadHeight(mode, noticeHeight) + cards + PANEL_GAP * Math.max(0, panels.length - 1);
+    }),
+  );
 
 const SWAP_DURATION = 240;
 const ACTION_FADE_DURATION = 260;
@@ -81,6 +129,8 @@ interface SpendModeSheetContentProps {
   onAddFunds?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
+  /** The desktop modal adds a close button to the heading row and drops the side inset. */
+  presentation?: CardSheetPresentation;
 }
 
 /**
@@ -104,11 +154,25 @@ const SpendModeSheetContent = ({
   onDismiss,
   onAddFunds,
   topPadding = SPEND_MODE_SHEET_TOP,
+  presentation = 'sheet',
 }: SpendModeSheetContentProps) => {
   // The direction of travel is kept with the selection rather than derived on
   // render, so the swap animation always matches the tap that caused it.
   const [selection, setSelection] = useState({ mode: activeMode, isForward: true });
   const { mode: selected, isForward } = selection;
+  const modes = useMemo(() => offeredSpendModes(activeMode), [activeMode]);
+  // The notice's real height, which a narrow sheet raises by wrapping it to a third line.
+  // Measured rather than assumed, so the room held for Credit is the room it takes.
+  const [noticeHeight, setNoticeHeight] = useState(SPEND_MODE_NOTICE_HEIGHT);
+  const handleNoticeLayout = useCallback(
+    (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
+    [],
+  );
+  const panelsStyle = useMemo(
+    () => ({ minHeight: panelsMinHeight(modes, noticeHeight) }),
+    [modes, noticeHeight],
+  );
+  const notice = SPEND_MODE_COPY[selected].notice;
 
   useEffect(() => {
     setSelection({ mode: activeMode, isForward: true });
@@ -171,15 +235,25 @@ const SpendModeSheetContent = ({
   }, [isActiveSelected, isSwitching, onConfirm, onDismiss, selected]);
 
   return (
-    <View style={[styles.body, { paddingTop: topPadding }]}>
-      <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
-        Select spend mode
-      </Text>
+    <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
+      <View style={styles.heading}>
+        <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
+          Select spend mode
+        </Text>
+        {presentation === 'modal' ? (
+          <SheetIconButton
+            icon="close"
+            accessibilityLabel="Close"
+            onPress={onDismiss}
+            style={styles.close}
+          />
+        ) : null}
+      </View>
 
       <View style={styles.control}>
         <SpendModeSegmentedControl
+          modes={modes}
           selected={selected}
-          activeMode={activeMode}
           segmentValue={figures.segmentValue}
           onSelect={handleSelect}
           // Locked while committing, for the same reason the button is. `onConfirm`
@@ -203,22 +277,35 @@ const SpendModeSheetContent = ({
         <HelpBadge />
       </Animated.View>
 
-      <Animated.View key={`panels-${selected}`} entering={entering} exiting={exiting}>
-        {SPEND_MODE_COPY[selected].panels.map((panel, index) => (
-          <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
-            {panel === 'balance' ? (
-              <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
-            ) : (
-              <SpendModeBorrowedPanel
-                borrowed={figures.borrowed}
-                creditLimit={figures.creditLimit}
-                borrowApy={figures.borrowApy}
-                borrowedProgress={figures.borrowedProgress}
-              />
-            )}
-          </View>
-        ))}
-      </Animated.View>
+      {/* Not keyed, so it holds its height while the keyed panels swap inside it. */}
+      <View style={panelsStyle}>
+        <Animated.View
+          key={`panels-${selected}`}
+          entering={entering}
+          exiting={exiting}
+          style={{ paddingTop: notice ? CAPTION_TO_NOTICE : CAPTION_TO_PANEL }}
+        >
+          {notice ? (
+            <View style={styles.notice}>
+              <SpendModeNotice message={notice} onLayout={handleNoticeLayout} />
+            </View>
+          ) : null}
+          {SPEND_MODE_COPY[selected].panels.map((panel, index) => (
+            <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
+              {panel === 'balance' ? (
+                <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
+              ) : (
+                <SpendModeBorrowedPanel
+                  borrowed={figures.borrowed}
+                  creditLimit={figures.creditLimit}
+                  borrowApy={figures.borrowApy}
+                  borrowedProgress={figures.borrowedProgress}
+                />
+              )}
+            </View>
+          ))}
+        </Animated.View>
+      </View>
 
       {error ? (
         <Text className="mt-4 text-center text-[14px] font-normal leading-[18px] text-[#D96167]">
@@ -285,17 +372,19 @@ const SpendModeSheetContent = ({
 };
 
 const styles = StyleSheet.create({
-  // 17pt inset either side, which is the 385pt content block on the 419pt frame.
-  body: { paddingHorizontal: 17 },
+  // The close button sits in the heading's row, centred on its 36pt line box, so the modal
+  // spends no height on a row of its own.
+  heading: { justifyContent: 'center' },
+  close: { position: 'absolute', right: 0, top: (36 - MODAL_CONTROL_SIZE) / 2 },
   control: { marginTop: HEADING_TO_CONTROL },
   caption: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',
-    marginBottom: CAPTION_TO_PANEL,
     marginTop: CONTROL_TO_CAPTION,
   },
+  notice: { marginBottom: NOTICE_TO_PANEL },
   stackedPanel: { marginTop: PANEL_GAP },
   action: { borderRadius: 100, marginTop: PANEL_TO_ACTION, overflow: 'hidden' },
   actionPress: { alignItems: 'center', height: 50, justifyContent: 'center' },

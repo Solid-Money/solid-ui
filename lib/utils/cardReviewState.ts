@@ -1,5 +1,6 @@
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { BridgeCustomerEndorsement, CardStatusResponse } from '@/lib/types';
+import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 export interface CardIssuanceReviewInput {
@@ -54,12 +55,16 @@ export function isCardIssuanceUnderReview({
   if (cardStatus?.activationBlocked) return false;
 
   // An issuance attempt that failed for a reason nothing on this screen can
-  // clear — an unsupported document country, an issuer decline. Same argument
-  // as the blocked case above, and it needs saying separately because most of
-  // these never set `activationBlocked`: that flag is sticky and is only ever
-  // raised by hand, so a terminal failure would otherwise be hidden behind
-  // "your card is on its way" indefinitely.
-  if (cardStatus?.activationFailure?.terminal) return false;
+  // clear — an unsupported document country, a name the issuer cannot read.
+  // Same argument as the blocked case above, and it needs saying separately
+  // because most of these never set `activationBlocked`: that flag is sticky
+  // and is only ever raised by hand, so the failure would otherwise be hidden
+  // behind "your card is on its way" indefinitely.
+  //
+  // A RETRYABLE failure is deliberately not in scope here — the steps list is
+  // where its retry lives, so hiding the list behind "on its way" would take
+  // the button away again.
+  if (blocksCardActivation(cardStatus?.activationFailure)) return false;
 
   // Verification passed but the application is parked because the deposit is no
   // longer held. The "top up and hold" step is the user's move, and it lives on

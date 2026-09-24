@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { path } from '@/constants/path';
@@ -76,6 +76,7 @@ export function useActivateCard() {
     canToggleStep,
     activatingCard,
     cardsEndorsement,
+    pushCardReady,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   // Derived: under review state — the screen shows "your card is on its way"
@@ -116,6 +117,21 @@ export function useActivateCard() {
     }
   }, [userHasCard, cardStatus, router]);
 
+  // Retry from the failure banner. Deliberately the SAME destination as the
+  // "Activate card" step — /card/ready, where the consents are accepted and
+  // the card is created — rather than a direct create call: a second path to
+  // issuance is a second path to get out of step with the consents, and the
+  // failures this retries are upstream faults, not anything about the consents
+  // already given.
+  const retryActivation = useCallback(() => {
+    track(TRACKING_EVENTS.CARD_ACTIVATION_RETRIED, {
+      failure_code: activationFailure?.code,
+      failure_terminal: activationFailure?.terminal,
+      card_status: cardStatus,
+    });
+    pushCardReady();
+  }, [activationFailure?.code, activationFailure?.terminal, cardStatus, pushCardReady]);
+
   // Navigation handler for back button
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -137,6 +153,7 @@ export function useActivateCard() {
     isUnderReview,
     activationBlockedReason,
     activationFailure,
+    retryActivation,
     // Step management
     steps,
     activeStepId,

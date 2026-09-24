@@ -10,7 +10,6 @@ import {
   healthFactorToNumber,
 } from '@/constants/cardSpendV2';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
-import useCardSpendModeAccess from '@/hooks/useCardSpendModeAccess';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
@@ -22,10 +21,8 @@ export interface SpendModeFigures {
   /**
    * Whether Credit and Smart can be offered at all.
    *
-   * Three things have to hold: the build reaches v2, the cardholder has a working card to
-   * migrate, and they are inside the staged rollout. The last is server-decided — see
-   * `useCardSpendModeAccess` — so this is false for everyone outside the Wirex cohort even
-   * on a Safe that could technically be switched today.
+   * Two things have to hold: the build reaches v2, and the cardholder has a working card to
+   * migrate. Open to every cardholder — the staged-rollout cohort no longer gates it.
    */
   canChangeMode: boolean;
   /** A switch that is armed but not in force, or null. Null at the launch `modeDelay` of 0. */
@@ -38,11 +35,12 @@ export interface SpendModeFigures {
   /** "$246.50" — the whole credit line the cardholder's collateral backs, drawn or not. */
   creditLimit: string;
   /**
-   * "$2,000.00" — what could actually be borrowed right now.
+   * "$2,000.00" — what is left of the credit line to borrow.
    *
-   * Below {@link creditLimit} by the drawn debt, and below that again whenever a cap binds:
-   * the lens clamps it by the per-Safe and global debt ceilings and the Safe's remaining
-   * spending limit, so this is the figure that can be promised without a tap contradicting it.
+   * {@link creditLimit} less the drawn debt, and less again when the per-Safe or global debt
+   * ceiling binds. Deliberately not cut by the Safe's rolling spending limit: that caps the
+   * card in every mode, and this figure is about the line — cut by it, the sheet read the
+   * daily limit ("$1,000") as what could be borrowed.
    */
   availableToBorrow: string;
   /** "5.57%" — the borrow rate, compounded to an annual figure. */
@@ -122,9 +120,6 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   } = useCardSpendRegistration();
 
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
-  // The staged-rollout gate. Every credit surface hangs off this, so there is exactly one
-  // place the cohort is consulted and no way for the two cards to disagree about it.
-  const { isEnabled: hasSpendModeAccess, isLoading: isAccessLoading } = useCardSpendModeAccess();
 
   return useMemo(() => {
     const cashMicro = usdToMicro(cashBalanceUsd);
@@ -144,11 +139,11 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // debt, so it already covers what has been drawn.
     const creditLine = (position?.borrowingPowerUsd ?? 0n) + (position?.prospectivePowerUsd ?? 0n);
 
-    // What could actually be drawn right now. Straight from the lens, which has already
-    // clamped it by the per-Safe debt cap, the global debt cap and the Safe's remaining
-    // spending limit — the same clamps the authorize path applies. Deriving it here as
-    // `creditLine - debt` would quote headroom a card tap then declines.
-    const available = position?.availableToBorrowUsd ?? 0n;
+    // What is left of the line: the lens's borrowable figure without the rolling spending
+    // limit, which caps the card in every mode — the cash figure is not cut by it either.
+    // Cut by it here alone, Credit read as the daily limit ("$1,000") beside a far larger
+    // line. Still clamped by both debt caps, so it never quotes debt the module would refuse.
+    const creditHeadroom = position?.creditHeadroomUsd ?? 0n;
     const apy = borrowApyPercent(borrowApyPerSecond);
     // Cash draws on the balance and nothing else, so there is no line to speak of. Both of
     // the other modes can end a transaction in debt — Smart only sometimes, but "sometimes"
@@ -156,15 +151,11 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     const canBorrow = mode === 'credit' || mode === 'smart';
 
     const cashLabel = formatUsd(cashMicro);
-    const availableLabel = formatUsd(available);
+    const availableLabel = formatUsd(creditHeadroom);
 
     return {
       mode,
-      // The rollout gate is applied here rather than inside `useCardSpendRegistration`,
-      // because that hook describes the CHAIN — what the Safe is and what it could do — and
-      // folding a cohort list into it would make an on-chain fact read as false for a
-      // cardholder whose Safe is perfectly capable of the switch.
-      canChangeMode: canChangeMode && hasSpendModeAccess,
+      canChangeMode,
       pendingMode,
 
       cashBalance: cashLabel,
@@ -189,20 +180,18 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
         // two figures also overlap heavily, both deriving from the same balance, so adding
         // them would quote money the Safe does not have.
-        smart: formatUsd(cashMicro > available ? cashMicro : available),
+        smart: formatUsd(cashMicro > creditHeadroom ? cashMicro : creditHeadroom),
       },
 
       hasPosition: debt > 0n,
       canBorrow,
-      // Gated too, and including the debt case: a cardholder outside the rollout should not
-      // be shown a borrow position at all, and one cannot exist for them anyway — they have
-      // never been offered the mode that creates it.
-      showsBorrowPosition: hasSpendModeAccess && (debt > 0n || (canBorrow && creditLine > 0n)),
+      // Including the debt case: a position that exists is shown whatever the mode is now.
+      showsBorrowPosition: debt > 0n || (canBorrow && creditLine > 0n),
       risk: position ? borrowRisk(position.healthFactorWad, debt) : ('none' as BorrowRisk),
       healthFactor: position ? healthFactorToNumber(position.healthFactorWad) : null,
       fullyPriced: position?.fullyPriced ?? true,
 
-      isLoading: isRegistrationLoading || isBalanceLoading || isAccessLoading,
+      isLoading: isRegistrationLoading || isBalanceLoading,
     };
   }, [
     mode,
@@ -211,10 +200,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     position,
     borrowApyPerSecond,
     cashBalanceUsd,
-    hasSpendModeAccess,
     isRegistrationLoading,
     isBalanceLoading,
-    isAccessLoading,
   ]);
 };
 

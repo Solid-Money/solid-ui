@@ -21,6 +21,7 @@ export default function ActivateMobile() {
     isUnderReview,
     activationBlockedReason,
     activationFailure,
+    retryActivation,
     steps,
     activeStepId,
     isStepButtonEnabled,
@@ -56,6 +57,7 @@ export default function ActivateMobile() {
             isBlocked={isCardBlocked}
             blockedReason={activationBlockedReason}
             failure={activationFailure}
+            onRetry={retryActivation}
           />
           <CardActivationStepsList
             steps={steps}
