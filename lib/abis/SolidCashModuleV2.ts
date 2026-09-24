@@ -71,6 +71,19 @@ export const SolidCashModuleV2_ABI = [
   },
   {
     type: 'function',
+    name: 'totalDebtUsd',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'debtUsd',
     inputs: [
       {

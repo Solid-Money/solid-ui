@@ -38,11 +38,12 @@ export interface SpendModeFigures {
   /** "$246.50" — the whole credit line the cardholder's collateral backs, drawn or not. */
   creditLimit: string;
   /**
-   * "$2,000.00" — what could actually be borrowed right now.
+   * "$2,000.00" — what is left of the credit line to borrow.
    *
-   * Below {@link creditLimit} by the drawn debt, and below that again whenever a cap binds:
-   * the lens clamps it by the per-Safe and global debt ceilings and the Safe's remaining
-   * spending limit, so this is the figure that can be promised without a tap contradicting it.
+   * {@link creditLimit} less the drawn debt, and less again when the per-Safe or global debt
+   * ceiling binds. Deliberately not cut by the Safe's rolling spending limit: that caps the
+   * card in every mode, and this figure is about the line — cut by it, the sheet read the
+   * daily limit ("$1,000") as what could be borrowed.
    */
   availableToBorrow: string;
   /** "5.57%" — the borrow rate, compounded to an annual figure. */
@@ -144,11 +145,11 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // debt, so it already covers what has been drawn.
     const creditLine = (position?.borrowingPowerUsd ?? 0n) + (position?.prospectivePowerUsd ?? 0n);
 
-    // What could actually be drawn right now. Straight from the lens, which has already
-    // clamped it by the per-Safe debt cap, the global debt cap and the Safe's remaining
-    // spending limit — the same clamps the authorize path applies. Deriving it here as
-    // `creditLine - debt` would quote headroom a card tap then declines.
-    const available = position?.availableToBorrowUsd ?? 0n;
+    // What is left of the line: the lens's borrowable figure without the rolling spending
+    // limit, which caps the card in every mode — the cash figure is not cut by it either.
+    // Cut by it here alone, Credit read as the daily limit ("$1,000") beside a far larger
+    // line. Still clamped by both debt caps, so it never quotes debt the module would refuse.
+    const creditHeadroom = position?.creditHeadroomUsd ?? 0n;
     const apy = borrowApyPercent(borrowApyPerSecond);
     // Cash draws on the balance and nothing else, so there is no line to speak of. Both of
     // the other modes can end a transaction in debt — Smart only sometimes, but "sometimes"
@@ -156,7 +157,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     const canBorrow = mode === 'credit' || mode === 'smart';
 
     const cashLabel = formatUsd(cashMicro);
-    const availableLabel = formatUsd(available);
+    const availableLabel = formatUsd(creditHeadroom);
 
     return {
       mode,
@@ -189,7 +190,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
         // two figures also overlap heavily, both deriving from the same balance, so adding
         // them would quote money the Safe does not have.
-        smart: formatUsd(cashMicro > available ? cashMicro : available),
+        smart: formatUsd(cashMicro > creditHeadroom ? cashMicro : creditHeadroom),
       },
 
       hasPosition: debt > 0n,
