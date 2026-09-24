@@ -10,7 +10,6 @@ import {
   healthFactorToNumber,
 } from '@/constants/cardSpendV2';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
-import useCardSpendModeAccess from '@/hooks/useCardSpendModeAccess';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
@@ -22,10 +21,8 @@ export interface SpendModeFigures {
   /**
    * Whether Credit and Smart can be offered at all.
    *
-   * Three things have to hold: the build reaches v2, the cardholder has a working card to
-   * migrate, and they are inside the staged rollout. The last is server-decided — see
-   * `useCardSpendModeAccess` — so this is false for everyone outside the Wirex cohort even
-   * on a Safe that could technically be switched today.
+   * Two things have to hold: the build reaches v2, and the cardholder has a working card to
+   * migrate. Open to every cardholder — the staged-rollout cohort no longer gates it.
    */
   canChangeMode: boolean;
   /** A switch that is armed but not in force, or null. Null at the launch `modeDelay` of 0. */
@@ -123,9 +120,6 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   } = useCardSpendRegistration();
 
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
-  // The staged-rollout gate. Every credit surface hangs off this, so there is exactly one
-  // place the cohort is consulted and no way for the two cards to disagree about it.
-  const { isEnabled: hasSpendModeAccess, isLoading: isAccessLoading } = useCardSpendModeAccess();
 
   return useMemo(() => {
     const cashMicro = usdToMicro(cashBalanceUsd);
@@ -161,11 +155,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
 
     return {
       mode,
-      // The rollout gate is applied here rather than inside `useCardSpendRegistration`,
-      // because that hook describes the CHAIN — what the Safe is and what it could do — and
-      // folding a cohort list into it would make an on-chain fact read as false for a
-      // cardholder whose Safe is perfectly capable of the switch.
-      canChangeMode: canChangeMode && hasSpendModeAccess,
+      canChangeMode,
       pendingMode,
 
       cashBalance: cashLabel,
@@ -195,15 +185,13 @@ export const useSpendModeFigures = (): SpendModeFigures => {
 
       hasPosition: debt > 0n,
       canBorrow,
-      // Gated too, and including the debt case: a cardholder outside the rollout should not
-      // be shown a borrow position at all, and one cannot exist for them anyway — they have
-      // never been offered the mode that creates it.
-      showsBorrowPosition: hasSpendModeAccess && (debt > 0n || (canBorrow && creditLine > 0n)),
+      // Including the debt case: a position that exists is shown whatever the mode is now.
+      showsBorrowPosition: debt > 0n || (canBorrow && creditLine > 0n),
       risk: position ? borrowRisk(position.healthFactorWad, debt) : ('none' as BorrowRisk),
       healthFactor: position ? healthFactorToNumber(position.healthFactorWad) : null,
       fullyPriced: position?.fullyPriced ?? true,
 
-      isLoading: isRegistrationLoading || isBalanceLoading || isAccessLoading,
+      isLoading: isRegistrationLoading || isBalanceLoading,
     };
   }, [
     mode,
@@ -212,10 +200,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     position,
     borrowApyPerSecond,
     cashBalanceUsd,
-    hasSpendModeAccess,
     isRegistrationLoading,
     isBalanceLoading,
-    isAccessLoading,
   ]);
 };
 

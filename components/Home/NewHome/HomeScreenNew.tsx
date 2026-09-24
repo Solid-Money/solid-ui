@@ -74,10 +74,10 @@ export default function HomeScreenNew() {
   const { provider: cardProvider } = useCardProvider();
 
   const userHasCard = hasCard(cardStatus);
-  // The "Spend mode" strip under the card. `canChangeMode` already carries all three
-  // gates — a Wirex card (the registration read only runs for Wirex), the spend-mode
-  // cohort, and a build that can reach v2 — the same condition the card page shows its
-  // own spend-mode row on, so the shortcut never leads to a sheet that is not there.
+  // The "Spend mode" strip under the card. `canChangeMode` already carries both gates — a
+  // Wirex card (the registration read only runs for Wirex) and a build that can reach v2 —
+  // the same condition the card page shows its own spend-mode row on, so the shortcut never
+  // leads to a sheet that is not there.
   const spendModeFigures = useSpendModeFigures();
   const homeSpendMode =
     userHasCard && spendModeFigures.canChangeMode ? spendModeFigures.mode : null;

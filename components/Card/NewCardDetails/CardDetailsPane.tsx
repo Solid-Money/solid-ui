@@ -142,7 +142,7 @@ const CardDetailsPane = () => {
    * only ever put Safes on v1, so it has nothing to be unsure about.
    */
   const showsEnableSpending =
-    // A cohort card with nothing working is waiting on v2, which only a v2 read can report,
+    // A card with nothing working is waiting on v2, which only a v2 read can report,
     // so it needs no guard of its own.
     spendRegistration.isAwaitingV2 ||
     (spendRegistration.isRevoked &&
@@ -188,7 +188,7 @@ const CardDetailsPane = () => {
   // for the card to land: a sheet rising while the card is still flying up covers the
   // flight, and the two animations fight for the same frames. Guarded on the mode being
   // changeable, which is what the strip itself is gated on — a request that arrives for a
-  // cardholder who has since fallen out of the cohort just opens the card page.
+  // card that can no longer change mode (spending since turned off) just opens the card page.
   useEffect(() => {
     if (!isOpen || !spendModeRequested || isHeroFlying) return;
     if (spendModeFigures.canChangeMode) setIsSpendModeOpen(true);

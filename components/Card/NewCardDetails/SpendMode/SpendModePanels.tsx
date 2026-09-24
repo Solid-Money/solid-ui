@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 
@@ -15,6 +16,14 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 export const BALANCE_PANEL_HEIGHT = 106;
 /** Figma 25961:3504. See {@link BALANCE_PANEL_HEIGHT}. */
 export const BORROWED_PANEL_HEIGHT = 126;
+/**
+ * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
+ * a narrower sheet wraps the message to a third line, so the sheet measures the real one.
+ */
+export const SPEND_MODE_NOTICE_HEIGHT = 63;
+
+const NOTICE_BACKGROUND = require('@/assets/images/spend-mode-credit-notice-bg.png');
+const NOTICE_BADGE = require('@/assets/images/spend-mode-credit-notice-badge.svg');
 
 interface BalancePanelProps {
   balance: string;
@@ -86,6 +95,32 @@ export const BorrowedSummary = ({
   </>
 );
 
+interface NoticeProps {
+  message: string;
+  /** Reports the rendered height, which grows when the message wraps further. */
+  onLayout?: (event: LayoutChangeEvent) => void;
+}
+
+/**
+ * "! Currently credit mode works only with your USD yield balance" — a caveat about the
+ * highlighted mode, in yellow on a faint yellow wash (Figma 26974:14829).
+ */
+export const SpendModeNotice = ({ message, onLayout }: NoticeProps) => (
+  <View onLayout={onLayout} style={styles.notice}>
+    <Image
+      accessible={false}
+      source={NOTICE_BACKGROUND}
+      contentFit="cover"
+      style={StyleSheet.absoluteFill}
+    />
+    <View accessible={false} style={styles.noticeBadge}>
+      <Image source={NOTICE_BADGE} style={StyleSheet.absoluteFill} />
+      <Text className="text-[16px] font-extrabold leading-[18px] text-[#FFD151]">!</Text>
+    </View>
+    <Text className="flex-1 text-[16px] font-normal leading-[18px] text-[#FFD151]">{message}</Text>
+  </View>
+);
+
 /** The borrowed block as the spend-mode sheet shows it (Figma 25961:3504). */
 export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
   <View style={[styles.panel, styles.borrowedPanel]}>
@@ -133,4 +168,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: { backgroundColor: '#94F27F', borderRadius: 5, height: 10 },
+
+  // Figma places the badge at 15, the message at 50.5 and 12 from the top, and leaves 15
+  // under it and 17.5 after it — all from the outer edge. Padding here starts inside the
+  // 1pt border, so each is one less; the badge then centres on the message block.
+  notice: {
+    alignItems: 'center',
+    borderColor: 'rgba(255, 209, 81, 0.15)',
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 13.5,
+    overflow: 'hidden',
+    paddingBottom: 14,
+    paddingLeft: 14,
+    paddingRight: 16.5,
+    paddingTop: 11,
+  },
+  noticeBadge: { alignItems: 'center', height: 22, justifyContent: 'center', width: 22 },
 });
