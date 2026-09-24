@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Building2, Zap } from 'lucide-react-native';
 
@@ -28,6 +29,10 @@ const DepositUsdOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetOrchestra = useOrchestraStore(state => state.reset);
   const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
+
+  useEffect(() => {
+    track(TRACKING_EVENTS.DEPOSIT_USD_METHOD_VIEWED);
+  }, []);
 
   const handleCashAppPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {

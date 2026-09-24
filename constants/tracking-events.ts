@@ -203,6 +203,13 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_PROFILE_FORM_SUBMITTED: 'buy_crypto_profile_form_submitted',
   BUY_CRYPTO_PROFILE_FORM_FAILED: 'buy_crypto_profile_form_failed',
 
+  /**
+   * The USD rail chooser was shown. Sits between picking USD on the cash screen
+   * and picking a rail, so without it the two look like one step and the
+   * drop-off between them is invisible.
+   */
+  DEPOSIT_USD_METHOD_VIEWED: 'deposit_usd_method_viewed',
+
   // Deposit Method: Lightning onramp (Flashnet Orchestra)
   ORCHESTRA_AMOUNT_VIEWED: 'orchestra_amount_viewed',
   ORCHESTRA_ORDER_CREATED: 'orchestra_order_created',
