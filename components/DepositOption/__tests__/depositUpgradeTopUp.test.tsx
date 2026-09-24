@@ -71,7 +71,7 @@ it('keeps Buy FUSE out of the ordinary deposit chooser', () => {
   const rows = root.root.findAllByType('DepositMethodRow');
   expect(rows.map((row: any) => row.props.title)).toEqual(['Crypto', 'Cash']);
   act(() => rows[0].props.onPress());
-  expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
+  expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
   act(() => root.unmount());
 });
 
@@ -111,6 +111,6 @@ it('preserves the existing Savings deposit route for Crypto from a soFUSE top up
   act(() => root.root.findAllByType('DepositMethodRow')[0].props.onPress());
   expect(mockDeposit.setSavingsFundIntent).toHaveBeenCalledWith('savings');
   expect(mockSelectSavingsToken).toHaveBeenCalledWith('WFUSE');
-  expect(mockDeposit.setModal).not.toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN);
+  expect(mockDeposit.setModal).not.toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN);
   act(() => root.unmount());
 });
