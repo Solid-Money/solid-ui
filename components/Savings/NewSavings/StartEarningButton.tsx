@@ -2,12 +2,9 @@ import { Pressable, View } from 'react-native';
 
 import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { VAULTS } from '@/constants/vaults';
+import { useVaultDepositEntry } from '@/hooks/useVaultDepositEntry';
 import { VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 // DepositTrigger injects its open handler via SlotTrigger.cloneElement({ onPress }),
 // so this trigger MUST forward props to its root Pressable (same rule as the
@@ -44,19 +41,15 @@ const StartEarningButton = ({
   source = 'savings_start_earning',
   className,
 }: StartEarningButtonProps) => {
+  const { modal, onBeforeOpen } = useVaultDepositEntry(vaultType);
+
   return (
     <View className={cn('px-4', className)}>
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_FORM}
+        modal={modal}
         preserveSelectedVault
         source={source}
-        onBeforeOpen={() => {
-          const index = VAULTS.findIndex(vault => vault.type === vaultType);
-          if (index >= 0) {
-            useSavingStore.getState().selectVaultForDeposit(index);
-          }
-          useDepositStore.getState().setDepositFromSolid(true);
-        }}
+        onBeforeOpen={onBeforeOpen}
         trigger={<DepositTriggerButton label={label} />}
       />
     </View>

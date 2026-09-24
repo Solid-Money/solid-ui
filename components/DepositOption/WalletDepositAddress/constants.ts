@@ -52,12 +52,32 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, number> = {
 const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
   ETH: 0.005,
   WETH: 0.005,
-  FUSE: 100,
-  WFUSE: 100,
+  FUSE: 500,
+  WFUSE: 500,
 };
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
 const DEFAULT_MINIMUM_DEPOSIT = 1;
+
+/**
+ * Currencies the deposit address is minted for, rather than being the Safe.
+ *
+ * The stablecoins, and only them, because they are the ones the deposit pipeline
+ * has a route for: a minted address is watched, so the transfer is detected,
+ * credited and shown as activity. ETH, WETH, FUSE and WFUSE have no such route —
+ * they are sent to the Safe and simply sit there as what was sent — so for those
+ * the Safe address is not a fallback, it is the right answer.
+ */
+const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
+
+export const usesDirectDepositAddress = (symbol: string): boolean =>
+  DIRECT_DEPOSIT_SYMBOLS.has(symbol);
+
+/**
+ * The order "Select token" leads with. The stablecoins people actually deposit
+ * come first, then ETH; everything else follows in network order.
+ */
+const TOKEN_DISPLAY_ORDER = ['USDC', 'USDT', 'ETH'];
 
 /**
  * The contract the pipeline credits for a native asset. It lists WETH and WFUSE;
@@ -184,14 +204,15 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
 
 /**
  * Every currency the deposit address can take, each once, for "Select token" —
- * the first step now, taken before any chain is chosen.
+ * the first step, taken before any chain is chosen.
  *
- * The default currency leads, then the rest of the default chain's in its own
- * order, then whatever only other chains carry, in network order. Each is drawn
- * with the icon of the first chain here that carries it.
+ * `TOKEN_DISPLAY_ORDER` leads, because a list derived from chain order put FUSE
+ * and WFUSE above USDT and ETH purely because Fuse is the default chain, which
+ * is not the order anyone looks for them in. Whatever is not named there follows
+ * in network order. Each is drawn with the icon of the first chain carrying it.
  */
 export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
-  const { chainId: defaultChainId, symbol: defaultSymbol } = getDefaultWalletDepositSelection();
+  const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
   const chainIds = [
     defaultChainId,
     ...getWalletDepositNetworks()
@@ -207,10 +228,12 @@ export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
     }),
   );
 
-  return [
-    ...tokens.filter(token => token.symbol === defaultSymbol),
-    ...tokens.filter(token => token.symbol !== defaultSymbol),
-  ];
+  const rank = (symbol: string) => {
+    const index = TOKEN_DISPLAY_ORDER.indexOf(symbol);
+    return index === -1 ? TOKEN_DISPLAY_ORDER.length : index;
+  };
+
+  return [...tokens].sort((a, b) => rank(a.symbol) - rank(b.symbol));
 };
 
 /**

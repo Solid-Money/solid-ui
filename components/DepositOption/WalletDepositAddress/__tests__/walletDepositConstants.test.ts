@@ -11,6 +11,7 @@ import {
   resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
+  usesDirectDepositAddress,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
 import { DepositAsset } from '@/lib/types';
 
@@ -30,7 +31,7 @@ describe('getWalletDepositMinimum', () => {
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe(0.005);
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(100);
+    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(500);
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
@@ -76,6 +77,27 @@ describe('getWalletDepositNetworks', () => {
       true,
     );
     expect(networks[0].chainId).toBe(mainnet.id);
+  });
+});
+
+/**
+ * Which address the screen hands out. A minted address is watched by the deposit
+ * pipeline; the Safe is not. Getting this wrong either strands a transfer or
+ * makes the screen promise a detection that can never happen.
+ */
+describe('usesDirectDepositAddress', () => {
+  it('mints an address for the stablecoins the pipeline has a route for', () => {
+    expect(usesDirectDepositAddress('USDC')).toBe(true);
+    expect(usesDirectDepositAddress('USDT')).toBe(true);
+  });
+
+  // These land in the Safe and stay as the token that was sent, so the Safe
+  // address is the right answer rather than a fallback.
+  it('keeps the Safe for the currencies with no route', () => {
+    expect(usesDirectDepositAddress('ETH')).toBe(false);
+    expect(usesDirectDepositAddress('WETH')).toBe(false);
+    expect(usesDirectDepositAddress('FUSE')).toBe(false);
+    expect(usesDirectDepositAddress('WFUSE')).toBe(false);
   });
 });
 
@@ -166,11 +188,17 @@ describe('getDefaultWalletDepositSelection', () => {
 });
 
 describe('getAllWalletDepositTokens', () => {
-  it('lists every currency some chain accepts, once, leading with the default', () => {
+  it('lists every currency some chain accepts, once', () => {
     const symbols = getAllWalletDepositTokens().map(token => token.symbol);
-    expect(symbols[0]).toBe('USDC');
     expect(new Set(symbols).size).toBe(symbols.length);
     expect(symbols).toEqual(expect.arrayContaining(['USDC', 'USDT', 'ETH', 'FUSE']));
+  });
+
+  // Derived from chain order alone this read USDC, FUSE, USDT, WFUSE, ETH —
+  // Fuse's pair riding up the list purely because Fuse is the default chain.
+  it("leads with the currencies people look for, not the default chain's", () => {
+    const symbols = getAllWalletDepositTokens().map(token => token.symbol);
+    expect(symbols.slice(0, 3)).toEqual(['USDC', 'USDT', 'ETH']);
   });
 });
 

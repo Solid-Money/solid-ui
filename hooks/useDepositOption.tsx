@@ -35,7 +35,6 @@ import { VirtualAccountApplyModal } from '@/components/DepositOption/VirtualAcco
 import { VirtualAccountDetailsModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountDetailsModal';
 import { VirtualAccountTosModal } from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountTosModal';
 import WalletDepositAddress from '@/components/DepositOption/WalletDepositAddress';
-import WalletDepositNetworks from '@/components/DepositOption/WalletDepositAddress/WalletDepositNetworks';
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
@@ -185,7 +184,6 @@ const useDepositOption = ({
   const isDepositTypeSelection = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TYPE.name;
   const isDepositCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CRYPTO.name;
   const isDepositCash = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CASH.name;
-  const isDepositChain = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_CHAIN.name;
   const isDepositToken = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN.name;
   const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isWalletConnector = currentModal.name === DEPOSIT_MODAL.OPEN_CONNECT_WALLET.name;
@@ -411,10 +409,6 @@ const useDepositOption = ({
       return <DepositCashOptions />;
     }
 
-    if (isDepositChain) {
-      return <WalletDepositNetworks />;
-    }
-
     if (isDepositToken) {
       return <WalletDepositTokens />;
     }
@@ -460,7 +454,6 @@ const useDepositOption = ({
     if (isWalletConnector) return 'deposit-wallet-connector';
     if (isDepositCrypto) return 'deposit-crypto-options';
     if (isDepositCash) return 'deposit-cash-options';
-    if (isDepositChain) return 'deposit-chain';
     if (isDepositToken) return 'deposit-token';
     return 'deposit-type-selection';
   };
@@ -506,7 +499,6 @@ const useDepositOption = ({
     if (isDepositTypeSelection) return undefined;
     if (isDepositCrypto) return 'Receive crypto';
     if (isDepositCash) return 'Deposit with cash';
-    if (isDepositChain) return 'Select chain';
     if (isDepositToken) return 'Select token';
     if (isWalletConnector) return 'Connect wallet';
     return 'Add funds';
@@ -527,7 +519,6 @@ const useDepositOption = ({
       isDepositTypeSelection ||
       isDepositCrypto ||
       isDepositCash ||
-      isDepositChain ||
       isDepositToken ||
       isPublicAddress
     ) {
@@ -606,7 +597,6 @@ const useDepositOption = ({
       // two-row list padded out to 40rem is mostly empty card.
       !isDepositCrypto &&
       !isDepositCash &&
-      !isDepositChain &&
       !isDepositToken &&
       !isPublicAddress
     ) {
@@ -843,9 +833,6 @@ const useDepositOption = ({
           ? DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS
           : DEPOSIT_MODAL.OPEN_DEPOSIT_TOKEN,
       );
-    } else if (isDepositChain) {
-      // Only ever opened from the address screen's network pill.
-      setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
     } else if (isDepositToken) {
       const { walletDeposit, setWalletDeposit } = useDepositStore.getState();
       setWalletDeposit({ isChangingToken: false });
@@ -974,7 +961,6 @@ const useDepositOption = ({
     isPublicAddress ||
     isDepositCrypto ||
     isDepositCash ||
-    isDepositChain ||
     isDepositToken ||
     isSavingsFundNetworks ||
     isSavingsFundAddress ||
@@ -1002,8 +988,7 @@ const useDepositOption = ({
   return {
     shouldOpen,
     showBackButton,
-    compactHeader:
-      isDepositCrypto || isDepositCash || isDepositChain || isDepositToken || isPublicAddress,
+    compactHeader: isDepositCrypto || isDepositCash || isDepositToken || isPublicAddress,
     // Short enough to sit at the bottom of a phone screen rather than take it
     // over; desktop shows it as the usual centred modal either way.
     mobilePresentation: isDepositTypeSelection ? ('drawer' as const) : ('sheet' as const),
