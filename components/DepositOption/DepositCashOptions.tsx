@@ -64,12 +64,12 @@ const DepositCashOptions = () => {
 
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
-  const { isAvailable: isInSupportedRegion } = useCashAppDepositAvailability();
-  // Two independent gates. The region is resolved on the device because only
-  // the client can see the user's IP; the audience — launch flag and allowlist
-  // — is the server's to decide, and it enforces it again on order creation.
-  const { data: orchestraConfig } = useOrchestraConfig();
-  const isCashAppAvailable = isInSupportedRegion && orchestraConfig?.isAvailable === true;
+  // One rule, decided server-side: supported region **or** allowlisted. The
+  // country is resolved here only because the backend has no geoip — the verdict
+  // is still theirs, and they enforce it again on order creation.
+  const { countryCode } = useCashAppDepositAvailability();
+  const { data: orchestraConfig } = useOrchestraConfig(countryCode);
+  const isCashAppAvailable = orchestraConfig?.isAvailable === true;
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 

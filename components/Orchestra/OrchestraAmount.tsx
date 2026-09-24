@@ -47,9 +47,12 @@ export const OrchestraAmount = () => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
   }, []);
 
-  const { isAvailable: isCashAppAvailable, isResolved: isCountryResolved } =
-    useCashAppDepositAvailability();
-  const { data: config, error: configError, isPending: configPending } = useOrchestraConfig();
+  const { countryCode } = useCashAppDepositAvailability();
+  const {
+    data: config,
+    error: configError,
+    isPending: configPending,
+  } = useOrchestraConfig(countryCode);
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrchestraOnramp();
 
   // Without config there is no band to validate against and no asset to name,
@@ -57,24 +60,13 @@ export const OrchestraAmount = () => {
   // server has no Orchestra key, the backend is unreachable, the session
   // lapsed — the error screen states it, which is the whole reason this step
   // is reachable at all rather than hidden behind a vanishing row.
-  // The entry row is gated on the same check, but this step is reachable by
-  // other routes — a restored modal step, a user whose IP moved between
-  // sessions — and the rail genuinely does not work outside the US.
-  useEffect(() => {
-    if (!isCountryResolved || isCashAppAvailable) return;
-    setError(
-      orchestraErrorFromCode(ORCHESTRA_ERROR_CODE.REGION_UNSUPPORTED),
-      DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT,
-    );
-    setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
-  }, [isCountryResolved, isCashAppAvailable, setError, setModal]);
-
-  // The backend's own verdict on this account: launch flag plus allowlist. It
-  // refuses order creation too, so this only saves the user a round trip.
+  // The row is gated on the same verdict, but this step is reachable by other
+  // routes — a restored modal step, a user whose IP moved between sessions. The
+  // server refuses order creation too, so this only saves a round trip.
   useEffect(() => {
     if (!config || config.isAvailable) return;
     setError(
-      orchestraErrorFromCode(ORCHESTRA_ERROR_CODE.NOT_IN_ALLOWLIST),
+      orchestraErrorFromCode(ORCHESTRA_ERROR_CODE.NOT_IN_AUDIENCE),
       DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT,
     );
     setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
@@ -112,29 +104,32 @@ export const OrchestraAmount = () => {
     // session, not a field this screen gets to choose.
     // Two decimal places, because the box holds whatever is being typed and
     // "10." or "10.999" should not reach the wire.
-    createOrder(amountNum.toFixed(2), {
-      onSuccess: order => {
-        track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATED, {
-          order_id: order.orderId,
-          amount_usd: amountNum,
-          amount_mode: order.amountMode,
-          has_cash_app_link: Boolean(order.paymentLinks?.cashApp),
-        });
-        setOrder(order);
-        setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE);
+    createOrder(
+      { amountFiatUsd: amountNum.toFixed(2), countryCode },
+      {
+        onSuccess: order => {
+          track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATED, {
+            order_id: order.orderId,
+            amount_usd: amountNum,
+            amount_mode: order.amountMode,
+            has_cash_app_link: Boolean(order.paymentLinks?.cashApp),
+          });
+          setOrder(order);
+          setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_INVOICE);
+        },
+        onError: error => {
+          const orchestraError = asOrchestraError(error);
+          track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATION_FAILED, {
+            amount_usd: amountNum,
+            error_code: orchestraError.code,
+            error_action: orchestraError.action,
+            error_message: orchestraError.rawMessage,
+          });
+          setError(orchestraError, DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
+          setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
+        },
       },
-      onError: error => {
-        const orchestraError = asOrchestraError(error);
-        track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATION_FAILED, {
-          amount_usd: amountNum,
-          error_code: orchestraError.code,
-          error_action: orchestraError.action,
-          error_message: orchestraError.rawMessage,
-        });
-        setError(orchestraError, DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
-        setModal(DEPOSIT_MODAL.OPEN_ORCHESTRA_ERROR);
-      },
-    });
+    );
   };
 
   if (configPending) {

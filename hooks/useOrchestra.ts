@@ -36,10 +36,12 @@ const retryUnlessRefused = (failureCount: number, error: unknown) =>
  * Orchestra server key, which is how the entry point knows not to offer the
  * deposit method at all.
  */
-export function useOrchestraConfig(enabled = true) {
+export function useOrchestraConfig(countryCode?: string, enabled = true) {
   return useQuery({
-    queryKey: [ORCHESTRA_CONFIG_KEY],
-    queryFn: ({ signal }) => withRefreshToken(() => getOrchestraConfig(signal)),
+    // Keyed on the country: the audience answer changes with it, and a cached
+    // "no" from before geo resolved would outlive the reason for it.
+    queryKey: [ORCHESTRA_CONFIG_KEY, countryCode],
+    queryFn: ({ signal }) => withRefreshToken(() => getOrchestraConfig(countryCode, signal)),
     enabled,
     staleTime: 5 * 60 * 1000,
     retry: retryUnlessRefused,
@@ -54,8 +56,8 @@ export function useOrchestraConfig(enabled = true) {
  */
 export function useCreateOrchestraOnramp() {
   return useMutation({
-    mutationFn: (amountFiatUsd: string) =>
-      withRefreshToken(() => createOrchestraOnramp(amountFiatUsd)),
+    mutationFn: ({ amountFiatUsd, countryCode }: { amountFiatUsd: string; countryCode?: string }) =>
+      withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode)),
     retry: false,
   });
 }

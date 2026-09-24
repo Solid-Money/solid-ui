@@ -33,12 +33,21 @@ const orchestraHeaders = () => {
 };
 
 /**
- * Destination, its decimals, and the live fiat band — one call, because the
- * amount screen cannot render without all three and three round trips to show
- * one form is three chances to half-render it.
+ * Destination, its decimals, the live fiat band, and whether this account may
+ * use the onramp — one call, because the amount screen cannot render without
+ * all of it and three round trips to show one form is three chances to
+ * half-render it.
+ *
+ * The country goes to the server rather than being judged here: the audience
+ * rule is "supported region **or** allowlisted", and only the server knows the
+ * second half. It has no geoip, so the first half has to be told to it.
  */
-export const getOrchestraConfig = async (signal?: AbortSignal): Promise<OrchestraConfig> => {
-  const response = await fetch(`${ORCHESTRA_BASE}/config`, {
+export const getOrchestraConfig = async (
+  countryCode?: string,
+  signal?: AbortSignal,
+): Promise<OrchestraConfig> => {
+  const query = countryCode ? `?${new URLSearchParams({ countryCode })}` : '';
+  const response = await fetch(`${ORCHESTRA_BASE}/config${query}`, {
     method: 'GET',
     headers: orchestraHeaders(),
     credentials: 'include',
@@ -58,12 +67,13 @@ export const getOrchestraConfig = async (signal?: AbortSignal): Promise<Orchestr
  */
 export const createOrchestraOnramp = async (
   amountFiatUsd: string,
+  countryCode?: string,
 ): Promise<OrchestraOnrampOrder> => {
   const response = await fetch(`${ORCHESTRA_BASE}/onramp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...orchestraHeaders() },
     credentials: 'include',
-    body: JSON.stringify({ amountFiatUsd }),
+    body: JSON.stringify({ amountFiatUsd, ...(countryCode ? { countryCode } : {}) }),
   });
 
   if (!response.ok) throw await toOrchestraError(response);
