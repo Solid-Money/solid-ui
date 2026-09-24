@@ -9,6 +9,9 @@ export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
   | undefined;
 export const EXPO_PUBLIC_ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? '';
 export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_KEY ?? '';
+// Pimlico sponsorship policy attached to every userop. Empty means no policy is sent.
+export const EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID =
+  process.env.EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID ?? '';
 export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? '';
