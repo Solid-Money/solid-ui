@@ -127,6 +127,12 @@ const DialogContent = React.forwardRef<
      * the dialog's transformed animation wrapper on small screens.
      */
     webPresentation?: 'modal' | 'bottom-sheet';
+    /**
+     * Native counterpart of `webPresentation`: anchors the card to the bottom of
+     * the screen instead of centring it, so a drawer reads the same on iOS and
+     * Android as it does on web-mobile. Ignored once the screen is medium or
+     * wider, where both platforms show a centred modal.
+     */
     nativePresentation?: 'modal' | 'bottom-sheet';
   }
 >(
@@ -153,6 +159,8 @@ const DialogContent = React.forwardRef<
     const { open } = DialogPrimitive.useRootContext();
     const isWebBottomSheet =
       Platform.OS === 'web' && !isScreenMedium && webPresentation === 'bottom-sheet';
+    const isNativeBottomSheet =
+      Platform.OS !== 'web' && !isScreenMedium && nativePresentation === 'bottom-sheet';
     // Top-aligned sheets are pushed down by `mt-[5vh]` (ResponsiveModal) and sit
     // inside an overlay with 8px padding, so a full-viewport height overflowed the
     // bottom of the screen by that much — clipping whatever the content ended with
@@ -273,27 +281,29 @@ const DialogContent = React.forwardRef<
     );
 
     if (Platform.OS !== 'web') {
-      const isBottomSheet = nativePresentation === 'bottom-sheet' && !isScreenMedium;
       return (
         <DialogPortal hostName={portalHost}>
           <DialogOverlay
             className={cn(shouldAlignTop && 'justify-start', overlayClassName)}
-            closeOnPress={isBottomSheet}
+            // A bottom sheet is dismissed by tapping the backdrop; every other
+            // native dialog keeps its explicit control as the only way out.
+            closeOnPress={isNativeBottomSheet}
           />
           <View
             style={StyleSheet.absoluteFill}
             pointerEvents="box-none"
             className={cn(
-              'flex items-center p-2',
-              isBottomSheet
-                ? 'justify-end p-0'
-                : shouldAlignTop
-                  ? 'justify-start'
+              'flex items-center',
+              isNativeBottomSheet ? 'p-0' : 'p-2',
+              shouldAlignTop
+                ? 'justify-start'
+                : isNativeBottomSheet
+                  ? 'justify-end'
                   : 'justify-center',
             )}
           >
             <Animated.View
-              style={isBottomSheet ? { width: '100%' } : undefined}
+              className={isNativeBottomSheet ? 'w-full' : undefined}
               entering={enteringAnimation}
               exiting={FadeOutDown.duration(180)}
             >

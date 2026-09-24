@@ -28,7 +28,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
-import { DepositModal, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -208,6 +208,9 @@ export default function CardDirectDepositModalMobile({
     [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
+  // Onramper's hosted widget, rendered inside this modal by the same embedded
+  // navigator the TransFi screens use — so back and the title come from
+  // lib/buyCryptoFlow, not from a step of our own.
   const handleTransferFromWallet = useCallback(() => {
     handleOpenChange(false);
     setDepositModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
@@ -318,6 +321,7 @@ export default function CardDirectDepositModalMobile({
           address={depositAddress}
           symbol={selectedToken}
           chainId={selectedChainId ?? 0}
+          cardProvider={CardProvider.RAIN}
           onChangeNetwork={handleBack}
           onDepositDetected={handleDepositDetected}
         />

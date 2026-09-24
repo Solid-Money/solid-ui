@@ -10,6 +10,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
+import { type AssetPath } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 
 import {
@@ -17,25 +18,34 @@ import {
   resolveVaultApy,
   type VaultAmounts,
 } from './earnPortfolio';
-import { EarnVaultCard } from './EarnVaultCard';
+import { EarnVaultTile } from './EarnVaultTile';
+import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 
-const VAULT_CARDS = [
+const VAULT_TILES = [
   {
     type: VaultType.USDC,
     assetName: 'USD',
-    background: 'images/earn-usd-card-background.png' as const,
+    background: 'images/earn-usd-tile-background.png',
+    icon: 'images/earn-usd-icon.png',
   },
   {
     type: VaultType.ETH,
     assetName: 'ETH',
-    background: 'images/earn-eth-card-background.png' as const,
+    background: 'images/earn-eth-tile-background.png',
+    icon: 'images/earn-eth-icon.png',
   },
   {
     type: VaultType.FUSE,
     assetName: 'FUSE',
-    background: 'images/earn-fuse-card-background.png' as const,
+    background: 'images/earn-fuse-tile-background.png',
+    icon: 'images/earn-fuse-icon.png',
   },
-] as const;
+] as const satisfies readonly {
+  type: VaultType;
+  assetName: string;
+  background: AssetPath;
+  icon: AssetPath;
+}[];
 
 const openVault = (vaultType: VaultType) =>
   router.push({ pathname: '/savings', params: { vault: vaultType } } as Href);
@@ -46,9 +56,18 @@ const formatDailyEarnings = (value: number) =>
     maximumFractionDigits: 2,
   });
 
+/** Splits the tiles into rows so a half-width tile keeps its width when it is alone. */
+const chunkIntoRows = <T,>(items: T[], perRow = 2): T[][] =>
+  items.reduce<T[][]>((rows, item, index) => {
+    if (index % perRow === 0) rows.push([]);
+    rows[rows.length - 1].push(item);
+    return rows;
+  }, []);
+
 /** Figma 24766:2010 — the portfolio-level entry page for every savings vault. */
 export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  useVaultDetailPrefetch();
   const { data: portfolioTotal, valuesByVault, isLoading } = useTotalSavingsUSD();
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
@@ -68,6 +87,21 @@ export default function EarnScreen() {
   const estimatedToday = valuesByVault
     ? calculateEstimatedDailyEarnings(valuesByVault, apyByVault)
     : 0;
+
+  // Every vault gets a tile regardless of its rate — a vault at 0% is still
+  // somewhere to deposit, and a grid that changes shape with the rates is
+  // harder to build muscle memory for than one that doesn't.
+  const tiles = VAULT_TILES.map(vault => (
+    <EarnVaultTile
+      key={vault.type}
+      assetName={vault.assetName}
+      apy={apyByVault[vault.type]}
+      isApyLoading={apyLoadingByVault[vault.type]}
+      background={vault.background}
+      icon={vault.icon}
+      onPress={() => openVault(vault.type)}
+    />
+  ));
 
   return (
     <PageLayout
@@ -101,13 +135,11 @@ export default function EarnScreen() {
 
           <BalancePillRow>
             {isLoading || areApysLoading ? (
-              <Skeleton className="h-[35px] w-[137px] rounded-full bg-white/10" />
+              <Skeleton className="h-6 w-[120px] rounded-full bg-white/10" />
             ) : (
-              <View className="h-[35px] justify-center rounded-full bg-[#1C1C1C] px-4">
-                <Text className="text-[16px] leading-[18px] text-[#94F27F]">
-                  +${formatDailyEarnings(estimatedToday)} today
-                </Text>
-              </View>
+              <Text className="text-[16px] leading-5 text-[#94F27F]">
+                +${formatDailyEarnings(estimatedToday)} today
+              </Text>
             )}
           </BalancePillRow>
         </View>
@@ -117,15 +149,11 @@ export default function EarnScreen() {
         </Text>
 
         <View className="gap-4">
-          {VAULT_CARDS.map(vault => (
-            <EarnVaultCard
-              key={vault.type}
-              assetName={vault.assetName}
-              apy={apyByVault[vault.type]}
-              background={vault.background}
-              isApyLoading={apyLoadingByVault[vault.type]}
-              onPress={() => openVault(vault.type)}
-            />
+          {chunkIntoRows(tiles).map((row, index) => (
+            <View key={index} className="flex-row gap-4">
+              {row}
+              {row.length === 1 && <View className="flex-1" />}
+            </View>
           ))}
         </View>
       </View>

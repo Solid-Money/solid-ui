@@ -34,7 +34,7 @@ import {
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
-import { DepositModal, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -230,6 +230,9 @@ export default function CardDirectDepositModal({
     [handleBuyCryptoPress, resetTransfi, setTransfiCurrency],
   );
 
+  // Onramper's hosted widget, rendered inside this modal by the same embedded
+  // navigator the TransFi screens use — so back and the title come from
+  // lib/buyCryptoFlow, not from a step of our own.
   // "Deposit from an external wallet" — connect a crypto wallet, then send.
   const handleConnectWallet = useCallback(async () => {
     try {
@@ -391,6 +394,7 @@ export default function CardDirectDepositModal({
           address={depositAddress}
           symbol={selectedToken}
           chainId={selectedChainId ?? 0}
+          cardProvider={CardProvider.RAIN}
           onChangeNetwork={handleBack}
           onDepositDetected={handleDepositDetected}
         />

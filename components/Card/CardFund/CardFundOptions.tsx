@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { CreditCard } from 'lucide-react-native';
 
 import FundExternalWallet from '@/assets/images/fund-external-wallet';
 import FundMoveSavings from '@/assets/images/fund-move-savings';
@@ -36,6 +37,11 @@ type CardFundOptionsProps = {
    * hide the local-currency rows entirely.
    */
   onLocalCurrencyPress?: (code: string) => void;
+  /**
+   * Opens Onramper's hosted widget. Omit to hide the row — the funding modals
+   * opt in individually, as they do for the local-currency rows.
+   */
+  onBuyCryptoPress?: () => void;
   isExternalWalletLoading?: boolean;
   /**
    * Which groups this issuer offers. Defaults to the full Rain set, so the
@@ -56,6 +62,7 @@ const CardFundOptions = ({
   onExternalWalletPress,
   onUsdPress,
   onLocalCurrencyPress,
+  onBuyCryptoPress,
   isExternalWalletLoading,
   sections = RAIN_CARD_FUND_SECTIONS,
   moveFromSolidCopy = CARD_FUND_MOVE_COPY.rain,
@@ -65,7 +72,7 @@ const CardFundOptions = ({
   // desktop/mobile modals have always hidden these rows.
   const showLocalCurrencies = sections.localCurrencies && !!onLocalCurrencyPress;
   const showCashDeposit = sections.cashDeposit || showLocalCurrencies;
-  const showOther = sections.moveFromSolid || sections.externalWallet;
+  const showOther = sections.moveFromSolid || sections.externalWallet || !!onBuyCryptoPress;
 
   return (
     <View className="gap-y-8">
@@ -130,6 +137,14 @@ const CardFundOptions = ({
               subtitle="Send USDC from any supported network"
               onPress={onExternalWalletPress}
               isLoading={isExternalWalletLoading}
+            />
+          ) : null}
+          {onBuyCryptoPress ? (
+            <CardFundRow
+              icon={<CreditCard color="white" size={22} strokeWidth={1.5} />}
+              title="Buy crypto"
+              subtitle="Card, Apple Pay, Google Pay and more"
+              onPress={onBuyCryptoPress}
             />
           ) : null}
         </CardFundGroup>

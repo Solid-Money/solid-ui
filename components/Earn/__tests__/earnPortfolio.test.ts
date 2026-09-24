@@ -59,7 +59,8 @@ describe('resolveVaultApy', () => {
 });
 
 describe('formatVaultApyLabel', () => {
-  it('includes the percent symbol in the APY label', () => {
+  it('renders one decimal place, matching the vault tile design', () => {
     expect(formatVaultApyLabel(4.5)).toBe('4.5% APY');
+    expect(formatVaultApyLabel(4)).toBe('4.0% APY');
   });
 });

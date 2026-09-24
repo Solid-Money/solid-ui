@@ -1,22 +1,23 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import BuyStockModal from '@/components/Stocks/BuyStockModal';
 import SellStockModal from '@/components/Stocks/SellStockModal';
 import { Holding, STOCKS } from '@/components/Stocks/stocksData';
 import StocksDiscoverSection from '@/components/Stocks/StocksDiscoverSection';
-import { XStockToken } from '@/hooks/useXStocksTokens';
 import StocksEmptyHoldings from '@/components/Stocks/StocksEmptyHoldings';
 import StocksHoldingsList from '@/components/Stocks/StocksHoldingsList';
 import StocksPendingStrip from '@/components/Stocks/StocksPendingStrip';
 import StocksPortfolioCard from '@/components/Stocks/StocksPortfolioCard';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { XSTOCKS_TOKENS } from '@/constants/xstocksTokens';
 import { useDimension } from '@/hooks/useDimension';
 import { useXStockHoldings } from '@/hooks/useXStockHoldings';
 import { useXStockPrices } from '@/hooks/useXStockPrices';
+import { XStockToken } from '@/hooks/useXStocksTokens';
 import { isProduction } from '@/lib/config';
 
 // Stocks is an in-development feature: not accessible in production builds.
@@ -33,7 +34,7 @@ function StocksPageContent() {
   const { isScreenMedium } = useDimension();
   const scrollRef = useRef<ScrollView>(null);
 
-  const { holdings } = useXStockHoldings();
+  const { holdings, isLoading: isHoldingsLoading } = useXStockHoldings();
   const hasHoldings = holdings.length > 0;
   const holdingTickers = holdings.map(h => h.ticker);
   const holdingPrices = useXStockPrices(holdingTickers);
@@ -45,25 +46,96 @@ function StocksPageContent() {
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [sellModalOpen, setSellModalOpen] = useState(false);
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
+  // Which stock the buy flow should open on. Null means "let the user pick".
+  const [buyToken, setBuyToken] = useState<XStockToken | null>(null);
+  // True when the buy flow was opened by a deep link rather than by browsing
+  // this screen — leaving it should return the user where they came from
+  // instead of stranding them on a Stocks tab they never chose to open.
+  const [cameFromDeepLink, setCameFromDeepLink] = useState(false);
+
+  // Open a trade straight from a `/stocks?ticker=TSLAx&action=sell` deep link
+  // (the Earn page uses it), then clear the params so closing the modal doesn't
+  // leave a link that reopens it on the next visit.
+  const { ticker: tickerParam, action: actionParam } = useLocalSearchParams<{
+    ticker?: string;
+    action?: string;
+  }>();
+
+  useEffect(() => {
+    if (!tickerParam) return;
+
+    const clearParams = () => router.setParams({ ticker: undefined, action: undefined });
+
+    if (actionParam === 'sell') {
+      const holding = holdings.find(h => h.ticker === tickerParam);
+
+      // Holdings are read from chain and arrive after this screen mounts, so
+      // the params are held until they land rather than dropped on the floor.
+      if (!holding) {
+        if (!isHoldingsLoading) clearParams();
+        return;
+      }
+
+      setSelectedHolding(holding);
+      setSellModalOpen(true);
+      setCameFromDeepLink(true);
+      clearParams();
+      return;
+    }
+
+    const token = XSTOCKS_TOKENS.find(t => t.symbol === tickerParam);
+    if (token) {
+      setBuyToken(token);
+      setBuyModalOpen(true);
+      setCameFromDeepLink(true);
+    }
+    clearParams();
+  }, [tickerParam, actionParam, holdings, isHoldingsLoading]);
 
   function handleBuyPress() {
+    setBuyToken(null);
+    setCameFromDeepLink(false);
     setBuyModalOpen(true);
   }
 
   function handleSellPress() {
     if (holdings.length > 0) {
       setSelectedHolding(holdings[0]);
+      setCameFromDeepLink(false);
       setSellModalOpen(true);
     }
   }
 
-  function handleStockPress(_token: XStockToken) {
+  function handleStockPress(token: XStockToken) {
+    setBuyToken(token);
+    setCameFromDeepLink(false);
     setBuyModalOpen(true);
+  }
+
+  // Leaving a deep-linked buy flow returns to the screen that opened it (the
+  // Earn catalog); leaving one started here just closes the modal.
+  function handleBuyClose() {
+    setBuyModalOpen(false);
+    if (cameFromDeepLink && router.canGoBack()) {
+      setCameFromDeepLink(false);
+      router.back();
+    }
   }
 
   function handleHoldingPress(holding: Holding) {
     setSelectedHolding(holding);
+    setCameFromDeepLink(false);
     setSellModalOpen(true);
+  }
+
+  // Same as the buy flow: a deep-linked sale returns to the screen that opened
+  // it rather than stranding the user on a Stocks tab they never chose.
+  function handleSellClose() {
+    setSellModalOpen(false);
+    if (cameFromDeepLink && router.canGoBack()) {
+      setCameFromDeepLink(false);
+      router.back();
+    }
   }
 
   function scrollToDiscover() {
@@ -71,7 +143,9 @@ function StocksPageContent() {
   }
 
   const selectedStockPrice = selectedHolding
-    ? (holdingPrices[selectedHolding.ticker] ?? STOCKS.find(s => s.ticker === selectedHolding.ticker)?.price ?? 194.23)
+    ? (holdingPrices[selectedHolding.ticker] ??
+      STOCKS.find(s => s.ticker === selectedHolding.ticker)?.price ??
+      194.23)
     : 194.23;
 
   if (isScreenMedium) {
@@ -86,11 +160,12 @@ function StocksPageContent() {
         onStockPress={handleStockPress}
         onHoldingPress={handleHoldingPress}
         buyModalOpen={buyModalOpen}
+        buyToken={buyToken}
         sellModalOpen={sellModalOpen}
         selectedHolding={selectedHolding}
         selectedStockPrice={selectedStockPrice}
-        onBuyClose={() => setBuyModalOpen(false)}
-        onSellClose={() => setSellModalOpen(false)}
+        onBuyClose={handleBuyClose}
+        onSellClose={handleSellClose}
       />
     );
   }
@@ -140,13 +215,22 @@ function StocksPageContent() {
       </ScrollView>
 
       {/* Modals (rendered outside scroll) */}
-      <BuyStockModal isOpen={buyModalOpen} onClose={() => setBuyModalOpen(false)} trigger={null} />
+      {/* Keyed on the stock so picking a different one re-seeds the flow's
+          initial step instead of reusing the previous selection. */}
+      <BuyStockModal
+        key={buyToken?.symbol ?? 'picker'}
+        isOpen={buyModalOpen}
+        initialToken={buyToken}
+        onClose={handleBuyClose}
+        onExit={handleBuyClose}
+        trigger={null}
+      />
 
       <SellStockModal
         holding={selectedHolding}
         stockPrice={selectedStockPrice}
         isOpen={sellModalOpen}
-        onClose={() => setSellModalOpen(false)}
+        onClose={handleSellClose}
         trigger={null}
       />
     </PageLayout>
@@ -163,6 +247,7 @@ type DesktopLayoutProps = {
   onStockPress: (token: XStockToken) => void;
   onHoldingPress: (holding: Holding) => void;
   buyModalOpen: boolean;
+  buyToken: XStockToken | null;
   sellModalOpen: boolean;
   selectedHolding: Holding | null;
   selectedStockPrice: number;
@@ -180,6 +265,7 @@ function DesktopLayout({
   onStockPress,
   onHoldingPress,
   buyModalOpen,
+  buyToken,
   sellModalOpen,
   selectedHolding,
   selectedStockPrice,
@@ -229,7 +315,14 @@ function DesktopLayout({
         </View>
       </View>
 
-      <BuyStockModal isOpen={buyModalOpen} onClose={onBuyClose} trigger={null} />
+      <BuyStockModal
+        key={buyToken?.symbol ?? 'picker'}
+        isOpen={buyModalOpen}
+        initialToken={buyToken}
+        onClose={onBuyClose}
+        onExit={onBuyClose}
+        trigger={null}
+      />
 
       <SellStockModal
         holding={selectedHolding}

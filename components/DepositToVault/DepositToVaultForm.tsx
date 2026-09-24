@@ -85,8 +85,15 @@ function DepositToVaultForm() {
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens } =
-    useWalletTokens();
+  const {
+    ethereumTokens,
+    fuseTokens,
+    polygonTokens,
+    baseTokens,
+    arbitrumTokens,
+    bscTokens,
+    isLoading: isLoadingWalletTokens,
+  } = useWalletTokens();
 
   // Sum across all (chain, token) pairs the selected vault accepts. If nothing
   // depositable is held in the user's wallet, show the empty state.
@@ -116,6 +123,11 @@ function DepositToVaultForm() {
       return BigInt(token.balance || '0') > 0n;
     });
   }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens, vault]);
+
+  // Balances start empty, so "no depositable balance" only means something once
+  // they have loaded. A balance already in hand is enough to show the form even
+  // while a refresh is in flight.
+  const isBalanceUnknown = isLoadingWalletTokens && !hasDepositableBalance;
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
   const vaultTokenIcon =
@@ -243,6 +255,9 @@ function DepositToVaultForm() {
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
+  // Exactly one of the three holds whenever the deposit comes from the Solid
+  // balance, which is also when the form has no external wallet to name.
+  const isDepositFromSolid = useSolidForFuse || useSolidForEth || useSolidForUsdc;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
@@ -560,18 +575,25 @@ function DepositToVaultForm() {
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-1">
-        <View className="gap-2">
-          <Text className="text-muted-foreground">
-            {useSolidForFuse || useSolidForEth || useSolidForUsdc ? '' : 'From wallet'}
-          </Text>
-          {!useSolidForFuse && !useSolidForEth && !useSolidForUsdc && <ConnectedWalletDropdown />}
-        </View>
+        {!isDepositFromSolid && (
+          <View className="gap-2">
+            <Text className="text-muted-foreground">From wallet</Text>
+            <ConnectedWalletDropdown />
+          </View>
+        )}
         <View className="gap-1" style={{ zIndex: 50 }}>
           <Text className="text-base text-muted-foreground">Destination</Text>
           <VaultSelectorDropdown />
         </View>
         <View className="gap-2">
-          {!hasDepositableBalance ? (
+          {isBalanceUnknown ? (
+            // This form is the savings deposit entry point, so balances are
+            // usually still in flight on first open. Waiting here keeps the user
+            // off an empty state that a loaded balance is about to contradict.
+            <View className="mt-12 items-center">
+              <ActivityIndicator size="small" color="white" />
+            </View>
+          ) : !hasDepositableBalance ? (
             <EmptyDepositTokens vault={vault} />
           ) : (
             <>

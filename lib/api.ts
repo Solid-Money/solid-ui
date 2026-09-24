@@ -73,6 +73,7 @@ import {
   CoinHistoricalChart,
   CustomerFromBridgeResponse,
   Deposit,
+  DepositAssetsResponse,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -2174,27 +2175,31 @@ export const createMercuryoTransaction = async (
 };
 
 /**
- * Credentials the Onramper SDK is bootstrapped with. Minted by our backend, never
- * derived on the client — the partner secret that signs them must stay server-side.
- * Structurally matches the SDK's `SessionCredentials`; kept local so this module
- * has no dependency on the iOS-only Onramper package.
+ * A signed Onramper widget URL.
+ *
+ * Minted per open, never cached: Onramper caps the signature at 15 minutes and
+ * treats each URL as single-use, so a stored one fails at checkout rather than
+ * at load — the worst place to find out.
  */
-export interface OnramperSession {
-  sessionId: string;
-  sessionToken: string;
+export interface OnramperWidgetSession {
+  url: string;
+  /** ISO timestamp. Past this, the URL must be re-minted. */
+  expiresAt: string;
 }
 
 /**
- * Mints a fresh Onramper session for the signed-in user. Used both for the initial
- * `initialize()` bootstrap and as the SDK's `onSessionExpired` handler, so it must
- * stay cheap and idempotent. Wrap calls in `withRefreshToken` so an expired Solid
- * JWT is refreshed and retried rather than surfacing as a checkout failure.
+ * Mints a signed widget URL for the signed-in user.
+ *
+ * The destination address is not sent — the backend reads it from the
+ * authenticated user, so nothing the client says can redirect the delivery.
  */
-export const fetchOnramperSession = async (): Promise<OnramperSession> => {
+export const fetchOnramperWidgetSession = async (
+  platform: 'web' | 'native',
+): Promise<OnramperWidgetSession> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/create-session`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/widget-session`,
     {
       method: 'POST',
       headers: {
@@ -2203,14 +2208,13 @@ export const fetchOnramperSession = async (): Promise<OnramperSession> => {
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
+      body: JSON.stringify({ platform }),
     },
   );
 
   if (!response.ok) throw response;
 
-  const data = await response.json();
-
-  return data;
+  return response.json();
 };
 
 export const bridgeDeposit = async (
@@ -3993,6 +3997,26 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
   });
 
   if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Every (chain, token) a deposit may be sent in, with the minimum worth sending.
+ *
+ * Unauthenticated, like the other config endpoints — the answer is the same for
+ * everyone. Callers must cope with it failing: the deposit screens fall back to
+ * their committed table rather than showing no minimum at all.
+ */
+export const getDepositAssets = async (): Promise<DepositAssetsResponse> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/assets`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+    },
+  });
+
+  if (!response.ok) throw response;
+
   return response.json();
 };
 

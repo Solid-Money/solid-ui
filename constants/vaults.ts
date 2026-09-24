@@ -39,7 +39,7 @@ export const VAULTS: Vault[] = [
       supportedChains: BRIDGE_CHAIN_IDS,
       supportedTokens: ['USDC', 'USDT'],
     },
-    vaultName: 'USDC Savings',
+    vaultName: 'USD Yield',
   },
   {
     name: 'FUSE',
@@ -59,7 +59,7 @@ export const VAULTS: Vault[] = [
       supportedChains: [fuse.id],
       supportedTokens: ['WFUSE', 'FUSE'],
     },
-    vaultName: 'FUSE Savings',
+    vaultName: 'FUSE Yield',
   },
   {
     name: 'ETH',
@@ -83,6 +83,6 @@ export const VAULTS: Vault[] = [
       supportedChains: [mainnet.id],
       supportedTokens: ['WETH', 'ETH'],
     },
-    vaultName: 'ETH Savings',
+    vaultName: 'ETH Yield',
   },
 ];

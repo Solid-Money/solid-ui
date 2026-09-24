@@ -1,3 +1,4 @@
+import { OnramperWidget } from '@/components/BuyCrypto/OnramperWidget/OnramperWidget';
 import { BuyCryptoNavigationProvider } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { TransfiAmount } from '@/components/BuyCrypto/Transfi/TransfiAmount';
 import { TransfiCurrencySelector } from '@/components/BuyCrypto/Transfi/TransfiCurrencySelector';
@@ -40,6 +41,12 @@ export const BuyCryptoFlowContent = ({
         return <TransfiProfileForm />;
       case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_ERROR.name:
         return <TransfiError />;
+      // Onramper's hosted widget. It lives here rather than in a switch of its
+      // own because this is the generic embed point: the card funding modals
+      // render whatever DepositModal they are handed, so one case reaches all
+      // three of them.
+      case DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name:
+        return <OnramperWidget />;
       default:
         return null;
     }

@@ -83,6 +83,31 @@ export interface DetectedDirectDepositResponse {
   detectedAt?: string;
 }
 
+/** One (chain, token) the deposit pipeline credits, as `/deposit/assets` gives it. */
+export interface DepositAsset {
+  chainId: number;
+  chainName: string;
+  symbol: string;
+  name?: string;
+  /**
+   * The contract the pipeline credits on this chain. Detection matches on the
+   * address, not the ticker, and some chains carry more than one contract
+   * calling itself USDC.
+   */
+  address: string;
+  decimals: number;
+  /** Smallest deposit worth sending, in whole token units ("10", "0.004"). */
+  minimum: string;
+}
+
+export interface DepositAssetsResponse {
+  /** The dollar figure every asset's `minimum` is derived from. */
+  minimumUsd: number;
+  assets: DepositAsset[];
+  /** False when a minimum is a conservative fallback, not a live conversion. */
+  pricesResolved: boolean;
+}
+
 export interface CardDepositBonusConfig {
   isEnabled: boolean;
   percentage: number;

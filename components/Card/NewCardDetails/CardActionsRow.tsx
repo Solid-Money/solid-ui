@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import CardDirectDepositModal from '@/components/Card/CardDirectDepositModal';
-import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
@@ -100,7 +100,11 @@ const CardActionsRow = ({
     <View className="flex-row items-start justify-center">
       {canAddFunds && !canDepositToCard(provider) && (
         <View style={styles.item}>
-          <WirexCardFundModal
+          {/* A Wirex card holds no balance of its own — settlement takes the
+              stablecoin from the Safe — so funding the wallet is funding the
+              card, and they get the wallet deposit flow rather than one of
+              their own. */}
+          <DepositOptionModal
             trigger={
               <CircleAction label="Add funds">
                 <Image

@@ -11,6 +11,30 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_type',
     number: 1.5,
   },
+  /**
+   * "Receive crypto" — the crypto branch of the "Deposit with" chooser: show the
+   * deposit address, or connect an external wallet.
+   */
+  OPEN_DEPOSIT_CRYPTO: {
+    name: 'open_deposit_crypto',
+    number: 1.7,
+  },
+  /**
+   * "Deposit with cash" — the cash branch of the "Deposit with" chooser: USD via
+   * the virtual account, or a local currency via the onramp.
+   */
+  OPEN_DEPOSIT_CASH: {
+    name: 'open_deposit_cash',
+    number: 1.8,
+  },
+  /**
+   * "Select token" — which currency the deposit address is for: the first step
+   * after "Show deposit address", and revisited from the address screen.
+   */
+  OPEN_DEPOSIT_TOKEN: {
+    name: 'open_deposit_token',
+    number: 1.95,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
     number: 2,
@@ -157,6 +181,11 @@ export const DEPOSIT_MODAL = {
   OPEN_BUY_CRYPTO_PROFILE: {
     name: 'open_buy_crypto_profile',
     number: 27,
+  },
+  /** Onramper's hosted widget — iframe on web, WebView on native. */
+  OPEN_ONRAMPER_WIDGET: {
+    name: 'open_onramper_widget',
+    number: 28,
   },
 };
 

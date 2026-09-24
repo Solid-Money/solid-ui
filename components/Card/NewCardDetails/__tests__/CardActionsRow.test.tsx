@@ -15,7 +15,7 @@ jest.mock('@/hooks/useWirexThreeDs', () => ({
   useWirexThreeDs: () => ({ requests: [] }),
 }));
 jest.mock('@/lib/assets', () => ({ getAsset: (asset: string) => asset }));
-jest.mock('@/components/Card/WirexCardFundModal', () => 'WirexCardFundModal');
+jest.mock('@/components/DepositOption/DepositOptionModal', () => 'DepositOptionModal');
 jest.mock('@/components/Card/CardDirectDepositModal', () => 'CardDirectDepositModal');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 
@@ -40,20 +40,24 @@ afterEach(() => {
   mockProvider = CardProvider.WIREX;
 });
 
-test('opens Wirex Add funds in the card funding popup instead of a route', () => {
+// A Wirex card holds no balance of its own, so funding the wallet is funding the
+// card — they get the wallet deposit flow, not a card-funding one.
+test('sends Wirex Add funds to the wallet deposit flow', () => {
   const tree = render();
 
-  expect(tree.root.findAllByType('WirexCardFundModal')).toHaveLength(1);
+  expect(tree.root.findAllByType('DepositOptionModal')).toHaveLength(1);
   expect(tree.root.findAllByType('CardDirectDepositModal')).toHaveLength(0);
 
   act(() => tree.unmount());
 });
 
-test('keeps Rain Add funds in its direct-deposit popup', () => {
+// A Rain card is prefunded and separate from the Safe, so it keeps "Fund your
+// card" — the wallet flow would put the money somewhere it cannot be spent from.
+test('keeps Rain Add funds on the card funding flow', () => {
   mockProvider = CardProvider.RAIN;
   const tree = render();
 
-  expect(tree.root.findAllByType('WirexCardFundModal')).toHaveLength(0);
+  expect(tree.root.findAllByType('DepositOptionModal')).toHaveLength(0);
   expect(tree.root.findAllByType('CardDirectDepositModal')).toHaveLength(1);
 
   act(() => tree.unmount());
