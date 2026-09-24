@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import {
   getSavingsFundNetworks,
   getSavingsFundToken,
@@ -17,6 +18,7 @@ import {
 } from '@/components/Savings/SavingsFund/constants';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { DetectedDirectDepositResponse } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
@@ -83,6 +85,7 @@ const SavingsFundDepositAddress = ({
     [symbol, chainId],
   );
   const vaultToken = getSavingsFundToken(symbol).vaultToken;
+  const { provider } = useCardProvider();
 
   useEffect(() => {
     if (!copied) return;
@@ -162,6 +165,13 @@ const SavingsFundDepositAddress = ({
       <Text className="text-center text-sm text-white/70">
         {`Send ${symbol} on ${network?.name ?? 'the selected network'} — it is deposited into savings as ${vaultToken}.`}
       </Text>
+
+      <DepositFeeNotice
+        product="savings"
+        provider={provider}
+        chainId={chainId}
+        vaultToken={vaultToken}
+      />
 
       <Pressable
         className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"

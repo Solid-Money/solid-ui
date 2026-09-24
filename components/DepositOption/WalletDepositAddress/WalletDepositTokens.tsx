@@ -8,31 +8,36 @@ import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositStore } from '@/store/useDepositStore';
 
-import { getDefaultWalletDepositSelection, getWalletDepositTokens } from './constants';
+import { getAllWalletDepositTokens, resolveWalletDepositChain } from './constants';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 /**
- * "Select token" — which currency the deposit address is for.
+ * "Select token" — which currency the deposit address is for, and the first step
+ * after "Show deposit address".
  *
- * Its own step rather than a dropdown on the address screen: the list has to sit
- * over a QR that fills most of the screen, and the same choice already has a
- * screen of its own for the chain. Two steps that behave the same way beat one
- * of each.
+ * It lists every currency some chain accepts. The chain follows from the pick
+ * (see `resolveWalletDepositChain`), and the address screen's network pill is
+ * there to change it.
  */
 const WalletDepositTokens = () => {
   const setModal = useDepositStore(state => state.setModal);
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const walletDeposit = useDepositStore(state => state.walletDeposit);
 
-  const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
-  const chainId = walletDeposit.chainId ?? fallback.chainId;
-  const selected = walletDeposit.symbol ?? fallback.symbol;
+  // Only marked when the user is coming back to change it. Arriving here on the
+  // way in, nothing has been chosen yet, and a tick against a currency they never
+  // picked reads as a decision already made for them.
+  const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
-  const tokens = useMemo(() => getWalletDepositTokens(chainId), [chainId]);
+  const tokens = useMemo(() => getAllWalletDepositTokens(), []);
 
   const handleSelect = (symbol: string) => {
-    setWalletDeposit({ symbol });
+    setWalletDeposit({
+      symbol,
+      chainId: resolveWalletDepositChain(symbol, walletDeposit.chainId),
+      isChangingToken: false,
+    });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   };
 

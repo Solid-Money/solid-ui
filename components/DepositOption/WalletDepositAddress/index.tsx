@@ -5,13 +5,16 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
+import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants';
 import DepositScanningIndicator from '@/components/Card/CardFund/DepositScanningIndicator';
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
-import useUser from '@/hooks/useUser';
+import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -20,9 +23,10 @@ import {
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
   resolveWalletDepositMinimum,
+  resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
-import WalletDepositSelectors from './WalletDepositSelectors';
+import WalletDepositSelectors, { WalletDepositNetworkList } from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
 const QR_MAX_SIZE = 259;
@@ -48,33 +52,42 @@ const INLINE_ICON_STYLE = { width: 16, height: 16, borderRadius: 8 };
  * the copy under the QR is there to prevent.
  */
 const WalletDepositAddress = () => {
-  const { user } = useUser();
-  const address = user?.safeAddress;
-
   // Chain and currency are both chosen on steps of their own, so the selection
   // lives in the store rather than here (see `walletDeposit`). This screen only
   // reads it.
   const walletDeposit = useDepositStore(state => state.walletDeposit);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const fallback = useMemo(() => getDefaultWalletDepositSelection(), []);
   const chainId = walletDeposit.chainId ?? fallback.chainId;
   const symbol = walletDeposit.symbol ?? fallback.symbol;
   const [copied, setCopied] = useState(false);
   const [qrSize, setQrSize] = useState(QR_MAX_SIZE);
+  const [isNetworkOpen, setIsNetworkOpen] = useState(false);
 
   const network = useMemo(
     () => getWalletDepositNetworks().find(item => item.chainId === chainId),
     [chainId],
   );
+  // Stablecoins get an address the pipeline mints and watches; ETH and FUSE get
+  // the Safe, which is where they land and stay.
+  const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
+  // Wirex cardholders and people with no card both land here, and only the
+  // cardholders are charged — see `getDepositFeeBps`.
+  const { provider } = useCardProvider();
   const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
   // then — never a blank, which is the one thing this line must not show.
   const { data: depositAssets } = useDepositAssets();
   const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
 
-  // Polling only runs once there is an address to watch, so the chip below has to
-  // follow the same condition rather than claiming to scan with nothing to scan.
-  const isScanning = !!address;
-  const { isDetected } = useDetectedDirectDeposit({ enabled: isScanning });
+  // Only a minted address is watched, so only then is there anything to scan for.
+  // The Safe is not registered with the pipeline; saying "scanning" over it would
+  // be describing a poll that can never come back positive.
+  const isScanning = !!address && isMinted;
+  const { isDetected } = useDetectedDirectDeposit({
+    enabled: isScanning,
+    destinationType: CARD_FUND_DESTINATION_TYPE,
+  });
 
   useEffect(() => {
     if (!copied) return;
@@ -88,9 +101,27 @@ const WalletDepositAddress = () => {
     setCopied(true);
   }, [address]);
 
+  // The list only offers chains carrying the current currency, so this should
+  // never have to change it — resolved anyway rather than trusting that.
+  const handleSelectNetwork = useCallback(
+    (nextChainId: number) => {
+      setWalletDeposit({
+        chainId: nextChainId,
+        symbol: resolveWalletDepositSymbol(nextChainId, symbol) ?? symbol,
+      });
+      setIsNetworkOpen(false);
+    },
+    [setWalletDeposit, symbol],
+  );
+
   return (
     <View className="gap-y-6">
-      <WalletDepositSelectors chainId={chainId} symbol={symbol} />
+      <WalletDepositSelectors
+        chainId={chainId}
+        symbol={symbol}
+        isNetworkOpen={isNetworkOpen}
+        onToggleNetwork={() => setIsNetworkOpen(open => !open)}
+      />
 
       {/* The card's own padding sits on each section rather than the card, so the
           divider between the QR and the address runs its full width. */}
@@ -108,7 +139,11 @@ const WalletDepositAddress = () => {
             className="items-center justify-center overflow-hidden rounded-[20px]"
             style={{ width: qrSize, height: qrSize }}
           >
-            {address ? (
+            {hasAddressError ? (
+              <Text className="px-6 text-center text-sm text-white/70">
+                Could not load the deposit address. Close and try again.
+              </Text>
+            ) : address ? (
               <QRCode
                 value={address}
                 size={qrSize}
@@ -161,6 +196,13 @@ const WalletDepositAddress = () => {
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
         </Text>
+        <DepositFeeNotice
+          product="wallet"
+          provider={provider}
+          chainId={chainId}
+          symbol={symbol}
+          className="mt-2"
+        />
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
           onPress={() => Linking.openURL(WALLET_DEPOSIT_LEARN_URL)}
@@ -189,6 +231,16 @@ const WalletDepositAddress = () => {
           {copied ? 'Address copied' : 'Copy address'}
         </Text>
       </Button>
+
+      {/* Last child, so paint order puts the open list over everything above. */}
+      {isNetworkOpen ? (
+        <WalletDepositNetworkList
+          chainId={chainId}
+          symbol={symbol}
+          onSelect={handleSelectNetwork}
+          onDismiss={() => setIsNetworkOpen(false)}
+        />
+      ) : null}
     </View>
   );
 };
