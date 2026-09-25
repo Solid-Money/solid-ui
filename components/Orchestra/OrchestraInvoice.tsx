@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import { useOrchestraConfig } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { formatSats, formatSmallestUnits, formatUsd } from '@/lib/orchestraFormat';
@@ -57,7 +58,10 @@ export const OrchestraInvoice = () => {
   const setModal = useOrchestraNavigation();
   const order = useOrchestraStore(state => state.order);
   const amountUsd = useOrchestraStore(state => state.amountUsd);
-  const { data: config } = useOrchestraConfig();
+  // Same country as the amount screen, so this shares its cache entry rather
+  // than firing a second request under a different key.
+  const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
+  const { data: config } = useOrchestraConfig(countryCode, !isResolvingCountry);
 
   const secondsLeft = useSecondsUntil(order?.expiresAt);
   const hasExpired = secondsLeft === 0;

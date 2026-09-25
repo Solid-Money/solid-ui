@@ -64,8 +64,8 @@ const DepositCashOptions = () => {
   // One rule, decided server-side: supported region **or** allowlisted. The
   // country is resolved here only because the backend has no geoip — the verdict
   // is still theirs, and they enforce it again on order creation.
-  const { countryCode } = useCashAppDepositAvailability();
-  const { data: orchestraConfig } = useOrchestraConfig(countryCode);
+  const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
+  const { data: orchestraConfig } = useOrchestraConfig(countryCode, !isResolvingCountry);
   const isCashAppAvailable = orchestraConfig?.isAvailable === true;
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();

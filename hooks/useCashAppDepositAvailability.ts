@@ -26,13 +26,27 @@ export const useCashAppDepositAvailability = () => {
   const countryInfo = useCountryStore(state => state.countryInfo);
   const storedCode = countryInfo?.countryCode;
   const [detected, setDetected] = useState<{ countryCode: string; region?: string }>();
+  /**
+   * Whether the lookup has finished, separately from whether it found anything.
+   *
+   * These are different answers and callers need to tell them apart: "we don't
+   * know yet" must not be acted on, while "we looked and couldn't tell" is a
+   * real, final answer. Conflating them let a caller treat the first render —
+   * before detectGeo resolves — as a country the user isn't in.
+   */
+  const [isSettled, setIsSettled] = useState(false);
 
   useEffect(() => {
-    if (storedCode) return;
+    if (storedCode) {
+      setIsSettled(true);
+      return;
+    }
     let cancelled = false;
     void detectGeo().then(geo => {
-      if (cancelled || !geo) return;
-      setDetected({ countryCode: geo.countryCode, region: geo.region });
+      if (cancelled) return;
+      if (geo) setDetected({ countryCode: geo.countryCode, region: geo.region });
+      // Settled either way: a failed lookup is an answer, not a pending one.
+      setIsSettled(true);
     });
     return () => {
       cancelled = true;
@@ -44,6 +58,8 @@ export const useCashAppDepositAvailability = () => {
 
   return {
     isAvailable: countryCode === 'US',
+    /** True while the lookup is still in flight; nothing should be decided yet. */
+    isResolving: !isSettled,
     /** False while the country is still being resolved. */
     isResolved: Boolean(countryCode),
     countryCode,

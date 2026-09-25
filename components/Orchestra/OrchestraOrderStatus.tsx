@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import { useOrchestraConfig } from '@/hooks/useOrchestra';
 import { useOrchestraOrderStream } from '@/hooks/useOrchestraOrderStream';
 import { track } from '@/lib/analytics';
@@ -58,7 +59,10 @@ export const OrchestraOrderStatus = () => {
   const setModal = useOrchestraNavigation();
   const reset = useOrchestraStore(state => state.reset);
   const storedOrder = useOrchestraStore(state => state.order);
-  const { data: config } = useOrchestraConfig();
+  // Same country as the amount screen, so this shares its cache entry rather
+  // than firing a second request under a different key.
+  const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
+  const { data: config } = useOrchestraConfig(countryCode, !isResolvingCountry);
 
   const { status, order, isUnreadable } = useOrchestraOrderStream(storedOrder?.orderId);
 

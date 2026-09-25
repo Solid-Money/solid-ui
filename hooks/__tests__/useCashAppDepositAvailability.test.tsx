@@ -97,4 +97,47 @@ describe('useCashAppDepositAvailability', () => {
       isResolved: false,
     });
   });
+
+  describe('isResolving', () => {
+    it('reports resolving until the lookup settles, so nothing is decided early', async () => {
+      // The race this guards: a caller that treats the first render as an
+      // answer sends no country to /config, gets a correct "not available" for
+      // that question, and reads it as a verdict on the user.
+      let resolveGeo: (value: null) => void = () => {};
+      mockDetectGeo.mockReturnValue(
+        new Promise(resolve => {
+          resolveGeo = resolve as (value: null) => void;
+        }),
+      );
+
+      let latest: Result | undefined;
+      const Probe = () => {
+        latest = useCashAppDepositAvailability();
+        return null;
+      };
+      await act(async () => {
+        create(<Probe />);
+      });
+
+      expect(latest?.isResolving).toBe(true);
+      expect(latest?.countryCode).toBeUndefined();
+
+      await act(async () => {
+        resolveGeo(null);
+      });
+
+      // Settled with no answer is still settled — callers may now act on it.
+      expect(latest?.isResolving).toBe(false);
+      expect(latest?.isAvailable).toBe(false);
+    });
+
+    it('is settled immediately when the country is already known', async () => {
+      storeCountry('US');
+
+      const result = await renderHook();
+
+      expect(result.isResolving).toBe(false);
+      expect(mockDetectGeo).not.toHaveBeenCalled();
+    });
+  });
 });

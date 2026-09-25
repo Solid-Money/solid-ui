@@ -47,12 +47,16 @@ export const OrchestraAmount = () => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
   }, []);
 
-  const { countryCode } = useCashAppDepositAvailability();
+  const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
+  // Held until geo settles. Asking before then sends no country, and the server
+  // correctly answers "not available" to that — which the effect below would
+  // read as a verdict on the user rather than on an unfinished lookup, and
+  // bounce them to the error screen a beat before the real answer arrived.
   const {
     data: config,
     error: configError,
     isPending: configPending,
-  } = useOrchestraConfig(countryCode);
+  } = useOrchestraConfig(countryCode, !isResolvingCountry);
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrchestraOnramp();
 
   // Without config there is no band to validate against and no asset to name,
