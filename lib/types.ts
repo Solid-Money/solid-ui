@@ -1285,6 +1285,16 @@ export enum TransactionType {
   AGENT_WALLET_DEPOSIT = 'agent_wallet_deposit',
   GOODDOLLAR_CLAIM = 'gooddollar_claim',
   GOODDOLLAR_SWEEP = 'gooddollar_sweep',
+  /**
+   * The two ways a rewards v3 membership tier is bought.
+   *
+   * `TIER_LOCK` is soFUSE committed to the lock for a fixed term — the user
+   * still owns it and gets it back, so it reads as a movement out of the wallet
+   * rather than a charge. `TIER_SUBSCRIPTION` is the annual USDC the
+   * subscription module draws, which is spent.
+   */
+  TIER_LOCK = 'tier_lock',
+  TIER_SUBSCRIPTION = 'tier_subscription',
 }
 
 export enum TransactionDirection {
@@ -1312,6 +1322,7 @@ export enum TransactionCategory {
   CARD_WELCOME_BONUS = 'Card welcome bonus',
   DEPOSIT_BONUS = 'Deposit bonus',
   GOODDOLLAR_UBI = 'GoodDollar UBI',
+  TIER_MEMBERSHIP = 'Tier membership',
   RECEIVE = 'Receive',
 }
 
@@ -3169,4 +3180,137 @@ export interface AppOpenResponse {
 export interface StoreReviewPromptedResponse {
   reviewPromptCount: number;
   lastReviewPromptedAt: string;
+}
+
+// ============================================================================
+// Tier membership (rewards v3)
+// ============================================================================
+
+/**
+ * A membership's lifecycle, as the backend reports it.
+ *
+ * `past_due` is the one worth reading carefully: a renewal charge has failed but
+ * the user still holds their tier, because the usual cause is a Safe briefly
+ * short of USDC. `cancelled` likewise still grants — it means "will not renew",
+ * not "has ended". In both cases the date is what closes the membership, which
+ * is why every screen counts down to a date rather than reading the status.
+ */
+export enum TierSubscriptionStatus {
+  ACTIVE = 'active',
+  PAST_DUE = 'past_due',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+}
+
+/** A tier the user can buy, and what it costs by each route. */
+export interface TierOffer {
+  tier: RewardsTier;
+  /** FUSE that must be locked to hold this tier. */
+  lockFuse: number;
+  /** Whether the lock route can be taken right now. */
+  lockAvailable: boolean;
+  /**
+   * Annual fee in USD, or null when this tier is not sold for cash.
+   *
+   * Null rather than 0 so a missing price can never be rendered as "free".
+   * `cashAvailable` is the flag to branch on; this is only ever the amount.
+   */
+  annualFeeUsd: number | null;
+  /** Whether the annual-fee route can be taken right now. */
+  cashAvailable: boolean;
+  /** Whether the user already holds this tier. */
+  held: boolean;
+}
+
+/** The user's locked FUSE position. */
+export interface TierLockState {
+  enabled: boolean;
+  lockAddress: string | null;
+  /** Term a new lock carries, in days. */
+  durationDays: number;
+  lockedFuse: number;
+  /** Raw locked soFUSE shares, as a decimal string. */
+  lockedShares: string;
+  unlockedTier: RewardsTier;
+  /** When the first lock was taken — the membership's "member since". */
+  lockedSince: string | null;
+  /** When the soonest still-running tranche comes free. */
+  nextUnlockAt: string | null;
+  nextUnlockFuse: number;
+  /** FUSE whose term is up, awaiting the automatic return. */
+  maturedFuse: number;
+}
+
+/** The user's paid membership, if they have one. */
+export interface TierSubscription {
+  id: string;
+  tier: RewardsTier;
+  status: TierSubscriptionStatus;
+  priceUsd: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  /** When the next renewal is attempted. Null once it will not renew. */
+  nextChargeAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  failedAttempts: number;
+  pastDueSince: string | null;
+  /** When a past-due membership finally loses its tier. */
+  graceEndsAt: string | null;
+  subscribedAt: string;
+}
+
+/** Addresses the app builds the upgrade transactions against. */
+export interface TierMembershipContracts {
+  chainId: number;
+  lockAddress: string | null;
+  /**
+   * `SolidTierLockZap`, which deposits and locks in one transaction.
+   *
+   * Null means the one-press upgrade is not available and the user has to fund
+   * Savings first and come back once the shares have landed. It is a backend
+   * switch rather than a deployment fact — the zap also has to hold the lock's
+   * `lockFor` role — so the app treats null as "offer the two-step flow".
+   */
+  lockZapAddress: string | null;
+  subscriptionModuleAddress: string | null;
+  /** The soFUSE share token that is locked. */
+  shareTokenAddress: string | null;
+  /** WFUSE. Par with native FUSE, so the two are one choice to the user. */
+  wrappedNativeAddress: string | null;
+  /** The USDC the membership is billed in. */
+  billingTokenAddress: string | null;
+}
+
+/**
+ * Everything the upgrade screens need, in one payload.
+ *
+ * One call rather than three because the screen has to show a price, a balance
+ * and what the user already holds at the same instant — fetched apart, those
+ * drift and the user is shown an offer that is no longer true.
+ */
+export interface TierMembershipState {
+  /** Whether either purchase route is available. False hides the upgrade UI. */
+  enabled: boolean;
+  /**
+   * Whether points can still take this user to a higher tier. Per user: false
+   * once the ladder is switched off, for anyone not on the grandfather list,
+   * and for a grandfathered user already at the tier the list caps them at.
+   */
+  pointsUnlockEnabled: boolean;
+  offers: TierOffer[];
+  lock: TierLockState;
+  subscription: TierSubscription | null;
+  currentTier: RewardsTier;
+  /**
+   * Whether that tier rests on the legacy "skip the line" route alone — FUSE
+   * sitting in Savings, granting a tier without being committed to anything.
+   *
+   * The migration flag. That route is being retired, and when it is switched
+   * off everyone it was carrying drops to Core in the same instant. False for
+   * anyone who has also locked or subscribed, because nothing about the change
+   * can reach them — so this is exactly the set of users worth warning.
+   */
+  legacyFuseOnly: boolean;
+  memberSince: string | null;
+  contracts: TierMembershipContracts;
 }

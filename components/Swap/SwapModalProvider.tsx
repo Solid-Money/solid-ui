@@ -40,15 +40,17 @@ const SwapModalProvider = () => {
     })),
   );
 
-  const { currentModal, previousModal, transaction, buyFuseTier, setModal } = useSwapState(
-    useShallow(state => ({
-      currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
-      previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
-      transaction: state.transaction,
-      buyFuseTier: state.buyFuseTier,
-      setModal: state.actions.setModal,
-    })),
-  );
+  const { currentModal, previousModal, transaction, buyFuseTier, buyFuseUpgrade, setModal } =
+    useSwapState(
+      useShallow(state => ({
+        currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
+        previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
+        transaction: state.transaction,
+        buyFuseTier: state.buyFuseTier,
+        buyFuseUpgrade: state.buyFuseUpgrade,
+        setModal: state.actions.setModal,
+      })),
+    );
 
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
@@ -102,7 +104,7 @@ const SwapModalProvider = () => {
     }
 
     if (isBuyFuse) {
-      return <BuyFuseScreen requestedTier={buyFuseTier} />;
+      return <BuyFuseScreen requestedTier={buyFuseTier} upgradeContext={buyFuseUpgrade} />;
     }
 
     if (isTransactionStatus) {
@@ -141,13 +143,15 @@ const SwapModalProvider = () => {
     handleAcceptSwapDisclaimer,
     isBuyFuse,
     buyFuseTier,
+    buyFuseUpgrade,
     isTransactionStatus,
     transaction,
     handleTransactionStatusPress,
   ]);
 
-  // Swap is not available on iOS — never render the swap modal there.
-  if (Platform.OS === 'ios') {
+  // Regular Swap remains unavailable on iOS. Buy FUSE can open through its
+  // dedicated entry points and still passes the geo and disclaimer gates.
+  if (Platform.OS === 'ios' && !isBuyFuse) {
     return null;
   }
 

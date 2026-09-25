@@ -134,6 +134,17 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.IN,
     category: TransactionCategory.GOODDOLLAR_UBI,
   },
+  // Both leave the Safe. The lock comes back after its term and the annual fee
+  // does not, but the sign describes the movement, not whether it is recoverable
+  // — and a lock shown as an inbound would read as the tier paying the user.
+  [TransactionType.TIER_LOCK]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.TIER_MEMBERSHIP,
+  },
+  [TransactionType.TIER_SUBSCRIPTION]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.TIER_MEMBERSHIP,
+  },
 };
 
 /**

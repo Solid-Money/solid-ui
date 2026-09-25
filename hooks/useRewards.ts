@@ -47,7 +47,10 @@ export const useReferralSummary = (options?: { refetchInterval?: number | false 
   });
 };
 
-export const useRewardsUserData = (options?: { refetchInterval?: number | false }) => {
+export const useRewardsUserData = (options?: {
+  refetchInterval?: number | false;
+  enabled?: boolean;
+}) => {
   const userId = useSelectedUserId();
   const hasConfirmedTier = useRewardsUpgradeStore(
     state => state.userId === userId && !!state.confirmed,
@@ -73,7 +76,7 @@ export const useRewardsUserData = (options?: { refetchInterval?: number | false 
       useRewardsUpgradeStore.getState().observe(userId!, session, data);
       return data;
     },
-    enabled: !!userId,
+    enabled: !!userId && options?.enabled !== false,
     refetchInterval: options?.refetchInterval ?? false,
     // A cached response from an earlier account session cannot establish this
     // session's baseline. Switching back must fetch even within staleTime.

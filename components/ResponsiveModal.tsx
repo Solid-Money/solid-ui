@@ -27,6 +27,8 @@ import { useDimension } from '@/hooks/useDimension';
 import { cn } from '@/lib/utils';
 
 const ANIMATION_DURATION = 350;
+/** The 50px mobile title row plus its former 32px gap above the scroll content. */
+export const MOBILE_GRADIENT_HEADER_INSET = 82;
 
 export interface ModalState {
   name: string;
@@ -52,6 +54,8 @@ export interface ResponsiveModalProps {
   containerClassName?: string;
   overlayClassName?: string;
   titleClassName?: string;
+  /** Overlay the mobile header on its scrolling content with a fading scrim. */
+  gradientHeader?: boolean;
   showBackButton?: boolean;
   /** Use the 40px controls and 20px title from compact mobile design headers. */
   compactHeader?: boolean;
@@ -100,6 +104,7 @@ const ResponsiveModal = ({
   containerClassName,
   overlayClassName,
   titleClassName,
+  gradientHeader = false,
   showBackButton = false,
   compactHeader = false,
   onBackPress,
@@ -116,6 +121,7 @@ const ResponsiveModal = ({
   const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
   const isNativeSmall = Platform.OS !== 'web' && !isScreenMedium;
+  const showGradientHeader = gradientHeader && !isScreenMedium;
   const isDrawer = mobilePresentation === 'drawer' && !isScreenMedium;
   // A drawer is sized by its content, so it opts out of the stretched-to-the-
   // bottom layout the full-height mobile sheet uses.
@@ -217,7 +223,7 @@ const ResponsiveModal = ({
           className={cn('overflow-hidden')}
         >
           <View
-            className={cn('gap-8', containerClassName)}
+            className={cn(showGradientHeader ? 'gap-0' : 'gap-8', containerClassName)}
             style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
             onLayout={event => {
               if (!useNativeFlexLayout) {
@@ -228,6 +234,11 @@ const ResponsiveModal = ({
             {hideHeader ? null : hasHeader ? (
               <DialogHeader
                 className={cn('flex-row items-center justify-between gap-2', titleClassName)}
+                style={
+                  showGradientHeader
+                    ? { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 }
+                    : undefined
+                }
               >
                 {hasBackButton ? (
                   <Button
@@ -245,18 +256,32 @@ const ResponsiveModal = ({
                   <View className={cn('w-[50px]', compactHeader && 'w-10')} />
                 )}
                 {title ? (
+                  // `flex-1` so the title takes the space between the two 50px
+                  // controls rather than its natural width. Without it a long
+                  // title pushed the back and close buttons off the header
+                  // entirely — they were still mounted, just off-screen, which
+                  // left the step with no visible way back.
                   <Animated.View
                     key={contentKey}
                     entering={titleEntering}
                     exiting={titleExiting}
+                    className="min-w-0 flex-1 items-center justify-center"
                     style={
-                      titleIcon ? { flexDirection: 'row', alignItems: 'center', gap: 8 } : undefined
+                      titleIcon
+                        ? {
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                          }
+                        : undefined
                     }
                   >
                     {titleIcon}
                     <DialogTitle
+                      numberOfLines={1}
                       className={cn(
-                        'native:text-2xl text-xl font-semibold',
+                        'native:text-2xl shrink text-center text-xl font-semibold',
                         compactHeader && 'native:text-xl',
                       )}
                     >
@@ -304,6 +329,7 @@ const ResponsiveModal = ({
                     contentContainerStyle={{
                       ...(useFixedHeightLayout ? { flexGrow: 1 } : null),
                       ...(isNativeSmall ? { paddingBottom: 16 + insets.bottom } : null),
+                      ...(showGradientHeader ? { paddingTop: MOBILE_GRADIENT_HEADER_INSET } : null),
                     }}
                     style={useFixedHeightLayout ? { flex: 1 } : undefined}
                     showsVerticalScrollIndicator={false}
@@ -353,6 +379,21 @@ const ResponsiveModal = ({
                   </View>
                 )}
               </View>
+            )}
+            {showGradientHeader && (
+              <LinearGradient
+                colors={['#101010', '#101010', 'rgba(16, 16, 16, 0)']}
+                locations={[0, 0.6, 1]}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: MOBILE_GRADIENT_HEADER_INSET,
+                  zIndex: 1,
+                }}
+              />
             )}
           </View>
         </Animated.View>

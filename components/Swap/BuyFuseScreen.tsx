@@ -10,6 +10,7 @@ import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import BuyFuseSavingsReview from '@/components/Swap/BuyFuseSavingsReview';
 import BuyFuseTierCard from '@/components/Swap/BuyFuseTierCard';
+import BuyFuseUpgradeReview from '@/components/Swap/BuyFuseUpgradeReview';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
@@ -31,7 +32,12 @@ import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { SwapField } from '@/lib/types/swap-field';
 import { formatUSD } from '@/lib/utils';
-import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
+import {
+  type BuyFuseUpgradeContext,
+  useDerivedSwapInfo,
+  useSwapActionHandlers,
+  useSwapState,
+} from '@/store/swapStore';
 import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -50,6 +56,7 @@ const sanitizeAmount = (value: string) => {
 
 interface BuyFuseScreenProps {
   requestedTier?: RewardsTier;
+  upgradeContext?: BuyFuseUpgradeContext;
 }
 
 export default function BuyFuseScreen(props: BuyFuseScreenProps) {
@@ -57,9 +64,9 @@ export default function BuyFuseScreen(props: BuyFuseScreenProps) {
   return <BuyFuseForAccount key={userId ?? 'none'} {...props} />;
 }
 
-function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
+function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps) {
   const insets = useSafeAreaInsets();
-  const { data: rewardsData, isError } = useRewardsUserData();
+  const { data: rewardsData, isError } = useRewardsUserData({ enabled: !upgradeContext });
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
   const [purchased, setPurchased] = useState(false);
@@ -110,7 +117,11 @@ function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
     targets.find(target => target.tier === selectedTier) ?? targets[0] ?? undefined;
   const staleRequest =
     !!requestedTier && !!currentTier && !isHigherTier(requestedTier, currentTier);
-  const canBuy = !!currentTier && !isError && !pending && !staleRequest && !!selectedTarget;
+  // The new lock upgrade is priced by the membership flow, not the older
+  // Savings-based rewards targets. Its purchase must not wait for those targets.
+  const canBuy = upgradeContext
+    ? true
+    : !!currentTier && !isError && !pending && !staleRequest && !!selectedTarget;
   const selectedTrade = isVoltageTrade ? voltageTrade.trade : trade;
   const outputAmount =
     independentField === SwapField.OUTPUT ? parsedAmount : selectedTrade?.outputAmount;
@@ -144,9 +155,11 @@ function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
     (value: string) => {
       const sanitizedAmount = sanitizeAmount(value);
       onUserInput(SwapField.OUTPUT, sanitizedAmount);
-      setSelectedTier(getBuyFuseTierForAmount(targets, Number(sanitizedAmount) || 0));
+      if (!upgradeContext) {
+        setSelectedTier(getBuyFuseTierForAmount(targets, Number(sanitizedAmount) || 0));
+      }
     },
-    [onUserInput, targets],
+    [onUserInput, targets, upgradeContext],
   );
 
   const handleMax = useCallback(() => {
@@ -224,7 +237,13 @@ function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
     </View>
   );
 
-  if (purchased) return <BuyFuseSavingsReview />;
+  if (purchased) {
+    return upgradeContext ? (
+      <BuyFuseUpgradeReview context={upgradeContext} />
+    ) : (
+      <BuyFuseSavingsReview />
+    );
+  }
 
   return (
     <ScrollView
@@ -240,31 +259,49 @@ function BuyFuseForAccount({ requestedTier }: BuyFuseScreenProps) {
         {amountCard}
 
         <View className="mt-6">
-          {currentTier && !isError && (selectedTarget || currentTier === RewardsTier.ULTRA) ? (
-            <BuyFuseTierCard
-              currentTier={currentTier}
-              target={selectedTarget}
-              progressPct={progressPct}
-              reached={reachedTarget}
-              onPress={handleTierPress}
-            />
+          {upgradeContext ? (
+            <>
+              <Text className="text-sm text-white/70">
+                {upgradeContext.depositToSavings
+                  ? 'FUSE will arrive in your wallet. Deposit it to Savings before reviewing your tier upgrade.'
+                  : 'FUSE will arrive in your wallet. Once the purchase confirms, return to your tier upgrade to review the lock.'}
+              </Text>
+              {upgradeContext.depositToSavings && MINIMUM_FUSE_SAVINGS_DEPOSIT > 0 ? (
+                <Text className="mt-2 text-sm text-white/70">
+                  Savings minimum deposit: {MINIMUM_FUSE_SAVINGS_DEPOSIT.toLocaleString('en-US')}{' '}
+                  FUSE.
+                </Text>
+              ) : null}
+            </>
           ) : (
-            <Text className="text-white/70">
-              {isError
-                ? 'Unable to confirm your tier. Please try again.'
-                : 'Checking available tier upgrades…'}
-            </Text>
+            <>
+              {currentTier && !isError && (selectedTarget || currentTier === RewardsTier.ULTRA) ? (
+                <BuyFuseTierCard
+                  currentTier={currentTier}
+                  target={selectedTarget}
+                  progressPct={progressPct}
+                  reached={reachedTarget}
+                  onPress={handleTierPress}
+                />
+              ) : (
+                <Text className="text-white/70">
+                  {isError
+                    ? 'Unable to confirm your tier. Please try again.'
+                    : 'Checking available tier upgrades…'}
+                </Text>
+              )}
+              <Text className="mt-3 text-sm text-white/70">
+                {pending
+                  ? 'Your Savings deposit is confirmed. Waiting for rewards to confirm your tier.'
+                  : staleRequest
+                    ? 'Your tier has changed. Reopen Buy FUSE to choose a higher tier.'
+                    : 'Step 1: Buy FUSE for your wallet. Step 2: Review and confirm a separate Savings deposit. Progress shown is an estimate until rewards confirms your tier.'}
+              </Text>
+            </>
           )}
-          <Text className="mt-3 text-sm text-white/70">
-            {pending
-              ? 'Your Savings deposit is confirmed. Waiting for rewards to confirm your tier.'
-              : staleRequest
-                ? 'Your tier has changed. Reopen Buy FUSE to choose a higher tier.'
-                : 'Step 1: Buy FUSE for your wallet. Step 2: Review and confirm a separate Savings deposit. Progress shown is an estimate until rewards confirms your tier.'}
-          </Text>
         </View>
 
-        {MINIMUM_FUSE_SAVINGS_DEPOSIT > 0 && (
+        {!upgradeContext && MINIMUM_FUSE_SAVINGS_DEPOSIT > 0 && (
           <Text className="mt-2 text-sm text-white/70">
             Savings minimum deposit: {MINIMUM_FUSE_SAVINGS_DEPOSIT.toLocaleString('en-US')} FUSE.
           </Text>

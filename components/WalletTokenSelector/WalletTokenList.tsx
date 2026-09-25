@@ -15,6 +15,7 @@ interface WalletTokenListProps {
   onSelect: (token: TokenBalance) => void;
   emptyMessage?: string;
   emptyDescription?: string;
+  showChainLabel?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ const WalletTokenList: React.FC<WalletTokenListProps> = ({
   onSelect,
   emptyMessage = 'No tokens found',
   emptyDescription,
+  showChainLabel = true,
 }) => {
   // Sort by USD value descending
   const sortedTokens = useMemo(() => {
@@ -54,14 +56,14 @@ const WalletTokenList: React.FC<WalletTokenListProps> = ({
     <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
       <View className="gap-2">
         {sortedTokens.map(token => {
-          const balance = Number(
-            formatUnits(BigInt(token.balance || '0'), token.contractDecimals),
-          );
+          const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
           const balanceUSD = balance * (token.quoteRate || 0);
           const isSelected =
             selectedToken?.contractAddress === token.contractAddress &&
             selectedToken?.chainId === token.chainId;
-          const chainName = getBridgeChain(token.chainId)?.name || `Chain ${token.chainId}`;
+          const chainName = showChainLabel
+            ? getBridgeChain(token.chainId)?.name || `Chain ${token.chainId}`
+            : null;
 
           return (
             <Pressable
@@ -83,17 +85,17 @@ const WalletTokenList: React.FC<WalletTokenListProps> = ({
                 />
                 <View className="flex-1">
                   <Text className="text-lg font-semibold">{token.contractTickerSymbol}</Text>
-                  <Text className="text-sm font-medium opacity-50">
-                    {token.contractTickerSymbol} on {chainName}
-                  </Text>
+                  {showChainLabel && (
+                    <Text className="text-sm font-medium opacity-50">
+                      {token.contractTickerSymbol} on {chainName}
+                    </Text>
+                  )}
                 </View>
               </View>
 
               <View className="items-end">
                 <Text className="text-lg font-semibold">${formatNumber(balanceUSD, 2)}</Text>
-                <Text className="text-sm font-medium opacity-50">
-                  {formatNumber(balance, 2)}
-                </Text>
+                <Text className="text-sm font-medium opacity-50">{formatNumber(balance, 2)}</Text>
               </View>
             </Pressable>
           );

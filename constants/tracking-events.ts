@@ -203,6 +203,33 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_PROFILE_FORM_SUBMITTED: 'buy_crypto_profile_form_submitted',
   BUY_CRYPTO_PROFILE_FORM_FAILED: 'buy_crypto_profile_form_failed',
 
+  /**
+   * The USD rail chooser was shown. Sits between picking USD on the cash screen
+   * and picking a rail, so without it the two look like one step and the
+   * drop-off between them is invisible.
+   */
+  DEPOSIT_USD_METHOD_VIEWED: 'deposit_usd_method_viewed',
+
+  // Deposit Method: Lightning onramp (Flashnet Orchestra)
+  ORCHESTRA_AMOUNT_VIEWED: 'orchestra_amount_viewed',
+  ORCHESTRA_ORDER_CREATED: 'orchestra_order_created',
+  ORCHESTRA_ORDER_CREATION_FAILED: 'orchestra_order_creation_failed',
+  /** The invoice + QR step was shown; the order exists but is unpaid. */
+  ORCHESTRA_INVOICE_VIEWED: 'orchestra_invoice_viewed',
+  ORCHESTRA_INVOICE_COPIED: 'orchestra_invoice_copied',
+  ORCHESTRA_CASH_APP_OPENED: 'orchestra_cash_app_opened',
+  /**
+   * The user said they paid. Only a claim — the order is still tracked from
+   * Orchestra — but the gap between this and a detected payment is what tells
+   * us the Lightning hand-off is failing.
+   */
+  ORCHESTRA_PAYMENT_CONFIRMED_BY_USER: 'orchestra_payment_confirmed_by_user',
+  ORCHESTRA_ORDER_COMPLETED: 'orchestra_order_completed',
+  /** Fired for failed, refunded and expired alike; `status` says which. */
+  ORCHESTRA_ORDER_FAILED: 'orchestra_order_failed',
+  ORCHESTRA_ERROR_VIEWED: 'orchestra_error_viewed',
+  ORCHESTRA_ERROR_ACTION_PRESSED: 'orchestra_error_action_pressed',
+
   // Deposit Bonus Banner Events
   DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
   DEPOSIT_BONUS_BANNER_INFLUENCED: 'deposit_bonus_banner_influenced',
@@ -425,6 +452,26 @@ export const TRACKING_EVENTS = {
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
   TRUSTPILOT_REVIEW_LINK_OPENED: 'trustpilot_review_link_opened',
+
+  // Tier membership (rewards v3): buying a tier by locking FUSE or paying an
+  // annual fee. Both routes carry `tier` so they can be compared directly, and
+  // the funnel is deliberately split at the signature — a user who dismisses
+  // the passkey prompt has made a decision, not hit an error.
+  TIER_UPGRADE_OPENED: 'tier_upgrade_opened',
+  TIER_UPGRADE_ROUTE_SELECTED: 'tier_upgrade_route_selected',
+  TIER_UPGRADE_TIER_SELECTED: 'tier_upgrade_tier_selected',
+  TIER_UPGRADE_REVIEWED: 'tier_upgrade_reviewed',
+  TIER_LOCK_PRESSED: 'tier_lock_pressed',
+  TIER_LOCK_CANCELLED: 'tier_lock_cancelled',
+  TIER_LOCK_COMPLETED: 'tier_lock_completed',
+  TIER_LOCK_FAILED: 'tier_lock_failed',
+  TIER_SUBSCRIBE_PRESSED: 'tier_subscribe_pressed',
+  TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
+  TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
+  TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
+  TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
+  TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
+  TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

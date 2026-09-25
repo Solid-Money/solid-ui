@@ -6,9 +6,11 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
+import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getCryptoDepositEntry } from '@/lib/walletDepositFlow';
+import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import { DEPOSIT_CASH_CLUSTER_ICONS, DEPOSIT_CASH_CURRENCY_COUNT } from './DepositCashOptions';
@@ -27,24 +29,40 @@ type DepositTypeSelectionProps = {
 };
 
 /**
- * "Deposit with" — the first step of the wallet deposit flow, and only a fork:
- * crypto sent to the deposit address, or cash through a bank or local ramp.
- * Each branch owns the methods underneath it (see `DepositCryptoOptions` and
- * `DepositCashOptions`), which is what keeps this short enough to be a drawer on
- * a phone rather than the full-height sheet the later steps use.
+ * "Deposit with" — the first step of the wallet deposit flow. The upgrade
+ * Top up entry also offers Buy FUSE, while ordinary deposits keep the two
+ * funding methods: crypto or cash.
  */
 const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
   const { isDesktop, isScreenMedium } = useDimension();
   const setModal = useDepositStore(state => state.setModal);
+  const resetDepositFlow = useDepositStore(state => state.resetDepositFlow);
+  const upgradeTopUp = useDepositStore(state => state.upgradeTopUp);
+  const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
+  const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
 
   const handleCryptoPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'crypto' });
+    if (upgradeTopUp?.depositToSavings) {
+      useDepositStore.getState().setSavingsFundIntent('savings');
+      selectSavingsFundToken('WFUSE');
+      return;
+    }
     setModal(getCryptoDepositEntry(isDesktop));
   };
 
   const handleCashPress = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'cash' });
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
+  };
+
+  const handleBuyFusePress = () => {
+    if (!upgradeTopUp) return;
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'buy_fuse' });
+    const { tier, depositToSavings } = upgradeTopUp;
+    resetDepositFlow();
+    // The deposit drawer must finish leaving before the swap dialog mounts.
+    setTimeout(() => openBuyFuse(tier, { depositToSavings }), 200);
   };
 
   return (
@@ -77,6 +95,14 @@ const DepositTypeSelection = ({ onClose }: DepositTypeSelectionProps) => {
           subtitle="Transfer from your bank account or with local ramps"
           onPress={handleCashPress}
         />
+        {upgradeTopUp ? (
+          <DepositMethodRow
+            icon={<DepositIconCluster icons={[getAsset('images/wfuse.png')]} />}
+            title="Buy FUSE"
+            subtitle="Buy with USDC on Fuse"
+            onPress={handleBuyFusePress}
+          />
+        ) : null}
       </CardFundGroup>
 
       <Button

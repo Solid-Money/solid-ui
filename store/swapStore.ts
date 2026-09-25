@@ -46,6 +46,7 @@ interface SwapState {
   readonly currentModal: SwapModal;
   readonly previousModal: SwapModal;
   readonly buyFuseTier: RewardsTier | undefined;
+  readonly buyFuseUpgrade: BuyFuseUpgradeContext | undefined;
   readonly transaction: TransactionStatusModal & {
     inputCurrencySymbol?: string;
     outputCurrencySymbol?: string;
@@ -58,9 +59,14 @@ interface SwapState {
     typeInput: (field: SwapFieldType, typedValue: string) => void;
     resetForm: () => void;
     setModal: (modal: SwapModal) => void;
-    openBuyFuse: (tier?: RewardsTier) => void;
+    openBuyFuse: (tier?: RewardsTier, upgrade?: { depositToSavings: boolean }) => void;
     setTransaction: (transaction: SwapState['transaction']) => void;
   };
+}
+
+export interface BuyFuseUpgradeContext {
+  tier: RewardsTier;
+  depositToSavings: boolean;
 }
 
 export const useSwapState = create<SwapState>((set, get) => ({
@@ -77,6 +83,7 @@ export const useSwapState = create<SwapState>((set, get) => ({
   currentModal: SWAP_MODAL.CLOSE,
   previousModal: SWAP_MODAL.CLOSE,
   buyFuseTier: undefined,
+  buyFuseUpgrade: undefined,
   transaction: {},
   actions: {
     selectCurrency: (field, currencyId) => {
@@ -126,12 +133,14 @@ export const useSwapState = create<SwapState>((set, get) => ({
       set({
         previousModal: get().currentModal,
         currentModal: modal,
+        ...(modal.name === SWAP_MODAL.CLOSE.name ? { buyFuseUpgrade: undefined } : {}),
       }),
-    openBuyFuse: tier =>
+    openBuyFuse: (tier, upgrade) =>
       set({
         previousModal: get().currentModal,
         currentModal: SWAP_MODAL.OPEN_BUY_FUSE,
         buyFuseTier: tier,
+        buyFuseUpgrade: tier && upgrade ? { tier, ...upgrade } : undefined,
       }),
     setTransaction: transaction => set({ transaction }),
   },
