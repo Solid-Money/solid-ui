@@ -1,6 +1,9 @@
 import React from 'react';
 
-import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
+import {
+  __resetGeoSessionCache,
+  useCashAppDepositAvailability,
+} from '@/hooks/useCashAppDepositAvailability';
 import { detectGeo } from '@/lib/geo';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -24,15 +27,17 @@ type Result = ReturnType<typeof useCashAppDepositAvailability>;
 
 /** Render the hook and return its latest value. */
 const renderHook = async (): Promise<Result> => {
-  let latest: Result | undefined;
+  // Collected rather than assigned: the react-compiler rule treats reassigning
+  // an outer binding from a component as a render side-effect.
+  const seen: Result[] = [];
   const Probe = () => {
-    latest = useCashAppDepositAvailability();
+    seen.push(useCashAppDepositAvailability());
     return null;
   };
   await act(async () => {
     create(<Probe />);
   });
-  return latest as Result;
+  return seen[seen.length - 1];
 };
 
 const storeCountry = (countryCode: string, state?: string) =>
@@ -47,6 +52,7 @@ const storeCountry = (countryCode: string, state?: string) =>
 describe('useCashAppDepositAvailability', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetGeoSessionCache();
     useCountryStore.getState().clearCountryInfo();
   });
 
@@ -110,25 +116,27 @@ describe('useCashAppDepositAvailability', () => {
         }),
       );
 
-      let latest: Result | undefined;
+      const seen: Result[] = [];
       const Probe = () => {
-        latest = useCashAppDepositAvailability();
+        seen.push(useCashAppDepositAvailability());
         return null;
       };
       await act(async () => {
         create(<Probe />);
       });
 
-      expect(latest?.isResolving).toBe(true);
-      expect(latest?.countryCode).toBeUndefined();
+      const whileDetecting = seen[seen.length - 1];
+      expect(whileDetecting.isResolving).toBe(true);
+      expect(whileDetecting.countryCode).toBeUndefined();
 
       await act(async () => {
         resolveGeo(null);
       });
 
       // Settled with no answer is still settled — callers may now act on it.
-      expect(latest?.isResolving).toBe(false);
-      expect(latest?.isAvailable).toBe(false);
+      const afterDetecting = seen[seen.length - 1];
+      expect(afterDetecting.isResolving).toBe(false);
+      expect(afterDetecting.isAvailable).toBe(false);
     });
 
     it('is settled immediately when the country is already known', async () => {
@@ -139,5 +147,30 @@ describe('useCashAppDepositAvailability', () => {
       expect(result.isResolving).toBe(false);
       expect(mockDetectGeo).not.toHaveBeenCalled();
     });
+  });
+
+  it('a second mount starts settled, so a later screen does not re-gate', async () => {
+    // Without the shared result each screen restarted unsettled and held its
+    // /config call off for a frame, flashing empty amounts on arrival.
+    mockDetectGeo.mockResolvedValue({
+      countryCode: 'US',
+      countryName: 'United States',
+    });
+
+    await renderHook();
+
+    // Capture every render, so the assertion is about the *first* one rather
+    // than whatever state the mount settles into.
+    const seen: Result[] = [];
+    const Probe = () => {
+      seen.push(useCashAppDepositAvailability());
+      return null;
+    };
+    await act(async () => {
+      create(<Probe />);
+    });
+
+    expect(seen[0].isResolving).toBe(false);
+    expect(seen[0].countryCode).toBe('US');
   });
 });

@@ -4,6 +4,24 @@ import { detectGeo } from '@/lib/geo';
 import { useCountryStore } from '@/store/useCountryStore';
 
 /**
+ * The lookup's outcome, shared across every mount for the session.
+ *
+ * `detectGeo` already memoises the request, but each hook instance still began
+ * unsettled and had to wait a microtask for the cached promise — so arriving at
+ * a later screen gated its config call off for a frame and flashed empty
+ * amounts. Holding the settled result here lets a second mount start with the
+ * answer already in hand.
+ */
+let sessionGeo: { countryCode: string; region?: string } | undefined;
+let sessionSettled = false;
+
+/** Test seam: the module cache would otherwise leak between cases. */
+export const __resetGeoSessionCache = () => {
+  sessionGeo = undefined;
+  sessionSettled = false;
+};
+
+/**
  * Whether the Cash App / Lightning deposit can be offered here.
  *
  * United States only. This is not our restriction to relax: Cash App's own
@@ -25,7 +43,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 export const useCashAppDepositAvailability = () => {
   const countryInfo = useCountryStore(state => state.countryInfo);
   const storedCode = countryInfo?.countryCode;
-  const [detected, setDetected] = useState<{ countryCode: string; region?: string }>();
+  const [detected, setDetected] = useState(sessionGeo);
   /**
    * Whether the lookup has finished, separately from whether it found anything.
    *
@@ -34,18 +52,26 @@ export const useCashAppDepositAvailability = () => {
    * real, final answer. Conflating them let a caller treat the first render —
    * before detectGeo resolves — as a country the user isn't in.
    */
-  const [isSettled, setIsSettled] = useState(false);
+  const [isSettled, setIsSettled] = useState(sessionSettled);
 
   useEffect(() => {
-    if (storedCode) {
+    if (storedCode || sessionSettled) {
       setIsSettled(true);
       return;
     }
     let cancelled = false;
     void detectGeo().then(geo => {
-      if (cancelled) return;
-      if (geo) setDetected({ countryCode: geo.countryCode, region: geo.region });
+      // The cache is set even if this instance unmounted — the answer is the
+      // session's, not this component's.
+      if (cancelled) {
+        sessionGeo = geo ? { countryCode: geo.countryCode, region: geo.region } : undefined;
+        sessionSettled = true;
+        return;
+      }
+      sessionGeo = geo ? { countryCode: geo.countryCode, region: geo.region } : undefined;
       // Settled either way: a failed lookup is an answer, not a pending one.
+      sessionSettled = true;
+      if (geo) setDetected(sessionGeo);
       setIsSettled(true);
     });
     return () => {
