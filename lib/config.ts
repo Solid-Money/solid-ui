@@ -1,6 +1,8 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
+import { parseRetiredCashModulesV2 } from '@/lib/utils/safeModules';
+
 import type { CardProvider } from '@/lib/types';
 
 export const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? '';
@@ -176,6 +178,15 @@ type Addresses = {
      */
     cashModuleV2: Address;
     /**
+     * Earlier SolidCashModuleV2 cores that {@link cashModuleV2} replaced.
+     *
+     * A redeploy cannot move a Safe: the old core stays enabled on every Safe that consented to
+     * it, and the backend no longer reads it — so a Safe left there declines every card payment
+     * with `SAFE_NOT_REGISTERED` while the old lens still reports it as set up. Every write that
+     * puts a Safe on v2 disables whichever of these it still has enabled, in the same batch.
+     */
+    retiredCashModulesV2: readonly Address[];
+    /**
      * SolidSpendLens — the cohort-aware read serving BOTH module generations from one call.
      *
      * Distinct from {@link cashLens}, which only knows v1. This one reports which module owns a
@@ -265,6 +276,10 @@ export const ADDRESSES: Addresses = {
     // `isCardSpendV2Configured` is what stops the app offering a mode it cannot execute. The env
     // overrides exist so a QA build can point at a testnet deployment without waiting for mainnet.
     cashModuleV2: (process.env.EXPO_PUBLIC_CASH_MODULE_V2_ADDRESS ?? ZERO_ADDRESS) as Address,
+    retiredCashModulesV2: parseRetiredCashModulesV2(
+      process.env.EXPO_PUBLIC_RETIRED_CASH_MODULE_V2_ADDRESSES,
+      process.env.EXPO_PUBLIC_CASH_MODULE_V2_ADDRESS,
+    ),
     spendLensV2: (process.env.EXPO_PUBLIC_SPEND_LENS_V2_ADDRESS ?? ZERO_ADDRESS) as Address,
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',

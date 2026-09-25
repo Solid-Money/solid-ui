@@ -30,6 +30,7 @@ import { confirmWirexCardRegistration } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider } from '@/lib/types';
+import { buildModuleDisables, includesModule, SENTINEL_MODULES } from '@/lib/utils/safeModules';
 import { publicClient } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -40,13 +41,7 @@ export const CARD_SPEND_REGISTRATION_QUERY_KEY = 'cardSpendRegistration';
 const MODULE = ADDRESSES.fuse.cashModule;
 const MODULE_V2 = ADDRESSES.fuse.cashModuleV2;
 const SPEND_LENS_V2 = ADDRESSES.fuse.spendLensV2;
-
-/**
- * Head of a Safe's module linked list. `disableModule(prevModule, module)` needs the
- * entry pointing at the one being removed, and for the most recently enabled module
- * that pointer is the sentinel itself rather than another module's address.
- */
-const SENTINEL_MODULES = '0x0000000000000000000000000000000000000001' as Address;
+const RETIRED_MODULES_V2 = ADDRESSES.fuse.retiredCashModulesV2;
 
 /** Enough to cover any real Safe's module list in one read. */
 const MODULE_PAGE_SIZE = 50n;
@@ -299,6 +294,24 @@ const findModulePredecessor = async (
   // in this array is exactly the one pointing at it — and for the first entry that is the
   // sentinel itself.
   return index === 0 ? SENTINEL_MODULES : modules[index - 1];
+};
+
+/**
+ * `disableModule` calls for each of `targets` still enabled on the Safe, read at press time.
+ *
+ * The list is read fresh for the same reason {@link findModulePredecessor} reads it: enabling
+ * any module rewrites the pointers, and a stale predecessor reverts the whole batch.
+ */
+const encodeModuleDisables = async (safeAddress: Address, targets: readonly Address[]) => {
+  const client = publicClient(fuse.id);
+  const [modules] = await client.readContract({
+    address: safeAddress,
+    abi: Safe_ABI,
+    functionName: 'getModulesPaginated',
+    args: [SENTINEL_MODULES, MODULE_PAGE_SIZE],
+  });
+
+  return buildModuleDisables(safeAddress, modules, targets);
 };
 
 /**
@@ -1127,28 +1140,22 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       const target = fresh.moduleAddress;
 
       // A Safe headed for v2 with v1 still switched on: v2's `registerSafe` reverts
-      // `LegacyModuleStillEnabled`, so v1 comes off first, in the same batch.
-      const prevLegacyModule =
-        fresh.awaitingV2 && fresh.legacyEnabled
-          ? await findModulePredecessor(safeAddress, MODULE as Address)
-          : null;
-      if (fresh.awaitingV2 && fresh.legacyEnabled && !prevLegacyModule) {
+      // `LegacyModuleStillEnabled`, so v1 comes off first, in the same batch. So does any
+      // retired v2 core the Safe was left on by a redeploy — it can no longer fund the card,
+      // and leaving it enabled keeps a module on the Safe that nothing is watching.
+      const needsLegacyDisable = fresh.awaitingV2 && fresh.legacyEnabled;
+      const cleanup = isV2Module(target)
+        ? await encodeModuleDisables(safeAddress, [
+            ...(needsLegacyDisable ? [MODULE as Address] : []),
+            ...RETIRED_MODULES_V2,
+          ])
+        : { disabled: [], transactions: [] };
+      if (needsLegacyDisable && !includesModule(cleanup.disabled, MODULE as Address)) {
         throw new Error('Could not read your Safe. Please try again.');
       }
 
       const transactions = [
-        ...(prevLegacyModule
-          ? [
-              {
-                to: safeAddress,
-                data: encodeFunctionData({
-                  abi: Safe_ABI,
-                  functionName: 'disableModule',
-                  args: [prevLegacyModule, MODULE as Address],
-                }),
-              },
-            ]
-          : []),
+        ...cleanup.transactions,
         ...(fresh.moduleEnabled
           ? []
           : [
@@ -1427,24 +1434,19 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       // with v1 re-enabled is reported as the v1 cardholder it is behaving like.
       const modeAfterBatch: SpendMode = needsRegistration ? 'cash' : v2.mode;
 
-      const transactions: { to: Address; data: `0x${string}` }[] = [];
-
       // v1 has to go first and has to go entirely: while it is enabled v2 is inert by
       // design, and `registerSafe` refuses rather than letting one Safe hold two
-      // independent sets of spending caps.
-      if (v2.legacyEnabled) {
-        const prevModule = await findModulePredecessor(safeAddress, MODULE as Address);
-        if (!prevModule) throw new Error('Could not read your Safe. Please try again.');
-
-        transactions.push({
-          to: safeAddress,
-          data: encodeFunctionData({
-            abi: Safe_ABI,
-            functionName: 'disableModule',
-            args: [prevModule, MODULE as Address],
-          }),
-        });
+      // independent sets of spending caps. A retired v2 core comes off in the same place —
+      // this is the one write a Safe left holding both cores is sure to make again.
+      const cleanup = await encodeModuleDisables(safeAddress, [
+        ...(v2.legacyEnabled ? [MODULE as Address] : []),
+        ...RETIRED_MODULES_V2,
+      ]);
+      if (v2.legacyEnabled && !includesModule(cleanup.disabled, MODULE as Address)) {
+        throw new Error('Could not read your Safe. Please try again.');
       }
+
+      const transactions: { to: Address; data: `0x${string}` }[] = [...cleanup.transactions];
 
       if (!v2.moduleEnabled) {
         transactions.push({
