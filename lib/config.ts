@@ -91,6 +91,17 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
+
+/**
+ * Flashnet Orchestra — the Lightning fiat onramp.
+ *
+ * No key and no base URL live here any more. The accounts service holds the
+ * Orchestra *server* key and proxies every call, so the app reaches Orchestra
+ * only through EXPO_PUBLIC_FLASH_API_BASE_URL like any other backend feature.
+ * Whether the deposit method is available is the backend's answer too — its
+ * /orchestra/config route 503s when it has no key — so there is nothing to
+ * gate on here either.
+ */
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 // In-development features: visible on qa/preview builds, hidden in production.
 export const isDevFeatureEnabled = !isProduction;
