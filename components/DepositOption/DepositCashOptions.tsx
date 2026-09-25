@@ -14,13 +14,12 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
-import { useCardStatus } from '@/hooks/useCardStatus';
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
-import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
-import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
+import { useOrchestraConfig } from '@/hooks/useOrchestra';
+import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { RainApplicationStatus } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -34,6 +33,8 @@ const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
  * local currencies show their committed corridor list (localCurrencies.tsx).
  */
 const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire'];
+/** In the US the same row also leads to Cash App, so the chips say so. */
+const USD_PAYMENT_METHOD_CHIPS_US = ['ACH', 'Wire', 'Cash App'];
 const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
@@ -57,12 +58,15 @@ const DepositCashOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetTransfi = useTransfiStore(state => state.reset);
   const setTransfiCurrency = useTransfiStore(state => state.setFiatCurrency);
-  const [isVirtualAccountApplyOpen, setIsVirtualAccountApplyOpen] = useState(false);
+
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
-  const { data: cardStatus } = useCardStatus();
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
-  const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
-  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
+  const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
+  // One rule, decided server-side: supported region **or** allowlisted. The
+  // country is resolved here only because the backend has no geoip — the verdict
+  // is still theirs, and they enforce it again on order creation.
+  const { countryCode } = useCashAppDepositAvailability();
+  const { data: orchestraConfig } = useOrchestraConfig(countryCode);
+  const isCashAppAvailable = orchestraConfig?.isAvailable === true;
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 
@@ -77,20 +81,15 @@ const DepositCashOptions = () => {
   }, [showAllCurrencies]);
 
   const handleUsdPress = () => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'bank_transfer',
-      provider: virtualAccountProvider,
-    });
-    // A Wirex user has no Rain automation and never will, so the Rain apply
-    // pitch is not their next step — their details screen owns activation for
-    // both rails. The other entry points into this flow already route on the
-    // provider; this one did not, which is how Wirex users reached a "Verify
-    // now" that could only bounce them off the Rain KYC gate.
-    if (virtualAccountProvider === 'wirex' || existingAutomation) {
-      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+    // Two USD rails in the US, one everywhere else. Showing a chooser outside
+    // the US would ask a question with a single answer, so USD goes straight to
+    // the bank rail there — which is exactly what it did before Cash App
+    // existed.
+    if (isCashAppAvailable) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
       return;
     }
-    setIsVirtualAccountApplyOpen(true);
+    openVirtualAccount();
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -122,7 +121,7 @@ const DepositCashOptions = () => {
             />
           }
           title="USD"
-          chips={USD_PAYMENT_METHOD_CHIPS}
+          chips={isCashAppAvailable ? USD_PAYMENT_METHOD_CHIPS_US : USD_PAYMENT_METHOD_CHIPS}
           onPress={handleUsdPress}
         />
         {localCurrencies.map(currency => (
@@ -153,10 +152,7 @@ const DepositCashOptions = () => {
         </Pressable>
       </CardFundGroup>
 
-      <VirtualAccountApplyDialog
-        isOpen={isVirtualAccountApplyOpen}
-        onClose={() => setIsVirtualAccountApplyOpen(false)}
-      />
+      <VirtualAccountApplyDialog isOpen={isApplyOpen} onClose={closeApply} />
     </>
   );
 };
