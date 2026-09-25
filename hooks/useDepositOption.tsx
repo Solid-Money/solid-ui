@@ -522,7 +522,7 @@ const useDepositOption = ({
     if (isBuyCryptoError) return undefined;
     if (isOnramperWidget) return 'Buy crypto';
     if (isDepositUsdMethod) return 'Deposit US Dollars';
-    if (isOrchestraAmount) return 'Deposit with Cash App';
+    if (isOrchestraAmount) return 'Cash App';
     if (isOrchestraInvoice) return 'Pay with Cash App';
     if (isOrchestraStatus) return 'Deposit status';
     // Same reasoning as the TransFi error screen above.

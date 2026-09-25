@@ -245,18 +245,32 @@ const ResponsiveModal = ({
                   <View className={cn('w-[50px]', compactHeader && 'w-10')} />
                 )}
                 {title ? (
+                  // `flex-1` so the title takes the space between the two 50px
+                  // controls rather than its natural width. Without it a long
+                  // title pushed the back and close buttons off the header
+                  // entirely — they were still mounted, just off-screen, which
+                  // left the step with no visible way back.
                   <Animated.View
                     key={contentKey}
                     entering={titleEntering}
                     exiting={titleExiting}
+                    className="min-w-0 flex-1 items-center justify-center"
                     style={
-                      titleIcon ? { flexDirection: 'row', alignItems: 'center', gap: 8 } : undefined
+                      titleIcon
+                        ? {
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                          }
+                        : undefined
                     }
                   >
                     {titleIcon}
                     <DialogTitle
+                      numberOfLines={1}
                       className={cn(
-                        'native:text-2xl text-xl font-semibold',
+                        'native:text-2xl shrink text-center text-xl font-semibold',
                         compactHeader && 'native:text-xl',
                       )}
                     >
