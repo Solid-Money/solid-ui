@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/react-native';
 
 import { withdrawCardCollateral } from '@/lib/api';
 import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { executeTransactions, isWebAuthnUserCancelledError, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { publicClient, getChain } from '@/lib/wagmi';
 import useUser from './useUser';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -222,6 +222,11 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         return transaction_result;
       } catch (err) {
         console.error('Rain collateral withdrawal error:', err);
+
+        if (isWebAuthnUserCancelledError(err)) {
+          setStatus(Status.IDLE);
+          return;
+        }
 
         Sentry.captureException(err, {
           tags: { operation: 'withdraw_rain_collateral' },
