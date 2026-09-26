@@ -5,6 +5,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
 import { getAttributionChannel } from '@/lib/attribution';
 import { StatusInfo, User } from '@/lib/types';
+import { isUserCancelledError } from '@/lib/utils/withdrawErrors';
 import { useAttributionStore } from '@/store/useAttributionStore';
 
 /**
@@ -121,18 +122,21 @@ export const captureDepositError = (
   ctx: DepositContext & { depositStatus?: StatusInfo; step?: string },
 ): string => {
   const errorMessage = (error as { message?: string })?.message || 'Unknown error';
+  const userCancelled = isUserCancelledError(error);
 
-  Sentry.captureException(error, {
-    tags: { operation: ctx.operation, step: ctx.step ?? 'execution' },
-    extra: {
-      amount: ctx.amount,
-      safeAddress: ctx.user?.safeAddress,
-      chainId: ctx.chainId,
-      errorMessage,
-      depositStatus: ctx.depositStatus,
-    },
-    user: { id: ctx.user?.suborgId, address: ctx.user?.safeAddress },
-  });
+  if (!userCancelled) {
+    Sentry.captureException(error, {
+      tags: { operation: ctx.operation, step: ctx.step ?? 'execution' },
+      extra: {
+        amount: ctx.amount,
+        safeAddress: ctx.user?.safeAddress,
+        chainId: ctx.chainId,
+        errorMessage,
+        depositStatus: ctx.depositStatus,
+      },
+      user: { id: ctx.user?.suborgId, address: ctx.user?.safeAddress },
+    });
+  }
 
   track(TRACKING_EVENTS.DEPOSIT_ERROR, {
     ...baseProps(ctx),
@@ -140,6 +144,7 @@ export const captureDepositError = (
     src_chain_id: ctx.chainId,
     source: ctx.operation,
     error: errorMessage,
+    user_cancelled: userCancelled,
     deposit_status: ctx.depositStatus,
     ...attribution(),
   });
