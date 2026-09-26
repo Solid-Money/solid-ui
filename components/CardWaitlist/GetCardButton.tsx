@@ -25,7 +25,11 @@ const GetCardButton = ({ className, onPress }: GetCardButtonProps) => {
   };
 
   return (
-    <Button variant="brand" className={cn('h-12 rounded-xl px-8', className)} onPress={handleGetCard}>
+    <Button
+      variant="brand"
+      className={cn('h-12 rounded-xl px-8', className)}
+      onPress={handleGetCard}
+    >
       <Text className="text-base font-bold">Get your card</Text>
     </Button>
   );

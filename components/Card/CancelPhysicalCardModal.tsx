@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard } from 'lucide-react-native';
 
+import { PHYSICAL_CARD_STATUS_QUERY_KEY } from '@/components/Card/OrderPhysicalCardModal';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { cancelPhysicalCard, getPhysicalCardStatus } from '@/lib/api';
-import { PHYSICAL_CARD_STATUS_QUERY_KEY } from '@/components/Card/OrderPhysicalCardModal';
 import { withRefreshToken } from '@/lib/utils/utils';
 
 interface CancelPhysicalCardModalProps {
@@ -92,8 +92,8 @@ export default function CancelPhysicalCardModal({
               Physical card ordered
             </Text>
             <Text className="text-center text-base text-white/60">
-              Your physical card has been ordered and will be shipped to your address. You can cancel
-              the order if needed.
+              Your physical card has been ordered and will be shipped to your address. You can
+              cancel the order if needed.
             </Text>
           </View>
 

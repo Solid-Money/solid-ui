@@ -41,9 +41,7 @@ export default function HomeEmptyState() {
         </View>
 
         <View className="gap-10 md:gap-20">
-          {!isScreenMedium && (
-            <DashboardHeaderButtonsMobile />
-          )}
+          {!isScreenMedium && <DashboardHeaderButtonsMobile />}
 
           {/* Welcome to Solid */}
           <View className="md:items-between gap-4 overflow-hidden rounded-twice bg-card px-5 py-6 md:min-h-80 md:flex-row md:justify-between md:gap-12 md:px-10 md:py-10">
@@ -51,9 +49,7 @@ export default function HomeEmptyState() {
               <>
                 <View className="max-w-2xl flex-1 justify-between gap-6">
                   <View className="gap-3">
-                    <Text className="text-4.5xl font-medium text-foreground">
-                      Welcome to Solid
-                    </Text>
+                    <Text className="text-4.5xl font-medium text-foreground">Welcome to Solid</Text>
                     <DepositDescription />
                   </View>
                   <DepositButton />
