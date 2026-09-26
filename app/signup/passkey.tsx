@@ -20,6 +20,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
@@ -112,10 +113,12 @@ export default function SignupPasskey() {
         });
       }
 
-      Sentry.captureException(err, {
-        tags: { type: 'signup_passkey_creation_error' },
-        extra: { email },
-      });
+      if (!isWebAuthnUserCancelledError(err)) {
+        Sentry.captureException(err, {
+          tags: { type: 'signup_passkey_creation_error' },
+          extra: { email },
+        });
+      }
     } finally {
       setIsLoading(false);
     }
