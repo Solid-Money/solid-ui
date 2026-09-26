@@ -301,9 +301,16 @@ const findModulePredecessor = async (
  *
  * The list is read fresh for the same reason {@link findModulePredecessor} reads it: enabling
  * any module rewrites the pointers, and a stale predecessor reverts the whole batch.
+ *
+ * A new cardholder's Safe is often still counterfactual on Fuse — the set-up batch is what
+ * deploys it. It has no code yet, so `getModulesPaginated` returns `0x` and viem throws; with
+ * no code there are no modules either, so there is nothing to disable.
  */
 const encodeModuleDisables = async (safeAddress: Address, targets: readonly Address[]) => {
   const client = publicClient(fuse.id);
+  const code = await client.getCode({ address: safeAddress });
+  if (!code || code === '0x') return { disabled: [] as Address[], transactions: [] };
+
   const [modules] = await client.readContract({
     address: safeAddress,
     abi: Safe_ABI,
