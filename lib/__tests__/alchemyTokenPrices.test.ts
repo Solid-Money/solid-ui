@@ -31,8 +31,11 @@ jest.mock('axios', () => {
 });
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const post = (require('axios') as { default: { post: jest.Mock } }).default.post;
-const { fetchTokenPricesByAddress } = require('@/lib/api') as typeof import('@/lib/api');
+const axiosDefault = (require('axios') as { default: { post: jest.Mock; get: jest.Mock } }).default;
+const post = axiosDefault.post;
+const get = axiosDefault.get;
+const { fetchTokenPricesByAddress, fetchTokenPricesUsdBatch } =
+  require('@/lib/api') as typeof import('@/lib/api');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -45,7 +48,10 @@ const priced = (network: string, address: string, value: string) => ({
   prices: [{ currency: 'usd', value, lastUpdatedAt: '2026-09-09T00:00:00Z' }],
 });
 
-beforeEach(() => post.mockReset());
+beforeEach(() => {
+  post.mockReset();
+  get.mockReset();
+});
 
 describe('fetchTokenPricesByAddress', () => {
   it('keys prices by chain id and lowercased address', async () => {
@@ -176,5 +182,63 @@ describe('fetchTokenPricesByAddress', () => {
   it('does not call Alchemy when nothing needs a price', async () => {
     await expect(fetchTokenPricesByAddress([])).resolves.toEqual({});
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchTokenPricesUsdBatch', () => {
+  const symbolEntry = (symbol: string, value: string) => ({
+    symbol,
+    prices: [{ currency: 'usd', value, lastUpdatedAt: '2026-09-09T00:00:00Z' }],
+  });
+
+  it('returns an empty record without calling Alchemy when given no symbols', async () => {
+    await expect(fetchTokenPricesUsdBatch([])).resolves.toEqual({});
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('issues a single GET request with all symbols as repeated query params', async () => {
+    get.mockResolvedValue({ data: { data: [] } });
+
+    await fetchTokenPricesUsdBatch(['ETH', 'BTC', 'USDC']);
+
+    expect(get).toHaveBeenCalledTimes(1);
+    const url: string = get.mock.calls[0][0];
+    expect(url).toContain('symbols=ETH');
+    expect(url).toContain('symbols=BTC');
+    expect(url).toContain('symbols=USDC');
+  });
+
+  it('maps each symbol to its USD price as a number', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [symbolEntry('ETH', '3500.12'), symbolEntry('BTC', '65000.00')],
+      },
+    });
+
+    const prices = await fetchTokenPricesUsdBatch(['ETH', 'BTC']);
+
+    expect(prices).toEqual({ ETH: 3500.12, BTC: 65000.0 });
+  });
+
+  it('omits symbols Alchemy cannot price (empty prices array)', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [
+          { symbol: 'SCAM', prices: [] },
+          symbolEntry('USDC', '1.0001'),
+        ],
+      },
+    });
+
+    const prices = await fetchTokenPricesUsdBatch(['SCAM', 'USDC']);
+
+    expect(prices).not.toHaveProperty('SCAM');
+    expect(prices).toHaveProperty('USDC', 1.0001);
+  });
+
+  it('returns an empty record and does not throw when the request fails', async () => {
+    get.mockRejectedValue(new Error('429 Too Many Requests'));
+
+    await expect(fetchTokenPricesUsdBatch(['ETH'])).resolves.toEqual({});
   });
 });
