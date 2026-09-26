@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { ChevronRight, X } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { Address } from 'viem';
 
 import WalletIcon from '@/assets/images/wallet';
@@ -9,6 +9,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
+import DeleteAccountModal from '@/components/Settings/DeleteAccountModal';
 import { BackButton } from '@/components/ui/back-button';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -62,59 +63,12 @@ export default function Account() {
   );
 
   const deleteModal = (
-    <Modal
-      animationType="fade"
-      transparent={true}
+    <DeleteAccountModal
       visible={showDeleteModal}
-      onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
-    >
-      <View className="flex-1 items-center justify-center bg-black/70 px-4">
-        <View className="w-full max-w-sm rounded-3xl bg-[#1c1c1c] p-6">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-white">Delete Account</Text>
-            <Pressable onPress={() => !isDeleting && setShowDeleteModal(false)}>
-              <X size={24} color="#ffffff" />
-            </Pressable>
-          </View>
-
-          <Text className="mb-6 text-base text-gray-300">
-            Are you sure you want to delete your account? This action cannot be undone and will:
-          </Text>
-
-          <View className="mb-6">
-            <Text className="mb-2 text-sm text-gray-300">• Remove all your data</Text>
-            <Text className="mb-2 text-sm text-gray-300">• Cancel any active cards</Text>
-            <Text className="mb-2 text-sm text-gray-300">• Delete your transaction history</Text>
-            <Text className="text-sm text-gray-300">• Remove access to your wallet</Text>
-          </View>
-
-          <View className="flex-row justify-between">
-            <Pressable
-              onPress={() => setShowDeleteModal(false)}
-              className="mr-2 flex-1 rounded-xl bg-gray-700 py-4"
-              disabled={isDeleting}
-            >
-              <Text className="text-center font-semibold text-white">Cancel</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={confirmDelete}
-              className={cn('ml-2 flex-1 rounded-xl py-4', {
-                'bg-red-400': isDeleting,
-                'bg-red-600': !isDeleting,
-              })}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-center font-semibold text-white">Delete Account</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
+      isDeleting={isDeleting}
+      onCancel={() => setShowDeleteModal(false)}
+      onConfirm={confirmDelete}
+    />
   );
 
   return (
