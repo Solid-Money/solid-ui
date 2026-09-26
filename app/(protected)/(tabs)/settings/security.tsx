@@ -14,6 +14,7 @@ import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
+import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn } from '@/lib/utils';
 
@@ -78,7 +79,7 @@ export default function Security() {
       setIsUnlocked(true);
     } catch (error) {
       const isTimeout = error instanceof Error && error.message.includes('timed out');
-      const isCancelled = error instanceof Error && error.name === 'NotAllowedError';
+      const isCancelled = isWebAuthnUserCancelledError(error);
 
       if (isTimeout) {
         setUnlockError('Authentication timed out. Please try again.');
