@@ -20,6 +20,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { isPasskeyPromptError } from '@/lib/utils/passkey';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
@@ -111,6 +112,10 @@ export default function SignupPasskey() {
           text2: errorMessage,
         });
       }
+
+      // Don't report user-initiated cancellations (e.g. dismissing the passkey
+      // prompt) — they are expected UX, not application errors.
+      if (isPasskeyPromptError(err)) return;
 
       Sentry.captureException(err, {
         tags: { type: 'signup_passkey_creation_error' },
