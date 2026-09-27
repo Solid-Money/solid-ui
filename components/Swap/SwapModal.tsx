@@ -1,5 +1,4 @@
 import React, { ReactNode, useEffect } from 'react';
-import { Platform } from 'react-native';
 
 import { SWAP_MODAL } from '@/constants/modals';
 import { useSwapState } from '@/store/swapStore';
@@ -33,10 +32,6 @@ const SwapModal = ({ trigger = null, defaultOpen = false }: SwapModalProps) => {
       return () => cancelAnimationFrame(rafId);
     }
   }, [defaultOpen, setModal]);
-
-  if (Platform.OS === 'ios') {
-    return null;
-  }
 
   // Headless usage - the global SwapModalProvider handles the modal
   if (trigger === null) {

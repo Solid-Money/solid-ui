@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -97,8 +97,7 @@ interface WalletActionsProps {
 
 /**
  * Home action row. No funds → full-width white "Add Funds". Funded → "Add Funds"
- * plus "Swap" and "Send". Reuses the global Deposit/Swap/Send modals. Note
- * SwapModal renders null on iOS, so Swap self-hides there (same as the legacy row).
+ * plus "Swap" and "Send". Reuses the global Deposit/Swap/Send modals.
  *
  * "Add Funds" has three destinations, and none of them is a destination picker:
  *
@@ -117,7 +116,7 @@ const WalletActions = ({ hasFunds, hasCard }: WalletActionsProps) => {
   const fundsGoToCard = Boolean(hasCard) && canDepositToCard(provider);
   // Only the crowded three-pill row needs to shrink; alone, "Add Funds" always fits.
   const compact = hasFunds && width > 0 && width < COMPACT_WIDTH;
-  const showSwap = hasFunds && Platform.OS !== 'ios';
+  const showSwap = hasFunds;
   const addFundsTrigger = <AddFundsTrigger fullWidth={!hasFunds} compact={compact} />;
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
 
