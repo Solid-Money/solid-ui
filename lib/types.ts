@@ -1804,6 +1804,11 @@ export interface RewardsUserData {
   /** Yield boost payouts the user has already received, in USD. */
   yieldBoostEarned?: number;
   /**
+   * Savings balance the current tier's boost is paid on, in USD — Prime's
+   * first $10K, Ultra's first $25K. 0 (or absent) when unboosted.
+   */
+  yieldBoostBalanceCap?: number;
+  /**
    * Cashback % the current tier earns back on eligible subscriptions. 0 (or
    * absent) means the tier grants none, which hides the subscription card.
    */
@@ -1946,6 +1951,8 @@ export interface TierBenefits {
   yieldBoostPercentage?: number;
   /** Ceiling on yield boost payouts for this tier, in USD. */
   yieldBoostCap?: number;
+  /** Savings balance this tier's boost is paid on, in USD (0 when unboosted). */
+  yieldBoostBalanceCap?: number;
   cardCashback: TierBenefit;
   /**
    * `subscriptionDiscount` as a bare percentage (0 when the tier grants none),
