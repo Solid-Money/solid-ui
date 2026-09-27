@@ -7,6 +7,12 @@ export interface YieldBoostData {
   yieldBoostCap: number;
   /** Boost payouts the user has received so far, in USD. */
   yieldBoostEarned: number;
+  /**
+   * Savings balance the boost is paid on, in USD (Prime $10K, Ultra $25K).
+   * When set, the copy describes the FUSE boost and its cap; absent or 0 keeps
+   * the older payout-cap wording for a backend that doesn't send it yet.
+   */
+  yieldBoostBalanceCap?: number;
 }
 
 export interface YieldBoostSheetProps extends YieldBoostData {

@@ -69,6 +69,18 @@ export const EXPO_PUBLIC_FIREBASE_DATABASE_URL =
 export const EXPO_PUBLIC_AMPLITUDE_API_KEY = process.env.EXPO_PUBLIC_AMPLITUDE_API_KEY ?? '';
 export const EXPO_PUBLIC_AMPLITUDE_PROXY_URL = process.env.EXPO_PUBLIC_AMPLITUDE_PROXY_URL ?? '';
 export const EXPO_PUBLIC_MERKL_CAMPAIGN_ID = process.env.EXPO_PUBLIC_MERKL_CAMPAIGN_ID ?? '';
+/**
+ * Merkl campaign ids (0x… hashes) of the tiered yield-boost campaigns — one per
+ * vault (soUSD, soETH, soFUSE), all paying WFUSE on Fuse. Comma-separated.
+ * They scope "Total Earned" on the savings yield-boost card to the boost;
+ * claiming always takes the whole WFUSE balance, since Merkl claims per token.
+ */
+export const EXPO_PUBLIC_MERKL_YIELD_BOOST_CAMPAIGN_IDS: readonly string[] = (
+  process.env.EXPO_PUBLIC_MERKL_YIELD_BOOST_CAMPAIGN_IDS ?? ''
+)
+  .split(',')
+  .map((id: string) => id.trim().toLowerCase())
+  .filter(Boolean);
 export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =

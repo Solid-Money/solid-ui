@@ -77,6 +77,7 @@ const TierBenefitsGrid = ({
   yieldBoostPercentage,
   yieldBoostCap,
   yieldBoostEarned,
+  yieldBoostBalanceCap,
   onGetMoreCashback,
   onReferralsPress,
   ...cashbackData
@@ -121,6 +122,7 @@ const TierBenefitsGrid = ({
         yieldBoostPercentage={yieldBoostPercentage}
         yieldBoostCap={yieldBoostCap}
         yieldBoostEarned={yieldBoostEarned}
+        yieldBoostBalanceCap={yieldBoostBalanceCap}
       />
     ),
     subscription: (

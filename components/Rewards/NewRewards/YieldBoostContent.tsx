@@ -24,6 +24,7 @@ const YieldBoostContent = ({
   yieldBoostPercentage,
   yieldBoostCap,
   yieldBoostEarned,
+  yieldBoostBalanceCap = 0,
   onClose,
   animationSession,
   isSheet = true,
@@ -44,9 +45,11 @@ const YieldBoostContent = ({
       className="mt-[7px] w-[284px] text-center text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
     >
-      {yieldBoostCap > 0
-        ? `Earn USDC on top of your savings deposits, up to ${formatWholeDollars(yieldBoostCap)}`
-        : 'Earn USDC on top of your savings deposits'}
+      {yieldBoostBalanceCap > 0
+        ? `Earn FUSE on top of your savings yield, on your first ${formatWholeDollars(yieldBoostBalanceCap)}`
+        : yieldBoostCap > 0
+          ? `Earn USDC on top of your savings deposits, up to ${formatWholeDollars(yieldBoostCap)}`
+          : 'Earn USDC on top of your savings deposits'}
     </Text>
 
     <View className="mt-9 h-[117px] w-full overflow-hidden rounded-twice bg-[#2B2B2B]">
