@@ -56,8 +56,15 @@ export function useOrchestraConfig(countryCode?: string, enabled = true) {
  */
 export function useCreateOrchestraOnramp() {
   return useMutation({
-    mutationFn: ({ amountFiatUsd, countryCode }: { amountFiatUsd: string; countryCode?: string }) =>
-      withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode)),
+    mutationFn: ({
+      amountFiatUsd,
+      countryCode,
+      destination,
+    }: {
+      amountFiatUsd: string;
+      countryCode?: string;
+      destination?: 'wallet' | 'card';
+    }) => withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode, destination)),
     retry: false,
   });
 }
