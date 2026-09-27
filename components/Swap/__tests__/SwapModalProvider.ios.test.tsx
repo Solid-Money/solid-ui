@@ -75,10 +75,11 @@ it('renders Buy FUSE on iOS', () => {
   act(() => root.unmount());
 });
 
-it('keeps the regular Swap modal hidden on iOS', () => {
+it('renders the regular Swap modal on iOS', () => {
   mockCurrentModal = SWAP_MODAL.OPEN_FORM;
   const root = render();
-  expect(root.root.findAllByType('ResponsiveModal')).toHaveLength(0);
+  expect(root.root.findAllByType('ResponsiveModal')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(1);
   act(() => root.unmount());
 });
 
