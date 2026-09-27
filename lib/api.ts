@@ -7,9 +7,12 @@ import { fuse } from 'viem/chains';
 import {
   ALCHEMY_NETWORKS,
   ALCHEMY_PRICE_BATCH_SIZE,
+  ALCHEMY_PRICE_MAX_NETWORKS,
   ALCHEMY_PRICES_URL,
+  ALCHEMY_REQUEST_TIMEOUT_MS,
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
+import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { toTransfiError } from '@/lib/transfiErrors';
@@ -444,74 +447,183 @@ export const fetchTokenTransfer = async ({
   });
 };
 
-export const fetchTokenPriceUsd = async (token: string) => {
-  // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
-  // attached, which zeroes out every price on native builds.
-  const response = await externalAxios.get<TokenPriceUsd>(
-    `${ALCHEMY_PRICES_URL}/by-symbol?symbols=${token}`,
-  );
-  return response?.data?.data[0]?.prices[0]?.value;
+/**
+ * How long a price from Alchemy is shared by every caller before it's asked for
+ * again. Alchemy refreshes its prices about once a minute.
+ */
+const ALCHEMY_PRICE_TTL_MS = 60_000;
+/** A token Alchemy has no price for rarely gains one within minutes. */
+const ALCHEMY_PRICE_MISS_TTL_MS = 5 * 60_000;
+const ALCHEMY_PRICE_ERROR_TTL_MS = 15_000;
+/** Past this a price is dropped rather than shown, even when it can't be refreshed. */
+const ALCHEMY_PRICE_MAX_STALE_MS = 10 * 60_000;
+/** Pause on a 429 without a usable Retry-After, and the cap on one that has it. */
+const ALCHEMY_PRICE_RATE_LIMIT_PAUSE_MS = 60_000;
+const ALCHEMY_PRICE_MAX_RATE_LIMIT_PAUSE_MS = 15 * 60_000;
+
+/** The USD quote from a Prices API entry, when it's a usable positive number. */
+const usdPrice = (prices: { currency: string; value: string }[] | undefined) => {
+  const value = Number(prices?.find(price => price.currency?.toLowerCase() === 'usd')?.value);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
+/**
+ * Both Prices endpoints draw on one token_price quota ("Your payg app has
+ * exceeded its limit of 10000 token_price requests per 1 hours"), so a 429 from
+ * either pauses both. Every request made while the quota is spent is refused
+ * anyway, and each refusal was also being reported to Sentry.
+ */
+const alchemyPriceCooldown: Cooldown = { until: 0 };
+
+const rateLimitPauseMs = (error: unknown) => {
+  const response = (error as { response?: { status?: number; headers?: Record<string, unknown> } })
+    ?.response;
+  if (response?.status !== 429) return undefined;
+  const retryAfterMs = Number(response.headers?.['retry-after']) * 1000;
+  return Number.isFinite(retryAfterMs) && retryAfterMs > 0
+    ? Math.min(retryAfterMs, ALCHEMY_PRICE_MAX_RATE_LIMIT_PAUSE_MS)
+    : ALCHEMY_PRICE_RATE_LIMIT_PAUSE_MS;
+};
+
+const alchemyPriceCaching = {
+  ttlMs: ALCHEMY_PRICE_TTL_MS,
+  missTtlMs: ALCHEMY_PRICE_MISS_TTL_MS,
+  errorTtlMs: ALCHEMY_PRICE_ERROR_TTL_MS,
+  maxStaleMs: ALCHEMY_PRICE_MAX_STALE_MS,
+  cooldownMs: rateLimitPauseMs,
+  cooldown: alchemyPriceCooldown,
+};
+
+/** Keyed by upper-cased symbol: Alchemy upper-cases the symbols it echoes back. */
+const alchemyPricesBySymbol = createBatchedLoader<number>({
+  ...alchemyPriceCaching,
+  chunk: symbols => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < symbols.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+      chunks.push(symbols.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+    }
+    return chunks;
+  },
+  fetchChunk: async symbols => {
+    // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
+    // attached, which zeroes out every price on native builds.
+    const response = await externalAxios.get<TokenPriceUsd>(
+      `${ALCHEMY_PRICES_URL}/by-symbol?${symbols.map(s => `symbols=${encodeURIComponent(s)}`).join('&')}`,
+      { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
+    );
+    const prices = new Map<string, number>();
+    for (const entry of response.data?.data ?? []) {
+      const price = usdPrice(entry.prices);
+      if (entry.symbol && price !== undefined) prices.set(entry.symbol.toUpperCase(), price);
+    }
+    return prices;
+  },
+});
+
+/** Keyed by `${chainId}:${lowercased address}`. */
+const alchemyPricesByAddress = createBatchedLoader<number>({
+  ...alchemyPriceCaching,
+  // First fit, so tokens keep their order and each request stays within both
+  // the address and the network cap.
+  chunk: keys => {
+    const chunks: { keys: string[]; networks: Set<string> }[] = [];
+    for (const key of keys) {
+      const network = ALCHEMY_NETWORKS[Number(key.split(':')[0])];
+      const chunk = chunks.find(
+        c =>
+          c.keys.length < ALCHEMY_PRICE_BATCH_SIZE &&
+          (c.networks.has(network) || c.networks.size < ALCHEMY_PRICE_MAX_NETWORKS),
+      );
+      if (chunk) {
+        chunk.keys.push(key);
+        chunk.networks.add(network);
+      } else {
+        chunks.push({ keys: [key], networks: new Set([network]) });
+      }
+    }
+    return chunks.map(c => c.keys);
+  },
+  fetchChunk: async keys => {
+    const tokens = keys.map(key => {
+      const [chainId, address] = key.split(':');
+      return { chainId: Number(chainId), network: ALCHEMY_NETWORKS[Number(chainId)], address };
+    });
+    const response = await externalAxios.post<TokenPriceByAddress>(
+      `${ALCHEMY_PRICES_URL}/by-address`,
+      { addresses: tokens.map(({ network, address }) => ({ network, address })) },
+      { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
+    );
+    // Alchemy echoes the network slug back, not the chain id, so map the
+    // response entries onto the request to recover the chain id.
+    const chainIdByNetwork = new Map(tokens.map(({ network, chainId }) => [network, chainId]));
+    const prices = new Map<string, number>();
+    for (const entry of response.data?.data ?? []) {
+      const chainId = chainIdByNetwork.get(entry.network);
+      const price = usdPrice(entry.prices);
+      if (chainId === undefined || !entry.address || price === undefined) continue;
+      prices.set(`${chainId}:${entry.address.toLowerCase()}`, price);
+    }
+    return prices;
+  },
+});
+
+/** Drops every cached Alchemy price and lifts any rate-limit pause. */
+export const clearAlchemyPriceCache = () => {
+  alchemyPricesBySymbol.clear();
+  alchemyPricesByAddress.clear();
+};
+
+/**
+ * USD prices by symbol from Alchemy's Prices API, keyed by the symbols as passed.
+ *
+ * Lookups started in the same tick share requests of up to 25 symbols, and a
+ * price is reused by every caller for a minute. Never throws: a symbol without
+ * a price, or one Alchemy couldn't be asked about (rate-limited, down), is left
+ * out so the caller's next price source gets its turn.
+ */
+export const fetchTokenPricesBySymbol = async (
+  symbols: string[],
+): Promise<Record<string, number>> => {
+  const wanted = [...new Set(symbols.filter(Boolean))];
+  if (wanted.length === 0) return {};
+  const prices = await alchemyPricesBySymbol.load(wanted.map(symbol => symbol.toUpperCase()));
+  const bySymbol: Record<string, number> = {};
+  for (const symbol of wanted) {
+    const price = prices.get(symbol.toUpperCase());
+    if (price !== undefined) bySymbol[symbol] = price;
+  }
+  return bySymbol;
+};
+
+/** USD price of one symbol, as a string; undefined when Alchemy has none to give. */
+export const fetchTokenPriceUsd = async (token: string): Promise<string | undefined> => {
+  const price = (await fetchTokenPricesBySymbol([token]))[token];
+  return price === undefined ? undefined : String(price);
 };
 
 /**
  * USD prices for ERC-20s from Alchemy's Prices API, keyed by
  * `${chainId}:${lowercased address}`.
  *
- * Preferred over {@link fetchTokenPriceUsd} for ERC-20s: a contract address
- * identifies a token exactly, where a symbol does not (every chain has its own
- * "USDC", and plenty of scam tokens borrow a real ticker), and one POST covers
- * a whole batch instead of a request per symbol. Alchemy's own token balances
- * carry no price, so without this every Alchemy-sourced ERC-20 arrives at
- * quoteRate 0.
+ * Preferred over {@link fetchTokenPricesBySymbol} for ERC-20s: a contract
+ * address identifies a token exactly, where a symbol does not (every chain has
+ * its own "USDC", and plenty of scam tokens borrow a real ticker). Alchemy's
+ * own token balances carry no price, so without this every Alchemy-sourced
+ * ERC-20 arrives at quoteRate 0.
  *
- * Never throws: a failed batch resolves to no prices for that batch so the
- * remaining price sources still get their turn.
+ * Batched and cached like the symbol lookup, within the endpoint's limits of
+ * 25 addresses and 3 networks per request. Never throws: a failed batch
+ * resolves to no prices for that batch so the remaining price sources still
+ * get their turn.
  */
 export const fetchTokenPricesByAddress = async (
   tokens: { chainId: number; address: string }[],
 ): Promise<Record<string, number>> => {
-  const pairs = [
-    ...new Map(
-      tokens
-        .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
-        .map(({ chainId, address }) => [
-          `${chainId}:${address.toLowerCase()}`,
-          { chainId, network: ALCHEMY_NETWORKS[chainId], address: address.toLowerCase() },
-        ]),
-    ).values(),
-  ];
-  if (pairs.length === 0) return {};
-
-  const batches: (typeof pairs)[] = [];
-  for (let i = 0; i < pairs.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
-    batches.push(pairs.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
-  }
-
-  const responses = await Promise.allSettled(
-    batches.map(batch =>
-      externalAxios.post<TokenPriceByAddress>(`${ALCHEMY_PRICES_URL}/by-address`, {
-        addresses: batch.map(({ network, address }) => ({ network, address })),
-      }),
-    ),
-  );
-
-  const prices: Record<string, number> = {};
-  responses.forEach((response, i) => {
-    if (response.status !== 'fulfilled') return;
-    // Alchemy echoes the network slug back, not the chain id, so map the
-    // response entries onto the batch we sent to recover the chain id.
-    const chainIdByNetwork = new Map(batches[i].map(({ network, chainId }) => [network, chainId]));
-    for (const entry of response.value.data?.data ?? []) {
-      const chainId = chainIdByNetwork.get(entry.network);
-      const value = Number(entry.prices?.find(price => price.currency === 'usd')?.value);
-      if (chainId === undefined || !entry.address || !Number.isFinite(value) || value <= 0) {
-        continue;
-      }
-      prices[`${chainId}:${entry.address.toLowerCase()}`] = value;
-    }
-  });
-
-  return prices;
+  const keys = tokens
+    .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
+    .map(({ chainId, address }) => `${chainId}:${address.toLowerCase()}`);
+  if (keys.length === 0) return {};
+  return Object.fromEntries(await alchemyPricesByAddress.load(keys));
 };
 
 export const createKycLink = async (

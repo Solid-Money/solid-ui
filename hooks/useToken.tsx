@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, erc20Abi, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
@@ -21,7 +21,8 @@ type Balance = {
 export const tokenPriceUsdQueryOptions = (tokenId: string) => {
   return {
     queryKey: ['tokenPriceUsd', tokenId],
-    queryFn: () => fetchTokenPriceUsd(tokenId),
+    // null, not undefined: TanStack Query rejects undefined as query data.
+    queryFn: async () => (await fetchTokenPriceUsd(tokenId)) ?? null,
     enabled: !!tokenId,
   };
 };

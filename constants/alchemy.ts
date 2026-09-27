@@ -41,7 +41,18 @@ export const ALCHEMY_NETWORKS: Record<number, string> = {
 
 export const ALCHEMY_PRICES_URL = `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens`;
 
-/** Addresses per `tokens/by-address` request — Alchemy rejects more than this. */
+/**
+ * Symbols per `tokens/by-symbol` request, and addresses per `tokens/by-address`
+ * request — Alchemy rejects more than this. A request costs the same 40 CU and
+ * one unit of the hourly token_price quota however many it carries.
+ */
 export const ALCHEMY_PRICE_BATCH_SIZE = 25;
+
+/**
+ * Distinct networks per `tokens/by-address` request, per Alchemy's docs. The
+ * endpoint accepts more today, but a request past a documented limit is one
+ * enforcement change away from failing whole.
+ */
+export const ALCHEMY_PRICE_MAX_NETWORKS = 3;
 
 export const ALCHEMY_REQUEST_TIMEOUT_MS = 10_000;
