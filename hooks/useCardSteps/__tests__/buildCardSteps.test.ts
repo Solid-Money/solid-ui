@@ -1,5 +1,11 @@
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { buildCardSteps } from '@/hooks/useCardSteps/stepHelpers';
-import { CardProvider, KycStatus, RainApplicationStatus } from '@/lib/types';
+import {
+  BridgeCustomerEndorsement,
+  CardProvider,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 
 const noop = () => {};
 
@@ -272,5 +278,36 @@ describe('buildCardSteps - a blocked activation', () => {
 
     expect(activate?.buttonText).toBe('Activate card');
     expect(activate?.onPress).toBeDefined();
+  });
+});
+
+describe('buildCardSteps - a retired Bridge endorsement', () => {
+  // An old bridge.xyz customer keeps their "cards" endorsement on Bridge's side.
+  const approvedBridgeEndorsement = {
+    name: 'cards',
+    status: EndorsementStatus.APPROVED,
+  } as unknown as BridgeCustomerEndorsement;
+
+  const kycStepFor = (kycStatus?: KycStatus) =>
+    buildCardSteps(approvedBridgeEndorsement, undefined, false, undefined, noop, noop, noop, {
+      cardIssuer: CardProvider.WIREX,
+      kycStatus,
+      depositRequired: false,
+    }).find(s => s.key === 'kyc');
+
+  it('does not complete KYC for a Wirex applicant who has not verified', () => {
+    // The backend reports a card customer, so its kycStatus is the answer —
+    // the Bridge approval is for a card that no longer exists.
+    const kyc = kycStepFor(KycStatus.NOT_STARTED);
+
+    expect(kyc?.completed).toBe(false);
+    expect(kyc?.buttonText).toBe('Continue verification');
+    expect(kyc?.onPress).toBeDefined();
+  });
+
+  it('still honours the endorsement for a Bridge-only user with no card customer', () => {
+    const kyc = kycStepFor(undefined);
+
+    expect(kyc?.completed).toBe(true);
   });
 });
