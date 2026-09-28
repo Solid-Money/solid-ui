@@ -8,7 +8,7 @@ import {
   fetchCoinSimplePrice,
   fetchTokenList,
   fetchTokenPricesByAddress,
-  fetchTokenPriceUsd,
+  fetchTokenPricesUsdBatch,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
@@ -580,25 +580,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
   );
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
-    try {
-      const results = await Promise.allSettled(symbolsToFetch.map(s => fetchTokenPriceUsd(s)));
-      const symbolToPrice: Record<string, number> = {};
-      symbolsToFetch.forEach((sym, i) => {
-        const r = results[i];
-        if (r.status === 'fulfilled') {
-          const p = parsePrice(r.value);
-          if (p != null && p > 0) symbolToPrice[sym] = p;
-        }
-      });
-      allTokens = allTokens.map(t => {
-        if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
-        const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
-        if (typeof p === 'number') return { ...t, quoteRate: p };
-        return t;
-      });
-    } catch (e) {
-      console.warn('Alchemy fallback price failed:', e);
-    }
+    // Single batched request for all symbols instead of one request per symbol,
+    // to avoid exceeding Alchemy's rate limit (10 000 token_price req/hr).
+    const symbolToPrice = await fetchTokenPricesUsdBatch(symbolsToFetch);
+    allTokens = allTokens.map(t => {
+      if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
+      const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
+      if (typeof p === 'number') return { ...t, quoteRate: p };
+      return t;
+    });
   }
 
   // Helper function to calculate token value
