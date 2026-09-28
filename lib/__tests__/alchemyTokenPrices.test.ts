@@ -6,10 +6,11 @@ jest.mock('@/constants/rewards', () => ({
   MOCK_REWARDS_USER_DATA: {},
   MOCK_TIER_BENEFITS: {},
 }));
-// Reached for the JWT the price lookup deliberately does not send; the store
-// itself sits on native MMKV.
+// Read for the JWT the backend lookup sends (and the Alchemy one deliberately
+// does not); the store itself sits on native MMKV.
+const mockUsers: { selected: boolean; tokens?: { accessToken: string } }[] = [];
 jest.mock('@/store/useUserStore', () => ({
-  useUserStore: { getState: () => ({ users: [] }) },
+  useUserStore: { getState: () => ({ users: mockUsers }) },
 }));
 jest.mock('@sentry/react-native', () => ({
   addBreadcrumb: jest.fn(),
@@ -66,9 +67,26 @@ const rateLimited = () =>
     response: { status: 429, headers: {} },
   });
 
+/**
+ * The backend route (`POST /accounts/v1/prices`), which the lookups try first.
+ * It is unreachable unless a test says otherwise, so the Alchemy tests below
+ * exercise the fallback every app has when the backend can't answer.
+ */
+const fetchMock = jest.fn();
+const backendAnswers = (body: unknown, status = 200) =>
+  fetchMock.mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  });
+
 beforeEach(() => {
   post.mockReset();
   get.mockReset();
+  fetchMock.mockReset();
+  fetchMock.mockRejectedValue(new TypeError('Network request failed'));
+  global.fetch = fetchMock as unknown as typeof fetch;
+  mockUsers.length = 0;
   // Prices are shared module-wide for a minute; start every test cold.
   clearAlchemyPriceCache();
 });
@@ -332,5 +350,127 @@ describe('fetchTokenPricesByAddress', () => {
     ).resolves.toEqual({ [`8453:${USDC_BASE.toLowerCase()}`]: 1.0001 });
 
     expect(post).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('prices from the backend', () => {
+  it('asks the backend first and leaves Alchemy alone when it answers', async () => {
+    backendAnswers({ symbols: { ETH: 2658.09, BNB: 765.87 }, tokens: {} });
+
+    const [eth, bnb] = await Promise.all([fetchTokenPriceUsd('ETH'), fetchTokenPriceUsd('bnb')]);
+
+    expect([eth, bnb]).toEqual(['2658.09', '765.87']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/accounts\/v1\/prices$/);
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    expect(JSON.parse(init.body as string)).toEqual({ symbols: ['ETH', 'BNB'] });
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('sends the signed-in user’s token on native', async () => {
+    mockUsers.push({ selected: true, tokens: { accessToken: 'jwt-1' } });
+    backendAnswers({ symbols: { ETH: 2658.09 }, tokens: {} });
+
+    await fetchTokenPriceUsd('ETH');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer jwt-1');
+  });
+
+  it('prices tokens by address through the backend with the same keys', async () => {
+    backendAnswers({ symbols: {}, tokens: { [`8453:${USDC_BASE.toLowerCase()}`]: 1.0001 } });
+
+    await expect(
+      fetchTokenPricesByAddress([{ chainId: 8453, address: USDC_BASE }]),
+    ).resolves.toEqual({
+      [`8453:${USDC_BASE.toLowerCase()}`]: 1.0001,
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      tokens: [{ chainId: 8453, address: USDC_BASE.toLowerCase() }],
+    });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('shares one cached answer instead of asking the backend again', async () => {
+    backendAnswers({ symbols: { ETH: 2658.09 }, tokens: {} });
+
+    await fetchTokenPriceUsd('ETH');
+    await fetchTokenPriceUsd('ETH');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a symbol the backend has no price for as a miss, without asking Alchemy', async () => {
+    backendAnswers({ symbols: {}, tokens: {} });
+
+    await expect(fetchTokenPriceUsd('NOTAREALTOKEN')).resolves.toBeUndefined();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['is unreachable', () => fetchMock.mockRejectedValue(new TypeError('Network request failed'))],
+    [
+      'has no such route yet (older backend)',
+      () => backendAnswers({ message: 'Cannot POST' }, 404),
+    ],
+    ['rejects the session', () => backendAnswers({ message: 'Unauthorized' }, 401)],
+    // What the route answers when it can't reach Alchemy for a token it has no price for.
+    ['cannot price right now', () => backendAnswers({ message: 'No price available' }, 503)],
+    ['rate-limits this user', () => backendAnswers({ message: 'Too Many Requests' }, 429)],
+    ['answers with something unexpected', () => backendAnswers('<html>proxy error</html>')],
+  ])(
+    'falls back to Alchemy when the backend %s, then skips the backend for a while',
+    async (_, setup) => {
+      setup();
+      get.mockResolvedValue({
+        data: { data: [bySymbol('ETH', '2658.09'), bySymbol('BNB', '765.87')] },
+      });
+
+      await expect(fetchTokenPriceUsd('ETH')).resolves.toBe('2658.09');
+      await expect(fetchTokenPriceUsd('BNB')).resolves.toBe('765.87');
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(get).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('asks the backend again once the pause is over', async () => {
+    const now = jest.spyOn(Date, 'now');
+    try {
+      now.mockReturnValue(1_000_000);
+      get.mockResolvedValue({ data: { data: [bySymbol('ETH', '2658.09')] } });
+      await fetchTokenPriceUsd('ETH'); // backend unreachable: Alchemy answers
+
+      now.mockReturnValue(1_000_000 + 5 * 60_000);
+      backendAnswers({ symbols: { BNB: 765.87 }, tokens: {} });
+      await expect(fetchTokenPriceUsd('BNB')).resolves.toBe('765.87');
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(get).toHaveBeenCalledTimes(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('never sends the backend a symbol or address its validation would reject', async () => {
+    backendAnswers({ symbols: {}, tokens: {} });
+
+    await fetchTokenPricesBySymbol(['ETH', 'X'.repeat(65)]);
+    await fetchTokenPricesByAddress([
+      { chainId: 1, address: 'not-an-address' },
+      { chainId: 1, address: USDC_ETHEREUM },
+    ]);
+
+    const bodies = fetchMock.mock.calls.map(
+      ([, init]) => JSON.parse((init as RequestInit).body as string) as unknown,
+    );
+    expect(bodies).toEqual([
+      { symbols: ['ETH'] },
+      { tokens: [{ chainId: 1, address: USDC_ETHEREUM.toLowerCase() }] },
+    ]);
   });
 });

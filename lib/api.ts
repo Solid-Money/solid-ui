@@ -494,6 +494,86 @@ const alchemyPriceCaching = {
   cooldown: alchemyPriceCooldown,
 };
 
+/** Longer than the backend's own Alchemy timeout (4s), so it gives up first. */
+const BACKEND_PRICES_TIMEOUT_MS = 6_000;
+const BACKEND_PRICES_RETRY_MS = 5 * 60_000;
+/** The route's per-list limits; anything past them would fail the whole request. */
+const BACKEND_PRICES_MAX_SYMBOL_LENGTH = 64;
+const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+let backendPricesPausedUntil = 0;
+
+type BackendPrices = { symbols: Record<string, number>; tokens: Record<string, number> };
+
+const positivePrices = (value: unknown): Record<string, number> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, number] =>
+        typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
+    ),
+  );
+};
+
+/**
+ * Prices from the backend, or undefined when it couldn't answer. Never throws.
+ *
+ * The backend serves prices from one cache shared by every user
+ * (POST /accounts/v1/prices), so the app asks it first and every open copy no
+ * longer spends the app key's Alchemy quota. When it can't answer — a backend
+ * released before the route existed, an outage, an expired session, a token it
+ * can't price right now (503) — the app asks Alchemy itself as before, and
+ * skips the backend for a few minutes so each lookup doesn't wait on it first.
+ */
+const fetchBackendPrices = async (body: {
+  symbols?: string[];
+  tokens?: { chainId: number; address: string }[];
+}): Promise<BackendPrices | undefined> => {
+  if (Date.now() < backendPricesPausedUntil) return undefined;
+  try {
+    const jwt = getJWTToken();
+    const response = await fetchWithTimeout(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/prices`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      },
+      BACKEND_PRICES_TIMEOUT_MS,
+    );
+    if (!response.ok) throw new Error(`Backend prices responded ${response.status}`);
+    const data = (await response.json()) as { symbols?: unknown; tokens?: unknown };
+    const symbols = positivePrices(data?.symbols);
+    const tokens = positivePrices(data?.tokens);
+    // Anything but the expected shape is a failure, not "no prices": a miss is
+    // remembered for minutes, so a misrouted reply mustn't be taken for one.
+    if (!symbols || !tokens) throw new Error('Unexpected backend prices response');
+    return { symbols, tokens };
+  } catch {
+    backendPricesPausedUntil = Date.now() + BACKEND_PRICES_RETRY_MS;
+    return undefined;
+  }
+};
+
+const fetchAlchemyPricesBySymbol = async (symbols: string[]) => {
+  // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
+  // attached, which zeroes out every price on native builds.
+  const response = await externalAxios.get<TokenPriceUsd>(
+    `${ALCHEMY_PRICES_URL}/by-symbol?${symbols.map(s => `symbols=${encodeURIComponent(s)}`).join('&')}`,
+    { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
+  );
+  const prices = new Map<string, number>();
+  for (const entry of response.data?.data ?? []) {
+    const price = usdPrice(entry.prices);
+    if (entry.symbol && price !== undefined) prices.set(entry.symbol.toUpperCase(), price);
+  }
+  return prices;
+};
+
 /** Keyed by upper-cased symbol: Alchemy upper-cases the symbols it echoes back. */
 const alchemyPricesBySymbol = createBatchedLoader<number>({
   ...alchemyPriceCaching,
@@ -505,18 +585,18 @@ const alchemyPricesBySymbol = createBatchedLoader<number>({
     return chunks;
   },
   fetchChunk: async symbols => {
-    // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
-    // attached, which zeroes out every price on native builds.
-    const response = await externalAxios.get<TokenPriceUsd>(
-      `${ALCHEMY_PRICES_URL}/by-symbol?${symbols.map(s => `symbols=${encodeURIComponent(s)}`).join('&')}`,
-      { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
-    );
-    const prices = new Map<string, number>();
-    for (const entry of response.data?.data ?? []) {
-      const price = usdPrice(entry.prices);
-      if (entry.symbol && price !== undefined) prices.set(entry.symbol.toUpperCase(), price);
+    // A symbol past the route's limit isn't a real ticker; leaving it out keeps
+    // it from failing the lookup for the others.
+    const sendable = symbols.filter(s => s.length <= BACKEND_PRICES_MAX_SYMBOL_LENGTH);
+    const fromBackend = sendable.length
+      ? await fetchBackendPrices({ symbols: sendable })
+      : undefined;
+    if (fromBackend) {
+      return new Map(
+        Object.entries(fromBackend.symbols).map(([symbol, price]) => [symbol.toUpperCase(), price]),
+      );
     }
-    return prices;
+    return fetchAlchemyPricesBySymbol(symbols);
   },
 });
 
@@ -548,6 +628,16 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
       const [chainId, address] = key.split(':');
       return { chainId: Number(chainId), network: ALCHEMY_NETWORKS[Number(chainId)], address };
     });
+
+    const sendable = tokens
+      .filter(({ address }) => ADDRESS_PATTERN.test(address))
+      .map(({ chainId, address }) => ({ chainId, address }));
+    const fromBackend = sendable.length
+      ? await fetchBackendPrices({ tokens: sendable })
+      : undefined;
+    // Keyed `${chainId}:${lowercased address}` by the backend too.
+    if (fromBackend) return new Map(Object.entries(fromBackend.tokens));
+
     const response = await externalAxios.post<TokenPriceByAddress>(
       `${ALCHEMY_PRICES_URL}/by-address`,
       { addresses: tokens.map(({ network, address }) => ({ network, address })) },
@@ -567,10 +657,11 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
   },
 });
 
-/** Drops every cached Alchemy price and lifts any rate-limit pause. */
+/** Drops every cached price and lifts any pause on the backend or on Alchemy. */
 export const clearAlchemyPriceCache = () => {
   alchemyPricesBySymbol.clear();
   alchemyPricesByAddress.clear();
+  backendPricesPausedUntil = 0;
 };
 
 /**
