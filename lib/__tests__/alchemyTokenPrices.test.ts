@@ -12,6 +12,12 @@ const mockUsers: { selected: boolean; tokens?: { accessToken: string } }[] = [];
 jest.mock('@/store/useUserStore', () => ({
   useUserStore: { getState: () => ({ users: mockUsers }) },
 }));
+// A chain the app prices by address that the backend doesn't cover yet, as when
+// an OTA adds one before the backend ships it.
+jest.mock('@/constants/alchemy', () => {
+  const actual = jest.requireActual<typeof import('@/constants/alchemy')>('@/constants/alchemy');
+  return { ...actual, ALCHEMY_NETWORKS: { ...actual.ALCHEMY_NETWORKS, 10: 'opt-mainnet' } };
+});
 jest.mock('@sentry/react-native', () => ({
   addBreadcrumb: jest.fn(),
   captureException: jest.fn(),
@@ -393,6 +399,36 @@ describe('prices from the backend', () => {
       tokens: [{ chainId: 8453, address: USDC_BASE.toLowerCase() }],
     });
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it('asks Alchemy itself about a chain the backend does not cover yet', async () => {
+    const USDC_OPTIMISM = '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85';
+    backendAnswers({ symbols: {}, tokens: { [`8453:${USDC_BASE.toLowerCase()}`]: 1.0001 } });
+    post.mockResolvedValue({
+      data: { data: [priced('opt-mainnet', USDC_OPTIMISM.toLowerCase(), '0.9998')] },
+    });
+
+    // Were the Optimism token sent to the backend, it would come back unpriced
+    // and be remembered for minutes as having no price.
+    await expect(
+      fetchTokenPricesByAddress([
+        { chainId: 8453, address: USDC_BASE },
+        { chainId: 10, address: USDC_OPTIMISM },
+      ]),
+    ).resolves.toEqual({
+      [`8453:${USDC_BASE.toLowerCase()}`]: 1.0001,
+      [`10:${USDC_OPTIMISM.toLowerCase()}`]: 0.9998,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      tokens: [{ chainId: 8453, address: USDC_BASE.toLowerCase() }],
+    });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post.mock.calls[0][1]).toEqual({
+      addresses: [{ network: 'opt-mainnet', address: USDC_OPTIMISM.toLowerCase() }],
+    });
   });
 
   it('shares one cached answer instead of asking the backend again', async () => {

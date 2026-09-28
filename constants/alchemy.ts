@@ -39,6 +39,20 @@ export const ALCHEMY_NETWORKS: Record<number, string> = {
   [bsc.id]: 'bnb-mainnet',
 };
 
+/**
+ * Chains the backend's price route (`POST /accounts/v1/prices`) prices by
+ * address, its own `ALCHEMY_PRICE_NETWORKS`. The route leaves out a chain it
+ * doesn't know, which the app would take for "no price", so tokens on a chain
+ * added to `ALCHEMY_NETWORKS` before the backend has it go to Alchemy directly.
+ */
+export const BACKEND_PRICE_CHAIN_IDS: ReadonlySet<number> = new Set([
+  mainnet.id,
+  base.id,
+  polygon.id,
+  arbitrum.id,
+  bsc.id,
+]);
+
 export const ALCHEMY_PRICES_URL = `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens`;
 
 /**

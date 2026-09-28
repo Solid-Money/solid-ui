@@ -10,6 +10,7 @@ import {
   ALCHEMY_PRICE_MAX_NETWORKS,
   ALCHEMY_PRICES_URL,
   ALCHEMY_REQUEST_TIMEOUT_MS,
+  BACKEND_PRICE_CHAIN_IDS,
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
@@ -604,13 +605,17 @@ const alchemyPricesBySymbol = createBatchedLoader<number>({
 const alchemyPricesByAddress = createBatchedLoader<number>({
   ...alchemyPriceCaching,
   // First fit, so tokens keep their order and each request stays within both
-  // the address and the network cap.
+  // the address and the network cap. Tokens on chains the backend doesn't cover
+  // never share a request with ones it does, so they can go to Alchemy alone.
   chunk: keys => {
-    const chunks: { keys: string[]; networks: Set<string> }[] = [];
+    const chunks: { keys: string[]; networks: Set<string>; viaBackend: boolean }[] = [];
     for (const key of keys) {
-      const network = ALCHEMY_NETWORKS[Number(key.split(':')[0])];
+      const chainId = Number(key.split(':')[0]);
+      const network = ALCHEMY_NETWORKS[chainId];
+      const viaBackend = BACKEND_PRICE_CHAIN_IDS.has(chainId);
       const chunk = chunks.find(
         c =>
+          c.viaBackend === viaBackend &&
           c.keys.length < ALCHEMY_PRICE_BATCH_SIZE &&
           (c.networks.has(network) || c.networks.size < ALCHEMY_PRICE_MAX_NETWORKS),
       );
@@ -618,7 +623,7 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
         chunk.keys.push(key);
         chunk.networks.add(network);
       } else {
-        chunks.push({ keys: [key], networks: new Set([network]) });
+        chunks.push({ keys: [key], networks: new Set([network]), viaBackend });
       }
     }
     return chunks.map(c => c.keys);
@@ -629,9 +634,12 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
       return { chainId: Number(chainId), network: ALCHEMY_NETWORKS[Number(chainId)], address };
     });
 
-    const sendable = tokens
-      .filter(({ address }) => ADDRESS_PATTERN.test(address))
-      .map(({ chainId, address }) => ({ chainId, address }));
+    const viaBackend = tokens.every(({ chainId }) => BACKEND_PRICE_CHAIN_IDS.has(chainId));
+    const sendable = viaBackend
+      ? tokens
+          .filter(({ address }) => ADDRESS_PATTERN.test(address))
+          .map(({ chainId, address }) => ({ chainId, address }))
+      : [];
     const fromBackend = sendable.length
       ? await fetchBackendPrices({ tokens: sendable })
       : undefined;
