@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { CreditCard } from 'lucide-react-native';
+import { CreditCard, Zap } from 'lucide-react-native';
 
 import FundExternalWallet from '@/assets/images/fund-external-wallet';
 import FundMoveSavings from '@/assets/images/fund-move-savings';
@@ -42,6 +42,12 @@ type CardFundOptionsProps = {
    * opt in individually, as they do for the local-currency rows.
    */
   onBuyCryptoPress?: () => void;
+  /**
+   * Opens the Cash App onramp, funding the card rather than the wallet. Omit
+   * to hide the row — the funding modals opt in individually, and the flow is
+   * US-only, so the host gates on availability before passing it.
+   */
+  onCashAppPress?: () => void;
   isExternalWalletLoading?: boolean;
   /**
    * Which groups this issuer offers. Defaults to the full Rain set, so the
@@ -63,6 +69,7 @@ const CardFundOptions = ({
   onUsdPress,
   onLocalCurrencyPress,
   onBuyCryptoPress,
+  onCashAppPress,
   isExternalWalletLoading,
   sections = RAIN_CARD_FUND_SECTIONS,
   moveFromSolidCopy = CARD_FUND_MOVE_COPY.rain,
@@ -145,6 +152,15 @@ const CardFundOptions = ({
               title="Buy crypto"
               subtitle="Card, Apple Pay, Google Pay and more"
               onPress={onBuyCryptoPress}
+            />
+          ) : null}
+          {onCashAppPress ? (
+            <CardFundRow
+              icon={<Zap color="#94F27F" size={22} strokeWidth={1.5} />}
+              title="Cash App"
+              subtitle="Pay from your Cash App balance"
+              chips={['Instant']}
+              onPress={onCashAppPress}
             />
           ) : null}
         </CardFundGroup>

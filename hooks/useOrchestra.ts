@@ -55,8 +55,9 @@ export function useOrchestraConfig(countryCode?: string, enabled = true) {
  * only because the backend has no geoip — the verdict is still theirs, and they
  * enforce it again on order creation.
  *
- * Shared by the cash list's USD chips and the USD methods screen, which ask the
- * same question and share the one cached config call.
+ * Shared by the cash list's USD chips, the USD methods screen and the card
+ * funding modals' Cash App row, which ask the same question and share the one
+ * cached config call.
  */
 export function useIsCashAppAvailable() {
   const { countryCode, isResolving } = useCashAppDepositAvailability();
@@ -73,8 +74,15 @@ export function useIsCashAppAvailable() {
  */
 export function useCreateOrchestraOnramp() {
   return useMutation({
-    mutationFn: ({ amountFiatUsd, countryCode }: { amountFiatUsd: string; countryCode?: string }) =>
-      withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode)),
+    mutationFn: ({
+      amountFiatUsd,
+      countryCode,
+      destination,
+    }: {
+      amountFiatUsd: string;
+      countryCode?: string;
+      destination?: 'wallet' | 'card';
+    }) => withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode, destination)),
     retry: false,
   });
 }

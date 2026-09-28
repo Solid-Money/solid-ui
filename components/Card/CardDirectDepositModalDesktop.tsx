@@ -18,6 +18,7 @@ import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
+import { OrchestraFlowContent } from '@/components/Orchestra/OrchestraFlow';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -26,6 +27,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useOrchestraCardEntry } from '@/hooks/useOrchestraCardEntry';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
@@ -34,6 +36,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
+import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -61,6 +64,16 @@ const MODAL_STATES: Record<Step, ModalState> = {
  * this one unmounts leaves the closing sheet's view on top of the new one,
  * swallowing its taps.
  */
+/**
+ * Both embedded flows render in this shell, so the host asks whichever owns the
+ * step for its title and back target rather than keeping a second copy.
+ */
+const getEmbeddedBackTarget = (modal: DepositModal) =>
+  isOrchestraModal(modal) ? getOrchestraBackTarget(modal) : getBuyCryptoBackTarget(modal);
+
+const getEmbeddedTitle = (modal: DepositModal) =>
+  isOrchestraModal(modal) ? getOrchestraTitle(modal) : getBuyCryptoTitle(modal);
+
 const HANDOFF_DELAY_MS = 260;
 
 const TITLE_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
@@ -175,6 +188,10 @@ export default function CardDirectDepositModal({
     [goToStep, handleOpenChange],
   );
   const { handleBuyCryptoPress } = useBuyCryptoEntry(navigateBuyCrypto);
+  // Cash App reuses the embedded-flow machinery: its steps are DepositModal
+  // values too, and navigateBuyCrypto already maps CLOSE and OPEN_OPTIONS onto
+  // this modal's own actions.
+  const { openCashApp, isAvailable: isCashAppAvailable } = useOrchestraCardEntry(navigateBuyCrypto);
 
   useEffect(
     () => () => {
@@ -343,10 +360,10 @@ export default function CardDirectDepositModal({
 
   const handleBack = useCallback(() => {
     if (buyCryptoModal) {
-      const target = getBuyCryptoBackTarget(buyCryptoModal);
+      const target = getEmbeddedBackTarget(buyCryptoModal);
       if (target === 'entry') {
-        // The widget is opened from the USD methods; the TransFi screens from
-        // the options themselves.
+        // The widget is opened from the USD methods; the TransFi and Cash App
+        // screens from the options themselves.
         const isWidget = buyCryptoModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name;
         goToStep(isWidget ? 'usdMethods' : 'options');
       } else if (target) {
@@ -366,11 +383,11 @@ export default function CardDirectDepositModal({
 
   const { current: step, previous: previousModal } = stepState;
   const canGoBack = buyCryptoModal
-    ? getBuyCryptoBackTarget(buyCryptoModal) !== null
+    ? getEmbeddedBackTarget(buyCryptoModal) !== null
     : step !== 'options';
 
   const title = (() => {
-    if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
+    if (buyCryptoModal) return getEmbeddedTitle(buyCryptoModal);
     if (step === 'usdMethods') return 'Deposit US Dollars';
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
@@ -388,7 +405,11 @@ export default function CardDirectDepositModal({
 
   const content = (() => {
     if (buyCryptoModal) {
-      return <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />;
+      return isOrchestraModal(buyCryptoModal) ? (
+        <OrchestraFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />
+      ) : (
+        <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />
+      );
     }
     if (step === 'options') {
       return (
@@ -398,6 +419,7 @@ export default function CardDirectDepositModal({
           onExternalWalletPress={handleConnectWallet}
           onUsdPress={handleUsdPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
+          onCashAppPress={isCashAppAvailable ? openCashApp : undefined}
           isExternalWalletLoading={isWalletOpen}
         />
       );
