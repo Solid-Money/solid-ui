@@ -39,9 +39,34 @@ export const ALCHEMY_NETWORKS: Record<number, string> = {
   [bsc.id]: 'bnb-mainnet',
 };
 
+/**
+ * Chains the backend's price route (`POST /accounts/v1/prices`) prices by
+ * address, its own `ALCHEMY_PRICE_NETWORKS`. The route leaves out a chain it
+ * doesn't know, which the app would take for "no price", so tokens on a chain
+ * added to `ALCHEMY_NETWORKS` before the backend has it go to Alchemy directly.
+ */
+export const BACKEND_PRICE_CHAIN_IDS: ReadonlySet<number> = new Set([
+  mainnet.id,
+  base.id,
+  polygon.id,
+  arbitrum.id,
+  bsc.id,
+]);
+
 export const ALCHEMY_PRICES_URL = `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens`;
 
-/** Addresses per `tokens/by-address` request — Alchemy rejects more than this. */
+/**
+ * Symbols per `tokens/by-symbol` request, and addresses per `tokens/by-address`
+ * request — Alchemy rejects more than this. A request costs the same 40 CU and
+ * one unit of the hourly token_price quota however many it carries.
+ */
 export const ALCHEMY_PRICE_BATCH_SIZE = 25;
+
+/**
+ * Distinct networks per `tokens/by-address` request, per Alchemy's docs. The
+ * endpoint accepts more today, but a request past a documented limit is one
+ * enforcement change away from failing whole.
+ */
+export const ALCHEMY_PRICE_MAX_NETWORKS = 3;
 
 export const ALCHEMY_REQUEST_TIMEOUT_MS = 10_000;

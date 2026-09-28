@@ -32,7 +32,11 @@ export const fetchVaultBalance = async (
       args: [safeAddress],
       chainId: chainId,
     }),
-    staleTime: VAULT_STALE_TIME,
+    // Always read the chain (concurrent reads of one vault still share a
+    // request): the vault queries are refetched when SSE reports a balance
+    // change, and a read cached from just before the transaction would answer
+    // that refetch with the old balance until the next poll.
+    staleTime: 0,
   });
 
   return Number(formatUnits(balance, decimals)) || 0;

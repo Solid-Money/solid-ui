@@ -2,15 +2,7 @@ import { Platform } from 'react-native';
 import { Chain, createPublicClient } from 'viem';
 import { createConfig, http } from 'wagmi';
 import { getWalletClient } from 'wagmi/actions';
-import {
-  arbitrum,
-  base,
-  baseSepolia,
-  bsc,
-  fuse,
-  mainnet,
-  polygon,
-} from 'wagmi/chains';
+import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'wagmi/chains';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
@@ -42,11 +34,31 @@ const transports: Record<number, ReturnType<typeof http>> = {
   [bsc.id]: http(rpcUrls[bsc.id]),
 };
 
-export const publicClient = (chainId: number) =>
+const createChainClient = (chainId: number) =>
   createPublicClient({
     chain: chains.find(chain => chain.id === chainId),
     transport: http(rpcUrls[chainId]),
+    // Contract reads made in the same tick go out as one Multicall3 eth_call,
+    // billed by Alchemy as a single 26 CU call however many reads it carries.
+    // viem only batches plain reads (no account, value or gas) and falls back
+    // to a normal eth_call on a chain without Multicall3.
+    batch: { multicall: true },
   });
+
+const publicClients = new Map<number, ReturnType<typeof createChainClient>>();
+
+/**
+ * One client per chain. viem batches per client, so the fresh client every
+ * call used to build could never share a request with anything.
+ */
+export const publicClient = (chainId: number) => {
+  let client = publicClients.get(chainId);
+  if (!client) {
+    client = createChainClient(chainId);
+    publicClients.set(chainId, client);
+  }
+  return client;
+};
 
 export const getWallet = (chainId: number) => {
   return getWalletClient(config, { chainId });
