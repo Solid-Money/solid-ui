@@ -1,10 +1,13 @@
 import { Text } from '@/components/ui/text';
+import { useDepositFeeQuote } from '@/hooks/useDepositFeeQuote';
 import { CardProvider } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   DepositFeeProduct,
   formatDepositFeePercent,
-  getDepositFeeBps,
+  getDepositFeeDestinationType,
+  getDepositFeeRatePpm,
+  resolveDepositFeeRatePpm,
 } from '@/lib/utils/depositFee';
 
 type DepositFeeNoticeProps = {
@@ -17,7 +20,7 @@ type DepositFeeNoticeProps = {
   provider: CardProvider | null | undefined;
   /** Chain the deposit is sent on. */
   chainId: number;
-  /** Currency being sent. */
+  /** Currency being sent. The backend prices the deposit by it. */
   symbol?: string;
   /** Share token a savings deposit mints. */
   vaultToken?: string;
@@ -26,7 +29,9 @@ type DepositFeeNoticeProps = {
 
 /**
  * The fee line under a deposit address. Renders nothing when the deposit is
- * free; `getDepositFeeBps` decides when that is.
+ * free, and nothing until the backend has said at what rate it is not:
+ * `getDepositFeeRatePpm` decides which deposits can be charged, and the
+ * backend's quote what they pay.
  */
 const DepositFeeNotice = ({
   product,
@@ -36,13 +41,23 @@ const DepositFeeNotice = ({
   vaultToken,
   className,
 }: DepositFeeNoticeProps) => {
-  const bps = getDepositFeeBps({ provider, product, chainId, symbol, vaultToken });
+  const rulePpm = getDepositFeeRatePpm({ provider, product, chainId, symbol, vaultToken });
+  const { data: quote, isError } = useDepositFeeQuote({
+    destinationType: getDepositFeeDestinationType(product),
+    chainId,
+    symbol,
+    provider,
+    enabled: rulePpm > 0,
+  });
+  // No currency means nothing to ask the backend about, which is the same as it
+  // not answering: quote the default.
+  const ratePpm = resolveDepositFeeRatePpm({ rulePpm, quote, quoteFailed: isError || !symbol });
 
-  if (!bps) return null;
+  if (!ratePpm) return null;
 
   return (
     <Text className={cn('text-center text-sm text-white/50', className)}>
-      {`${formatDepositFeePercent(bps)} fee will be charged for deposits on this network`}
+      {`${formatDepositFeePercent(ratePpm)} fee will be charged for deposits on this network`}
     </Text>
   );
 };
