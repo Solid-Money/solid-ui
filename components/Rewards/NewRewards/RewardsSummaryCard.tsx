@@ -114,13 +114,14 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
   >
     <Text
       className="text-base text-white/70"
-      style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
+      style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 20 }}
     >
       {label}
     </Text>
     <Text
       className="text-[26px] text-white"
-      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 26 }}
+      // Native clips glyphs to the line box, and Mona Sans needs ~1.15em to fit.
+      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
     >
       {formatBalanceUSD(value)}
     </Text>
@@ -141,7 +142,7 @@ const RewardsSummaryCard = ({
   onReferralsPress,
 }: RewardsSummaryCardProps) => {
   return (
-    <View className="relative mx-4 h-40 overflow-hidden rounded-twice bg-card">
+    <View className="relative mx-4 min-h-40 overflow-hidden rounded-twice bg-card">
       <RewardsGradient />
 
       <View className="h-16 flex-row items-center px-3">
@@ -154,7 +155,7 @@ const RewardsSummaryCard = ({
         </Text>
       </View>
 
-      <View className="h-24 flex-row">
+      <View className="min-h-24 flex-row">
         <CashbackDetailsSheet
           trigger={<SummaryStat label="Cashback" value={cashback} />}
           {...cashbackDetails}
