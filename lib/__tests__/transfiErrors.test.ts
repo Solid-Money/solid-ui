@@ -3,6 +3,7 @@
 import {
   asTransfiError,
   canCompleteProfile,
+  kycUpgradeLevel,
   toTransfiError,
   TRANSFI_ERROR_CODE,
   TransfiError,
@@ -114,6 +115,44 @@ describe('transfiErrorTitle', () => {
     expect(transfiErrorTitle(new TransfiError('SOME_NEW_CODE', 'adjust_amount', '', 400))).toBe(
       'Amount not accepted',
     );
+  });
+
+  it('asks for an upgrade when an order breaches the current KYC level', () => {
+    for (const code of [
+      TRANSFI_ERROR_CODE.STANDARD_KYC_REQUIRED,
+      TRANSFI_ERROR_CODE.ENHANCED_KYC_REQUIRED,
+    ]) {
+      expect(transfiErrorTitle(new TransfiError(code, 'complete_kyc', '', 400))).toBe(
+        'Upgrade your verification',
+      );
+    }
+  });
+});
+
+describe('kycUpgradeLevel', () => {
+  it('names the level a limit refusal asks for', () => {
+    expect(
+      kycUpgradeLevel(
+        new TransfiError(TRANSFI_ERROR_CODE.STANDARD_KYC_REQUIRED, 'complete_kyc', '', 400),
+      ),
+    ).toBe('standard');
+    expect(
+      kycUpgradeLevel(
+        new TransfiError(TRANSFI_ERROR_CODE.ENHANCED_KYC_REQUIRED, 'complete_kyc', '', 400),
+      ),
+    ).toBe('advanced');
+  });
+
+  it('is undefined for every other verification failure', () => {
+    // A user with no verification at all still goes through our identity flow.
+    expect(
+      kycUpgradeLevel(new TransfiError(TRANSFI_ERROR_CODE.KYC_REQUIRED, 'complete_kyc', '', 412)),
+    ).toBeUndefined();
+    expect(
+      kycUpgradeLevel(
+        new TransfiError(TRANSFI_ERROR_CODE.PROFILE_DATA_INCOMPLETE, 'complete_kyc', '', 412),
+      ),
+    ).toBeUndefined();
   });
 });
 

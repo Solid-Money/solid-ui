@@ -143,7 +143,9 @@ import {
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
+  TransfiKycLevel,
   TransfiKycRetryResponse,
+  TransfiKycUpgradeResponse,
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
@@ -1547,6 +1549,27 @@ export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
   });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/**
+ * Ask TransFi for its verification page for the next KYC level, after an order
+ * was refused with STANDARD_KYC_REQUIRED / ENHANCED_KYC_REQUIRED. Resolves with
+ * `kycUrl` to open, or `status: 'pending'` when TransFi is already reviewing.
+ */
+export const upgradeTransfiKyc = async (
+  level: TransfiKycLevel,
+): Promise<TransfiKycUpgradeResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/upgrade`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+      body: JSON.stringify({ level }),
+    },
+  );
   if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };
