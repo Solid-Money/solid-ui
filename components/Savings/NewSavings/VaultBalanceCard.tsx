@@ -55,15 +55,16 @@ const VaultStat = ({
       </>
     ) : (
       <>
-        {/* A line box shorter than the 26px glyphs clips their tops on iOS, so
-            the value gets 32px and the margins give the difference back. */}
+        {/* Native clips glyphs to the line box (iOS cuts the top, Android the
+            bottom) and Mona Sans needs ~1.15em to fit, so both lines get that
+            and the margins give the difference back. */}
         <Text
           className="mt-[3px] text-[26px] font-semibold leading-8 text-white"
           {...singleLineFit}
         >
           {formatCompactVaultUsd(value)}
         </Text>
-        <Text className="mt-[5px] text-[16px] leading-[17px] text-white/70">
+        <Text className="mt-[3px] text-[16px] leading-5 text-white/70">
           {formatExactVaultUsd(value)}
         </Text>
       </>
