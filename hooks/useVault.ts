@@ -17,14 +17,13 @@ const VAULT_REFETCH_INTERVAL = secondsToMilliseconds(3); // Poll every 3 seconds
 
 export const VAULT = 'vault';
 
-export const fetchVaultBalance = async (
+const fetchVaultBalanceWei = (
   queryClient: QueryClient,
   safeAddress: Address,
   chainId: number,
   vaultAddress: Address,
-  decimals = 6,
-) => {
-  const balance = await queryClient.fetchQuery({
+) =>
+  queryClient.fetchQuery({
     ...readContractQueryOptions(config, {
       abi: FuseVault,
       address: vaultAddress,
@@ -35,6 +34,14 @@ export const fetchVaultBalance = async (
     staleTime: VAULT_STALE_TIME,
   });
 
+export const fetchVaultBalance = async (
+  queryClient: QueryClient,
+  safeAddress: Address,
+  chainId: number,
+  vaultAddress: Address,
+  decimals = 6,
+) => {
+  const balance = await fetchVaultBalanceWei(queryClient, safeAddress, chainId, vaultAddress);
   return Number(formatUnits(balance, decimals)) || 0;
 };
 
@@ -50,13 +57,15 @@ export const useFuseVaultBalance = (safeAddress: Address) => {
   });
 };
 
+// soFUSE and soETH have 18 decimals, more than a JS number holds, so these two
+// return the raw wei balance and leave formatting to the caller.
 export const useSoFuseVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: [VAULT, 'balanceSoFuse', safeAddress],
+    queryKey: [VAULT, 'balanceSoFuseWei', safeAddress],
     queryFn: () =>
-      fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.fuseVault, 18),
+      fetchVaultBalanceWei(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.fuseVault),
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
@@ -67,9 +76,9 @@ export const useSoEthVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: [VAULT, 'balanceSoEth', safeAddress],
+    queryKey: [VAULT, 'balanceSoEthWei', safeAddress],
     queryFn: () =>
-      fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.soEthVault, 18),
+      fetchVaultBalanceWei(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.soEthVault),
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
