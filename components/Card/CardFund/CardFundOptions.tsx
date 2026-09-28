@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { CreditCard, Zap } from 'lucide-react-native';
+import { CreditCard } from 'lucide-react-native';
 
 import FundExternalWallet from '@/assets/images/fund-external-wallet';
 import FundMoveSavings from '@/assets/images/fund-move-savings';
@@ -21,6 +21,7 @@ import {
   CARD_FUND_LOCAL_CURRENCIES,
   getCardFundLocalPaymentMethods,
 } from '@/components/Card/CardFund/localCurrencies';
+import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
@@ -30,8 +31,16 @@ type CardFundOptionsProps = {
   onTokenPress: (symbol: string) => void;
   onMoveFromSavingsPress?: () => void;
   onExternalWalletPress?: () => void;
-  /** USD — opens its methods: the virtual account (ACH / Wire) or Apple Pay. */
+  /**
+   * USD — opens its methods: the virtual account (ACH / Wire), Cash App where
+   * it is offered, and Apple Pay.
+   */
   onUsdPress?: () => void;
+  /**
+   * Whether USD's methods include Cash App, so the USD row's chips name it.
+   * The Cash App row itself is on the host's USD step, beside Apple Pay.
+   */
+  isCashAppAvailable?: boolean;
   /**
    * A local currency (BRL, BDT…) — opens the buy-crypto onramp for it. Omit to
    * hide the local-currency rows entirely.
@@ -42,12 +51,6 @@ type CardFundOptionsProps = {
    * opt in individually, as they do for the local-currency rows.
    */
   onBuyCryptoPress?: () => void;
-  /**
-   * Opens the Cash App onramp, funding the card rather than the wallet. Omit
-   * to hide the row — the funding modals opt in individually, and the flow is
-   * US-only, so the host gates on availability before passing it.
-   */
-  onCashAppPress?: () => void;
   isExternalWalletLoading?: boolean;
   /**
    * Which groups this issuer offers. Defaults to the full Rain set, so the
@@ -67,9 +70,9 @@ const CardFundOptions = ({
   onMoveFromSavingsPress,
   onExternalWalletPress,
   onUsdPress,
+  isCashAppAvailable = false,
   onLocalCurrencyPress,
   onBuyCryptoPress,
-  onCashAppPress,
   isExternalWalletLoading,
   sections = RAIN_CARD_FUND_SECTIONS,
   moveFromSolidCopy = CARD_FUND_MOVE_COPY.rain,
@@ -109,7 +112,7 @@ const CardFundOptions = ({
                 <Image source={CARD_FUND_USD_ICON} style={TOKEN_ICON_STYLE} contentFit="cover" />
               }
               title="USD"
-              chips={['ACH', 'Wire', 'Apple Pay']}
+              chips={getUsdMethodChips(isCashAppAvailable)}
               onPress={onUsdPress}
             />
           ) : null}
@@ -152,15 +155,6 @@ const CardFundOptions = ({
               title="Buy crypto"
               subtitle="Card, Apple Pay, Google Pay and more"
               onPress={onBuyCryptoPress}
-            />
-          ) : null}
-          {onCashAppPress ? (
-            <CardFundRow
-              icon={<Zap color="#94F27F" size={22} strokeWidth={1.5} />}
-              title="Cash App"
-              subtitle="Pay from your Cash App balance"
-              chips={['Instant']}
-              onPress={onCashAppPress}
             />
           ) : null}
         </CardFundGroup>

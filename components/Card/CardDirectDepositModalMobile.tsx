@@ -178,8 +178,9 @@ export default function CardDirectDepositModalMobile({
     [],
   );
 
-  // USD lists its methods — the bank rail and Apple Pay — as the wallet's cash
-  // flow does, rather than going straight to the bank rail.
+  // USD lists its methods — the bank rail, Cash App where it is offered, and
+  // Apple Pay — as the wallet's cash flow does, rather than going straight to
+  // the bank rail.
   const handleUsdPress = useCallback(() => goToStep('usdMethods'), [goToStep]);
 
   // First-time setup stacks above this funding dialog so closing it returns here.
@@ -294,10 +295,12 @@ export default function CardDirectDepositModalMobile({
     if (buyCryptoModal) {
       const target = getEmbeddedBackTarget(buyCryptoModal);
       if (target === 'entry') {
-        // The widget is opened from the USD methods; the TransFi and Cash App
+        // The widget and Cash App are opened from the USD methods; the TransFi
         // screens from the options themselves.
-        const isWidget = buyCryptoModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name;
-        goToStep(isWidget ? 'usdMethods' : 'options');
+        const isUsdMethod =
+          buyCryptoModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name ||
+          isOrchestraModal(buyCryptoModal);
+        goToStep(isUsdMethod ? 'usdMethods' : 'options');
       } else if (target) {
         navigateBuyCrypto(target);
       }
@@ -346,8 +349,8 @@ export default function CardDirectDepositModalMobile({
           onMoveFromSavingsPress={handleTransferFromWallet}
           onExternalWalletPress={handleExternalWallet}
           onUsdPress={handleUsdPress}
+          isCashAppAvailable={isCashAppAvailable}
           onLocalCurrencyPress={handleLocalCurrencyPress}
-          onCashAppPress={isCashAppAvailable ? openCashApp : undefined}
         />
       );
     }
@@ -356,6 +359,7 @@ export default function CardDirectDepositModalMobile({
       return (
         <UsdMethodList
           onBankTransferPress={handleBankTransferPress}
+          onCashAppPress={isCashAppAvailable ? openCashApp : undefined}
           onApplePayPress={handleApplePayPress}
         />
       );

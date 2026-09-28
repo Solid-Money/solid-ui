@@ -18,12 +18,10 @@ import {
   WirexMoveAmount,
   WirexMoveHoldings,
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
-import { OrchestraFlowContent } from '@/components/Orchestra/OrchestraFlow';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useOrchestraCardEntry } from '@/hooks/useOrchestraCardEntry';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import {
@@ -31,23 +29,12 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
-import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
 import { CardProvider, DepositModal } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { MovableHolding } from '@/lib/utils/cardFundMove';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 type Step = 'options' | 'networks' | 'address' | 'moveHoldings' | 'moveAmount';
-
-/**
- * Both embedded flows render in this shell, so the host asks whichever owns the
- * step for its title and back target rather than keeping a second copy.
- */
-const getEmbeddedBackTarget = (modal: DepositModal) =>
-  isOrchestraModal(modal) ? getOrchestraBackTarget(modal) : getBuyCryptoBackTarget(modal);
-
-const getEmbeddedTitle = (modal: DepositModal) =>
-  isOrchestraModal(modal) ? getOrchestraTitle(modal) : getBuyCryptoTitle(modal);
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
@@ -178,10 +165,6 @@ export default function WirexCardFundModal({
     [goToStep, handleOpenChange],
   );
   const { handleBuyCryptoPress } = useBuyCryptoEntry(navigateBuyCrypto);
-  // Cash App reuses the embedded-flow machinery: its steps are DepositModal
-  // values too, and navigateBuyCrypto already maps CLOSE and OPEN_OPTIONS onto
-  // this modal's own actions.
-  const { openCashApp, isAvailable: isCashAppAvailable } = useOrchestraCardEntry(navigateBuyCrypto);
 
   const handleTokenPress = useCallback(
     (symbol: string) => {
@@ -264,7 +247,7 @@ export default function WirexCardFundModal({
 
   const handleBack = useCallback(() => {
     if (buyCryptoModal) {
-      const target = getEmbeddedBackTarget(buyCryptoModal);
+      const target = getBuyCryptoBackTarget(buyCryptoModal);
       if (target === 'entry') {
         goToStep('options');
       } else if (target) {
@@ -285,11 +268,11 @@ export default function WirexCardFundModal({
 
   const { current: step, previous: previousModal } = stepState;
   const canGoBack = buyCryptoModal
-    ? getEmbeddedBackTarget(buyCryptoModal) !== null
+    ? getBuyCryptoBackTarget(buyCryptoModal) !== null
     : step !== 'options';
 
   const title = (() => {
-    if (buyCryptoModal) return getEmbeddedTitle(buyCryptoModal);
+    if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
     if (step === 'moveHoldings') return CARD_FUND_MOVE_COPY.wirex.title;
@@ -308,11 +291,7 @@ export default function WirexCardFundModal({
 
   const content = (() => {
     if (buyCryptoModal) {
-      return isOrchestraModal(buyCryptoModal) ? (
-        <OrchestraFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />
-      ) : (
-        <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />
-      );
+      return <BuyCryptoFlowContent modal={buyCryptoModal} navigate={navigateBuyCrypto} />;
     }
     if (step === 'options') {
       return (
@@ -320,7 +299,6 @@ export default function WirexCardFundModal({
           onTokenPress={handleTokenPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
           onMoveFromSavingsPress={handleMoveFromWalletPress}
-          onCashAppPress={isCashAppAvailable ? openCashApp : undefined}
           sections={WIREX_CARD_FUND_SECTIONS}
           moveFromSolidCopy={CARD_FUND_MOVE_COPY.wirex}
         />
