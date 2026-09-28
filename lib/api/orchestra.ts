@@ -68,12 +68,17 @@ export const getOrchestraConfig = async (
 export const createOrchestraOnramp = async (
   amountFiatUsd: string,
   countryCode?: string,
+  destination?: 'wallet' | 'card',
 ): Promise<OrchestraOnrampOrder> => {
   const response = await fetch(`${ORCHESTRA_BASE}/onramp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...orchestraHeaders() },
     credentials: 'include',
-    body: JSON.stringify({ amountFiatUsd, ...(countryCode ? { countryCode } : {}) }),
+    body: JSON.stringify({
+      amountFiatUsd,
+      ...(countryCode ? { countryCode } : {}),
+      ...(destination ? { destination } : {}),
+    }),
   });
 
   if (!response.ok) throw await toOrchestraError(response);

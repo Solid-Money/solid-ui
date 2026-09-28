@@ -42,6 +42,7 @@ export const OrchestraAmount = () => {
   const setAmountUsd = useOrchestraStore(state => state.setAmountUsd);
   const setOrder = useOrchestraStore(state => state.setOrder);
   const setError = useOrchestraStore(state => state.setError);
+  const destination = useOrchestraStore(state => state.destination);
 
   useEffect(() => {
     track(TRACKING_EVENTS.ORCHESTRA_AMOUNT_VIEWED);
@@ -109,12 +110,13 @@ export const OrchestraAmount = () => {
     // Two decimal places, because the box holds whatever is being typed and
     // "10." or "10.999" should not reach the wire.
     createOrder(
-      { amountFiatUsd: amountNum.toFixed(2), countryCode },
+      { amountFiatUsd: amountNum.toFixed(2), countryCode, destination },
       {
         onSuccess: order => {
           track(TRACKING_EVENTS.ORCHESTRA_ORDER_CREATED, {
             order_id: order.orderId,
             amount_usd: amountNum,
+            destination,
             amount_mode: order.amountMode,
             has_cash_app_link: Boolean(order.paymentLinks?.cashApp),
           });
@@ -173,7 +175,8 @@ export const OrchestraAmount = () => {
         </View>
         <Text className="text-sm font-medium leading-5 text-white/70">
           You&apos;ll receive {symbol}
-          {network ? ` on ${network}` : ''} in your wallet
+          {network ? ` on ${network}` : ''}{' '}
+          {destination === 'card' ? 'in your card balance' : 'in your wallet'}
         </Text>
       </View>
 
