@@ -2893,6 +2893,21 @@ export interface TransfiKycRetryResponse extends TransfiStatusResponse {
   kycUrl?: string;
 }
 
+/** A TransFi KYC level above basic screening, each with its own hosted page. */
+export type TransfiKycLevel = 'standard' | 'advanced';
+
+/**
+ * Result of POST /transfi/kyc/upgrade: TransFi's page for the next KYC level, or
+ * `pending` when TransFi is already reviewing a submission for it. `level` can
+ * be `standard` when `advanced` was asked for — TransFi only opens the advanced
+ * level once standard is approved.
+ */
+export interface TransfiKycUpgradeResponse {
+  level: TransfiKycLevel;
+  status: 'started' | 'pending';
+  kycUrl?: string;
+}
+
 /**
  * Address/phone a user fills in to unblock TRANSFI_PROFILE_DATA_INCOMPLETE.
  * Only the fields they were told were missing need to be sent.

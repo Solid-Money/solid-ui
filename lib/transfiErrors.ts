@@ -7,6 +7,8 @@
  * the headline, and which button the screen offers next.
  */
 
+import type { TransfiKycLevel } from '@/lib/types';
+
 /** Mirrors TransfiErrorAction on the backend. */
 export type TransfiErrorAction =
   | 'retry'
@@ -22,6 +24,9 @@ export const TRANSFI_ERROR_CODE = {
   PROFILE_DATA_INCOMPLETE: 'TRANSFI_PROFILE_DATA_INCOMPLETE',
   KYC_REQUIRED: 'TRANSFI_KYC_REQUIRED',
   QUOTES_LIMIT_ERROR: 'QUOTES_LIMIT_ERROR',
+  /** The order breached the limits of the user's current TransFi KYC level. */
+  STANDARD_KYC_REQUIRED: 'STANDARD_KYC_REQUIRED',
+  ENHANCED_KYC_REQUIRED: 'ENHANCED_KYC_REQUIRED',
   UNKNOWN: 'TRANSFI_UNKNOWN_ERROR',
 } as const;
 
@@ -67,6 +72,8 @@ const TITLE_BY_CODE: Record<string, string> = {
   [TRANSFI_ERROR_CODE.PROFILE_DATA_INCOMPLETE]: 'A few details missing',
   MAXIMUM_LIMIT_BREACHED: 'Purchase limit reached',
   DECLINED_BY_BANK: 'Your bank declined this',
+  [TRANSFI_ERROR_CODE.STANDARD_KYC_REQUIRED]: 'Upgrade your verification',
+  [TRANSFI_ERROR_CODE.ENHANCED_KYC_REQUIRED]: 'Upgrade your verification',
 };
 
 const TITLE_BY_ACTION: Record<TransfiErrorAction, string> = {
@@ -81,6 +88,23 @@ const TITLE_BY_ACTION: Record<TransfiErrorAction, string> = {
 
 export const transfiErrorTitle = (error: TransfiError): string =>
   TITLE_BY_CODE[error.code] ?? TITLE_BY_ACTION[error.action];
+
+/**
+ * The KYC level an order refusal asks for, when it is a limit refusal: the user
+ * has bought up to what their current TransFi level allows and needs the next
+ * one. Only TransFi's own verification page can give them that — our identity
+ * flow is already behind them, and re-running it just lands back on `ready`.
+ */
+export const kycUpgradeLevel = (error: TransfiError): TransfiKycLevel | undefined => {
+  switch (error.code) {
+    case TRANSFI_ERROR_CODE.STANDARD_KYC_REQUIRED:
+      return 'standard';
+    case TRANSFI_ERROR_CODE.ENHANCED_KYC_REQUIRED:
+      return 'advanced';
+    default:
+      return undefined;
+  }
+};
 
 const ACTIONS: readonly TransfiErrorAction[] = [
   'retry',
