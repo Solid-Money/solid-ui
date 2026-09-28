@@ -2311,13 +2311,22 @@ export interface OnramperWidgetSession {
 }
 
 /**
+ * What an Onramper purchase funds: the wallet (the Safe), or the card by way of
+ * the card deposit address.
+ */
+export type OnramperDestination = 'wallet' | 'card';
+
+/**
  * Mints a signed widget URL for the signed-in user.
  *
  * The destination address is not sent — the backend reads it from the
  * authenticated user, so nothing the client says can redirect the delivery.
+ * `destination` picks only the route, which the backend resolves to that user's
+ * own Safe or card deposit address.
  */
 export const fetchOnramperWidgetSession = async (
   platform: 'web' | 'native',
+  destination: OnramperDestination,
 ): Promise<OnramperWidgetSession> => {
   const jwt = getJWTToken();
 
@@ -2331,7 +2340,7 @@ export const fetchOnramperWidgetSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ platform }),
+      body: JSON.stringify({ platform, destination }),
     },
   );
 

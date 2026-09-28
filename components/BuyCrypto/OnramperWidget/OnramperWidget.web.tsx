@@ -16,8 +16,8 @@ import {
  * missing entry raises no error — the step just quietly does nothing, deep
  * inside a provider's flow where we have no visibility at all.
  */
-export const OnramperWidget = (_props: OnramperWidgetProps) => {
-  const { data: session, isPending, isError, refetch } = useOnramperWidget();
+export const OnramperWidget = ({ destination = 'wallet' }: OnramperWidgetProps) => {
+  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination);
 
   if (isPending) return <OnramperWidgetLoading />;
   if (isError || !session) {

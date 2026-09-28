@@ -3,8 +3,7 @@ import { useCallback } from 'react';
 import { OrchestraNavigate } from '@/components/Orchestra/OrchestraNavigation';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
-import { useOrchestraConfig } from '@/hooks/useOrchestra';
+import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
@@ -22,9 +21,7 @@ import { useOrchestraStore } from '@/store/useOrchestraStore';
 export const useOrchestraCardEntry = (navigate: OrchestraNavigate) => {
   const reset = useOrchestraStore(state => state.reset);
   const setDestination = useOrchestraStore(state => state.setDestination);
-
-  const { countryCode, isResolving } = useCashAppDepositAvailability();
-  const { data: config } = useOrchestraConfig(countryCode, !isResolving);
+  const isAvailable = useIsCashAppAvailable();
 
   const openCashApp = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -40,7 +37,7 @@ export const useOrchestraCardEntry = (navigate: OrchestraNavigate) => {
     navigate(DEPOSIT_MODAL.OPEN_ORCHESTRA_AMOUNT);
   }, [navigate, reset, setDestination]);
 
-  return { openCashApp, isAvailable: config?.isAvailable === true };
+  return { openCashApp, isAvailable };
 };
 
 export default useOrchestraCardEntry;
