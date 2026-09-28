@@ -343,7 +343,7 @@ const useDepositOption = ({
     }
 
     if (isOnramperWidget) {
-      return <OnramperWidget onOutcome={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH)} />;
+      return <OnramperWidget onOutcome={() => setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD)} />;
     }
 
     if (isDepositUsdMethod) {
@@ -853,8 +853,8 @@ const useDepositOption = ({
       // The onramp is only ever entered by picking a currency on the cash screen.
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
     } else if (isOnramperWidget) {
-      // Entered from the cash screen's "Buy crypto" row.
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_CASH);
+      // Entered from the USD methods' "Apple Pay" row.
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
     } else if (isBuyCryptoCurrency || isBuyCryptoPaymentMethod) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
     } else if (isBuyCryptoPayment) {

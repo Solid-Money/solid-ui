@@ -44,9 +44,10 @@ export const BuyCryptoFlowContent = ({
       // Onramper's hosted widget. It lives here rather than in a switch of its
       // own because this is the generic embed point: the card funding modals
       // render whatever DepositModal they are handed, so one case reaches all
-      // three of them.
+      // three of them. Being opened from a card funding modal is also why it
+      // delivers to the card deposit address rather than the wallet.
       case DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name:
-        return <OnramperWidget />;
+        return <OnramperWidget destination="card" />;
       default:
         return null;
     }

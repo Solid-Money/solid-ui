@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import { createOrchestraOnramp, getOrchestraConfig, getOrchestraStatus } from '@/lib/api/orchestra';
 import { OrchestraError } from '@/lib/orchestraErrors';
 import { ORCHESTRA_SETTLED_STATUSES } from '@/lib/types/orchestra';
@@ -46,6 +47,22 @@ export function useOrchestraConfig(countryCode?: string, enabled = true) {
     staleTime: 5 * 60 * 1000,
     retry: retryUnlessRefused,
   });
+}
+
+/**
+ * Whether Cash App can be offered here. One rule, decided server-side:
+ * supported region **or** allowlisted. The country is resolved on the client
+ * only because the backend has no geoip — the verdict is still theirs, and they
+ * enforce it again on order creation.
+ *
+ * Shared by the cash list's USD chips and the USD methods screen, which ask the
+ * same question and share the one cached config call.
+ */
+export function useIsCashAppAvailable() {
+  const { countryCode, isResolving } = useCashAppDepositAvailability();
+  const { data: config } = useOrchestraConfig(countryCode, !isResolving);
+
+  return config?.isAvailable === true;
 }
 
 /**

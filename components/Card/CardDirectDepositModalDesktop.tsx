@@ -16,6 +16,7 @@ import {
 } from '@/components/Card/CardFund/constants';
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
+import { UsdMethodList } from '@/components/DepositOption/DepositUsdOptions';
 import VirtualAccountApplyDialog from '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
@@ -41,12 +42,13 @@ import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
-type Step = 'options' | 'networks' | 'address' | 'walletNetworks' | 'form';
+type Step = 'options' | 'usdMethods' | 'networks' | 'address' | 'walletNetworks' | 'form';
 
 const CLOSE_STATE: ModalState = { name: 'close', number: -1 };
 
 const MODAL_STATES: Record<Step, ModalState> = {
   options: { name: 'options', number: 0 },
+  usdMethods: { name: 'usd-methods', number: 1 },
   networks: { name: 'networks', number: 1 },
   walletNetworks: { name: 'wallet-networks', number: 1 },
   address: { name: 'address', number: 2 },
@@ -181,9 +183,13 @@ export default function CardDirectDepositModal({
     [],
   );
 
-  // First-time setup stacks above this funding dialog so closing it returns to
-  // "Fund your card". Existing accounts still hand off to the global details flow.
-  const handleUsdPress = useCallback(() => {
+  // USD lists its methods — the bank rail and Apple Pay — as the wallet's cash
+  // flow does, rather than going straight to the bank rail.
+  const handleUsdPress = useCallback(() => goToStep('usdMethods'), [goToStep]);
+
+  // First-time setup stacks above this funding dialog so closing it returns here.
+  // Existing accounts still hand off to the global details flow.
+  const handleBankTransferPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
       provider: virtualAccountProvider,
@@ -231,8 +237,17 @@ export default function CardDirectDepositModal({
   );
 
   // Onramper's hosted widget, rendered inside this modal by the same embedded
-  // navigator the TransFi screens use — so back and the title come from
+  // navigator the TransFi screens use — so its title comes from
   // lib/buyCryptoFlow, not from a step of our own.
+  const handleApplePayPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+      provider: 'onramper',
+      currency: 'USD',
+    });
+    navigateBuyCrypto(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
+  }, [navigateBuyCrypto]);
+
   // "Deposit from an external wallet" — connect a crypto wallet, then send.
   const handleConnectWallet = useCallback(async () => {
     try {
@@ -330,7 +345,10 @@ export default function CardDirectDepositModal({
     if (buyCryptoModal) {
       const target = getBuyCryptoBackTarget(buyCryptoModal);
       if (target === 'entry') {
-        goToStep('options');
+        // The widget is opened from the USD methods; the TransFi screens from
+        // the options themselves.
+        const isWidget = buyCryptoModal.name === DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET.name;
+        goToStep(isWidget ? 'usdMethods' : 'options');
       } else if (target) {
         navigateBuyCrypto(target);
       }
@@ -353,6 +371,7 @@ export default function CardDirectDepositModal({
 
   const title = (() => {
     if (buyCryptoModal) return getBuyCryptoTitle(buyCryptoModal);
+    if (step === 'usdMethods') return 'Deposit US Dollars';
     if (step === 'networks') return selectedToken;
     if (step === 'address') return `Deposit ${selectedToken}`;
     return 'Fund your card';
@@ -380,6 +399,15 @@ export default function CardDirectDepositModal({
           onUsdPress={handleUsdPress}
           onLocalCurrencyPress={handleLocalCurrencyPress}
           isExternalWalletLoading={isWalletOpen}
+        />
+      );
+    }
+
+    if (step === 'usdMethods') {
+      return (
+        <UsdMethodList
+          onBankTransferPress={handleBankTransferPress}
+          onApplePayPress={handleApplePayPress}
         />
       );
     }

@@ -29,9 +29,9 @@ export const DEPOSIT_MODAL = {
   },
   /**
    * "Deposit US Dollars" — how to fund in USD: the bank rail (the virtual
-   * account's own wire/ACH details) or Cash App. Only reached where Cash App is
-   * available; elsewhere the cash list opens the virtual account directly,
-   * since a chooser with one option asks a question with one answer.
+   * account's own wire/ACH details), Apple Pay through Onramper's widget, or
+   * Cash App where it is available. Always reached from the cash list's USD
+   * row, since the first two are offered everywhere.
    */
   OPEN_DEPOSIT_USD_METHOD: {
     name: 'open_deposit_usd_method',

@@ -30,7 +30,7 @@ type CardFundOptionsProps = {
   onTokenPress: (symbol: string) => void;
   onMoveFromSavingsPress?: () => void;
   onExternalWalletPress?: () => void;
-  /** USD (ACH / Wire) — opens the virtual-account flow. */
+  /** USD — opens its methods: the virtual account (ACH / Wire) or Apple Pay. */
   onUsdPress?: () => void;
   /**
    * A local currency (BRL, BDT…) — opens the buy-crypto onramp for it. Omit to
@@ -102,7 +102,7 @@ const CardFundOptions = ({
                 <Image source={CARD_FUND_USD_ICON} style={TOKEN_ICON_STYLE} contentFit="cover" />
               }
               title="USD"
-              chips={['ACH', 'Wire']}
+              chips={['ACH', 'Wire', 'Apple Pay']}
               onPress={onUsdPress}
             />
           ) : null}
