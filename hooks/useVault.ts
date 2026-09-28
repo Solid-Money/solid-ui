@@ -13,13 +13,7 @@ import { config } from '@/lib/wagmi';
 // Cache configuration for vault queries
 const VAULT_STALE_TIME = secondsToMilliseconds(3); // Consider data fresh for 3 seconds
 const VAULT_GC_TIME = secondsToMilliseconds(300); // Keep in cache for 5 minutes
-/**
- * Fallback poll. Real-time updates come from SSE, which invalidates ['vault'] on
- * every balance event (useActivitySSE), and withdrawals invalidate it too. The
- * old 3s poll read the two Ethereum vaults over Alchemy ~40 times a minute per
- * open app, for a balance that only moves on a transaction.
- */
-const VAULT_REFETCH_INTERVAL = secondsToMilliseconds(30);
+const VAULT_REFETCH_INTERVAL = secondsToMilliseconds(3); // Poll every 3 seconds for near-realtime updates
 
 export const VAULT = 'vault';
 

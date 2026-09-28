@@ -733,18 +733,18 @@ export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
 
 /**
  * SSE handles real-time updates (useActivitySSE invalidates ['tokenBalances']
- * on every balance event); polling is only the fallback for missed events or
- * SSE failure. Each refresh is ~11 Alchemy RPC calls across five chains plus
- * the price lookups, and at the old 5s one open app alone spent over a third
- * of the app-wide 10,000/hour Prices API quota.
+ * on every balance event); polling is the fallback for missed events or SSE
+ * failure. The price lookups inside a refresh are cached for a minute, so this
+ * interval doesn't drive Prices API usage.
  */
-const BALANCES_POLL_INTERVAL_MS = 30_000;
+const BALANCES_POLL_INTERVAL_MS = 5_000;
 
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
   const { data, isLoading, isRefetching, error, refetch } = useQuery({
     ...tokenBalancesQueryOptions(user?.safeAddress),
+    staleTime: 5_000,
     retry: 3, // retry up to 3 times on failure
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
