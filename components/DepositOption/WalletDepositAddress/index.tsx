@@ -72,7 +72,7 @@ const WalletDepositAddress = () => {
   // the Safe, which is where they land and stay.
   const { address, isError: hasAddressError, isMinted } = useWalletDepositAddress(chainId, symbol);
   // Wirex cardholders and people with no card both land here, and only the
-  // cardholders are charged — see `getDepositFeeBps`.
+  // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
   const tokenIcon = getWalletDepositTokenIcon(chainId, symbol);
   // The pipeline's own floor when it has answered, the committed estimate until

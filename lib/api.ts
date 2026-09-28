@@ -74,6 +74,7 @@ import {
   CustomerFromBridgeResponse,
   Deposit,
   DepositAssetsResponse,
+  DepositFeeQuote,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -3791,6 +3792,41 @@ export const getDetectedDirectDeposit = async (
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-deposit-detected?${params}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The deposit bridge fee a deposit to this destination would pay, without an
+ * amount: whether it applies on this chain, and at what rate. The rate is the
+ * one set for the route and chain on the admin Deposit fees page, or the 0.03%
+ * default where none is set.
+ */
+export const getDepositFeeQuote = async (
+  destinationType: 'PROTOCOL' | 'RAIN_CARD',
+  chainId: number,
+  tokenSymbol: string,
+): Promise<DepositFeeQuote> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams({
+    destinationType,
+    chainId: String(chainId),
+    tokenSymbol,
+  });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/fee-quote?${params}`,
     {
       headers: {
         ...getPlatformHeaders(),

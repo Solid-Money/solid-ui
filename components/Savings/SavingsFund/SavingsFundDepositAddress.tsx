@@ -170,6 +170,7 @@ const SavingsFundDepositAddress = ({
         product="savings"
         provider={provider}
         chainId={chainId}
+        symbol={symbol}
         vaultToken={vaultToken}
       />
 
