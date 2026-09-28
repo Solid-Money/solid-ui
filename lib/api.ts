@@ -4137,7 +4137,24 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
  * Step 1: Initiate OTP for passkey recovery (public - no auth required)
  * Sends OTP to user's registered email
  */
-export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }> => {
+/**
+ * Step 1: Ask for a recovery code.
+ *
+ * `identifier` is an email or a username. `email` is sent alongside it only
+ * when the identifier is an address, so a backend that predates the username
+ * path still reads the field it knows.
+ */
+export const initRecoveryOtp = async (
+  identifier: string,
+): Promise<{
+  otpId: string;
+  /**
+   * Masked address the code went to, e.g. `o•••••@gmail.com`. Absent from an
+   * older backend; the caller falls back to what the user typed.
+   */
+  emailHint?: string;
+}> => {
+  const trimmed = identifier.trim();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-recovery-otp`,
     {
@@ -4146,7 +4163,10 @@ export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }>
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({
+        identifier: trimmed,
+        ...(trimmed.includes('@') && { email: trimmed }),
+      }),
     },
   );
   const data = await response.json();
@@ -4161,7 +4181,12 @@ export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }>
 export const verifyRecoveryOtp = async (
   otpId: string,
   otpCode: string,
-  email: string,
+  /**
+   * The address the code went to, when this recovery started from one. Omitted
+   * for a username recovery, which never learns it — the backend resolves the
+   * account from the address the challenge was issued against instead.
+   */
+  email: string | undefined,
   publicKey: string,
 ): Promise<{
   credentialBundle: string;
@@ -4182,7 +4207,7 @@ export const verifyRecoveryOtp = async (
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
       },
-      body: JSON.stringify({ otpId, otpCode, email, publicKey }),
+      body: JSON.stringify({ otpId, otpCode, ...(email && { email }), publicKey }),
     },
   );
   const data = await response.json();
