@@ -114,13 +114,14 @@ const SummaryStat = ({ label, value, onPress }: SummaryStatProps) => (
   >
     <Text
       className="text-base text-white/70"
-      style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
+      style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 20 }}
     >
       {label}
     </Text>
     <Text
       className="text-[26px] text-white"
-      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 26 }}
+      // A line box equal to the font size clips the top of the `$` on iOS.
+      style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 32 }}
     >
       {formatBalanceUSD(value)}
     </Text>

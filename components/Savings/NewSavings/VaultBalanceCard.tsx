@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
@@ -16,21 +16,18 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode, VaultType } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
 
-export const formatCompactVaultUsd = (value: number) => {
-  const safeValue = Math.max(Number(value) || 0, 0);
-  const compact = new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 2,
-  })
-    .format(safeValue)
-    .toUpperCase();
-  return `${compact} USD`;
-};
+import { formatCompactVaultUsd, formatExactVaultUsd } from './vaultBalanceFormat';
 
-export const formatExactVaultUsd = (value: number) =>
-  `$${formatNumber(Math.max(Number(value) || 0, 0), 1, 1)}`;
+/**
+ * Native keeps the value on one line and shrinks it to fit the half-width
+ * column; web has no `adjustsFontSizeToFit`, so there it may wrap and the card
+ * grows instead.
+ */
+const singleLineFit =
+  Platform.OS === 'web'
+    ? {}
+    : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.6 } as const);
 
 const VaultStat = ({
   label,
@@ -58,10 +55,15 @@ const VaultStat = ({
       </>
     ) : (
       <>
-        <Text className="mt-[7px] text-[26px] font-semibold leading-6 text-white">
+        {/* A line box shorter than the 26px glyphs clips their tops on iOS, so
+            the value gets 32px and the margins give the difference back. */}
+        <Text
+          className="mt-[3px] text-[26px] font-semibold leading-8 text-white"
+          {...singleLineFit}
+        >
           {formatCompactVaultUsd(value)}
         </Text>
-        <Text className="mt-[9px] text-[16px] leading-[17px] text-white/70">
+        <Text className="mt-[5px] text-[16px] leading-[17px] text-white/70">
           {formatExactVaultUsd(value)}
         </Text>
       </>
@@ -132,7 +134,7 @@ const VaultBalanceCard = ({ vaultType, balanceUsd }: VaultBalanceCardProps) => {
   const rewardsUsd = Math.max(rewardsInVaultCurrency * priceUsd, 0);
 
   return (
-    <View className="mx-4 h-[118px] flex-row overflow-hidden rounded-[20px] bg-[#1C1C1C]">
+    <View className="mx-4 min-h-[118px] flex-row overflow-hidden rounded-[20px] bg-[#1C1C1C]">
       <VaultStat
         label="Your Balance"
         tooltip="The amount currently available in this vault."
