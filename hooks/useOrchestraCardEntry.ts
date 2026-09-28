@@ -8,11 +8,12 @@ import { track } from '@/lib/analytics';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
 /**
- * Opening the Cash App onramp from a card funding modal.
+ * Opening the Cash App onramp from a card funding modal's USD methods.
  *
- * Shared by the three of them so the availability gate and the destination are
- * set the same way in each — a modal that forgot `setDestination('card')`
- * would quietly fund the wallet from a screen titled "Fund your card".
+ * Shared by Rain's mobile and desktop modals so the availability gate and the
+ * destination are set the same way in each — a modal that forgot
+ * `setDestination('card')` would quietly fund the wallet from a screen titled
+ * "Fund your card". Wirex's has no USD section, so it offers no Cash App.
  *
  * `isAvailable` is the server's verdict, the same one the wallet flow gates
  * on: region or allowlist. Hosts pass `onCashAppPress` only when it is true,

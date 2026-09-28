@@ -21,6 +21,9 @@ const BANK_CHIPS = ['Wire', 'ACH'];
 // The row is already titled Cash App; the chip says how fast, not how.
 const CASH_APP_CHIPS = ['Instant'];
 
+const USD_METHOD_CHIPS = ['ACH', 'Wire', 'Apple Pay'];
+const USD_METHOD_CHIPS_WITH_CASH_APP = ['ACH', 'Wire', 'Cash App', 'Apple Pay'];
+
 type UsdMethodListProps = {
   onBankTransferPress: () => void;
   /** Omit to hide the row — Cash App is only offered where the server allows it. */
@@ -82,6 +85,15 @@ export const UsdMethodList = ({
     />
   </CardFundGroup>
 );
+
+/**
+ * The chips for a USD row that opens {@link UsdMethodList}, naming the methods
+ * it lists — Cash App only where it is offered, since only there does the list
+ * show it. Shared by the wallet's cash list and the card funding options, so
+ * the two USD rows cannot drift apart.
+ */
+export const getUsdMethodChips = (isCashAppAvailable: boolean) =>
+  isCashAppAvailable ? USD_METHOD_CHIPS_WITH_CASH_APP : USD_METHOD_CHIPS;
 
 /**
  * How to fund in USD: the bank rail, Apple Pay through Onramper's widget, or

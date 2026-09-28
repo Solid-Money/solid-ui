@@ -10,6 +10,7 @@ import {
   CARD_FUND_LOCAL_CURRENCIES,
   getCardFundLocalPaymentMethods,
 } from '@/components/Card/CardFund/localCurrencies';
+import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -24,14 +25,6 @@ import { useTransfiStore } from '@/store/useTransfiStore';
 const ICON_SIZE = 36;
 /** Matches the muted row text the "Show more" footer sits beside. */
 const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
-/**
- * USD's methods, as the screen it opens lists them: the virtual account's ACH
- * and wire, and Apple Pay. The local currencies show their committed corridor
- * list (localCurrencies.tsx).
- */
-const USD_PAYMENT_METHOD_CHIPS = ['ACH', 'Wire', 'Apple Pay'];
-/** In the US the same screen also offers Cash App, so the chips say so. */
-const USD_PAYMENT_METHOD_CHIPS_US = ['ACH', 'Wire', 'Cash App', 'Apple Pay'];
 const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
 const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
 
@@ -105,7 +98,7 @@ const DepositCashOptions = () => {
           />
         }
         title="USD"
-        chips={isCashAppAvailable ? USD_PAYMENT_METHOD_CHIPS_US : USD_PAYMENT_METHOD_CHIPS}
+        chips={getUsdMethodChips(isCashAppAvailable)}
         onPress={handleUsdPress}
       />
       {localCurrencies.map(currency => (
