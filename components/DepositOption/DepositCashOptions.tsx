@@ -76,8 +76,15 @@ const DepositCashOptions = () => {
 
   const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
 
-  // The bank rail and Apple Pay are offered everywhere, so USD always has more
-  // than one method and always opens the chooser, with Cash App added in the US.
+  // USD opens the chooser of its methods. The bank rail and Apple Pay are
+  // usually there, but a Wirex cardholder has no bank rail and production has no
+  // Apple Pay yet, so outside the US (no Cash App) USD can have none — and then
+  // its row is hidden rather than opening an empty chooser.
+  const usdMethodChips = getUsdMethodChips(
+    isCashAppAvailable,
+    canFundByUsdBankTransfer(cardProvider),
+  );
+
   const handleUsdPress = () => {
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
   };
@@ -100,19 +107,21 @@ const DepositCashOptions = () => {
 
   return (
     <CardFundGroup>
-      <CardFundRow
-        className="min-h-[93px]"
-        icon={
-          <Image
-            source={CARD_FUND_USD_ICON}
-            style={{ width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2 }}
-            contentFit="cover"
-          />
-        }
-        title="USD"
-        chips={getUsdMethodChips(isCashAppAvailable, canFundByUsdBankTransfer(cardProvider))}
-        onPress={handleUsdPress}
-      />
+      {usdMethodChips.length > 0 ? (
+        <CardFundRow
+          className="min-h-[93px]"
+          icon={
+            <Image
+              source={CARD_FUND_USD_ICON}
+              style={{ width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2 }}
+              contentFit="cover"
+            />
+          }
+          title="USD"
+          chips={usdMethodChips}
+          onPress={handleUsdPress}
+        />
+      ) : null}
       {isTransfiAvailable
         ? localCurrencies.map(currency => (
             <CardFundRow
