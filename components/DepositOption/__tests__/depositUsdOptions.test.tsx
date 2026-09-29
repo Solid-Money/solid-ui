@@ -1,7 +1,8 @@
 import React from 'react';
 
-import DepositUsdOptions from '@/components/DepositOption/DepositUsdOptions';
+import DepositUsdOptions, { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { CardProvider } from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -14,6 +15,9 @@ jest.mock(
   '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog',
   () => 'VirtualAccountApplyDialog',
 );
+jest.mock('@/hooks/useCardProvider', () => ({
+  useCardProvider: () => ({ provider: mockCard.provider, isLoading: false }),
+}));
 jest.mock('@/hooks/useOrchestra', () => ({
   useIsCashAppAvailable: () => mockCashApp.isAvailable,
 }));
@@ -33,6 +37,7 @@ jest.mock('@/store/useOrchestraStore', () => ({
 }));
 
 const mockCashApp = { isAvailable: false };
+const mockCard: { provider: CardProvider | null } = { provider: null };
 const mockOpenVirtualAccount = jest.fn();
 const mockDeposit = { setModal: jest.fn() };
 
@@ -51,6 +56,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockCashApp.isAvailable = false;
+  mockCard.provider = null;
 });
 
 it('offers Apple Pay beside the bank rail where Cash App is not available', () => {
@@ -80,4 +86,27 @@ it('still opens the virtual account from the bank rail', () => {
   expect(mockOpenVirtualAccount).toHaveBeenCalledTimes(1);
   expect(mockDeposit.setModal).not.toHaveBeenCalled();
   act(() => root.unmount());
+});
+
+it('keeps the bank rail for a Rain cardholder', () => {
+  mockCard.provider = CardProvider.RAIN;
+  const root = render();
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Apple Pay']);
+  act(() => root.unmount());
+});
+
+it('hides the bank rail from a Wirex cardholder, who has no wire leg to their card', () => {
+  mockCard.provider = CardProvider.WIREX;
+  mockCashApp.isAvailable = true;
+  const root = render();
+  expect(titlesOf(root)).toEqual(['Cash App', 'Apple Pay']);
+  expect(mockOpenVirtualAccount).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+it('drops the ACH and Wire chips where the bank rail is hidden', () => {
+  expect(getUsdMethodChips(true)).toEqual(['ACH', 'Wire', 'Cash App', 'Apple Pay']);
+  expect(getUsdMethodChips(false)).toEqual(['ACH', 'Wire', 'Apple Pay']);
+  expect(getUsdMethodChips(true, false)).toEqual(['Cash App', 'Apple Pay']);
+  expect(getUsdMethodChips(false, false)).toEqual(['Apple Pay']);
 });

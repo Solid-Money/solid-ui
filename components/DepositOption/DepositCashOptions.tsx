@@ -15,10 +15,12 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -51,6 +53,7 @@ const DepositCashOptions = () => {
 
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const isCashAppAvailable = useIsCashAppAvailable();
+  const { provider: cardProvider } = useCardProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
 
@@ -98,7 +101,7 @@ const DepositCashOptions = () => {
           />
         }
         title="USD"
-        chips={getUsdMethodChips(isCashAppAvailable)}
+        chips={getUsdMethodChips(isCashAppAvailable, canFundByUsdBankTransfer(cardProvider))}
         onPress={handleUsdPress}
       />
       {localCurrencies.map(currency => (

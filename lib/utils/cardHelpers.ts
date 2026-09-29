@@ -139,6 +139,18 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
   provider !== CardProvider.WIREX;
 
 /**
+ * Whether the USD bank rail (Wire transfer / ACH) is offered as a way to fund.
+ *
+ * A Wirex cardholder funds their card through the wallet deposit flow, and that
+ * flow's USD rail has no leg to their card: the Wirex virtual account supports
+ * no wire, and what it receives settles into the Wirex balance, not the Safe
+ * the card spends from. "Fund your card" leaves it off for the same reason
+ * (`WIREX_CARD_FUND_SECTIONS.cashDeposit`), and the wallet flow now agrees.
+ */
+export const canFundByUsdBankTransfer = (provider: CardProvider | null | undefined): boolean =>
+  provider !== CardProvider.WIREX;
+
+/**
  * Whether the savings Deposit button opens the direct-deposit flow — currency,
  * then chain, then an address to send to — rather than the amount form that
  * moves a balance already held in Solid.
