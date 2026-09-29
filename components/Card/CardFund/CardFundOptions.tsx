@@ -23,6 +23,7 @@ import {
 } from '@/components/Card/CardFund/localCurrencies';
 import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
+import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -80,7 +81,10 @@ const CardFundOptions = ({
   // A local-currency row still needs its handler, so the section flag and the
   // callback both have to be present — the callback alone is how the Rain
   // desktop/mobile modals have always hidden these rows.
-  const showLocalCurrencies = sections.localCurrencies && !!onLocalCurrencyPress;
+  // The local currencies are TransFi's, which refuses some countries outright.
+  const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
+  const showLocalCurrencies =
+    sections.localCurrencies && !!onLocalCurrencyPress && isTransfiAvailable;
   const showCashDeposit = sections.cashDeposit || showLocalCurrencies;
   const showOther = sections.moveFromSolid || sections.externalWallet || !!onBuyCryptoPress;
 
