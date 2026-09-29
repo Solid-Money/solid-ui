@@ -38,6 +38,7 @@ import {
   type SpendModePanel,
 } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import SpendModeSegmentedControl from '@/components/Card/NewCardDetails/SpendMode/SpendModeSegmentedControl';
+import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
@@ -126,6 +127,7 @@ interface SpendModeSheetContentProps {
   /** Why the last attempt failed, or null. */
   error?: string | null;
   onDismiss: () => void;
+  onHelpPress: () => void;
   onAddFunds?: () => void;
   /** Space above the heading; sheets and the desktop modal clear different chrome. */
   topPadding?: number;
@@ -152,6 +154,7 @@ const SpendModeSheetContent = ({
   isSwitching,
   error,
   onDismiss,
+  onHelpPress,
   onAddFunds,
   topPadding = SPEND_MODE_SHEET_TOP,
   presentation = 'sheet',
@@ -236,6 +239,16 @@ const SpendModeSheetContent = ({
 
   return (
     <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
+      <View
+        style={[
+          styles.helpButton,
+          presentation === 'sheet'
+            ? { top: topPadding - 37, transform: [{ scale: 0.88 }] }
+            : styles.modalHelpButton,
+        ]}
+      >
+        <HeaderHelpButton accessibilityLabel="How spend mode works" onPress={onHelpPress} />
+      </View>
       <View style={styles.heading}>
         <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
           Select spend mode
@@ -372,6 +385,10 @@ const SpendModeSheetContent = ({
 };
 
 const styles = StyleSheet.create({
+  // Figma 26974:12806 places the 44pt control 21pt below the sheet edge.
+  // Scale the shared 50pt help icon to the 44pt circle used on this sheet.
+  helpButton: { position: 'absolute', right: 17, zIndex: 1 },
+  modalHelpButton: { right: 40, top: -7, transform: [{ scale: 0.72 }] },
   // The close button sits in the heading's row, centred on its 36pt line box, so the modal
   // spends no height on a row of its own.
   heading: { justifyContent: 'center' },

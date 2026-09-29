@@ -21,7 +21,7 @@ const getDismissedIds = (): string[] => {
   return data ? JSON.parse(data) : [];
 };
 
-export const useWhatsNew = () => {
+export const useWhatsNew = (autoShowOnHome = false) => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { whatsNew, isVisible, setWhatsNew, setIsVisible } = useWhatsNewStore(
     useShallow(state => ({
@@ -47,19 +47,13 @@ export const useWhatsNew = () => {
     refetchOnMount: true, // Ensure WhatsNew is fetched on first load
   });
 
-  // Handle data updates and auto-show logic
+  // Keep the latest content available to the modal and settings button.
   const handleWhatsNewData = useCallback(
     (latest: Awaited<ReturnType<typeof fetchLatestWhatsNew>>, forceShow = false) => {
       if (latest && latest.isActive) {
         setWhatsNew(latest);
 
         if (forceShow) {
-          setIsVisible(true);
-          return;
-        }
-
-        const seenIds = getSeenIds();
-        if (latest.showOnLoad && !seenIds.includes(latest._id)) {
           setIsVisible(true);
         }
       }
@@ -75,6 +69,28 @@ export const useWhatsNew = () => {
       handleWhatsNewData(data, false);
     }
   }, [data, handleWhatsNewData]);
+
+  // Start the auto-open delay only when Home has finished its initial loading.
+  // The settings button still opens the modal immediately via forceShow.
+  useEffect(() => {
+    if (
+      !autoShowOnHome ||
+      !whatsNew?.isActive ||
+      !whatsNew.showOnLoad ||
+      isVisible ||
+      getSeenIds().includes(whatsNew._id)
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!getSeenIds().includes(whatsNew._id)) {
+        setIsVisible(true);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [autoShowOnHome, isVisible, setIsVisible, whatsNew]);
 
   const checkWhatsNew = useCallback(
     async (forceShow = false) => {
