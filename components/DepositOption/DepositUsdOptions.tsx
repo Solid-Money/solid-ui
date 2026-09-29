@@ -7,9 +7,11 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
+import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
 
@@ -21,11 +23,9 @@ const BANK_CHIPS = ['Wire', 'ACH'];
 // The row is already titled Cash App; the chip says how fast, not how.
 const CASH_APP_CHIPS = ['Instant'];
 
-const USD_METHOD_CHIPS = ['ACH', 'Wire', 'Apple Pay'];
-const USD_METHOD_CHIPS_WITH_CASH_APP = ['ACH', 'Wire', 'Cash App', 'Apple Pay'];
-
 type UsdMethodListProps = {
-  onBankTransferPress: () => void;
+  /** Omit to hide the row — a Wirex cardholder has no bank rail to their card. */
+  onBankTransferPress?: () => void;
   /** Omit to hide the row — Cash App is only offered where the server allows it. */
   onCashAppPress?: () => void;
   onApplePayPress: () => void;
@@ -42,21 +42,23 @@ export const UsdMethodList = ({
   onApplePayPress,
 }: UsdMethodListProps) => (
   <CardFundGroup>
-    <CardFundRow
-      className="min-h-[93px]"
-      icon={
-        <View
-          className="items-center justify-center rounded-full bg-[#333333]"
-          style={{ width: ICON_SIZE, height: ICON_SIZE }}
-        >
-          <Building2 size={18} color="#FFFFFF" />
-        </View>
-      }
-      title="Wire transfer, ACH"
-      subtitle="Your own US account details"
-      onPress={onBankTransferPress}
-      chips={BANK_CHIPS}
-    />
+    {onBankTransferPress ? (
+      <CardFundRow
+        className="min-h-[93px]"
+        icon={
+          <View
+            className="items-center justify-center rounded-full bg-[#333333]"
+            style={{ width: ICON_SIZE, height: ICON_SIZE }}
+          >
+            <Building2 size={18} color="#FFFFFF" />
+          </View>
+        }
+        title="Wire transfer, ACH"
+        subtitle="Your own US account details"
+        onPress={onBankTransferPress}
+        chips={BANK_CHIPS}
+      />
+    ) : null}
     {onCashAppPress ? (
       <CardFundRow
         className="min-h-[93px]"
@@ -88,26 +90,32 @@ export const UsdMethodList = ({
 
 /**
  * The chips for a USD row that opens {@link UsdMethodList}, naming the methods
- * it lists — Cash App only where it is offered, since only there does the list
- * show it. Shared by the wallet's cash list and the card funding options, so
- * the two USD rows cannot drift apart.
+ * it lists — Cash App only where it is offered, and ACH / Wire only where the
+ * bank rail is, since only there does the list show them. Shared by the
+ * wallet's cash list and the card funding options, so the two USD rows cannot
+ * drift apart.
  */
-export const getUsdMethodChips = (isCashAppAvailable: boolean) =>
-  isCashAppAvailable ? USD_METHOD_CHIPS_WITH_CASH_APP : USD_METHOD_CHIPS;
+export const getUsdMethodChips = (isCashAppAvailable: boolean, hasBankTransfer = true) => [
+  ...(hasBankTransfer ? ['ACH', 'Wire'] : []),
+  ...(isCashAppAvailable ? ['Cash App'] : []),
+  'Apple Pay',
+];
 
 /**
  * How to fund in USD: the bank rail, Apple Pay through Onramper's widget, or
  * Cash App over Lightning.
  *
- * The bank rail and Apple Pay are offered everywhere, so USD always opens this
- * list. Cash App is US-only, and its row appears only where the server says it
- * is available.
+ * Apple Pay is offered everywhere, so USD always opens this list. The bank rail
+ * is too, except to a Wirex cardholder, who has no wire and no ACH leg to their
+ * card (`canFundByUsdBankTransfer`). Cash App is US-only, and its row appears
+ * only where the server says it is available.
  */
 const DepositUsdOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetOrchestra = useOrchestraStore(state => state.reset);
   const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
   const isCashAppAvailable = useIsCashAppAvailable();
+  const { provider: cardProvider } = useCardProvider();
 
   useEffect(() => {
     track(TRACKING_EVENTS.DEPOSIT_USD_METHOD_VIEWED);
@@ -137,7 +145,9 @@ const DepositUsdOptions = () => {
   return (
     <>
       <UsdMethodList
-        onBankTransferPress={openVirtualAccount}
+        onBankTransferPress={
+          canFundByUsdBankTransfer(cardProvider) ? openVirtualAccount : undefined
+        }
         onCashAppPress={isCashAppAvailable ? handleCashAppPress : undefined}
         onApplePayPress={handleApplePayPress}
       />

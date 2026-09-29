@@ -52,6 +52,7 @@ jest.mock(
   '@/components/DepositOption/VirtualAccountDetails/VirtualAccountApplyDialog',
   () => 'VirtualAccountApplyDialog',
 );
+jest.mock('@/hooks/useCardProvider', () => ({}));
 jest.mock('@/hooks/useOrchestra', () => ({}));
 jest.mock('@/hooks/useVirtualAccountEntry', () => ({}));
 jest.mock('@/lib/analytics', () => ({}));
