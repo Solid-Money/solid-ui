@@ -1,3 +1,5 @@
+import { EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES } from '@/lib/config';
+
 export const OFAC_SANCTIONED_COUNTRIES = ['CU', 'IR', 'KP', 'SY', 'RU', 'BY'] as const;
 
 export const CRYPTO_BANNED_COUNTRIES = [
@@ -60,6 +62,25 @@ export const MERCURYO_ALL_RESTRICTED: string[] = [
   ...ALL_RESTRICTED_COUNTRIES,
   ...MERCURYO_EXCLUDED_COUNTRIES,
 ];
+
+const DEFAULT_TRANSFI_PROHIBITED_COUNTRIES = ['UA', 'RU', 'BY'];
+
+/**
+ * Countries TransFi will not onboard, so its local-currency cash deposits are
+ * not offered there. Read from EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES so the
+ * list can follow TransFi's without a code change; their published list is at
+ * https://docs.transfi.com/docs/prohibited-countries.
+ */
+export const TRANSFI_PROHIBITED_COUNTRIES: string[] =
+  EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES === undefined
+    ? DEFAULT_TRANSFI_PROHIBITED_COUNTRIES
+    : EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES.split(',')
+        .map((code: string) => code.trim().toUpperCase())
+        .filter(Boolean);
+
+export function isTransfiProhibitedCountry(countryCode: string | undefined): boolean {
+  return !!countryCode && TRANSFI_PROHIBITED_COUNTRIES.includes(countryCode.toUpperCase());
+}
 
 export type FeatureType = 'swap' | 'bridge' | 'buyCrypto' | 'bankTransfer' | 'card';
 

@@ -18,6 +18,7 @@ import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
+import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
@@ -56,6 +57,8 @@ const DepositCashOptions = () => {
   const { provider: cardProvider } = useCardProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
+  // The local currencies are all TransFi; USD is not, so it stays.
+  const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
 
   const localCurrencies = useMemo(() => {
     const visibleCodes = showAllCurrencies
@@ -104,32 +107,36 @@ const DepositCashOptions = () => {
         chips={getUsdMethodChips(isCashAppAvailable, canFundByUsdBankTransfer(cardProvider))}
         onPress={handleUsdPress}
       />
-      {localCurrencies.map(currency => (
-        <CardFundRow
-          key={currency.code}
-          className="min-h-[93px]"
-          icon={currency.icon}
-          title={currency.code}
-          chips={getCardFundLocalPaymentMethods(currency.code)}
-          onPress={() => handleLocalCurrencyPress(currency.code)}
-        />
-      ))}
+      {isTransfiAvailable
+        ? localCurrencies.map(currency => (
+            <CardFundRow
+              key={currency.code}
+              className="min-h-[93px]"
+              icon={currency.icon}
+              title={currency.code}
+              chips={getCardFundLocalPaymentMethods(currency.code)}
+              onPress={() => handleLocalCurrencyPress(currency.code)}
+            />
+          ))
+        : null}
       {/* Owned here rather than by CardFundGroup's own footer: the toggle also
           decides which corridors are in the list at all, and so whether their
           payment methods are fetched. */}
-      <Pressable
-        className="h-[49px] flex-row items-center justify-center gap-x-2 web:hover:bg-card-hover"
-        onPress={() => setShowAllCurrencies(current => !current)}
-      >
-        {showAllCurrencies ? (
-          <Minus color={SHOW_MORE_ICON_COLOR} size={15} />
-        ) : (
-          <Plus color={SHOW_MORE_ICON_COLOR} size={15} />
-        )}
-        <Text className="text-sm font-medium text-white/70">
-          {showAllCurrencies ? 'Show less' : 'Show more'}
-        </Text>
-      </Pressable>
+      {isTransfiAvailable ? (
+        <Pressable
+          className="h-[49px] flex-row items-center justify-center gap-x-2 web:hover:bg-card-hover"
+          onPress={() => setShowAllCurrencies(current => !current)}
+        >
+          {showAllCurrencies ? (
+            <Minus color={SHOW_MORE_ICON_COLOR} size={15} />
+          ) : (
+            <Plus color={SHOW_MORE_ICON_COLOR} size={15} />
+          )}
+          <Text className="text-sm font-medium text-white/70">
+            {showAllCurrencies ? 'Show less' : 'Show more'}
+          </Text>
+        </Pressable>
+      ) : null}
     </CardFundGroup>
   );
 };
