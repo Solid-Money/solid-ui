@@ -61,6 +61,27 @@ export const selectSelectedCredentialIds = (state: UserState): string[] => {
   return user?.credentialId ? [user.credentialId] : [];
 };
 
+/**
+ * The account this device last knew about, for prefilling recovery.
+ *
+ * Logging out and a session expiring both leave the row in place — only
+ * "Forget all users" clears it — so on the device someone is locked out of,
+ * this is almost always the account they are reaching for. Prefers the
+ * selected user, then the most recently stored one.
+ *
+ * Email first because that is what recovery mails; the username is the
+ * fallback for the roughly one account in ten carrying no address, and for the
+ * rows written before emails were stored locally.
+ */
+export const selectLastKnownIdentity = ({ users }: UserState): string => {
+  const candidates = [users.find(u => u.selected), ...users].filter((user): user is User => !!user);
+  for (const user of candidates) {
+    const identity = user.email?.trim() || user.username?.trim();
+    if (identity) return identity;
+  }
+  return '';
+};
+
 export const useUserStore = create<UserState>()(
   persist(
     set => ({
