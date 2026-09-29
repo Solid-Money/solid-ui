@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Minus, Plus } from 'lucide-react-native';
@@ -28,16 +28,30 @@ import { useTransfiStore } from '@/store/useTransfiStore';
 const ICON_SIZE = 36;
 /** Matches the muted row text the "Show more" footer sits beside. */
 const SHOW_MORE_ICON_COLOR = 'rgba(255,255,255,0.7)';
-const FEATURED_LOCAL_CURRENCY_CODES = ['EUR', 'BRL', 'BDT', 'PHP'] as const;
-const ADDITIONAL_LOCAL_CURRENCY_CODES = ['MXN'] as const;
+const FEATURED_LOCAL_CURRENCY_CODES: readonly string[] = ['EUR', 'BRL', 'BDT', 'PHP'];
+
+/** The featured corridors, in the order the design puts them on the first screen. */
+const FEATURED_LOCAL_CURRENCIES = FEATURED_LOCAL_CURRENCY_CODES.map(code =>
+  CARD_FUND_LOCAL_CURRENCIES.find(currency => currency.code === code),
+).filter((currency): currency is (typeof CARD_FUND_LOCAL_CURRENCIES)[number] => !!currency);
+
+/**
+ * "Show more" lists every other corridor in localCurrencies.tsx, so a new one
+ * appears here without touching this screen.
+ */
+const ALL_LOCAL_CURRENCIES = [
+  ...FEATURED_LOCAL_CURRENCIES,
+  ...CARD_FUND_LOCAL_CURRENCIES.filter(
+    currency => !FEATURED_LOCAL_CURRENCY_CODES.includes(currency.code),
+  ),
+];
 
 /**
  * How many currencies "Cash" accepts, USD included — the number the chooser's
  * icon cluster counts down from for its "+N" circle, so the two stay in step
  * when a corridor is added.
  */
-export const DEPOSIT_CASH_CURRENCY_COUNT =
-  1 + FEATURED_LOCAL_CURRENCY_CODES.length + ADDITIONAL_LOCAL_CURRENCY_CODES.length;
+export const DEPOSIT_CASH_CURRENCY_COUNT = 1 + ALL_LOCAL_CURRENCIES.length;
 
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
 export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
@@ -60,15 +74,7 @@ const DepositCashOptions = () => {
   // The local currencies are all TransFi; USD is not, so it stays.
   const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
 
-  const localCurrencies = useMemo(() => {
-    const visibleCodes = showAllCurrencies
-      ? [...FEATURED_LOCAL_CURRENCY_CODES, ...ADDITIONAL_LOCAL_CURRENCY_CODES]
-      : FEATURED_LOCAL_CURRENCY_CODES;
-
-    return visibleCodes
-      .map(code => CARD_FUND_LOCAL_CURRENCIES.find(currency => currency.code === code))
-      .filter((currency): currency is (typeof CARD_FUND_LOCAL_CURRENCIES)[number] => !!currency);
-  }, [showAllCurrencies]);
+  const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
 
   // The bank rail and Apple Pay are offered everywhere, so USD always has more
   // than one method and always opens the chooser, with Cash App added in the US.
@@ -119,9 +125,8 @@ const DepositCashOptions = () => {
             />
           ))
         : null}
-      {/* Owned here rather than by CardFundGroup's own footer: the toggle also
-          decides which corridors are in the list at all, and so whether their
-          payment methods are fetched. */}
+      {/* Owned here rather than by CardFundGroup's own footer: the toggle
+          switches between two lists rather than revealing hidden rows. */}
       {isTransfiAvailable ? (
         <Pressable
           className="h-[49px] flex-row items-center justify-center gap-x-2 web:hover:bg-card-hover"
