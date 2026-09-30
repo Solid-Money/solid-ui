@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useReducedMotion,
@@ -10,16 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
-import {
-  CoreCardPerkIcon,
-  CoreGlobePerkIcon,
-  CoreRocketPerkIcon,
-} from '@/assets/images/rewards-tiers/core-tier-icons';
-import { SIDEBAR_BODY_WIDTH, useIsSidebarShell, usePageWidth } from '@/components/Navbar/Sidebar';
+import { SIDEBAR_BODY_WIDTH, usePageWidth } from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -28,7 +23,6 @@ import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { useSavingsFundFlow } from '@/hooks/useSavingsFundFlow';
 import { useTierMembership } from '@/hooks/useTierMembership';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
-import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
@@ -37,436 +31,19 @@ import { useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import SubscriptionBrandBadge from './SubscriptionBrandBadge';
-import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
-import { resolveTierFees } from './tierFees';
-import TierHero from './TierHero';
+import { TierBenefitsBackground, TierBenefitsPage } from './TierBenefitsPage';
+import { TIER_LABELS, tierOfferSubtitle } from './tierBenefitsPresentation';
 import TierPointsSheet from './TierPointsSheet';
-import TierSparkleIcon from './TierSparkleIcon';
-import TierStatsBand from './TierStatsBand';
 import TierSwitcher from './TierSwitcher';
 import { type TierUpgradeCta, tierUpgradeCta } from './tierUpgradeCta';
 import UpgradeTierSheet from './UpgradeTierSheet';
 
 const TIERS = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
 
-const TIER_LABELS: Record<RewardsTier, string> = {
-  [RewardsTier.CORE]: 'Core',
-  [RewardsTier.PRIME]: 'Prime',
-  [RewardsTier.ULTRA]: 'Ultra',
-};
-
-const TIER_INFO = require('@/assets/images/rewards-tiers/tier-info.png');
-const YIELD_BOOST_ICON = require('@/assets/images/rewards-tiers/yield-boost.png');
-const CASHBACK_CAP_ICON = require('@/assets/images/rewards-tiers/cashback-cap.png');
-
-interface TierStat {
-  label: string;
-  value: string;
-}
-
-interface TierPerk {
-  title: string;
-  description: string;
-}
-
-const BADGE_SIZE = 22;
-// The design steps adjacent badges ~19px apart; the card-colored ring baked
-// into every badge keeps the overlapping stack readable.
-const BADGE_OVERLAP = -3;
-// Rows a tier hasn't unlocked yet keep their logos but sit at 40% — same
-// treatment the design gives the row's label and "Prime and up" text.
-const LOCKED_OPACITY = 0.4;
-
-interface TierContent {
-  headline: string;
-  unlockCopy: string;
-  stats: TierStat[];
-  perks: TierPerk[];
-  /**
-   * `subscriptionRate` is the cashback this tier earns back on every
-   * subscription category, or null when the tier hasn't unlocked them. The
-   * categories themselves come from SUBSCRIPTION_CATEGORIES.
-   */
-  cashback: { everyPurchase: string; subscriptionRate: string | null };
-}
-
-// Every tier's cashback figure on this screen comes from the shared rates table,
-// so the comparison here and the "N% Cashback" benefit card on the rewards
-// screen can't drift apart.
-const TIER_CONTENT: Record<RewardsTier, TierContent> = {
-  [RewardsTier.CORE]: {
-    headline: 'The Solid Foundation',
-    unlockCopy: 'Starting tier',
-    stats: [
-      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.CORE) },
-      { label: '24/7 Fast support', value: '' },
-    ],
-    perks: [
-      { title: 'Free virtual card', description: 'Issued instantly' },
-      { title: 'Set up in minutes', description: 'Under 5 minutes' },
-      { title: 'Spend globally', description: 'Card accepted in 180+ countries' },
-    ],
-    cashback: {
-      everyPurchase: formatTierCashbackRate(RewardsTier.CORE),
-      subscriptionRate: null,
-    },
-  },
-  [RewardsTier.PRIME]: {
-    headline: 'Enhanced Daily Rewards',
-    unlockCopy: 'Unlocks at 5M points',
-    stats: [
-      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.PRIME) },
-      { label: 'Yield boost', value: '+2%' },
-      { label: 'Back on AI', value: '25%' },
-    ],
-    perks: [
-      { title: 'Yield boost', description: '+2% APY on your savings' },
-      {
-        title: 'Subscription discounts',
-        description: '25% back on AI, streaming, music',
-      },
-      { title: 'Higher cashback caps', description: 'Up to $100 monthly cap' },
-    ],
-    cashback: {
-      everyPurchase: formatTierCashbackRate(RewardsTier.PRIME),
-      subscriptionRate: '25%',
-    },
-  },
-  [RewardsTier.ULTRA]: {
-    headline: 'Unmatched Spending Power',
-    unlockCopy: 'Unlocks at 35M Points',
-    stats: [
-      { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.ULTRA) },
-      { label: 'Yield boost', value: '+3%' },
-      { label: 'Back on AI', value: '50%' },
-    ],
-    perks: [
-      { title: 'Yield boost', description: '+3% APY boost on your savings' },
-      {
-        title: 'Subscription discounts',
-        description: '50% back on AI, streaming, music',
-      },
-      { title: 'Higher cashback caps', description: 'Up to $200 monthly cap' },
-    ],
-    cashback: {
-      everyPurchase: formatTierCashbackRate(RewardsTier.ULTRA),
-      subscriptionRate: '50%',
-    },
-  },
-};
-
-const CoreDivider = () => <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />;
-
-const CORE_MEDIUM_16 = {
-  fontFamily: 'MonaSans_500Medium',
-  fontSize: 16,
-  lineHeight: 18,
-} as const;
-
-const CORE_REGULAR_14 = {
-  fontFamily: 'MonaSans_400Regular',
-  fontSize: 14,
-  lineHeight: 16,
-} as const;
-
-const CorePerkIcon = ({ index }: { index: number }) => (
-  <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
-    {index === 0 ? (
-      <CoreCardPerkIcon />
-    ) : index === 1 ? (
-      <CoreRocketPerkIcon />
-    ) : (
-      <CoreGlobePerkIcon />
-    )}
-  </View>
-);
-
-const CoreSummaryAndPerks = () => {
-  const content = TIER_CONTENT[RewardsTier.CORE];
-
-  return (
-    <View className="mx-4 mt-[45px]">
-      <TierStatsBand stats={content.stats} />
-
-      <View className="-mt-[41px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-        {content.perks.map((perk, index) => (
-          <View key={perk.title}>
-            {index > 0 && <CoreDivider />}
-            <View className="h-[90px] flex-row items-center justify-between px-[19px]">
-              <View className="flex-1 pr-3">
-                <Text className="text-white" style={CORE_MEDIUM_16}>
-                  {perk.title}
-                </Text>
-                <Text className="mt-[2px] text-white/70" style={CORE_REGULAR_14}>
-                  {perk.description}
-                </Text>
-              </View>
-              <CorePerkIcon index={index} />
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-const CoreCashbackCard = () => {
-  const { cashback } = TIER_CONTENT[RewardsTier.CORE];
-
-  return (
-    <View className="relative mx-4 mt-[14px] h-[298px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
-        Cashback
-      </Text>
-      <View className="absolute left-0 right-0 top-[57px]">
-        <CoreDivider />
-      </View>
-      <Text className="absolute left-[19px] top-[85px] text-white" style={CORE_MEDIUM_16}>
-        Every purchase
-      </Text>
-      <View className="absolute right-4 top-[76px] h-9 min-w-[51px] items-center justify-center rounded-full bg-white/10 px-3">
-        <Text className="text-white" style={CORE_MEDIUM_16}>
-          {cashback.everyPurchase}
-        </Text>
-      </View>
-      {SUBSCRIPTION_CATEGORIES.map((category, index) => (
-        <View
-          key={category.key}
-          className="absolute left-[19px] right-4 h-[22px] flex-row items-center"
-          style={{ top: [138, 195, 248][index] }}
-        >
-          <Text className="text-white/40" style={CORE_MEDIUM_16}>
-            {category.label}
-          </Text>
-          <View className="ml-3 flex-1 flex-row items-center" style={{ opacity: LOCKED_OPACITY }}>
-            {category.brands.map((brand, brandIndex) => (
-              <SubscriptionBrandBadge
-                key={brand.name}
-                brand={brand}
-                size={BADGE_SIZE}
-                overlap={brandIndex > 0 ? BADGE_OVERLAP : undefined}
-                ring
-              />
-            ))}
-          </View>
-          <Text className="text-white/40" style={CORE_MEDIUM_16}>
-            Prime and up
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-};
-
-/**
- * The "Fees & Caps" table for one tier.
- *
- * Every row is driven by the live fee config, so what this shows and what the
- * charge engine bills can't drift apart. One component for all three tiers: the
- * Core and premium versions were byte-identical apart from which hardcoded
- * block they read, and keeping two copies is how a fee ends up correct on one
- * tab and stale on another.
- *
- * Laid out in flow rather than at fixed offsets, which the previous version
- * used. There are now seven rows rather than four, they are driven by config
- * that can grow a product, and an absolute layout silently overlaps its rows
- * the moment there is one more than it was measured for.
- */
-const TierFeesCard = ({ tier }: { tier: RewardsTier }) => {
-  const { data: tierBenefits } = useTierBenefits();
-  const fees = resolveTierFees(tier, tierBenefits?.find(benefit => benefit.tier === tier)?.fees);
-
-  return (
-    <View className="mx-4 mt-[15px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-      <Text className="px-[19px] pb-[19px] pt-[19px] text-white/70" style={CORE_MEDIUM_16}>
-        Fees & Caps
-      </Text>
-      <CoreDivider />
-
-      <View className="px-[19px] py-2">
-        {fees.lines
-          .filter(line => line.key !== 'fx')
-          .map(line => (
-            <View key={line.key} className="h-[52px] flex-row items-center justify-between">
-              <Text
-                className="text-white"
-                style={{
-                  ...CORE_MEDIUM_16,
-                  // The virtual card is the one row that is not a fee, so it sits
-                  // in the lighter weight the fee rows use for emphasis by contrast.
-                  fontFamily:
-                    line.key === 'virtual_card' ? 'MonaSans_500Medium' : 'MonaSans_600SemiBold',
-                }}
-              >
-                {line.label}
-              </Text>
-              <View className="h-9 min-w-[58px] items-center justify-center rounded-full bg-white/10 px-3">
-                <Text className="text-white" style={CORE_MEDIUM_16}>
-                  {line.value}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-        <View className="h-[52px] flex-row items-center justify-between">
-          <Text
-            className="text-white"
-            style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
-          >
-            Cashback cap
-          </Text>
-          <Text className="text-right text-white" style={CORE_MEDIUM_16}>
-            {fees.cashbackCap}
-          </Text>
-        </View>
-
-        <View className="h-[52px] flex-row items-center justify-between">
-          <Text
-            className="text-white"
-            style={{ ...CORE_MEDIUM_16, fontFamily: 'MonaSans_600SemiBold', lineHeight: 22 }}
-          >
-            FUSE unlock
-          </Text>
-          <Text className="text-right text-white/70" style={CORE_MEDIUM_16}>
-            {fees.fuseUnlock}
-          </Text>
-        </View>
-      </View>
-
-      {fees.footnote ? (
-        <Text
-          className="px-[19px] pb-[19px] text-center text-brand"
-          style={{ ...CORE_REGULAR_14, lineHeight: 18 }}
-        >
-          {fees.footnote}
-        </Text>
-      ) : null}
-    </View>
-  );
-};
-
-const PremiumPerkIcon = ({ index }: { index: number }) => {
-  if (index === 1) {
-    return (
-      <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
-        <Text className="text-white" style={CORE_MEDIUM_16}>
-          25%
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={index === 0 ? YIELD_BOOST_ICON : CASHBACK_CAP_ICON}
-      style={{ width: 50, height: 50 }}
-      contentFit="contain"
-    />
-  );
-};
-
-const PremiumSummaryAndPerks = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
-  const content = TIER_CONTENT[tier];
-  const discount = tier === RewardsTier.PRIME ? '25%' : '50%';
-
-  return (
-    <View className="mx-4 mt-[59px]">
-      <TierStatsBand stats={content.stats} />
-
-      <View className="-mt-[42px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-        {content.perks.map((perk, index) => (
-          <View key={perk.title}>
-            {index > 0 && <CoreDivider />}
-            <View className="h-[90px] flex-row items-center justify-between px-[19px]">
-              <View className="flex-1 pr-3">
-                <Text className="text-white" style={CORE_MEDIUM_16}>
-                  {perk.title}
-                </Text>
-                <Text className="mt-[2px] text-white/70" style={CORE_REGULAR_14}>
-                  {perk.description}
-                </Text>
-              </View>
-              {index === 1 ? (
-                <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-white/10">
-                  <Text className="text-white" style={CORE_MEDIUM_16}>
-                    {discount}
-                  </Text>
-                </View>
-              ) : (
-                <PremiumPerkIcon index={index} />
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-const PremiumCashbackCard = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
-  const { cashback } = TIER_CONTENT[tier];
-
-  return (
-    <View className="relative mx-4 mt-[15px] h-[298px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-      <Text className="absolute left-[19px] top-[19px] text-white/70" style={CORE_MEDIUM_16}>
-        Cashback
-      </Text>
-      <View className="absolute left-0 right-0 top-[57px]">
-        <CoreDivider />
-      </View>
-      <Text className="absolute left-[19px] top-[85px] text-white" style={CORE_MEDIUM_16}>
-        Every purchase
-      </Text>
-      <View className="absolute right-4 top-[76px] h-9 min-w-[51px] items-center justify-center rounded-full bg-white/10 px-3">
-        <Text className="text-white" style={CORE_MEDIUM_16}>
-          {cashback.everyPurchase}
-        </Text>
-      </View>
-
-      {SUBSCRIPTION_CATEGORIES.map((category, index) => (
-        <View
-          key={category.key}
-          className="absolute left-[19px] right-4 h-9 flex-row items-center"
-          style={{ top: [131, 188, 241][index] }}
-        >
-          <Text className="text-white" style={CORE_MEDIUM_16}>
-            {category.label}
-          </Text>
-          <View className="ml-3 flex-1 flex-row items-center">
-            {category.brands.map((brand, brandIndex) => (
-              <SubscriptionBrandBadge
-                key={brand.name}
-                brand={brand}
-                size={BADGE_SIZE}
-                overlap={brandIndex > 0 ? BADGE_OVERLAP : undefined}
-                ring
-              />
-            ))}
-          </View>
-          <View className="h-9 min-w-[59px] items-center justify-center rounded-full bg-white/10 px-3">
-            <Text className="text-white" style={CORE_MEDIUM_16}>
-              {cashback.subscriptionRate}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-};
-
-/**
- * Redesigned "Explore tiers" screen (Apple "glass" style companion to
- * RewardsScreenNew). Reachable from the "Explore tiers" button on the
- * redesigned rewards home screen. Shown only on qa/preview mobile builds via
- * the dispatcher in rewards/benefits.tsx — desktop keeps the legacy
- * CompareTiersTable-based screen.
- */
-const HEADER_ROW_HEIGHT = 56;
+const HEADER_ROW_HEIGHT = 33;
 /** Figma leaves 20px above the tier tabs. */
 const HEADER_TOP_SPACING = 20;
-const DESKTOP_HERO_TOP_REDUCTION = 30;
-const SLIDE_DURATION = 260;
+const SLIDE_DURATION = 420;
 const SLIDE_EASING = Easing.out(Easing.cubic);
 const PREMIUM_FOOTER_SLIDE_DURATION = 360;
 const PREMIUM_FOOTER_SLIDE_EASING = Easing.bezier(0.22, 1, 0.36, 1);
@@ -476,33 +53,14 @@ const SWIPE_VELOCITY_THRESHOLD = 400;
 const RUBBER_BAND_FACTOR = 0.3;
 // bg-background (--background), used as the solid end of the top/bottom fades.
 const BACKGROUND = '#0F0F10';
-const PAGE_BOTTOM_SPACING = 48;
-const PREMIUM_FOOTER_FADE_HEIGHT = 82;
-const PREMIUM_FOOTER_OVERLAP = 94;
-const PREMIUM_FOOTER_BUTTON_TOP = 130;
+const PREMIUM_FOOTER_FADE_HEIGHT = 32;
 const PREMIUM_FOOTER_BUTTON_HEIGHT = 50;
 const PREMIUM_FOOTER_MIN_BOTTOM_SPACING = 19;
 const PREMIUM_FOOTER_VERTICAL_OFFSET = 5;
 // Extra height the fades extend beyond their bar's own content, so scrolled
 // content dims out smoothly under the header / off the bottom edge instead of
 // getting a hard clip (mirrors CardWaitingModal's FADE_EXTENT).
-const FADE_EXTENT = 120;
-
-interface TierPageProps {
-  tier: RewardsTier;
-  isCurrentTier: boolean;
-  isDesktopLayout: boolean;
-  /** Width of the page column — the window on mobile, the body column on desktop. */
-  pageWidth: number;
-  /**
-   * Whether points can still take this user to a higher tier — the membership
-   * state's per-user verdict. False for everyone the grandfather list leaves
-   * nothing to, and once the ladder is switched off.
-   */
-  pointsUnlockTiers: boolean;
-  /** Whether this tier is on sale through v3 — a lock or an annual charge. */
-  purchasable: boolean;
-}
+const FADE_EXTENT = 60;
 
 const PremiumUpgradeFooter = ({
   selectedTier,
@@ -516,14 +74,15 @@ const PremiumUpgradeFooter = ({
 }) => {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { label, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
+  const { label: actionLabel, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
+  const label = actionLabel === 'Upgrade' ? `Upgrade to ${TIER_LABELS[selectedTier]}` : actionLabel;
   // Gone, not greyed out, for any tier the user already has.
   //
   // Was `selectedTier !== currentTier`, which only ever hid the footer on the
   // one tab that matched exactly — so someone on Ultra swiping to Prime, or to
   // Core, still got a full-width dead button over the benefits they had just
   // paid for. `held` covers the tier they hold and every tier under it.
-  const isVisible = !held;
+  const isVisible = !held && (selectedTier !== RewardsTier.CORE || actionLabel === 'Try again');
   const lastPremiumTier = useRef<RewardsTier.PRIME | RewardsTier.ULTRA>(RewardsTier.PRIME);
 
   if (selectedTier === RewardsTier.PRIME || selectedTier === RewardsTier.ULTRA) {
@@ -533,7 +92,14 @@ const PremiumUpgradeFooter = ({
   const tier = lastPremiumTier.current;
   const bottomSpacing =
     Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) + PREMIUM_FOOTER_VERTICAL_OFFSET;
-  const footerHeight = PREMIUM_FOOTER_BUTTON_TOP + PREMIUM_FOOTER_BUTTON_HEIGHT + bottomSpacing;
+  const [subtitleHeight, setSubtitleHeight] = useState(23);
+  const footerHeight =
+    PREMIUM_FOOTER_FADE_HEIGHT +
+    11 +
+    subtitleHeight +
+    14 +
+    PREMIUM_FOOTER_BUTTON_HEIGHT +
+    bottomSpacing;
   const footerTranslateY = useSharedValue(isVisible ? 0 : footerHeight);
 
   useEffect(() => {
@@ -585,7 +151,8 @@ const PremiumUpgradeFooter = ({
         style={{ top: PREMIUM_FOOTER_FADE_HEIGHT }}
       >
         <Text
-          className="mt-[11px] text-center text-white/70"
+          className="mt-[11px] px-4 text-center text-white/70"
+          onLayout={event => setSubtitleHeight(event.nativeEvent.layout.height)}
           style={{
             fontFamily: 'MonaSans_400Regular',
             fontSize: 16,
@@ -622,179 +189,6 @@ const PremiumUpgradeFooter = ({
   );
 };
 
-/**
- * One tier's full page of content — all three are mounted side by side (see
- * the pager row in the main component below) so a swipe genuinely drags
- * between real, already-rendered pages instead of faking it with a fade/slide
- * of a single swapped-out content block.
- */
-const TierPage = ({
-  tier,
-  isCurrentTier,
-  isDesktopLayout,
-  pageWidth,
-  pointsUnlockTiers,
-  purchasable,
-}: TierPageProps) => {
-  const insets = useSafeAreaInsets();
-  const content = TIER_CONTENT[tier];
-  // "Unlocks at 5M points" is only true while points can still take this user
-  // there. Past that the tier is bought, so the line says so when it is on
-  // sale and says nothing when it is not, and the points explainer goes too.
-  const subtitle = isCurrentTier
-    ? 'Your current tier'
-    : pointsUnlockTiers || tier === RewardsTier.CORE
-      ? content.unlockCopy
-      : purchasable
-        ? 'Unlocks with a membership'
-        : null;
-  const pageTopSpacing =
-    insets.top + HEADER_ROW_HEIGHT - (isDesktopLayout ? DESKTOP_HERO_TOP_REDUCTION : 0);
-
-  if (tier === RewardsTier.CORE) {
-    return (
-      <View
-        style={{
-          width: pageWidth,
-          paddingTop: pageTopSpacing,
-          paddingBottom: insets.bottom + PAGE_BOTTOM_SPACING + PREMIUM_FOOTER_BUTTON_TOP,
-        }}
-      >
-        <View className="items-center pt-4">
-          <TierHero tier={tier} />
-
-          <View className="-mt-1 flex-row items-center gap-1">
-            <TierSparkleIcon tier={RewardsTier.CORE} />
-            <Text
-              className="text-white/70"
-              style={{
-                fontFamily: 'MonaSans_500Medium',
-                fontSize: 20,
-                lineHeight: 24,
-              }}
-            >
-              Core
-            </Text>
-          </View>
-
-          <Text
-            className="mt-3 w-[209px] text-center text-white"
-            style={{
-              fontFamily: 'MonaSans_500Medium',
-              fontSize: 30,
-              lineHeight: 30,
-              letterSpacing: -1,
-            }}
-          >
-            {content.headline}
-          </Text>
-
-          <Text
-            className="mt-[14px] text-white/70"
-            style={{
-              fontFamily: 'MonaSans_400Regular',
-              fontSize: 16,
-              lineHeight: 18,
-            }}
-          >
-            {subtitle}
-          </Text>
-        </View>
-
-        <CoreSummaryAndPerks />
-        <CoreCashbackCard />
-        <TierFeesCard tier={RewardsTier.CORE} />
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={{
-        width: pageWidth,
-        paddingTop: pageTopSpacing,
-        paddingBottom:
-          PREMIUM_FOOTER_BUTTON_TOP +
-          PREMIUM_FOOTER_BUTTON_HEIGHT +
-          Math.max(insets.bottom, PREMIUM_FOOTER_MIN_BOTTOM_SPACING) +
-          PREMIUM_FOOTER_VERTICAL_OFFSET -
-          PREMIUM_FOOTER_OVERLAP,
-      }}
-    >
-      <View className="items-center pt-4">
-        <TierHero tier={tier} />
-
-        <View className="-mt-1 flex-row items-center gap-1">
-          <TierSparkleIcon tier={tier} />
-          <Text
-            className="text-white/70"
-            style={{
-              fontFamily: 'MonaSans_500Medium',
-              fontSize: 20,
-              lineHeight: 24,
-            }}
-          >
-            {TIER_LABELS[tier]}
-          </Text>
-        </View>
-
-        <Text
-          className="mt-3 text-center text-white"
-          style={{
-            width: tier === RewardsTier.PRIME ? 247 : 273,
-            fontFamily: 'MonaSans_500Medium',
-            fontSize: 30,
-            lineHeight: 30,
-            letterSpacing: -1,
-          }}
-        >
-          {content.headline}
-        </Text>
-
-        {pointsUnlockTiers ? (
-          <TierPointsSheet
-            trigger={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${subtitle}. Learn how to earn points`}
-                hitSlop={8}
-                className="mt-[14px] flex-row items-center gap-1"
-              >
-                <Text
-                  className="text-white/70"
-                  style={{
-                    fontFamily: 'MonaSans_400Regular',
-                    fontSize: 16,
-                    lineHeight: 20,
-                  }}
-                >
-                  {subtitle}
-                </Text>
-                <Image source={TIER_INFO} style={{ width: 20, height: 21 }} contentFit="contain" />
-              </Pressable>
-            }
-          />
-        ) : subtitle ? (
-          <Text
-            className="mt-[14px] text-white/70"
-            style={{
-              fontFamily: 'MonaSans_400Regular',
-              fontSize: 16,
-              lineHeight: 20,
-            }}
-          >
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
-
-      <PremiumSummaryAndPerks tier={tier} />
-      <PremiumCashbackCard tier={tier} />
-      <TierFeesCard tier={tier} />
-    </View>
-  );
-};
-
 export default function RewardsBenefitsScreenNew() {
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
   return <RewardsBenefitsForAccount key={userId ?? 'none'} />;
@@ -807,6 +201,7 @@ function RewardsBenefitsForAccount() {
     isFetching: isRewardsFetching,
     refetch: refetchRewards,
   } = useRewardsUserData();
+  const { data: tierBenefits } = useTierBenefits();
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
   const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
   const timedOut = useRewardsUpgradeStore(state => state.timedOut);
@@ -831,7 +226,8 @@ function RewardsBenefitsForAccount() {
   // The pager's pages are as wide as the column the page gets, which on desktop is
   // the body column beside the sidebar rather than the whole window.
   const pageWidth = usePageWidth();
-  const isSidebarShell = useIsSidebarShell();
+  const selectorBlurTarget = useRef<View>(null);
+  const reduceMotion = useReducedMotion();
   // Suspends the page's vertical ScrollView while a horizontal swipe is active,
   // so the two gestures (a plain RN ScrollView isn't gesture-handler-aware)
   // don't both react to the same touch and fight over the drag.
@@ -842,16 +238,24 @@ function RewardsBenefitsForAccount() {
   // neighboring pages follow the finger instead of faking a swipe with a
   // fade/slide of a single swapped-out content block.
   const translateX = useSharedValue(-TIERS.indexOf(selectedTier) * pageWidth);
+  const pagerTargetX = useSharedValue(-TIERS.indexOf(selectedTier) * pageWidth);
+  const dragOriginX = useSharedValue(-TIERS.indexOf(selectedTier) * pageWidth);
+  const dragStartIndex = useSharedValue(TIERS.indexOf(selectedTier));
+  const didRelease = useSharedValue(false);
   const isDragging = useSharedValue(false);
 
   useEffect(() => {
     if (isDragging.value) return;
     const index = TIERS.indexOf(selectedTier);
-    translateX.value = withTiming(-index * pageWidth, {
-      duration: SLIDE_DURATION,
-      easing: SLIDE_EASING,
-    });
-  }, [selectedTier, translateX, isDragging, pageWidth]);
+    const targetX = -index * pageWidth;
+    // A gesture already started this snap on the UI thread. Committing its
+    // selected tab must not restart the same animation on the next render.
+    if (pagerTargetX.value === targetX && !reduceMotion) return;
+    pagerTargetX.value = targetX;
+    translateX.value = reduceMotion
+      ? targetX
+      : withTiming(targetX, { duration: SLIDE_DURATION, easing: SLIDE_EASING });
+  }, [selectedTier, translateX, pagerTargetX, isDragging, pageWidth, reduceMotion]);
 
   const rowStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -872,7 +276,7 @@ function RewardsBenefitsForAccount() {
   const ctaFor = (tier: RewardsTier) => {
     const offer = findOffer(membership, tier);
 
-    return tierUpgradeCta({
+    const cta = tierUpgradeCta({
       selectedTier: tier,
       currentTier,
       unavailable: !currentTier || isError,
@@ -886,6 +290,15 @@ function RewardsBenefitsForAccount() {
       // rewards endpoint cannot leave an upgrade CTA on a tier the user has.
       offerHeld: offer?.held,
     });
+    const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
+    return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
+      ? {
+          ...cta,
+          subtitle: offerCopy.includes('locked')
+            ? offerCopy.replace(/^Requires /, 'Lock ').replace(' locked', ' to upgrade')
+            : `${offerCopy} to upgrade`,
+        }
+      : cta;
   };
 
   /**
@@ -940,14 +353,14 @@ function RewardsBenefitsForAccount() {
   const overlays = (
     <>
       <LinearGradient
-        colors={[BACKGROUND, `${BACKGROUND}00`]}
+        colors={['#0F0F1080', '#0F0F1000']}
         pointerEvents="box-none"
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          height: insets.top + HEADER_TOP_SPACING + HEADER_ROW_HEIGHT + FADE_EXTENT,
+          height: insets.top + HEADER_TOP_SPACING + HEADER_ROW_HEIGHT + 30,
           zIndex: 10,
         }}
       >
@@ -958,7 +371,10 @@ function RewardsBenefitsForAccount() {
           style={{ height: HEADER_ROW_HEIGHT, marginTop: insets.top + HEADER_TOP_SPACING }}
         >
           {/* Stretched top-to-bottom so it centres on the tabs beside it. */}
-          <View className="absolute bottom-0 left-4 top-0 justify-center">
+          <View
+            className="absolute bottom-0 left-4 top-0 justify-center"
+            style={{ transform: [{ scale: 0.88 }] }}
+          >
             <BackButton variant="header" onPress={() => router.push(path.REWARDS)} />
           </View>
           <TierSwitcher
@@ -966,6 +382,11 @@ function RewardsBenefitsForAccount() {
             labels={TIER_LABELS}
             selected={selectedTier}
             onSelect={setSelectedTierOverride}
+            appearance="light"
+            progress={translateX}
+            pageWidth={pageWidth}
+            scale={Math.min(pageWidth / 420, 1)}
+            blurTarget={selectorBlurTarget}
           />
         </View>
       </LinearGradient>
@@ -1008,20 +429,32 @@ function RewardsBenefitsForAccount() {
     .failOffsetY([-10, 10])
     .onStart(() => {
       'worklet';
+      cancelAnimation(translateX);
       isDragging.value = true;
+      didRelease.value = false;
+      // Start exactly where the previous snap currently is, even if a second
+      // swipe interrupts it before React has committed the selected tier.
+      dragOriginX.value = translateX.value;
+      dragStartIndex.value = Math.max(
+        0,
+        Math.min(TIERS.length - 1, Math.round(-translateX.value / pageWidth)),
+      );
       scheduleOnRN(setIsSwiping, true);
     })
     .onUpdate(event => {
       'worklet';
-      const index = TIERS.indexOf(selectedTier);
-      let dx = event.translationX;
-      if (index === 0 && dx > 0) dx *= RUBBER_BAND_FACTOR;
-      if (index === TIERS.length - 1 && dx < 0) dx *= RUBBER_BAND_FACTOR;
-      translateX.value = -index * pageWidth + dx;
+      const nextX = dragOriginX.value + event.translationX;
+      const minimumX = -(TIERS.length - 1) * pageWidth;
+      translateX.value =
+        nextX > 0
+          ? nextX * RUBBER_BAND_FACTOR
+          : nextX < minimumX
+            ? minimumX + (nextX - minimumX) * RUBBER_BAND_FACTOR
+            : nextX;
     })
     .onEnd(event => {
       'worklet';
-      const index = TIERS.indexOf(selectedTier);
+      const index = dragStartIndex.value;
       const isSwipeLeft =
         event.translationX < -SWIPE_DISTANCE_THRESHOLD ||
         event.velocityX < -SWIPE_VELOCITY_THRESHOLD;
@@ -1032,56 +465,119 @@ function RewardsBenefitsForAccount() {
       if (isSwipeLeft && index < TIERS.length - 1) targetIndex = index + 1;
       else if (isSwipeRight && index > 0) targetIndex = index - 1;
 
-      translateX.value = withTiming(
-        -targetIndex * pageWidth,
-        { duration: SLIDE_DURATION, easing: SLIDE_EASING },
-        finished => {
-          if (finished && targetIndex !== index) {
-            scheduleOnRN(setSelectedTierOverride, TIERS[targetIndex]);
-          }
-        },
-      );
+      didRelease.value = true;
+      const targetX = -targetIndex * pageWidth;
+      pagerTargetX.value = targetX;
+      translateX.value = reduceMotion
+        ? targetX
+        : withTiming(targetX, { duration: SLIDE_DURATION, easing: SLIDE_EASING });
+      scheduleOnRN(setSelectedTierOverride, TIERS[targetIndex]);
     })
     .onFinalize(() => {
       'worklet';
+      // Native cancellation (for example another gesture taking ownership)
+      // must not leave the pager stranded between two tiers.
+      if (isDragging.value && !didRelease.value) {
+        const targetX = -dragStartIndex.value * pageWidth;
+        pagerTargetX.value = targetX;
+        translateX.value = reduceMotion
+          ? targetX
+          : withTiming(targetX, { duration: SLIDE_DURATION, easing: SLIDE_EASING });
+        scheduleOnRN(setSelectedTierOverride, TIERS[dragStartIndex.value]);
+      }
       isDragging.value = false;
       scheduleOnRN(setIsSwiping, false);
     });
 
   return (
-    <PageLayout
-      showNavbar={false}
-      edges={['left', 'right']}
-      additionalContent={overlays}
-      scrollEnabled={!isSwiping}
-    >
-      {timedOut && (
-        <Text className="mt-28 px-5 text-center text-white/70">
-          Savings refreshed. No higher tier has been confirmed yet. Check your FUSE Savings balance
-          and tier requirement before adding more.
-        </Text>
-      )}
-      <GestureDetector gesture={swipeGesture} touchAction="pan-y">
-        {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
+    <View style={{ flex: 1, backgroundColor: BACKGROUND, overflow: 'hidden' }}>
+      <PageLayout
+        className="bg-transparent"
+        showNavbar={false}
+        edges={['left', 'right']}
+        additionalContent={overlays}
+        scrollEnabled={!isSwiping}
+        showsVerticalScrollIndicator={false}
+        blurTargetRef={selectorBlurTarget}
+      >
+        {timedOut && (
+          <Text className="mt-28 px-5 text-center text-white/70">
+            Savings refreshed. No higher tier has been confirmed yet. Check your FUSE Savings
+            balance and tier requirement before adding more.
+          </Text>
+        )}
+        <GestureDetector gesture={swipeGesture} touchAction="pan-y">
+          {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
             the column's edge — on mobile they simply hang off-screen. */}
-        <View style={isSidebarShell ? { width: pageWidth, overflow: 'hidden' } : undefined}>
-          <Animated.View style={[{ flexDirection: 'row' }, rowStyle]}>
-            {TIERS.map(tier => (
-              <TierPage
-                key={tier}
-                tier={tier}
-                isCurrentTier={currentTier === tier}
-                isDesktopLayout={isSidebarShell}
-                pageWidth={pageWidth}
-                // Until the membership state arrives, v2's copy — which is what
-                // an older backend without per-user gating also means.
-                pointsUnlockTiers={membership?.pointsUnlockEnabled ?? true}
-                purchasable={upgradeRoutes(tier).length > 0}
-              />
-            ))}
-          </Animated.View>
-        </View>
-      </GestureDetector>
-    </PageLayout>
+          <View style={{ width: pageWidth, overflow: 'hidden' }}>
+            <TierBenefitsBackground position={translateX} width={pageWidth} topInset={insets.top} />
+            <Animated.View style={[{ flexDirection: 'row' }, rowStyle]}>
+              {TIERS.map(tier => (
+                <TierBenefitsPage
+                  key={tier}
+                  tier={tier}
+                  active={selectedTier === tier}
+                  current={currentTier === tier}
+                  width={pageWidth}
+                  topInset={insets.top}
+                  bottomInset={insets.bottom}
+                  position={translateX}
+                  benefits={tierBenefits?.find(benefit => benefit.tier === tier)}
+                  fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
+                  offer={membership?.enabled ? findOffer(membership, tier) : undefined}
+                  showUpgradeSpace={!ctaFor(tier).held && tier !== RewardsTier.CORE}
+                  subtitle={(() => {
+                    const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
+                    const offerCopy = membership?.enabled
+                      ? tierOfferSubtitle(findOffer(membership, tier))
+                      : null;
+                    const copy =
+                      tier === RewardsTier.CORE
+                        ? 'Starting tier'
+                        : (offerCopy ??
+                          (pointsEnabled
+                            ? tier === RewardsTier.PRIME
+                              ? 'Unlocks at 5M points'
+                              : 'Unlocks at 35M points'
+                            : null));
+                    if (!copy) return null;
+                    const text = (
+                      <Text
+                        style={{
+                          fontFamily: 'MonaSans_400Regular',
+                          fontSize: 16 * Math.min(pageWidth / 420, 1),
+                          lineHeight: 20,
+                          color: 'rgba(255,255,255,0.7)',
+                        }}
+                      >
+                        {copy}
+                      </Text>
+                    );
+                    return selectedTier === tier &&
+                      pointsEnabled &&
+                      !offerCopy &&
+                      tier !== RewardsTier.CORE ? (
+                      <TierPointsSheet
+                        trigger={
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`${copy}. Learn how to earn points`}
+                            hitSlop={8}
+                          >
+                            {text}
+                          </Pressable>
+                        }
+                      />
+                    ) : (
+                      text
+                    );
+                  })()}
+                />
+              ))}
+            </Animated.View>
+          </View>
+        </GestureDetector>
+      </PageLayout>
+    </View>
   );
 }

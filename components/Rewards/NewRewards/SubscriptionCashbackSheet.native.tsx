@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+
+import { RewardsTier } from '@/lib/types';
 
 import SubscriptionCashbackContent from './SubscriptionCashbackContent';
 
@@ -10,14 +12,15 @@ import type { SubscriptionCashbackSheetProps } from './SubscriptionCashbackSheet
 const SubscriptionCashbackSheet = ({
   trigger,
   onGetMoreCashback,
+  onUpgradeTier,
   triggerContainerClassName = 'flex-1',
   ...subscriptionData
 }: SubscriptionCashbackSheetProps) => {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const sheetRef = useRef<BottomSheetModal>(null);
-  // Eleven merchant rows across three cards — this one runs nearly full height
-  // and scrolls, unlike the shorter cashback and yield boost sheets.
-  const snapPoints = useMemo(() => ['90%'], []);
+  // Categories with five merchants still scroll on smaller phones.
+  const snapPoints = useMemo(() => [Math.min(784, height * 0.9)], [height]);
   const [animationSession, setAnimationSession] = useState(0);
 
   const present = useCallback(() => {
@@ -27,8 +30,14 @@ const SubscriptionCashbackSheet = ({
   const dismiss = useCallback(() => sheetRef.current?.dismiss(), []);
   const handleGetMoreCashback = useCallback(() => {
     dismiss();
-    onGetMoreCashback();
-  }, [dismiss, onGetMoreCashback]);
+    if (onUpgradeTier) {
+      onUpgradeTier(
+        subscriptionData.currentTier === RewardsTier.CORE ? RewardsTier.PRIME : RewardsTier.ULTRA,
+      );
+    } else {
+      onGetMoreCashback();
+    }
+  }, [dismiss, onGetMoreCashback, onUpgradeTier, subscriptionData.currentTier]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -66,12 +75,15 @@ const SubscriptionCashbackSheet = ({
       >
         <BottomSheetScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 7 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
         >
           <SubscriptionCashbackContent
+            key={animationSession}
             {...subscriptionData}
             animationSession={animationSession}
+            sheetTopPadding={39}
             onGetMoreCashback={handleGetMoreCashback}
+            onDismiss={dismiss}
           />
         </BottomSheetScrollView>
       </BottomSheetModal>

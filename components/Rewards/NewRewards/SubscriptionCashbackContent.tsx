@@ -1,116 +1,191 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { RewardsTier } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
-import RewardsDiamondIcon from './RewardsDiamondIcon';
-import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import {
-  SUBSCRIPTION_CATEGORIES,
-  subscriptionCategoriesSentence,
-  type SubscriptionCategory,
-} from './subscriptionBrands';
+  type CashbackCategoryKey,
+  CATEGORY_CASHBACK_TABS,
+  categoryCashbackPresentation,
+} from './categoryCashback';
+import CategoryCashbackBrandBadge from './CategoryCashbackBrandBadge';
+import { CATEGORY_CASHBACK_BRANDS } from './categoryCashbackBrands';
+import RewardsDiamondIcon from './RewardsDiamondIcon';
 
 import type { SubscriptionCashbackData } from './SubscriptionCashbackSheet.types';
 
 interface SubscriptionCashbackContentProps extends SubscriptionCashbackData {
   onGetMoreCashback: () => void;
+  onDismiss: () => void;
   animationSession: number;
-  /**
-   * Bottom-sheet presentation: adds the top padding that clears the sheet's drag
-   * handle. False inside a modal, which brings its own padding.
-   */
+  /** Clear the drag handle when presented as a bottom sheet. */
   isSheet?: boolean;
+  /** Native sheets lay their handle above the scroll body. */
+  sheetTopPadding?: number;
 }
 
-/** Logo badge diameter in the merchant rows. */
-const BADGE_SIZE = 30;
+const REWARDS_TERMS_URL =
+  'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
 
-const CategoryCard = ({ category, rate }: { category: SubscriptionCategory; rate: string }) => (
-  <View className="w-full overflow-hidden rounded-twice bg-[#2B2B2B]">
-    <View className="h-[58px] justify-center px-[19px]">
-      <Text className="text-base font-medium text-white/70">{category.label}</Text>
-    </View>
-    <View className="h-px bg-white/10" />
-    {category.brands.map(brand => (
-      <View key={brand.name} className="h-[55px] flex-row items-center px-[20px]">
-        <SubscriptionBrandBadge brand={brand} size={BADGE_SIZE} />
-        <Text className="ml-2 flex-1 text-base font-medium text-white" numberOfLines={1}>
-          {brand.name}
-        </Text>
-        <View className="h-9 min-w-[59px] items-center justify-center rounded-full bg-white/10 px-3">
-          <Text className="text-base font-medium text-white">{rate}</Text>
-        </View>
-      </View>
-    ))}
-  </View>
-);
-
-/**
- * Subscription cashback details: every eligible service, grouped by category,
- * each showing the rate the user's tier earns back on it.
- */
-const SubscriptionCashbackContent = ({
-  subscriptionDiscountRate,
-  onGetMoreCashback,
-  animationSession,
-  isSheet = true,
-}: SubscriptionCashbackContentProps) => {
-  const rate = `${formatNumber(subscriptionDiscountRate || 0, 2, 0)}%`;
+const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate: number }) => {
+  const locked = rate <= 0;
+  const label = locked
+    ? category === 'airlines'
+      ? 'Ultra'
+      : 'Prime'
+    : `${formatNumber(rate, 2, 0)}%`;
 
   return (
-    <View className={cn('items-center', isSheet && 'px-[34px] pt-[46px]')}>
-      <RewardsDiamondIcon key={animationSession} />
-
-      <Text
-        className="mt-[31px] w-[291px] text-center text-[30px] text-white"
-        style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 36 }}
-      >
-        <Text className="text-[30px] text-[#94F27F]" style={{ fontFamily: 'MonaSans_600SemiBold' }}>
-          {rate}
-        </Text>{' '}
-        Subscription Cashback
-      </Text>
-      <Text
-        className="mt-[7px] w-[284px] text-center text-base text-white/70"
-        style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
-      >
-        on {subscriptionCategoriesSentence()}
-      </Text>
-
-      <View className="mt-9 w-full gap-[15px]">
-        {SUBSCRIPTION_CATEGORIES.map(category => (
-          <CategoryCard key={category.key} category={category} rate={rate} />
+    <View className="w-full overflow-hidden rounded-twice bg-[#2B2B2B] pb-[9px]">
+      <View className="h-[58px] flex-row items-center justify-between pl-[19px] pr-[18px]">
+        <Text className="text-base font-medium text-white/70">Cashback rate</Text>
+        <View
+          className={cn(
+            'h-9 min-w-[59px] flex-row items-center justify-center rounded-full',
+            locked ? 'gap-[5px] bg-white/[0.06] px-[14px]' : 'bg-white/10 px-3',
+          )}
+        >
+          {locked && (
+            <Image
+              source={require('@/assets/images/subscription-cashback/lock.svg')}
+              style={{ width: 12, height: 12 }}
+              contentFit="contain"
+            />
+          )}
+          <Text
+            className={cn(
+              'font-medium',
+              locked ? 'text-[15px] text-white/45' : 'text-base text-white',
+            )}
+          >
+            {label}
+          </Text>
+        </View>
+      </View>
+      <View className="h-px bg-white/10" />
+      <View className="pt-[10px]">
+        {CATEGORY_CASHBACK_BRANDS[category].map(brand => (
+          <View
+            key={brand.name}
+            className={cn('h-[55px] flex-row items-center pl-5 pr-[18px]', locked && 'opacity-50')}
+          >
+            <CategoryCashbackBrandBadge brand={brand} />
+            <Text className="ml-2 flex-1 text-base font-medium text-white" numberOfLines={1}>
+              {brand.name}
+            </Text>
+          </View>
         ))}
+      </View>
+    </View>
+  );
+};
+
+const SubscriptionCashbackContent = ({
+  currentTier,
+  subscriptionDiscountRate,
+  onGetMoreCashback,
+  onDismiss,
+  animationSession,
+  isSheet = true,
+  sheetTopPadding = 60,
+}: SubscriptionCashbackContentProps) => {
+  const [selectedCategory, setSelectedCategory] = useState<CashbackCategoryKey>('ai');
+  const presentation = categoryCashbackPresentation(currentTier, subscriptionDiscountRate);
+
+  return (
+    <View
+      className={cn('items-center pb-10', isSheet && 'px-[34px]')}
+      style={isSheet ? { paddingTop: sheetTopPadding } : undefined}
+    >
+      <RewardsDiamondIcon key={animationSession} loop />
+      <Text
+        className="mt-[41px] w-[291px] max-w-full text-center text-[30px] text-white"
+        style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 30 }}
+      >
+        Up to{' '}
+        <Text
+          className="text-[30px] text-[#94F27F]"
+          style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 30 }}
+        >
+          {formatNumber(presentation.headlineRate, 2, 0)}%
+        </Text>
+        {'\n'}Cashback
+      </Text>
+      <Text
+        className="mt-[15px] w-[284px] max-w-full text-center text-base text-white/70"
+        style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 17.6 }}
+      >
+        {presentation.subtitle}
+      </Text>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mt-7 h-9 w-full rounded-full bg-white/[0.08]"
+        contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
+        accessibilityRole="tablist"
+      >
+        {CATEGORY_CASHBACK_TABS.map(category => {
+          const selected = selectedCategory === category.key;
+          return (
+            <Pressable
+              key={category.key}
+              accessibilityRole="tab"
+              aria-selected={selected}
+              accessibilityLabel={category.label}
+              accessibilityState={{ selected }}
+              onPress={() => setSelectedCategory(category.key)}
+              className={cn(
+                'h-7 items-center justify-center rounded-full px-3',
+                selected && 'bg-white',
+              )}
+            >
+              <Text
+                className="text-sm font-medium"
+                style={{ color: selected ? '#0F0F11' : 'rgba(255,255,255,0.6)' }}
+              >
+                {category.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <View className="mt-4 w-full">
+        <CategoryCard category={selectedCategory} rate={presentation.rates[selectedCategory]} />
       </View>
 
       <Text
-        className="mt-7 w-full text-base text-white/70"
-        style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
+        className="ml-[3px] mt-7 w-full max-w-[323px] self-start text-base text-white/70"
+        style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
       >
-        Cashback is credited 14 days after the transaction settles and paid straight into your
-        Savings{' '}
+        Cashback is credited 14 days after the transaction settles.{' '}
         <Text
+          accessibilityRole="link"
           className="text-white/70"
           style={{
             fontFamily: 'MonaSans_700Bold',
-            lineHeight: 18,
+            lineHeight: 16,
             textDecorationLine: 'underline',
           }}
-          onPress={onGetMoreCashback}
+          onPress={() => void Linking.openURL(REWARDS_TERMS_URL)}
         >
           Learn more
         </Text>
       </Text>
-
       <Button
         variant="brand"
         accessibilityRole="button"
-        onPress={onGetMoreCashback}
-        className="mt-[35px] w-full transition-all active:scale-95 active:opacity-80"
+        onPress={currentTier === RewardsTier.ULTRA ? onDismiss : onGetMoreCashback}
+        className="mt-8 w-full transition-all active:scale-95 active:opacity-80"
+        style={{ height: 48 }}
       >
-        <Text className="text-black">Get more cashback</Text>
+        <Text className="text-black" style={{ fontFamily: 'MonaSans_700Bold' }}>
+          {presentation.actionLabel}
+        </Text>
       </Button>
     </View>
   );

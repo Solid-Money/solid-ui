@@ -80,6 +80,7 @@ interface PageLayoutProps {
   // Lets a child temporarily suspend scrolling (e.g. while it's running its own
   // horizontal swipe gesture, so the two don't fight over the same touch).
   scrollEnabled?: boolean;
+  showsVerticalScrollIndicator?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
 
   // Sticky header (sticks to top when scrolling)
@@ -171,6 +172,7 @@ export default function PageLayout({
   animateCardHeroExit = false,
   scrollable = true,
   scrollEnabled = true,
+  showsVerticalScrollIndicator = true,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
@@ -307,6 +309,7 @@ export default function PageLayout({
         className={`flex-1 ${contentClassName}`}
         contentContainerStyle={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
         scrollEnabled={scrollEnabled}
+        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}

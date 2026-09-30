@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Image } from 'expo-image';
 
 import { RewardsTier } from '@/lib/types';
@@ -14,17 +16,43 @@ const TIER_STAR_ANIMATIONS: Record<RewardsTier, number> = {
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
 };
 
-const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; size?: number }) => (
-  <Image
-    source={TIER_STAR_ANIMATIONS[tier]}
-    style={{
-      width: size,
-      height: size,
-      transform: tierStarOffset(tier, size),
-    }}
-    contentFit="contain"
-    autoplay
-  />
-);
+const TierStar = ({
+  tier,
+  size = TIER_STAR_SIZES[tier],
+  playing = true,
+  onReady,
+}: {
+  tier: RewardsTier;
+  size?: number;
+  playing?: boolean;
+  onReady?: () => void;
+}) => {
+  const image = useRef<Image>(null);
+  const syncPlayback = useCallback(() => {
+    // Browsers render WebP animation themselves; the playback methods are native-only.
+    if (Platform.OS === 'web') return;
+    const action = playing ? image.current?.startAnimating() : image.current?.stopAnimating();
+    void action?.catch(() => undefined);
+  }, [playing]);
+  useEffect(syncPlayback, [syncPlayback]);
+  return (
+    <Image
+      ref={image}
+      source={TIER_STAR_ANIMATIONS[tier]}
+      style={{
+        width: size,
+        height: size,
+        transform: tierStarOffset(tier, size),
+      }}
+      contentFit="contain"
+      autoplay={playing}
+      transition={0}
+      onLoad={syncPlayback}
+      onDisplay={onReady}
+      pointerEvents="none"
+      accessible={false}
+    />
+  );
+};
 
 export default TierStar;
