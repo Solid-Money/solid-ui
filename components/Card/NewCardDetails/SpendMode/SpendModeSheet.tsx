@@ -22,6 +22,7 @@ import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spend
 const SpendModeSheet = ({
   isOpen,
   onOpenChange,
+  onHelpPress,
   activeMode = 'cash',
   onAddFunds,
 }: SpendModeSheetProps) => {
@@ -57,6 +58,7 @@ const SpendModeSheet = ({
           isSwitching={isSwitchingMode}
           error={error}
           onDismiss={dismiss}
+          onHelpPress={onHelpPress}
           onAddFunds={onAddFunds}
           topPadding={topPadding}
           presentation={presentation}

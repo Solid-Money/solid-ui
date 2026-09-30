@@ -8,6 +8,8 @@ export interface SpendModeSheetProps {
    * plain dismissal rather than a "Change to …".
    */
   activeMode?: SpendMode;
+  /** Opens the spend-mode explanation from within this sheet. */
+  onHelpPress: () => void;
   /** Opens the add-funds flow from the balance panel. */
   onAddFunds?: () => void;
 }

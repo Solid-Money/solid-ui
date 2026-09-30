@@ -43,6 +43,7 @@ import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 /**
  * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
@@ -68,6 +69,7 @@ export default function HomeScreenNew() {
     isError: isBalanceError,
   } = useVaultBalance(user?.safeAddress as Address);
   const updateUser = useUserStore(state => state.updateUser);
+  const setHomeReady = useWhatsNewStore(state => state.setHomeReady);
   const intercom = useIntercom();
   const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
@@ -194,6 +196,20 @@ export default function HomeScreenNew() {
     isTotalSavingsLoading ||
     isCardBalanceLoading ||
     totalSavingsUSD === undefined;
+
+  useEffect(() => {
+    if (isBalanceSectionLoading) {
+      setHomeReady(false);
+      return;
+    }
+
+    // Let the loaded balance and card commit a frame before starting the delay.
+    const frame = requestAnimationFrame(() => setHomeReady(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      setHomeReady(false);
+    };
+  }, [isBalanceSectionLoading, setHomeReady]);
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
   // Headline = everything the user holds. Combined for display only; the breakdown
