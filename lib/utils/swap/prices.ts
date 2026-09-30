@@ -1,4 +1,3 @@
-import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import {
   Currency,
   CurrencyAmount,
@@ -66,38 +65,4 @@ export function warningSeverity(priceImpact: Percent | undefined): WarningSeveri
     impact--;
   }
   return 0;
-}
-
-export function computeSlippageAdjustedAmounts(
-  trade: VoltageTrade | undefined,
-  pct: Percent,
-): { [key: string]: CurrencyAmount<Currency> | undefined } {
-  if (!trade) {
-    return {
-      inputAmount: undefined,
-      outputAmount: undefined,
-    };
-  }
-
-  const maximumAmountIn = new Fraction(JSBI.BigInt(1))
-    .add(pct)
-    .multiply(trade?.inputAmount?.quotient || JSBI.BigInt(0)).quotient;
-  const slippageAdjustedAmountIn = CurrencyAmount.fromRawAmount(
-    trade?.inputAmount?.currency as Currency,
-    maximumAmountIn,
-  );
-
-  const maximumAmountOut = new Fraction(JSBI.BigInt(1))
-    .add(pct)
-    .invert()
-    .multiply(trade?.outputAmount?.quotient || JSBI.BigInt(0)).quotient;
-  const slippageAdjustedAmountOut = CurrencyAmount.fromRawAmount(
-    trade?.outputAmount?.currency as Currency,
-    maximumAmountOut,
-  );
-
-  return {
-    inputAmount: slippageAdjustedAmountIn,
-    outputAmount: slippageAdjustedAmountOut,
-  };
 }

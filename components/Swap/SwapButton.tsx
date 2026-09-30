@@ -13,7 +13,6 @@ import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import { useSwapCallback } from '@/hooks/swap/useSwapCallback';
-import { useVoltageSwapCallback } from '@/hooks/swap/useVoltageSwapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -62,15 +61,13 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     parsedAmount,
     currencies,
     inputError: swapInputError,
-    isVoltageTradeLoading,
-    isVoltageTrade,
-    voltageTrade,
     swapFee,
     revenueWalletAddress,
+    refreshQuote,
   } = useDerivedSwapInfo();
 
-  // Passed down rather than re-derived inside each callback, so all three swap
-  // rails collect the same fee the confirm sheet quoted.
+  // Passed down rather than re-derived inside each callback, so every swap
+  // rail collects the same fee the confirm sheet quoted.
   const feeCollection = useMemo(
     () => ({ fee: swapFee, revenueWalletAddress }),
     [swapFee, revenueWalletAddress],
@@ -119,12 +116,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     [setTransaction, setModal, resetForm, currencies, onConfirmed, user?.userId],
   );
 
-  const selectedTrade = isVoltageTrade ? voltageTrade.trade : trade;
-  const parsedAmountA =
-    independentField === SwapField.INPUT ? parsedAmount : selectedTrade?.inputAmount;
+  const parsedAmountA = independentField === SwapField.INPUT ? parsedAmount : trade?.inputAmount;
 
-  const parsedAmountB =
-    independentField === SwapField.OUTPUT ? parsedAmount : selectedTrade?.outputAmount;
+  const parsedAmountB = independentField === SwapField.OUTPUT ? parsedAmount : trade?.outputAmount;
 
   const parsedAmounts = useMemo(
     () => ({
@@ -140,12 +134,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     parsedAmounts[independentField]?.greaterThan('0'),
   );
 
-  const routeNotFound =
-    !isVoltageTrade &&
-    (tradeState.state === TradeState.NO_ROUTE_FOUND || trade?.swaps.length === 0);
+  const routeNotFound = tradeState.state === TradeState.NO_ROUTE_FOUND || trade?.swaps.length === 0;
   const isLoadingRoute =
-    !isVoltageTrade &&
-    (tradeState.state === TradeState.LOADING || tradeState.state === TradeState.SYNCING);
+    tradeState.state === TradeState.LOADING || tradeState.state === TradeState.SYNCING;
 
   // Get peg swap calldata for batch operations
   const inputAmount = useMemo(
@@ -187,37 +178,6 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   );
 
   const {
-    callback: voltageSwapCallback,
-    isLoading: isVoltageSwapLoading,
-    needAllowance: needVoltageSwapAllowance,
-    error: voltageSwapCallbackError,
-  } = useVoltageSwapCallback(
-    isVoltageTrade ? voltageTrade.trade : undefined,
-    allowedSlippage,
-    currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && voltageTrade.trade
-      ? {
-          title: 'Swap transaction completed',
-          description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
-          inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
-          outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
-          inputSymbol: currencies[SwapField.INPUT]?.symbol,
-          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-          chainId: 122,
-          onSuccess: createSwapSuccessHandler(
-            currencies[SwapField.INPUT]?.symbol || '',
-            currencies[SwapField.OUTPUT]?.symbol || '',
-            voltageTrade.trade.inputAmount?.toSignificant() || '',
-            voltageTrade.trade.outputAmount?.toSignificant(),
-          ),
-        }
-      : undefined,
-    feeCollection,
-  );
-
-  const selectedSwapCallback = isVoltageTrade ? voltageSwapCallback : swapCallback;
-  const selectedCallbackError = isVoltageTrade ? voltageSwapCallbackError : swapCallbackError;
-
-  const {
     pegSwapType,
     callback: pegSwapCallback,
     needAllowance: needPegSwapAllowance,
@@ -247,29 +207,20 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   const priceImpactSeverity = useMemo(() => {
     if (!trade) return 0;
     const realizedLpFeePercent = computeRealizedLPFeePercent(trade);
-    const priceImpact = isVoltageTrade
-      ? voltageTrade?.trade?.priceImpact?.subtract(realizedLpFeePercent)
-      : trade?.priceImpact?.subtract(realizedLpFeePercent);
-    return warningSeverity(priceImpact);
-  }, [trade, isVoltageTrade, voltageTrade]);
+    return warningSeverity(trade.priceImpact?.subtract(realizedLpFeePercent));
+  }, [trade]);
 
   const showPegSwap = pegSwapType !== PegSwapType.NOT_APPLICABLE;
 
   const needsApproval = useMemo(() => {
     if (showPegSwap) return needPegSwapAllowance;
-    return isVoltageTrade ? needVoltageSwapAllowance : needSwapAllowance;
-  }, [
-    showPegSwap,
-    needPegSwapAllowance,
-    isVoltageTrade,
-    needVoltageSwapAllowance,
-    needSwapAllowance,
-  ]);
+    return needSwapAllowance;
+  }, [showPegSwap, needPegSwapAllowance, needSwapAllowance]);
 
   const handleSwap = useCallback(async () => {
     if (disabled || executing.current) return;
-    if (!selectedSwapCallback) {
-      setSubmissionError(selectedCallbackError || 'Unable to get a quote. Try another amount.');
+    if (!swapCallback) {
+      setSubmissionError(swapCallbackError || 'Unable to get a quote. Try another amount.');
       return;
     }
     executing.current = true;
@@ -278,10 +229,22 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     successHandled.current = false;
     operationSession.current = useRewardsUpgradeStore.getState().session;
     try {
+      // The quote on screen can be up to one refresh old. Check it still holds
+      // before asking for a signature, rather than letting the swap revert.
+      if (!(await refreshQuote())) {
+        Sentry.addBreadcrumb({
+          message: 'Swap quote moved before signing',
+          category: 'swap',
+          level: 'info',
+        });
+        setSubmissionError('The price changed. Check the new amount and swap again.');
+        return;
+      }
+
       track(TRACKING_EVENTS.SWAP_INITIATED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
-        trade_type: isVoltageTrade ? 'voltage' : 'standard',
+        trade_type: 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
         input_amount: trade?.inputAmount?.toSignificant(),
@@ -296,7 +259,6 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         category: 'swap',
         level: 'info',
         data: {
-          isVoltageTrade,
           inputCurrency: currencies[SwapField.INPUT]?.symbol,
           outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
           inputAmount: trade?.inputAmount?.toSignificant(),
@@ -305,13 +267,13 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         },
       });
 
-      const result = await selectedSwapCallback();
+      const result = await swapCallback();
       if (!result) return;
 
       track(TRACKING_EVENTS.SWAP_COMPLETED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
-        trade_type: isVoltageTrade ? 'voltage' : 'standard',
+        trade_type: 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
         input_amount: trade?.inputAmount?.toSignificant(),
@@ -323,7 +285,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
       track(TRACKING_EVENTS.SWAP_FAILED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
-        trade_type: isVoltageTrade ? 'voltage' : 'standard',
+        trade_type: 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
         input_amount: trade?.inputAmount?.toSignificant(),
@@ -333,7 +295,6 @@ const SwapButton: React.FC<SwapButtonProps> = ({
       Sentry.captureException(error, {
         tags: {
           type: 'swap_button_error',
-          isVoltageTrade: String(isVoltageTrade),
         },
         extra: {
           inputCurrency: currencies[SwapField.INPUT]?.symbol,
@@ -357,9 +318,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
       setIsSubmitting(false);
     }
   }, [
-    selectedSwapCallback,
-    selectedCallbackError,
-    isVoltageTrade,
+    swapCallback,
+    swapCallbackError,
+    refreshQuote,
     currencies,
     trade,
     allowedSlippage,
@@ -573,31 +534,27 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     );
   }
 
-  const isAnyLoading =
-    isSubmitting || isWrapLoading || isPegSwapLoading || isSwapLoading || isVoltageSwapLoading;
+  const isAnyLoading = isSubmitting || isWrapLoading || isPegSwapLoading || isSwapLoading;
 
   const isButtonDisabled = Boolean(
     disabled ||
     !isValid ||
     !typedValue ||
     !userHasSpecifiedInputOutput ||
-    !selectedSwapCallback ||
+    !swapCallback ||
     routeNotFound ||
     priceImpactTooHigh ||
     isSubmitting ||
     isLoadingRoute ||
-    isVoltageTradeLoading ||
-    (isVoltageTrade && isVoltageSwapLoading) ||
-    isSwapLoading ||
-    isVoltageSwapLoading,
+    isSwapLoading,
   );
 
   const quoteError =
-    typedValue && !isLoadingRoute && !isVoltageTradeLoading && !selectedSwapCallback
-      ? selectedCallbackError || 'Unable to get a quote. Try another amount.'
+    typedValue && !isLoadingRoute && !swapCallback
+      ? swapCallbackError || 'Unable to get a quote. Try another amount.'
       : undefined;
   const noRouteError =
-    routeNotFound && userHasSpecifiedInputOutput && !isLoadingRoute && !isVoltageTradeLoading
+    routeNotFound && userHasSpecifiedInputOutput && !isLoadingRoute
       ? 'We couldn’t get a price. Try a different amount.'
       : undefined;
   const errorMessage =
@@ -619,14 +576,12 @@ const SwapButton: React.FC<SwapButtonProps> = ({
       >
         {isAnyLoading ? (
           <Text className="text-base font-bold">Processing Transaction...</Text>
-        ) : typedValue && (isLoadingRoute || isVoltageTradeLoading) ? (
+        ) : typedValue && isLoadingRoute ? (
           <Text className="text-base font-bold">Finding Routes...</Text>
-        ) : typedValue && (!selectedSwapCallback || routeNotFound) ? (
+        ) : typedValue && (!swapCallback || routeNotFound) ? (
           <Text className="text-base font-bold">{label}</Text>
         ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
           <Text className="text-base font-bold">Swap Anyway</Text>
-        ) : needsApproval ? (
-          <Text className="text-base font-bold">Approve & Swap</Text>
         ) : !typedValue ? (
           <Text className="text-base font-bold">Enter an amount</Text>
         ) : (

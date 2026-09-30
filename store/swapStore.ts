@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   ADDRESS_ZERO,
   computePoolAddress,
@@ -20,16 +29,16 @@ import { useShallow } from 'zustand/react/shallow';
 import { SWAP_MODAL } from '@/constants/modals';
 import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
 import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
-import { useBestTradeExactIn, useBestTradeExactOut } from '@/hooks/swap/useBestTrade';
+import { BestTrade, useBestTrade } from '@/hooks/swap/useBestTrade';
+import { useQuoteInput } from '@/hooks/swap/useQuoteInput';
 import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
-import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
 import { useSwapFeeRate } from '@/hooks/useProductFees';
 import useUser from '@/hooks/useUser';
 import { getSwapFundingError } from '@/lib/swapFunding';
 import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
-import { TradeState, TradeStateType } from '@/lib/types/trade-state';
+import { TradeState } from '@/lib/types/trade-state';
 import { computeSwapFee, noSwapFee, SwapFee, SwapFeeBasis } from '@/lib/utils/swapFee';
 
 interface SwapState {
@@ -186,10 +195,11 @@ export function useSwapActionHandlers(): {
   };
 }
 
+/** A typed amount that hasn't been quoted yet reads as a quote in flight. */
+const PENDING_QUOTE: Omit<BestTrade, 'requote'> = { state: TradeState.LOADING, trade: null };
+
 /**
- * Hook to derive swap information for a given swap state.
- *
- * @returns An object containing the following properties:
+ * Everything the swap form shows and acts on:
  * - `currencies`: An object mapping swap fields to their respective currencies.
  * - `currencyBalances`: An object mapping swap fields to their respective currency balances.
  * - `parsedAmount`: The parsed amount of currency.
@@ -203,20 +213,14 @@ export function useSwapActionHandlers(): {
  * - `tickSpacing`: The tick spacing value.
  * - `poolAddress`: The address of the pool.
  */
-export function useDerivedSwapInfo(): {
+export interface DerivedSwapInfo {
   currencies: { [field in SwapFieldType]?: Currency };
   currencyBalances: { [field in SwapFieldType]?: CurrencyAmount<Currency> };
+  /** What's typed, parsed. The quote trails it by a moment while typing. */
   parsedAmount: CurrencyAmount<Currency> | undefined;
   inputError?: string;
-  tradeState: {
-    trade: Trade<Currency, Currency, TradeType> | null;
-    state: TradeStateType;
-    fee?: bigint[] | null;
-  };
+  tradeState: Omit<BestTrade, 'requote'>;
   toggledTrade: Trade<Currency, Currency, TradeType> | undefined;
-  voltageTrade: { trade: VoltageTrade | undefined; isLoading: boolean };
-  isVoltageTrade: boolean;
-  isVoltageTradeLoading: boolean;
   tickAfterSwap: number | null | undefined;
   allowedSlippage: Percent;
   poolFee: number | undefined;
@@ -233,10 +237,37 @@ export function useDerivedSwapInfo(): {
   swapFee: SwapFee;
   /** Where the fee must be sent. Undefined means "don't collect one". */
   revenueWalletAddress: string | undefined;
-} {
+  /**
+   * Re-quotes the trade on screen just before it's signed. Resolves false when
+   * the price has moved past the slippage limit, so the swap would revert; by
+   * then the form is showing the fresh quote.
+   */
+  refreshQuote: () => Promise<boolean>;
+}
+
+const DerivedSwapInfoContext = createContext<DerivedSwapInfo | undefined>(undefined);
+
+/**
+ * Works out the swap form's quote, balances and fees once, for every component
+ * inside it that calls `useDerivedSwapInfo`.
+ */
+export function DerivedSwapInfoProvider({ children }: { children: ReactNode }) {
+  const info = useSwapInfo();
+  return createElement(DerivedSwapInfoContext.Provider, { value: info }, children);
+}
+
+/** The swap form's derived state, from the nearest `DerivedSwapInfoProvider`. */
+export function useDerivedSwapInfo(): DerivedSwapInfo {
+  const info = useContext(DerivedSwapInfoContext);
+  if (!info) {
+    throw new Error('useDerivedSwapInfo must be used inside a DerivedSwapInfoProvider');
+  }
+  return info;
+}
+
+function useSwapInfo(): DerivedSwapInfo {
   const { user } = useUser();
   const account = user?.safeAddress;
-  const [isVoltageTrade, setIsVoltageTrade] = useState(false);
   const { independentField, typedValue, inputCurrencyId, outputCurrencyId } = useSwapState(
     useShallow(state => ({
       independentField: state.independentField,
@@ -249,10 +280,26 @@ export function useDerivedSwapInfo(): {
   const inputCurrency = useCurrency(inputCurrencyId);
   const outputCurrency = useCurrency(outputCurrencyId);
 
-  const isExactIn: boolean = independentField === SwapField.INPUT;
+  // What's typed drives whatever should keep up with the keyboard...
   const parsedAmount = useMemo(
-    () => tryParseAmount(typedValue, (isExactIn ? inputCurrency : outputCurrency) ?? undefined),
-    [typedValue, isExactIn, inputCurrency, outputCurrency],
+    () =>
+      tryParseAmount(
+        typedValue,
+        (independentField === SwapField.INPUT ? inputCurrency : outputCurrency) ?? undefined,
+      ),
+    [typedValue, independentField, inputCurrency, outputCurrency],
+  );
+
+  // ...while the quote, and the fee sized with it, follow once typing pauses.
+  const quoteInput = useQuoteInput(independentField, typedValue);
+  const isExactIn: boolean = quoteInput.independentField === SwapField.INPUT;
+  const amountToQuote = useMemo(
+    () =>
+      tryParseAmount(
+        quoteInput.typedValue,
+        (isExactIn ? inputCurrency : outputCurrency) ?? undefined,
+      ),
+    [quoteInput.typedValue, isExactIn, inputCurrency, outputCurrency],
   );
 
   const { rate: swapFeeRate, revenueWalletAddress } = useSwapFeeRate();
@@ -269,94 +316,52 @@ export function useDerivedSwapInfo(): {
    * its fee is added on top once the trade resolves, below.
    */
   const inputSideFee = useMemo(() => {
-    if (!isExactIn || !parsedAmount) return undefined;
+    if (!isExactIn || !amountToQuote) return undefined;
     return computeSwapFee({
-      amount: BigInt(parsedAmount.quotient.toString()),
+      amount: BigInt(amountToQuote.quotient.toString()),
       rate: swapFeeRate,
       basis: SwapFeeBasis.DeductedFromInput,
     });
-  }, [isExactIn, parsedAmount, swapFeeRate]);
+  }, [isExactIn, amountToQuote, swapFeeRate]);
 
-  /** What the routers quote: the net amount on exact-in, the target on exact-out. */
+  /** What the router quotes: the net amount on exact-in, the target on exact-out. */
   const amountToRoute = useMemo(() => {
-    if (!parsedAmount) return undefined;
-    if (!inputSideFee || inputSideFee.feeAmount <= 0n) return parsedAmount;
-    return CurrencyAmount.fromRawAmount(parsedAmount.currency, inputSideFee.swapAmount.toString());
-  }, [parsedAmount, inputSideFee]);
+    if (!amountToQuote) return undefined;
+    if (!inputSideFee || inputSideFee.feeAmount <= 0n) return amountToQuote;
+    return CurrencyAmount.fromRawAmount(amountToQuote.currency, inputSideFee.swapAmount.toString());
+  }, [amountToQuote, inputSideFee]);
 
-  const bestTradeExactIn = useBestTradeExactIn(
-    isExactIn ? amountToRoute : undefined,
+  const bestTrade = useBestTrade(
+    isExactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+    amountToRoute,
+    inputCurrency ?? undefined,
     outputCurrency ?? undefined,
   );
-  const bestTradeExactOut = useBestTradeExactOut(
-    inputCurrency ?? undefined,
-    !isExactIn ? amountToRoute : undefined,
-  );
+  const currentTrade = quoteInput.pending ? PENDING_QUOTE : bestTrade;
 
-  const currentTrade = useMemo(
-    () => (isExactIn ? bestTradeExactIn : bestTradeExactOut),
-    [isExactIn, bestTradeExactIn, bestTradeExactOut],
-  );
-
-  const slippage = useSwapSlippageTolerance().divide(100);
-  const voltageTrade = useVoltageRouter(
-    inputCurrency,
-    outputCurrency,
-    amountToRoute,
-    isExactIn,
-    slippage.toFixed(),
-  );
-
-  console.log('voltageTrade', voltageTrade);
-
-  // Track if component has mounted to avoid state updates during hydration
-  const [hasMounted, setHasMounted] = useState(false);
+  // Logged once per distinct quote, not on every render that rebuilds the same one.
+  const lastLoggedQuote = useRef('');
   useEffect(() => {
-    setHasMounted(true);
-  }, []);
+    if (!amountToQuote || currentTrade.state === TradeState.LOADING) return;
 
-  useEffect(() => {
-    // Skip state updates until after initial mount/hydration
-    if (!hasMounted) return;
-    if (voltageTrade.isLoading) return;
+    const trade = currentTrade.trade;
+    const summary = {
+      direction: isExactIn ? 'exact-in' : 'exact-out',
+      amount: `${amountToQuote.toExact()} ${amountToQuote.currency.symbol}`,
+      routedAmount: amountToRoute?.toExact(),
+      state: currentTrade.state,
+      ...(trade && {
+        path: trade.route.tokenPath.map(token => token.symbol).join(' → '),
+        in: trade.inputAmount.toExact(),
+        out: trade.outputAmount.toExact(),
+      }),
+    };
 
-    // Use setTimeout to avoid setState during render
-    const timeoutId = setTimeout(() => {
-      if (currentTrade.state === TradeState.NO_ROUTE_FOUND) {
-        setIsVoltageTrade(false);
-      } else if (voltageTrade.isValid) {
-        if (
-          isExactIn &&
-          currentTrade?.trade?.outputAmount &&
-          voltageTrade.trade?.outputAmount &&
-          currentTrade.trade.outputAmount.lessThan(voltageTrade.trade.outputAmount)
-        ) {
-          setIsVoltageTrade(true);
-        } else if (
-          !isExactIn &&
-          currentTrade?.trade?.inputAmount &&
-          voltageTrade.trade?.inputAmount &&
-          currentTrade.trade.inputAmount.lessThan(voltageTrade.trade.inputAmount)
-        ) {
-          setIsVoltageTrade(true);
-        } else {
-          setIsVoltageTrade(false);
-        }
-      }
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    hasMounted,
-    voltageTrade.isLoading,
-    voltageTrade.isValid,
-    voltageTrade.trade?.outputAmount,
-    voltageTrade.trade?.inputAmount,
-    isExactIn,
-    currentTrade.state,
-    currentTrade.trade?.outputAmount,
-    currentTrade.trade?.inputAmount,
-  ]);
+    const key = JSON.stringify(summary);
+    if (key === lastLoggedQuote.current) return;
+    lastLoggedQuote.current = key;
+    console.log('[swap-quote] algebra quote', summary);
+  }, [amountToQuote, amountToRoute, isExactIn, currentTrade.state, currentTrade.trade]);
 
   const [addressA, addressB] = [
     inputCurrency?.isNative ? undefined : inputCurrency?.address || '',
@@ -420,6 +425,25 @@ export function useDerivedSwapInfo(): {
 
   const allowedSlippage = useSwapSlippageTolerance(toggledTrade);
 
+  const { requote } = bestTrade;
+  const refreshQuote = useCallback(async () => {
+    const trade = currentTrade.trade;
+    if (!trade) return false;
+
+    let freshAmount: bigint | undefined;
+    try {
+      freshAmount = await requote();
+    } catch {
+      // Couldn't re-check; the slippage limit still guards the swap on-chain.
+      return true;
+    }
+    if (freshAmount === undefined) return true;
+
+    return trade.tradeType === TradeType.EXACT_INPUT
+      ? !trade.minimumAmountOut(allowedSlippage).greaterThan(freshAmount.toString())
+      : !trade.maximumAmountIn(allowedSlippage).lessThan(freshAmount.toString());
+  }, [currentTrade.trade, requote, allowedSlippage]);
+
   /**
    * The fee on this swap, whichever side it comes from.
    *
@@ -432,7 +456,7 @@ export function useDerivedSwapInfo(): {
       return inputSideFee ?? noSwapFee(0n);
     }
 
-    const tradeInput = toggledTrade?.inputAmount ?? voltageTrade.trade?.inputAmount;
+    const tradeInput = toggledTrade?.inputAmount;
     if (!tradeInput) return noSwapFee(0n);
 
     return computeSwapFee({
@@ -440,13 +464,11 @@ export function useDerivedSwapInfo(): {
       rate: swapFeeRate,
       basis: SwapFeeBasis.AddedToInput,
     });
-  }, [isExactIn, inputSideFee, toggledTrade, voltageTrade.trade, swapFeeRate]);
+  }, [isExactIn, inputSideFee, toggledTrade, swapFeeRate]);
 
   const [balanceIn, amountIn] = [
     currencyBalances[SwapField.INPUT],
-    isVoltageTrade
-      ? voltageTrade.trade?.inputAmount
-      : toggledTrade?.maximumAmountIn(allowedSlippage),
+    toggledTrade?.maximumAmountIn(allowedSlippage),
   ];
 
   // The fee leaves the same wallet in the same batch, so the balance has to
@@ -508,14 +530,12 @@ export function useDerivedSwapInfo(): {
     toggledTrade,
     tickAfterSwap,
     allowedSlippage,
-    isVoltageTrade,
-    isVoltageTradeLoading: voltageTrade?.isLoading || false,
-    voltageTrade: isVoltageTrade ? voltageTrade : { trade: undefined, isLoading: false },
     poolFee: globalState && globalState[2],
     tick: globalState && globalState[1],
     tickSpacing: tickSpacing,
     poolAddress,
     swapFee,
     revenueWalletAddress,
+    refreshQuote,
   };
 }

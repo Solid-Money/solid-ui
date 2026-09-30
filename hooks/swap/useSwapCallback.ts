@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { Address, encodeFunctionData, erc20Abi } from 'viem';
+import { Address, encodeFunctionData } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
@@ -46,9 +46,6 @@ export function useSwapCallback(
   const queryClient = useQueryClient();
   const account = user?.safeAddress;
 
-  const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(
-    undefined,
-  );
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
@@ -59,53 +56,45 @@ export function useSwapCallback(
     trade?.inputAmount.currency,
   );
 
-  useEffect(() => {
-    function findBestCall() {
-      if (!swapCalldata || !account) return;
+  // Derived rather than set from an effect, so a new quote never renders a frame
+  // with the trade in place but its call still missing.
+  const bestCall = useMemo((): SuccessfulCall | undefined => {
+    if (!account) return undefined;
 
-      setBestCall(undefined);
+    // For AA wallets, we skip simulation entirely
+    // The bundler and paymaster will handle validation and gas estimation
+    const [call] = swapCalldata; // Use the first valid call
+    if (!call) return undefined;
 
-      // For AA wallets, we skip simulation entirely
-      // The bundler and paymaster will handle validation and gas estimation
-      if (swapCalldata.length > 0) {
-        const { calldata, value: _value } = swapCalldata[0]; // Use the first valid call
-
-        if (!calldata || !_value) {
-          console.warn('Invalid swap calldata');
-          return;
-        }
-
-        const value = BigInt(_value);
-
-        // Set the best call without simulation
-        // The AA infrastructure will handle the actual gas estimation
-        setBestCall({
-          calldata,
-          value,
-          gasEstimate: 500000n, // Conservative estimate for AA transactions
-        });
-
-        Sentry.addBreadcrumb({
-          message: 'Swap call prepared for AA wallet',
-          category: 'swap',
-          level: 'info',
-          data: {
-            account,
-            value: value.toString(),
-            hasCalldata: !!calldata,
-          },
-        });
-      }
+    if (!call.calldata || !call.value) {
+      console.warn('Invalid swap calldata');
+      return undefined;
     }
 
-    findBestCall();
+    // The AA infrastructure will handle the actual gas estimation
+    return {
+      calldata: call.calldata,
+      value: BigInt(call.value),
+      gasEstimate: 500000n, // Conservative estimate for AA transactions
+    };
   }, [swapCalldata, account]);
+
+  useEffect(() => {
+    if (!bestCall) return;
+    Sentry.addBreadcrumb({
+      message: 'Swap call prepared for AA wallet',
+      category: 'swap',
+      level: 'info',
+      data: {
+        account,
+        value: bestCall.value.toString(),
+        hasCalldata: true,
+      },
+    });
+  }, [bestCall, account]);
 
   // Get approval info
   const { approvalConfig, needAllowance } = useApproveCallbackFromTrade(trade, allowedSlippage);
-
-  // For token inputs, check if we need approval
-  const isTokenInput = trade?.inputAmount.currency.isToken;
 
   // Get the actual router address from swap config to ensure approval spender matches
   const actualRouterAddress = algebraRouterConfig.address as Address;
@@ -144,55 +133,31 @@ export function useSwapCallback(
 
       const transactions: { to: Address; data: `0x${string}`; value: bigint }[] = [];
 
-      // Add approval transaction if needed
-      if (needAllowance || (isTokenInput && !approvalConfig)) {
-        if (approvalConfig) {
-          Sentry.addBreadcrumb({
-            message: 'Adding approval transaction',
-            category: 'swap',
-            level: 'debug',
-            data: {
-              tokenAddress: approvalConfig.request.address,
-              spender: approvalConfig.request.args?.[0],
-              amount: approvalConfig.request.args?.[1]?.toString(),
-            },
-          });
+      // Approve exactly what this swap can spend, and only when the router's
+      // allowance doesn't already cover it.
+      if (needAllowance) {
+        if (!approvalConfig) throw new Error('Unable to prepare the token approval. Try again.');
 
-          transactions.push({
-            to: approvalConfig.request.address,
-            data: encodeFunctionData({
-              abi: approvalConfig.request.abi,
-              functionName: approvalConfig.request.functionName,
-              args: approvalConfig.request.args,
-            }),
-            value: 0n,
-          });
-        } else if (trade.inputAmount.currency.isToken) {
-          // Generate a fallback approval transaction
+        Sentry.addBreadcrumb({
+          message: 'Adding approval transaction',
+          category: 'swap',
+          level: 'debug',
+          data: {
+            tokenAddress: approvalConfig.request.address,
+            spender: approvalConfig.request.args?.[0],
+            amount: approvalConfig.request.args?.[1]?.toString(),
+          },
+        });
 
-          // Create max approval transaction as fallback
-          const maxApproval = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-          transactions.push({
-            to: trade.inputAmount.currency.address as Address,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: 'approve',
-              args: [actualRouterAddress, BigInt(maxApproval)],
-            }),
-            value: 0n,
-          });
-
-          Sentry.addBreadcrumb({
-            message: 'Adding fallback approval transaction',
-            category: 'swap',
-            level: 'warning',
-            data: {
-              tokenAddress: trade.inputAmount.currency.address,
-              spender: actualRouterAddress,
-              amount: 'MAX',
-            },
-          });
-        }
+        transactions.push({
+          to: approvalConfig.request.address,
+          data: encodeFunctionData({
+            abi: approvalConfig.request.abi,
+            functionName: approvalConfig.request.functionName,
+            args: approvalConfig.request.args,
+          }),
+          value: 0n,
+        });
       }
 
       Sentry.addBreadcrumb({
@@ -357,7 +322,6 @@ export function useSwapCallback(
     swapConfig,
     approvalConfig,
     needAllowance,
-    isTokenInput,
     account,
     user,
     safeAA,
@@ -365,7 +329,6 @@ export function useSwapCallback(
     successInfo,
     trackTransaction,
     queryClient,
-    actualRouterAddress,
     feeTransaction,
     reportCollectedFee,
   ]);

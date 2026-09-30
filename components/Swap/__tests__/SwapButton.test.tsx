@@ -45,8 +45,7 @@ jest.mock('@/store/swapStore', () => ({
       OUTPUT: { symbol: 'FUSE', wrapped: { address: '0x2' } },
     },
     allowedSlippage: { toSignificant: () => '0.5' },
-    voltageTrade: {},
-    isVoltageTrade: false,
+    refreshQuote: mockRefreshQuote,
   }),
 }));
 jest.mock('@/hooks/swap/useSwapCallback', () => ({
@@ -56,11 +55,10 @@ jest.mock('@/hooks/swap/useSwapCallback', () => ({
       callback: mockCallbackAvailable ? mockExecute : undefined,
       error: mockCallbackAvailable ? undefined : 'Unable to prepare the quote. Try another amount.',
       isLoading: false,
-      needAllowance: false,
+      needAllowance: mockNeedAllowance,
     };
   },
 }));
-jest.mock('@/hooks/swap/useVoltageSwapCallback', () => ({ useVoltageSwapCallback: () => ({}) }));
 jest.mock('@/hooks/swap/usePegswapCallback', () => ({
   __esModule: true,
   PegSwapType: { NOT_APPLICABLE: 'none' },
@@ -74,14 +72,16 @@ jest.mock('@/hooks/swap/useWrapCallback', () => ({
 const mockSetModal = jest.fn(),
   mockSetTransaction = jest.fn(),
   mockReset = jest.fn(),
-  mockExecute = jest.fn();
+  mockExecute = jest.fn(),
+  mockRefreshQuote = jest.fn();
 let mockInfo: any,
   mockInputError: string | undefined,
   mockUser = 'a',
   mockSession = 0,
   mockRouteState = 'VALID',
   mockHasTrade = true,
-  mockCallbackAvailable = true;
+  mockCallbackAvailable = true,
+  mockNeedAllowance = false;
 const mockAmount = { toSignificant: () => '100', greaterThan: () => true };
 const mockTrade = {
   swaps: [{}],
@@ -98,7 +98,9 @@ beforeEach(() => {
   mockRouteState = 'VALID';
   mockHasTrade = true;
   mockCallbackAvailable = true;
+  mockNeedAllowance = false;
   mockInputError = undefined;
+  mockRefreshQuote.mockResolvedValue(true);
 });
 afterEach(() => act(() => root.unmount()));
 const mount = (props: any = {}) =>
@@ -257,4 +259,34 @@ it('shows progress immediately while wallet confirmation is pending', async () =
     finish();
     await pending;
   });
+});
+
+it('keeps its own label when the swap also approves the token', () => {
+  mockNeedAllowance = true;
+  mount({ label: 'Buy FUSE' });
+  const rendered = JSON.stringify(root.toJSON());
+  expect(rendered).toContain('Buy FUSE');
+  expect(rendered).not.toContain('Approve');
+});
+
+it('stops before signing when the price moved past the slippage limit', async () => {
+  mockRefreshQuote.mockResolvedValueOnce(false);
+  mount({ label: 'Buy FUSE' });
+  await act(async () => {
+    await press();
+  });
+  expect(mockExecute).not.toHaveBeenCalled();
+  expect(JSON.stringify(root.toJSON())).toContain(
+    'The price changed. Check the new amount and swap again.',
+  );
+  expect(root.root.findByType('Button').props.disabled).toBe(false);
+});
+
+it('re-checks the quote before every signature', async () => {
+  mount();
+  await act(async () => {
+    await press();
+  });
+  expect(mockRefreshQuote).toHaveBeenCalledTimes(1);
+  expect(mockExecute).toHaveBeenCalledTimes(1);
 });

@@ -19,9 +19,6 @@ const SwapPair: React.FC = () => {
     currencyBalances,
     parsedAmount,
     currencies,
-    voltageTrade,
-    isVoltageTrade,
-    isVoltageTradeLoading,
     tradeState,
   } = useDerivedSwapInfo();
 
@@ -83,38 +80,14 @@ const SwapPair: React.FC = () => {
   const showPegSwap: boolean = pegSwapType !== PegSwapType.NOT_APPLICABLE;
 
   const parsedAmountA = useMemo(() => {
-    if (isVoltageTradeLoading || tradeState.state === 'LOADING') return;
-    return independentField === SwapField.INPUT
-      ? parsedAmount
-      : isVoltageTrade
-        ? voltageTrade?.trade?.inputAmount
-        : trade?.inputAmount;
-  }, [
-    independentField,
-    parsedAmount,
-    isVoltageTrade,
-    voltageTrade?.trade?.inputAmount,
-    trade?.inputAmount,
-    isVoltageTradeLoading,
-    tradeState.state,
-  ]);
+    if (tradeState.state === 'LOADING') return;
+    return independentField === SwapField.INPUT ? parsedAmount : trade?.inputAmount;
+  }, [independentField, parsedAmount, trade?.inputAmount, tradeState.state]);
 
   const parsedAmountB = useMemo(() => {
-    if (isVoltageTradeLoading || tradeState.state === 'LOADING') return;
-    return independentField === SwapField.OUTPUT
-      ? parsedAmount
-      : isVoltageTrade
-        ? voltageTrade?.trade?.outputAmount
-        : trade?.outputAmount;
-  }, [
-    independentField,
-    parsedAmount,
-    isVoltageTrade,
-    voltageTrade?.trade?.outputAmount,
-    trade?.outputAmount,
-    isVoltageTradeLoading,
-    tradeState.state,
-  ]);
+    if (tradeState.state === 'LOADING') return;
+    return independentField === SwapField.OUTPUT ? parsedAmount : trade?.outputAmount;
+  }, [independentField, parsedAmount, trade?.outputAmount, tradeState.state]);
 
   const parsedAmounts = useMemo(
     () =>
@@ -167,7 +140,7 @@ const SwapPair: React.FC = () => {
     () => ({
       [independentField]: typedValue,
       [dependentField]:
-        isVoltageTradeLoading || tradeState.state === 'LOADING'
+        tradeState.state === 'LOADING'
           ? '...'
           : showWrap || showPegSwap
             ? (parsedAmounts[independentField]?.toExact() ?? '')
@@ -182,7 +155,6 @@ const SwapPair: React.FC = () => {
       showWrap,
       showPegSwap,
       parsedAmounts,
-      isVoltageTradeLoading,
       tradeState.state,
     ],
   );
@@ -218,7 +190,7 @@ const SwapPair: React.FC = () => {
         fiatValue={fiatValueOutputFormatted ?? undefined}
         showBalance={false}
         title="To"
-        isLoading={isVoltageTradeLoading || tradeState.state === 'LOADING'}
+        isLoading={tradeState.state === 'LOADING'}
       />
     </View>
   );

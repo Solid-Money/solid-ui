@@ -18,7 +18,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useSwapState } from '@/store/swapStore';
+import { DerivedSwapInfoProvider, useSwapState } from '@/store/swapStore';
 import { useComplianceStore } from '@/store/useComplianceStore';
 
 /**
@@ -104,7 +104,11 @@ const SwapModalProvider = () => {
     }
 
     if (isBuyFuse) {
-      return <BuyFuseScreen requestedTier={buyFuseTier} upgradeContext={buyFuseUpgrade} />;
+      return (
+        <DerivedSwapInfoProvider>
+          <BuyFuseScreen requestedTier={buyFuseTier} upgradeContext={buyFuseUpgrade} />
+        </DerivedSwapInfoProvider>
+      );
     }
 
     if (isTransactionStatus) {
@@ -126,16 +130,18 @@ const SwapModalProvider = () => {
     }
 
     return (
-      <View className="flex flex-col gap-4 md:gap-6">
-        <SwapPair />
-        <SwapParams />
-        <View className="mt-2">
-          <SwapButton />
+      <DerivedSwapInfoProvider>
+        <View className="flex flex-col gap-4 md:gap-6">
+          <SwapPair />
+          <SwapParams />
+          <View className="mt-2">
+            <SwapButton />
+          </View>
+          <View className="items-center pt-2">
+            <NeedHelp />
+          </View>
         </View>
-        <View className="items-center pt-2">
-          <NeedHelp />
-        </View>
-      </View>
+      </DerivedSwapInfoProvider>
     );
   }, [
     isSwapAvailable,
