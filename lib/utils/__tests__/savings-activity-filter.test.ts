@@ -137,6 +137,7 @@ describe('isSavingsVaultActivity — other surfaces stay out', () => {
     [TransactionType.MERCURYO_TRANSACTION, 'Buy crypto'],
     [TransactionType.SWAP, 'Swap USDC for ETH'],
     [TransactionType.MERKL_CLAIM, 'Merkl rewards'],
+    [TransactionType.YIELD_BOOST_CLAIM, 'Yield boost'],
     [TransactionType.DEPOSIT_BONUS, 'Deposit bonus'],
     [TransactionType.AGENT_WALLET_DEPOSIT, 'Agent wallet deposit'],
     [TransactionType.GOODDOLLAR_CLAIM, 'GoodDollar claim'],

@@ -3,13 +3,16 @@ import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
 import {
   activateTierTrial,
+  claimYieldBoost,
   fetchReferralSummary,
   fetchRewardsConfig,
   fetchRewardsUserData,
   fetchTierBenefits,
+  fetchYieldBoostSummary,
   optInToRewards,
 } from '@/lib/api';
-import { RewardsUserData } from '@/lib/types';
+import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
+import { RewardsUserData, YieldBoostSummary } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -136,6 +139,56 @@ export const useActivateTierTrial = () => {
       }
       queryClient.setQueryData([REWARDS, 'userData', userId], data);
       void queryClient.invalidateQueries({ queryKey: [REWARDS] });
+    },
+  });
+};
+
+/** How often the yield boost card re-reads a claim that is still being paid. */
+const YIELD_BOOST_PENDING_POLL_MS = secondsToMilliseconds(10);
+
+/**
+ * The user's yield boost: their tier's rate, what they have earned, and what
+ * is waiting to be claimed.
+ *
+ * It accrues once a day, so a minute of staleness is invisible. While a claim
+ * is still being paid it polls, so the card settles on its own once the
+ * transfer is mined.
+ */
+export const useYieldBoostSummary = () => {
+  const userId = useSelectedUserId();
+  return useQuery({
+    queryKey: [REWARDS, 'yieldBoost', userId],
+    queryFn: async () => await withRefreshToken(() => fetchYieldBoostSummary()),
+    enabled: !!userId,
+    staleTime: secondsToMilliseconds(60),
+    gcTime: secondsToMilliseconds(300),
+    refetchInterval: query =>
+      query.state.data?.pendingClaim ? YIELD_BOOST_PENDING_POLL_MS : false,
+  });
+};
+
+/**
+ * Claim the user's accrued yield boost. The backend sends it in soFUSE, so
+ * there is no passkey prompt: the request is the claim.
+ *
+ * The account is read when the claim is made rather than when the screen last
+ * rendered, so a switch mid-claim can't file one account's result under the
+ * other's key.
+ */
+export const useClaimYieldBoost = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const user = useUserStore.getState().users.find(candidate => candidate.selected);
+      if (!user?.userId) throw new Error('Sign in again to claim your yield boost.');
+      const result = await withRefreshToken(() => claimYieldBoost());
+      return { ...result, userId: user.userId, safeAddress: user.safeAddress };
+    },
+    onSuccess: ({ summary, userId, safeAddress }) => {
+      queryClient.setQueryData<YieldBoostSummary>([REWARDS, 'yieldBoost', userId], summary);
+      // The payout lands in the soFUSE vault, which is savings — and FUSE held
+      // there can move the user's tier.
+      refreshRewardsAfterSavings(queryClient, userId, safeAddress);
     },
   });
 };

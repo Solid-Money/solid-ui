@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Href, router } from 'expo-router';
 
 import { BalanceHeadline, BalancePillRow } from '@/components/BalanceHeadline';
+import EarnYieldBoostCard from '@/components/Earn/EarnYieldBoostCard';
 import LockedFuseTile from '@/components/Earn/LockedFuseTile';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
@@ -151,6 +152,10 @@ export default function EarnScreen() {
             )}
           </BalancePillRow>
         </View>
+
+        {/* Earned on the portfolio as a whole, so it sits with the portfolio
+            total rather than on any one vault. */}
+        <EarnYieldBoostCard className="mt-[27px]" />
 
         <Text className="mb-[14px] mt-[27px] text-[16px] leading-5 text-white/50">
           Earn interest, Withdraw anytime
