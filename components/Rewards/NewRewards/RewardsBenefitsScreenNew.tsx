@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -14,7 +14,12 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
-import { SIDEBAR_BODY_WIDTH, usePageWidth } from '@/components/Navbar/Sidebar';
+import {
+  SIDEBAR_BODY_TOP_GUTTER,
+  SIDEBAR_BODY_WIDTH,
+  useIsSidebarShell,
+  usePageWidth,
+} from '@/components/Navbar/Sidebar';
 import PageLayout from '@/components/PageLayout';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
@@ -221,6 +226,10 @@ function RewardsBenefitsForAccount() {
   );
   const selectedTier = selectedTierOverride ?? rewardsData?.currentTier ?? RewardsTier.CORE;
   const insets = useSafeAreaInsets();
+  const isSidebarShell = useIsSidebarShell();
+  // Keep the hero's spacing while letting its scrolling backdrop reach the web header.
+  const heroTopInset =
+    insets.top + (Platform.OS === 'web' && isSidebarShell ? SIDEBAR_BODY_TOP_GUTTER : 0);
   const { selectToken: selectSavingsFundToken } = useSavingsFundFlow();
   const openBuyFuse = useSwapState(state => state.actions.openBuyFuse);
   // The pager's pages are as wide as the column the page gets, which on desktop is
@@ -498,6 +507,7 @@ function RewardsBenefitsForAccount() {
         additionalContent={overlays}
         scrollEnabled={!isSwiping}
         showsVerticalScrollIndicator={false}
+        sidebarTopGutter={Platform.OS === 'web' ? 0 : undefined}
         blurTargetRef={selectorBlurTarget}
       >
         {timedOut && (
@@ -519,7 +529,7 @@ function RewardsBenefitsForAccount() {
                   active={selectedTier === tier}
                   current={currentTier === tier}
                   width={pageWidth}
-                  topInset={insets.top}
+                  topInset={heroTopInset}
                   bottomInset={insets.bottom}
                   position={translateX}
                   benefits={tierBenefits?.find(benefit => benefit.tier === tier)}

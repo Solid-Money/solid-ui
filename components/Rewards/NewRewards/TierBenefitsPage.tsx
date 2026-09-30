@@ -326,7 +326,8 @@ function StatsBand({
   return (
     <View
       style={{
-        marginHorizontal: 17.5 * s,
+        width: 385 * s,
+        alignSelf: 'center',
         height: STATS_GLASS[tier].height * s,
         borderRadius: 24 * s,
         overflow: 'hidden',

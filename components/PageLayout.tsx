@@ -81,6 +81,7 @@ interface PageLayoutProps {
   // horizontal swipe gesture, so the two don't fight over the same touch).
   scrollEnabled?: boolean;
   showsVerticalScrollIndicator?: boolean;
+  sidebarTopGutter?: number;
   edges?: readonly Edge[]; // SafeAreaView edges
 
   // Sticky header (sticks to top when scrolling)
@@ -173,6 +174,7 @@ export default function PageLayout({
   scrollable = true,
   scrollEnabled = true,
   showsVerticalScrollIndicator = true,
+  sidebarTopGutter = SIDEBAR_BODY_TOP_GUTTER,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
@@ -214,7 +216,7 @@ export default function PageLayout({
   // Headerless pages in the sidebar shell get the design's top gutter here, so the
   // content clears the top of the window the way the mobile navbar's offset does.
   const contentTopOffset =
-    mobileContentOffset || (isSidebarShell && !customMobileHeader ? SIDEBAR_BODY_TOP_GUTTER : 0);
+    mobileContentOffset || (isSidebarShell && !customMobileHeader ? sidebarTopGutter : 0);
 
   useRegisterTabBarBlurTarget(mobileBlurTargetRef, shouldOverlayMobileNavbar && !isLoading);
 
