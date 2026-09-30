@@ -157,7 +157,9 @@ export const userTransactionsQueryOptions = (
       variables: {
         address: safeAddress.toLowerCase(),
       },
-      fetchPolicy: 'cache-first',
+      // React Query owns the freshness window. An Apollo cache hit here would
+      // defeat manual invalidation and keep deposits/withdrawals stale forever.
+      fetchPolicy: 'network-only',
     });
     return data;
   },

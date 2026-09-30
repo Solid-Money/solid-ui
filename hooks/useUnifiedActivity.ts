@@ -16,12 +16,13 @@ export type UseUnifiedActivityResult = {
   items: UnifiedActivityItem[];
   isLoading: boolean;
   isSyncing: boolean;
+  isRefreshing: boolean;
   isSyncStale: boolean;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   /** Advances whichever of the two sources still has pages left. */
   loadMore: () => void;
-  refetchAll: (force?: boolean) => void;
+  refetchAll: (force?: boolean) => Promise<void>;
   userHasCard: boolean;
 };
 
@@ -45,6 +46,7 @@ export function useUnifiedActivity(): UseUnifiedActivityResult {
     activities,
     isLoading,
     isSyncing,
+    isRefreshing,
     isSyncStale,
     hasNextPage,
     isFetchingNextPage,
@@ -102,6 +104,7 @@ export function useUnifiedActivity(): UseUnifiedActivityResult {
     items,
     isLoading: isLoading || (userHasCard && isCardLoading),
     isSyncing,
+    isRefreshing,
     isSyncStale,
     hasNextPage: hasNextPage || !!hasNextCardPage,
     isFetchingNextPage: isFetchingNextPage || isFetchingNextCardPage,

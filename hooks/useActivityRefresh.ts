@@ -1,64 +1,95 @@
-import { useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import Toast from 'react-native-toast-message';
+import { QueryClient, useQueryClient } from '@tanstack/react-query';
 
-import { cardTransactionsQueryKey } from '@/hooks/useCardTransactions';
-import { useSyncActivities } from '@/hooks/useSyncActivities';
-import useUser from '@/hooks/useUser';
+import { useSyncActivities, UseSyncActivitiesOptions } from '@/hooks/useSyncActivities';
+import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
+import { refreshWalletActivity } from '@/lib/refreshWalletActivity';
+import { useAccountRefreshStore } from '@/store/useAccountRefreshStore';
 import { useActivityStore } from '@/store/useActivityStore';
+import { useUserStore } from '@/store/useUserStore';
 
-/**
- * Lightweight hook for activity refresh functionality.
- * Use this instead of useActivity() when you only need refresh capabilities
- * without the heavy activity data computations.
- *
- * This prevents excessive re-renders in components like ActivityScreen
- * that don't need the full activity data.
- */
-export function useActivityRefresh() {
-  const { user } = useUser();
+const refreshPromises = new WeakMap<QueryClient, Map<string, Promise<void>>>();
+const SYNC_OPTIONS = { syncOnAppActive: false, syncOnMount: false };
+
+/** One awaited refresh for Home, every Activity filter and the web refresh button. */
+export function useActivityRefresh(options: UseSyncActivitiesOptions = SYNC_OPTIONS) {
+  const user = useUserStore(state => state.users.find(account => account.selected));
+  const userId = user?.userId;
+  const safeAddress = user?.safeAddress;
   const queryClient = useQueryClient();
-
-  // Memoize options to ensure stable reference
-  // (useSyncActivities extracts primitives, but this is good defensive coding)
-  const syncOptions = useMemo(
-    () => ({
-      syncOnAppActive: false, // Don't auto-sync, this is just for manual refresh
-      syncOnMount: false,
-    }),
-    [],
+  const { sync, isSyncing, isStale: isSyncStale, canSync } = useSyncActivities(options);
+  const isRefreshing = useAccountRefreshStore(state =>
+    userId ? !!state.refreshingByUser[userId] : false,
   );
-
-  const { sync: syncFromBackend, isSyncing, isStale: isSyncStale } = useSyncActivities(syncOptions);
-
-  // Derive isLoading: true when syncing AND no cached events (first load).
-  // Narrow selector avoids re-rendering on every event change.
-  const hasEvents = useActivityStore(
-    state => !!(user?.userId && state.events[user.userId]?.length),
-  );
-  const isLoading = isSyncing && !hasEvents;
+  const hasEvents = useActivityStore(state => !!(userId && state.events[userId]?.length));
 
   const refetchAll = useCallback(
-    (force = false) => {
-      if (!user?.userId || isSyncing) return;
+    (force = true): Promise<void> => {
+      if (!userId || !safeAddress) return Promise.resolve();
+      let pending = refreshPromises.get(queryClient);
+      if (!pending) {
+        pending = new Map();
+        refreshPromises.set(queryClient, pending);
+      }
+      const existing = pending.get(userId);
+      if (existing) return existing;
 
-      // Card history is a separate query from the wallet activity store, so
-      // without this the refresh button on the Card tab appears to work and
-      // refreshes nothing. It matters most for cards whose transactions settle
-      // out-of-band (Wirex), where a pending purchase only turns into a
-      // confirmed one on a refetch.
-      queryClient.invalidateQueries({ queryKey: cardTransactionsQueryKey });
+      useAccountRefreshStore.setState(state => ({
+        refreshingByUser: { ...state.refreshingByUser, [userId]: true },
+      }));
+      const promise = (async () => {
+        const failures: unknown[] = [];
+        try {
+          const result = await sync(undefined, force);
+          if (result?.errors) failures.push(new Error('Some transactions could not be synced'));
+        } catch (error) {
+          failures.push(error);
+        }
+        const isSelected = () =>
+          useUserStore.getState().users.find(account => account.selected)?.userId === userId;
+        if (!isSelected()) return;
 
-      syncFromBackend(undefined, force).catch((error: any) => {
-        console.error('Background sync failed:', error);
+        // Read AFTER sync, even when sync fails: the server may still have newer
+        // webhook data. Await every source before releasing the native spinner.
+        const results = await Promise.allSettled([
+          refreshWalletActivity(userId, safeAddress, isSelected).then(page => {
+            if (!isSelected()) return;
+            useAccountRefreshStore.setState(state => ({
+              latestPageByUser: { ...state.latestPageByUser, [userId]: page },
+            }));
+          }),
+          refreshAccountQueries(queryClient, userId, safeAddress, true),
+        ]);
+        for (const result of results) {
+          if (result.status === 'rejected') failures.push(result.reason);
+        }
+        if (failures.length && isSelected()) {
+          console.error('Account refresh failed:', failures[0]);
+          Toast.show({
+            type: 'error',
+            text1: "Couldn't refresh everything",
+            text2: 'Some data may be out of date. Pull to try again.',
+          });
+        }
+      })().finally(() => {
+        pending.delete(userId);
+        useAccountRefreshStore.setState(state => ({
+          refreshingByUser: { ...state.refreshingByUser, [userId]: false },
+        }));
       });
+      pending.set(userId, promise);
+      return promise;
     },
-    [user?.userId, isSyncing, syncFromBackend, queryClient],
+    [userId, safeAddress, queryClient, sync],
   );
 
   return {
     refetchAll,
-    isSyncing,
+    isRefreshing,
+    isSyncing: isSyncing || isRefreshing,
     isSyncStale,
-    isLoading,
+    canSync,
+    isLoading: (isSyncing || isRefreshing) && !hasEvents,
   };
 }

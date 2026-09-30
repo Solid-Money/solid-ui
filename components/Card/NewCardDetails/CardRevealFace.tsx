@@ -45,6 +45,9 @@ const Pill = ({ width, value, onCopy, accessibilityLabel, scale }: PillProps) =>
   <View style={{ alignItems: 'center', flexDirection: 'row', height: PILL.height * scale, width }}>
     <Text
       numberOfLines={1}
+      // The artwork fixes the pill width; fit larger accessibility text inside it.
+      adjustsFontSizeToFit
+      minimumFontScale={0.5}
       style={{
         color: '#ffffff',
         flex: 1,
