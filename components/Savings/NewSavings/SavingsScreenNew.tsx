@@ -15,7 +15,6 @@ import { VaultType } from '@/lib/types';
 import SavingsFundedActions from './SavingsFundedActions';
 import SavingsHelpModal from './SavingsHelpModal';
 import SavingsVaultHero from './SavingsVaultHero';
-import SavingsYieldBoostCard from './SavingsYieldBoostCard';
 import SimulateSavingsCard from './SimulateSavingsCard';
 import StartEarningButton from './StartEarningButton';
 import VaultApyHistoryCard from './VaultApyHistoryCard';
@@ -81,7 +80,6 @@ export default function SavingsScreenNew() {
             <>
               <SavingsFundedActions vaultType={selectedVaultType} />
               <VaultBalanceCard vaultType={selectedVaultType} balanceUsd={selectedBalanceUsd} />
-              <SavingsYieldBoostCard />
             </>
           ) : (
             <StartEarningButton vaultType={selectedVaultType} />

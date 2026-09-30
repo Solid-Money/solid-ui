@@ -186,6 +186,7 @@ describe('isDepositWithSteps', () => {
     TransactionType.WRAP,
     TransactionType.UNWRAP,
     TransactionType.MERKL_CLAIM,
+    TransactionType.YIELD_BOOST_CLAIM,
     TransactionType.CARD_WELCOME_BONUS,
     TransactionType.DEPOSIT_BONUS,
     TransactionType.FAST_WITHDRAW,

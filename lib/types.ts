@@ -1274,6 +1274,11 @@ export enum TransactionType {
   WRAP = 'wrap',
   UNWRAP = 'unwrap',
   MERKL_CLAIM = 'merkl_claim',
+  /**
+   * A tiered yield boost payout: soFUSE the backend sends from its payout
+   * wallet, so the row is written server-side and carries no user operation.
+   */
+  YIELD_BOOST_CLAIM = 'yield_boost_claim',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
   FUND = 'fund',
@@ -1809,6 +1814,11 @@ export interface RewardsUserData {
    */
   yieldBoostBalanceCap?: number;
   /**
+   * The boost the next tier up earns, in percentage points. 0 (or absent) at
+   * the top tier, or when that tier earns none.
+   */
+  nextTierYieldBoostPercentage?: number;
+  /**
    * Cashback % the current tier earns back on eligible subscriptions. 0 (or
    * absent) means the tier grants none, which hides the subscription card.
    */
@@ -1942,6 +1952,75 @@ export interface TierFees {
   allFree: boolean;
   /** Copy under the table, absent on a tier that already pays nothing. */
   footnote?: string;
+}
+
+/** Where one yield boost claim has got to. */
+export enum YieldBoostClaimStatus {
+  /** Days reserved, transfer not signed yet. */
+  PENDING = 'pending',
+  /** Transfer sent, waiting to be mined. */
+  SUBMITTED = 'submitted',
+  PAID = 'paid',
+  /** Nothing was paid; the days went back to claimable. */
+  FAILED = 'failed',
+}
+
+export interface YieldBoostClaim {
+  id: string;
+  status: YieldBoostClaimStatus;
+  /** soFUSE sent, as a decimal string. */
+  soFuseAmount: string;
+  /** What it was worth when sent, in USD. */
+  usdValue: number;
+  txHash: string | null;
+  explorerUrl: string | null;
+  createdAt: string | null;
+  paidAt: string | null;
+}
+
+/**
+ * The signed-in user's yield boost, from `GET /accounts/v1/rewards/yield-boost`.
+ *
+ * The boost is earned daily on the user's savings across every vault and paid
+ * in soFUSE. soFUSE amounts are decimal strings, because they are 18-decimal
+ * shares and a JSON number would drop digits of them.
+ */
+export interface YieldBoostSummary {
+  /** Whether the boost is accruing at all right now. */
+  enabled: boolean;
+  /** Whether a claim can be made right now. */
+  claimsEnabled: boolean;
+  tier: RewardsTier;
+  /** The tier's boost in APY percentage points (2 = +2%). 0 for none. */
+  apyPercentage: number;
+  /** Savings, in USD across every vault, the boost applies to. 0 for none. */
+  maxDepositUsd: number;
+  /** Earned and not yet claimed, in soFUSE. */
+  claimableSoFuse: string;
+  /** The same in USD, at the value of each day it was earned. */
+  claimableUsd: number;
+  /** Everything ever earned, claimed or not, in soFUSE. */
+  totalEarnedSoFuse: string;
+  /** Everything ever earned, in USD at the value of each day it was earned. */
+  totalEarnedUsd: number;
+  /** Everything already paid to the Safe, in soFUSE. */
+  totalClaimedSoFuse: string;
+  lastAccrual: {
+    dayKey: string;
+    depositUsd: number;
+    boostedUsd: number;
+    usdAmount: number;
+    soFuseAmount: string;
+  } | null;
+  /** A claim still being paid, if there is one. */
+  pendingClaim: YieldBoostClaim | null;
+  /** The most one claim can pay, in USD; anything above waits for the next. */
+  maxClaimUsd: number;
+}
+
+export interface YieldBoostClaimResult {
+  claim: YieldBoostClaim;
+  summary: YieldBoostSummary;
 }
 
 export interface TierBenefits {

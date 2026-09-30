@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { cn, formatNumber, formatWholeDollars } from '@/lib/utils';
+import { cn, formatBalanceUSD, formatNumber, formatWholeDollars } from '@/lib/utils';
 
 import RewardsDiamondIcon from './RewardsDiamondIcon';
 
@@ -46,7 +46,7 @@ const YieldBoostContent = ({
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
     >
       {yieldBoostBalanceCap > 0
-        ? `Earn FUSE on top of your savings yield, on your first ${formatWholeDollars(yieldBoostBalanceCap)}`
+        ? `Earn soFUSE on top of your savings yield, on your first ${formatWholeDollars(yieldBoostBalanceCap)}`
         : yieldBoostCap > 0
           ? `Earn USDC on top of your savings deposits, up to ${formatWholeDollars(yieldBoostCap)}`
           : 'Earn USDC on top of your savings deposits'}
@@ -62,9 +62,7 @@ const YieldBoostContent = ({
       <View className="h-px bg-white/10" />
       <View className="flex-1 flex-row items-center justify-between px-[19px]">
         <Text className="text-base font-medium text-white/70">Total earned</Text>
-        <Text className="text-lg font-medium text-white">
-          {formatWholeDollars(yieldBoostEarned)}
-        </Text>
+        <Text className="text-lg font-medium text-white">{formatBalanceUSD(yieldBoostEarned)}</Text>
       </View>
     </View>
 

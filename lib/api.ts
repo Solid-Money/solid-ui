@@ -168,6 +168,8 @@ import {
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
+  YieldBoostClaimResult,
+  YieldBoostSummary,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
@@ -2020,6 +2022,55 @@ export const activateTierTrial = async (): Promise<RewardsUserData> => {
     },
   );
   if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * The signed-in user's yield boost: their tier's rate, and what they have
+ * earned and can claim, in soFUSE and USD.
+ */
+export const fetchYieldBoostSummary = async (): Promise<YieldBoostSummary> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/yield-boost`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Claim the yield boost the user has earned. The backend pays it in soFUSE from
+ * its payout wallet, so there is nothing for the user to sign.
+ *
+ * Answers once the transfer is mined, or with the claim still `submitted` when
+ * it takes longer. Throws an {@link ApiError} carrying the backend's reason —
+ * nothing to claim yet, today's limit reached, claims paused — for the card to
+ * show as is.
+ */
+export const claimYieldBoost = async (): Promise<YieldBoostClaimResult> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/yield-boost/claim`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw await toApiError(response, "Couldn't claim your yield boost");
   return response.json();
 };
 
