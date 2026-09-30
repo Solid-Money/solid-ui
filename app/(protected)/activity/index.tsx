@@ -52,6 +52,7 @@ export default function Activity() {
     items,
     isLoading,
     isSyncing,
+    isRefreshing,
     isSyncStale,
     hasNextPage,
     isFetchingNextPage,
@@ -73,7 +74,11 @@ export default function Activity() {
   const searchTerm = query.trim();
 
   const pageHeader = (
-    <View className="mx-auto w-full max-w-7xl px-4 pb-[10px] pt-6 md:pt-12">
+    <View
+      className={cn('mx-auto w-full max-w-7xl pb-[10px] pt-6 md:pt-12', {
+        'px-4': isWeb,
+      })}
+    >
       <View className="flex-row items-center justify-between">
         <Text className="text-3xl font-semibold">Activity</Text>
 
@@ -89,30 +94,35 @@ export default function Activity() {
     </View>
   );
 
+  const filters = (
+    <View className="pb-2 pt-2">
+      <ActivityFilters
+        value={tab}
+        onChange={handleTabChange}
+        query={query}
+        onQueryChange={setQuery}
+        isSearchOpen={isSearchOpen}
+        onSearchOpenChange={setIsSearchOpen}
+        showSourceFilters={userHasCard}
+      />
+    </View>
+  );
+
   return (
     <PageLayout
       isLoading={isCardStatusLoading}
       mobileHeaderLeftAction="back"
       mobileHeaderRightAction="help"
       onMobileHeaderHelpPress={() => openSupportDrawer()}
+      scrollable={isWeb}
     >
-      {pageHeader}
+      {isWeb && pageHeader}
       <View
         className={cn('mx-auto w-full max-w-7xl px-4 pb-8 md:pb-12', {
           'flex-1': !isWeb,
         })}
       >
-        <View className="pb-2 pt-2">
-          <ActivityFilters
-            value={tab}
-            onChange={handleTabChange}
-            query={query}
-            onQueryChange={setQuery}
-            isSearchOpen={isSearchOpen}
-            onSearchOpenChange={setIsSearchOpen}
-            showSourceFilters={userHasCard}
-          />
-        </View>
+        {isWeb && filters}
 
         <UnifiedActivityList
           items={visibleItems}
@@ -120,11 +130,20 @@ export default function Activity() {
           userHasCard={userHasCard}
           isLoading={isLoading}
           isSyncing={isSyncing}
+          isRefreshing={isRefreshing}
           isSyncStale={isSyncStale}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={loadMore}
           onRefresh={refetchAll}
+          listHeaderComponent={
+            !isWeb ? (
+              <>
+                {pageHeader}
+                {filters}
+              </>
+            ) : undefined
+          }
           emptyTitle={searchTerm ? 'No matching activity' : 'No transactions found'}
           emptyDescription={
             searchTerm

@@ -16,6 +16,9 @@ const SYNC_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours - show prominent loading 
 const SYNC_MIN_INTERVAL_MS = 30 * 1000; // 30 seconds - minimum time between syncs
 const LOCK_TIMEOUT_MS = 30 * 1000; // 30 seconds - force release lock if held this long
 
+// A manual pull must await an existing background sync, then read its results.
+const syncPromises = new Map<string, Promise<SyncActivitiesResponse>>();
+
 // Store to track last sync time per user
 interface SyncState {
   lastSyncByUser: Record<string, number>;
@@ -196,6 +199,9 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
     async (syncOptions?: SyncActivitiesOptions, force = false) => {
       if (!userId) return undefined;
 
+      const existing = syncPromises.get(userId);
+      if (existing) return existing;
+
       // Check if we can sync (respects min interval)
       if (!force && !canSync(userId)) {
         return undefined;
@@ -207,13 +213,12 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
         return undefined;
       }
 
-      try {
-        return await doSync(syncOptions);
-      } finally {
-        // Always release the lock, regardless of success or failure
-        // This ensures no memory leaks even if mutation is cancelled/aborted
+      const promise = doSync(syncOptions).finally(() => {
+        syncPromises.delete(userId);
         releaseSyncLock();
-      }
+      });
+      syncPromises.set(userId, promise);
+      return promise;
     },
     [userId, canSync, acquireSyncLock, releaseSyncLock, doSync],
   );

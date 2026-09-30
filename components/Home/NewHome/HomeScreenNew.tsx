@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { Platform, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
@@ -28,6 +28,7 @@ import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
 import { resolveDigitalWallet } from '@/constants/digital-wallet';
 import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
+import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -63,6 +64,7 @@ export default function HomeScreenNew() {
 
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const { refetchAll, isRefreshing } = useActivityRefresh();
   const {
     data: balance,
     isLoading: isBalanceLoading,
@@ -97,6 +99,7 @@ export default function HomeScreenNew() {
     wallet?: string;
   }>();
   const openCardPane = useCardPaneStore(state => state.open);
+  const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
   const openCardPaneWalletGuide = useCardPaneStore(state => state.openWalletGuide);
 
   useEffect(() => {
@@ -257,6 +260,9 @@ export default function HomeScreenNew() {
       mobileTitle={walletTitle}
       animateCardHeroExit
       additionalContent={<CardDetailsPane />}
+      scrollEnabled={!isCardPaneOpen}
+      onRefresh={Platform.OS !== 'web' ? refetchAll : undefined}
+      refreshing={isRefreshing}
     >
       <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceSectionLoading ? (

@@ -1,8 +1,13 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
+import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { formatBalanceUSD } from '@/lib/utils';
@@ -23,23 +28,42 @@ import { formatBalanceUSD } from '@/lib/utils';
  */
 const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
   const { data: rewardsData } = useRewardsUserData();
+  const { data: cardDetails } = useCardDetails();
 
   const rate = resolveUserCashbackRate(rewardsData) || TIER_CASHBACK_RATES[RewardsTier.CORE];
-  const earnedThisMonth = rewardsData?.cashbackThisMonth ?? 0;
+  const cashbackThisMonth = rewardsData?.cashbackThisMonth ?? 0;
+  const allTimeCashback = Math.max(cardDetails?.cashback?.totalUsdValue ?? 0, cashbackThisMonth);
+  const earnedThisMonth = monthlyCashbackTotal(
+    rewardsData?.cashbackThisMonth,
+    rewardsData?.cashbackPendingThisMonth,
+  );
 
   return (
-    <View className={className}>
-      <View style={styles.card}>
-        <Text style={styles.title}>
-          Earning <Text style={styles.rate}>{rate}%</Text>
-          {'\n'}cashback
-        </Text>
-        <View style={styles.earned}>
-          <Text style={styles.earnedLabel}>Earned this month</Text>
-          <Text style={styles.earnedAmount}>{formatBalanceUSD(earnedThisMonth)}</Text>
-        </View>
-      </View>
-    </View>
+    <CashbackDetailsSheet
+      triggerContainerClassName={className ?? ''}
+      cashbackRate={rate}
+      cashbackThisMonth={cashbackThisMonth}
+      cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
+      maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+      allTimeCashback={allTimeCashback}
+      onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
+      trigger={
+        <Pressable
+          accessibilityLabel="View cashback details"
+          accessibilityRole="button"
+          style={styles.card}
+        >
+          <Text style={styles.title}>
+            Earning <Text style={styles.rate}>{rate}%</Text>
+            {'\n'}cashback
+          </Text>
+          <View style={styles.earned}>
+            <Text style={styles.earnedLabel}>Earned this month</Text>
+            <Text style={styles.earnedAmount}>{formatBalanceUSD(earnedThisMonth)}</Text>
+          </View>
+        </Pressable>
+      }
+    />
   );
 };
 

@@ -22,6 +22,8 @@ import { CommonActions, getFocusedRouteNameFromRoute } from '@react-navigation/n
 
 import { Text } from '@/components/ui/text';
 import { WHITELIST_TAB_LABELS, WHITELIST_TAB_NAMES } from '@/constants/tabs';
+import { useCardHeroStore } from '@/store/useCardHeroStore';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 
 import { useTabBarBlurTarget } from './TabBarBlurContext';
 
@@ -290,6 +292,16 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
               target: route.key,
               canPreventDefault: true,
             });
+
+            if (route.name === 'index' && !event.defaultPrevented) {
+              const cardPane = useCardPaneStore.getState();
+              if (cardPane.isOpen) {
+                // Wallet scrolls to the top on this tap, so its card's saved
+                // position is no longer a destination for the return flight.
+                useCardHeroStore.getState().end();
+                cardPane.close();
+              }
+            }
 
             if (state.index !== originalIndex && !event.defaultPrevented) {
               navigation.dispatch({
