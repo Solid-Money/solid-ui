@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -30,6 +30,11 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { availableRoutes, findOffer } from '@/lib/tierUpgrade';
+import {
+  formatTierYieldBoost,
+  resolveTierYieldBoostRate,
+  TIER_YIELD_BOOST_RATES,
+} from '@/lib/tierYieldBoost';
 import { RewardsTier } from '@/lib/types';
 import { useSwapState } from '@/store/swapStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -91,9 +96,27 @@ interface TierContent {
   cashback: { everyPurchase: string; subscriptionRate: string | null };
 }
 
+/**
+ * The stat column and the perk row a yield boost is quoted in, both keyed on this
+ * label so the live rate can be substituted into them by name rather than by index.
+ */
+const YIELD_BOOST_LABEL = 'Yield boost';
+
+const yieldBoostStat = (rate: number): TierStat => ({
+  label: YIELD_BOOST_LABEL,
+  value: formatTierYieldBoost(rate),
+});
+
+const yieldBoostPerk = (rate: number): TierPerk => ({
+  title: YIELD_BOOST_LABEL,
+  description: `${formatTierYieldBoost(rate)} APY boost on your savings`,
+});
+
 // Every tier's cashback figure on this screen comes from the shared rates table,
 // so the comparison here and the "N% Cashback" benefit card on the rewards
-// screen can't drift apart.
+// screen can't drift apart. The yield boost figures below are the same table's
+// job: they are the pre-request fallback, and `PremiumSummaryAndPerks` swaps in
+// the live rate as soon as the tier-benefits request lands.
 const TIER_CONTENT: Record<RewardsTier, TierContent> = {
   [RewardsTier.CORE]: {
     headline: 'The Solid Foundation',
@@ -117,11 +140,11 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     unlockCopy: 'Unlocks at 5M points',
     stats: [
       { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.PRIME) },
-      { label: 'Yield boost', value: '+2%' },
+      yieldBoostStat(TIER_YIELD_BOOST_RATES[RewardsTier.PRIME]),
       { label: 'Back on AI', value: '25%' },
     ],
     perks: [
-      { title: 'Yield boost', description: '+2% APY on your savings' },
+      yieldBoostPerk(TIER_YIELD_BOOST_RATES[RewardsTier.PRIME]),
       {
         title: 'Subscription discounts',
         description: '25% back on AI, streaming, music',
@@ -138,11 +161,11 @@ const TIER_CONTENT: Record<RewardsTier, TierContent> = {
     unlockCopy: 'Unlocks at 35M Points',
     stats: [
       { label: 'Cashback', value: formatTierCashbackRate(RewardsTier.ULTRA) },
-      { label: 'Yield boost', value: '+3%' },
+      yieldBoostStat(TIER_YIELD_BOOST_RATES[RewardsTier.ULTRA]),
       { label: 'Back on AI', value: '50%' },
     ],
     perks: [
-      { title: 'Yield boost', description: '+3% APY boost on your savings' },
+      yieldBoostPerk(TIER_YIELD_BOOST_RATES[RewardsTier.ULTRA]),
       {
         title: 'Subscription discounts',
         description: '50% back on AI, streaming, music',
@@ -369,13 +392,37 @@ const PremiumPerkIcon = ({ index }: { index: number }) => {
 const PremiumSummaryAndPerks = ({ tier }: { tier: RewardsTier.PRIME | RewardsTier.ULTRA }) => {
   const content = TIER_CONTENT[tier];
   const discount = tier === RewardsTier.PRIME ? '25%' : '50%';
+  // The live boost, from the same endpoint the rewards home reads. Both surfaces used
+  // to print their own constant, and the two had drifted: the "+N% Yield Boost" card on
+  // the rewards tab showed the backend's figure while the stats band and the perk row
+  // here still quoted the number they had been written with.
+  const { data: tierBenefits } = useTierBenefits();
+  const boostRate = resolveTierYieldBoostRate(tier, tierBenefits);
+
+  // Substituted by label rather than by position: the band's columns and the perk rows
+  // are ordered by the design, and an index would silently relabel the wrong one the
+  // first time a tier gains a benefit.
+  const stats = useMemo(
+    () =>
+      content.stats.map(stat =>
+        stat.label === YIELD_BOOST_LABEL ? yieldBoostStat(boostRate) : stat,
+      ),
+    [content.stats, boostRate],
+  );
+  const perks = useMemo(
+    () =>
+      content.perks.map(perk =>
+        perk.title === YIELD_BOOST_LABEL ? yieldBoostPerk(boostRate) : perk,
+      ),
+    [content.perks, boostRate],
+  );
 
   return (
     <View className="mx-4 mt-[59px]">
-      <TierStatsBand stats={content.stats} />
+      <TierStatsBand stats={stats} />
 
       <View className="-mt-[42px] h-[270px] overflow-hidden rounded-twice bg-[#1C1C1C]">
-        {content.perks.map((perk, index) => (
+        {perks.map((perk, index) => (
           <View key={perk.title}>
             {index > 0 && <CoreDivider />}
             <View className="h-[90px] flex-row items-center justify-between px-[19px]">

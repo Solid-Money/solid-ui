@@ -11,7 +11,7 @@ export const SPEND_MODE_HELP_SLIDES: SpendModeHelpSlide[] = [
     key: 'twoWays',
     title: 'Two ways to pay',
     description:
-      'Cash pays from your USDC balance. Credit lets you spend without selling your assets.',
+      'Cash pays from your USD balance. Credit lets you spend without selling your assets.',
     cta: 'Next',
   },
   {
