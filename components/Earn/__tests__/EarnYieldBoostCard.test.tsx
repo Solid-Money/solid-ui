@@ -8,7 +8,9 @@ const { act, create } = require('react-test-renderer');
 jest.mock('react-native-toast-message', () => ({ __esModule: true, default: { show: jest.fn() } }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/skeleton', () => ({ __esModule: true, default: 'Skeleton' }));
-jest.mock('@/lib/config', () => ({ isDevFeatureEnabled: false }));
+// A non-production build, where the rewards screen previews locked perks at
+// stock rates. This card must not.
+jest.mock('@/lib/config', () => ({ isDevFeatureEnabled: true }));
 // The real module pulls in wagmi, which Jest can't parse; these mirror it.
 jest.mock('@/lib/utils', () => {
   const formatNumber = (value: number, max = 6, min = 2) =>
@@ -157,6 +159,16 @@ it('explains a paused claim instead of offering it', () => {
 
   expect(claimButton().props.disabled).toBe(true);
   expect(texts()).toContain('Claims are paused for now');
+});
+
+it('never previews a boost for a Core user, even off production', () => {
+  mockSummaryQuery = {
+    isLoading: false,
+    data: summary({ tier: 'core', apyPercentage: 0, claimableSoFuse: '0.0', totalEarnedUsd: 0 }),
+  };
+  render();
+
+  expect(root.toJSON()).toBeNull();
 });
 
 it('renders nothing for a user with no boost and nothing to claim', () => {

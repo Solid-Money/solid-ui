@@ -1,11 +1,9 @@
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-import { resolveTierBenefitRates } from '@/components/Rewards/NewRewards/tierBenefitCards';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useClaimYieldBoost, useYieldBoostSummary } from '@/hooks/useRewards';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { YieldBoostClaim, YieldBoostClaimStatus } from '@/lib/types';
 import { cn, formatBalanceUSD, formatNumber } from '@/lib/utils';
 
@@ -50,23 +48,18 @@ interface EarnYieldBoostCardProps {
  * vault the money is in. It renders nothing for a user with no boost and
  * nothing to claim, so Core users don't see an empty box for a perk they
  * haven't unlocked — while someone who dropped a tier can still collect what
- * they earned at the old one. Off production the boost is previewed at stock
- * Prime rates, matching the rewards screen, so the card is reviewable from a
- * Core test account.
+ * they earned at the old one.
+ *
+ * The rate is always the user's own, as the backend reports it — never the
+ * rewards screen's off-production preview. This card shows a real balance and
+ * a Claim button, so a borrowed rate would tell a Core user they are earning a
+ * boost they are not.
  */
 const EarnYieldBoostCard = ({ className }: EarnYieldBoostCardProps) => {
   const { data: summary, isLoading } = useYieldBoostSummary();
   const { mutateAsync: claim, isPending: isClaiming } = useClaimYieldBoost();
 
-  const { yieldBoostPercentage: boostPercentage } = resolveTierBenefitRates(
-    {
-      yieldBoostPercentage: summary?.apyPercentage ?? 0,
-      yieldBoostCap: 0,
-      yieldBoostEarned: summary?.totalEarnedUsd ?? 0,
-      subscriptionDiscountRate: 0,
-    },
-    isDevFeatureEnabled,
-  );
+  const boostPercentage = summary?.apyPercentage ?? 0;
 
   const hasClaimable = Number(summary?.claimableSoFuse ?? 0) > 0;
   const isPaying = isClaiming || Boolean(summary?.pendingClaim);
