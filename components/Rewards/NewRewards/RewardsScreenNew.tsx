@@ -296,6 +296,7 @@ export default function RewardsScreenNew() {
           <TierBenefitsGrid
             currentTier={currentTier}
             actualSubscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
+            subscriptionCategoryRates={rewardsData?.subscriptionCategoryRates}
             cashbackRate={cashbackRate}
             // The settled and escrowed halves go down separately: the sheet
             // sums them itself, so handing it `cashback` would count the
