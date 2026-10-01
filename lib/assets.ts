@@ -956,6 +956,70 @@ export const ASSETS = {
     module: require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png'),
     hash: 'a06bb5c5',
   },
+  'images/rewards-tiers/v4/airline.svg': {
+    module: require('@/assets/images/rewards-tiers/v4/airline.svg'),
+    hash: '7670516b',
+  },
+  'images/rewards-tiers/v4/airlines.png': {
+    module: require('@/assets/images/rewards-tiers/v4/airlines.png'),
+    hash: '6543b921',
+  },
+  'images/rewards-tiers/v4/background.png': {
+    module: require('@/assets/images/rewards-tiers/v4/background.png'),
+    hash: 'cb166b3d',
+  },
+  'images/rewards-tiers/v4/cap.svg': {
+    module: require('@/assets/images/rewards-tiers/v4/cap.svg'),
+    hash: '15984fce',
+  },
+  'images/rewards-tiers/v4/card-core-still.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-core-still.png'),
+    hash: '794e4276',
+  },
+  'images/rewards-tiers/v4/card-core.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-core.png'),
+    hash: 'c9b7a214',
+  },
+  'images/rewards-tiers/v4/card-prime-still.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-prime-still.png'),
+    hash: '6480bb41',
+  },
+  'images/rewards-tiers/v4/card-prime.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-prime.png'),
+    hash: 'a81aa408',
+  },
+  'images/rewards-tiers/v4/card-ultra-still.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-ultra-still.png'),
+    hash: '7d0da229',
+  },
+  'images/rewards-tiers/v4/card-ultra.png': {
+    module: require('@/assets/images/rewards-tiers/v4/card-ultra.png'),
+    hash: '5f66a8bb',
+  },
+  'images/rewards-tiers/v4/lock.svg': {
+    module: require('@/assets/images/rewards-tiers/v4/lock.svg'),
+    hash: '2e7d27d9',
+  },
+  'images/rewards-tiers/v4/rides.png': {
+    module: require('@/assets/images/rewards-tiers/v4/rides.png'),
+    hash: '73c652d6',
+  },
+  'images/rewards-tiers/v4/stats-core-glass.png': {
+    module: require('@/assets/images/rewards-tiers/v4/stats-core-glass.png'),
+    hash: '748974c8',
+  },
+  'images/rewards-tiers/v4/stats-prime-glass.png': {
+    module: require('@/assets/images/rewards-tiers/v4/stats-prime-glass.png'),
+    hash: 'bb2a9503',
+  },
+  'images/rewards-tiers/v4/stats-ultra-glass.png': {
+    module: require('@/assets/images/rewards-tiers/v4/stats-ultra-glass.png'),
+    hash: 'fb6e4d2c',
+  },
+  'images/rewards-tiers/v4/yield.svg': {
+    module: require('@/assets/images/rewards-tiers/v4/yield.svg'),
+    hash: 'f4b0ad37',
+  },
   'images/rewards-tiers/yield-boost.png': {
     module: require('@/assets/images/rewards-tiers/yield-boost.png'),
     hash: '0403ec32',

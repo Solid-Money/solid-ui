@@ -1,0 +1,22 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="10.9091" height="20.4545" viewBox="0 0 10.9091 20.4545" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Netflix_2015_N_logo 1" clip-path="url(#clip0_0_6)">
+<path id="path6055" d="M-0.0232377 -0.0245472L0.0452022 20.5082C1.49562 20.2195 2.63618 20.2511 3.92347 20.131V-0.000973481L-0.0232377 -0.0245472Z" fill="url(#paint0_linear_0_6)"/>
+<path id="path678" d="M7.00195 8.87784e-05H10.9486L10.9943 20.4621L6.97913 19.7785L7.00195 8.87784e-05Z" fill="url(#paint1_linear_0_6)"/>
+<path id="path362" d="M0.0232045 8.87784e-05C0.114458 0.235826 6.8672 20.0849 6.8672 20.0849C7.97681 20.0767 9.46464 20.264 10.928 20.4385L3.90147 8.87784e-05H0.0232045Z" fill="#E50914"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_6" x1="1.54819" y1="8.66699" x2="4.4134" y2="7.53267" gradientUnits="userSpaceOnUse">
+<stop stop-color="#B1060F"/>
+<stop offset="0.546072" stop-color="#7B010C"/>
+<stop offset="1" stop-color="#E50914" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_6" x1="9.03187" y1="10.6684" x2="6.10005" y2="11.8663" gradientUnits="userSpaceOnUse">
+<stop stop-color="#B1060F"/>
+<stop offset="0.625007" stop-color="#7B010C"/>
+<stop offset="1" stop-color="#B1060F" stop-opacity="0"/>
+</linearGradient>
+<clipPath id="clip0_0_6">
+<rect width="10.9091" height="20.4545" fill="white"/>
+</clipPath>
+</defs>
+</svg>

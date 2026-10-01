@@ -2,8 +2,15 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useDimension } from '@/hooks/useDimension';
+import { RewardsTier } from '@/lib/types';
 
 import SubscriptionCashbackContent from './SubscriptionCashbackContent';
 
@@ -19,6 +26,7 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 const SubscriptionCashbackSheet = ({
   trigger,
   onGetMoreCashback,
+  onUpgradeTier,
   triggerContainerClassName = 'flex-1',
   ...subscriptionData
 }: SubscriptionCashbackSheetProps) => {
@@ -28,7 +36,13 @@ const SubscriptionCashbackSheet = ({
 
   const handleGetMoreCashback = () => {
     setOpen(false);
-    onGetMoreCashback();
+    if (onUpgradeTier) {
+      onUpgradeTier(
+        subscriptionData.currentTier === RewardsTier.CORE ? RewardsTier.PRIME : RewardsTier.ULTRA,
+      );
+    } else {
+      onGetMoreCashback();
+    }
   };
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -38,12 +52,20 @@ const SubscriptionCashbackSheet = ({
   };
 
   const content = (
-    <SubscriptionCashbackContent
-      {...subscriptionData}
-      animationSession={animationSession}
-      isSheet={!isScreenMedium}
-      onGetMoreCashback={handleGetMoreCashback}
-    />
+    <>
+      <DialogTitle className="sr-only">Category cashback</DialogTitle>
+      <DialogDescription className="sr-only">
+        Cashback rates and eligible merchants by category.
+      </DialogDescription>
+      <SubscriptionCashbackContent
+        key={animationSession}
+        {...subscriptionData}
+        animationSession={animationSession}
+        isSheet={!isScreenMedium}
+        onGetMoreCashback={handleGetMoreCashback}
+        onDismiss={() => setOpen(false)}
+      />
+    </>
   );
 
   if (isScreenMedium) {
@@ -57,9 +79,7 @@ const SubscriptionCashbackSheet = ({
           trigger={trigger}
           contentKey="subscription-cashback"
           shouldAnimate={false}
-          // Eleven merchant rows overflow the viewport on short desktop
-          // windows; cap the card so the close button stays put and only the
-          // body scrolls.
+          // Longer categories scroll within the modal on short windows.
           fillViewportHeight
         >
           {content}
@@ -74,10 +94,14 @@ const SubscriptionCashbackSheet = ({
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent
           webPresentation="bottom-sheet"
-          className="h-[90vh] w-full max-w-none overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
+          overlayClassName="web:fixed"
+          showCloseButton={false}
+          className="h-[784px] max-h-[90vh] w-full max-w-none overflow-hidden rounded-b-none rounded-t-[40px] bg-[#1C1C1C] p-0"
         >
           <View className="absolute left-1/2 top-4 z-10 h-[5px] w-[73px] -translate-x-1/2 rounded-full bg-white/20" />
-          <ScrollView showsVerticalScrollIndicator={false}>{content}</ScrollView>
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            {content}
+          </ScrollView>
         </DialogContent>
       </Dialog>
     </View>

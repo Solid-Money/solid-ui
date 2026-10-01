@@ -294,6 +294,8 @@ export default function RewardsScreenNew() {
 
         <View className="mt-8">
           <TierBenefitsGrid
+            currentTier={currentTier}
+            actualSubscriptionDiscountRate={rewardsData?.subscriptionDiscountRate ?? 0}
             cashbackRate={cashbackRate}
             // The settled and escrowed halves go down separately: the sheet
             // sums them itself, so handing it `cashback` would count the
@@ -306,6 +308,7 @@ export default function RewardsScreenNew() {
             yieldBoostBalanceCap={rewardsData?.yieldBoostBalanceCap ?? 0}
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
             onReferralsPress={() => setIsReferralModalOpen(true)}
+            onUpgradeSubscriptionTier={handleUpgradeTier}
           />
         </View>
 
