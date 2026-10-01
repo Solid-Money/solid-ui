@@ -12,7 +12,26 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
 
-const FEE_LINE = '0.03% fee will be charged for deposits on this network';
+type QuoteState = {
+  data?: { applies: boolean; ratePpm: number };
+  isError: boolean;
+};
+
+// The backend's answer. Charges the 0.03% default unless a test says otherwise,
+// so the rule tests below show which deposits are never asked about at all.
+let mockQuote: QuoteState;
+const mockUseDepositFeeQuote = jest.fn((_params: unknown) => mockQuote);
+jest.mock('@/hooks/useDepositFeeQuote', () => ({
+  useDepositFeeQuote: (params: unknown) => mockUseDepositFeeQuote(params),
+}));
+
+beforeEach(() => {
+  mockQuote = { data: { applies: true, ratePpm: 300 }, isError: false };
+  mockUseDepositFeeQuote.mockClear();
+});
+
+const feeLine = (percent: string) => `${percent} fee will be charged for deposits on this network`;
+const FEE_LINE = feeLine('0.03%');
 
 const render = (element: React.ReactElement) => {
   let tree: any;
@@ -79,3 +98,98 @@ test("follows the vault's chain on a savings deposit", () => {
   expect(notice(mainnet.id)).toEqual([]);
   expect(notice(base.id)).toEqual([FEE_LINE]);
 });
+
+describe('the rate', () => {
+  test('is the one the backend quotes for the route and chain', () => {
+    mockQuote = { data: { applies: true, ratePpm: 500 }, isError: false };
+    expect(rainCardNotice()).toEqual([feeLine('0.05%')]);
+  });
+
+  test('is left off when the backend would not charge the deposit', () => {
+    mockQuote = { data: { applies: false, ratePpm: 0 }, isError: false };
+    expect(rainCardNotice()).toEqual([]);
+  });
+
+  test('is left off until the backend answers', () => {
+    mockQuote = { data: undefined, isError: false };
+    expect(rainCardNotice()).toEqual([]);
+  });
+
+  test('falls back to the default when the backend cannot be asked', () => {
+    mockQuote = { data: undefined, isError: true };
+    expect(rainCardNotice()).toEqual([FEE_LINE]);
+  });
+});
+
+describe('the quote', () => {
+  test('is asked of the card address for the card and wallet flows', () => {
+    rainCardNotice();
+    render(
+      <DepositFeeNotice
+        product="wallet"
+        provider={CardProvider.WIREX}
+        chainId={base.id}
+        symbol="USDT"
+      />,
+    );
+
+    expect(mockUseDepositFeeQuote.mock.calls.map(([params]) => params)).toEqual([
+      {
+        destinationType: 'RAIN_CARD',
+        chainId: mainnet.id,
+        symbol: 'USDC',
+        provider: CardProvider.RAIN,
+        enabled: true,
+      },
+      {
+        destinationType: 'RAIN_CARD',
+        chainId: base.id,
+        symbol: 'USDT',
+        provider: CardProvider.WIREX,
+        enabled: true,
+      },
+    ]);
+  });
+
+  test('is asked of the savings address for a savings deposit', () => {
+    render(
+      <DepositFeeNotice
+        product="savings"
+        provider={CardProvider.RAIN}
+        chainId={base.id}
+        symbol="USDC"
+        vaultToken="soUSD"
+      />,
+    );
+
+    expect(mockUseDepositFeeQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ destinationType: 'PROTOCOL', symbol: 'USDC', enabled: true }),
+    );
+  });
+
+  test('is not asked for a deposit that is free by rule', () => {
+    render(
+      <DepositFeeNotice
+        product="card"
+        provider={CardProvider.RAIN}
+        chainId={base.id}
+        symbol="USDC"
+      />,
+    );
+
+    expect(mockUseDepositFeeQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+  });
+});
+
+function rainCardNotice() {
+  return render(
+    <DepositFeeNotice
+      product="card"
+      provider={CardProvider.RAIN}
+      chainId={mainnet.id}
+      symbol="USDC"
+    />,
+  );
+}

@@ -9,6 +9,7 @@ import {
 import { Edge, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurTargetView } from 'expo-blur';
 import { usePathname } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
 
 import { useDimension } from '@/hooks/useDimension';
 
@@ -16,6 +17,7 @@ import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile, { MOBILE_NAVBAR_CONTENT_HEIGHT } from './Navbar/NavbarMobile';
 import { SIDEBAR_BODY_TOP_GUTTER, SIDEBAR_BODY_WIDTH, useIsSidebarShell } from './Navbar/Sidebar';
+import PullToRefreshScrollView from './PullToRefreshScrollView';
 import { useRegisterTabBarBlurTarget } from './tabBar/TabBarBlurContext';
 
 const MOBILE_NAVBAR_DIVIDER_OFFSET = 1;
@@ -82,6 +84,8 @@ interface PageLayoutProps {
   scrollEnabled?: boolean;
   showsVerticalScrollIndicator?: boolean;
   sidebarTopGutter?: number;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
 
   // Sticky header (sticks to top when scrolling)
@@ -175,6 +179,8 @@ export default function PageLayout({
   scrollEnabled = true,
   showsVerticalScrollIndicator = true,
   sidebarTopGutter = SIDEBAR_BODY_TOP_GUTTER,
+  onRefresh,
+  refreshing = false,
   edges = ['right', 'left', 'bottom', 'top'],
   stickyHeader,
   additionalContent,
@@ -186,6 +192,8 @@ export default function PageLayout({
   const isSidebarShell = useIsSidebarShell();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollViewRef);
   const mobileBlurTargetRef = useRef<View>(null);
   const [mobileNavbarOffset, setMobileNavbarOffset] = useState(0);
   const [isMobileNavbarScrolled, setIsMobileNavbarScrolled] = useState(false);
@@ -307,11 +315,15 @@ export default function PageLayout({
   // Build the main content
   if (scrollable) {
     const scrollView = (
-      <ScrollView
+      <PullToRefreshScrollView
+        ref={scrollViewRef}
         className={`flex-1 ${contentClassName}`}
         contentContainerStyle={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
         scrollEnabled={scrollEnabled}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        refreshIndicatorOffset={contentTopOffset}
         contentInsetAdjustmentBehavior={shouldOverlayMobileNavbar ? 'never' : 'automatic'}
         onScroll={shouldOverlayMobileNavbar ? handleMobileScroll : undefined}
         scrollEventThrottle={shouldOverlayMobileNavbar ? 16 : undefined}
@@ -323,7 +335,7 @@ export default function PageLayout({
           </View>
         )}
         {renderBody(children)}
-      </ScrollView>
+      </PullToRefreshScrollView>
     );
 
     return (

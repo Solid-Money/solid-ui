@@ -1,4 +1,4 @@
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
@@ -111,10 +111,7 @@ const EarnPointsSection = () => {
     ];
   };
 
-  // Swap is not available on iOS, so exclude it from the earning methods there.
-  const earningMethods = getEarningMethods().filter(
-    method => Platform.OS !== 'ios' || method.title !== 'Swap',
-  );
+  const earningMethods = getEarningMethods();
 
   return (
     <View className="gap-6 rounded-twice bg-card p-6 md:gap-10 md:p-10">

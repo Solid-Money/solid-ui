@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -154,12 +154,6 @@ const SwapModalProvider = () => {
     transaction,
     handleTransactionStatusPress,
   ]);
-
-  // Regular Swap remains unavailable on iOS. Buy FUSE can open through its
-  // dedicated entry points and still passes the geo and disclaimer gates.
-  if (Platform.OS === 'ios' && !isBuyFuse) {
-    return null;
-  }
 
   return (
     <ResponsiveModal

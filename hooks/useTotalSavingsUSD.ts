@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
-import { makeNativePriceFetcher } from '@/hooks/useNativePriceUsd';
+import { useNativePriceQuery } from '@/hooks/useNativePriceUsd';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -14,9 +13,6 @@ const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon
 const usdcVault = ACTIVE_VAULTS[0];
 const fuseVault = ACTIVE_VAULTS[1];
 const ethVault = ACTIVE_VAULTS[2];
-
-const fetchFusePrice = makeNativePriceFetcher(fuse.id);
-const fetchEthPrice = makeNativePriceFetcher(mainnet.id);
 
 /**
  * Total redeemable savings in USD across ALL vaults: soUSD + soFUSE + soETH.
@@ -59,20 +55,16 @@ export const useTotalSavingsUSD = (): {
   const hasFuseBalance = !!fuseVault && (balanceFuse ?? 0) > 0;
   const hasEthBalance = !!ethVault && (balanceEth ?? 0) > 0;
 
-  const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useQuery({
-    queryKey: ['fusePriceUsd'],
-    queryFn: fetchFusePrice,
-    enabled: hasFuseBalance,
-    staleTime: 5_000,
-    refetchInterval: 5_000,
-  });
-  const { data: ethPriceUsd, isLoading: isLoadingEthPrice } = useQuery({
-    queryKey: ['ethPriceUsd'],
-    queryFn: fetchEthPrice,
-    enabled: hasEthBalance,
-    staleTime: 5_000,
-    refetchInterval: 5_000,
-  });
+  const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useNativePriceQuery(
+    fuse.id,
+    'fusePriceUsd',
+    hasFuseBalance,
+  );
+  const { data: ethPriceUsd, isLoading: isLoadingEthPrice } = useNativePriceQuery(
+    mainnet.id,
+    'ethPriceUsd',
+    hasEthBalance,
+  );
 
   const isLoading =
     isLoadingBalanceUsdc ||

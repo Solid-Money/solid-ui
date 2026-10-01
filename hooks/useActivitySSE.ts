@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
 import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
 import {
   ActivityEvent,
@@ -710,12 +711,12 @@ class SSEConnectionManager {
       this.balanceDebounceTimer = null;
       if (this.currentUserId !== eventUserId) return;
       try {
-        // Invalidate token balance queries to trigger refetch
-        queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
-
-        // Invalidate vault balance queries to trigger refetch
-        // Using partial match to invalidate all vault balance variants
-        queryClient.invalidateQueries({ queryKey: ['vault'] });
+        const user = useUserStore.getState().users.find(user => user.userId === eventUserId);
+        if (user?.safeAddress) {
+          void refreshAccountQueries(queryClient, eventUserId, user.safeAddress).catch(err => {
+            Sentry.captureException(err, { tags: { type: 'sse_balance_update_error' } });
+          });
+        }
         queryClient.invalidateQueries({ queryKey: ['rewards', 'userData', eventUserId] });
         // External deposits, withdrawals and share transfers can change tier
         // eligibility. Reconcile past the vault cache without inferring a tier.
@@ -724,7 +725,6 @@ class SSEConnectionManager {
             data.balance.changeType,
           )
         ) {
-          const user = useUserStore.getState().users.find(user => user.userId === eventUserId);
           // The stream does not identify the destination vault. Poll quietly
           // for external Savings deposits without blocking a new wallet-funded buy.
           refreshRewardsAfterSavings(queryClient, eventUserId, user?.safeAddress, false);

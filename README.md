@@ -193,6 +193,7 @@ Key environment variables (see `.env.example`):
 - `EXPO_PUBLIC_ALCHEMY_API_KEY`: Alchemy API key for blockchain data
 - `EXPO_PUBLIC_ETHEREUM_API_KEY`: Ethereum API key
 - `EXPO_PUBLIC_PIMLICO_API_KEY`: Pimlico paymaster API key
+- `EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID`: Pimlico sponsorship policy attached to every user operation
 - `EXPO_PUBLIC_FLASH_API_BASE_URL`: Solid API configuration
 - `EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL`: Solid analytics endpoint
 - `EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS`: Bridge auto-deposit address
