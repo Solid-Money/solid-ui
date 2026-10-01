@@ -28,6 +28,10 @@ export default function ActivityLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen
+        name="insights"
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
         name="[clientTxId]"
         options={{
           title: 'Activity Details',

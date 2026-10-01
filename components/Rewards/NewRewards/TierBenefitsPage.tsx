@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -248,6 +248,7 @@ function TierCardArtwork({
         }}
       >
         <TierStar
+          preload
           tier={tier}
           size={star.size * s}
           playing={active && focused && !reduceMotion}
@@ -330,6 +331,8 @@ function StatsBand({
   benefits?: TierBenefits;
 }) {
   const content = tierPresentationContent(tier, benefits);
+  const web = Platform.OS === 'web';
+  const statTextClass = web ? `tier-benefits-stat tier-benefits-stat-${tier}` : undefined;
   return (
     <View
       style={{
@@ -355,15 +358,22 @@ function StatsBand({
           return (
             <View
               key={stat.label}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 * s }}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: (web ? 3 : 6) * s,
+              }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', height: 46 * s }}>
                 {dollar && (
                   <Text
+                    className={statTextClass}
                     style={{
                       fontFamily: 'MonaSans_400Regular',
                       fontSize: 25 * s,
-                      lineHeight: 32 * s,
+                      lineHeight: (web ? 25 : 32) * s,
+                      ...(web && { marginTop: 5 * s, letterSpacing: -1 * s }),
                       color: content.accent,
                     }}
                   >
@@ -371,6 +381,7 @@ function StatsBand({
                   </Text>
                 )}
                 <Text
+                  className={web ? `font-light ${statTextClass}` : undefined}
                   style={{
                     fontFamily: 'MonaSans_300Light',
                     fontSize: 46 * s,
@@ -383,10 +394,15 @@ function StatsBand({
                 </Text>
                 {percent && (
                   <Text
+                    className={statTextClass}
                     style={{
                       fontFamily: 'MonaSans_400Regular',
                       fontSize: 25 * s,
-                      lineHeight: 32 * s,
+                      lineHeight: (web ? 25 : 32) * s,
+                      ...(web && {
+                        marginTop: (tier === RewardsTier.CORE ? 5 : 4) * s,
+                        letterSpacing: -1 * s,
+                      }),
                       color: content.accent,
                     }}
                   >
@@ -394,7 +410,15 @@ function StatsBand({
                   </Text>
                 )}
               </View>
-              <Text style={[regular(s), { color: `${content.accent}B3` }]}>{stat.label}</Text>
+              <Text
+                style={[
+                  regular(s),
+                  { color: `${content.accent}B3` },
+                  web && { lineHeight: 15.4 * s },
+                ]}
+              >
+                {stat.label}
+              </Text>
             </View>
           );
         })}

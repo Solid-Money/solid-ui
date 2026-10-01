@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
+import { format, minutesToSeconds } from 'date-fns';
 import {
   ArrowUpRight,
   ChevronRight,
@@ -21,13 +21,14 @@ import ActivityStatusPill, {
 } from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
+import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
 import EstimatedTime from '@/components/EstimatedTime';
+import CategoryIcon from '@/components/Insights/CategoryIcon';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import { subscriptionCategoryLabel } from '@/components/Rewards/NewRewards/subscriptionBrands';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -48,6 +49,7 @@ import {
   CardProvider,
   CardTransaction,
   CardTransactionCategory,
+  CashbackType,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -73,6 +75,13 @@ import {
   isSavingsDestination,
 } from '@/lib/utils/deposit-steps';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import {
+  getMonthKey,
+  getSpendingCategory,
+  getSpendTimestamp,
+  getTransactionUsdAmount,
+  SPENDING_CATEGORIES,
+} from '@/lib/utils/spendingInsights';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
@@ -135,21 +144,6 @@ const Label = memo(function Label({ children }: LabelProps) {
 
 const Value = memo(function Value({ children, className }: ValueProps) {
   return <Text className={cn(ROW_TEXT, 'font-bold', className)}>{children}</Text>;
-});
-
-const EscrowTimeLeft = memo(function EscrowTimeLeft({ payoutAt }: { payoutAt: string }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const target = useMemo(() => new Date(payoutAt).getTime(), [payoutAt]);
-
-  if (target - now <= 0) return <Value>Releasing soon</Value>;
-
-  return <Value>{formatDistanceStrict(target, now)}</Value>;
 });
 
 const Back = memo(function Back({ title, className }: BackProps) {
@@ -291,6 +285,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // label ready to show, and there is no code for the lookup to resolve.
   const merchantCategory =
     getMerchantCategory(transaction.merchant_category_code) ?? transaction.merchant_category_label;
+  const router = useRouter();
   // A purchase takes money, so it reads with a minus — the stored sign is the
   // ledger's and says the opposite. See `isOutgoingCardTransaction`.
   const isOutgoing = isOutgoingCardTransaction(transaction);
@@ -390,7 +385,39 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   }, [merchantPlace, transaction.merchant_name]);
 
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+  const cashback = useMemo(
+    () => cashbacks?.find(row => row.transactionId === transaction.id),
+    [cashbacks, transaction.id],
+  );
+  const purchaseUsd = useMemo(() => getTransactionUsdAmount(transaction), [transaction]);
   const localDetails = transaction.local_transaction_details;
+
+  // The bucket Insights files this purchase under, so the Category row can use
+  // its colour, icon and name (Figma 27737:3692) and open it there. Subscription
+  // cashback makes it a subscription whatever the MCC says, as Insights does.
+  const spendingCategory = useMemo(
+    () =>
+      getSpendingCategory(
+        transaction,
+        cashback?.type === CashbackType.SubscriptionDiscount
+          ? new Set([transaction.id])
+          : undefined,
+      ),
+    [transaction, cashback?.type],
+  );
+  // "Other" says less than the issuer's own, more specific label, so a purchase
+  // Insights can't place keeps that label beside the grey Other icon.
+  const categoryLabel =
+    spendingCategory === 'other' ? merchantCategory : SPENDING_CATEGORIES[spendingCategory].label;
+  const handleCategoryPress = useCallback(() => {
+    router.push({
+      pathname: '/activity/insights',
+      params: {
+        month: getMonthKey(getSpendTimestamp(transaction)),
+        category: spendingCategory,
+      },
+    });
+  }, [router, transaction, spendingCategory]);
 
   /**
    * The chip under the amount, and the only place this screen reports status.
@@ -434,6 +461,20 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </View>
           ),
         },
+        // What the merchant actually charged, in their own currency — the figure
+        // the user will recognise from the till, against the dollars they were
+        // billed at the top of this screen. Up here with the other facts about
+        // the charge rather than alone in the card below.
+        localDetails?.amount &&
+          localDetails.currency && {
+            key: 'local-amount',
+            label: <Label>Charged in</Label>,
+            value: (
+              <Value>
+                {localDetails.amount} {localDetails.currency.toUpperCase()}
+              </Value>
+            ),
+          },
         merchantPlace && {
           key: 'location',
           label: <Label>Location</Label>,
@@ -452,22 +493,38 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             </Pressable>
           ),
         },
-        merchantCategory && {
+        categoryLabel && {
           key: 'category',
           label: <Label>Category</Label>,
-          value: <Value>{merchantCategory}</Value>,
+          // Insights' own tile and name, with a chevron: unlike Location, this
+          // row is meant to be noticed as a way into Insights.
+          value: (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`See ${categoryLabel} in Insights`}
+              onPress={handleCategoryPress}
+              className="flex-row items-center gap-2 active:opacity-70 web:hover:opacity-80"
+            >
+              <CategoryIcon category={spendingCategory} size={26} />
+              <Value>{categoryLabel}</Value>
+              <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
+            </Pressable>
+          ),
         },
       ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
-    [last4, merchantPlace, merchantCategory, handleLocationPress],
+    [
+      last4,
+      localDetails,
+      merchantPlace,
+      handleLocationPress,
+      categoryLabel,
+      spendingCategory,
+      handleCategoryPress,
+    ],
   );
 
   const rows = useMemo(() => {
-    // "AI", "Streaming" — the category a subscription row was billed under, for
-    // the note under the figure. Undefined on a regular cashback row.
-    const subscriptionCategory = cashbackInfo?.isSubscriptionDiscount
-      ? subscriptionCategoryLabel(cashbackInfo.subscriptionCategory)
-      : undefined;
-
+    // No cashback rows: the cashback has a card of its own. See `CashbackDetailsCard`.
     const allRows = [
       // No Status row: the chip under the amount carries it, and says it louder
       // than a row in a card of plain facts can. See `statusPill`.
@@ -480,78 +537,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           // used to step down from `text-lg` to `text-base`, and now every value
           // on the card is already the 16px that step was reaching for.
           value: <Value className="max-w-[60%] text-right">{declineReason}</Value>,
-        },
-      cashbackInfo && {
-        key: 'cashback',
-        // The label is green on both sides of the design (Figma 21287:5858):
-        // what the user earned back reads as a gain, not as another fact about
-        // the charge. Muted on an ineligible purchase, where green would
-        // advertise a gain that never happened.
-        label: (
-          <View className="flex-row items-center gap-1.5">
-            <CashbackDiamondIcon size={14} />
-            <Text
-              className={cn(
-                ROW_TEXT,
-                'font-medium',
-                cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand',
-              )}
-            >
-              {cashbackInfo.isSubscriptionDiscount ? 'Subscription cashback' : 'Cashback'}
-            </Text>
-          </View>
-        ),
-        // Green like its label, paid or not: the figure is money coming back
-        // either way. It carries no "(Escrowed)" or "(Pending)" of its own —
-        // the "Releases in" row below already says the money is still on its
-        // way, and saying so twice on one receipt reads as a warning about the
-        // amount rather than a note about its timing. Muted only when the
-        // purchase earned nothing at all.
-        value: (
-          <Value className={cashbackInfo.isIneligible ? 'text-white/50' : 'text-brand'}>
-            {cashbackInfo.isIneligible
-              ? 'Ineligible'
-              : (cashbackInfo.amount ?? (cashbackInfo.isEscrowed ? 'Escrowed' : 'Pending'))}
-          </Value>
-        ),
-        // While the charge is still pending, the amount at the top of this
-        // screen is the authorization — the cashback is not netted off it, and
-        // two figures on one receipt that don't reconcile is the kind of thing a
-        // cardholder reads as an error. Spans the row rather than sitting under
-        // the value, where a sentence this long would wrap to three lines
-        // against the label.
-        // "Ineligible" on its own invites the support ticket this row exists to
-        // prevent, so the reason comes with it. The pending-sum note is mutually
-        // exclusive: there is no amount here to reconcile against the total.
-        // A subscription row is worth explaining even when the pending-sum note
-        // also applies, so the two stack rather than one winning: the perk pays
-        // instead of the tier rate, and a cardholder who knows the rate is 25%
-        // but sees one figure has no way to tell which of the two they got.
-        caption: cashbackInfo.isIneligible ? (
-          <Text className="mt-2 text-[13px] leading-4 text-white/50">
-            Cash withdrawals, money transfers and government payments don&apos;t earn cashback
-          </Text>
-        ) : subscriptionCategory || isApproved ? (
-          <View className="mt-2 gap-1">
-            {subscriptionCategory ? (
-              <Text className="text-[13px] leading-4 text-white/50">
-                Your {subscriptionCategory} subscription perk, paid instead of standard card
-                cashback on this charge
-              </Text>
-            ) : null}
-            {isApproved ? (
-              <Text className="text-[13px] leading-4 text-white/50">
-                Cashback amount is not reflected on a pending transaction sum
-              </Text>
-            ) : null}
-          </View>
-        ) : undefined,
-      },
-      cashbackInfo?.isEscrowed &&
-        cashbackInfo.payoutAt && {
-          key: 'cashback-escrow-time-left',
-          label: <Label>Releases in</Label>,
-          value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
         },
       // A refund the issuer folded into this transaction rather than sending as
       // its own (Wirex). The amount above is already net of it, so without this
@@ -609,19 +594,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             ),
           }
         : null,
-      // What the merchant actually charged, in their own currency — the figure
-      // the user will recognise from the till, against the dollars they were
-      // billed at the top of this screen.
-      localDetails?.amount &&
-        localDetails.currency && {
-          key: 'local-amount',
-          label: <Label>Charged in</Label>,
-          value: (
-            <Value>
-              {localDetails.amount} {localDetails.currency.toUpperCase()}
-            </Value>
-          ),
-        },
       // No fee row. An FX fee is swept as its own charge rather than folded
       // into this purchase, so it is a movement in its own right and not a term
       // of the figure at the top of this screen — which is what a row in among
@@ -643,9 +615,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
     return allRows;
   }, [
-    cashbackInfo,
-    localDetails,
-    isApproved,
     isDeclined,
     cardProvider,
     spend,
@@ -782,6 +751,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         </View>
 
         <DetailCard rows={merchantRows} />
+        {cashbackInfo && (
+          <CashbackDetailsCard
+            info={cashbackInfo}
+            cashback={cashback}
+            purchaseUsd={purchaseUsd}
+            isPendingCharge={isApproved}
+          />
+        )}
         <DetailCard rows={rows} />
         <DetailCard rows={onChainRows} />
         <ContactSupportCard transactionContext={transactionContext} />

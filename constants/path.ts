@@ -36,6 +36,8 @@ type Path = {
   SAVINGS_FUSE: Href;
   SAVINGS_OLD: Href;
   ACTIVITY: Href;
+  /** Spending by month and category, opened from the Activity summary card. */
+  ACTIVITY_INSIGHTS: Href;
   DEPOSIT: Href;
   /**
    * @deprecated Not a page any more — `/card` is a redirect shim that branches on
@@ -124,6 +126,7 @@ export const path: Path = {
   SAVINGS_FUSE: { pathname: '/savings', params: { vault: 'fuse' } } as Href,
   SAVINGS_OLD: '/savings-old',
   ACTIVITY: '/activity',
+  ACTIVITY_INSIGHTS: '/activity/insights' as Href,
   DEPOSIT: '/deposit',
   CARD: '/card',
   USER_KYC_INFO: '/user-kyc-info',
