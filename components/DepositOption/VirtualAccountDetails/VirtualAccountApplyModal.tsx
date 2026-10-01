@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
+import { OnboardingFeeSheet } from '@/components/DepositOption/VirtualAccountDetails/OnboardingFeeSheet';
 import PinnedActionModalLayout from '@/components/PinnedActionModalLayout';
 import { RegionUnavailableGeo, RegionUnavailableView } from '@/components/RegionUnavailable';
 import { Button } from '@/components/ui/button';
@@ -14,11 +15,13 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { useOnboardingFeeQuote } from '@/hooks/useOnboardingFee';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
-import { DepositModal } from '@/lib/types';
+import { DepositModal, OnboardingFeeProduct } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -42,37 +45,59 @@ const BENEFITS: Benefit[] = [
     icon: getAsset('images/virtual-account-bank.svg'),
     iconWidth: 26.5023,
     iconHeight: 23.3426,
-    label: 'A persistent virtual\nbank account in\nyour name',
+    label: 'US account details\nin your name',
   },
   {
     icon: getAsset('images/virtual-account-ach-wire.svg'),
     iconWidth: 26.1729,
     iconHeight: 25.7073,
-    label: 'Support for\nACH and Wire\ndeposits',
+    label: 'Receive ACH\nand Wire\ntransfers',
   },
   {
     icon: getAsset('images/virtual-account-settlement.svg'),
     iconWidth: 28.5,
     iconHeight: 25.5001,
-    label: 'Settlement in 1-3\nbusiness days',
+    label: 'Funds arrive in 1-3\nbusiness days',
   },
   {
-    label: 'No fees\nfrom Solid',
-    textBadge: '$0',
+    // The fee cell. It is the only place the charge is named before the sheet,
+    // so it carries the number — and the number comes from the server, which is
+    // why both it and the label are filled in by `BenefitsGrid`.
+    label: '',
+    textBadge: '',
   },
 ];
+
+/**
+ * The fee cell's badge and label, for a quoted charge.
+ *
+ * A $0 charge is a normal answer — the line ships off, and a country can be
+ * exempted — and it is not "a one-time setup fee of nothing". It reads as what
+ * it is, which is also exactly what this cell said before the fee existed.
+ */
+const feeCell = (feeUsd: number | undefined): Benefit => {
+  if (feeUsd === undefined) return { label: '', textBadge: '' };
+  if (feeUsd <= 0) return { label: 'No fees\nfrom Solid', textBadge: '$0' };
+
+  return {
+    label: 'One-time\nsetup fee',
+    textBadge: `$${formatNumber(feeUsd, 2, 0)}`,
+  };
+};
 
 const BenefitCell = ({ benefit }: { benefit: Benefit }) => (
   <View className="flex-1 items-center">
     <View style={styles.badge} className="items-center justify-center bg-white/10">
-      {benefit.textBadge ? (
-        <Text className="text-[20px] font-normal leading-6 text-white">{benefit.textBadge}</Text>
-      ) : (
+      {benefit.icon ? (
         <Image
           source={benefit.icon}
           style={{ width: benefit.iconWidth, height: benefit.iconHeight }}
           contentFit="fill"
         />
+      ) : (
+        // Empty while the fee quote is in flight. The circle stays, so the grid
+        // does not reflow when the number arrives.
+        <Text className="text-[20px] font-normal leading-6 text-white">{benefit.textBadge}</Text>
       )}
     </View>
     <Text className="mt-[9px] text-center text-[16px] font-medium leading-5 text-white">
@@ -81,7 +106,14 @@ const BenefitCell = ({ benefit }: { benefit: Benefit }) => (
   </View>
 );
 
-const BenefitsGrid = ({ horizontalMargin }: { horizontalMargin: number }) => (
+const BenefitsGrid = ({
+  horizontalMargin,
+  feeUsd,
+}: {
+  horizontalMargin: number;
+  /** The quoted charge. Undefined until the server answers. */
+  feeUsd: number | undefined;
+}) => (
   <View
     style={[styles.benefitsCard, { marginHorizontal: horizontalMargin }]}
     className="overflow-hidden bg-[#1C1C1C]"
@@ -92,7 +124,7 @@ const BenefitsGrid = ({ horizontalMargin }: { horizontalMargin: number }) => (
     </View>
     <View style={styles.secondBenefitRow} className="flex-row">
       <BenefitCell benefit={BENEFITS[2]} />
-      <BenefitCell benefit={BENEFITS[3]} />
+      <BenefitCell benefit={feeCell(feeUsd)} />
     </View>
     <View pointerEvents="none" style={styles.horizontalDivider} />
     <View pointerEvents="none" style={styles.verticalDivider} />
@@ -121,6 +153,14 @@ export const VirtualAccountApplyModal = ({
     useVirtualAccountProvider();
 
   const [isChecking, setIsChecking] = useState(false);
+  // Open once the region check passes. The sheet decides for itself whether
+  // there is anything to pay, and calls back straight through when there isn't.
+  const [isFeeSheetOpen, setIsFeeSheetOpen] = useState(false);
+
+  // Read here as well as in the sheet so the grid's badge can show the real
+  // charge — it is configured per country, so "$10" is not a safe constant.
+  // Both reads hit one cached query.
+  const { data: feeQuote } = useOnboardingFeeQuote(OnboardingFeeProduct.RAIN_VIRTUAL_ACCOUNT);
   // Set once we know the user's region isn't served — swaps the pitch for the
   // "everything else is live" pop-up.
   const [unsupportedRegion, setUnsupportedRegion] = useState<RegionUnavailableGeo | null>(null);
@@ -257,11 +297,34 @@ export const VirtualAccountApplyModal = ({
         return;
       }
 
-      proceed();
+      // Wirex issues this user's account, so there is no Rain onboarding to
+      // pay for — their details screen owns activation. Everyone else meets the
+      // fee before anything we are billed for is started.
+      if (virtualAccountProvider === 'wirex') {
+        proceed();
+        return;
+      }
+
+      setIsFeeSheetOpen(true);
     } finally {
       setIsChecking(false);
     }
-  }, [proceed, resolveRegion]);
+  }, [proceed, resolveRegion, virtualAccountProvider]);
+
+  const dismissFeeSheet = useCallback(() => {
+    track(TRACKING_EVENTS.ONBOARDING_FEE_DISMISSED, {
+      product: OnboardingFeeProduct.RAIN_VIRTUAL_ACCOUNT,
+      fee_usd: feeQuote?.feeUsd ?? 0,
+    });
+    setIsFeeSheetOpen(false);
+  }, [feeQuote?.feeUsd]);
+
+  // Paid (or nothing was owed). Close the sheet before routing, so a user who
+  // comes back to this screen does not find it still open over the pitch.
+  const handleFeeSettled = useCallback(() => {
+    setIsFeeSheetOpen(false);
+    proceed();
+  }, [proceed]);
 
   if (unsupportedRegion) {
     return (
@@ -297,7 +360,7 @@ export const VirtualAccountApplyModal = ({
           {isChecking || isResolvingProvider ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text className="text-[16px] font-semibold text-black">Verify now</Text>
+            <Text className="text-[16px] font-semibold text-black">Continue</Text>
           )}
         </Button>
       }
@@ -313,16 +376,24 @@ export const VirtualAccountApplyModal = ({
       </View>
 
       <Text className="mt-[7px] self-center text-center text-[30px] font-medium leading-[30px] -tracking-[1px] text-white">
-        USD Virtual{`\n`}bank account
+        USD Virtual{`\n`}account
       </Text>
 
-      <Text className="mt-[6px] w-[315px] max-w-[85%] self-center text-center text-[16px] leading-5 text-white/70">
-        Get a US bank account in your name so you can deposit USD straight into soUSD.
+      <Text className="mt-[6px] w-[332px] max-w-[85%] self-center text-center text-[16px] leading-5 text-white/70">
+        Get a US bank account in your name to receive or deposit USD in your Solid Account
       </Text>
 
       <View className="mt-14">
-        <BenefitsGrid horizontalMargin={isDesktop ? 40 : 18} />
+        <BenefitsGrid horizontalMargin={isDesktop ? 40 : 18} feeUsd={feeQuote?.feeUsd} />
       </View>
+
+      {isFeeSheetOpen ? (
+        <OnboardingFeeSheet
+          product={OnboardingFeeProduct.RAIN_VIRTUAL_ACCOUNT}
+          onDismiss={dismissFeeSheet}
+          onPaid={handleFeeSettled}
+        />
+      ) : null}
     </PinnedActionModalLayout>
   );
 };
