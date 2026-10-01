@@ -18,6 +18,25 @@ export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_
 export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? '';
+/**
+ * Error tracking (GlitchTip, self-hosted at https://glitchtip.fuse.io).
+ *
+ * The SDK is still `@sentry/react-native` — GlitchTip speaks the Sentry
+ * ingest protocol, so the env vars keep the SENTRY_ prefix that the SDK and
+ * `sentry-cli` read. Only the DSN host changes.
+ *
+ * Empty DSN disables reporting entirely, which is what local dev and any
+ * deployment that has not been given the secret should do.
+ */
+export const EXPO_PUBLIC_SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
+/**
+ * Release identifier, `solid-ui@<git-commit-sha>`, set by scripts/export-web.mjs
+ * at web build time and matched by the source map upload so stack traces
+ * resolve. Native builds leave this empty on purpose: the Sentry Expo plugin
+ * uploads under the SDK's auto-derived `<bundleId>@<version>+<build>` release,
+ * and overriding it here would point events at a release that has no artifacts.
+ */
+export const EXPO_PUBLIC_SENTRY_RELEASE = process.env.EXPO_PUBLIC_SENTRY_RELEASE ?? '';
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';

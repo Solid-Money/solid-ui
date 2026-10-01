@@ -54,7 +54,12 @@ import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useTrackUserPlatform } from '@/hooks/useTrackUserPlatform';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
-import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
+import {
+  EXPO_PUBLIC_ENVIRONMENT,
+  EXPO_PUBLIC_SENTRY_DSN,
+  EXPO_PUBLIC_SENTRY_RELEASE,
+  isProduction,
+} from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
@@ -63,19 +68,31 @@ import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 import type { ErrorBoundaryProps } from 'expo-router';
 
 Sentry.init({
-  dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
-  enabled: isProduction && !__DEV__,
+  // GlitchTip (self-hosted, Sentry-protocol compatible). Empty DSN = reporting off.
+  dsn: EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !!EXPO_PUBLIC_SENTRY_DSN && !__DEV__,
   environment: EXPO_PUBLIC_ENVIRONMENT || 'development',
-  debug: !isProduction,
-  sendDefaultPii: true,
+  debug: false,
 
-  // Performance Monitoring - configured upfront, integrations added later
-  tracesSampleRate: 0.5,
-  profilesSampleRate: 0.5,
+  // Web ships an explicit `solid-ui@<sha>` release that the build's source map
+  // upload matches. Native leaves release/dist undefined so the SDK derives
+  // `<bundleId>@<version>+<build>`, which is what the Expo plugin uploads under.
+  ...(EXPO_PUBLIC_SENTRY_RELEASE ? { release: EXPO_PUBLIC_SENTRY_RELEASE } : {}),
 
-  // Release Health
-  enableAutoSessionTracking: true,
-  sessionTrackingIntervalMillis: 30000,
+  // No PII: this is a financial app, and GlitchTip is our own box but still
+  // not a place for user identifiers, headers or cookies.
+  sendDefaultPii: false,
+
+  // GlitchTip is error tracking only. Tracing, profiling, replay, user
+  // feedback and attachments are either unimplemented server-side or
+  // deliberately out of scope — every one of them would be dropped on ingest
+  // while still costing bandwidth and battery on the client.
+  //
+  //   - tracing/profiling: disabled (sample rate 0)
+  //   - session tracking:  unsupported by GlitchTip, must be off
+  //   - replay:            lives in Amplitude, not here
+  tracesSampleRate: 0,
+  enableAutoSessionTracking: false,
 
   // Error Filtering
   ignoreErrors: [
@@ -96,38 +113,18 @@ Sentry.init({
   },
 
   beforeSend(event) {
-    if (event.environment !== 'production') {
-      return null;
-    }
+    // Deliberately no environment gate here. Staging and production report to
+    // the same GlitchTip project and are told apart by `environment`; dropping
+    // non-production events is what made staging unverifiable before.
     if (event.request?.cookies) {
       delete event.request.cookies;
     }
     return event;
   },
 
-  // Configure Session Replay - rates set upfront, integration added later
-  replaysSessionSampleRate: 0.5,
-  replaysOnErrorSampleRate: 1,
-
-  // Integrations
-  integrations: [
-    Sentry.mobileReplayIntegration({
-      maskAllText: false, // Set to true if you want to mask sensitive text
-      maskAllImages: false, // Set to true to mask images
-    }),
-    Sentry.feedbackIntegration(),
-    Sentry.reactNativeTracingIntegration(),
-    Sentry.reactNavigationIntegration({
-      routeChangeTimeoutMs: 50,
-    }),
-  ],
-
-  // Attachments
-  attachScreenshot: true,
-  attachViewHierarchy: true,
-
-  // Network tracking
-  // tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
+  // Default integrations only. Anything added here must be something GlitchTip
+  // actually ingests.
+  integrations: [],
 });
 
 // EAS Observe: native-side startup/performance metric collection begins at

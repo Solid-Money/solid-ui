@@ -42,7 +42,7 @@ Solid is a React Native/Expo mobile application that provides users with:
 ### 📊 Analytics & Support
 - **Amplitude Analytics**: User behavior tracking and insights
 - **Firebase Analytics**: Event tracking and user engagement
-- **Sentry Integration**: Error monitoring and performance tracking
+- **Error Tracking**: GlitchTip (self-hosted, via the `@sentry/react-native` SDK)
 - **Intercom Support**: In-app customer support and messaging
 
 ## 🛠️ Technology Stack
@@ -209,7 +209,10 @@ Key environment variables (see `.env.example`):
 - `EXPO_PUBLIC_WAITLIST_API_BASE_URL`: Waitlist API endpoint
 - `EXPO_PUBLIC_ENVIRONMENT`: Environment configuration
 - `GOOGLE_SERVICES_JSON/PLIST`: Firebase configuration files
-- `SENTRY_AUTH_TOKEN`: Sentry authentication token
+- `EXPO_PUBLIC_SENTRY_DSN`: GlitchTip project DSN (empty disables error reporting)
+- `SENTRY_URL` / `SENTRY_ORG` / `SENTRY_PROJECT`: GlitchTip instance and project, used by the
+  build-time source map upload
+- `SENTRY_AUTH_TOKEN`: GlitchTip auth token (build-time only, never exposed to the client)
 
 ### Blockchain Configuration
 - **Ethereum Mainnet**: Primary network for high-value transactions
