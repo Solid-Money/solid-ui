@@ -2,6 +2,7 @@ import React from 'react';
 
 import BuyFuseScreen from '@/components/Swap/BuyFuseScreen';
 import { RewardsTier } from '@/lib/types';
+import { SwapField } from '@/lib/types/swap-field';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -21,7 +22,12 @@ jest.mock('@/components/Swap/BuyFuseUpgradeReview', () => 'BuyFuseUpgradeReview'
 jest.mock('@/components/Swap/SwapButton', () => 'SwapButton');
 jest.mock('@/components/Swap/SwapParams', () => 'SwapParams');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
-jest.mock('@/constants/tokens', () => ({ STABLECOINS_TOKENS: { USDC: { address: '0x1234' } } }));
+jest.mock('@/constants/tokens', () => ({
+  STABLECOINS_TOKENS: {
+    USDC: { address: '0xLegacyUsdc' },
+    USDC_STARGATE: { address: '0xStargateUsdc' },
+  },
+}));
 jest.mock('@/constants/vaults', () => ({ VAULTS: [{ name: 'FUSE', minimumAmount: '5000' }] }));
 jest.mock('@/hooks/useRewards', () => ({
   useRewardsUserData: (options: unknown) => mockUseRewardsUserData(options),
@@ -127,5 +133,24 @@ it('shows the Savings minimum only when the upgrade needs soFUSE', () => {
 
   expect(JSON.stringify(root.toJSON())).toContain('Savings minimum deposit');
   expect(JSON.stringify(root.toJSON())).not.toContain('Checking available tier upgrades');
+  act(() => root.unmount());
+});
+
+it('pays with Stargate USDC, the USDC users hold on Fuse', () => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  mockSwapState.actions.selectCurrency.mockClear();
+  let root: any;
+  act(() => {
+    root = create(<BuyFuseScreen />);
+  });
+
+  expect(mockSwapState.actions.selectCurrency).toHaveBeenCalledWith(
+    SwapField.INPUT,
+    '0xStargateUsdc',
+  );
+  expect(mockSwapState.actions.selectCurrency).not.toHaveBeenCalledWith(
+    SwapField.INPUT,
+    '0xLegacyUsdc',
+  );
   act(() => root.unmount());
 });

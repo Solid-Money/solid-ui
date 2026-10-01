@@ -3071,14 +3071,24 @@ export const withdrawCardCollateral = async (
   return response.json();
 };
 
+/**
+ * One page of card history.
+ *
+ * Wirex pages travel in `paginationToken`. Rain and Bridge responses carry no
+ * token: their pages are numbered, so a caller that needs more than the first
+ * one (the spending insights) asks by `page` instead.
+ */
 export const getCardTransactions = async (
   paginationToken?: string,
+  page?: number,
 ): Promise<CardTransactionsResponse> => {
   const jwt = getJWTToken();
 
   const url = new URL('/accounts/v1/cards/transactions', EXPO_PUBLIC_FLASH_API_BASE_URL);
   if (paginationToken) {
     url.searchParams.append('pagination_token', paginationToken);
+  } else if (page && page > 1) {
+    url.searchParams.append('page', String(page));
   }
 
   const response = await fetch(url.toString(), {
