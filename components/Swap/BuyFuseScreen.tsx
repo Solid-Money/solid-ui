@@ -81,15 +81,7 @@ function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps
     })),
   );
   const { onUserInput } = useSwapActionHandlers();
-  const {
-    currencyBalances,
-    parsedAmount,
-    toggledTrade: trade,
-    voltageTrade,
-    isVoltageTrade,
-    isVoltageTradeLoading,
-    tradeState,
-  } = useDerivedSwapInfo();
+  const { currencyBalances, parsedAmount, toggledTrade: trade, tradeState } = useDerivedSwapInfo();
 
   useEffect(() => {
     selectCurrency(SwapField.INPUT, STABLECOINS_TOKENS.USDC.address);
@@ -122,9 +114,7 @@ function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps
   const canBuy = upgradeContext
     ? true
     : !!currentTier && !isError && !pending && !staleRequest && !!selectedTarget;
-  const selectedTrade = isVoltageTrade ? voltageTrade.trade : trade;
-  const outputAmount =
-    independentField === SwapField.OUTPUT ? parsedAmount : selectedTrade?.outputAmount;
+  const outputAmount = independentField === SwapField.OUTPUT ? parsedAmount : trade?.outputAmount;
   const enteredFuse = Math.max(
     0,
     Number(outputAmount?.toExact() ?? (independentField === SwapField.OUTPUT ? typedValue : 0)) ||
@@ -140,9 +130,7 @@ function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps
   const inputBalance = currencyBalances[SwapField.INPUT];
   const fundingBalanceLabel = formatBuyFuseFundingBalance(inputBalance?.toSignificant(8));
   const canUseMax = Boolean(inputBalance?.greaterThan(0));
-  const isOutputLoading =
-    independentField === SwapField.INPUT &&
-    (isVoltageTradeLoading || tradeState.state === 'LOADING');
+  const isOutputLoading = independentField === SwapField.INPUT && tradeState.state === 'LOADING';
   const displayedAmount =
     independentField === SwapField.OUTPUT
       ? typedValue

@@ -183,6 +183,15 @@ export const TRACKING_EVENTS = {
   BUY_CRYPTO_KYC_HOSTED_RETRY_PAGE_OPENED: 'buy_crypto_kyc_hosted_retry_page_opened',
   BUY_CRYPTO_KYC_HOSTED_RETRY_UNAVAILABLE: 'buy_crypto_kyc_hosted_retry_unavailable',
   BUY_CRYPTO_KYC_HOSTED_RETRY_FAILED: 'buy_crypto_kyc_hosted_retry_failed',
+  /**
+   * KYC upgrade, offered when an order breaches the limits of the user's current
+   * TransFi level (the press itself is BUY_CRYPTO_ERROR_ACTION_PRESSED):
+   * _PAGE_OPENED when TransFi's page is handed to them, _IN_REVIEW when TransFi
+   * is already reviewing a submission, _FAILED when the request errors.
+   */
+  BUY_CRYPTO_KYC_UPGRADE_PAGE_OPENED: 'buy_crypto_kyc_upgrade_page_opened',
+  BUY_CRYPTO_KYC_UPGRADE_IN_REVIEW: 'buy_crypto_kyc_upgrade_in_review',
+  BUY_CRYPTO_KYC_UPGRADE_FAILED: 'buy_crypto_kyc_upgrade_failed',
   BUY_CRYPTO_AMOUNT_VIEWED: 'buy_crypto_amount_viewed',
   BUY_CRYPTO_CURRENCY_SELECTED: 'buy_crypto_currency_selected',
   BUY_CRYPTO_PAYMENT_METHOD_SELECTED: 'buy_crypto_payment_method_selected',

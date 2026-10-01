@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { openBrowserAsync } from 'expo-web-browser';
 import { AlertTriangle, Clock, LifeBuoy, ShieldAlert, XCircle } from 'lucide-react-native';
 
 import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
@@ -10,15 +11,22 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
+import { useUpgradeTransfiKyc } from '@/hooks/useTransfi';
 import { track } from '@/lib/analytics';
 import {
+  asTransfiError,
   canCompleteProfile,
+  kycUpgradeLevel,
   type TransfiError as TransfiErrorType,
   transfiErrorTitle,
 } from '@/lib/transfiErrors';
+import { TransfiKycLevel } from '@/lib/types';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 const SUPPORT_EMAIL = 'support@solid.xyz';
+
+const UPGRADE_UNAVAILABLE_MESSAGE =
+  'We couldn’t open the verification page. Please try again in a moment.';
 
 const ICON_BY_ACTION = {
   retry: AlertTriangle,
@@ -36,6 +44,13 @@ const formatFiat = (value: number | undefined, currency: string) =>
     : `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)} ${currency}`;
 
 /**
+ * Where a KYC upgrade stands once the user has asked for it: TransFi's page
+ * handed to them (or stopped by a popup blocker, so they have to open it
+ * themselves), or TransFi already reviewing a submission for that level.
+ */
+type UpgradeState = { state: 'opened' | 'blocked'; url: string } | { state: 'in_review' };
+
+/**
  * Terminal screen for a buy-crypto failure.
  *
  * Every one of TransFi's refusals used to end the same way: the order call
@@ -50,8 +65,12 @@ export const TransfiError = () => {
   const setModal = useBuyCryptoNavigation();
   const error = useTransfiStore(state => state.error);
   const errorOrigin = useTransfiStore(state => state.errorOrigin);
+  const setError = useTransfiStore(state => state.setError);
   const reset = useTransfiStore(state => state.reset);
   const routeToKyc = useBuyCryptoKycRoute();
+  const { mutateAsync: upgradeKyc, isPending: isUpgrading } = useUpgradeTransfiKyc();
+  const [upgrade, setUpgrade] = useState<UpgradeState>();
+  const [upgradeError, setUpgradeError] = useState<string>();
 
   useEffect(() => {
     if (!error) return;
@@ -83,8 +102,67 @@ export const TransfiError = () => {
     );
   }
 
-  const Icon = ICON_BY_ACTION[error.action];
-  const primary = resolvePrimaryAction(error);
+  const upgradeLevel = kycUpgradeLevel(error);
+  const inReview = upgrade?.state === 'in_review';
+  const Icon = inReview ? Clock : ICON_BY_ACTION[error.action];
+  const primary = resolvePrimaryAction(error, upgrade);
+
+  /**
+   * Hand TransFi's verification page to the browser rather than framing it — as
+   * with the hosted retry, the flow uses the camera and its own redirects.
+   */
+  const openVerificationPage = async (url: string) => {
+    let opened = false;
+    if (Platform.OS === 'web') {
+      // A null handle means a popup blocker stopped it; the screen then leads
+      // with a button so the user can open it themselves.
+      opened = Boolean(window.open(url, '_blank', 'noopener,noreferrer'));
+    } else {
+      try {
+        await openBrowserAsync(url);
+        opened = true;
+      } catch (openError) {
+        console.error('Failed to open the TransFi verification page:', openError);
+      }
+    }
+    setUpgrade({ state: opened ? 'opened' : 'blocked', url });
+    if (opened) track(TRACKING_EVENTS.BUY_CRYPTO_KYC_UPGRADE_PAGE_OPENED, { code: error.code });
+  };
+
+  /**
+   * Ask TransFi for its page for the level this refusal names. A refusal with a
+   * verdict of its own — an account TransFi won't serve, no profile to upgrade —
+   * replaces this screen's error; anything transient stays inline so the button
+   * can be pressed again.
+   */
+  const startUpgrade = async (level: TransfiKycLevel) => {
+    setUpgradeError(undefined);
+    try {
+      const result = await upgradeKyc(level);
+      if (result.status === 'pending') {
+        track(TRACKING_EVENTS.BUY_CRYPTO_KYC_UPGRADE_IN_REVIEW, { level: result.level });
+        setUpgrade({ state: 'in_review' });
+        return;
+      }
+      if (!result.kycUrl) {
+        setUpgradeError(UPGRADE_UNAVAILABLE_MESSAGE);
+        return;
+      }
+      await openVerificationPage(result.kycUrl);
+    } catch (upgradeFailure) {
+      const failure = asTransfiError(upgradeFailure);
+      track(TRACKING_EVENTS.BUY_CRYPTO_KYC_UPGRADE_FAILED, {
+        code: failure.code,
+        action: failure.action,
+      });
+      if (failure.action === 'retry') {
+        setUpgradeError(UPGRADE_UNAVAILABLE_MESSAGE);
+        return;
+      }
+      setUpgrade(undefined);
+      setError(failure, errorOrigin ?? undefined);
+    }
+  };
 
   const handlePrimary = () => {
     if (!primary) return;
@@ -111,22 +189,42 @@ export const TransfiError = () => {
       case 'kyc':
         void routeToKyc();
         break;
+      case 'upgrade':
+        if (upgradeLevel) void startUpgrade(upgradeLevel);
+        break;
+      case 'reopen_upgrade':
+        if (upgrade && upgrade.state !== 'in_review') void openVerificationPage(upgrade.url);
+        break;
     }
   };
 
+  // The limits only cap this purchase, so a smaller one still goes through
+  // while the next KYC level is outstanding.
+  const buySmallerAmount = () => {
+    track(TRACKING_EVENTS.BUY_CRYPTO_ERROR_ACTION_PRESSED, {
+      code: error.code,
+      choice: 'smaller_amount',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT);
+  };
+
   const limits = describeLimits(error);
+  const title = inReview ? 'Verification in review' : transfiErrorTitle(error);
+  const message = upgradeMessage(upgrade) ?? error.message;
+  const hasSecondary = Boolean(upgradeLevel);
 
   return (
     <View className="flex-1 gap-6">
       <View className="items-center gap-4 pt-2">
         <View className="items-center justify-center rounded-full bg-card p-5">
-          <Icon size={40} color={error.action === 'wait' ? '#94F27F' : '#F87171'} />
+          <Icon size={40} color={inReview || error.action === 'wait' ? '#94F27F' : '#F87171'} />
         </View>
         <View className="items-center gap-2 px-2">
-          <Text className="text-center text-2xl font-bold text-primary">
-            {transfiErrorTitle(error)}
-          </Text>
-          <Text className="text-center text-base text-muted-foreground">{error.message}</Text>
+          <Text className="text-center text-2xl font-bold text-primary">{title}</Text>
+          <Text className="text-center text-base text-muted-foreground">{message}</Text>
+          {upgradeError ? (
+            <Text className="text-center text-sm text-red-500">{upgradeError}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -155,14 +253,44 @@ export const TransfiError = () => {
 
       <View className="mt-auto gap-3">
         {primary ? (
-          <Button className="h-14 rounded-2xl" variant="brand" onPress={handlePrimary}>
-            <Text className="text-base font-bold text-primary-foreground">{primary.label}</Text>
+          <Button
+            className="h-14 rounded-2xl"
+            variant="brand"
+            disabled={isUpgrading}
+            onPress={handlePrimary}
+          >
+            {isUpgrading ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text className="text-base font-bold text-primary-foreground">{primary.label}</Text>
+            )}
           </Button>
         ) : null}
-        <Button className="h-14 rounded-2xl" variant={primary ? 'ghost' : 'brand'} onPress={goHome}>
+        {hasSecondary ? (
+          <Button
+            className="h-14 rounded-2xl"
+            variant={primary ? 'secondary' : 'brand'}
+            onPress={buySmallerAmount}
+          >
+            <Text
+              className={
+                primary
+                  ? 'text-base font-semibold text-primary'
+                  : 'text-base font-bold text-primary-foreground'
+              }
+            >
+              Buy a smaller amount
+            </Text>
+          </Button>
+        ) : null}
+        <Button
+          className="h-14 rounded-2xl"
+          variant={primary || hasSecondary ? 'ghost' : 'brand'}
+          onPress={goHome}
+        >
           <Text
             className={
-              primary
+              primary || hasSecondary
                 ? 'text-base font-semibold text-muted-foreground'
                 : 'text-base font-bold text-primary-foreground'
             }
@@ -176,7 +304,7 @@ export const TransfiError = () => {
 };
 
 type PrimaryAction = {
-  key: 'retry' | 'amount' | 'payment_method' | 'profile' | 'kyc';
+  key: 'retry' | 'amount' | 'payment_method' | 'profile' | 'kyc' | 'upgrade' | 'reopen_upgrade';
   label: string;
 };
 
@@ -185,7 +313,20 @@ type PrimaryAction = {
  * isn't one. A "Try again" button on an unsupported country is worse than no
  * button: it invites the user to keep hitting the same wall.
  */
-const resolvePrimaryAction = (error: TransfiErrorType): PrimaryAction | undefined => {
+const resolvePrimaryAction = (
+  error: TransfiErrorType,
+  upgrade: UpgradeState | undefined,
+): PrimaryAction | undefined => {
+  // A limit refusal: the next KYC level is on TransFi's own page. Our identity
+  // flow would only find the user already verified and send them back here.
+  if (kycUpgradeLevel(error)) {
+    if (!upgrade) return { key: 'upgrade', label: 'Verify identity' };
+    if (upgrade.state === 'in_review') return undefined;
+    return {
+      key: 'reopen_upgrade',
+      label: upgrade.state === 'blocked' ? 'Open verification page' : 'Reopen verification page',
+    };
+  }
   switch (error.action) {
     case 'adjust_amount':
       return { key: 'amount', label: 'Change amount' };
@@ -202,6 +343,20 @@ const resolvePrimaryAction = (error: TransfiErrorType): PrimaryAction | undefine
     case 'wait':
     case 'contact_support':
     case 'none':
+      return undefined;
+  }
+};
+
+/** What the screen says once the upgrade has been asked for; the server's copy before that. */
+const upgradeMessage = (upgrade: UpgradeState | undefined): string | undefined => {
+  switch (upgrade?.state) {
+    case 'in_review':
+      return 'Your verification is in review. You can still buy smaller amounts in the meantime.';
+    case 'opened':
+      return 'We’ve opened our payment partner’s verification page. Once you’ve submitted your details there, they’ll review them. You can still buy smaller amounts in the meantime.';
+    case 'blocked':
+      return 'Your browser blocked the verification window. Open it to upgrade your KYC.';
+    default:
       return undefined;
   }
 };

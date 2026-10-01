@@ -21,6 +21,10 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ''
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
+// Comma-separated ISO alpha-2 codes TransFi refuses to onboard (UA,RU,BY…).
+// Unset falls back to the list in constants/compliance.ts; set it empty to block none.
+export const EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES =
+  process.env.EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES;
 /**
  * Card spend v2: the Credit and Smart funding modes, and the borrow position behind them.
  *

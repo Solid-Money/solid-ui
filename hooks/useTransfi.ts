@@ -10,9 +10,10 @@ import {
   getTransfiStatus,
   retryTransfiKyc,
   shareTransfiKyc,
+  upgradeTransfiKyc,
 } from '@/lib/api';
 import { TransfiError } from '@/lib/transfiErrors';
-import { TransfiProfileInput } from '@/lib/types';
+import { TransfiKycLevel, TransfiProfileInput } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 export const TRANSFI_STATUS_KEY = 'transfiStatus';
@@ -66,6 +67,23 @@ export function useRetryTransfiKyc() {
     },
     onSuccess: ({ kycUrl: _kycUrl, ...status }) => {
       queryClient.setQueryData([TRANSFI_STATUS_KEY], status);
+    },
+  });
+}
+
+/**
+ * Ask TransFi for its verification page for the next KYC level, after an order
+ * breached the limits of the current one.
+ *
+ * Nothing is written to the status cache: the user stays `ready` whatever
+ * TransFi answers, because they can still buy within their current limits.
+ */
+export function useUpgradeTransfiKyc() {
+  return useMutation({
+    mutationFn: async (level: TransfiKycLevel) => {
+      const data = await withRefreshToken(() => upgradeTransfiKyc(level));
+      if (!data) throw new Error('Failed to start the TransFi verification');
+      return data;
     },
   });
 }

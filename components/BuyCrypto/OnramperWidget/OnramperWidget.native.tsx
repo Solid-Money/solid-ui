@@ -29,8 +29,8 @@ const APP_SCHEME = 'solid://';
  * `mediaCapturePermissionGrantType` answers the WebView's own camera prompt,
  * which is asked separately from the OS permission.
  */
-export const OnramperWidget = ({ onOutcome }: OnramperWidgetProps) => {
-  const { data: session, isPending, isError, refetch } = useOnramperWidget();
+export const OnramperWidget = ({ destination = 'wallet', onOutcome }: OnramperWidgetProps) => {
+  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination);
   const [isOpeningBrowser, setIsOpeningBrowser] = useState(false);
 
   /**

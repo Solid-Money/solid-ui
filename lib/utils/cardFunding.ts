@@ -139,7 +139,10 @@ export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
  */
 export type CardFundSections = {
   stablecoins: boolean;
-  /** USD (ACH / Wire) — the virtual-account flow. */
+  /**
+   * USD — the virtual account's ACH / Wire, Apple Pay, and Cash App where it is
+   * offered. All of them are listed under USD, so off means none is offered.
+   */
   cashDeposit: boolean;
   /** BRL, BDT, MXN, PHP — the buy-crypto onramp. */
   localCurrencies: boolean;

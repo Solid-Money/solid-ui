@@ -3,7 +3,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 
+import type { OnramperDestination } from '@/lib/api';
+
 export interface OnramperWidgetProps {
+  /**
+   * What the purchase funds. The card funding screens pass `card`, which the
+   * backend resolves to the user's card deposit address; everything else funds
+   * the wallet.
+   */
+  destination?: OnramperDestination;
   /**
    * Called when a provider redirects back to us, on the platforms that redirect
    * at all. Advisory only — not every provider honours a redirect, so the

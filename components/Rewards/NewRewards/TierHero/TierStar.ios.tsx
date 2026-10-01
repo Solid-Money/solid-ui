@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { RewardsTier } from '@/lib/types';
@@ -34,7 +35,18 @@ const TIER_STAR_VIDEOS: Record<RewardsTier, number> = {
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.mov'),
 };
 
-const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; size?: number }) => {
+const TierStar = ({
+  tier,
+  size = TIER_STAR_SIZES[tier],
+  playing = true,
+  onReady,
+}: {
+  tier: RewardsTier;
+  size?: number;
+  playing?: boolean;
+  onReady?: () => void;
+}) => {
+  const [hasFrame, setHasFrame] = useState(false);
   const player = useVideoPlayer(TIER_STAR_VIDEOS[tier], p => {
     p.loop = true;
     p.muted = true;
@@ -43,6 +55,12 @@ const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; s
     p.audioMixingMode = 'mixWithOthers';
     p.play();
   });
+  useEffect(() => {
+    // Warm the first frame once, then pause inactive stars without destroying
+    // their player or decoded surface. A slide change can resume immediately.
+    if (playing || !hasFrame) player.play();
+    else player.pause();
+  }, [hasFrame, player, playing]);
 
   return (
     <VideoView
@@ -50,11 +68,15 @@ const TierStar = ({ tier, size = TIER_STAR_SIZES[tier] }: { tier: RewardsTier; s
       style={{
         width: size,
         height: size,
-        transform: tierStarOffset(tier),
+        transform: tierStarOffset(tier, size),
       }}
       contentFit="contain"
       nativeControls={false}
       allowsVideoFrameAnalysis={false}
+      onFirstFrameRender={() => {
+        setHasFrame(true);
+        onReady?.();
+      }}
       // Decorative, and it sits under the pager's swipe gesture.
       pointerEvents="none"
       accessible={false}

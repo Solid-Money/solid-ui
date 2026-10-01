@@ -82,6 +82,8 @@ interface PageLayoutProps {
   // Lets a child temporarily suspend scrolling (e.g. while it's running its own
   // horizontal swipe gesture, so the two don't fight over the same touch).
   scrollEnabled?: boolean;
+  showsVerticalScrollIndicator?: boolean;
+  sidebarTopGutter?: number;
   onRefresh?: () => void;
   refreshing?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
@@ -175,6 +177,8 @@ export default function PageLayout({
   animateCardHeroExit = false,
   scrollable = true,
   scrollEnabled = true,
+  showsVerticalScrollIndicator = true,
+  sidebarTopGutter = SIDEBAR_BODY_TOP_GUTTER,
   onRefresh,
   refreshing = false,
   edges = ['right', 'left', 'bottom', 'top'],
@@ -220,7 +224,7 @@ export default function PageLayout({
   // Headerless pages in the sidebar shell get the design's top gutter here, so the
   // content clears the top of the window the way the mobile navbar's offset does.
   const contentTopOffset =
-    mobileContentOffset || (isSidebarShell && !customMobileHeader ? SIDEBAR_BODY_TOP_GUTTER : 0);
+    mobileContentOffset || (isSidebarShell && !customMobileHeader ? sidebarTopGutter : 0);
 
   useRegisterTabBarBlurTarget(mobileBlurTargetRef, shouldOverlayMobileNavbar && !isLoading);
 
@@ -316,6 +320,7 @@ export default function PageLayout({
         className={`flex-1 ${contentClassName}`}
         contentContainerStyle={contentTopOffset ? { paddingTop: contentTopOffset } : undefined}
         scrollEnabled={scrollEnabled}
+        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         onRefresh={onRefresh}
         refreshing={refreshing}
         refreshIndicatorOffset={contentTopOffset}

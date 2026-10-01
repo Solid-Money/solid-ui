@@ -22,11 +22,10 @@ const benefitsFor = (tier: RewardsTier, yieldBoostPercentage?: number): TierBene
 });
 
 /**
- * The tier comparison screen used to print its own yield boost constants, which had
- * drifted from the figure the rewards home reads off the API — Ultra advertised "+5%"
- * on one screen and "+3%" on the other. Every surface resolves through this now, so
- * the live rate is the one answer and the table is only what fills the gap before it
- * lands.
+ * The tier screens used to print their own yield boost constants, which had drifted
+ * from the figure the rewards home reads off the API, and from each other. Every
+ * surface resolves through this now, so the live rate is the one answer and the table
+ * is only what fills the gap before it lands.
  */
 describe('resolveTierYieldBoostRate', () => {
   it('prefers the rate the tier-benefits endpoint sent', () => {
@@ -60,19 +59,20 @@ describe('resolveTierYieldBoostRate', () => {
     );
   });
 
-  it('matches the rewards service table', () => {
-    // `TIER_YIELD_BOOST_PCT` in the accounts service: Core 0, Prime 2, Ultra 5.
+  it('matches the rates the accounts service pays from', () => {
+    // `YIELD_BOOST_DEFAULTS` in the accounts service, as APYs: tier1 0, tier2 0.02,
+    // tier3 0.03 — percentage points here, so Core 0, Prime 2, Ultra 3.
     expect(TIER_YIELD_BOOST_RATES).toEqual({
       [RewardsTier.CORE]: 0,
       [RewardsTier.PRIME]: 2,
-      [RewardsTier.ULTRA]: 5,
+      [RewardsTier.ULTRA]: 3,
     });
   });
 });
 
 describe('formatTierYieldBoost', () => {
   it('prints the rate the way the tier screens do', () => {
-    expect(formatTierYieldBoost(5)).toBe('+5%');
+    expect(formatTierYieldBoost(3)).toBe('+3%');
     expect(formatTierYieldBoost(0)).toBe('+0%');
   });
 });

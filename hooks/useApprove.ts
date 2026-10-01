@@ -1,18 +1,17 @@
-import { Currency, CurrencyAmount, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 import { useCallback, useMemo, useState } from 'react';
+import { Currency, CurrencyAmount, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
+import { Address, encodeFunctionData, erc20Abi } from 'viem';
+import { fuse } from 'viem/chains';
+import { useSimulateContract } from 'wagmi';
 
 import { ALGEBRA_ROUTER, PEG_SWAP } from '@/constants/addresses';
 import { MarketData } from '@/constants/lend';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useNeedAllowance } from '@/hooks/tokens/useNeedAllowance';
 import { track } from '@/lib/analytics';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ApprovalState, ApprovalStateType } from '@/lib/types/approve-state';
-import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
-import { Address, encodeFunctionData, erc20Abi } from 'viem';
-import { fuse } from 'viem/chains';
-import { useSimulateContract } from 'wagmi';
+
 import { useTransactionAwait } from './useTransactionAwait';
 import useUser from './useUser';
 
@@ -197,42 +196,6 @@ export function useApproveCallbackFromTrade(
   // Use custom spender if provided, otherwise default to ALGEBRA_ROUTER
   const spender = customSpender || ALGEBRA_ROUTER;
 
-  const { approvalState, approvalConfig, needAllowance, approvalCallback } = useApprove(
-    amountToApprove,
-    spender,
-  );
-
-  // Force needAllowance to true for token inputs when no approval config is generated
-  // This ensures we always generate approval configs for token inputs
-  const actualNeedAllowance = trade?.inputAmount.currency.isToken
-    ? needAllowance || !approvalConfig
-    : needAllowance;
-
-  return {
-    approvalState,
-    approvalConfig,
-    needAllowance: actualNeedAllowance,
-    approvalCallback,
-  };
-}
-
-export function useApproveCallbackFromVoltageTrade(
-  trade: VoltageTrade | undefined,
-  allowedSlippage: Percent,
-) {
-  const amountToApprove = useMemo(
-    () =>
-      trade && trade.inputAmount?.currency.isToken
-        ? computeSlippageAdjustedAmounts(trade, allowedSlippage).inputAmount
-        : undefined,
-    [trade, allowedSlippage],
-  );
-  // Use allowanceTarget from Voltage API, which is the contract that needs approval
-  // This is different from 'to' which is the transaction target
-  // Fallback to a zero address if neither is available (this will disable the hook)
-  const spender = (trade?.allowanceTarget ||
-    trade?.to ||
-    '0x0000000000000000000000000000000000000000') as Address;
   return useApprove(amountToApprove, spender);
 }
 

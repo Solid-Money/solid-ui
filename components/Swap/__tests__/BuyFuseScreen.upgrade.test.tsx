@@ -47,9 +47,6 @@ jest.mock('@/store/swapStore', () => ({
     currencyBalances: { INPUT: undefined },
     parsedAmount: undefined,
     toggledTrade: undefined,
-    voltageTrade: { trade: undefined },
-    isVoltageTrade: false,
-    isVoltageTradeLoading: false,
     tradeState: { state: 'NO_ROUTE_FOUND' },
   }),
 }));

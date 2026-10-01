@@ -1,43 +1,34 @@
 import { useMemo } from 'react';
-import { Currency, CurrencyAmount, encodeRouteToPath } from '@cryptoalgebra/fuse-sdk';
+import { Currency, CurrencyAmount, encodeRouteToPath, Route } from '@cryptoalgebra/fuse-sdk';
 import { useReadContracts } from 'wagmi';
 
 import { ALGEBRA_QUOTER_V2 } from '@/constants/addresses';
 import { algebraQuoterV2ABI } from '@/lib/abis';
 import { fuseConfig } from '@/lib/wagmi';
 
-import { useAllRoutes } from './useAllRoutes';
+/** How often a quote left on screen is re-fetched, so it can't go stale. */
+const QUOTE_REFRESH_MS = 15_000;
 
 export function useQuotesResults({
+  routes,
   exactInput,
-  amountIn,
-  amountOut,
-  currencyIn,
-  currencyOut,
+  amount,
 }: {
+  routes: Route<Currency, Currency>[];
   exactInput: boolean;
-  amountIn?: CurrencyAmount<Currency>;
-  amountOut?: CurrencyAmount<Currency>;
-  currencyIn?: Currency;
-  currencyOut?: Currency;
+  /** The input on exact-in, the output on exact-out. */
+  amount?: CurrencyAmount<Currency>;
 }) {
-  const { routes, loading: routesLoading } = useAllRoutes(
-    exactInput ? amountIn?.currency : currencyIn,
-    !exactInput ? amountOut?.currency : currencyOut,
+  const quoteInputs = useMemo(
+    () =>
+      amount
+        ? routes.map(route => [
+            encodeRouteToPath(route, !exactInput),
+            `0x${amount.quotient.toString(16)}`,
+          ])
+        : [],
+    [amount, routes, exactInput],
   );
-
-  const quoteInputs = useMemo(() => {
-    return routes.map(route => [
-      encodeRouteToPath(route, !exactInput),
-      exactInput
-        ? amountIn
-          ? `0x${amountIn.quotient.toString(16)}`
-          : undefined
-        : amountOut
-          ? `0x${amountOut.quotient.toString(16)}`
-          : undefined,
-    ]);
-  }, [amountIn, amountOut, routes, exactInput]);
 
   const functionName = exactInput ? 'quoteExactInput' : 'quoteExactOutput';
 
@@ -54,14 +45,15 @@ export function useQuotesResults({
     })),
     config: fuseConfig,
     query: {
-      enabled: true,
+      enabled: quoteInputs.length > 0,
       staleTime: 5_000,
+      refetchInterval: QUOTE_REFRESH_MS,
     },
   });
 
   return {
     data: quotesResults,
-    isLoading: isLoading || routesLoading,
+    isLoading,
     refetch,
   };
 }

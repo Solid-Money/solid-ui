@@ -25,11 +25,7 @@ import { ChevronRight } from '@/lib/icons/ChevronRight';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { cn } from '@/lib/utils';
-import {
-  computeRealizedLPFeePercent,
-  computeSlippageAdjustedAmounts,
-  warningSeverity,
-} from '@/lib/utils/swap/prices';
+import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
 import { toFeeCurrencyAmount } from '@/lib/utils/swapFee';
 import { publicClient } from '@/lib/wagmi';
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
@@ -45,9 +41,6 @@ const SwapParams = ({ label = 'Fee', expandable = true }: SwapParamsProps) => {
     toggledTrade: trade,
     allowedSlippage,
     currencies,
-    voltageTrade,
-    isVoltageTrade,
-    isVoltageTradeLoading,
     swapFee,
   } = useDerivedSwapInfo();
   const typedValue = useSwapState(state => state.typedValue);
@@ -197,11 +190,9 @@ const SwapParams = ({ label = 'Fee', expandable = true }: SwapParamsProps) => {
 
     const realizedLpFeePercent = computeRealizedLPFeePercent(trade);
     const realizedLPFee = trade.inputAmount.multiply(realizedLpFeePercent);
-    const priceImpact = isVoltageTrade
-      ? voltageTrade?.trade?.priceImpact
-      : trade.priceImpact.subtract(realizedLpFeePercent);
+    const priceImpact = trade.priceImpact.subtract(realizedLpFeePercent);
     return { priceImpact, realizedLPFee };
-  }, [trade, isVoltageTrade, voltageTrade]);
+  }, [trade]);
 
   const LPFeeString = realizedLPFee
     ? `${realizedLPFee.toSignificant(4)} ${realizedLPFee.currency.symbol}`
@@ -274,13 +265,9 @@ const SwapParams = ({ label = 'Fee', expandable = true }: SwapParamsProps) => {
               {trade.tradeType === TradeType.EXACT_INPUT ? 'Minimum received' : 'Maximum sent'}
             </Text>
             <Text className="text-base font-semibold">
-              {isVoltageTrade && !isVoltageTradeLoading
-                ? computeSlippageAdjustedAmounts(voltageTrade?.trade, allowedSlippage)[
-                    trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
-                  ]?.toSignificant(6)
-                : trade.tradeType === TradeType.EXACT_INPUT
-                  ? `${trade.minimumAmountOut(allowedSlippage).toSignificant(6)} ${trade.outputAmount.currency.symbol}`
-                  : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
+              {trade.tradeType === TradeType.EXACT_INPUT
+                ? `${trade.minimumAmountOut(allowedSlippage).toSignificant(6)} ${trade.outputAmount.currency.symbol}`
+                : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
             </Text>
           </View>
           <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">

@@ -148,7 +148,9 @@ import {
   TokenPriceUsd,
   TotalAPYResponse,
   TransfiCreateOrderResponse,
+  TransfiKycLevel,
   TransfiKycRetryResponse,
+  TransfiKycUpgradeResponse,
   TransfiOrderStatusResponse,
   TransfiPaymentConfig,
   TransfiPaymentMethodOption,
@@ -171,6 +173,8 @@ import {
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
+  YieldBoostClaimResult,
+  YieldBoostSummary,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
@@ -1764,6 +1768,27 @@ export const retryTransfiKyc = async (): Promise<TransfiKycRetryResponse> => {
 };
 
 /**
+ * Ask TransFi for its verification page for the next KYC level, after an order
+ * was refused with STANDARD_KYC_REQUIRED / ENHANCED_KYC_REQUIRED. Resolves with
+ * `kycUrl` to open, or `status: 'pending'` when TransFi is already reviewing.
+ */
+export const upgradeTransfiKyc = async (
+  level: TransfiKycLevel,
+): Promise<TransfiKycUpgradeResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/kyc/upgrade`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+      body: JSON.stringify({ level }),
+    },
+  );
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/**
  * Supply the address/phone TransFi needs when the verified identity didn't
  * carry them, then re-share. Resolves with the refreshed gating status.
  */
@@ -2213,6 +2238,55 @@ export const activateTierTrial = async (): Promise<RewardsUserData> => {
 };
 
 /**
+ * The signed-in user's yield boost: their tier's rate, and what they have
+ * earned and can claim, in soFUSE and USD.
+ */
+export const fetchYieldBoostSummary = async (): Promise<YieldBoostSummary> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/yield-boost`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Claim the yield boost the user has earned. The backend pays it in soFUSE from
+ * its payout wallet, so there is nothing for the user to sign.
+ *
+ * Answers once the transfer is mined, or with the claim still `submitted` when
+ * it takes longer. Throws an {@link ApiError} carrying the backend's reason —
+ * nothing to claim yet, today's limit reached, claims paused — for the card to
+ * show as is.
+ */
+export const claimYieldBoost = async (): Promise<YieldBoostClaimResult> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/yield-boost/claim`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw await toApiError(response, "Couldn't claim your yield boost");
+  return response.json();
+};
+
+/**
  * What each tier costs by either route, what the user has already locked or
  * bought, and the addresses to build the transactions against.
  *
@@ -2523,13 +2597,22 @@ export interface OnramperWidgetSession {
 }
 
 /**
+ * What an Onramper purchase funds: the wallet (the Safe), or the card by way of
+ * the card deposit address.
+ */
+export type OnramperDestination = 'wallet' | 'card';
+
+/**
  * Mints a signed widget URL for the signed-in user.
  *
  * The destination address is not sent — the backend reads it from the
  * authenticated user, so nothing the client says can redirect the delivery.
+ * `destination` picks only the route, which the backend resolves to that user's
+ * own Safe or card deposit address.
  */
 export const fetchOnramperWidgetSession = async (
   platform: 'web' | 'native',
+  destination: OnramperDestination,
 ): Promise<OnramperWidgetSession> => {
   const jwt = getJWTToken();
 
@@ -2543,7 +2626,7 @@ export const fetchOnramperWidgetSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ platform }),
+      body: JSON.stringify({ platform, destination }),
     },
   );
 

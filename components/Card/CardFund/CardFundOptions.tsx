@@ -21,7 +21,9 @@ import {
   CARD_FUND_LOCAL_CURRENCIES,
   getCardFundLocalPaymentMethods,
 } from '@/components/Card/CardFund/localCurrencies';
+import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
 import NeedHelp from '@/components/NeedHelp';
+import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -30,8 +32,16 @@ type CardFundOptionsProps = {
   onTokenPress: (symbol: string) => void;
   onMoveFromSavingsPress?: () => void;
   onExternalWalletPress?: () => void;
-  /** USD (ACH / Wire) — opens the virtual-account flow. */
+  /**
+   * USD — opens its methods: the virtual account (ACH / Wire), Cash App where
+   * it is offered, and Apple Pay.
+   */
   onUsdPress?: () => void;
+  /**
+   * Whether USD's methods include Cash App, so the USD row's chips name it.
+   * The Cash App row itself is on the host's USD step, beside Apple Pay.
+   */
+  isCashAppAvailable?: boolean;
   /**
    * A local currency (BRL, BDT…) — opens the buy-crypto onramp for it. Omit to
    * hide the local-currency rows entirely.
@@ -61,6 +71,7 @@ const CardFundOptions = ({
   onMoveFromSavingsPress,
   onExternalWalletPress,
   onUsdPress,
+  isCashAppAvailable = false,
   onLocalCurrencyPress,
   onBuyCryptoPress,
   isExternalWalletLoading,
@@ -70,7 +81,10 @@ const CardFundOptions = ({
   // A local-currency row still needs its handler, so the section flag and the
   // callback both have to be present — the callback alone is how the Rain
   // desktop/mobile modals have always hidden these rows.
-  const showLocalCurrencies = sections.localCurrencies && !!onLocalCurrencyPress;
+  // The local currencies are TransFi's, which refuses some countries outright.
+  const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
+  const showLocalCurrencies =
+    sections.localCurrencies && !!onLocalCurrencyPress && isTransfiAvailable;
   const showCashDeposit = sections.cashDeposit || showLocalCurrencies;
   const showOther = sections.moveFromSolid || sections.externalWallet || !!onBuyCryptoPress;
 
@@ -102,7 +116,7 @@ const CardFundOptions = ({
                 <Image source={CARD_FUND_USD_ICON} style={TOKEN_ICON_STYLE} contentFit="cover" />
               }
               title="USD"
-              chips={['ACH', 'Wire']}
+              chips={getUsdMethodChips(isCashAppAvailable)}
               onPress={onUsdPress}
             />
           ) : null}

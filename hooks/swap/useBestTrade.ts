@@ -1,220 +1,101 @@
-import { useMemo } from 'react';
-import { Currency, CurrencyAmount, Route, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
+import { useCallback, useMemo } from 'react';
+import { Currency, CurrencyAmount, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
 
 import { TradeState, TradeStateType } from '@/lib/types/trade-state';
+import { quotedAmount, QuoterResult, selectBestQuote } from '@/lib/utils/swap/quotes';
 
 import { useAllRoutes } from './useAllRoutes';
 import { useQuotesResults } from './useQuotesResults';
 
-// const DEFAULT_GAS_QUOTE = 2_000_000
-
-/**
- * Returns the best v3 trade for a desired exact input swap
- * @param amountIn the amount to swap in
- * @param currencyOut the desired output currency
- */
-export function useBestTradeExactIn(
-  amountIn?: CurrencyAmount<Currency>,
-  currencyOut?: Currency,
-): {
+export interface BestTrade {
   state: TradeStateType;
-  trade: Trade<Currency, Currency, TradeType.EXACT_INPUT> | null;
-  fee?: bigint[] | null;
-  priceAfterSwap?: bigint[] | null;
-} {
-  const { routes, loading: routesLoading } = useAllRoutes(amountIn?.currency, currencyOut);
-  const {
-    data: quotesResults,
-    isLoading: isQuotesLoading,
-    refetch,
-  } = useQuotesResults({
-    exactInput: true,
-    amountIn,
-    currencyOut,
-  });
-
-  const trade = useMemo(() => {
-    if (!amountIn || !currencyOut) {
-      return {
-        state: TradeState.INVALID,
-        trade: null,
-        refetch,
-      };
-    }
-
-    if (routesLoading || isQuotesLoading) {
-      return {
-        state: TradeState.LOADING,
-        trade: null,
-      };
-    }
-
-    const { bestRoute, amountOut, fee, priceAfterSwap } = (quotesResults || []).reduce(
-      (
-        currentBest: {
-          bestRoute: Route<Currency, Currency> | null;
-          amountOut: any | null;
-          fee: bigint[] | null;
-          priceAfterSwap: bigint[] | null;
-        },
-        { result }: any,
-        i,
-      ) => {
-        if (!result) return currentBest;
-
-        if (currentBest.amountOut === null) {
-          return {
-            bestRoute: routes[i],
-            amountOut: result[0][result[0].length - 1],
-            fee: result[5],
-            priceAfterSwap: result[2],
-          };
-        } else if (currentBest.amountOut < result[0][result[0].length - 1]) {
-          return {
-            bestRoute: routes[i],
-            amountOut: result[0][result[0].length - 1],
-            fee: result[5],
-            priceAfterSwap: result[2],
-          };
-        }
-
-        return currentBest;
-      },
-      {
-        bestRoute: null,
-        amountOut: null,
-        fee: null,
-        priceAfterSwap: null,
-      },
-    );
-
-    if (!bestRoute || !amountOut) {
-      return {
-        state: TradeState.NO_ROUTE_FOUND,
-        trade: null,
-        fee: null,
-        priceAfterSwap: null,
-      };
-    }
-
-    return {
-      state: TradeState.VALID,
-      fee,
-      trade: Trade.createUncheckedTrade({
-        route: bestRoute,
-        tradeType: TradeType.EXACT_INPUT,
-        inputAmount: amountIn,
-        outputAmount: CurrencyAmount.fromRawAmount(currencyOut, amountOut.toString()),
-      }),
-      priceAfterSwap,
-      refetch,
-    };
-  }, [amountIn, currencyOut, quotesResults, routes, routesLoading, isQuotesLoading, refetch]);
-  return trade;
+  trade: Trade<Currency, Currency, TradeType> | null;
+  fee?: readonly number[] | null;
+  priceAfterSwap?: readonly bigint[] | null;
+  /**
+   * Fetches a fresh quote for the route `trade` is on. Resolves with that
+   * route's new amount (the output on exact-in, the input on exact-out), or
+   * undefined when there's no trade or the route can't be priced right now.
+   */
+  requote: () => Promise<bigint | undefined>;
 }
 
 /**
- * Returns the best v3 trade for a desired exact output swap
- * @param currencyIn the desired input currency
- * @param amountOut the amount to swap out
+ * The best Algebra trade for a swap, in either direction.
+ *
+ * `amount` is the side the user fixed: the input on exact-in, the output on
+ * exact-out. Routes come from the currency pair alone, so they're found before
+ * an amount is typed and the first quote only waits on the quoter.
  */
-export function useBestTradeExactOut(
-  currencyIn?: Currency,
-  amountOut?: CurrencyAmount<Currency>,
-): {
-  state: TradeStateType;
-  trade: Trade<Currency, Currency, TradeType.EXACT_OUTPUT> | null;
-  fee?: bigint[] | null;
-  priceAfterSwap?: bigint[] | null;
-} {
-  const { routes, loading: routesLoading } = useAllRoutes(currencyIn, amountOut?.currency);
-
+export function useBestTrade(
+  tradeType: TradeType,
+  amount: CurrencyAmount<Currency> | undefined,
+  currencyIn: Currency | undefined,
+  currencyOut: Currency | undefined,
+): BestTrade {
+  const exactInput = tradeType === TradeType.EXACT_INPUT;
+  const { routes, loading: routesLoading } = useAllRoutes(currencyIn, currencyOut);
   const {
     data: quotesResults,
     isLoading: isQuotesLoading,
     refetch,
-  } = useQuotesResults({
-    exactInput: false,
-    currencyIn,
-    amountOut,
-  });
+  } = useQuotesResults({ routes, exactInput, amount });
 
-  const trade = useMemo(() => {
-    if (!amountOut || !currencyIn) {
-      return {
-        state: TradeState.INVALID,
-        trade: null,
-        refetch,
-      };
+  const best = useMemo(() => selectBestQuote(quotesResults, tradeType), [quotesResults, tradeType]);
+
+  const requote = useCallback(async () => {
+    if (!best) return undefined;
+    const { data } = await refetch();
+    const result = data?.[best.index]?.result as QuoterResult | undefined;
+    return result ? quotedAmount(result, tradeType) : undefined;
+  }, [best, refetch, tradeType]);
+
+  return useMemo(() => {
+    if (!amount || !currencyIn || !currencyOut) {
+      return { state: TradeState.INVALID, trade: null, requote };
     }
 
     if (routesLoading || isQuotesLoading) {
-      return {
-        state: TradeState.LOADING,
-        trade: null,
-      };
+      return { state: TradeState.LOADING, trade: null, requote };
     }
 
-    const { bestRoute, amountIn, fee, priceAfterSwap } = (quotesResults || []).reduce(
-      (
-        currentBest: {
-          bestRoute: Route<Currency, Currency> | null;
-          amountIn: any | null;
-          fee: bigint[] | null;
-          priceAfterSwap: bigint[] | null;
-        },
-        { result }: any,
-        i,
-      ) => {
-        if (!result) return currentBest;
-
-        if (currentBest.amountIn === null) {
-          return {
-            bestRoute: routes[i],
-            amountIn: result[1][result[1].length - 1],
-            fee: result[5],
-            priceAfterSwap: result[2],
-          };
-        } else if (currentBest.amountIn > result[0][result[0].length - 1]) {
-          return {
-            bestRoute: routes[i],
-            amountIn: result[1][result[1].length - 1],
-            fee: result[5],
-            priceAfterSwap: result[2],
-          };
-        }
-
-        return currentBest;
-      },
-      {
-        bestRoute: null,
-        amountIn: null,
-        fee: null,
-        priceAfterSwap: null,
-      },
-    );
-
-    if (!bestRoute || !amountIn) {
+    if (!best) {
       return {
         state: TradeState.NO_ROUTE_FOUND,
         trade: null,
         fee: null,
-        priceAfterSwap,
+        priceAfterSwap: null,
+        requote,
       };
     }
 
+    const quoted = CurrencyAmount.fromRawAmount(
+      exactInput ? currencyOut : currencyIn,
+      best.amount.toString(),
+    );
+
     return {
       state: TradeState.VALID,
-      fee,
       trade: Trade.createUncheckedTrade({
-        route: bestRoute,
-        tradeType: TradeType.EXACT_OUTPUT,
-        inputAmount: CurrencyAmount.fromRawAmount(currencyIn, amountIn.toString()),
-        outputAmount: amountOut,
+        route: routes[best.index],
+        tradeType,
+        inputAmount: exactInput ? amount : quoted,
+        outputAmount: exactInput ? quoted : amount,
       }),
-      priceAfterSwap,
-      refetch,
+      fee: best.fee,
+      priceAfterSwap: best.priceAfterSwap,
+      requote,
     };
-  }, [amountOut, currencyIn, quotesResults, routes, routesLoading, isQuotesLoading, refetch]);
-  return trade;
+  }, [
+    amount,
+    currencyIn,
+    currencyOut,
+    routesLoading,
+    isQuotesLoading,
+    best,
+    routes,
+    tradeType,
+    exactInput,
+    requote,
+  ]);
 }

@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { cn, formatNumber, formatWholeDollars } from '@/lib/utils';
+import { cn, formatBalanceUSD, formatNumber, formatWholeDollars } from '@/lib/utils';
 
 import RewardsDiamondIcon from './RewardsDiamondIcon';
 
@@ -24,6 +24,7 @@ const YieldBoostContent = ({
   yieldBoostPercentage,
   yieldBoostCap,
   yieldBoostEarned,
+  yieldBoostBalanceCap = 0,
   onClose,
   animationSession,
   isSheet = true,
@@ -44,9 +45,11 @@ const YieldBoostContent = ({
       className="mt-[7px] w-[284px] text-center text-base text-white/70"
       style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 18 }}
     >
-      {yieldBoostCap > 0
-        ? `Earn USDC on top of your savings deposits, up to ${formatWholeDollars(yieldBoostCap)}`
-        : 'Earn USDC on top of your savings deposits'}
+      {yieldBoostBalanceCap > 0
+        ? `Earn soFUSE on top of your savings yield, on your first ${formatWholeDollars(yieldBoostBalanceCap)}`
+        : yieldBoostCap > 0
+          ? `Earn USDC on top of your savings deposits, up to ${formatWholeDollars(yieldBoostCap)}`
+          : 'Earn USDC on top of your savings deposits'}
     </Text>
 
     <View className="mt-9 h-[117px] w-full overflow-hidden rounded-twice bg-[#2B2B2B]">
@@ -59,9 +62,7 @@ const YieldBoostContent = ({
       <View className="h-px bg-white/10" />
       <View className="flex-1 flex-row items-center justify-between px-[19px]">
         <Text className="text-base font-medium text-white/70">Total earned</Text>
-        <Text className="text-lg font-medium text-white">
-          {formatWholeDollars(yieldBoostEarned)}
-        </Text>
+        <Text className="text-lg font-medium text-white">{formatBalanceUSD(yieldBoostEarned)}</Text>
       </View>
     </View>
 

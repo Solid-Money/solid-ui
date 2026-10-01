@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
+import { useCashAppDepositAvailability } from '@/hooks/useCashAppDepositAvailability';
 import { createOrchestraOnramp, getOrchestraConfig, getOrchestraStatus } from '@/lib/api/orchestra';
 import { OrchestraError } from '@/lib/orchestraErrors';
 import { ORCHESTRA_SETTLED_STATUSES } from '@/lib/types/orchestra';
@@ -49,6 +50,23 @@ export function useOrchestraConfig(countryCode?: string, enabled = true) {
 }
 
 /**
+ * Whether Cash App can be offered here. One rule, decided server-side:
+ * supported region **or** allowlisted. The country is resolved on the client
+ * only because the backend has no geoip — the verdict is still theirs, and they
+ * enforce it again on order creation.
+ *
+ * Shared by the cash list's USD chips, the USD methods screen and the card
+ * funding modals' Cash App row, which ask the same question and share the one
+ * cached config call.
+ */
+export function useIsCashAppAvailable() {
+  const { countryCode, isResolving } = useCashAppDepositAvailability();
+  const { data: config } = useOrchestraConfig(countryCode, !isResolving);
+
+  return config?.isAvailable === true;
+}
+
+/**
  * Create the order and its invoice.
  *
  * Not retried: it allocates a real invoice, and a second attempt strands the
@@ -56,8 +74,15 @@ export function useOrchestraConfig(countryCode?: string, enabled = true) {
  */
 export function useCreateOrchestraOnramp() {
   return useMutation({
-    mutationFn: ({ amountFiatUsd, countryCode }: { amountFiatUsd: string; countryCode?: string }) =>
-      withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode)),
+    mutationFn: ({
+      amountFiatUsd,
+      countryCode,
+      destination,
+    }: {
+      amountFiatUsd: string;
+      countryCode?: string;
+      destination?: 'wallet' | 'card';
+    }) => withRefreshToken(() => createOrchestraOnramp(amountFiatUsd, countryCode, destination)),
     retry: false,
   });
 }

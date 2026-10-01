@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { CurrencyAmount } from '@cryptoalgebra/fuse-sdk';
+import { CurrencyAmount, TradeType } from '@cryptoalgebra/fuse-sdk';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Fuel, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
@@ -29,8 +29,7 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { getBridgeChain } from '@/constants/bridge';
 import { CARD_REPAY_MODAL } from '@/constants/modals';
 import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
-import { useBestTradeExactOut } from '@/hooks/swap/useBestTrade';
-import { useVoltageRouter } from '@/hooks/swap/useVoltageRouter';
+import { useBestTrade } from '@/hooks/swap/useBestTrade';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import useRepayAndWithdrawCollateral from '@/hooks/useRepayAndWithdrawCollateral';
@@ -282,11 +281,8 @@ export default function CardRepayForm() {
     [amountValue],
   );
 
-  // Quote the soUSD → USDC.e exact-output swap. We try Algebra (the adapter's
-  // SwapRouter) first since execution can ONLY route through Algebra. We also
-  // poll Voltage so the UI mirrors the swap page when Algebra has no liquidity
-  // — but in that case execution is blocked because the AlgebraAdapter can't
-  // call Voltage on-chain.
+  // Quote the soUSD → USDC.e exact-output swap on Algebra, the only venue the
+  // adapter's SwapRouter can execute through.
   const debtRepayCurrencyAmount = useMemo(() => {
     if (!isFromCollateral || amountValue <= 0) return undefined;
     try {
@@ -297,72 +293,39 @@ export default function CardRepayForm() {
     }
   }, [isFromCollateral, amountValue]);
 
-  const algebraTrade = useBestTradeExactOut(
-    isFromCollateral ? soUSDC_TOKEN : undefined,
+  const algebraTrade = useBestTrade(
+    TradeType.EXACT_OUTPUT,
     debtRepayCurrencyAmount,
-  );
-
-  const voltageTrade = useVoltageRouter(
     isFromCollateral ? soUSDC_TOKEN : undefined,
     isFromCollateral ? USDC_STARGATE_TOKEN : undefined,
-    debtRepayCurrencyAmount,
-    false, // exact-output
-    '0.5', // 0.5% slippage for the Voltage quote
   );
 
-  // The price impact actually shown matches the swap page's preference: pick
-  // whichever provider gives the smaller required input (cheaper for the user).
-  // Falls back to whichever side has a quote when only one is available.
-  const bestQuote = useMemo(() => {
-    const algebraInput = algebraTrade.trade?.inputAmount;
-    const voltageInput = voltageTrade.trade?.inputAmount;
-
-    const algebraImpact = algebraTrade.trade
-      ? (() => {
-          try {
-            return algebraTrade.trade.priceImpact.subtract(
-              computeRealizedLPFeePercent(algebraTrade.trade),
-            );
-          } catch {
-            return undefined;
-          }
-        })()
-      : undefined;
-    const voltageImpact = voltageTrade.trade?.priceImpact;
-
-    if (algebraInput && voltageInput) {
-      const useVoltage = voltageInput.lessThan(algebraInput);
-      return useVoltage
-        ? { source: 'voltage' as const, impact: voltageImpact, inputAmount: voltageInput }
-        : { source: 'algebra' as const, impact: algebraImpact, inputAmount: algebraInput };
+  const priceImpactNet = useMemo(() => {
+    if (!algebraTrade.trade) return undefined;
+    try {
+      return algebraTrade.trade.priceImpact.subtract(
+        computeRealizedLPFeePercent(algebraTrade.trade),
+      );
+    } catch {
+      return undefined;
     }
-    if (algebraInput) {
-      return { source: 'algebra' as const, impact: algebraImpact, inputAmount: algebraInput };
-    }
-    if (voltageInput) {
-      return { source: 'voltage' as const, impact: voltageImpact, inputAmount: voltageInput };
-    }
-    return undefined;
-  }, [algebraTrade.trade, voltageTrade.trade]);
-
-  const priceImpactNet = bestQuote?.impact;
+  }, [algebraTrade.trade]);
   const priceImpactSeverity = useMemo(() => warningSeverity(priceImpactNet), [priceImpactNet]);
 
-  // USDC received per soUSD sold, taken from whichever quote `bestQuote` chose.
-  // Showing this lets the user see the actual price they're getting after pool
-  // fees + impact, distinct from the soUSD oracle rate.
+  // USDC received per soUSD sold. Showing this lets the user see the actual
+  // price they're getting after pool fees + impact, distinct from the soUSD
+  // oracle rate.
   const sellPrice = useMemo(() => {
-    if (!bestQuote) return undefined;
-    const trade = bestQuote.source === 'algebra' ? algebraTrade.trade : voltageTrade.trade;
-    if (!trade?.inputAmount || !trade?.outputAmount) return undefined;
+    const trade = algebraTrade.trade;
+    if (!trade) return undefined;
     const input = Number(trade.inputAmount.toExact());
     const output = Number(trade.outputAmount.toExact());
     if (!input) return undefined;
     return output / input;
-  }, [bestQuote, algebraTrade.trade, voltageTrade.trade]);
+  }, [algebraTrade.trade]);
 
-  // Execution path: AlgebraAdapter only swaps on Algebra, so we size the flash
-  // loan from the Algebra quote even if Voltage offered a better price.
+  // Size the flash loan from the Algebra quote, padded for movement between
+  // quote and execution.
   const collateralAmountWei = useMemo(() => {
     const trade = algebraTrade.trade;
     if (!trade) return undefined;
@@ -371,15 +334,9 @@ export default function CardRepayForm() {
   }, [algebraTrade.trade]);
 
   const isTradeLoading =
-    isFromCollateral &&
-    amountValue > 0 &&
-    (algebraTrade.state === TradeState.LOADING || voltageTrade.isLoading);
-  const isAlgebraRouteMissing =
-    isFromCollateral &&
-    amountValue > 0 &&
-    !isTradeLoading &&
-    algebraTrade.state === TradeState.NO_ROUTE_FOUND;
-  const isAnyRouteMissing = isFromCollateral && amountValue > 0 && !isTradeLoading && !bestQuote;
+    isFromCollateral && amountValue > 0 && algebraTrade.state === TradeState.LOADING;
+  const isAnyRouteMissing =
+    isFromCollateral && amountValue > 0 && !isTradeLoading && !algebraTrade.trade;
 
   const handleMaxPress = () => {
     if (balanceAmount > 0) {
@@ -674,15 +631,6 @@ export default function CardRepayForm() {
                   <Text className="text-base font-bold opacity-50">—</Text>
                 )}
               </View>
-              {isAlgebraRouteMissing && bestQuote?.source === 'voltage' && (
-                <>
-                  <Divider />
-                  <Text className="text-sm text-yellow-400">
-                    Best route is on Voltage, but repay-from-collateral can only execute via
-                    Algebra. Try a different amount or use wallet funds.
-                  </Text>
-                </>
-              )}
             </>
           )}
           <Divider />

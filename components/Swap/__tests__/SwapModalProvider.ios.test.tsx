@@ -30,6 +30,7 @@ jest.mock('@/store/useComplianceStore', () => ({
     selector({ hasAcceptedDisclaimer: () => true, acceptDisclaimer: jest.fn() }),
 }));
 jest.mock('@/store/swapStore', () => ({
+  DerivedSwapInfoProvider: ({ children }: { children: unknown }) => children,
   useSwapState: (selector: (state: any) => unknown) =>
     selector({
       currentModal: mockCurrentModal,
