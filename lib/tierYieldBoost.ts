@@ -2,8 +2,10 @@ import { RewardsTier, TierBenefits } from '@/lib/types';
 
 /**
  * Extra APY each tier adds on top of the base savings yield, in percentage
- * points — the app's fallback copy of the rewards service's own table
- * (`TIER_YIELD_BOOST_PCT` in `rewards.service.ts`).
+ * points — the app's fallback copy of what the accounts service pays from:
+ * `YIELD_BOOST_DEFAULTS` in `app-config.constants.ts`, as the rewards service
+ * reads it through `yieldBoostForTier` and `grantedBoostPercentage` (an APY of
+ * 0.03 is the 3 quoted here).
  *
  * A fallback, not a second source of truth: every surface here prefers the
  * figure the tier-benefits endpoint sends and only falls back to this when the
@@ -18,7 +20,7 @@ import { RewardsTier, TierBenefits } from '@/lib/types';
 export const TIER_YIELD_BOOST_RATES: Record<RewardsTier, number> = {
   [RewardsTier.CORE]: 0,
   [RewardsTier.PRIME]: 2,
-  [RewardsTier.ULTRA]: 5,
+  [RewardsTier.ULTRA]: 3,
 };
 
 /**
@@ -40,5 +42,5 @@ export const resolveTierYieldBoostRate = (
   return TIER_YIELD_BOOST_RATES[tier] ?? 0;
 };
 
-/** "+5%" — the boost as the tier screens print it. */
+/** "+3%" — the boost as the tier screens print it. */
 export const formatTierYieldBoost = (rate: number): string => `+${rate}%`;
