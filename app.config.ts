@@ -51,7 +51,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Solid',
   slug: 'flash-frontend',
-  version: '2.0.1',
+  version: '2.0.2',
   orientation: 'portrait',
   icon: './assets/images/adaptive-icon.png',
   scheme: 'solid',

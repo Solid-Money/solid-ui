@@ -1,4 +1,5 @@
 import { formatTierCashbackRate } from '@/lib/tierCashback';
+import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
 
 export const TIER_LABELS: Record<RewardsTier, string> = {
@@ -92,13 +93,11 @@ export function tierPresentationContent(
       : tier === RewardsTier.ULTRA
         ? 20
         : 0;
+  // Through the shared table rather than a second set of literals: this screen and the
+  // rewards tab's teaser card each used to keep their own, and they drifted.
   const yieldPercentage = isBenefitNumber(live?.yieldBoostPercentage)
     ? live.yieldBoostPercentage
-    : tier === RewardsTier.PRIME
-      ? 2
-      : tier === RewardsTier.ULTRA
-        ? 3
-        : 0;
+    : TIER_YIELD_BOOST_RATES[tier];
   const balanceCap = isBenefitNumber(live?.yieldBoostBalanceCap)
     ? live.yieldBoostBalanceCap
     : tier === RewardsTier.PRIME

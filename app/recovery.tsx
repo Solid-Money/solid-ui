@@ -21,11 +21,23 @@ import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
-import { useUserStore } from '@/store/useUserStore';
+import { selectLastKnownIdentity, useUserStore } from '@/store/useUserStore';
 
 // Validation schemas
-const emailSchema = z.object({
-  email: z.email({ error: 'Please enter a valid email address' }),
+//
+// Deliberately loose: this field takes an email *or* a username, and the two
+// cannot both be checked strictly here. Anything with an "@" is held to the
+// email rules — a typo there is worth catching before a round trip — and
+// anything else only has to be long enough to be a handle. Which account it
+// names is the server's call either way.
+const identifierSchema = z.object({
+  identifier: z
+    .string()
+    .trim()
+    .min(1, { error: 'Enter your email or username' })
+    .refine(part => !part.includes('@') || z.email().safeParse(part).success, {
+      error: 'Please enter a valid email address',
+    }),
 });
 
 const otpSchema = z.object({
@@ -35,7 +47,7 @@ const otpSchema = z.object({
     .regex(/^\d+$/, { error: 'Verification code must only contain numbers' }),
 });
 
-type EmailFormData = z.infer<typeof emailSchema>;
+type IdentifierFormData = z.infer<typeof identifierSchema>;
 type OtpFormData = z.infer<typeof otpSchema>;
 
 const STEPS = {
@@ -64,12 +76,18 @@ export default function RecoveryPasskey() {
   const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession, httpClient, session } = useTurnkey();
   const setCredentialIdsForIdentity = useUserStore(state => state.setCredentialIdsForIdentity);
+  const lastKnownIdentity = useUserStore(selectLastKnownIdentity);
 
   const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState('');
+  // What the user typed: an email, or a username for an account whose address
+  // they cannot remember — or which has none.
+  const [identifier, setIdentifier] = useState('');
+  // Where the code actually went, masked by the backend. The only thing the
+  // OTP step can honestly say when the recovery started from a username.
+  const [emailHint, setEmailHint] = useState('');
   const [otpId, setOtpId] = useState('');
   const [recoveryData, setRecoveryData] = useState<{
     credentialBundle: string;
@@ -78,19 +96,26 @@ export default function RecoveryPasskey() {
     expiresAt?: number;
   } | null>(null);
 
-  // Step 1: Send OTP to user's email via backend
-  const handleSendOtp = useCallback(async (data: EmailFormData) => {
+  // Only an address can be cross-checked on verify; a username recovery leaves
+  // the account to be resolved from the challenge the backend issued.
+  const verifiedEmail = identifier.includes('@') ? identifier : undefined;
+
+  // Step 1: Send OTP to the account's email via backend
+  const handleSendOtp = useCallback(async (data: IdentifierFormData) => {
     setLoading(true);
     setApiError('');
 
     try {
-      const response = await initRecoveryOtp(data.email);
+      const response = await initRecoveryOtp(data.identifier);
 
       if (!response.otpId) {
         throw new Error('Failed to send verification code');
       }
 
-      setEmail(data.email);
+      setIdentifier(data.identifier);
+      // An older backend sends no hint; what they typed is then the best we
+      // have, and for an email recovery it is the right answer anyway.
+      setEmailHint(response.emailHint || data.identifier);
       setOtpId(response.otpId);
       setStep(STEPS.OTP_VERIFY);
     } catch (err: any) {
@@ -116,7 +141,12 @@ export default function RecoveryPasskey() {
         }
 
         // Verify OTP via backend - backend also calls otpLogin and returns credentialBundle
-        const verifyResponse = await verifyRecoveryOtp(otpId, data.otpCode, email, publicKey);
+        const verifyResponse = await verifyRecoveryOtp(
+          otpId,
+          data.otpCode,
+          verifiedEmail,
+          publicKey,
+        );
 
         if (!verifyResponse.credentialBundle) {
           throw new Error('Failed to verify code');
@@ -135,7 +165,7 @@ export default function RecoveryPasskey() {
         setLoading(false);
       }
     },
-    [otpId, email, createApiKeyPair, storeSession],
+    [otpId, verifiedEmail, createApiKeyPair, storeSession],
   );
 
   // Every credential Turnkey holds for the recovered account, read with the
@@ -218,7 +248,12 @@ export default function RecoveryPasskey() {
       // re-prompts. Replace them with what Turnkey holds now, including the
       // passkey just added.
       const credentialIds = await readCredentialIds(recoveryData);
-      setCredentialIdsForIdentity({ turnkeyUserId: recoveryData.userId, email }, credentialIds);
+      // `turnkeyUserId` is always present here, so the row is found whether or
+      // not this recovery ever learned the address.
+      setCredentialIdsForIdentity(
+        { turnkeyUserId: recoveryData.userId, email: verifiedEmail },
+        credentialIds,
+      );
 
       setStep(STEPS.SUCCESS);
     } catch (err: any) {
@@ -232,7 +267,7 @@ export default function RecoveryPasskey() {
       Sentry.captureException(err, {
         tags: { type: 'recovery_passkey_creation_error', turnkey_error_code: err?.code },
         extra: {
-          email,
+          identifier,
           turnkeyUserId: recoveryData.userId,
           organizationId: recoveryData.organizationId,
           cause: err?.cause?.message,
@@ -254,7 +289,8 @@ export default function RecoveryPasskey() {
     recoveryData,
     readCredentialIds,
     setCredentialIdsForIdentity,
-    email,
+    identifier,
+    verifiedEmail,
     hasUsableSession,
     sendBackForNewCode,
     session,
@@ -266,7 +302,7 @@ export default function RecoveryPasskey() {
     setApiError('');
 
     try {
-      const response = await initRecoveryOtp(email);
+      const response = await initRecoveryOtp(identifier);
 
       if (!response.otpId) {
         throw new Error('Failed to resend verification code');
@@ -279,7 +315,7 @@ export default function RecoveryPasskey() {
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, [identifier]);
 
   const handleBack = useCallback(() => {
     router.replace(path.ONBOARDING);
@@ -289,11 +325,16 @@ export default function RecoveryPasskey() {
   const stepContent = (
     <View className="w-full max-w-[440px]">
       {step === STEPS.EMAIL_INPUT && (
-        <EmailInput onSubmit={handleSendOtp} loading={loading} apiError={apiError} />
+        <IdentifierInput
+          onSubmit={handleSendOtp}
+          loading={loading}
+          apiError={apiError}
+          initialValue={lastKnownIdentity}
+        />
       )}
       {step === STEPS.OTP_VERIFY && (
         <OtpVerify
-          email={email}
+          emailHint={emailHint}
           onSubmit={handleVerifyOtp}
           onResend={handleResendOtp}
           loading={loading}
@@ -356,27 +397,34 @@ export default function RecoveryPasskey() {
   );
 }
 
-// Email Input Component with react-hook-form
-interface EmailInputProps {
-  onSubmit: (data: EmailFormData) => Promise<void>;
+// Identifier Input Component with react-hook-form
+interface IdentifierInputProps {
+  onSubmit: (data: IdentifierFormData) => Promise<void>;
   loading: boolean;
   apiError: string;
+  /**
+   * The account this device last knew about. Someone locked out is reaching for
+   * the account they were signed into here, and they are on a phone with no
+   * password manager to help — the one who prompted this change opened the
+   * screen twice and left both times without filling the field in.
+   */
+  initialValue: string;
 }
 
-function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
+function IdentifierInput({ onSubmit, loading, apiError, initialValue }: IdentifierInputProps) {
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
-  } = useForm<EmailFormData>({
-    resolver: zodResolver(emailSchema),
+  } = useForm<IdentifierFormData>({
+    resolver: zodResolver(identifierSchema),
     mode: 'onChange',
     defaultValues: {
-      email: '',
+      identifier: initialValue,
     },
   });
 
-  const fieldError = errors.email?.message;
+  const fieldError = errors.identifier?.message;
   const displayError = fieldError || apiError;
 
   return (
@@ -392,27 +440,33 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
 
       <View className="mb-6 gap-5">
         <View>
-          <Text className="mb-2 text-base font-medium text-white/60">Email</Text>
+          <Text className="mb-2 text-base font-medium text-white/60">Email or username</Text>
           <Controller
             control={control}
-            name="email"
+            name="identifier"
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
-                id="email"
+                id="identifier"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                placeholder="Enter your email"
+                placeholder="Enter your email or username"
+                // Still the email keyboard: an address is the longer, more
+                // error-prone thing to type, and a username is plain ASCII
+                // either way.
                 keyboardType="email-address"
                 autoCapitalize="none"
-                autoComplete="email"
+                autoComplete="username"
                 className="bg-[#2F2F2F] font-normal"
-                error={!!errors.email}
+                error={!!errors.identifier}
                 autoCorrect={false}
-                autoFocus
+                autoFocus={!initialValue}
               />
             )}
           />
+          <Text className="mt-2 text-sm text-white/40">
+            The code goes to the email on your account.
+          </Text>
         </View>
 
         {displayError ? (
@@ -441,14 +495,19 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
 
 // OTP Verification Component with react-hook-form
 interface OtpVerifyProps {
-  email: string;
+  /**
+   * Where the code went, already masked by the backend. A recovery started
+   * from a username never learns the full address, so this screen is told what
+   * to show rather than deriving it.
+   */
+  emailHint: string;
   onSubmit: (data: OtpFormData) => Promise<void>;
   onResend: () => void;
   loading: boolean;
   apiError: string;
 }
 
-function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyProps) {
+function OtpVerify({ emailHint, onSubmit, onResend, loading, apiError }: OtpVerifyProps) {
   const {
     control,
     handleSubmit,
@@ -462,7 +521,11 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
     },
   });
 
-  const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+  // Masked server-side when it came from there. An older backend sends no hint
+  // and this is whatever the user typed, so mask it here too.
+  const maskedEmail = emailHint.includes('•')
+    ? emailHint
+    : emailHint.replace(/(.{2})(.*)(@.*)/, '$1***$3');
   const fieldError = errors.otpCode?.message;
   const displayError = fieldError || apiError;
 

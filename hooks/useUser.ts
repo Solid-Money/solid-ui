@@ -25,7 +25,11 @@ import {
   updateUserCredentialId,
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
-import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
+import {
+  EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID,
+  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+  USER,
+} from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
@@ -190,6 +194,9 @@ const useUser = (): UseUserReturn => {
         account: safeAccount,
         chain: chain,
         paymaster: bundlerClient,
+        paymasterContext: EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID
+          ? { sponsorshipPolicyId: EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID }
+          : undefined,
         userOperation: {
           estimateFeesPerGas: async () => {
             try {

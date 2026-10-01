@@ -1,0 +1,52 @@
+diff --git a/node_modules/react-native-mmkv/src/addContentChangedListener/addContentChangedListener.ts b/node_modules/react-native-mmkv/src/addContentChangedListener/addContentChangedListener.ts
+--- a/node_modules/react-native-mmkv/src/addContentChangedListener/addContentChangedListener.ts
++++ b/node_modules/react-native-mmkv/src/addContentChangedListener/addContentChangedListener.ts
+@@ -16,7 +16,10 @@ export function addContentChangedListener(mmkv: MMKV): void {
+       'change',
+       (state: AppStateStatus) => {
+         if (state === 'active') {
+-          weakMmkv.deref()?.checkContentChanged()
++          const instance = weakMmkv.deref()
++          if (typeof instance?.checkContentChanged === 'function') {
++            instance.checkContentChanged()
++          }
+         }
+       }
+     )
+@@ -29,7 +32,9 @@ export function addContentChangedListener(mmkv: MMKV): void {
+   } else {
+     AppState.addEventListener('change', (state: AppStateStatus) => {
+       if (state === 'active') {
+-        mmkv.checkContentChanged()
++        if (typeof mmkv.checkContentChanged === 'function') {
++          mmkv.checkContentChanged()
++        }
+       }
+     })
+   }
+diff --git a/node_modules/react-native-mmkv/lib/addContentChangedListener/addContentChangedListener.js b/node_modules/react-native-mmkv/lib/addContentChangedListener/addContentChangedListener.js
+--- a/node_modules/react-native-mmkv/lib/addContentChangedListener/addContentChangedListener.js
++++ b/node_modules/react-native-mmkv/lib/addContentChangedListener/addContentChangedListener.js
+@@ -9,7 +9,10 @@ export function addContentChangedListener(mmkv) {
+         const weakMmkv = new WeakRef(mmkv);
+         const listener = AppState.addEventListener('change', (state) => {
+             if (state === 'active') {
+-                weakMmkv.deref()?.checkContentChanged();
++                const instance = weakMmkv.deref();
++                if (typeof instance?.checkContentChanged === 'function') {
++                    instance.checkContentChanged();
++                }
+             }
+         });
+         const finalization = new FinalizationRegistry((l) => {
+@@ -20,7 +23,9 @@ export function addContentChangedListener(mmkv) {
+     else {
+         AppState.addEventListener('change', (state) => {
+             if (state === 'active') {
+-                mmkv.checkContentChanged();
++                if (typeof mmkv.checkContentChanged === 'function') {
++                    mmkv.checkContentChanged();
++                }
+             }
+         });
+     }

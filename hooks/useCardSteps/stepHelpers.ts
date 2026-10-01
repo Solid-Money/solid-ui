@@ -63,6 +63,12 @@ export function buildCardSteps(
     isSubmittingPendingApplication?: boolean;
   },
 ): Step[] {
+  // The Bridge endorsement is a fallback for Bridge-only users, who have no card
+  // customer and so no `kycStatus`. Once `/cards/status` reports one, the
+  // application is on Rain or Wirex and bridge.xyz has no say in it: an old
+  // Bridge "cards" approval would otherwise mark a Wirex applicant's KYC step
+  // done (and offer "Activate card") before they have verified with Sumsub.
+  const legacyEndorsement = options?.kycStatus != null ? undefined : cardsEndorsement;
   const stepOptions =
     options?.cardIssuer != null || options?.kycStatus != null
       ? {
@@ -72,9 +78,9 @@ export function buildCardSteps(
           kycWarnings: options?.kycWarnings,
         }
       : undefined;
-  const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
-  const buttonText = getStepButtonText(cardsEndorsement, stepOptions);
-  const isButtonDisabled = isStepButtonDisabled(cardsEndorsement, stepOptions);
+  const description = getStepDescription(legacyEndorsement, customerRejectionReasons, stepOptions);
+  const buttonText = getStepButtonText(legacyEndorsement, stepOptions);
+  const isButtonDisabled = isStepButtonDisabled(legacyEndorsement, stepOptions);
 
   const isRainKycApproved =
     options?.cardIssuer === CardProvider.RAIN &&
@@ -94,7 +100,7 @@ export function buildCardSteps(
         // kycStatus is the canonical backend decision for every non-Rain issuer,
         // with the Bridge endorsement kept as the legacy fallback.
         options?.kycStatus === KycStatus.APPROVED ||
-        cardsEndorsement?.status === EndorsementStatus.APPROVED;
+        legacyEndorsement?.status === EndorsementStatus.APPROVED;
 
   // Deliberately does NOT repeat the failure reason. `CardStatusBanner` already
   // carries it — as a headline, with the detail and a support action — and
@@ -163,7 +169,7 @@ export function buildCardSteps(
       : description,
     completed: kycStepComplete,
     status: kycStepComplete ? 'completed' : 'pending',
-    endorsementStatus: cardsEndorsement?.status,
+    endorsementStatus: legacyEndorsement?.status,
     buttonText: showHoldStep ? undefined : buttonText,
     onPress: showHoldStep || isButtonDisabled ? undefined : kycStepOnPress,
   };

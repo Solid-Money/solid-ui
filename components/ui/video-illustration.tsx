@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { type StyleProp, type ViewStyle } from 'react-native';
-import { useVideoPlayer, type VideoContentFit, VideoView } from 'expo-video';
+import { useVideoPlayer, type VideoContentFit, VideoView, type VideoViewProps } from 'expo-video';
 
 interface VideoIllustrationProps {
   /** A `require()`d mp4. */
@@ -12,6 +12,7 @@ interface VideoIllustrationProps {
   loop?: boolean;
   style?: StyleProp<ViewStyle>;
   contentFit?: VideoContentFit;
+  surfaceType?: VideoViewProps['surfaceType'];
   /** Fires once the first frame is actually on screen. */
   onReady?: () => void;
 }
@@ -37,6 +38,7 @@ const VideoIllustration = ({
   loop = false,
   style,
   contentFit = 'contain',
+  surfaceType,
   onReady,
 }: VideoIllustrationProps) => {
   const player = useVideoPlayer(source, p => {
@@ -63,6 +65,7 @@ const VideoIllustration = ({
       player={player}
       style={style}
       contentFit={contentFit}
+      surfaceType={surfaceType}
       nativeControls={false}
       allowsVideoFrameAnalysis={false}
       onFirstFrameRender={onReady}

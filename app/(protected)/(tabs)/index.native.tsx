@@ -17,6 +17,7 @@ import { WalletInfo } from '@/components/Wallet';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
 import { SPIN_WIN_MODAL } from '@/constants/modals';
+import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -48,6 +49,7 @@ function LegacyHome() {
 
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const { refetchAll, isRefreshing } = useActivityRefresh();
   const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
     user?.safeAddress as Address,
   );
@@ -127,7 +129,7 @@ function LegacyHome() {
   const showAssets = isLoadingTokens || hasTokens || !!tokenError;
 
   return (
-    <PageLayout mobileTitle={mobileHeaderBalance}>
+    <PageLayout mobileTitle={mobileHeaderBalance} onRefresh={refetchAll} refreshing={isRefreshing}>
       <View className="mb-5 w-full gap-8 pb-20">
         {isBalanceSectionLoading ? (
           <View className="items-center pt-6">

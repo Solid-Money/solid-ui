@@ -8,7 +8,7 @@ import {
   fetchCoinSimplePrice,
   fetchTokenList,
   fetchTokenPricesByAddress,
-  fetchTokenPriceUsd,
+  fetchTokenPricesBySymbol,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
@@ -108,9 +108,10 @@ const symbols = {
 
 /**
  * Native-token USD price per chain. Uses the shared fetcher (Alchemy by symbol,
- * CoinGecko on failure) rather than a bare Alchemy call: FUSE's "symbol" here is
- * a CoinGecko coin id that Alchemy's by-symbol endpoint never resolves, so on
- * its own it yields no price at all.
+ * CoinGecko on failure) rather than a bare Alchemy call, so a chain still gets
+ * a price while Alchemy has none or is rate-limiting us. The five lookups start
+ * in the same tick, so they ride one Prices API request — ETH is asked for once,
+ * not once per chain — and are served from cache for the next minute.
  */
 const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> = {
   [mainnet.id]: makeNativePriceFetcher(mainnet.id),
@@ -571,7 +572,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
     }
   }
 
-  // Fallback 3: Alchemy by symbol for tokens still at 0 (no tokenId)
+  // Fallback 3: Alchemy by symbol for tokens still at 0 (no tokenId). One
+  // request carries up to 25 symbols; this used to be a request per symbol.
   const stillZero = allTokens.filter(
     t =>
       isZeroRate(t.quoteRate) &&
@@ -580,25 +582,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
   );
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
-    try {
-      const results = await Promise.allSettled(symbolsToFetch.map(s => fetchTokenPriceUsd(s)));
-      const symbolToPrice: Record<string, number> = {};
-      symbolsToFetch.forEach((sym, i) => {
-        const r = results[i];
-        if (r.status === 'fulfilled') {
-          const p = parsePrice(r.value);
-          if (p != null && p > 0) symbolToPrice[sym] = p;
-        }
-      });
-      allTokens = allTokens.map(t => {
-        if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
-        const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
-        if (typeof p === 'number') return { ...t, quoteRate: p };
-        return t;
-      });
-    } catch (e) {
-      console.warn('Alchemy fallback price failed:', e);
-    }
+    const symbolToPrice = await fetchTokenPricesBySymbol(symbolsToFetch);
+    allTokens = allTokens.map(t => {
+      if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
+      const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
+      if (typeof p === 'number') return { ...t, quoteRate: p };
+      return t;
+    });
   }
 
   // Helper function to calculate token value
@@ -732,22 +722,34 @@ const EMPTY_BALANCE_DATA = {
   unifiedTokens: [] as UnifiedTokenBalance[],
 };
 
+/** Shared by useBalances and the protected layout's prefetch. */
+export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
+  queryKey: ['tokenBalances', safeAddress],
+  queryFn: () => fetchTokenBalances(safeAddress!),
+  enabled: !!safeAddress,
+  staleTime: 30 * 1000,
+  gcTime: 5 * 60 * 1000,
+});
+
+/**
+ * SSE handles real-time updates (useActivitySSE invalidates ['tokenBalances']
+ * on every balance event); polling is the fallback for missed events or SSE
+ * failure. The price lookups inside a refresh are cached for a minute, so this
+ * interval doesn't drive Prices API usage.
+ */
+const BALANCES_POLL_INTERVAL_MS = 5_000;
+
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
   const { data, isLoading, isRefetching, error, refetch } = useQuery({
-    queryKey: ['tokenBalances', user?.safeAddress],
-    queryFn: () => fetchTokenBalances(user?.safeAddress!),
-    enabled: !!user?.safeAddress,
-    // TanStack Query handles all the manual logic:
+    ...tokenBalancesQueryOptions(user?.safeAddress),
     staleTime: 5_000,
-    gcTime: 5 * 60 * 1000, // 5 minutes - data stays in cache for 5 minutes when unused
     retry: 3, // retry up to 3 times on failure
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // SSE handles real-time updates; polling is fallback for missed events or SSE failure
-    refetchInterval: 5_000,
+    refetchInterval: BALANCES_POLL_INTERVAL_MS,
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
@@ -761,11 +763,3 @@ export const useBalances = (): BalanceData => {
     retry: refetch,
   };
 };
-
-export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
-  queryKey: ['tokenBalances', safeAddress],
-  queryFn: () => fetchTokenBalances(safeAddress!),
-  enabled: !!safeAddress,
-  staleTime: 30 * 1000,
-  gcTime: 5 * 60 * 1000,
-});
