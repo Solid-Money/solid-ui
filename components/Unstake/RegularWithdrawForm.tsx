@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
-import { formatUnits, zeroAddress } from 'viem';
+import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -115,10 +115,10 @@ const RegularWithdrawForm = () => {
   const { data: formattedBalance, isLoading: isLoadingFuseBalance } = useFuseVaultBalance(
     user?.safeAddress as Address,
   );
-  const { data: soFuseFormattedBalance, isLoading: isLoadingSoFuseBalance } = useSoFuseVaultBalance(
+  const { data: soFuseBalanceWei, isLoading: isLoadingSoFuseBalance } = useSoFuseVaultBalance(
     user?.safeAddress as Address,
   );
-  const { data: soEthFormattedBalance, isLoading: isLoadingSoEthBalance } = useSoEthVaultBalance(
+  const { data: soEthBalanceWei, isLoading: isLoadingSoEthBalance } = useSoEthVaultBalance(
     user?.safeAddress as Address,
   );
 
@@ -151,44 +151,60 @@ const RegularWithdrawForm = () => {
   const balance = isNative ? balanceNative?.value : balanceERC20?.value;
   const isLoading = isNative ? isBalanceNativeLoading : isBalanceERC20Loading;
 
-  const balanceAmount = useMemo(() => {
+  // Max and validation work in wei. A JS number can't hold 18 decimals: a
+  // soETH balance of 0.361164894291325699 becomes 0.3611648942913257, and
+  // withdrawing that reverts because it is more than the Safe holds.
+  const { balanceWei, balanceDecimals } = useMemo(() => {
     if (isSoFuse) {
-      return soFuseFormattedBalance ? Number(soFuseFormattedBalance) : 0;
+      return { balanceWei: soFuseBalanceWei ?? 0n, balanceDecimals: 18 };
     }
     if (isSoEth) {
-      return soEthFormattedBalance ? Number(soEthFormattedBalance) : 0;
+      return { balanceWei: soEthBalanceWei ?? 0n, balanceDecimals: 18 };
     }
     if (!selectedToken) {
-      return formattedBalance ? Number(formattedBalance) : 0;
+      // soUSD has 6 decimals, which a number holds exactly.
+      return {
+        balanceWei: formattedBalance ? parseUnits(formattedBalance.toString(), 6) : 0n,
+        balanceDecimals: 6,
+      };
     }
-    if (balance) {
-      return Number(formatUnits(balance, selectedToken.contractDecimals));
-    }
-    return Number(
-      formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals),
-    );
+    return {
+      balanceWei: balance || BigInt(selectedToken.balance || '0'),
+      balanceDecimals: selectedToken.contractDecimals,
+    };
   }, [
     isSoFuse,
     isSoEth,
     selectedToken,
     balance,
     formattedBalance,
-    soFuseFormattedBalance,
-    soEthFormattedBalance,
+    soFuseBalanceWei,
+    soEthBalanceWei,
   ]);
 
+  const balanceAmount = Number(formatUnits(balanceWei, balanceDecimals));
+
   const bridgeSchema = useMemo(() => {
+    const toWei = (val: string) => {
+      try {
+        return parseUnits(val, balanceDecimals);
+      } catch {
+        return undefined;
+      }
+    };
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
-        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || 'soUSD'}`,
+        .trim()
+        .refine(val => val !== '' && toWei(val) !== undefined, {
+          error: 'Please enter a valid amount',
         })
-        .transform(val => Number(val)),
+        .refine(val => (toWei(val) ?? 0n) > 0n, { error: 'Amount must be greater than 0' })
+        .refine(val => (toWei(val) ?? 0n) <= balanceWei, {
+          error: `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || 'soUSD'}`,
+        }),
     });
-  }, [selectedToken, balanceAmount]);
+  }, [selectedToken, balanceWei, balanceDecimals, balanceAmount]);
 
   type WithdrawFormData = { amount: string };
 
@@ -262,8 +278,8 @@ const RegularWithdrawForm = () => {
   };
 
   const handleMaxPress = () => {
-    if (balanceAmount > 0) {
-      const maxAmount = balanceAmount.toString();
+    if (balanceWei > 0n) {
+      const maxAmount = formatUnits(balanceWei, balanceDecimals);
       setValue('amount', maxAmount);
       trigger('amount');
     }

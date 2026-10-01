@@ -87,6 +87,7 @@ const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate:
 const SubscriptionCashbackContent = ({
   currentTier,
   subscriptionDiscountRate,
+  subscriptionCategoryRates,
   onGetMoreCashback,
   onDismiss,
   animationSession,
@@ -94,7 +95,11 @@ const SubscriptionCashbackContent = ({
   sheetTopPadding = 60,
 }: SubscriptionCashbackContentProps) => {
   const [selectedCategory, setSelectedCategory] = useState<CashbackCategoryKey>('ai');
-  const presentation = categoryCashbackPresentation(currentTier, subscriptionDiscountRate);
+  const presentation = categoryCashbackPresentation(
+    currentTier,
+    subscriptionDiscountRate,
+    subscriptionCategoryRates,
+  );
 
   return (
     <View

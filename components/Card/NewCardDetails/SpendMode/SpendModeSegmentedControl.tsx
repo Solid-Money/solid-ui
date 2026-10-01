@@ -28,7 +28,7 @@ interface SegmentLabelsProps {
   tone: 'light' | 'dark';
 }
 
-/** "Cash / Add USDC", stacked and centred — the same block in both tones. */
+/** "Cash / Add funds", stacked and centred — the same block in both tones. */
 const SegmentLabels = ({ mode, value, tone }: SegmentLabelsProps) => (
   <View style={styles.labels}>
     <Text

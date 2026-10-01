@@ -3,35 +3,16 @@ import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import useUser from '@/hooks/useUser';
+import { constructActivity } from '@/lib/activityEvents';
 import { fetchActivityEvents } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useAccountRefreshStore } from '@/store/useAccountRefreshStore';
 import { useActivityStore } from '@/store/useActivityStore';
 
 import { useActivityActions } from './useActivityActions';
+import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
-import { useSyncActivities } from './useSyncActivities';
-
-function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
-  let clientTxId = `${tx.type}-${tx.timestamp}`;
-  if ('trackingId' in tx && tx.trackingId) {
-    clientTxId = tx.trackingId as string;
-  } else if ('clientTxId' in tx && tx.clientTxId) {
-    clientTxId = tx.clientTxId;
-  } else if ('hash' in tx && tx.hash) {
-    clientTxId = `${tx.type}-${tx.hash}`;
-  }
-
-  return {
-    ...tx,
-    clientTxId,
-    title: tx.title || `${tx.type} Transaction`,
-    timestamp: tx.timestamp || Math.floor(Date.now() / 1000).toString(),
-    amount: tx.amount.toString(),
-    symbol: tx.symbol || 'USDC',
-    fromAddress: tx.fromAddress || safeAddress,
-  };
-}
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -91,41 +72,14 @@ export function useActivity() {
   const hasFetchedInitial = useRef(false);
   const fetchedForUserId = useRef<string | null>(null);
 
-  // Memoize sync options to ensure stable reference
-  // (useSyncActivities extracts primitives, but this prevents potential re-render issues)
-  const syncOptions = useMemo(
-    () => ({
-      syncOnAppActive: true,
-      syncOnMount: true,
-    }),
-    [],
-  );
-
-  // Sync all activities from backend (handles smart caching internally)
-  // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
-  const {
-    sync: syncFromBackend,
-    isSyncing,
-    isStale: isSyncStale,
-    canSync,
-  } = useSyncActivities(syncOptions);
+  const { refetchAll, isRefreshing, isSyncing, isSyncStale, canSync } = useActivityRefresh({
+    syncOnAppActive: true,
+    syncOnMount: true,
+  });
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
-  const transactionsRef = useRef(userTransactions);
-  const withdrawsKey = useMemo(() => {
-    const withdraws = userTransactions?.withdraws;
-    if (!withdraws?.length) return 'empty';
-    const hashSample = withdraws
-      .slice(0, 3)
-      .map(w => `${w.requestTxHash?.slice(0, 10) ?? ''}-${w.requestStatus ?? ''}`)
-      .join('|');
-    return `${withdraws.length}:${hashSample}`;
-  }, [userTransactions?.withdraws]);
-
-  useEffect(() => {
-    transactionsRef.current = userTransactions;
-  }, [withdrawsKey, userTransactions]);
+  const withdraws = userTransactions?.withdraws;
 
   // Fetch a page of activities directly from the API and push to Zustand
   const fetchPage = useCallback(
@@ -199,22 +153,16 @@ export function useActivity() {
     }
   }, [hasNextPage, isFetchingNextPage, currentPage, fetchPage]);
 
-  // Refetch all data sources (backend handles all syncing now)
-  const refetchAll = useCallback(
-    (force = false) => {
-      if (isSyncing) return;
-      // Reset pagination and refetch first page
-      setCurrentPage(1);
-      fetchPage(1).catch((error: any) => {
-        console.error('Failed to refetch first page:', error);
-      });
-      // Trigger backend sync
-      syncFromBackend(undefined, force).catch((error: any) => {
-        console.error('Background sync failed:', error);
-      });
-    },
-    [isSyncing, syncFromBackend, fetchPage],
+  const refreshedPage = useAccountRefreshStore(state =>
+    user?.userId ? state.latestPageByUser[user.userId] : undefined,
   );
+  useEffect(() => {
+    // Keep cached rows visible, but restart server pagination: new rows can
+    // shift page boundaries, so the old cursor could otherwise skip history.
+    if (!refreshedPage) return;
+    setCurrentPage(1);
+    setHasNextPage(refreshedPage.hasNextPage);
+  }, [refreshedPage]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
@@ -240,13 +188,13 @@ export function useActivity() {
     //
     // When subgraph data is unavailable we now show PROCESSING (not PENDING)
     // to reflect that the on-chain tx succeeded and the request is in the queue.
-    if (transactionsRef.current?.withdraws) {
+    if (withdraws) {
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
           activity.status === TransactionStatus.SUCCESS
         ) {
-          const matchingWithdraw = transactionsRef.current?.withdraws.find(w => {
+          const matchingWithdraw = withdraws.find(w => {
             const activityHash = activity.hash?.toLowerCase();
             const activityUserOpHash = activity.userOpHash?.toLowerCase();
             const reqHash = w.requestTxHash?.toLowerCase();
@@ -309,13 +257,11 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- withdrawsKey is intentional: stable lightweight key replaces unstable object reference
-  }, [userEventsFromStore, user?.userId, withdrawsKey]);
+  }, [userEventsFromStore, user?.userId, withdraws]);
 
   useEffect(() => {
     if (!activities?.length) return;
     setCachedActivities(activities);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setCachedActivities is stable useState setter
   }, [activities]);
 
   // Get pending activities
@@ -349,6 +295,7 @@ export function useActivity() {
     refetchAll,
     // Sync state for UI indicators
     isSyncing,
+    isRefreshing,
     isSyncStale,
     canSync,
   };

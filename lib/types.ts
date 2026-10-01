@@ -83,6 +83,21 @@ export interface DetectedDirectDepositResponse {
   detectedAt?: string;
 }
 
+/**
+ * What `/deposit/fee-quote` says a deposit would pay, from the same assessment
+ * the deposit workflows charge with.
+ */
+export interface DepositFeeQuote {
+  /** Whether the deposit bridge fee is taken on this deposit. */
+  applies: boolean;
+  /** Why it is or is not (a backend `DepositFeeReason`). */
+  reason: string;
+  /** The rate, in parts per million (0.03% = 300). 0 when free. */
+  ratePpm: number;
+  /** Chain the deposit is delivered on; deposits sent from it are free. */
+  deliveryChainId: number;
+}
+
 /** One (chain, token) the deposit pipeline credits, as `/deposit/assets` gives it. */
 export interface DepositAsset {
   chainId: number;
@@ -1770,6 +1785,16 @@ export enum RewardsTier {
   ULTRA = 'ultra',
 }
 
+/** One subscription category and what a tier earns on it. */
+export interface SubscriptionCategoryRate {
+  /** Stable config key, e.g. "ai", "rides". Keys the sheet's artwork. */
+  key: string;
+  /** Display label, e.g. "AI Tools". */
+  label: string;
+  /** Cashback the tier earns on the category, in percentage points. */
+  rate: number;
+}
+
 export interface RewardsUserData {
   currentTier: RewardsTier;
   totalPoints: number;
@@ -1839,6 +1864,17 @@ export interface RewardsUserData {
   subscriptionDiscountRate?: number;
   /** Subscription categories the current tier earns the discount on per month. */
   subscriptionCategoryLimit?: number;
+  /**
+   * What the current tier earns on each configured category, in percentage
+   * points. Absent on older backends, which is what makes the category sheet
+   * fall back to its design rates.
+   *
+   * `subscriptionDiscountRate` is a single figure and cannot describe a tier
+   * that pays differently per category — Prime earns 10% on AI but 8% on Rides
+   * — so prefer this wherever both are available. A category present with a
+   * rate of 0 is locked for the tier, not missing.
+   */
+  subscriptionCategoryRates?: SubscriptionCategoryRate[];
   /**
    * FUSE-in-savings tier unlock ("skip the line"). Absent on older backends,
    * which is what hides the section.

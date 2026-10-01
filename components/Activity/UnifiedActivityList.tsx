@@ -5,6 +5,9 @@ import { FlashList } from '@shopify/flash-list';
 import UnifiedActivityRow, {
   useUnifiedActivityPress,
 } from '@/components/Activity/UnifiedActivityRow';
+import PullToRefreshScrollView, {
+  REFRESH_SPINNER_COLOR,
+} from '@/components/PullToRefreshScrollView';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -21,6 +24,7 @@ type UnifiedActivityListProps = {
   userHasCard: boolean;
   isLoading: boolean;
   isSyncing?: boolean;
+  isRefreshing?: boolean;
   isSyncStale?: boolean;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
@@ -65,6 +69,7 @@ export default function UnifiedActivityList({
   userHasCard,
   isLoading,
   isSyncing = false,
+  isRefreshing = false,
   isSyncStale = false,
   hasNextPage = false,
   isFetchingNextPage = false,
@@ -193,10 +198,11 @@ export default function UnifiedActivityList({
     );
   }, [handleLoadMore, hasNextPage, isFetchingNextPage]);
 
-  return (
-    <View className="flex-1">
-      {/* Subtle syncing indicator for background syncs (native only) */}
-      {Platform.OS !== 'web' && isSyncing && (
+  const listHeader = (
+    <>
+      {listHeaderComponent}
+      {/* Keep the background sync status in the content that moves with a pull. */}
+      {Platform.OS !== 'web' && isSyncing && !isRefreshing && (
         <View className="flex-row items-center justify-center gap-2 py-2">
           <View className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           <Text className="text-sm text-muted-foreground">
@@ -204,7 +210,11 @@ export default function UnifiedActivityList({
           </Text>
         </View>
       )}
+    </>
+  );
 
+  return (
+    <View className="flex-1">
       <FlashList
         data={rows}
         renderItem={renderItem}
@@ -212,21 +222,22 @@ export default function UnifiedActivityList({
         // NOTE: no onEndReached — FlashList fires it on every re-render while the
         // content doesn't fill the viewport, which fetched every page at once
         // (Sentry: "10+ renders/second"). The footer button pages instead.
-        ListHeaderComponent={listHeaderComponent}
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={ItemSeparator}
         contentContainerStyle={{ paddingVertical: 0, paddingBottom: 100 }}
         refreshControl={
-          onRefresh ? (
+          Platform.OS !== 'web' && onRefresh ? (
             <RefreshControl
-              refreshing={isLoading || isSyncing}
+              refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor="#666"
-              colors={['#666']}
+              tintColor={REFRESH_SPINNER_COLOR}
+              colors={[REFRESH_SPINNER_COLOR]}
             />
           ) : undefined
         }
+        renderScrollComponent={Platform.OS !== 'web' ? PullToRefreshScrollView : undefined}
         showsVerticalScrollIndicator={false}
       />
     </View>

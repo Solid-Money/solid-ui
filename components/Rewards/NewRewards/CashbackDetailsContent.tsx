@@ -76,6 +76,9 @@ const CashbackDetailsContent = ({
           {formatBalanceUSD(monthlyCashbackTotal(cashbackThisMonth, cashbackPendingThisMonth))}
         </Text>
       </StatRow>
+      <Text className="-mt-2 px-[19px] pb-3 text-xs text-white/50">
+        Total includes pending cashback.
+      </Text>
       <Divider />
       <StatRow label="Monthly cap">
         <Text className="text-lg font-medium text-white">

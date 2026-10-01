@@ -20,6 +20,9 @@ async function estimateGasCost(
   const fastGasPrice = (baseGasPrice * 195n) / 100n; // 85% above base for fast transactions
 
   const tokenPriceUsd = await fetchTokenPriceUsd(token);
+  // The price lookup reports "no price" instead of throwing; fail the query as
+  // before, so the cost shows as 0 rather than NaN.
+  if (tokenPriceUsd === undefined) throw new Error(`No USD price for ${token}`);
 
   const gasCostInWei = gasEstimate * fastGasPrice;
 

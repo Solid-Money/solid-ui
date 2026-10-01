@@ -7,9 +7,13 @@ import { fuse } from 'viem/chains';
 import {
   ALCHEMY_NETWORKS,
   ALCHEMY_PRICE_BATCH_SIZE,
+  ALCHEMY_PRICE_MAX_NETWORKS,
   ALCHEMY_PRICES_URL,
+  ALCHEMY_REQUEST_TIMEOUT_MS,
+  BACKEND_PRICE_CHAIN_IDS,
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
+import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { toTransfiError } from '@/lib/transfiErrors';
@@ -74,6 +78,7 @@ import {
   CustomerFromBridgeResponse,
   Deposit,
   DepositAssetsResponse,
+  DepositFeeQuote,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -452,74 +457,281 @@ export const fetchTokenTransfer = async ({
   });
 };
 
-export const fetchTokenPriceUsd = async (token: string) => {
+/**
+ * How long a price from Alchemy is shared by every caller before it's asked for
+ * again. Alchemy refreshes its prices about once a minute.
+ */
+const ALCHEMY_PRICE_TTL_MS = 60_000;
+/** A token Alchemy has no price for rarely gains one within minutes. */
+const ALCHEMY_PRICE_MISS_TTL_MS = 5 * 60_000;
+const ALCHEMY_PRICE_ERROR_TTL_MS = 15_000;
+/** Past this a price is dropped rather than shown, even when it can't be refreshed. */
+const ALCHEMY_PRICE_MAX_STALE_MS = 10 * 60_000;
+/** Pause on a 429 without a usable Retry-After, and the cap on one that has it. */
+const ALCHEMY_PRICE_RATE_LIMIT_PAUSE_MS = 60_000;
+const ALCHEMY_PRICE_MAX_RATE_LIMIT_PAUSE_MS = 15 * 60_000;
+
+/** The USD quote from a Prices API entry, when it's a usable positive number. */
+const usdPrice = (prices: { currency: string; value: string }[] | undefined) => {
+  const value = Number(prices?.find(price => price.currency?.toLowerCase() === 'usd')?.value);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
+/**
+ * Both Prices endpoints draw on one token_price quota ("Your payg app has
+ * exceeded its limit of 10000 token_price requests per 1 hours"), so a 429 from
+ * either pauses both. Every request made while the quota is spent is refused
+ * anyway, and each refusal was also being reported to Sentry.
+ */
+const alchemyPriceCooldown: Cooldown = { until: 0 };
+
+const rateLimitPauseMs = (error: unknown) => {
+  const response = (error as { response?: { status?: number; headers?: Record<string, unknown> } })
+    ?.response;
+  if (response?.status !== 429) return undefined;
+  const retryAfterMs = Number(response.headers?.['retry-after']) * 1000;
+  return Number.isFinite(retryAfterMs) && retryAfterMs > 0
+    ? Math.min(retryAfterMs, ALCHEMY_PRICE_MAX_RATE_LIMIT_PAUSE_MS)
+    : ALCHEMY_PRICE_RATE_LIMIT_PAUSE_MS;
+};
+
+const alchemyPriceCaching = {
+  ttlMs: ALCHEMY_PRICE_TTL_MS,
+  missTtlMs: ALCHEMY_PRICE_MISS_TTL_MS,
+  errorTtlMs: ALCHEMY_PRICE_ERROR_TTL_MS,
+  maxStaleMs: ALCHEMY_PRICE_MAX_STALE_MS,
+  cooldownMs: rateLimitPauseMs,
+  cooldown: alchemyPriceCooldown,
+};
+
+/** Longer than the backend's own Alchemy timeout (4s), so it gives up first. */
+const BACKEND_PRICES_TIMEOUT_MS = 6_000;
+const BACKEND_PRICES_RETRY_MS = 5 * 60_000;
+/** The route's per-list limits; anything past them would fail the whole request. */
+const BACKEND_PRICES_MAX_SYMBOL_LENGTH = 64;
+const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+let backendPricesPausedUntil = 0;
+
+type BackendPrices = { symbols: Record<string, number>; tokens: Record<string, number> };
+
+const positivePrices = (value: unknown): Record<string, number> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, number] =>
+        typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
+    ),
+  );
+};
+
+/**
+ * Prices from the backend, or undefined when it couldn't answer. Never throws.
+ *
+ * The backend serves prices from one cache shared by every user
+ * (POST /accounts/v1/prices), so the app asks it first and every open copy no
+ * longer spends the app key's Alchemy quota. When it can't answer — a backend
+ * released before the route existed, an outage, an expired session, a token it
+ * can't price right now (503) — the app asks Alchemy itself as before, and
+ * skips the backend for a few minutes so each lookup doesn't wait on it first.
+ */
+const fetchBackendPrices = async (body: {
+  symbols?: string[];
+  tokens?: { chainId: number; address: string }[];
+}): Promise<BackendPrices | undefined> => {
+  if (Date.now() < backendPricesPausedUntil) return undefined;
+  try {
+    const jwt = getJWTToken();
+    const response = await fetchWithTimeout(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/prices`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      },
+      BACKEND_PRICES_TIMEOUT_MS,
+    );
+    if (!response.ok) throw new Error(`Backend prices responded ${response.status}`);
+    const data = (await response.json()) as { symbols?: unknown; tokens?: unknown };
+    const symbols = positivePrices(data?.symbols);
+    const tokens = positivePrices(data?.tokens);
+    // Anything but the expected shape is a failure, not "no prices": a miss is
+    // remembered for minutes, so a misrouted reply mustn't be taken for one.
+    if (!symbols || !tokens) throw new Error('Unexpected backend prices response');
+    return { symbols, tokens };
+  } catch {
+    backendPricesPausedUntil = Date.now() + BACKEND_PRICES_RETRY_MS;
+    return undefined;
+  }
+};
+
+const fetchAlchemyPricesBySymbol = async (symbols: string[]) => {
   // externalAxios (not the global axios): Alchemy 401s when the Solid JWT is
   // attached, which zeroes out every price on native builds.
   const response = await externalAxios.get<TokenPriceUsd>(
-    `${ALCHEMY_PRICES_URL}/by-symbol?symbols=${token}`,
+    `${ALCHEMY_PRICES_URL}/by-symbol?${symbols.map(s => `symbols=${encodeURIComponent(s)}`).join('&')}`,
+    { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
   );
-  return response?.data?.data[0]?.prices[0]?.value;
+  const prices = new Map<string, number>();
+  for (const entry of response.data?.data ?? []) {
+    const price = usdPrice(entry.prices);
+    if (entry.symbol && price !== undefined) prices.set(entry.symbol.toUpperCase(), price);
+  }
+  return prices;
+};
+
+/** Keyed by upper-cased symbol: Alchemy upper-cases the symbols it echoes back. */
+const alchemyPricesBySymbol = createBatchedLoader<number>({
+  ...alchemyPriceCaching,
+  chunk: symbols => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < symbols.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+      chunks.push(symbols.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+    }
+    return chunks;
+  },
+  fetchChunk: async symbols => {
+    // A symbol past the route's limit isn't a real ticker; leaving it out keeps
+    // it from failing the lookup for the others.
+    const sendable = symbols.filter(s => s.length <= BACKEND_PRICES_MAX_SYMBOL_LENGTH);
+    const fromBackend = sendable.length
+      ? await fetchBackendPrices({ symbols: sendable })
+      : undefined;
+    if (fromBackend) {
+      return new Map(
+        Object.entries(fromBackend.symbols).map(([symbol, price]) => [symbol.toUpperCase(), price]),
+      );
+    }
+    return fetchAlchemyPricesBySymbol(symbols);
+  },
+});
+
+/** Keyed by `${chainId}:${lowercased address}`. */
+const alchemyPricesByAddress = createBatchedLoader<number>({
+  ...alchemyPriceCaching,
+  // First fit, so tokens keep their order and each request stays within both
+  // the address and the network cap. Tokens on chains the backend doesn't cover
+  // never share a request with ones it does, so they can go to Alchemy alone.
+  chunk: keys => {
+    const chunks: { keys: string[]; networks: Set<string>; viaBackend: boolean }[] = [];
+    for (const key of keys) {
+      const chainId = Number(key.split(':')[0]);
+      const network = ALCHEMY_NETWORKS[chainId];
+      const viaBackend = BACKEND_PRICE_CHAIN_IDS.has(chainId);
+      const chunk = chunks.find(
+        c =>
+          c.viaBackend === viaBackend &&
+          c.keys.length < ALCHEMY_PRICE_BATCH_SIZE &&
+          (c.networks.has(network) || c.networks.size < ALCHEMY_PRICE_MAX_NETWORKS),
+      );
+      if (chunk) {
+        chunk.keys.push(key);
+        chunk.networks.add(network);
+      } else {
+        chunks.push({ keys: [key], networks: new Set([network]), viaBackend });
+      }
+    }
+    return chunks.map(c => c.keys);
+  },
+  fetchChunk: async keys => {
+    const tokens = keys.map(key => {
+      const [chainId, address] = key.split(':');
+      return { chainId: Number(chainId), network: ALCHEMY_NETWORKS[Number(chainId)], address };
+    });
+
+    const viaBackend = tokens.every(({ chainId }) => BACKEND_PRICE_CHAIN_IDS.has(chainId));
+    const sendable = viaBackend
+      ? tokens
+          .filter(({ address }) => ADDRESS_PATTERN.test(address))
+          .map(({ chainId, address }) => ({ chainId, address }))
+      : [];
+    const fromBackend = sendable.length
+      ? await fetchBackendPrices({ tokens: sendable })
+      : undefined;
+    // Keyed `${chainId}:${lowercased address}` by the backend too.
+    if (fromBackend) return new Map(Object.entries(fromBackend.tokens));
+
+    const response = await externalAxios.post<TokenPriceByAddress>(
+      `${ALCHEMY_PRICES_URL}/by-address`,
+      { addresses: tokens.map(({ network, address }) => ({ network, address })) },
+      { timeout: ALCHEMY_REQUEST_TIMEOUT_MS },
+    );
+    // Alchemy echoes the network slug back, not the chain id, so map the
+    // response entries onto the request to recover the chain id.
+    const chainIdByNetwork = new Map(tokens.map(({ network, chainId }) => [network, chainId]));
+    const prices = new Map<string, number>();
+    for (const entry of response.data?.data ?? []) {
+      const chainId = chainIdByNetwork.get(entry.network);
+      const price = usdPrice(entry.prices);
+      if (chainId === undefined || !entry.address || price === undefined) continue;
+      prices.set(`${chainId}:${entry.address.toLowerCase()}`, price);
+    }
+    return prices;
+  },
+});
+
+/** Drops every cached price and lifts any pause on the backend or on Alchemy. */
+export const clearAlchemyPriceCache = () => {
+  alchemyPricesBySymbol.clear();
+  alchemyPricesByAddress.clear();
+  backendPricesPausedUntil = 0;
+};
+
+/**
+ * USD prices by symbol from Alchemy's Prices API, keyed by the symbols as passed.
+ *
+ * Lookups started in the same tick share requests of up to 25 symbols, and a
+ * price is reused by every caller for a minute. Never throws: a symbol without
+ * a price, or one Alchemy couldn't be asked about (rate-limited, down), is left
+ * out so the caller's next price source gets its turn.
+ */
+export const fetchTokenPricesBySymbol = async (
+  symbols: string[],
+): Promise<Record<string, number>> => {
+  const wanted = [...new Set(symbols.filter(Boolean))];
+  if (wanted.length === 0) return {};
+  const prices = await alchemyPricesBySymbol.load(wanted.map(symbol => symbol.toUpperCase()));
+  const bySymbol: Record<string, number> = {};
+  for (const symbol of wanted) {
+    const price = prices.get(symbol.toUpperCase());
+    if (price !== undefined) bySymbol[symbol] = price;
+  }
+  return bySymbol;
+};
+
+/** USD price of one symbol, as a string; undefined when Alchemy has none to give. */
+export const fetchTokenPriceUsd = async (token: string): Promise<string | undefined> => {
+  const price = (await fetchTokenPricesBySymbol([token]))[token];
+  return price === undefined ? undefined : String(price);
 };
 
 /**
  * USD prices for ERC-20s from Alchemy's Prices API, keyed by
  * `${chainId}:${lowercased address}`.
  *
- * Preferred over {@link fetchTokenPriceUsd} for ERC-20s: a contract address
- * identifies a token exactly, where a symbol does not (every chain has its own
- * "USDC", and plenty of scam tokens borrow a real ticker), and one POST covers
- * a whole batch instead of a request per symbol. Alchemy's own token balances
- * carry no price, so without this every Alchemy-sourced ERC-20 arrives at
- * quoteRate 0.
+ * Preferred over {@link fetchTokenPricesBySymbol} for ERC-20s: a contract
+ * address identifies a token exactly, where a symbol does not (every chain has
+ * its own "USDC", and plenty of scam tokens borrow a real ticker). Alchemy's
+ * own token balances carry no price, so without this every Alchemy-sourced
+ * ERC-20 arrives at quoteRate 0.
  *
- * Never throws: a failed batch resolves to no prices for that batch so the
- * remaining price sources still get their turn.
+ * Batched and cached like the symbol lookup, within the endpoint's limits of
+ * 25 addresses and 3 networks per request. Never throws: a failed batch
+ * resolves to no prices for that batch so the remaining price sources still
+ * get their turn.
  */
 export const fetchTokenPricesByAddress = async (
   tokens: { chainId: number; address: string }[],
 ): Promise<Record<string, number>> => {
-  const pairs = [
-    ...new Map(
-      tokens
-        .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
-        .map(({ chainId, address }) => [
-          `${chainId}:${address.toLowerCase()}`,
-          { chainId, network: ALCHEMY_NETWORKS[chainId], address: address.toLowerCase() },
-        ]),
-    ).values(),
-  ];
-  if (pairs.length === 0) return {};
-
-  const batches: (typeof pairs)[] = [];
-  for (let i = 0; i < pairs.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
-    batches.push(pairs.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
-  }
-
-  const responses = await Promise.allSettled(
-    batches.map(batch =>
-      externalAxios.post<TokenPriceByAddress>(`${ALCHEMY_PRICES_URL}/by-address`, {
-        addresses: batch.map(({ network, address }) => ({ network, address })),
-      }),
-    ),
-  );
-
-  const prices: Record<string, number> = {};
-  responses.forEach((response, i) => {
-    if (response.status !== 'fulfilled') return;
-    // Alchemy echoes the network slug back, not the chain id, so map the
-    // response entries onto the batch we sent to recover the chain id.
-    const chainIdByNetwork = new Map(batches[i].map(({ network, chainId }) => [network, chainId]));
-    for (const entry of response.value.data?.data ?? []) {
-      const chainId = chainIdByNetwork.get(entry.network);
-      const value = Number(entry.prices?.find(price => price.currency === 'usd')?.value);
-      if (chainId === undefined || !entry.address || !Number.isFinite(value) || value <= 0) {
-        continue;
-      }
-      prices[`${chainId}:${entry.address.toLowerCase()}`] = value;
-    }
-  });
-
-  return prices;
+  const keys = tokens
+    .filter(({ chainId, address }) => !!ALCHEMY_NETWORKS[chainId] && !!address)
+    .map(({ chainId, address }) => `${chainId}:${address.toLowerCase()}`);
+  if (keys.length === 0) return {};
+  return Object.fromEntries(await alchemyPricesByAddress.load(keys));
 };
 
 export const createKycLink = async (
@@ -3898,6 +4110,41 @@ export const getDetectedDirectDeposit = async (
   return response.json();
 };
 
+/**
+ * The deposit bridge fee a deposit to this destination would pay, without an
+ * amount: whether it applies on this chain, and at what rate. The rate is the
+ * one set for the route and chain on the admin Deposit fees page, or the 0.03%
+ * default where none is set.
+ */
+export const getDepositFeeQuote = async (
+  destinationType: 'PROTOCOL' | 'RAIN_CARD',
+  chainId: number,
+  tokenSymbol: string,
+): Promise<DepositFeeQuote> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams({
+    destinationType,
+    chainId: String(chainId),
+    tokenSymbol,
+  });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/fee-quote?${params}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const getDirectDepositSession = async (
   sessionId: string,
 ): Promise<DirectDepositSessionResponse> => {
@@ -4019,7 +4266,24 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
  * Step 1: Initiate OTP for passkey recovery (public - no auth required)
  * Sends OTP to user's registered email
  */
-export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }> => {
+/**
+ * Step 1: Ask for a recovery code.
+ *
+ * `identifier` is an email or a username. `email` is sent alongside it only
+ * when the identifier is an address, so a backend that predates the username
+ * path still reads the field it knows.
+ */
+export const initRecoveryOtp = async (
+  identifier: string,
+): Promise<{
+  otpId: string;
+  /**
+   * Masked address the code went to, e.g. `o•••••@gmail.com`. Absent from an
+   * older backend; the caller falls back to what the user typed.
+   */
+  emailHint?: string;
+}> => {
+  const trimmed = identifier.trim();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-recovery-otp`,
     {
@@ -4028,7 +4292,10 @@ export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }>
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({
+        identifier: trimmed,
+        ...(trimmed.includes('@') && { email: trimmed }),
+      }),
     },
   );
   const data = await response.json();
@@ -4043,7 +4310,12 @@ export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }>
 export const verifyRecoveryOtp = async (
   otpId: string,
   otpCode: string,
-  email: string,
+  /**
+   * The address the code went to, when this recovery started from one. Omitted
+   * for a username recovery, which never learns it — the backend resolves the
+   * account from the address the challenge was issued against instead.
+   */
+  email: string | undefined,
   publicKey: string,
 ): Promise<{
   credentialBundle: string;
@@ -4064,7 +4336,7 @@ export const verifyRecoveryOtp = async (
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
       },
-      body: JSON.stringify({ otpId, otpCode, email, publicKey }),
+      body: JSON.stringify({ otpId, otpCode, ...(email && { email }), publicKey }),
     },
   );
   const data = await response.json();

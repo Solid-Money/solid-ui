@@ -45,6 +45,7 @@ import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreRe
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
+import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useDimension } from '@/hooks/useDimension';
@@ -57,6 +58,7 @@ import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
+import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -162,7 +164,9 @@ SplashScreen.setOptions({
 // Note: Only rendered when hasSelectedUser is true (see conditional render below)
 // Uses LazyWhatsNewModal to defer react-native-reanimated-carousel bundle
 function WhatsNewWrapper() {
-  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
+  const pathname = usePathname();
+  const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
+  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew(pathname === path.HOME && isHomeReady);
 
   if (!whatsNew) return null;
 

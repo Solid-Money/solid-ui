@@ -3,20 +3,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
+import { useTierBenefits } from '@/hooks/useRewards';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { getTierDisplayName } from '@/lib/tierNames';
+import { formatTierYieldBoost, resolveTierYieldBoostRate } from '@/lib/tierYieldBoost';
 import { RewardsTier } from '@/lib/types';
 
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
 import { BOTTOM_RIGHT_WASH } from './tierGradients';
 
-const TIER_PROMISE: Record<
-  RewardsTier.PRIME | RewardsTier.ULTRA,
-  { yieldBoost: string; aiCashback: string }
-> = {
-  [RewardsTier.PRIME]: { yieldBoost: '+2%', aiCashback: '25%' },
-  [RewardsTier.ULTRA]: { yieldBoost: '+3%', aiCashback: '50%' },
+/**
+ * The teaser's AI cashback figure per tier. The yield boost is deliberately not here:
+ * it comes from the tier-benefits endpoint at render, so this card cannot advertise a
+ * boost the rewards screen and the tier detail screen are not also quoting.
+ */
+const TIER_PROMISE: Record<RewardsTier.PRIME | RewardsTier.ULTRA, { aiCashback: string }> = {
+  [RewardsTier.PRIME]: { aiCashback: '25%' },
+  [RewardsTier.ULTRA]: { aiCashback: '50%' },
 };
 
 const AI_BRANDS = SUBSCRIPTION_CATEGORIES.find(category => category.key === 'ai')!.brands;
@@ -30,6 +34,8 @@ interface JoinTierClubCardProps {
 const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
   const tierName = getTierDisplayName(tier);
   const promise = TIER_PROMISE[tier];
+  const { data: tierBenefits } = useTierBenefits();
+  const yieldBoost = formatTierYieldBoost(resolveTierYieldBoostRate(tier, tierBenefits));
 
   return (
     <Pressable
@@ -65,7 +71,7 @@ const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
           </View>
           <View className="h-[37px] justify-center rounded-full bg-white/10 px-[14px]">
             <Text className="text-[16px] leading-[20px] text-white/70">
-              {promise.yieldBoost} Yield boost
+              {yieldBoost} Yield boost
             </Text>
           </View>
         </View>

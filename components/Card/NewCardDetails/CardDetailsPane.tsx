@@ -33,6 +33,7 @@ import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
@@ -66,6 +67,8 @@ import {
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
+import { useSpendModeHelpStore } from '@/store/useSpendModeHelpStore';
+import { useUserStore } from '@/store/useUserStore';
 
 const HEADER_FADE_EXTENT = 32;
 const HEADER_GRADIENT_FADE_MS = 280;
@@ -101,6 +104,11 @@ const CardDetailsPane = () => {
   const isHeroFlying = useCardHeroStore(state => state.active);
   const spendModeRequested = useCardPaneStore(state => state.spendModeRequested);
   const dismissSpendModeRequest = useCardPaneStore(state => state.dismissSpendModeRequest);
+  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const hasShownSpendModeHelp = useSpendModeHelpStore(
+    state => !selectedUserId || Boolean(state.shownByUserId[selectedUserId]),
+  );
+  const markSpendModeHelpShown = useSpendModeHelpStore(state => state.markShown);
 
   // Shown here rather than on the old details route: card issuance sets this flag
   // and sends the user to /card/details, which on mobile now lands on this pane.
@@ -177,6 +185,15 @@ const CardDetailsPane = () => {
     }
   }, [spendRegistration]);
   const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
+  const [isSpendModeHelpOpen, setIsSpendModeHelpOpen] = useState(false);
+  // The explainer is an introduction to this sheet, so it opens only when the
+  // account first reaches Spend Mode. Mark it shown on opening: closing early
+  // still leaves the question-mark button available for a later revisit.
+  useEffect(() => {
+    if (!isOpen || !isSpendModeOpen || !selectedUserId || hasShownSpendModeHelp) return;
+    markSpendModeHelpShown(selectedUserId);
+    setIsSpendModeHelpOpen(true);
+  }, [hasShownSpendModeHelp, isOpen, isSpendModeOpen, markSpendModeHelpShown, selectedUserId]);
   // The borrow position's own sheet, opened by tapping the card that shows it.
   const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
   // Add funds from inside the spend-mode sheet. Its own instance of the fund modal, driven
@@ -244,6 +261,7 @@ const CardDetailsPane = () => {
     setSpendSheetSource(null);
     setIsAddToWalletOpen(false);
     setIsSpendModeOpen(false);
+    setIsSpendModeHelpOpen(false);
     setIsBorrowPositionOpen(false);
     setIsSpendModeFundOpen(false);
   }, [isOpen]);
@@ -464,6 +482,7 @@ const CardDetailsPane = () => {
       <SpendModeSheet
         isOpen={isOpen && isSpendModeOpen}
         onOpenChange={setIsSpendModeOpen}
+        onHelpPress={() => setIsSpendModeHelpOpen(true)}
         activeMode={spendModeFigures.mode}
         // Same gate as the actions row's Add funds, so the two never disagree about whether
         // funds can move right now. Spend modes are Wirex-only, and a Wirex card is funded
@@ -474,6 +493,10 @@ const CardDetailsPane = () => {
             ? openFundsFromSpendMode
             : undefined
         }
+      />
+      <SpendModeHelpModal
+        isOpen={isOpen && isSpendModeHelpOpen}
+        onClose={() => setIsSpendModeHelpOpen(false)}
       />
       <WirexCardFundModal
         isOpen={isOpen && isSpendModeFundOpen}

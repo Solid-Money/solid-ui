@@ -956,6 +956,22 @@ export const ASSETS = {
     module: require('@/assets/images/rewards-tiers/ultra-tier-sparkle.png'),
     hash: 'a06bb5c5',
   },
+  'images/rewards-tiers/upgrade-card-cap.svg': {
+    module: require('@/assets/images/rewards-tiers/upgrade-card-cap.svg'),
+    hash: 'e469f639',
+  },
+  'images/rewards-tiers/upgrade-card-star.svg': {
+    module: require('@/assets/images/rewards-tiers/upgrade-card-star.svg'),
+    hash: '741a79ad',
+  },
+  'images/rewards-tiers/upgrade-card-subscription.svg': {
+    module: require('@/assets/images/rewards-tiers/upgrade-card-subscription.svg'),
+    hash: '2cd5b3b6',
+  },
+  'images/rewards-tiers/upgrade-card-yield.svg': {
+    module: require('@/assets/images/rewards-tiers/upgrade-card-yield.svg'),
+    hash: '0bbf9dce',
+  },
   'images/rewards-tiers/v4/airline.svg': {
     module: require('@/assets/images/rewards-tiers/v4/airline.svg'),
     hash: '7670516b',
@@ -1199,6 +1215,14 @@ export const ASSETS = {
     hash: '13207041',
   },
   'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: 'bf43c3e5' },
+  'images/spend-mode-credit-notice-badge.svg': {
+    module: require('@/assets/images/spend-mode-credit-notice-badge.svg'),
+    hash: '04ab236e',
+  },
+  'images/spend-mode-credit-notice-bg.png': {
+    module: require('@/assets/images/spend-mode-credit-notice-bg.png'),
+    hash: '37d02537',
+  },
   'images/spend-yellow.png': {
     module: require('@/assets/images/spend-yellow.png'),
     hash: '98629c6c',

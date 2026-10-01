@@ -34,13 +34,17 @@ interface BalancePanelProps {
   onAddFunds?: () => void;
 }
 
-/** "Your USDC balance / $0.0" with the Add funds pill on the right. */
+/**
+ * "Your USD balance / $0.0" with the Add funds pill on the right.
+ *
+ * Deliberately not "USDC": the figure behind it is `useCardSpendableBalanceUSD`, which sums
+ * every asset in `CARD_SPENDABLE_ASSETS` — USDC, USDT and soUSD on Fuse. Naming one of the
+ * three told a cardholder holding USDT that the balance shown was somebody else's.
+ */
 export const SpendModeBalancePanel = ({ balance, onAddFunds }: BalancePanelProps) => (
   <View style={[styles.panel, styles.balancePanel]}>
     <View style={styles.balanceText}>
-      <Text className="text-[16px] font-normal leading-[16px] text-white/70">
-        Your USDC balance
-      </Text>
+      <Text className="text-[16px] font-normal leading-[16px] text-white/70">Your USD balance</Text>
       <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
     </View>
     {onAddFunds ? (
