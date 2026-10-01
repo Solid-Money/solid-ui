@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import ActivityFilters from '@/components/Activity/ActivityFilters';
 import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
+import MonthlySummaryCard from '@/components/Activity/MonthlySummaryCard';
 import UnifiedActivityList from '@/components/Activity/UnifiedActivityList';
 import LazyDepositOptionModal from '@/components/DepositOption/LazyDepositOptionModal';
 import PageLayout from '@/components/PageLayout';
@@ -71,6 +72,9 @@ export default function Activity() {
 
   const isWeb = Platform.OS === 'web';
   const searchTerm = query.trim();
+  // Card spending only, so not under Wallet, and not over search results,
+  // where a month's total next to a filtered list would read as its sum.
+  const showMonthlySummary = userHasCard && tab !== ActivityTab.WALLET && !searchTerm;
 
   const pageHeader = (
     <View className="mx-auto w-full max-w-7xl px-4 pb-[10px] pt-6 md:pt-12">
@@ -125,6 +129,7 @@ export default function Activity() {
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={loadMore}
           onRefresh={refetchAll}
+          listHeaderComponent={showMonthlySummary ? <MonthlySummaryCard /> : undefined}
           emptyTitle={searchTerm ? 'No matching activity' : 'No transactions found'}
           emptyDescription={
             searchTerm

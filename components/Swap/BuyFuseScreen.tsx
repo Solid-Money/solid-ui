@@ -84,7 +84,9 @@ function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps
   const { currencyBalances, parsedAmount, toggledTrade: trade, tradeState } = useDerivedSwapInfo();
 
   useEffect(() => {
-    selectCurrency(SwapField.INPUT, STABLECOINS_TOKENS.USDC.address);
+    // Stargate USDC.e is the USDC that deposits and bridges put on Fuse. The
+    // older `USDC` token has no Algebra pool, so it can never be quoted.
+    selectCurrency(SwapField.INPUT, STABLECOINS_TOKENS.USDC_STARGATE.address);
     selectCurrency(SwapField.OUTPUT, ADDRESS_ZERO);
     typeInput(SwapField.OUTPUT, '');
 
