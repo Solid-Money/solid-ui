@@ -1,38 +1,137 @@
 import { categoryCashbackPresentation } from '@/components/Rewards/NewRewards/categoryCashback';
 import { RewardsTier } from '@/lib/types';
 
+/** The shape `rewards/user-data` sends for the current tier. */
+const apiRates = (rates: Record<string, number>) =>
+  Object.entries(rates).map(([key, rate]) => ({ key, label: key, rate }));
+
 describe('category cashback presentation', () => {
-  it('keeps the live subscription rate and uses the Prime ride rate', () => {
-    const result = categoryCashbackPresentation(RewardsTier.PRIME, 25);
-    expect(result.rates).toEqual({ ai: 25, streaming: 25, music: 25, rides: 8, airlines: 0 });
-    expect(result.headlineRate).toBe(25);
-    expect(result.actionLabel).toBe('Upgrade to Ultra');
-  });
+  describe('with per-category rates from the API', () => {
+    it("uses the API's rate for every category it reports", () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.PRIME,
+        10,
+        apiRates({ ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 }),
+      );
 
-  it('unlocks airlines for Ultra and replaces the upgrade action with dismissal', () => {
-    const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20);
-    expect(result.rates).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
-    expect(result.actionLabel).toBe('Got it');
-  });
+      expect(result.rates).toEqual({ ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 });
+      expect(result.headlineRate).toBe(10);
+      expect(result.subtitle).toBe('on subscriptions and rides');
+      expect(result.actionLabel).toBe('Upgrade to Ultra');
+    });
 
-  it('shows the locked Core offer without granting the preview benefit', () => {
-    const result = categoryCashbackPresentation(RewardsTier.CORE, 0);
-    expect(Object.values(result.rates)).toEqual([0, 0, 0, 0, 0]);
-    expect(result.headlineRate).toBe(20);
-    expect(result.actionLabel).toBe('Upgrade to Prime');
-    expect(result.upgradeTier).toBe(RewardsTier.PRIME);
-  });
+    it('unlocks airlines for Ultra and drops the upgrade action', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.ULTRA,
+        20,
+        apiRates({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 }),
+      );
 
-  it('does not replace an explicit zero or invalid API rate with a design rate', () => {
-    for (const rate of [0, -1, NaN, Infinity]) {
-      const result = categoryCashbackPresentation(RewardsTier.PRIME, rate);
+      expect(result.rates).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
+      expect(result.headlineRate).toBe(20);
+      expect(result.subtitle).toBe('on subscriptions, rides and flights');
+      expect(result.actionLabel).toBe('Got it');
+    });
+
+    // The API is the source of truth once it speaks: an admin who re-prices a
+    // category in the portal must not be overridden by the design fallback.
+    it('prefers the API rate over both the flat rate and the design fallback', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.PRIME,
+        10,
+        apiRates({ ai: 12, rides: 3 }),
+      );
+
+      expect(result.rates.ai).toBe(12);
+      expect(result.rates.rides).toBe(3);
+      // Categories the API did not mention keep their design rate rather than
+      // silently reading as locked.
+      expect(result.rates.streaming).toBe(10);
+      expect(result.headlineRate).toBe(12);
+    });
+
+    // The payload carries every configured category, including ones this app
+    // has no tab or artwork for (Gaming, or anything added in the portal).
+    it('ignores categories the sheet cannot render', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.ULTRA,
+        20,
+        apiRates({ gaming: 50, fitness: 99, ai: 20 }),
+      );
+
+      expect(Object.keys(result.rates).sort()).toEqual([
+        'ai',
+        'airlines',
+        'music',
+        'rides',
+        'streaming',
+      ]);
+      // Gaming's 50% must not become the headline for a sheet that never shows it.
+      expect(result.headlineRate).toBe(20);
+    });
+
+    it('treats an unusable API rate as locked rather than NaN', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.PRIME,
+        10,
+        apiRates({ ai: NaN, rides: -1, music: Infinity }),
+      );
+
       expect(result.rates.ai).toBe(0);
+      expect(result.rates.rides).toBe(0);
       expect(result.rates.music).toBe(0);
-      expect(result.headlineRate).toBe(8);
-    }
+    });
   });
 
-  it('bases the headline on the highest unlocked category rate', () => {
-    expect(categoryCashbackPresentation(RewardsTier.ULTRA, 5).headlineRate).toBe(10);
+  describe('without per-category rates (older backend)', () => {
+    it('spreads the flat rate over the subscription categories only', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 25);
+
+      expect(result.rates).toEqual({ ai: 25, streaming: 25, music: 25, rides: 8, airlines: 0 });
+      expect(result.headlineRate).toBe(25);
+      expect(result.actionLabel).toBe('Upgrade to Ultra');
+    });
+
+    it('keeps the design rides and airlines rates for Ultra', () => {
+      const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20);
+
+      expect(result.rates).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
+      expect(result.actionLabel).toBe('Got it');
+    });
+
+    it('shows the locked Core offer without granting the preview benefit', () => {
+      const result = categoryCashbackPresentation(RewardsTier.CORE, 0);
+
+      expect(Object.values(result.rates)).toEqual([0, 0, 0, 0, 0]);
+      expect(result.headlineRate).toBe(20);
+      expect(result.actionLabel).toBe('Upgrade to Prime');
+      expect(result.upgradeTier).toBe(RewardsTier.PRIME);
+    });
+
+    it('does not replace an explicit zero or invalid API rate with a design rate', () => {
+      for (const rate of [0, -1, NaN, Infinity]) {
+        const result = categoryCashbackPresentation(RewardsTier.PRIME, rate);
+        expect(result.rates.ai).toBe(0);
+        expect(result.rates.music).toBe(0);
+        expect(result.headlineRate).toBe(8);
+      }
+    });
+
+    it('bases the headline on the highest unlocked category rate', () => {
+      expect(categoryCashbackPresentation(RewardsTier.ULTRA, 5).headlineRate).toBe(10);
+    });
+  });
+
+  // Core advertises the ceiling an upgrade reaches, so it must never fall to 0
+  // just because the tier itself earns nothing.
+  it('keeps the Core headline at the best rate any tier reaches', () => {
+    const result = categoryCashbackPresentation(
+      RewardsTier.CORE,
+      0,
+      apiRates({ ai: 0, streaming: 0, music: 0, rides: 0, airlines: 0 }),
+    );
+
+    expect(result.headlineRate).toBe(20);
+    expect(result.subtitle).toBe('on subscriptions, rides and flights with Prime or Ultra');
   });
 });

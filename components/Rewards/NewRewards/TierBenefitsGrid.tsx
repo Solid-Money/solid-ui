@@ -3,7 +3,7 @@ import { Platform, Pressable, View } from 'react-native';
 
 import { useIsSidebarShell } from '@/components/Navbar/Sidebar';
 import { Text } from '@/components/ui/text';
-import { RewardsTier } from '@/lib/types';
+import { RewardsTier, type SubscriptionCategoryRate } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
@@ -59,6 +59,11 @@ interface TierBenefitsGridProps extends CashbackDetailsData, YieldBoostData {
   currentTier: RewardsTier;
   /** The unsampled API rate, so a Core preview stays locked in the sheet. */
   actualSubscriptionDiscountRate: number;
+  /**
+   * The tier's per-category rates, as the API reports them. Unsampled for the
+   * same reason as {@link actualSubscriptionDiscountRate}.
+   */
+  subscriptionCategoryRates?: SubscriptionCategoryRate[];
   /** Cashback % the tier earns back on subscriptions; 0 hides that card. */
   subscriptionDiscountRate: number;
   onGetMoreCashback: () => void;
@@ -80,6 +85,7 @@ interface TierBenefitsGridProps extends CashbackDetailsData, YieldBoostData {
 const TierBenefitsGrid = ({
   currentTier,
   actualSubscriptionDiscountRate,
+  subscriptionCategoryRates,
   subscriptionDiscountRate,
   yieldBoostPercentage,
   yieldBoostCap,
@@ -145,6 +151,7 @@ const TierBenefitsGrid = ({
         }
         currentTier={currentTier}
         subscriptionDiscountRate={actualSubscriptionDiscountRate}
+        subscriptionCategoryRates={subscriptionCategoryRates}
         onGetMoreCashback={onGetMoreCashback}
         onUpgradeTier={onUpgradeSubscriptionTier}
       />
