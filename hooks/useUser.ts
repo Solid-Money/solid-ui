@@ -30,6 +30,7 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
   USER,
 } from '@/lib/config';
+import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
@@ -429,7 +430,7 @@ const useUser = (): UseUserReturn => {
     } catch (error: any) {
       const errorMessage = loginErrorMessage(error);
 
-      if (error?.name === 'NotAllowedError') {
+      if (isWebAuthnUserCancelledError(error)) {
         Sentry.captureMessage(errorMessage, {
           level: 'warning',
           extra: {
