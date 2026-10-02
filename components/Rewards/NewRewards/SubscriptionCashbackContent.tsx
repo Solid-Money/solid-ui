@@ -33,11 +33,7 @@ const REWARDS_TERMS_URL =
 
 const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate: number }) => {
   const locked = rate <= 0;
-  const label = locked
-    ? category === 'airlines'
-      ? 'Ultra'
-      : 'Prime'
-    : `${formatNumber(rate, 2, 0)}%`;
+  const label = locked ? 'Prime' : `${formatNumber(rate, 2, 0)}%`;
 
   return (
     <View className="w-full overflow-hidden rounded-twice bg-[#2B2B2B] pb-[9px]">
