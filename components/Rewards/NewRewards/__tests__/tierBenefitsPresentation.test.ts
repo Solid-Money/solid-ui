@@ -34,7 +34,7 @@ describe('tierPresentationContent', () => {
     expect(content.stats).toContainEqual({ value: '25%', label: 'Subscriptions' });
     expect(content.stats).toContainEqual({ value: '+2.5%', label: 'Yield boost' });
     expect(content.perks[0].description).toBe('+2.5% APY on up to $12,500 in savings');
-    expect(content.perks[1].description).toBe('25% on subscriptions, 8% on rides');
+    expect(content.perks[1].description).toBe('25% on subscriptions');
   });
 
   it('preserves meaningful zeros instead of promising fallback rewards', () => {
@@ -50,7 +50,7 @@ describe('tierPresentationContent', () => {
     expect(content.stats).toContainEqual({ value: '0%', label: 'Subscriptions' });
     expect(content.stats).toContainEqual({ value: '0%', label: 'Yield boost' });
     expect(content.perks[0].description).toBe('0% APY on up to $0 in savings');
-    expect(content.perks[1].description).toBe('0% on subscriptions, 10% on rides');
+    expect(content.perks[1].description).toBe('0% on subscriptions');
   });
 
   it.each([CORE, PRIME, ULTRA])('keeps the design when %s numerical fields are absent', tier => {
@@ -66,7 +66,7 @@ describe('tierPresentationContent', () => {
     expect(content.subscriptionRate).toBe('50%');
     expect(content.stats).toContainEqual({ value: '+3%', label: 'Yield boost' });
     expect(content.perks[0].description).toBe('+3% APY on up to $25K in savings');
-    expect(content.airlineRate).toBe('10%');
+    expect(content.perks[1].description).toBe('50% on subscriptions');
     expect(TIER_PRESENTATION[ULTRA].subscriptionRate).toBe('20%');
   });
 });
