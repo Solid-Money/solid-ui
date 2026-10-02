@@ -4,6 +4,7 @@ import { getAccountNonce } from 'permissionless/actions';
 import { Chain } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 
+import { isPasskeyPromptError } from '@/lib/utils/passkey';
 import { publicClient } from '@/lib/wagmi';
 
 export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
@@ -15,28 +16,6 @@ export type TransactionResult =
       transactionHash: `0x${string}`;
     }
   | typeof USER_CANCELLED_TRANSACTION;
-
-/**
- * Whether a signing failure is the user dismissing the passkey prompt rather than
- * something going wrong. WebAuthn reports a cancel and a timeout through the same
- * `NotAllowedError`, and each platform words it differently, so this matches on
- * the message.
- *
- * Exported because anything that raises a passkey prompt needs the distinction —
- * a cancel is a decision, not an error to show.
- */
-export const isWebAuthnUserCancelledError = (error: any): boolean => {
-  const message = error?.message?.toLowerCase() || '';
-  return (
-    message.includes('failed to sign') ||
-    message.includes('operation either timed out or was not allowed') ||
-    message.includes('user cancelled') ||
-    message.includes('user denied') ||
-    message.includes('user rejected') ||
-    message.includes('aborted by the user') ||
-    message.includes('not allowed')
-  );
-};
 
 const isUserOperationError = (error: any): boolean => {
   const message = error?.message?.toLowerCase() || '';
@@ -165,7 +144,7 @@ export const executeTransactions = async (
 
     return { transaction, userOpHash, transactionHash: transaction.transactionHash };
   } catch (error: any) {
-    if (isWebAuthnUserCancelledError(error)) {
+    if (isPasskeyPromptError(error)) {
       Sentry.addBreadcrumb({
         message: 'User cancelled transaction',
         category: 'transaction',

@@ -74,6 +74,12 @@ describe('isPasskeyPromptError', () => {
     ['a bundler rejection', { message: 'UserOperation reverted during simulation' }],
     ['a network failure', { name: 'TypeError', message: 'Network request failed' }],
     ['a gas estimation failure', { message: 'Failed to get gas price' }],
+    // Regression: Turnkey API errors begin with "Failed to sign:" but are server-side
+    // failures, not user dismissals. isWebAuthnUserCancelledError previously matched
+    // these because of a broad message.includes('failed to sign') check, causing them
+    // to be silently swallowed as USER_CANCELLED_TRANSACTION (SOLID-D5).
+    ['a Turnkey stale timestamp error', { message: 'Failed to sign: Turnkey error 3: activity timestamp is not current' }],
+    ['a Turnkey generic signing failure', { message: 'Failed to sign: Turnkey error 7: unauthorized' }],
   ])('leaves %s alone', (_label, error) => {
     // Dropping the pin here would be noise: the prompt already succeeded.
     expect(isPasskeyPromptError(error)).toBe(false);
