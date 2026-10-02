@@ -11,6 +11,7 @@ import { track } from '@/lib/analytics';
 import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TokenType, TransactionType } from '@/lib/types';
+import { isUserCancelledError } from '@/lib/utils/withdrawErrors';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
 
@@ -172,23 +173,25 @@ const useSend = ({
         user_cancelled: String(error).includes('cancelled'),
       });
 
-      Sentry.captureException(error, {
-        tags: {
-          type: 'send_transaction_error',
-          chainId: chainId.toString(),
-          userId: user?.userId,
-        },
-        extra: {
-          tokenAddress,
-          amount,
-          to,
-          tokenDecimals,
-        },
-        user: {
-          id: user?.userId,
-          address: user?.safeAddress,
-        },
-      });
+      if (!isUserCancelledError(error)) {
+        Sentry.captureException(error, {
+          tags: {
+            type: 'send_transaction_error',
+            chainId: chainId.toString(),
+            userId: user?.userId,
+          },
+          extra: {
+            tokenAddress,
+            amount,
+            to,
+            tokenDecimals,
+          },
+          user: {
+            id: user?.userId,
+            address: user?.safeAddress,
+          },
+        });
+      }
       setSendStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
