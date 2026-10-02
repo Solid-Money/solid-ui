@@ -23,6 +23,13 @@ const EXACT_CATEGORIES: Record<string, string> = {
   '5499': 'Groceries',
   '5541': 'Fuel',
   '5542': 'Fuel',
+  // The 5700s block is "home furnishing & equipment", but it also holds
+  // electronics, music and software stores. 5734 is how most AI and software
+  // subscriptions (Anthropic, OpenAI) arrive, and read as "Home & Furniture".
+  '5732': 'Electronics',
+  '5733': 'Music',
+  '5734': 'Software',
+  '5735': 'Music',
   '5812': 'Restaurant',
   '5813': 'Bars & Nightlife',
   '5814': 'Fast Food',

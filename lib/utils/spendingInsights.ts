@@ -58,6 +58,8 @@ const MCC_LABEL_BUCKETS: Record<string, SpendingCategoryKey> = {
   Retail: 'shopping',
   Clothing: 'shopping',
   'Home & Furniture': 'shopping',
+  Electronics: 'shopping',
+  Music: 'shopping',
   Books: 'shopping',
   Sports: 'shopping',
   Wholesale: 'shopping',
