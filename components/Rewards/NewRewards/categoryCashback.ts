@@ -1,6 +1,15 @@
 import { RewardsTier, type SubscriptionCategoryRate } from '@/lib/types';
 
-export const CATEGORY_CASHBACK_TABS = [
+/**
+ * The categories this app ships artwork and copy for.
+ *
+ * This is NOT the list the sheet renders — that comes from the API, so a
+ * category added, renamed or re-priced in the admin portal reaches the app
+ * without a release. This is only the design fallback for a backend too old to
+ * send `subscriptionCategoryRates` at all, and the key space the local artwork
+ * maps are written against.
+ */
+export const DESIGN_CATEGORIES = [
   { key: 'ai', label: 'AI' },
   { key: 'streaming', label: 'Streaming' },
   { key: 'music', label: 'Music' },
@@ -8,21 +17,33 @@ export const CATEGORY_CASHBACK_TABS = [
   { key: 'airlines', label: 'Airlines' },
 ] as const;
 
-export type CashbackCategoryKey = (typeof CATEGORY_CASHBACK_TABS)[number]['key'];
+/**
+ * A category this app has artwork for.
+ *
+ * Deliberately narrower than the keys the API may send: logos cannot be
+ * invented for a category nobody has drawn, so the artwork maps are keyed by
+ * this while everything else works in plain strings.
+ */
+export type CashbackCategoryKey = (typeof DESIGN_CATEGORIES)[number]['key'];
 
-const CATEGORY_KEYS = CATEGORY_CASHBACK_TABS.map(tab => tab.key) as readonly CashbackCategoryKey[];
-
-const isCategoryKey = (key: string): key is CashbackCategoryKey =>
-  (CATEGORY_KEYS as readonly string[]).includes(key);
+/**
+ * One category as a surface paints it: whatever the API called it, and what
+ * the tier in question earns on it in percentage points. A rate of 0 is the
+ * locked state that sells an upgrade, not an absent category — a category the
+ * admin paused is simply not in the list.
+ */
+export interface CashbackCategory {
+  key: string;
+  label: string;
+  rate: number;
+}
 
 /**
  * Rates the backend used to have no way of expressing.
  *
- * Rates are per category — Prime earns 10% on AI but 8% on Rides — and until
- * `subscriptionCategoryRates` shipped, the payload carried one flat
- * `subscriptionDiscountRate` for the whole tier. These are the v4 Figma values
- * and are only reached on a backend that does not send the per-category rates
- * yet; once it does, every rate on this sheet comes from the API.
+ * Reached only on a backend that does not send `subscriptionCategoryRates`;
+ * once it does, every category, label and rate on every surface comes from the
+ * API. These are the v4 Figma values.
  */
 const FALLBACK_RATES: Record<RewardsTier, Record<CashbackCategoryKey, number>> = {
   [RewardsTier.CORE]: { ai: 0, streaming: 0, music: 0, rides: 0, airlines: 0 },
@@ -47,62 +68,57 @@ const usableRate = (rate: number | undefined): number =>
 export const formatCashbackRate = (percentage: number): string =>
   `${Number(percentage.toFixed(2))}%`;
 
-/**
- * The categories to actually show, in the sheet's own tab order.
- *
- * Once the API sends per-category rates, the list it sends is the list that is
- * on offer: an admin who switches a category off in the portal drops it from
- * the payload, and it must disappear from the sheet rather than reappear at
- * its design rate. That is why a paused category is omitted rather than sent
- * at 0 — a 0 is the locked state an upgrade unlocks, and the sheet still
- * paints it.
- *
- * Without the payload (an older backend) every tab is shown, which is what the
- * sheet did before any of this existed.
- */
-const resolveVisibleCategories = (
-  categoryRates: SubscriptionCategoryRate[] | undefined,
-): CashbackCategoryKey[] => {
-  if (!categoryRates?.length) return [...CATEGORY_KEYS];
-
-  const sent = new Set(
-    categoryRates.filter(entry => entry && isCategoryKey(entry.key)).map(entry => entry.key),
-  );
-
-  return CATEGORY_KEYS.filter(key => sent.has(key));
-};
-
-/** Mid-sentence name for each group of categories the subtitle names. */
-const SUBSCRIPTION_KEYS: readonly CashbackCategoryKey[] = ['ai', 'streaming', 'music'];
+/** Whether this app has artwork for a category the API sent. */
+export const hasCategoryArtwork = (key: string): key is CashbackCategoryKey =>
+  DESIGN_CATEGORIES.some(category => category.key === key);
 
 /**
- * "on subscriptions, rides and flights" — built from what is actually on the
- * sheet, so pausing Rides does not leave the headline promising them.
+ * The categories to render, in the order the API sends them.
  *
- * Airlines is named only when the tier earns on it (Prime's 0 is the locked
- * Ultra-only state), except on Core, which advertises the whole offer because
- * every rate it sees is 0.
+ * The API is the whole truth once it speaks: its list is what is on offer, its
+ * labels are what to print, and its rates are what is paid. A category added in
+ * the admin portal shows up here on its own; one an admin paused is absent and
+ * is not painted; one this app has no artwork for still gets a row, just
+ * without logos — dropping it would be this list quietly disagreeing with what
+ * the backend actually pays.
+ *
+ * Only a backend too old to send the list at all falls back to the design
+ * table, where the flat `subscriptionDiscountRate` covers the subscription
+ * categories and Rides and Airlines keep their design values.
  */
-const resolveSubtitleGroups = (
+const resolveCategories = (
   tier: RewardsTier,
-  visible: CashbackCategoryKey[],
-  rates: Record<CashbackCategoryKey, number>,
-): string[] => {
-  const shows = (key: CashbackCategoryKey) =>
-    visible.includes(key) && (tier === RewardsTier.CORE || rates[key] > 0);
+  categoryRates: SubscriptionCategoryRate[] | undefined,
+  subscriptionDiscountRate: number,
+): CashbackCategory[] => {
+  if (categoryRates?.length) {
+    return categoryRates
+      .filter(entry => entry && typeof entry.key === 'string' && !!entry.key)
+      .map(entry => ({
+        key: entry.key,
+        // A backend that sends no label still gets a readable row rather than a
+        // blank one; the key is the closest thing to a name we have.
+        label: entry.label || entry.key,
+        rate: usableRate(entry.rate),
+      }));
+  }
 
-  return [
-    SUBSCRIPTION_KEYS.some(key => visible.includes(key)) ? 'subscriptions' : undefined,
-    visible.includes('rides') ? 'rides' : undefined,
-    shows('airlines') ? 'flights' : undefined,
-  ].filter((group): group is string => !!group);
+  const fallback = FALLBACK_RATES[tier] ?? FALLBACK_RATES[RewardsTier.CORE];
+  const flat = usableRate(subscriptionDiscountRate);
+  const subscriptionKeys: readonly string[] = ['ai', 'streaming', 'music'];
+
+  return DESIGN_CATEGORIES.map(category => ({
+    key: category.key,
+    label: category.label,
+    rate: subscriptionKeys.includes(category.key) ? flat : fallback[category.key],
+  }));
 };
 
 /** "a", "a and b", "a, b and c". */
-const joinGroups = (groups: string[]): string =>
-  groups.length > 1
-    ? `${groups.slice(0, -1).join(', ')} and ${groups[groups.length - 1]}`
-    : groups[0];
+const joinLabels = (labels: string[]): string =>
+  labels.length > 1
+    ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+    : (labels[0] ?? '');
 
 /** Cheapest tier first, which is the order an "unlocks at" answer wants. */
 const TIER_LADDER: readonly RewardsTier[] = [
@@ -124,7 +140,7 @@ const TIER_LADDER: readonly RewardsTier[] = [
  * this stays a function of the numbers and the page keeps the API shape.
  */
 export const unlockTierForCategory = (
-  key: CashbackCategoryKey,
+  key: string,
   byTier: { tier: RewardsTier; subscriptionCategoryRates?: SubscriptionCategoryRate[] }[],
 ): RewardsTier | undefined =>
   TIER_LADDER.find(tier =>
@@ -134,86 +150,44 @@ export const unlockTierForCategory = (
   );
 
 /**
- * Rates for the sheet, preferring what the API reports for the current tier.
+ * Everything a category surface paints, for one tier.
  *
- * Only the categories this app has artwork and copy for are kept — a category
- * added in the admin portal (or one it does not ship, like Gaming) appears in
- * the payload but has no tab here, and rendering it would reach into
- * `CATEGORY_CASHBACK_BRANDS` for a key that does not exist. A known category
- * the API omits keeps its design rate here rather than reading as locked;
- * whether it is shown at all is `resolveVisibleCategories`' decision, not this
- * one's.
- */
-const resolveRates = (
-  tier: RewardsTier,
-  categoryRates: SubscriptionCategoryRate[] | undefined,
-  subscriptionDiscountRate: number,
-): Record<CashbackCategoryKey, number> => {
-  const fallback = FALLBACK_RATES[tier] ?? FALLBACK_RATES[RewardsTier.CORE];
-
-  if (categoryRates?.length) {
-    const rates = { ...fallback };
-
-    for (const entry of categoryRates) {
-      if (entry && isCategoryKey(entry.key)) {
-        // An explicit 0 means locked for this tier, so it is kept as sent.
-        rates[entry.key] = usableRate(entry.rate);
-      }
-    }
-
-    return rates;
-  }
-
-  // Older backend: one flat rate covers the subscription categories, and Rides
-  // and Airlines fall back to the design values for the tier.
-  const flat = usableRate(subscriptionDiscountRate);
-
-  return {
-    ...fallback,
-    ai: flat,
-    streaming: flat,
-    music: flat,
-  };
-};
-
-/**
- * Everything the category sheet paints, for one tier.
+ * `categories` is the whole truth and comes from the API: its list, its labels
+ * and its rates. Read it rather than iterating a local table — that is what
+ * lets a category added, renamed or paused in the admin portal reach the app
+ * without a release.
  *
  * `subscriptionDiscountRate` is still accepted for backends that predate
- * `categoryRates`; when both are present the per-category rates win, because
- * the flat rate cannot describe a tier that pays differently per category.
- *
- * `categories` is what to render. Read it rather than iterating every tab:
- * `rates` keeps a figure for each known key so the fallback stays simple, but
- * a category the backend has switched off is not in `categories` and must not
- * be painted.
+ * `subscriptionCategoryRates`; when both are present the per-category list
+ * wins, because one flat rate cannot describe a tier that pays differently per
+ * category.
  */
 export const categoryCashbackPresentation = (
   tier: RewardsTier,
   subscriptionDiscountRate: number,
   categoryRates?: SubscriptionCategoryRate[],
 ) => {
-  const rates = resolveRates(tier, categoryRates, subscriptionDiscountRate);
-  const categories = resolveVisibleCategories(categoryRates);
-  const unlocked = categories.filter(key => rates[key] > 0);
-  const best = unlocked.length ? Math.max(...unlocked.map(key => rates[key])) : 0;
-  const groups = resolveSubtitleGroups(tier, categories, rates);
+  const categories = resolveCategories(tier, categoryRates, subscriptionDiscountRate);
+  const unlocked = categories.filter(category => category.rate > 0);
+  const best = unlocked.length ? Math.max(...unlocked.map(category => category.rate)) : 0;
+  // Core sees 0 on everything, so it advertises the whole offer rather than an
+  // empty sentence; every other tier names only what it actually earns on.
+  const named = tier === RewardsTier.CORE ? categories : unlocked;
 
   return {
-    rates,
-    /**
-     * The categories to render, in tab order — everything the backend still
-     * has switched on. Empty when every one of them is paused, which the sheet
-     * reads as "nothing to show".
-     */
     categories,
+    /** What `tier` earns on one category, in percentage points. 0 when absent or locked. */
+    rateFor: (key: string): number => categories.find(category => category.key === key)?.rate ?? 0,
     // Core unlocks nothing, so it advertises the ceiling an upgrade reaches
     // rather than its own 0.
     headlineRate: tier === RewardsTier.CORE ? CORE_HEADLINE_RATE : best,
-    subtitle: groups.length
+    // Built from the live labels rather than a fixed phrase: the old copy named
+    // "subscriptions, rides and flights", which silently became a lie the first
+    // time someone paused one or added a sixth category.
+    subtitle: named.length
       ? tier === RewardsTier.CORE
-        ? `on ${joinGroups(groups)} with Prime or Ultra`
-        : `on ${joinGroups(groups)}`
+        ? `on ${joinLabels(named.map(category => category.label))} with Prime or Ultra`
+        : `on ${joinLabels(named.map(category => category.label))}`
       : 'on eligible card spend',
     actionLabel:
       tier === RewardsTier.CORE

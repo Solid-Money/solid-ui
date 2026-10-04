@@ -1,5 +1,4 @@
 import {
-  CATEGORY_CASHBACK_TABS,
   categoryCashbackPresentation,
   formatCashbackRate,
 } from '@/components/Rewards/NewRewards/categoryCashback';
@@ -173,17 +172,17 @@ const resolveCategories = (
   excludeCategory: string | undefined,
   categoryRates: RewardsUserData['subscriptionCategoryRates'],
 ): CashbackFooter | undefined => {
-  const { rates, categories } = categoryCashbackPresentation(tier, subscriptionRate, categoryRates);
+  const { categories } = categoryCashbackPresentation(tier, subscriptionRate, categoryRates);
   const groups: { rate: number; labels: string[] }[] = [];
 
-  for (const tab of CATEGORY_CASHBACK_TABS) {
-    if (tab.key === excludeCategory) continue;
-    if (!categories.includes(tab.key)) continue;
-    const rate = rates[tab.key];
-    if (!rate) continue;
+  // The API's list, labels and order — so a category added in the admin portal
+  // is named here too, and one that was paused is not.
+  for (const category of categories) {
+    if (category.key === excludeCategory) continue;
+    if (!category.rate) continue;
     const last = groups[groups.length - 1];
-    if (last && last.rate === rate) last.labels.push(tab.label);
-    else groups.push({ rate, labels: [tab.label] });
+    if (last && last.rate === category.rate) last.labels.push(category.label);
+    else groups.push({ rate: category.rate, labels: [category.label] });
   }
 
   if (!groups.length) return undefined;

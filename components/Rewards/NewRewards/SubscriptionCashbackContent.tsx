@@ -8,13 +8,14 @@ import { RewardsTier } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
 import {
-  type CashbackCategoryKey,
-  CATEGORY_CASHBACK_TABS,
+  type CashbackCategory,
   categoryCashbackPresentation,
+  hasCategoryArtwork,
 } from './categoryCashback';
 import CategoryCashbackBrandBadge from './CategoryCashbackBrandBadge';
 import { CATEGORY_CASHBACK_BRANDS } from './categoryCashbackBrands';
 import RewardsDiamondIcon from './RewardsDiamondIcon';
+import { TIER_LABELS } from './tierBenefitsPresentation';
 
 import type { SubscriptionCashbackData } from './SubscriptionCashbackSheet.types';
 
@@ -31,13 +32,21 @@ interface SubscriptionCashbackContentProps extends SubscriptionCashbackData {
 const REWARDS_TERMS_URL =
   'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
 
-const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate: number }) => {
-  const locked = rate <= 0;
-  const label = locked
-    ? category === 'airlines'
-      ? 'Ultra'
-      : 'Prime'
-    : `${formatNumber(rate, 2, 0)}%`;
+const CategoryCard = ({
+  category,
+  unlockLabel,
+}: {
+  category: CashbackCategory;
+  /** Tier that would unlock this category, for the locked pill. */
+  unlockLabel: string;
+}) => {
+  const locked = category.rate <= 0;
+  const label = locked ? unlockLabel : `${formatNumber(category.rate, 2, 0)}%`;
+  // Logos are the one thing that cannot come from the API — nobody has drawn
+  // them for a category added in the admin portal. The row still renders, just
+  // without the brand list, rather than the category vanishing from a sheet
+  // the backend is paying on.
+  const brands = hasCategoryArtwork(category.key) ? CATEGORY_CASHBACK_BRANDS[category.key] : [];
 
   return (
     <View className="w-full overflow-hidden rounded-twice bg-[#2B2B2B] pb-[9px]">
@@ -68,7 +77,7 @@ const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate:
       </View>
       <View className="h-px bg-white/10" />
       <View className="pt-[10px]">
-        {CATEGORY_CASHBACK_BRANDS[category].map(brand => (
+        {brands.map(brand => (
           <View
             key={brand.name}
             className={cn('h-[55px] flex-row items-center pl-5 pr-[18px]', locked && 'opacity-50')}
@@ -94,19 +103,18 @@ const SubscriptionCashbackContent = ({
   isSheet = true,
   sheetTopPadding = 60,
 }: SubscriptionCashbackContentProps) => {
-  const [selectedCategory, setSelectedCategory] = useState<CashbackCategoryKey>('ai');
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const presentation = categoryCashbackPresentation(
     currentTier,
     subscriptionDiscountRate,
     subscriptionCategoryRates,
   );
-  // Only the categories the backend still has switched on. The selection is
-  // held by key rather than derived, so a category paused while the sheet is
-  // open (or simply not on offer) falls back to the first one left instead of
-  // asking `CATEGORY_CASHBACK_BRANDS` for artwork that is no longer rendered.
+  // The tabs are whatever the API reports, in the order it reports them. The
+  // selection is held by key rather than index, so a category paused while the
+  // sheet is open falls back to the first one left instead of pointing at a row
+  // that is no longer there.
   const { categories } = presentation;
-  const activeCategory = categories.includes(selectedCategory) ? selectedCategory : categories[0];
-  const visibleTabs = CATEGORY_CASHBACK_TABS.filter(tab => categories.includes(tab.key));
+  const activeCategory = categories.find(category => category.key === selectedKey) ?? categories[0];
 
   return (
     <View
@@ -135,7 +143,7 @@ const SubscriptionCashbackContent = ({
       </Text>
 
       {/* An empty bar would be drawn as a bare pill if every category were off. */}
-      {visibleTabs.length > 0 && (
+      {categories.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -143,8 +151,8 @@ const SubscriptionCashbackContent = ({
           contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
           accessibilityRole="tablist"
         >
-          {visibleTabs.map(category => {
-            const selected = activeCategory === category.key;
+          {categories.map(category => {
+            const selected = activeCategory?.key === category.key;
             return (
               <Pressable
                 key={category.key}
@@ -152,7 +160,7 @@ const SubscriptionCashbackContent = ({
                 aria-selected={selected}
                 accessibilityLabel={category.label}
                 accessibilityState={{ selected }}
-                onPress={() => setSelectedCategory(category.key)}
+                onPress={() => setSelectedKey(category.key)}
                 className={cn(
                   'h-7 items-center justify-center rounded-full px-3',
                   selected && 'bg-white',
@@ -171,7 +179,10 @@ const SubscriptionCashbackContent = ({
       )}
       {activeCategory && (
         <View className="mt-4 w-full">
-          <CategoryCard category={activeCategory} rate={presentation.rates[activeCategory]} />
+          <CategoryCard
+            category={activeCategory}
+            unlockLabel={TIER_LABELS[presentation.upgradeTier]}
+          />
         </View>
       )}
 
