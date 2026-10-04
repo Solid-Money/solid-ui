@@ -75,6 +75,7 @@ import {
   CardWithdrawalResponse,
   Cashback,
   CoinHistoricalChart,
+  ConfirmOnboardingFeeParams,
   CustomerFromBridgeResponse,
   Deposit,
   DepositAssetsResponse,
@@ -106,6 +107,8 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   MppCredentialsResponse,
+  OnboardingFeeProduct,
+  OnboardingFeeQuote,
   OnrampAutomationRail,
   OnrampAutomationResponseDto,
   Points,
@@ -2490,6 +2493,63 @@ export const recordSwapFee = async (
     credentials: 'include',
     body: JSON.stringify(params),
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * What this user owes to open a Rain card or virtual account, and whether it is
+ * already paid.
+ *
+ * Read before the fee sheet is shown and again after a payment, so the amount
+ * on screen is always the server's.
+ */
+export const fetchOnboardingFeeQuote = async (
+  product: OnboardingFeeProduct,
+): Promise<OnboardingFeeQuote> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onboarding-fees/quote?product=${encodeURIComponent(product)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Credit a setup fee the user has just paid on chain.
+ *
+ * Only the transaction hash is reported. The payer, the payee and the amount
+ * are all read back off the chain by the server — a client-asserted "I paid"
+ * would not be a fee — so a 400 here means the transaction genuinely does not
+ * pay it, and a 503 means the server could not look yet and the call should be
+ * retried.
+ */
+export const confirmOnboardingFee = async (
+  params: ConfirmOnboardingFeeParams,
+): Promise<OnboardingFeeQuote> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onboarding-fees/confirm`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(params),
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };

@@ -651,14 +651,27 @@ export interface CardStatusResponse {
    * a client that decides for itself is a client a VPN can talk out of it.
    */
   depositRequired?: boolean;
-  /** The savings (soUSD) minimum the deposit step asks for, in USD. */
+  /**
+   * The one-time setup fee, in USD.
+   *
+   * Keeps the name it had when it was the savings minimum this fee replaced —
+   * the server keeps it too, so builds already installed carry on rendering the
+   * amount. {@link onboardingFeeUsd} is the same number under a name that says
+   * what it is; prefer that one in new code.
+   */
   minimumDepositUsd?: number;
+  /** {@link minimumDepositUsd}, named for what it actually is. */
+  onboardingFeeUsd?: number;
+  /**
+   * True when there is nothing left to pay — the fee is settled, or none is
+   * owed (the line is off, or this country is exempt).
+   */
+  onboardingFeePaid?: boolean;
   /**
    * Identity verification passed, but the application has NOT been sent to the
-   * issuer because the applicant is no longer holding the minimum — typically
-   * they deposited to clear the first step and then moved the funds straight
-   * out. Renders the "deposit and hold" step, which submits the application via
-   * `resumeRainKycForward` once the money is back.
+   * issuer because the setup fee is unpaid — typically a verification started
+   * before the fee existed. Renders the outstanding-payment step, which submits
+   * the application via `resumeRainKycForward` once the fee is settled.
    */
   rainForwardPendingDeposit?: boolean;
 }
@@ -667,8 +680,13 @@ export interface CardStatusResponse {
 export interface ResumeRainForwardResponse {
   status: 'forwarded' | 'already_forwarded' | 'deposit_required' | 'not_ready' | 'failed';
   reason?: string;
-  /** The soUSD position the server read, in USD. Present on `deposit_required`. */
-  balanceUsd?: number;
+  /**
+   * The outstanding setup fee, in USD.
+   *
+   * Keeps the name it had when it was the savings minimum this fee replaced,
+   * because the server keeps it too — see the backend DTO. `deposit_required`
+   * now means "the fee is unpaid".
+   */
   minimumUsd: number;
   providerCustomerId?: string;
   kycStatus?: KycStatus;
@@ -2245,6 +2263,46 @@ export interface ProductFeeRates {
    * address would burn the user's money.
    */
   revenueWalletAddress?: string;
+}
+
+/**
+ * The one-time Rain onboarding fees, by product.
+ *
+ * The card and the virtual account are separate Rain onboardings, each with its
+ * own Didit session and its own Rain review, so each is charged once and
+ * separately. Paying for a card does not pay for an account.
+ */
+export enum OnboardingFeeProduct {
+  RAIN_CARD = 'rain_card',
+  RAIN_VIRTUAL_ACCOUNT = 'rain_virtual_account',
+}
+
+/** What this user owes to open a Rain product, and whether they have paid. */
+export interface OnboardingFeeQuote {
+  product: OnboardingFeeProduct;
+  /** The fee in USD. 0 means nothing is owed — the line is off, or exempt. */
+  feeUsd: number;
+  /** True when there is nothing left to pay: paid, or never owed. */
+  satisfied: boolean;
+  /** True when a payment is on record. */
+  paid: boolean;
+  paidAt?: string;
+  /**
+   * Where the fee must be sent.
+   *
+   * Absent when no treasury is configured, which the client must treat as "do
+   * not build a transfer": paying a guessed address would burn the user's
+   * money, and the backend would refuse the payment anyway.
+   */
+  treasuryAddress?: string;
+  /** Chains a payment is accepted on, most-preferred first. */
+  chainIds: number[];
+}
+
+export interface ConfirmOnboardingFeeParams {
+  product: OnboardingFeeProduct;
+  transactionHash: string;
+  chainId: number;
 }
 
 /** What the user will pay on one specific amount. */

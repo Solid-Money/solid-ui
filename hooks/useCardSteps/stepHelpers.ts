@@ -39,25 +39,25 @@ export function buildCardSteps(
     kycWarnings?: KycWarning[] | null;
     handleRainKYCPress?: () => void;
     /**
-     * Whether to show the deposit steps at all. Already resolved by the caller
+     * Whether to show the setup-fee step at all. Already resolved by the caller
      * (see `requiresCardDeposit`), which prefers the backend's own answer and
      * falls back to the resolved issuer only while there is none.
      */
     depositRequired?: boolean;
-    /** The savings minimum to ask for, in USD. Defaults to the app constant. */
+    /** The one-time setup fee, in USD. Defaults to the app constant. */
     minimumDepositUsd?: number | null;
     /** Total collateral deposited to the card, in cents (legacy card-fund flow). */
     cardCollateralDeposited?: number | null;
-    /** Whether the user holds at least the minimum in the savings (soUSD) vault. */
-    savingsDepositMet?: boolean;
-    /** Opens the deposit-to-savings (soUSD) flow used by the deposit steps. */
-    openSavingsDepositModal?: () => void;
+    /** Whether the setup fee is settled — paid, or none owed. */
+    onboardingFeePaid?: boolean;
+    /** Opens the setup-fee sheet. */
+    openFeeSheet?: () => void;
     /**
-     * Verification passed but the application was parked because the deposit is
-     * no longer held. Renders the `hold` step.
+     * Verification passed but the application was parked because the setup fee
+     * is unpaid. Renders the `hold` step.
      */
     rainForwardPendingDeposit?: boolean;
-    /** Submits the parked application (re-checks the balance server-side). */
+    /** Submits the parked application (re-checks the fee server-side). */
     submitPendingApplication?: () => void;
     /** Whether {@link submitPendingApplication} is in flight. */
     isSubmittingPendingApplication?: boolean;
@@ -138,7 +138,7 @@ export function buildCardSteps(
   // sets `rainForwardPendingDeposit` and clears it the moment a submission
   // lands, so this cannot linger for someone who is already through.
   const showHoldStep = showDepositStep && Boolean(options?.rainForwardPendingDeposit);
-  const holdSatisfied = Boolean(options?.savingsDepositMet);
+  const holdSatisfied = Boolean(options?.onboardingFeePaid);
 
   // Reaching the parked state is itself proof the first step was cleared —
   // nothing gets a verification session without passing this gate server-side.
@@ -146,7 +146,7 @@ export function buildCardSteps(
   // `hold` step alone, rather than two steps asking for the same deposit and the
   // reopened first one disabling the second one's button.
   const depositMet =
-    Boolean(options?.savingsDepositMet) ||
+    Boolean(options?.onboardingFeePaid) ||
     showHoldStep ||
     cardActivated ||
     hasMetCardDeposit(options?.cardCollateralDeposited);
@@ -189,16 +189,14 @@ export function buildCardSteps(
   if (showDepositStep) {
     steps.push({
       key: 'deposit',
-      title: `Deposit at least $${minimumDepositUsd}`,
+      title: `Pay the $${minimumDepositUsd} setup fee`,
       description: depositMet
-        ? `Your $${minimumDepositUsd}+ is safe in savings (soUSD). When your card is ready you can move it over with “Deposit to card”.`
-        : `Add at least $${minimumDepositUsd} to continue. Your card isn’t created yet, so these funds go into your savings vault (soUSD) — not onto the card. Once the card is ready you can move them over anytime with “Deposit to card”.`,
+        ? `Your setup fee is paid. Nothing else to do here.`
+        : `Opening your card costs $${minimumDepositUsd}, paid once from your Solid balance before you verify your identity.`,
       completed: depositMet,
       status: depositMet ? 'completed' : 'pending',
-      // Deposits go to savings, which needs no card, so the action is available
-      // immediately (unlike the old step, which could only fund an issued card).
-      buttonText: depositMet ? undefined : 'Deposit',
-      onPress: depositMet ? undefined : options?.openSavingsDepositModal,
+      buttonText: depositMet ? undefined : `Pay $${minimumDepositUsd}`,
+      onPress: depositMet ? undefined : options?.openFeeSheet,
     });
   }
 
@@ -210,18 +208,18 @@ export function buildCardSteps(
   if (showHoldStep) {
     steps.push({
       key: 'hold',
-      title: `Top up and hold your $${minimumDepositUsd}`,
+      title: holdSatisfied ? 'Submit your application' : `Pay the $${minimumDepositUsd} setup fee`,
       description: holdSatisfied
-        ? `Your savings are back above $${minimumDepositUsd}. Submit your application to continue — we’ll check your balance one more time as we send it.`
-        : `Your ID check passed, but your savings dropped below $${minimumDepositUsd} before we could submit your application. Deposit again and keep it in savings (soUSD) — it stays yours and earns yield, and you can move it onto the card once it’s ready.`,
+        ? `Your setup fee is paid. Submit your application to continue — we’ll check it one more time as we send it.`
+        : `Your ID check passed, but the $${minimumDepositUsd} setup fee is still outstanding, so your application was not submitted. Pay it and we’ll send it on.`,
       // Never "completed": this step exists only while the application is still
       // parked, and disappears once the backend reports it submitted. Marking it
       // done while it is still showing would let the activation step below open
       // behind an application that was never sent.
       completed: false,
       status: 'pending',
-      buttonText: holdSatisfied ? 'Submit application' : 'Deposit',
-      onPress: holdSatisfied ? options?.submitPendingApplication : options?.openSavingsDepositModal,
+      buttonText: holdSatisfied ? 'Submit application' : `Pay $${minimumDepositUsd}`,
+      onPress: holdSatisfied ? options?.submitPendingApplication : options?.openFeeSheet,
       isLoading: options?.isSubmittingPendingApplication,
     });
   }
