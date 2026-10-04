@@ -9,6 +9,46 @@ import { EXPO_PUBLIC_BASE_URL } from './config';
 export const ASSETS = {
   // @assets-registry-start
   'animations/card.json': { module: require('@/assets/animations/card.json'), hash: 'ea9c0b6b' },
+  'animations/credit-help-keep-earning-poster.png': {
+    module: require('@/assets/animations/credit-help-keep-earning-poster.png'),
+    hash: 'cf64f886',
+  },
+  'animations/credit-help-keep-earning.mp4': {
+    module: require('@/assets/animations/credit-help-keep-earning.mp4'),
+    hash: 'f08d33e8',
+  },
+  'animations/credit-help-repay-anytime-poster.png': {
+    module: require('@/assets/animations/credit-help-repay-anytime-poster.png'),
+    hash: '56755ec3',
+  },
+  'animations/credit-help-repay-anytime.mp4': {
+    module: require('@/assets/animations/credit-help-repay-anytime.mp4'),
+    hash: '5bd9386e',
+  },
+  'animations/credit-help-two-ways-poster.png': {
+    module: require('@/assets/animations/credit-help-two-ways-poster.png'),
+    hash: '488ac17c',
+  },
+  'animations/credit-help-two-ways.mp4': {
+    module: require('@/assets/animations/credit-help-two-ways.mp4'),
+    hash: 'b78d365a',
+  },
+  'animations/figma-credit-help-source/figma-credit-help-keep-earning.mp4': {
+    module: require('@/assets/animations/figma-credit-help-source/figma-credit-help-keep-earning.mp4'),
+    hash: 'cb162e9c',
+  },
+  'animations/figma-credit-help-source/figma-credit-help-repay-anytime.mp4': {
+    module: require('@/assets/animations/figma-credit-help-source/figma-credit-help-repay-anytime.mp4'),
+    hash: '7d223f5e',
+  },
+  'animations/figma-credit-help-source/figma-credit-help-two-ways.mp4': {
+    module: require('@/assets/animations/figma-credit-help-source/figma-credit-help-two-ways.mp4'),
+    hash: 'a5d30505',
+  },
+  'animations/figma-credit-help-source/repay-label.png': {
+    module: require('@/assets/animations/figma-credit-help-source/repay-label.png'),
+    hash: '52ce6b16',
+  },
   'animations/glow.json': { module: require('@/assets/animations/glow.json'), hash: '8e169067' },
   'animations/lightning.json': {
     module: require('@/assets/animations/lightning.json'),
@@ -1294,6 +1334,98 @@ export const ASSETS = {
     hash: '7663ac41',
   },
   'images/star.png': { module: require('@/assets/images/star.png'), hash: 'ed4389a9' },
+  'images/subscription-cashback/airline-ring.svg': {
+    module: require('@/assets/images/subscription-cashback/airline-ring.svg'),
+    hash: 'f26cafdd',
+  },
+  'images/subscription-cashback/amazon.svg': {
+    module: require('@/assets/images/subscription-cashback/amazon.svg'),
+    hash: 'cd312643',
+  },
+  'images/subscription-cashback/apple-music.svg': {
+    module: require('@/assets/images/subscription-cashback/apple-music.svg'),
+    hash: 'a68b3567',
+  },
+  'images/subscription-cashback/apple-tv.svg': {
+    module: require('@/assets/images/subscription-cashback/apple-tv.svg'),
+    hash: '4188e562',
+  },
+  'images/subscription-cashback/bolt.svg': {
+    module: require('@/assets/images/subscription-cashback/bolt.svg'),
+    hash: '4ae96eb2',
+  },
+  'images/subscription-cashback/claude.svg': {
+    module: require('@/assets/images/subscription-cashback/claude.svg'),
+    hash: '50ca975c',
+  },
+  'images/subscription-cashback/disney-plus.svg': {
+    module: require('@/assets/images/subscription-cashback/disney-plus.svg'),
+    hash: 'eaaf36af',
+  },
+  'images/subscription-cashback/disney.svg': {
+    module: require('@/assets/images/subscription-cashback/disney.svg'),
+    hash: 'e09188ee',
+  },
+  'images/subscription-cashback/emirates.svg': {
+    module: require('@/assets/images/subscription-cashback/emirates.svg'),
+    hash: 'f40d4e16',
+  },
+  'images/subscription-cashback/gemini.svg': {
+    module: require('@/assets/images/subscription-cashback/gemini.svg'),
+    hash: '17dfed0a',
+  },
+  'images/subscription-cashback/gojek.svg': {
+    module: require('@/assets/images/subscription-cashback/gojek.svg'),
+    hash: 'ff185fc3',
+  },
+  'images/subscription-cashback/grab.svg': {
+    module: require('@/assets/images/subscription-cashback/grab.svg'),
+    hash: 'b7408ec5',
+  },
+  'images/subscription-cashback/hbo.svg': {
+    module: require('@/assets/images/subscription-cashback/hbo.svg'),
+    hash: '1ff80b04',
+  },
+  'images/subscription-cashback/lock.svg': {
+    module: require('@/assets/images/subscription-cashback/lock.svg'),
+    hash: '2e7d27d9',
+  },
+  'images/subscription-cashback/netflix.svg': {
+    module: require('@/assets/images/subscription-cashback/netflix.svg'),
+    hash: '75bcbc7a',
+  },
+  'images/subscription-cashback/openai.svg': {
+    module: require('@/assets/images/subscription-cashback/openai.svg'),
+    hash: '8504f420',
+  },
+  'images/subscription-cashback/qatar.svg': {
+    module: require('@/assets/images/subscription-cashback/qatar.svg'),
+    hash: 'a51ceee0',
+  },
+  'images/subscription-cashback/ride-ring.svg': {
+    module: require('@/assets/images/subscription-cashback/ride-ring.svg'),
+    hash: 'f26cafdd',
+  },
+  'images/subscription-cashback/singapore.svg': {
+    module: require('@/assets/images/subscription-cashback/singapore.svg'),
+    hash: 'd4cd22af',
+  },
+  'images/subscription-cashback/spotify.svg': {
+    module: require('@/assets/images/subscription-cashback/spotify.svg'),
+    hash: 'f95da99b',
+  },
+  'images/subscription-cashback/turkish.svg': {
+    module: require('@/assets/images/subscription-cashback/turkish.svg'),
+    hash: 'eb45b6a1',
+  },
+  'images/subscription-cashback/uber.svg': {
+    module: require('@/assets/images/subscription-cashback/uber.svg'),
+    hash: '0791f58b',
+  },
+  'images/subscription-cashback/youtube.svg': {
+    module: require('@/assets/images/subscription-cashback/youtube.svg'),
+    hash: 'f587f87b',
+  },
   'images/support-svg.tsx': {
     module: require('@/assets/images/support-svg.tsx'),
     hash: 'ecd74b24',
