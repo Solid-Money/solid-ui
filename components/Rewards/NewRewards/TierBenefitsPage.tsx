@@ -436,6 +436,20 @@ function PerkIcon({
             <CoreGlobePerkIcon />
           )}
         </View>
+      ) : tier === RewardsTier.ULTRA && index === 2 ? (
+        <Image
+          source={getAsset('images/rewards-tiers/v4/airline.svg')}
+          contentFit="contain"
+          transition={0}
+          accessible={false}
+          style={{
+            position: 'absolute',
+            left: 11.65 * s,
+            top: 11.647 * s,
+            width: 26.699 * s,
+            height: 26.7015 * s,
+          }}
+        />
       ) : index === 1 ? (
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
           <Text
@@ -524,10 +538,27 @@ function CashbackPanel({
   benefits?: TierBenefits;
 }) {
   const content = tierPresentationContent(tier, benefits);
-  const categories = SUBSCRIPTION_CATEGORIES.map(category => ({
-    ...category,
-    rate: content.subscriptionRate,
-  }));
+  const categories = [
+    ...SUBSCRIPTION_CATEGORIES.map(category => ({
+      ...category,
+      rate: content.subscriptionRate,
+      asset: null,
+    })),
+    {
+      key: 'rides',
+      label: 'Rides',
+      rate: content.rideRate,
+      brands: [],
+      asset: 'images/rewards-tiers/v4/rides.png' as const,
+    },
+    {
+      key: 'airlines',
+      label: 'Airlines',
+      rate: content.airlineRate,
+      brands: [],
+      asset: 'images/rewards-tiers/v4/airlines.png' as const,
+    },
+  ];
   return (
     <Panel title="Cashback" s={s}>
       <View style={{ paddingHorizontal: 19 * s, paddingTop: 9 * s, paddingBottom: 9 * s }}>
@@ -557,19 +588,31 @@ function CashbackPanel({
               }}
             >
               <Text style={medium(s)}>{category.label}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {category.brands.map((brand, i) => (
-                  <SubscriptionBrandBadge
-                    key={brand.name}
-                    brand={brand}
-                    size={22 * s}
-                    overlap={i ? -3 * s : undefined}
-                    ring
-                  />
-                ))}
-              </View>
+              {category.asset ? (
+                <Image
+                  source={getAsset(category.asset)}
+                  style={{ width: (category.key === 'rides' ? 86 : 106) * s, height: 26 * s }}
+                  contentFit="contain"
+                />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {category.brands.map((brand, i) => (
+                    <SubscriptionBrandBadge
+                      key={brand.name}
+                      brand={brand}
+                      size={22 * s}
+                      overlap={i ? -3 * s : undefined}
+                      ring
+                    />
+                  ))}
+                </View>
+              )}
             </View>
-            <ValuePill value={category.rate ?? 'Prime'} s={s} locked={!category.rate} />
+            <ValuePill
+              value={category.rate ?? (category.key === 'airlines' ? 'Ultra' : 'Prime')}
+              s={s}
+              locked={!category.rate}
+            />
           </View>
         ))}
       </View>

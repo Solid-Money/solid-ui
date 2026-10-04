@@ -13,6 +13,8 @@ export const TIER_PRESENTATION = {
     headline: 'The Solid\nFoundation',
     accent: '#94F27F',
     subscriptionRate: null,
+    rideRate: null,
+    airlineRate: null,
     stats: [
       { value: formatTierCashbackRate(RewardsTier.CORE), label: 'Cashback' },
       { value: '$0', label: 'Card cost' },
@@ -27,6 +29,8 @@ export const TIER_PRESENTATION = {
     headline: 'Elevated Daily\nRewards',
     accent: '#FFFFFF',
     subscriptionRate: '10%',
+    rideRate: '8%',
+    airlineRate: null,
     stats: [
       { value: formatTierCashbackRate(RewardsTier.PRIME), label: 'Cashback' },
       { value: '+2%', label: 'Yield boost' },
@@ -34,7 +38,7 @@ export const TIER_PRESENTATION = {
     ],
     perks: [
       { title: 'Yield boost', description: '+2% APY on up to $10K in savings' },
-      { title: 'Subscription rewards', description: '10% on subscriptions' },
+      { title: 'Subscription & ride rewards', description: '10% on subscriptions, 8% on rides' },
       { title: 'Higher cashback caps', description: 'Up to $100 cashback a month' },
     ],
   },
@@ -42,6 +46,8 @@ export const TIER_PRESENTATION = {
     headline: 'Next-Level\nSpending Power',
     accent: '#EFE5A9',
     subscriptionRate: '20%',
+    rideRate: '10%',
+    airlineRate: '10%',
     stats: [
       { value: formatTierCashbackRate(RewardsTier.ULTRA), label: 'Cashback' },
       { value: '+3%', label: 'Yield boost' },
@@ -49,7 +55,8 @@ export const TIER_PRESENTATION = {
     ],
     perks: [
       { title: 'Yield boost', description: '+3% APY on up to $25K in savings' },
-      { title: 'Subscription rewards', description: '20% on subscriptions' },
+      { title: 'Subscription & ride rewards', description: '20% on subscriptions, 10% on rides' },
+      { title: 'Airline rewards', description: '10% back on 12 global airlines' },
     ],
   },
 } as const;
@@ -58,6 +65,8 @@ export interface TierPresentationContent {
   headline: string;
   accent: string;
   subscriptionRate: string | null;
+  rideRate: string | null;
+  airlineRate: string | null;
   stats: { value: string; label: string }[];
   perks: { title: string; description: string }[];
 }
@@ -117,8 +126,8 @@ export function tierPresentationContent(
       description:
         perk.title === 'Yield boost'
           ? `${yieldRate} APY on up to ${balanceCapLabel(balanceCap)} in savings`
-          : perk.title === 'Subscription rewards'
-            ? `${subscriptionPercentage}% on subscriptions`
+          : perk.title === 'Subscription & ride rewards'
+            ? `${subscriptionPercentage}% on subscriptions, ${fallback.rideRate} on rides`
             : perk.description,
     })),
   };
