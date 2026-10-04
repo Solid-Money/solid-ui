@@ -1050,25 +1050,46 @@ export interface RainRtfSpender {
   isApproved: boolean;
 }
 
+/**
+ * One asset on one chain — the unit of approval.
+ *
+ * An ERC-20 allowance is scoped to exactly one (token, owner, spender)
+ * triple, so a chain with two assets and two spenders owes four `approve`
+ * calls. All of them batch into a single user operation, because they are all
+ * on the one chain from the one wallet.
+ */
+export interface RainRtfAsset {
+  /** Display symbol — "USDC", or "USDT0" on Plasma. */
+  symbol: string;
+  tokenAddress: string;
+  tokenDecimals: number;
+  /** Every spender to approve for this asset, in the order to batch them. */
+  spenders: RainRtfSpender[];
+  /** Balance of this asset in the wallet, smallest units, as a string. */
+  walletBalance: string | null;
+  /** Every spender on this asset holds a healthy allowance. */
+  isApproved: boolean;
+}
+
 /** One chain the cardholder holds a Rain collateral contract on. */
 export interface RainRtfChain {
   chainId: number;
   /** Human name for the chain chip — "Base", "Base Sepolia". */
   name: string;
   environment: 'sandbox' | 'production';
-  /** The asset Rain pulls here. USDT0 on Plasma, USDC elsewhere. */
-  assetSymbol: string;
-  tokenAddress: string;
-  tokenDecimals: number;
   /** The cardholder's Rain collateral contract (`proxyAddress`), when provisioned. */
   collateralAddress: string | null;
-  /** Every spender to approve, in the order to batch them. */
-  spenders: RainRtfSpender[];
-  /** The wallet that grants the allowance: the cardholder's Safe. */
+  /** Every asset Rain may pull here, each with its own spenders. */
+  assets: RainRtfAsset[];
+  /** The wallet that grants the allowances: the cardholder's Safe. */
   walletAddress: string | null;
-  /** Balance of the RTF asset in that wallet, smallest units, as a string. */
-  walletBalance: string | null;
-  /** Every configured spender holds a healthy allowance. */
+  /**
+   * How many `approve` calls this chain still needs — the figure the approval
+   * screen promises ("4 approvals in one signature"). Served by the backend so
+   * the promise and the batch cannot disagree.
+   */
+  pendingApprovals: number;
+  /** Every spender on every asset holds a healthy allowance. */
   isApproved: boolean;
   /** The backend holds a consent record for this chain. */
   hasConsent: boolean;
@@ -1101,6 +1122,11 @@ export interface RainRtfStatus {
   };
   /** Whether revoking the legacy operator allowance may be offered yet. */
   legacyRevokeAvailable: boolean;
+  /**
+   * Every chain to authorize. One signature each, unavoidably: a user
+   * operation is executed by one chain's EntryPoint, so approvals on
+   * different chains cannot share one. Everything within a chain batches.
+   */
   chains: RainRtfChain[];
 }
 

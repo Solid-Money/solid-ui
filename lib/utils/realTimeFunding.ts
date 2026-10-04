@@ -1,13 +1,17 @@
+import { type Address, encodeFunctionData, erc20Abi } from 'viem';
+
 import type { RainRtfChain, RainRtfStatus } from '@/lib/types';
 
 /**
- * Real-Time Funding presentation helpers.
+ * Real-Time Funding: which approvals are owed, and how they batch.
  *
- * Their own leaf module, with no React and no app imports, for the same reason
- * `cardStatusRouting` and `cardDepositGate` are: they are load-bearing — a
- * wrong allowance comparison hides the approval a card needs, and a wrong
- * amount format misstates somebody's balance — and `@/lib/utils`' import graph
- * does not load under jest-expo, so logic that lives there cannot be tested.
+ * Its own leaf module, with no React and no app imports, for the same reason
+ * `cardStatusRouting` and `cardDepositGate` are: this is load-bearing — a
+ * wrong allowance comparison hides the approval a card needs, a missed
+ * (token, spender) pair leaves a card declining on an asset nobody checked,
+ * and a wrong amount format misstates somebody's balance — and
+ * `@/lib/utils`' import graph does not load under jest-expo, so logic that
+ * lives there cannot be tested.
  */
 
 /**
@@ -50,25 +54,99 @@ export const formatTokenAmount = (
   return fractionText ? `${wholeText}.${fractionText}` : wholeText;
 };
 
+/** Every approval a chain still owes, flattened across its assets. */
+export interface PendingApproval {
+  tokenAddress: string;
+  symbol: string;
+  spenderAddress: string;
+}
+
 /**
- * The chain the approve button should act on, and the ones already done.
+ * The (token, spender) pairs on this chain that still need approving.
  *
- * A chain with no spenders is never offered: there is nothing to approve
- * against — Rain has provisioned no collateral contract and the operator is
- * switched off — so offering it would build an empty batch and record a
- * consent for an authorization that does not exist.
+ * Flattened across assets because that is what an ERC-20 allowance actually
+ * is: one per (token, owner, spender). A chain carrying USDC and EURC with
+ * both the collateral contract and the operator as spenders owes four
+ * approvals, and treating the chain as the unit — as a single `assetSymbol`
+ * field invited — would silently approve one asset and leave the card
+ * declining on the other.
  *
- * The *first* unapproved chain rather than a picker, because a cardholder has
- * no basis for choosing between chains and "which chain is my card on" is not
- * a question to put to them. The rest come up on the next open; approving one
- * at a time is also one signature at a time, which is what a wallet can do.
+ * Pairs already at a healthy allowance are left out. Re-approving one is a
+ * transaction the cardholder pays for and gains nothing from, and after a
+ * batch that landed only partially it is the difference between resuming and
+ * starting over.
+ */
+export const pendingApprovalsFor = (chain: RainRtfChain | undefined): PendingApproval[] =>
+  (chain?.assets ?? []).flatMap(asset =>
+    asset.spenders
+      .filter(spender => !spender.isApproved)
+      .map(spender => ({
+        tokenAddress: asset.tokenAddress,
+        symbol: asset.symbol,
+        spenderAddress: spender.address,
+      })),
+  );
+
+/**
+ * The calls for one chain's outstanding approvals, ready to batch.
+ *
+ * Every one of them goes into a **single user operation**. They are `approve`
+ * calls on the same chain from the same smart account, so the account signs
+ * once and the bundler submits one operation — which is both cheaper and the
+ * difference between a cardholder tapping Approve once and tapping it four
+ * times without knowing why.
+ *
+ * What cannot be batched is chains. A user operation is executed by one
+ * chain's EntryPoint against one account, so an approval on Base and an
+ * approval on Arbitrum are two operations with two signatures, no matter how
+ * they are presented. The flow walks them in turn instead; see
+ * `useRainRealTimeFunding`.
+ */
+export const buildApprovalBatch = (params: {
+  chain: RainRtfChain | undefined;
+  /** The allowance to request, as a decimal string — `uint256` max. */
+  maxAllowance: string;
+}): { to: Address; data: `0x${string}`; value: bigint }[] => {
+  const { chain, maxAllowance } = params;
+  const amount = BigInt(maxAllowance);
+
+  return pendingApprovalsFor(chain).map(approval => ({
+    to: approval.tokenAddress as Address,
+    data: encodeFunctionData({
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [approval.spenderAddress as Address, amount],
+    }),
+    value: 0n,
+  }));
+};
+
+/**
+ * The chains still owing approvals, in the order to walk them, and the ones
+ * already done.
+ *
+ * A chain with no assets, or whose assets have no spenders, is never offered:
+ * there is nothing to approve against — Rain has provisioned no collateral
+ * contract and the operator is switched off — so offering it would build an
+ * empty batch and record a consent for an authorization that does not exist.
  */
 export const selectRtfChains = (
   status: RainRtfStatus | undefined,
-): { chain: RainRtfChain | undefined; approvedChains: RainRtfChain[] } => {
+): {
+  /** The chain to act on now. */
+  chain: RainRtfChain | undefined;
+  /** Every chain still owing approvals, this one first. */
+  pendingChains: RainRtfChain[];
+  approvedChains: RainRtfChain[];
+} => {
   const chains = status?.chains ?? [];
+  const pendingChains = chains.filter(
+    entry => !entry.isApproved && pendingApprovalsFor(entry).length > 0,
+  );
+
   return {
-    chain: chains.find(entry => !entry.isApproved && entry.spenders.length > 0),
+    chain: pendingChains[0],
+    pendingChains,
     approvedChains: chains.filter(entry => entry.isApproved),
   };
 };
@@ -80,7 +158,7 @@ export const selectRtfChains = (
  * and there is no collateral contract to pull into otherwise), Rain has
  * enabled the tenant, this cardholder is eligible, and a chain is still
  * waiting on an approval. The last one is what makes the row a task rather
- * than a setting — it disappears the moment the allowance lands.
+ * than a setting — it disappears the moment the allowances land.
  */
 export const shouldOfferRtf = (params: {
   isRainCard: boolean;
@@ -89,4 +167,43 @@ export const shouldOfferRtf = (params: {
   const { isRainCard, status } = params;
   if (!isRainCard || !status?.tenantEnabled || !status.eligible) return false;
   return selectRtfChains(status).chain !== undefined;
+};
+
+/**
+ * How the approval is described before it is signed.
+ *
+ * Both halves are load-bearing and neither is the other: `approvals` is how
+ * many allowances are being granted, `signatures` is how many times the
+ * cardholder will be asked to confirm. They differ whenever a chain carries
+ * more than one asset or more than one spender — which, mid-migration, is
+ * every chain — and a screen that quoted only one of them would either
+ * understate what is being granted or surprise somebody with a second
+ * prompt.
+ */
+export const describeApprovalWork = (
+  status: RainRtfStatus | undefined,
+): {
+  approvals: number;
+  signatures: number;
+  chainNames: string[];
+  assetSymbols: string[];
+} => {
+  const { pendingChains } = selectRtfChains(status);
+
+  return {
+    // The backend's count, not a recount here: it is the number the approval
+    // screen promises, and two places computing it is two places to disagree.
+    approvals: pendingChains.reduce((total, entry) => total + entry.pendingApprovals, 0),
+    // One per chain. Not a product of anything — this is the hard floor that
+    // batching cannot get below.
+    signatures: pendingChains.length,
+    chainNames: pendingChains.map(entry => entry.name),
+    // Across every pending chain, not just the first. Deduplicated by symbol
+    // because the same asset on two chains is two allowances but one thing to
+    // name — a cardholder reading "USDC and USDC" learns nothing, and listing
+    // only the first chain's assets would understate what is being approved.
+    assetSymbols: [
+      ...new Set(pendingChains.flatMap(entry => entry.assets.map(asset => asset.symbol))),
+    ],
+  };
 };
