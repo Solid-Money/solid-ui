@@ -1869,6 +1869,9 @@ export interface RewardsUserData {
    * that pays differently per category — Prime earns 10% on AI but 8% on Rides
    * — so prefer this wherever both are available. A category present with a
    * rate of 0 is locked for the tier, not missing.
+   *
+   * Once sent, the list is the whole offer: a category an admin has switched
+   * off in the admin portal is left out entirely and should not be shown.
    */
   subscriptionCategoryRates?: SubscriptionCategoryRate[];
   /**

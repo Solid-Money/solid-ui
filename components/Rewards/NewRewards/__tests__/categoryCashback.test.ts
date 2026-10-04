@@ -122,6 +122,67 @@ describe('category cashback presentation', () => {
     });
   });
 
+  // A category switched off in the admin portal is left out of the payload
+  // entirely. It has to disappear from the sheet — reappearing at its design
+  // rate would advertise cashback the backend has stopped paying.
+  describe('categories an admin has switched off', () => {
+    it('shows only the categories the API still reports', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.PRIME,
+        10,
+        apiRates({ ai: 10, music: 10 }),
+      );
+
+      expect(result.categories).toEqual(['ai', 'music']);
+    });
+
+    it('keeps the sheet-wide tab order rather than the payload order', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.ULTRA,
+        20,
+        apiRates({ rides: 10, ai: 20, streaming: 20 }),
+      );
+
+      expect(result.categories).toEqual(['ai', 'streaming', 'rides']);
+    });
+
+    it('leaves a paused category out of the headline', () => {
+      // Ultra's best live rate is Rides' 10%, because the 20% categories are off.
+      const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ rides: 10 }));
+
+      expect(result.headlineRate).toBe(10);
+    });
+
+    it('stops the subtitle promising a category that is off', () => {
+      expect(
+        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ ai: 20, airlines: 10 }))
+          .subtitle,
+      ).toBe('on subscriptions and flights');
+      expect(
+        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ rides: 10 })).subtitle,
+      ).toBe('on rides');
+    });
+
+    it('renders nothing when every category it knows is off', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, apiRates({ gaming: 10 }));
+
+      expect(result.categories).toEqual([]);
+      expect(result.headlineRate).toBe(0);
+      expect(result.subtitle).toBe('on eligible card spend');
+    });
+
+    // Nothing to hide on a backend that cannot express the toggle.
+    it('shows every category when the API sends no per-category rates', () => {
+      expect(categoryCashbackPresentation(RewardsTier.PRIME, 10).categories).toEqual([
+        'ai',
+        'streaming',
+        'music',
+        'rides',
+        'airlines',
+      ]);
+    });
+  });
+
   // Core advertises the ceiling an upgrade reaches, so it must never fall to 0
   // just because the tier itself earns nothing.
   it('keeps the Core headline at the best rate any tier reaches', () => {
