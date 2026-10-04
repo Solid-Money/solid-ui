@@ -1,6 +1,7 @@
 import {
   CATEGORY_CASHBACK_TABS,
   categoryCashbackPresentation,
+  formatCashbackRate,
 } from '@/components/Rewards/NewRewards/categoryCashback';
 import { subscriptionCategoryLabel } from '@/components/Rewards/NewRewards/subscriptionBrands';
 import {
@@ -81,10 +82,6 @@ export interface CashbackBreakdownInput {
 
 const isUsableNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
-
-/** 3 → "3%", 2.5 → "2.5%", 3.0000000000000004 → "3%". */
-export const formatCashbackRate = (percentage: number): string =>
-  `${Number(percentage.toFixed(2))}%`;
 
 const formatUsd = (value: number): string =>
   `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

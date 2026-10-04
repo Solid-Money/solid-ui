@@ -37,6 +37,17 @@ const usableRate = (rate: number | undefined): number =>
   typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : 0;
 
 /**
+ * A cashback percentage as every surface prints it: 3 → "3%", 2.5 → "2.5%",
+ * 3.0000000000000004 → "3%".
+ *
+ * Lives here, in the module with no imports of its own, so the cashback
+ * receipt and the tier comparison page can both reach it without either
+ * importing the other.
+ */
+export const formatCashbackRate = (percentage: number): string =>
+  `${Number(percentage.toFixed(2))}%`;
+
+/**
  * The categories to actually show, in the sheet's own tab order.
  *
  * Once the API sends per-category rates, the list it sends is the list that is
@@ -92,6 +103,35 @@ const joinGroups = (groups: string[]): string =>
   groups.length > 1
     ? `${groups.slice(0, -1).join(', ')} and ${groups[groups.length - 1]}`
     : groups[0];
+
+/** Cheapest tier first, which is the order an "unlocks at" answer wants. */
+const TIER_LADDER: readonly RewardsTier[] = [
+  RewardsTier.CORE,
+  RewardsTier.PRIME,
+  RewardsTier.ULTRA,
+];
+
+/**
+ * The cheapest tier that earns anything on `key`, or undefined when none does.
+ *
+ * The tier comparison page labels a locked category with the tier that would
+ * unlock it, and that answer is config: Airlines reads "Ultra" because Prime's
+ * rate on it is an explicit 0 today, not because Airlines is inherently an
+ * Ultra perk. Pricing Prime onto Airlines in the admin portal has to move the
+ * label with it.
+ *
+ * Takes each tier's reported rates structurally rather than `TierBenefits`, so
+ * this stays a function of the numbers and the page keeps the API shape.
+ */
+export const unlockTierForCategory = (
+  key: CashbackCategoryKey,
+  byTier: { tier: RewardsTier; subscriptionCategoryRates?: SubscriptionCategoryRate[] }[],
+): RewardsTier | undefined =>
+  TIER_LADDER.find(tier =>
+    byTier
+      .find(entry => entry.tier === tier)
+      ?.subscriptionCategoryRates?.some(rate => rate.key === key && usableRate(rate.rate) > 0),
+  );
 
 /**
  * Rates for the sheet, preferring what the API reports for the current tier.
