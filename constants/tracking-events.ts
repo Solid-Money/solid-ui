@@ -399,6 +399,19 @@ export const TRACKING_EVENTS = {
   CARD_EURO_SPEND_ENABLE_COMPLETED: 'card_euro_spend_enable_completed',
   CARD_EURO_SPEND_ENABLE_FAILED: 'card_euro_spend_enable_failed',
   CARD_EURO_SPEND_ENABLE_CANCELLED: 'card_euro_spend_enable_cancelled',
+  // Rain Real-Time Funding: granting the ERC-20 allowance that lets a card
+  // authorization pull from the cardholder's own wallet at swipe time.
+  //
+  // Its own funnel, separate from the spend-module one above, because it is a
+  // different mechanism entirely — an allowance on the cardholder's wallet
+  // rather than a module on their Safe — and the drop-off that matters is the
+  // one at the terms screen, which has no counterpart there. VIEWED fires when
+  // the modal opens, so the terms-to-approve conversion is readable on its own.
+  CARD_RTF_APPROVE_VIEWED: 'card_rtf_approve_viewed',
+  CARD_RTF_APPROVE_STARTED: 'card_rtf_approve_started',
+  CARD_RTF_APPROVE_COMPLETED: 'card_rtf_approve_completed',
+  CARD_RTF_APPROVE_FAILED: 'card_rtf_approve_failed',
+  CARD_RTF_APPROVE_CANCELLED: 'card_rtf_approve_cancelled',
   // Turning card spending back off: `Safe.disableModule`. Its own events rather than a
   // property on the register ones, because this is the funnel leaving — a user who
   // disables is a different signal from one who never set up.

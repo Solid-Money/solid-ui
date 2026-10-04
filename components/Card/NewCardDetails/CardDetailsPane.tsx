@@ -28,6 +28,7 @@ import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import EnableCardSpendingCard from '@/components/Card/NewCardDetails/EnableCardSpendingCard';
 import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
+import EnableRealTimeFundingCard from '@/components/Card/NewCardDetails/EnableRealTimeFundingCard';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
@@ -37,6 +38,7 @@ import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/Spend
 import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
+import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
@@ -53,6 +55,7 @@ import {
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
 import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
+import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
@@ -138,6 +141,25 @@ const CardDetailsPane = () => {
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
   const euroSpend = useEuroSpendEnablement();
+  /**
+   * Real-Time Funding: the card draws from the cardholder's own wallet at the
+   * moment of the swipe, on an ERC-20 allowance they grant in advance.
+   *
+   * Its own hook instance here rather than inside the modal, because the row
+   * above the modal has to know whether to render at all — and the row is the
+   * only entry point, so the modal having its own copy of the status would be
+   * a second query answering a question this one already asked.
+   */
+  const realTimeFunding = useRainRealTimeFunding();
+  const [isRtfModalOpen, setIsRtfModalOpen] = useState(false);
+  // Clearing the error on open rather than on close: an error left over from a
+  // failed attempt belongs on the row until the cardholder does something
+  // about it, and reopening the modal is them doing exactly that.
+  const clearRtfError = realTimeFunding.clearError;
+  const openRtfModal = useCallback(() => {
+    clearRtfError();
+    setIsRtfModalOpen(true);
+  }, [clearRtfError]);
   // Its own instance, so a failed enable reports here rather than in the Manage sheet.
   const spendRegistration = useCardSpendRegistration();
   /**
@@ -415,6 +437,23 @@ const CardDetailsPane = () => {
               />
             </HeroEnter>
           ) : null}
+          {/* Until the allowance is granted, Rain declines every authorization on
+              this card — so this is a blocking task, not an option, and it sits
+              with the other "how this card spends" rows rather than lower down
+              with the promotional surfaces. It disappears for good once the
+              approval lands, which is why it reads as something to finish. */}
+          {realTimeFunding.shouldOffer && realTimeFunding.chain ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.realTimeFundingCard}>
+              <EnableRealTimeFundingCard
+                assetSymbols={realTimeFunding.work.assetSymbols}
+                chainName={realTimeFunding.chain.name}
+                networkCount={realTimeFunding.work.signatures}
+                isApproving={realTimeFunding.isApproving}
+                error={realTimeFunding.error}
+                onApprove={openRtfModal}
+              />
+            </HeroEnter>
+          ) : null}
           {/* Shown to anyone who has a credit line, not only to someone already in debt —
               see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
               spend against BEFORE they spend it; gating on the loan meant the first thing
@@ -498,6 +537,20 @@ const CardDetailsPane = () => {
         isOpen={isOpen && isSpendModeHelpOpen}
         onClose={() => setIsSpendModeHelpOpen(false)}
       />
+      {/* Gated on `isOpen` like every other modal here: this pane stays mounted
+          behind the wallet screen, and a modal that ignored that would reopen
+          itself over the wallet the moment the pane closed mid-approval. */}
+      <RealTimeFundingModal
+        isOpen={isOpen && isRtfModalOpen}
+        status={realTimeFunding.status}
+        chain={realTimeFunding.chain}
+        work={realTimeFunding.work}
+        progress={realTimeFunding.progress}
+        isApproving={realTimeFunding.isApproving}
+        error={realTimeFunding.error}
+        onClose={() => setIsRtfModalOpen(false)}
+        onApprove={realTimeFunding.approve}
+      />
       <WirexCardFundModal
         isOpen={isOpen && isSpendModeFundOpen}
         onOpenChange={setIsSpendModeFundOpen}
@@ -546,6 +599,7 @@ const styles = StyleSheet.create({
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
   euroSpendCard: { marginTop: 20 },
+  realTimeFundingCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   cashbackCard: { marginTop: 20 },
   linksList: { marginTop: 20 },
