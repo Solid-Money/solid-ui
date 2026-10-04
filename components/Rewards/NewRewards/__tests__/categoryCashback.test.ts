@@ -1,4 +1,7 @@
-import { categoryCashbackPresentation } from '@/components/Rewards/NewRewards/categoryCashback';
+import {
+  categoryCashbackPresentation,
+  unlockTierForCategory,
+} from '@/components/Rewards/NewRewards/categoryCashback';
 import { RewardsTier } from '@/lib/types';
 
 /** The shape `rewards/user-data` sends for the current tier. */
@@ -119,6 +122,112 @@ describe('category cashback presentation', () => {
 
     it('bases the headline on the highest unlocked category rate', () => {
       expect(categoryCashbackPresentation(RewardsTier.ULTRA, 5).headlineRate).toBe(10);
+    });
+  });
+
+  // A category switched off in the admin portal is left out of the payload
+  // entirely. It has to disappear from the sheet — reappearing at its design
+  // rate would advertise cashback the backend has stopped paying.
+  describe('categories an admin has switched off', () => {
+    it('shows only the categories the API still reports', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.PRIME,
+        10,
+        apiRates({ ai: 10, music: 10 }),
+      );
+
+      expect(result.categories).toEqual(['ai', 'music']);
+    });
+
+    it('keeps the sheet-wide tab order rather than the payload order', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.ULTRA,
+        20,
+        apiRates({ rides: 10, ai: 20, streaming: 20 }),
+      );
+
+      expect(result.categories).toEqual(['ai', 'streaming', 'rides']);
+    });
+
+    it('leaves a paused category out of the headline', () => {
+      // Ultra's best live rate is Rides' 10%, because the 20% categories are off.
+      const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ rides: 10 }));
+
+      expect(result.headlineRate).toBe(10);
+    });
+
+    it('stops the subtitle promising a category that is off', () => {
+      expect(
+        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ ai: 20, airlines: 10 }))
+          .subtitle,
+      ).toBe('on subscriptions and flights');
+      expect(
+        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ rides: 10 })).subtitle,
+      ).toBe('on rides');
+    });
+
+    it('renders nothing when every category it knows is off', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, apiRates({ gaming: 10 }));
+
+      expect(result.categories).toEqual([]);
+      expect(result.headlineRate).toBe(0);
+      expect(result.subtitle).toBe('on eligible card spend');
+    });
+
+    // Nothing to hide on a backend that cannot express the toggle.
+    it('shows every category when the API sends no per-category rates', () => {
+      expect(categoryCashbackPresentation(RewardsTier.PRIME, 10).categories).toEqual([
+        'ai',
+        'streaming',
+        'music',
+        'rides',
+        'airlines',
+      ]);
+    });
+  });
+
+  // The tier comparison page labels a locked category with the tier that would
+  // unlock it, and that is a question about config, not a fact about the
+  // category: Airlines reads "Ultra" only because Prime's rate on it is 0.
+  describe('unlockTierForCategory', () => {
+    const tierRates = (tier: RewardsTier, entries: Record<string, number>) => ({
+      tier,
+      subscriptionCategoryRates: apiRates(entries),
+    });
+
+    const shipped = [
+      tierRates(RewardsTier.CORE, { ai: 0, rides: 0, airlines: 0 }),
+      tierRates(RewardsTier.PRIME, { ai: 10, rides: 8, airlines: 0 }),
+      tierRates(RewardsTier.ULTRA, { ai: 20, rides: 10, airlines: 10 }),
+    ];
+
+    it('names the cheapest tier that earns on the category', () => {
+      expect(unlockTierForCategory('ai', shipped)).toBe(RewardsTier.PRIME);
+      expect(unlockTierForCategory('airlines', shipped)).toBe(RewardsTier.ULTRA);
+    });
+
+    it('follows a re-priced category down the ladder', () => {
+      const primeEarnsOnAirlines = [
+        tierRates(RewardsTier.CORE, { airlines: 0 }),
+        tierRates(RewardsTier.PRIME, { airlines: 8 }),
+        tierRates(RewardsTier.ULTRA, { airlines: 10 }),
+      ];
+
+      expect(unlockTierForCategory('airlines', primeEarnsOnAirlines)).toBe(RewardsTier.PRIME);
+    });
+
+    it('names Core when Core itself earns on it', () => {
+      expect(unlockTierForCategory('ai', [tierRates(RewardsTier.CORE, { ai: 1 })])).toBe(
+        RewardsTier.CORE,
+      );
+    });
+
+    it('answers undefined when no tier earns on it, or nothing is loaded', () => {
+      expect(unlockTierForCategory('music', shipped)).toBeUndefined();
+      expect(unlockTierForCategory('ai', [])).toBeUndefined();
+      expect(
+        unlockTierForCategory('ai', [{ tier: RewardsTier.PRIME, subscriptionCategoryRates: [] }]),
+      ).toBeUndefined();
     });
   });
 

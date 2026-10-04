@@ -1,6 +1,7 @@
 import {
   CATEGORY_CASHBACK_TABS,
   categoryCashbackPresentation,
+  formatCashbackRate,
 } from '@/components/Rewards/NewRewards/categoryCashback';
 import { subscriptionCategoryLabel } from '@/components/Rewards/NewRewards/subscriptionBrands';
 import {
@@ -82,10 +83,6 @@ export interface CashbackBreakdownInput {
 const isUsableNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
-/** 3 → "3%", 2.5 → "2.5%", 3.0000000000000004 → "3%". */
-export const formatCashbackRate = (percentage: number): string =>
-  `${Number(percentage.toFixed(2))}%`;
-
 const formatUsd = (value: number): string =>
   `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -164,17 +161,24 @@ const resolveUpsell = (
   };
 };
 
-/** "Prime also pays 10% on Streaming and Music, and 8% on Rides." */
+/**
+ * "Prime also pays 10% on Streaming and Music, and 8% on Rides."
+ *
+ * Built from the categories the API still reports, so a category an admin has
+ * switched off is not advertised on a receipt the day after it stopped paying.
+ */
 const resolveCategories = (
   tier: RewardsTier,
   subscriptionRate: number,
   excludeCategory: string | undefined,
+  categoryRates: RewardsUserData['subscriptionCategoryRates'],
 ): CashbackFooter | undefined => {
-  const { rates } = categoryCashbackPresentation(tier, subscriptionRate);
+  const { rates, categories } = categoryCashbackPresentation(tier, subscriptionRate, categoryRates);
   const groups: { rate: number; labels: string[] }[] = [];
 
   for (const tab of CATEGORY_CASHBACK_TABS) {
     if (tab.key === excludeCategory) continue;
+    if (!categories.includes(tab.key)) continue;
     const rate = rates[tab.key];
     if (!rate) continue;
     const last = groups[groups.length - 1];
@@ -254,6 +258,7 @@ export const buildCashbackBreakdown = ({
         currentTier,
         subscriptionRate,
         isSubscription ? info.subscriptionCategory : undefined,
+        rewardsData?.subscriptionCategoryRates,
       );
   }
 

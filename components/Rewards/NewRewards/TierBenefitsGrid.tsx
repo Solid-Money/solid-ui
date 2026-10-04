@@ -145,7 +145,9 @@ const TierBenefitsGrid = ({
         trigger={
           <BenefitCard
             title={`${subscriptionRate} Cashback`}
-            description={`On ${subscriptionCategoriesSentence()}`}
+            description={`On ${subscriptionCategoriesSentence(
+              subscriptionCategoryRates?.map(rate => rate.key),
+            )}`}
             icon={<SubscriptionIcon rate={subscriptionRate} />}
           />
         }

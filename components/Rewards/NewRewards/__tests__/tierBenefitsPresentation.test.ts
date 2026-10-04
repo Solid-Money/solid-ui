@@ -53,9 +53,111 @@ describe('tierPresentationContent', () => {
     expect(content.perks[1].description).toBe('0% on subscriptions, 10% on rides');
   });
 
+  // Deep equality on the design fields only: the content also carries the
+  // resolved category list and rates, which are derived rather than designed
+  // and are asserted on their own below.
   it.each([CORE, PRIME, ULTRA])('keeps the design when %s numerical fields are absent', tier => {
-    expect(tierPresentationContent(tier)).toEqual(TIER_PRESENTATION[tier]);
-    expect(tierPresentationContent(tier, benefits(tier))).toEqual(TIER_PRESENTATION[tier]);
+    for (const content of [
+      tierPresentationContent(tier),
+      tierPresentationContent(tier, benefits(tier)),
+    ]) {
+      expect(content).toMatchObject(TIER_PRESENTATION[tier]);
+      expect(Object.keys(content).sort()).toEqual(
+        [
+          ...Object.keys(TIER_PRESENTATION[tier]),
+          'subscriptionCategories',
+          'subscriptionCategoryRates',
+        ].sort(),
+      );
+    }
+  });
+
+  // The comparison page used to read its ride and airline rates straight off
+  // the design table, so an admin could re-price or pause a category and that
+  // page would go on advertising the old one.
+  describe('per-category rates', () => {
+    const rates = (entries: Record<string, number>) =>
+      Object.entries(entries).map(([key, rate]) => ({ key, label: key, rate }));
+
+    it('quotes the rates the API reports, not the design', () => {
+      const content = tierPresentationContent(
+        ULTRA,
+        benefits(ULTRA, {
+          subscriptionDiscountRate: 20,
+          subscriptionCategoryRates: rates({
+            ai: 20,
+            streaming: 20,
+            music: 20,
+            rides: 12,
+            airlines: 15,
+          }),
+        }),
+      );
+
+      expect(content.rideRate).toBe('12%');
+      expect(content.airlineRate).toBe('15%');
+      expect(content.subscriptionCategoryRates.rides).toBe(12);
+      expect(content.perks[1].description).toBe('20% on subscriptions, 12% on rides');
+      expect(content.perks[2].description).toBe('15% back on 12 global airlines');
+    });
+
+    it('drops a paused category from the rows it draws', () => {
+      const content = tierPresentationContent(
+        ULTRA,
+        benefits(ULTRA, {
+          subscriptionDiscountRate: 20,
+          subscriptionCategoryRates: rates({ ai: 20, streaming: 20, music: 20 }),
+        }),
+      );
+
+      expect(content.subscriptionCategories).toEqual(['ai', 'streaming', 'music']);
+      expect(content.rideRate).toBeNull();
+      expect(content.airlineRate).toBeNull();
+    });
+
+    it('stops the perk copy selling rides once they are paused', () => {
+      const content = tierPresentationContent(
+        PRIME,
+        benefits(PRIME, {
+          subscriptionDiscountRate: 10,
+          subscriptionCategoryRates: rates({ ai: 10, streaming: 10, music: 10 }),
+        }),
+      );
+
+      expect(content.perks[1].title).toBe('Subscription rewards');
+      expect(content.perks[1].description).toBe('10% on subscriptions');
+    });
+
+    // Dropping the perk rather than printing "0%" is only safe because each
+    // perk names its own icon; taking the glyph from the row would slide the
+    // cashback-cap icon onto whatever followed.
+    it('drops the airline perk entirely when airlines pay nothing', () => {
+      const content = tierPresentationContent(
+        ULTRA,
+        benefits(ULTRA, {
+          subscriptionDiscountRate: 20,
+          subscriptionCategoryRates: rates({ ai: 20, rides: 10, airlines: 0 }),
+        }),
+      );
+
+      expect(content.perks.map(perk => perk.icon)).toEqual(['yield', 'subscription']);
+    });
+
+    // A rate of 0 the API did send is the locked state that sells the upgrade,
+    // so the row stays — unlike a paused category, which is simply absent.
+    it('keeps a locked category as a row at 0', () => {
+      const content = tierPresentationContent(
+        PRIME,
+        benefits(PRIME, {
+          subscriptionDiscountRate: 10,
+          subscriptionCategoryRates: rates({ ai: 10, rides: 8, airlines: 0 }),
+        }),
+      );
+
+      expect(content.subscriptionCategories).toContain('airlines');
+      expect(content.subscriptionCategoryRates.airlines).toBe(0);
+      expect(content.airlineRate).toBeNull();
+    });
   });
 
   it('uses a partial live response without replacing other design fallback values', () => {
