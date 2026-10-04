@@ -360,12 +360,3 @@ export const useOnboardingFeePayment = (
     pay,
   };
 };
-
-/**
- * A message for the user out of whatever the payment threw.
- *
- * The API layer rejects with the `Response` itself, so the server's own reason
- * — "that transaction did not pay the setup fee", "that payment has already
- * been used" — is in the body and is the most useful thing we can say. Anything
- * unreadable falls back to a generic line rather than surfacing a status code.
- */
