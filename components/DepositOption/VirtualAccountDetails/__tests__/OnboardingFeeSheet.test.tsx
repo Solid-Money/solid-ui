@@ -8,8 +8,16 @@ const { act, create } = require('react-test-renderer');
 
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+// ResponsiveModal reaches react-native-reanimated, which does not load under
+// jest-expo. The presentation is its concern, not this component's — these
+// tests are about what the fee sheet says and when it says nothing — so it is
+// stubbed down to the children it renders.
+jest.mock('@/components/ResponsiveModal', () => ({
+  __esModule: true,
+  default: 'ResponsiveModal',
+}));
+jest.mock('@/hooks/useDimension', () => ({
+  useDimension: () => ({ isScreenMedium: false }),
 }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
 jest.mock('@/lib/utils', () => ({
