@@ -1,4 +1,7 @@
-import { categoryCashbackPresentation } from '@/components/Rewards/NewRewards/categoryCashback';
+import {
+  categoryCashbackPresentation,
+  unlockTierForCategory,
+} from '@/components/Rewards/NewRewards/categoryCashback';
 import { RewardsTier } from '@/lib/types';
 
 /** The shape `rewards/user-data` sends for the current tier. */
@@ -180,6 +183,51 @@ describe('category cashback presentation', () => {
         'rides',
         'airlines',
       ]);
+    });
+  });
+
+  // The tier comparison page labels a locked category with the tier that would
+  // unlock it, and that is a question about config, not a fact about the
+  // category: Airlines reads "Ultra" only because Prime's rate on it is 0.
+  describe('unlockTierForCategory', () => {
+    const tierRates = (tier: RewardsTier, entries: Record<string, number>) => ({
+      tier,
+      subscriptionCategoryRates: apiRates(entries),
+    });
+
+    const shipped = [
+      tierRates(RewardsTier.CORE, { ai: 0, rides: 0, airlines: 0 }),
+      tierRates(RewardsTier.PRIME, { ai: 10, rides: 8, airlines: 0 }),
+      tierRates(RewardsTier.ULTRA, { ai: 20, rides: 10, airlines: 10 }),
+    ];
+
+    it('names the cheapest tier that earns on the category', () => {
+      expect(unlockTierForCategory('ai', shipped)).toBe(RewardsTier.PRIME);
+      expect(unlockTierForCategory('airlines', shipped)).toBe(RewardsTier.ULTRA);
+    });
+
+    it('follows a re-priced category down the ladder', () => {
+      const primeEarnsOnAirlines = [
+        tierRates(RewardsTier.CORE, { airlines: 0 }),
+        tierRates(RewardsTier.PRIME, { airlines: 8 }),
+        tierRates(RewardsTier.ULTRA, { airlines: 10 }),
+      ];
+
+      expect(unlockTierForCategory('airlines', primeEarnsOnAirlines)).toBe(RewardsTier.PRIME);
+    });
+
+    it('names Core when Core itself earns on it', () => {
+      expect(unlockTierForCategory('ai', [tierRates(RewardsTier.CORE, { ai: 1 })])).toBe(
+        RewardsTier.CORE,
+      );
+    });
+
+    it('answers undefined when no tier earns on it, or nothing is loaded', () => {
+      expect(unlockTierForCategory('music', shipped)).toBeUndefined();
+      expect(unlockTierForCategory('ai', [])).toBeUndefined();
+      expect(
+        unlockTierForCategory('ai', [{ tier: RewardsTier.PRIME, subscriptionCategoryRates: [] }]),
+      ).toBeUndefined();
     });
   });
 
