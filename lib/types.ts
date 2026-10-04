@@ -1015,6 +1015,105 @@ export interface CardSpendDeploymentsResponse {
   deployments: CardSpendDeployment[];
 }
 
+/**
+ * Rain Real-Time Funding (RTF).
+ *
+ * RTF changes what a card authorization spends: instead of drawing on a
+ * pre-funded Rain collateral balance, Rain pulls the full authorization amount
+ * out of the cardholder's own wallet at the moment of the swipe, using an
+ * ERC-20 allowance the wallet granted in advance. No allowance means every
+ * authorization is declined — which is why the approval is a first-class
+ * surface on the card screen rather than a setting.
+ */
+
+/** Who an allowance is granted to. */
+export type RainRtfSpenderKind =
+  /** The cardholder's own Rain collateral contract — reversal-enabled (v2.04+). */
+  | 'collateral'
+  /** The tenant-wide Rain operator contract — the pre-upgrade spender. */
+  | 'operator';
+
+export interface RainRtfSpender {
+  kind: RainRtfSpenderKind;
+  /** The address to pass as `spender` to `approve`. */
+  address: string;
+  /**
+   * Allowance already granted, in the token's smallest units, as a decimal
+   * string. `'0'` when none, `null` when the chain could not be read.
+   *
+   * A string because an unlimited allowance is `uint256` max, which `number`
+   * rounds — and a rounded allowance compared against a threshold is a wrong
+   * answer that looks right.
+   */
+  currentAllowance: string | null;
+  /** Whether that allowance is large enough that we should not re-prompt. */
+  isApproved: boolean;
+}
+
+/** One chain the cardholder holds a Rain collateral contract on. */
+export interface RainRtfChain {
+  chainId: number;
+  /** Human name for the chain chip — "Base", "Base Sepolia". */
+  name: string;
+  environment: 'sandbox' | 'production';
+  /** The asset Rain pulls here. USDT0 on Plasma, USDC elsewhere. */
+  assetSymbol: string;
+  tokenAddress: string;
+  tokenDecimals: number;
+  /** The cardholder's Rain collateral contract (`proxyAddress`), when provisioned. */
+  collateralAddress: string | null;
+  /** Every spender to approve, in the order to batch them. */
+  spenders: RainRtfSpender[];
+  /** The wallet that grants the allowance: the cardholder's Safe. */
+  walletAddress: string | null;
+  /** Balance of the RTF asset in that wallet, smallest units, as a string. */
+  walletBalance: string | null;
+  /** Every configured spender holds a healthy allowance. */
+  isApproved: boolean;
+  /** The backend holds a consent record for this chain. */
+  hasConsent: boolean;
+  consentAt: string | null;
+  transactionHash: string | null;
+  /**
+   * Set when the allowances could not be read. The chain is still offered: an
+   * RPC outage must not make the feature vanish, and a redundant approval is a
+   * cheap transaction while a hidden one is a feature nobody can reach.
+   */
+  unavailableReason: string | null;
+}
+
+export interface RainRtfStatus {
+  /** Rain has enabled Real-Time Funding for our tenant in this environment. */
+  tenantEnabled: boolean;
+  /** This cardholder can be offered it. */
+  eligible: boolean;
+  /** Why not, when `eligible` is false. For logs and support, not for display. */
+  ineligibleReason: string | null;
+  /** The allowance to request: `uint256` max, as a decimal string. */
+  maxAllowance: string;
+  /** The Real-Time Funding Terms, served by the backend so the wording shown
+   *  and the wording recorded cannot drift. */
+  terms: {
+    version: string;
+    url: string;
+    body: string;
+    consentLabel: string;
+  };
+  /** Whether revoking the legacy operator allowance may be offered yet. */
+  legacyRevokeAvailable: boolean;
+  chains: RainRtfChain[];
+}
+
+/** What the app reports once its approve user operation lands. */
+export interface RainRtfConfirmRequest {
+  chainId: number;
+  /** Refused server-side when false — the acknowledgement is the record. */
+  termsAccepted: boolean;
+  /** Which wording was displayed. Defaulted server-side when absent. */
+  termsVersion?: string;
+  transactionHash?: string;
+}
+
 /** What the app reports after its enable + register user operation lands on a chain. */
 export interface CardSpendDeploymentConfirmRequest {
   transactionHash?: string;
