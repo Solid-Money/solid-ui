@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Address, encodeFunctionData, erc20Abi } from 'viem';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -10,13 +9,26 @@ import { confirmRainRtf, getRainRtfStatus } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, RainRtfChain, RainRtfStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { selectRtfChains, shouldOfferRtf } from '@/lib/utils/realTimeFunding';
+import {
+  buildApprovalBatch,
+  describeApprovalWork,
+  selectRtfChains,
+  shouldOfferRtf,
+} from '@/lib/utils/realTimeFunding';
 import { getChain } from '@/lib/wagmi';
 
 export const RAIN_RTF_QUERY_KEY = 'rainRealTimeFunding';
 
 /** How long the status is trusted before it is asked again. */
 const STALE_MS = 60 * 1000;
+
+/** Which chain the flow is on, for the progress line while it walks them. */
+export interface RainRtfApprovalProgress {
+  /** 1-based, for "Network 2 of 3". */
+  step: number;
+  total: number;
+  chainName: string;
+}
 
 interface RainRealTimeFunding {
   /**
@@ -25,31 +37,45 @@ interface RainRealTimeFunding {
    * True only when every one of these holds: the card is a Rain card, Rain has
    * enabled RTF for the tenant, this cardholder is eligible, and at least one
    * chain is still missing a healthy allowance. It goes false the moment the
-   * approval lands, which is the point — the row is a task, not a setting.
+   * approvals land, which is the point — the row is a task, not a setting.
    */
   shouldOffer: boolean;
   /** The full status, once the backend has answered. */
   status: RainRtfStatus | undefined;
   /**
-   * The chain the approve button acts on.
+   * The chain the flow starts on — the first still owing approvals.
    *
-   * One rather than a picker: a cardholder with contracts on several chains
-   * has no basis for choosing between them, and "which chain is my card on"
-   * is not a question to put to them. The first unapproved chain is taken,
-   * and the rest come up on the next open — approving one at a time is also
-   * one signature at a time, which is what a wallet can actually do.
+   * Not a picker. A cardholder has no basis for choosing between chains, and
+   * "which network is my card on" is not a question to put to them. The flow
+   * walks every chain that owes approvals in turn, starting here.
    */
   chain: RainRtfChain | undefined;
+  /**
+   * How much work the cardholder is agreeing to: how many allowances, and how
+   * many times they will be asked to sign.
+   *
+   * The two differ, and both are shown. Everything on one chain batches into
+   * one signature; chains cannot batch with each other at all.
+   */
+  work: {
+    approvals: number;
+    signatures: number;
+    chainNames: string[];
+    assetSymbols: string[];
+  };
+  /** Which chain is being signed right now, while `isApproving`. */
+  progress: RainRtfApprovalProgress | undefined;
   isLoading: boolean;
   isApproving: boolean;
   error: string | undefined;
   clearError: () => void;
   /**
-   * Grant the allowance for {@link chain} and record the consent.
+   * Grant every outstanding allowance and record the consent.
    *
-   * Resolves `true` when the authorization is recorded, `false` when the
-   * cardholder dismissed the signature prompt — a dismissal is not a failure
-   * and must not be reported as one.
+   * Resolves `true` when every chain is authorized, `false` when the
+   * cardholder dismissed a signature prompt — a dismissal is not a failure
+   * and must not be reported as one. Throws nothing; failures land in
+   * {@link error}.
    */
   approve: (termsVersion: string) => Promise<boolean>;
 }
@@ -59,11 +85,19 @@ interface RainRealTimeFunding {
  *
  * ## What approving actually is
  *
- * One ERC-20 `approve` per spender, batched into a single user operation from
- * the cardholder's Safe, each for `uint256` max.
+ * One ERC-20 `approve` per (token, spender) pair, from the cardholder's Safe,
+ * each for `uint256` max.
  *
- * There are two spenders while Rain migrates to reversal-enabled collateral
- * contracts, and approving both is deliberate rather than belt-and-braces:
+ * The count is a product, not a constant, and that is the thing worth being
+ * precise about. An allowance is scoped to exactly one (token, owner,
+ * spender) triple — there is no approving "a wallet" or "a chain" — so a
+ * cardholder owes `assets × spenders` approvals on every chain Rain holds a
+ * collateral contract for. Today that is two per chain (one asset, two
+ * spenders mid-migration) and it grows as Rain adds assets during the beta.
+ *
+ * There are two spenders because Rain is migrating to reversal-enabled
+ * collateral contracts, and approving both is deliberate rather than
+ * belt-and-braces:
  *
  *  - The **collateral contract** (`proxyAddress`) is the spender on
  *    reversal-enabled (v2.04) contracts. It is what lets funds pulled at
@@ -74,7 +108,28 @@ interface RainRealTimeFunding {
  * cut-over and the old one to stay until Rain confirms it is complete.
  * Approving both means the cut-over — which happens server-side at Rain, with
  * no signal to this app — is invisible to the cardholder in either direction.
- * The backend decides which spenders to send; this hook never invents one.
+ * The backend decides which assets and spenders to send; this hook never
+ * invents one.
+ *
+ * ## What batches, and what cannot
+ *
+ * **Within a chain, everything batches.** Every outstanding `approve` on one
+ * chain goes into a single user operation: same chain, same smart account, so
+ * the account signs once and the bundler submits once. Four approvals and one
+ * signature, not four of each.
+ *
+ * **Across chains, nothing can.** A user operation is executed by one chain's
+ * EntryPoint against one account; there is no cross-chain user operation to
+ * batch into, and no amount of client work changes that. So the floor is one
+ * signature per chain, and the flow walks the chains in turn rather than
+ * pretending otherwise — one consent, one pass, a progress line naming which
+ * network is being signed. The alternative, which this replaces, was making
+ * the cardholder reopen the modal and re-read the terms once per chain.
+ *
+ * A chain that fails stops the walk and reports. The chains already done keep
+ * their recorded authorizations — each confirm lands per chain — so pressing
+ * Approve again resumes at the one that failed rather than re-approving what
+ * already succeeded.
  *
  * ## Why the amount is unlimited
  *
@@ -99,6 +154,7 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
   const { provider } = useCardProvider();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
+  const [progress, setProgress] = useState<RainRtfApprovalProgress>();
 
   const isRainCard = provider === CardProvider.RAIN;
 
@@ -113,103 +169,133 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
     retry: 1,
   });
 
-  // Selection and the offer gate live in `lib/utils/realTimeFunding` rather
-  // than here, so they are unit testable: both are load-bearing — one decides
-  // what gets approved, the other whether the cardholder is ever asked — and
-  // this hook's import graph does not load under jest-expo.
-  const { chain } = useMemo(() => selectRtfChains(status), [status]);
+  // Selection, batching and the offer gate live in
+  // `lib/utils/realTimeFunding` rather than here, so they are unit testable:
+  // all three are load-bearing — one decides what gets approved, one builds
+  // the calls, one decides whether the cardholder is ever asked — and this
+  // hook's import graph does not load under jest-expo.
+  const { chain, pendingChains } = useMemo(() => selectRtfChains(status), [status]);
+  const work = useMemo(() => describeApprovalWork(status), [status]);
 
   const approveMutation = useMutation({
     mutationFn: async (termsVersion: string) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
-      if (!status || !chain) {
+      if (!status || pendingChains.length === 0) {
         throw new Error('Real-Time Funding is not available for this card right now.');
       }
 
-      const viemChain = getChain(chain.chainId);
-      if (!viemChain) {
-        // A chain the backend offers that this build cannot address. Rain adds
-        // chains during the beta and the app can be weeks behind, so this is a
-        // normal state to reach — and it has to fail loudly rather than fall
-        // back to another chain, which would approve the wrong token on the
-        // wrong network and look like success.
-        throw new Error(
-          `${chain.name} isn’t supported by this version of the app. Please update and try again.`,
-        );
-      }
+      const authorized: number[] = [];
 
-      // Only the spenders that still need it. Re-approving one that is already
-      // at max is a transaction the cardholder pays for and gains nothing
-      // from, and after a partially-landed batch it is the difference between
-      // resuming and starting over.
-      const pending = chain.spenders.filter(spender => !spender.isApproved);
-      const transactions = pending.map(spender => ({
-        to: chain.tokenAddress as Address,
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [spender.address as Address, BigInt(status.maxAllowance)],
-        }),
-        value: 0n,
-      }));
+      // Sequential, not `Promise.all`. Each chain is its own signature prompt
+      // and a wallet presents one at a time; firing them together would stack
+      // prompts the cardholder cannot make sense of, and a nonce race on the
+      // same account would make some of them fail for no visible reason.
+      for (const [index, target] of pendingChains.entries()) {
+        setProgress({
+          step: index + 1,
+          total: pendingChains.length,
+          chainName: target.name,
+        });
 
-      let transactionHash: string | undefined;
-
-      // Every spender already approved while the status said otherwise — the
-      // confirm after an earlier attempt never landed, most likely. Recording
-      // it is exactly the fix, so this falls through to the confirm rather
-      // than raising at a cardholder whose wallet is already correct.
-      if (transactions.length > 0) {
-        const smartAccountClient = await safeAA(viemChain, user.suborgId, user.signWith);
-
-        const result = await executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Failed to approve Real-Time Funding',
-          viemChain,
-        );
-
-        if (result === USER_CANCELLED_TRANSACTION) {
-          track(TRACKING_EVENTS.CARD_RTF_APPROVE_CANCELLED, {
-            chain_id: chain.chainId,
-          });
-          return null;
+        const viemChain = getChain(target.chainId);
+        if (!viemChain) {
+          // A chain the backend offers that this build cannot address. Rain
+          // adds chains during the beta and the app can be weeks behind, so
+          // this is a normal state to reach — and it has to fail loudly
+          // rather than fall back to another chain, which would approve the
+          // wrong token on the wrong network and look like success.
+          throw new Error(
+            `${target.name} isn’t supported by this version of the app. Please update and try again.`,
+          );
         }
 
-        transactionHash = result.transactionHash;
+        // Every outstanding (token, spender) approval on this chain, as one
+        // batch. Pairs already at a healthy allowance are left out, so a
+        // partially-landed earlier attempt resumes rather than paying twice.
+        const transactions = buildApprovalBatch({
+          chain: target,
+          maxAllowance: status.maxAllowance,
+        });
+
+        let transactionHash: string | undefined;
+
+        // Nothing left to send while the status said otherwise — the confirm
+        // after an earlier attempt never landed, most likely. Recording it is
+        // exactly the fix, so this falls through to the confirm rather than
+        // raising at a cardholder whose wallet is already correct.
+        if (transactions.length > 0) {
+          const smartAccountClient = await safeAA(viemChain, user.suborgId, user.signWith);
+
+          const result = await executeTransactions(
+            smartAccountClient,
+            transactions,
+            `Failed to approve Real-Time Funding on ${target.name}`,
+            viemChain,
+          );
+
+          if (result === USER_CANCELLED_TRANSACTION) {
+            track(TRACKING_EVENTS.CARD_RTF_APPROVE_CANCELLED, {
+              chain_id: target.chainId,
+              chain_index: index,
+              chains_total: pendingChains.length,
+            });
+            // Stop the walk. The chains already authorized keep their
+            // records, so pressing Approve again resumes here instead of
+            // starting over.
+            return authorized.length > 0
+              ? { chainIds: authorized, requested: pendingChains.length }
+              : null;
+          }
+
+          transactionHash = result.transactionHash;
+        }
+
+        // The consent is the half of this the chain cannot hold, and it is
+        // recorded per chain — so a walk that stops halfway leaves an
+        // accurate record of exactly the chains that were authorized.
+        await withRefreshToken(() =>
+          confirmRainRtf({
+            chainId: target.chainId,
+            termsAccepted: true,
+            termsVersion,
+            ...(transactionHash ? { transactionHash } : {}),
+          }),
+        );
+
+        authorized.push(target.chainId);
       }
 
-      // The consent is the half of this the chain cannot hold. Sent after the
-      // approval rather than before so a cardholder who dismissed the
-      // signature prompt leaves no record saying they authorized anything.
-      await withRefreshToken(() =>
-        confirmRainRtf({
-          chainId: chain.chainId,
-          termsAccepted: true,
-          termsVersion,
-          ...(transactionHash ? { transactionHash } : {}),
-        }),
-      );
-
-      return { chainId: chain.chainId, transactionHash };
+      return { chainIds: authorized, requested: pendingChains.length };
     },
+    onSettled: () => setProgress(undefined),
     onSuccess: result => {
-      // Cancelled. Nothing changed, so nothing is invalidated and no success
-      // is reported — a refetch here would re-render the row they just left.
+      // Cancelled before anything landed. Nothing changed, so nothing is
+      // invalidated and no success is reported — a refetch here would
+      // re-render the row they just left.
       if (!result) return;
 
       void queryClient.invalidateQueries({ queryKey: [RAIN_RTF_QUERY_KEY] });
 
+      // `requested` alongside `authorized` so the funnel can tell a complete
+      // pass from one the cardholder abandoned partway. They differ whenever
+      // a signature prompt was dismissed on the second or third network, and
+      // a count on its own would make those look like successes.
       track(TRACKING_EVENTS.CARD_RTF_APPROVE_COMPLETED, {
-        chain_id: result.chainId,
-        transaction_hash: result.transactionHash,
+        chain_ids: result.chainIds,
+        chains_authorized: result.chainIds.length,
+        chains_requested: result.requested,
+        is_complete: result.chainIds.length === result.requested,
       });
     },
     onError: (mutationError: Error) => {
       const message = mutationError?.message || 'Failed to approve Real-Time Funding';
       setError(message);
+      // Whatever landed before the failure is real and recorded, so the
+      // status is refetched either way — otherwise the retry would rebuild a
+      // batch for approvals that already succeeded.
+      void queryClient.invalidateQueries({ queryKey: [RAIN_RTF_QUERY_KEY] });
       track(TRACKING_EVENTS.CARD_RTF_APPROVE_FAILED, {
         chain_id: chain?.chainId,
         error: message,
@@ -222,21 +308,26 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
       setError(undefined);
       track(TRACKING_EVENTS.CARD_RTF_APPROVE_STARTED, {
         chain_id: chain?.chainId,
-        spender_count: chain?.spenders.filter(spender => !spender.isApproved).length ?? 0,
+        approval_count: work.approvals,
+        signature_count: work.signatures,
       });
       // `mutateAsync` so the modal can close on success and stay open on
       // failure, with the error in place. `mutate` would resolve immediately
       // and leave both outcomes looking identical to the caller.
       const result = await approveMutation.mutateAsync(termsVersion).catch(() => null);
-      return Boolean(result);
+      // Every chain, not merely some: a partial walk leaves the row up with
+      // the ones that are left, which is the honest state.
+      return Boolean(result && result.chainIds.length === result.requested);
     },
-    [approveMutation, chain],
+    [approveMutation, chain, work.approvals, work.signatures],
   );
 
   return {
     shouldOffer: shouldOfferRtf({ isRainCard, status }),
     status,
     chain,
+    work,
+    progress,
     isLoading: Boolean(user?.userId) && isRainCard && isLoading,
     isApproving: approveMutation.isPending,
     error,

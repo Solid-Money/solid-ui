@@ -445,8 +445,9 @@ const CardDetailsPane = () => {
           {realTimeFunding.shouldOffer && realTimeFunding.chain ? (
             <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.realTimeFundingCard}>
               <EnableRealTimeFundingCard
-                assetSymbol={realTimeFunding.chain.assetSymbol}
+                assetSymbols={realTimeFunding.work.assetSymbols}
                 chainName={realTimeFunding.chain.name}
+                networkCount={realTimeFunding.work.signatures}
                 isApproving={realTimeFunding.isApproving}
                 error={realTimeFunding.error}
                 onApprove={openRtfModal}
@@ -543,6 +544,8 @@ const CardDetailsPane = () => {
         isOpen={isOpen && isRtfModalOpen}
         status={realTimeFunding.status}
         chain={realTimeFunding.chain}
+        work={realTimeFunding.work}
+        progress={realTimeFunding.progress}
         isApproving={realTimeFunding.isApproving}
         error={realTimeFunding.error}
         onClose={() => setIsRtfModalOpen(false)}
