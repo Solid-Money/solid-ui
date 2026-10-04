@@ -1,6 +1,5 @@
 import React from 'react';
-// eslint-disable-next-line no-restricted-imports
-import { Image as NativeImage } from 'react-native';
+import { Asset } from 'expo-asset';
 import { Image } from 'expo-image';
 
 import TierStarPreloadProvider from '@/components/Rewards/NewRewards/TierHero/TierStarPreload';
@@ -21,12 +20,9 @@ describe('web and Android tier animation preloading', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('caches all three animations before displaying the page and only once per mount', async () => {
-    jest.spyOn(NativeImage, 'resolveAssetSource').mockImplementation(source => ({
-      uri: `star-${source}.webp`,
-      width: 470,
-      height: 470,
-      scale: 1,
-    }));
+    jest
+      .spyOn(Asset, 'fromModule')
+      .mockImplementation(source => ({ uri: `star-${source}.webp` }) as unknown as Asset);
     let tree: ReturnType<typeof create>;
     await act(async () => {
       tree = create(<TierStarPreloadProvider />);
