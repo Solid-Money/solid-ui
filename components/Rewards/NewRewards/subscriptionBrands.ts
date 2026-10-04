@@ -154,9 +154,28 @@ export const scaleBrandGlyph = (glyph: { width: number; height: number }, badgeS
   return { width: glyph.width * ratio, height: glyph.height * ratio };
 };
 
-/** Comma-joined category names for mid-sentence copy: "AI, streaming, music". */
-export const subscriptionCategoriesSentence = () =>
-  SUBSCRIPTION_CATEGORIES.map(category => category.sentenceLabel).join(', ');
+/**
+ * Comma-joined category names for mid-sentence copy: "AI, streaming, music".
+ *
+ * `liveKeys` are the categories the backend still has switched on, as the
+ * rewards payload reports them. Pass them wherever they are to hand: a
+ * category an admin has paused should not be named in the copy that sells the
+ * perk. Omit them (an older backend sends none) to name the whole curated
+ * list, which is what this did before the toggle existed.
+ *
+ * When none of the curated categories is live the copy goes generic rather
+ * than empty — the card it titles only renders when something still pays, and
+ * that something may be a category this list does not cover (Rides).
+ */
+export const subscriptionCategoriesSentence = (liveKeys?: string[]) => {
+  const live = liveKeys
+    ? SUBSCRIPTION_CATEGORIES.filter(category => liveKeys.includes(category.key))
+    : SUBSCRIPTION_CATEGORIES;
+
+  return live.length
+    ? live.map(category => category.sentenceLabel).join(', ')
+    : 'eligible card spend';
+};
 
 /**
  * Display name for a category key a cashback row was billed under ("ai" → "AI").
