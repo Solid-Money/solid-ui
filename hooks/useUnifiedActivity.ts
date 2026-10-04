@@ -5,9 +5,11 @@ import { useBridgeDepositStatuses } from '@/hooks/useBridgeDepositStatuses';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useCashbackPayoutHashes } from '@/hooks/useCashbackPayoutHashes';
 import { useProcessingActivitiesPolling } from '@/hooks/useTransactionReceiptPolling';
 import { TransactionStatus } from '@/lib/types';
 import { hasCard, isTransactionStuck } from '@/lib/utils';
+import { isCashbackPayoutActivity } from '@/lib/utils/cashbackActivity';
 import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { mergeActivityFeeds, UnifiedActivityItem } from '@/lib/utils/unifiedActivity';
 
@@ -36,7 +38,9 @@ export type UseUnifiedActivityResult = {
  * `filterUnifiedActivity` — because only the caller knows which chip is active.
  *
  * Stuck pending and cancelled rows are left out, matching what the wallet list
- * has always shown.
+ * has always shown, and so is the bare "Receive soUSD" a cashback payout lands
+ * as — the card row it was earned on already names the figure. See
+ * `lib/utils/cashbackActivity`.
  */
 export function useUnifiedActivity(): UseUnifiedActivityResult {
   const { data: cardStatus } = useCardStatus();
@@ -63,6 +67,7 @@ export function useUnifiedActivity(): UseUnifiedActivityResult {
   } = useCardTransactions({ enabled: userHasCard });
 
   const activitiesWithBridgeStatus = useBridgeDepositStatuses(activities);
+  const cashbackPayoutHashes = useCashbackPayoutHashes();
 
   // Both are self-gating — they do nothing unless something is actually in
   // flight — so every screen showing the feed keeps its rows moving on their own.
@@ -78,11 +83,12 @@ export function useUnifiedActivity(): UseUnifiedActivityResult {
     const deduplicated = deduplicateTransactions(activitiesWithBridgeStatus);
     const visible = deduplicated.filter(transaction => {
       if (transaction.status === TransactionStatus.CANCELLED) return false;
+      if (isCashbackPayoutActivity(transaction, cashbackPayoutHashes)) return false;
       const isPending = transaction.status === TransactionStatus.PENDING;
       return !(isPending && isTransactionStuck(transaction.timestamp));
     });
     return mergeActivityFeeds(visible, cardTransactions);
-  }, [activitiesWithBridgeStatus, cardTransactions]);
+  }, [activitiesWithBridgeStatus, cardTransactions, cashbackPayoutHashes]);
 
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {

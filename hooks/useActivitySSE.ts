@@ -3,6 +3,7 @@ import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
+import { cashbacksQueryKey } from '@/hooks/useCashbacks';
 import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
 import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
@@ -718,6 +719,14 @@ class SSEConnectionManager {
           });
         }
         queryClient.invalidateQueries({ queryKey: ['rewards', 'userData', eventUserId] });
+        // An incoming transfer may be a cashback payout landing. The feed hides
+        // those rows by payout hash (see `lib/utils/cashbackActivity`), and can
+        // only do so once the cashback record carries the hash — so refresh the
+        // cashbacks with the activity, rather than leaving an unlabelled
+        // "Receive soUSD" on screen until something else refetches them.
+        if (data.balance.changeType === 'transfer_in') {
+          queryClient.invalidateQueries({ queryKey: cashbacksQueryKey });
+        }
         // External deposits, withdrawals and share transfers can change tier
         // eligibility. Reconcile past the vault cache without inferring a tier.
         if (
