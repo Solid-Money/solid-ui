@@ -19,13 +19,20 @@ import {
   CoreRocketPerkIcon,
 } from '@/assets/images/rewards-tiers/core-tier-icons';
 import { Text } from '@/components/ui/text';
-import { getAsset } from '@/lib/assets';
+import { type AssetPath, getAsset } from '@/lib/assets';
 import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
 
-import SubscriptionBrandBadge from './SubscriptionBrandBadge';
-import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
 import {
+  type CashbackCategoryKey,
+  formatCashbackRate,
+  hasCategoryArtwork,
+  unlockTierForCategory,
+} from './categoryCashback';
+import SubscriptionBrandBadge from './SubscriptionBrandBadge';
+import { SUBSCRIPTION_CATEGORIES, type SubscriptionBrand } from './subscriptionBrands';
+import {
+  type PerkIconName,
   TIER_LABELS,
   TIER_PRESENTATION,
   tierOfferRows,
@@ -397,17 +404,16 @@ function StatsBand({
 }
 
 function PerkIcon({
-  tier,
-  index,
+  icon,
   s,
   subscriptionRate,
 }: {
-  tier: RewardsTier;
-  index: number;
+  /** Named on the perk rather than taken from its row, so a filtered list keeps its glyphs. */
+  icon: PerkIconName;
   s: number;
   subscriptionRate: string | null;
 }) {
-  if (tier !== RewardsTier.CORE && index === 0)
+  if (icon === 'yield')
     return (
       <Image
         source={getAsset('images/rewards-tiers/v4/yield.svg')}
@@ -426,17 +432,31 @@ function PerkIcon({
         justifyContent: 'center',
       }}
     >
-      {tier === RewardsTier.CORE ? (
+      {icon === 'card' || icon === 'rocket' || icon === 'globe' ? (
         <View style={{ transform: [{ scale: s }] }}>
-          {index === 0 ? (
+          {icon === 'card' ? (
             <CoreCardPerkIcon />
-          ) : index === 1 ? (
+          ) : icon === 'rocket' ? (
             <CoreRocketPerkIcon />
           ) : (
             <CoreGlobePerkIcon />
           )}
         </View>
-      ) : index === 1 ? (
+      ) : icon === 'airline' ? (
+        <Image
+          source={getAsset('images/rewards-tiers/v4/airline.svg')}
+          contentFit="contain"
+          transition={0}
+          accessible={false}
+          style={{
+            position: 'absolute',
+            left: 11.65 * s,
+            top: 11.647 * s,
+            width: 26.699 * s,
+            height: 26.7015 * s,
+          }}
+        />
+      ) : icon === 'subscription' ? (
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
           <Text
             style={{
@@ -479,10 +499,12 @@ function PerksPanel({
   s: number;
   benefits?: TierBenefits;
 }) {
+  const content = tierPresentationContent(tier, benefits);
+
   return (
     <Panel s={s}>
       <View style={{ paddingHorizontal: 19 * s }}>
-        {tierPresentationContent(tier, benefits).perks.map((perk, index) => (
+        {content.perks.map((perk, index) => (
           <View key={perk.title}>
             {index > 0 && (
               <View style={[styles.divider, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
@@ -496,12 +518,7 @@ function PerksPanel({
                 paddingVertical: 12 * s,
               }}
             >
-              <PerkIcon
-                tier={tier}
-                index={index}
-                s={s}
-                subscriptionRate={tierPresentationContent(tier, benefits).subscriptionRate}
-              />
+              <PerkIcon icon={perk.icon} s={s} subscriptionRate={content.subscriptionRate} />
               <View style={{ flex: 1, gap: 3 * s }}>
                 <Text style={medium(s)}>{perk.title}</Text>
                 <Text style={regular(s)}>{perk.description}</Text>
@@ -514,20 +531,94 @@ function PerksPanel({
   );
 }
 
+/**
+ * The tier a locked category's pill names.
+ *
+ * Read from what each tier actually earns, so re-pricing a category in the
+ * admin portal moves the label with it — Airlines says "Ultra" because Prime's
+ * rate on it is 0 today, not because the app believes Airlines is an Ultra
+ * perk. Falls back to that reading of the design when the benefits for the
+ * other tiers have not loaded, or on a backend that sends no per-category
+ * rates at all.
+ */
+const lockedLabel = (key: string, tier: RewardsTier, allBenefits?: TierBenefits[]): string => {
+  const unlocks = allBenefits?.length ? unlockTierForCategory(key, allBenefits) : undefined;
+  if (unlocks) return TIER_LABELS[unlocks];
+
+  // Nothing loaded to read it from: name the tier above this one, which is the
+  // only honest guess and holds for any category rather than the two the
+  // design happened to ship.
+  return TIER_LABELS[tier === RewardsTier.CORE ? RewardsTier.PRIME : RewardsTier.ULTRA];
+};
+
+/** How one category row draws itself. */
+interface CategoryArtwork {
+  label: string;
+  /** Logo badges, for a category drawn as a stack of brands. */
+  brands: SubscriptionBrand[];
+  /** A single artwork strip, for a category drawn as one image. */
+  asset: AssetPath | null;
+  assetWidth: number;
+}
+
+/** A subscription category, drawn from the shared brand list. */
+const brandRow = (key: string): CategoryArtwork => {
+  const category = SUBSCRIPTION_CATEGORIES.find(entry => entry.key === key);
+
+  return {
+    label: category?.label ?? key,
+    brands: category?.brands ?? [],
+    asset: null,
+    assetWidth: 0,
+  };
+};
+
+/**
+ * How each category draws on this panel: brand badges for the subscription
+ * three, a single artwork strip for Rides and Airlines.
+ *
+ * Keyed by the category keys the API sends, and only the ones this screen has
+ * artwork for — the payload also carries categories it does not ship (Gaming,
+ * anything added in the admin portal), which `categoryCashbackPresentation`
+ * has already dropped by the time a row is drawn.
+ */
+const CATEGORY_ARTWORK: Record<CashbackCategoryKey, CategoryArtwork> = {
+  ai: brandRow('ai'),
+  streaming: brandRow('streaming'),
+  music: brandRow('music'),
+  rides: {
+    label: 'Rides',
+    brands: [],
+    asset: 'images/rewards-tiers/v4/rides.png',
+    assetWidth: 86,
+  },
+  airlines: {
+    label: 'Airlines',
+    brands: [],
+    asset: 'images/rewards-tiers/v4/airlines.png',
+    assetWidth: 106,
+  },
+};
+
 function CashbackPanel({
   tier,
   s,
   benefits,
+  allBenefits,
 }: {
   tier: RewardsTier;
   s: number;
   benefits?: TierBenefits;
+  /** Every tier's benefits, for the tier named on a locked category's pill. */
+  allBenefits?: TierBenefits[];
 }) {
-  const content = tierPresentationContent(tier, benefits);
-  const categories = SUBSCRIPTION_CATEGORIES.map(category => ({
-    ...category,
-    rate: content.subscriptionRate,
-  }));
+  // Resolved once, in `tierPresentationContent`, off the same function the
+  // subscription sheet uses — so the two screens cannot quote different rates
+  // for the same category. A category an admin has paused is absent and gets
+  // no row; one this tier simply does not earn on arrives at 0 and keeps its
+  // locked row, which is the upsell.
+  const { subscriptionCategories: categories } = tierPresentationContent(tier, benefits);
+
   return (
     <Panel title="Cashback" s={s}>
       <View style={{ paddingHorizontal: 19 * s, paddingTop: 9 * s, paddingBottom: 9 * s }}>
@@ -542,36 +633,62 @@ function CashbackPanel({
           <Text style={medium(s)}>Every purchase</Text>
           <ValuePill value={formatTierCashbackRate(tier)} s={s} />
         </View>
-        {categories.map(category => (
-          <View
-            key={category.key}
-            style={{ minHeight: 55 * s, flexDirection: 'row', alignItems: 'center' }}
-          >
+        {categories.map(category => {
+          // Artwork is the one thing the API cannot supply, so an unknown
+          // category draws its API label and no logos rather than being
+          // dropped from a panel the backend is paying on.
+          const art = hasCategoryArtwork(category.key)
+            ? CATEGORY_ARTWORK[category.key]
+            : { label: category.label, brands: [], asset: null, assetWidth: 0 };
+          const locked = category.rate <= 0;
+
+          return (
             <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8 * s,
-                opacity: category.rate ? 1 : 0.5,
-              }}
+              key={category.key}
+              style={{ minHeight: 55 * s, flexDirection: 'row', alignItems: 'center' }}
             >
-              <Text style={medium(s)}>{category.label}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {category.brands.map((brand, i) => (
-                  <SubscriptionBrandBadge
-                    key={brand.name}
-                    brand={brand}
-                    size={22 * s}
-                    overlap={i ? -3 * s : undefined}
-                    ring
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8 * s,
+                  opacity: locked ? 0.5 : 1,
+                }}
+              >
+                <Text style={medium(s)}>{art.label}</Text>
+                {art.asset ? (
+                  <Image
+                    source={getAsset(art.asset)}
+                    style={{ width: art.assetWidth * s, height: 26 * s }}
+                    contentFit="contain"
                   />
-                ))}
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {art.brands.map((brand, i) => (
+                      <SubscriptionBrandBadge
+                        key={brand.name}
+                        brand={brand}
+                        size={22 * s}
+                        overlap={i ? -3 * s : undefined}
+                        ring
+                      />
+                    ))}
+                  </View>
+                )}
               </View>
+              <ValuePill
+                value={
+                  locked
+                    ? lockedLabel(category.key, tier, allBenefits)
+                    : formatCashbackRate(category.rate)
+                }
+                s={s}
+                locked={locked}
+              />
             </View>
-            <ValuePill value={category.rate ?? 'Prime'} s={s} locked={!category.rate} />
-          </View>
-        ))}
+          );
+        })}
       </View>
     </Panel>
   );
@@ -588,6 +705,7 @@ export function TierBenefitsPage({
   position,
   fees,
   benefits,
+  allBenefits,
   offer,
   showUpgradeSpace,
 }: {
@@ -601,6 +719,12 @@ export function TierBenefitsPage({
   position: SharedValue<number>;
   fees?: TierFees;
   benefits?: TierBenefits;
+  /**
+   * Every tier's benefits, not just this page's. A locked category's pill
+   * names the tier that would unlock it, which is a question only the other
+   * tiers' rates can answer.
+   */
+  allBenefits?: TierBenefits[];
   offer?: TierOffer;
   showUpgradeSpace: boolean;
 }) {
@@ -691,7 +815,7 @@ export function TierBenefitsPage({
       <Animated.View testID={`tier-benefits-content-${tier}`} style={contentMotion}>
         <StatsBand tier={tier} s={s} benefits={benefits} />
         <PerksPanel tier={tier} s={s} benefits={benefits} />
-        <CashbackPanel tier={tier} s={s} benefits={benefits} />
+        <CashbackPanel tier={tier} s={s} benefits={benefits} allBenefits={allBenefits} />
         <Panel title="Fees & Caps" s={s}>
           <View style={{ paddingHorizontal: 19 * s, paddingVertical: 8 * s }}>
             {table.lines.map(line => (

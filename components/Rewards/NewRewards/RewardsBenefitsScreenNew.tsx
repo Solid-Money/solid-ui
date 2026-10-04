@@ -533,6 +533,7 @@ function RewardsBenefitsForAccount() {
                   bottomInset={insets.bottom}
                   position={translateX}
                   benefits={tierBenefits?.find(benefit => benefit.tier === tier)}
+                  allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
                   showUpgradeSpace={!ctaFor(tier).held && tier !== RewardsTier.CORE}

@@ -154,9 +154,29 @@ export const scaleBrandGlyph = (glyph: { width: number; height: number }, badgeS
   return { width: glyph.width * ratio, height: glyph.height * ratio };
 };
 
-/** Comma-joined category names for mid-sentence copy: "AI, streaming, music". */
-export const subscriptionCategoriesSentence = () =>
-  SUBSCRIPTION_CATEGORIES.map(category => category.sentenceLabel).join(', ');
+/**
+ * Comma-joined category names for mid-sentence copy: "AI, streaming, music".
+ *
+ * `live` are the categories the rewards payload reports — the API's list and
+ * its labels. Each is named with this module's curated mid-sentence form where
+ * it has one ("AI" rather than "ai"), and with the API's own label otherwise,
+ * so a category added in the admin portal is named instead of silently
+ * dropped, and a paused one is not named at all.
+ *
+ * Omit `live` (an older backend sends no list) to name the curated list, which
+ * is what this did before the categories became config.
+ */
+export const subscriptionCategoriesSentence = (live?: { key: string; label: string }[]) => {
+  if (!live) return SUBSCRIPTION_CATEGORIES.map(category => category.sentenceLabel).join(', ');
+
+  const names = live.map(
+    entry =>
+      SUBSCRIPTION_CATEGORIES.find(category => category.key === entry.key)?.sentenceLabel ??
+      entry.label,
+  );
+
+  return names.length ? names.join(', ') : 'eligible card spend';
+};
 
 /**
  * Display name for a category key a cashback row was billed under ("ai" → "AI").

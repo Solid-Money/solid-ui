@@ -20,11 +20,7 @@ export interface CategoryCashbackBrand {
 
 // Positions and intrinsic SVG dimensions are the 30px merchant slots exported
 // from Figma 27572:3100, including the ring and transformed logo layers.
-// Keep the unused merchant artwork available without exposing these categories in the UI.
-export const CATEGORY_CASHBACK_BRANDS: Record<
-  CashbackCategoryKey | 'rides' | 'airlines',
-  CategoryCashbackBrand[]
-> = {
+export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashbackBrand[]> = {
   ai: [
     {
       name: 'OpenAI',

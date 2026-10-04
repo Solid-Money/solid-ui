@@ -1781,6 +1781,16 @@ export enum RewardsTier {
   ULTRA = 'ultra',
 }
 
+/** One subscription category and what a tier earns on it. */
+export interface SubscriptionCategoryRate {
+  /** Stable config key, e.g. "ai", "rides". Keys the sheet's artwork. */
+  key: string;
+  /** Display label, e.g. "AI Tools". */
+  label: string;
+  /** Cashback the tier earns on the category, in percentage points. */
+  rate: number;
+}
+
 export interface RewardsUserData {
   currentTier: RewardsTier;
   totalPoints: number;
@@ -1850,6 +1860,20 @@ export interface RewardsUserData {
   subscriptionDiscountRate?: number;
   /** Subscription categories the current tier earns the discount on per month. */
   subscriptionCategoryLimit?: number;
+  /**
+   * What the current tier earns on each configured category, in percentage
+   * points. Absent on older backends, which is what makes the category sheet
+   * fall back to its design rates.
+   *
+   * `subscriptionDiscountRate` is a single figure and cannot describe a tier
+   * that pays differently per category — Prime earns 10% on AI but 8% on Rides
+   * — so prefer this wherever both are available. A category present with a
+   * rate of 0 is locked for the tier, not missing.
+   *
+   * Once sent, the list is the whole offer: a category an admin has switched
+   * off in the admin portal is left out entirely and should not be shown.
+   */
+  subscriptionCategoryRates?: SubscriptionCategoryRate[];
   /**
    * FUSE-in-savings tier unlock ("skip the line"). Absent on older backends,
    * which is what hides the section.
@@ -2064,6 +2088,17 @@ export interface TierBenefits {
    * on older backends, which is what hides that stat.
    */
   subscriptionDiscountRate?: number;
+  /**
+   * What this tier earns on each configured category, in percentage points —
+   * the per-tier view of {@link RewardsUserData.subscriptionCategoryRates}.
+   *
+   * The tier comparison page compares categories side by side, which the
+   * single {@link subscriptionDiscountRate} cannot express once rates differ
+   * per category. Absent on older backends, which is what makes that page fall
+   * back to its design rates; a category present at 0 is locked for this tier,
+   * and one an admin has paused is left out entirely.
+   */
+  subscriptionCategoryRates?: SubscriptionCategoryRate[];
   subscriptionDiscount: TierBenefit | null;
   cardCashbackCap: TierBenefit;
   subscriptionDiscountCap: TierBenefit | null;

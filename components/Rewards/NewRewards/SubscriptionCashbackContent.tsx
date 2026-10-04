@@ -8,13 +8,14 @@ import { RewardsTier } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
 import {
-  type CashbackCategoryKey,
-  CATEGORY_CASHBACK_TABS,
+  type CashbackCategory,
   categoryCashbackPresentation,
+  hasCategoryArtwork,
 } from './categoryCashback';
 import CategoryCashbackBrandBadge from './CategoryCashbackBrandBadge';
 import { CATEGORY_CASHBACK_BRANDS } from './categoryCashbackBrands';
 import RewardsDiamondIcon from './RewardsDiamondIcon';
+import { TIER_LABELS } from './tierBenefitsPresentation';
 
 import type { SubscriptionCashbackData } from './SubscriptionCashbackSheet.types';
 
@@ -31,9 +32,21 @@ interface SubscriptionCashbackContentProps extends SubscriptionCashbackData {
 const REWARDS_TERMS_URL =
   'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
 
-const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate: number }) => {
-  const locked = rate <= 0;
-  const label = locked ? 'Prime' : `${formatNumber(rate, 2, 0)}%`;
+const CategoryCard = ({
+  category,
+  unlockLabel,
+}: {
+  category: CashbackCategory;
+  /** Tier that would unlock this category, for the locked pill. */
+  unlockLabel: string;
+}) => {
+  const locked = category.rate <= 0;
+  const label = locked ? unlockLabel : `${formatNumber(category.rate, 2, 0)}%`;
+  // Logos are the one thing that cannot come from the API — nobody has drawn
+  // them for a category added in the admin portal. The row still renders, just
+  // without the brand list, rather than the category vanishing from a sheet
+  // the backend is paying on.
+  const brands = hasCategoryArtwork(category.key) ? CATEGORY_CASHBACK_BRANDS[category.key] : [];
 
   return (
     <View className="w-full overflow-hidden rounded-twice bg-[#2B2B2B] pb-[9px]">
@@ -64,7 +77,7 @@ const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate:
       </View>
       <View className="h-px bg-white/10" />
       <View className="pt-[10px]">
-        {CATEGORY_CASHBACK_BRANDS[category].map(brand => (
+        {brands.map(brand => (
           <View
             key={brand.name}
             className={cn('h-[55px] flex-row items-center pl-5 pr-[18px]', locked && 'opacity-50')}
@@ -83,14 +96,25 @@ const CategoryCard = ({ category, rate }: { category: CashbackCategoryKey; rate:
 const SubscriptionCashbackContent = ({
   currentTier,
   subscriptionDiscountRate,
+  subscriptionCategoryRates,
   onGetMoreCashback,
   onDismiss,
   animationSession,
   isSheet = true,
   sheetTopPadding = 60,
 }: SubscriptionCashbackContentProps) => {
-  const [selectedCategory, setSelectedCategory] = useState<CashbackCategoryKey>('ai');
-  const presentation = categoryCashbackPresentation(currentTier, subscriptionDiscountRate);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const presentation = categoryCashbackPresentation(
+    currentTier,
+    subscriptionDiscountRate,
+    subscriptionCategoryRates,
+  );
+  // The tabs are whatever the API reports, in the order it reports them. The
+  // selection is held by key rather than index, so a category paused while the
+  // sheet is open falls back to the first one left instead of pointing at a row
+  // that is no longer there.
+  const { categories } = presentation;
+  const activeCategory = categories.find(category => category.key === selectedKey) ?? categories[0];
 
   return (
     <View
@@ -118,41 +142,49 @@ const SubscriptionCashbackContent = ({
         {presentation.subtitle}
       </Text>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mt-7 h-9 w-full rounded-full bg-white/[0.08]"
-        contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
-        accessibilityRole="tablist"
-      >
-        {CATEGORY_CASHBACK_TABS.map(category => {
-          const selected = selectedCategory === category.key;
-          return (
-            <Pressable
-              key={category.key}
-              accessibilityRole="tab"
-              aria-selected={selected}
-              accessibilityLabel={category.label}
-              accessibilityState={{ selected }}
-              onPress={() => setSelectedCategory(category.key)}
-              className={cn(
-                'h-7 items-center justify-center rounded-full px-3',
-                selected && 'bg-white',
-              )}
-            >
-              <Text
-                className="text-sm font-medium"
-                style={{ color: selected ? '#0F0F11' : 'rgba(255,255,255,0.6)' }}
+      {/* An empty bar would be drawn as a bare pill if every category were off. */}
+      {categories.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-7 h-9 w-full rounded-full bg-white/[0.08]"
+          contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
+          accessibilityRole="tablist"
+        >
+          {categories.map(category => {
+            const selected = activeCategory?.key === category.key;
+            return (
+              <Pressable
+                key={category.key}
+                accessibilityRole="tab"
+                aria-selected={selected}
+                accessibilityLabel={category.label}
+                accessibilityState={{ selected }}
+                onPress={() => setSelectedKey(category.key)}
+                className={cn(
+                  'h-7 items-center justify-center rounded-full px-3',
+                  selected && 'bg-white',
+                )}
               >
-                {category.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      <View className="mt-4 w-full">
-        <CategoryCard category={selectedCategory} rate={presentation.rates[selectedCategory]} />
-      </View>
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: selected ? '#0F0F11' : 'rgba(255,255,255,0.6)' }}
+                >
+                  {category.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+      {activeCategory && (
+        <View className="mt-4 w-full">
+          <CategoryCard
+            category={activeCategory}
+            unlockLabel={TIER_LABELS[presentation.upgradeTier]}
+          />
+        </View>
+      )}
 
       <Text
         className="ml-[3px] mt-7 w-full max-w-[323px] self-start text-base text-white/70"

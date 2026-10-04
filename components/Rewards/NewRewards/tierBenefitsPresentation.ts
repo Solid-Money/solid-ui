@@ -2,6 +2,12 @@ import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
 
+import {
+  type CashbackCategory,
+  categoryCashbackPresentation,
+  formatCashbackRate,
+} from './categoryCashback';
+
 export const TIER_LABELS: Record<RewardsTier, string> = {
   [RewardsTier.CORE]: 'Core',
   [RewardsTier.PRIME]: 'Prime',
@@ -13,53 +19,93 @@ export const TIER_PRESENTATION = {
     headline: 'The Solid\nFoundation',
     accent: '#94F27F',
     subscriptionRate: null,
+    rideRate: null,
+    airlineRate: null,
     stats: [
       { value: formatTierCashbackRate(RewardsTier.CORE), label: 'Cashback' },
       { value: '$0', label: 'Card cost' },
     ],
     perks: [
-      { title: 'Free virtual card', description: 'Issued instantly' },
-      { title: 'Set up in minutes', description: 'Under 5 minutes' },
-      { title: 'Spend globally', description: 'Card accepted in 180+ countries' },
+      { icon: 'card', title: 'Free virtual card', description: 'Issued instantly' },
+      { icon: 'rocket', title: 'Set up in minutes', description: 'Under 5 minutes' },
+      { icon: 'globe', title: 'Spend globally', description: 'Card accepted in 180+ countries' },
     ],
   },
   [RewardsTier.PRIME]: {
     headline: 'Elevated Daily\nRewards',
     accent: '#FFFFFF',
     subscriptionRate: '10%',
+    rideRate: '8%',
+    airlineRate: null,
     stats: [
       { value: formatTierCashbackRate(RewardsTier.PRIME), label: 'Cashback' },
       { value: '+2%', label: 'Yield boost' },
       { value: '10%', label: 'Subscriptions' },
     ],
     perks: [
-      { title: 'Yield boost', description: '+2% APY on up to $10K in savings' },
-      { title: 'Subscription rewards', description: '10% on subscriptions' },
-      { title: 'Higher cashback caps', description: 'Up to $100 cashback a month' },
+      { icon: 'yield', title: 'Yield boost', description: '+2% APY on up to $10K in savings' },
+      {
+        icon: 'subscription',
+        title: 'Subscription & ride rewards',
+        description: '10% on subscriptions, 8% on rides',
+      },
+      { icon: 'cap', title: 'Higher cashback caps', description: 'Up to $100 cashback a month' },
     ],
   },
   [RewardsTier.ULTRA]: {
     headline: 'Next-Level\nSpending Power',
     accent: '#EFE5A9',
     subscriptionRate: '20%',
+    rideRate: '10%',
+    airlineRate: '10%',
     stats: [
       { value: formatTierCashbackRate(RewardsTier.ULTRA), label: 'Cashback' },
       { value: '+3%', label: 'Yield boost' },
       { value: '20%', label: 'Subscriptions' },
     ],
     perks: [
-      { title: 'Yield boost', description: '+3% APY on up to $25K in savings' },
-      { title: 'Subscription rewards', description: '20% on subscriptions' },
+      { icon: 'yield', title: 'Yield boost', description: '+3% APY on up to $25K in savings' },
+      {
+        icon: 'subscription',
+        title: 'Subscription & ride rewards',
+        description: '20% on subscriptions, 10% on rides',
+      },
+      { icon: 'airline', title: 'Airline rewards', description: '10% back on 12 global airlines' },
     ],
   },
 } as const;
+
+/** Which glyph a perk row draws, so the list can be filtered without the icons sliding. */
+export type PerkIconName =
+  | 'card'
+  | 'rocket'
+  | 'globe'
+  | 'yield'
+  | 'subscription'
+  | 'cap'
+  | 'airline';
 
 export interface TierPresentationContent {
   headline: string;
   accent: string;
   subscriptionRate: string | null;
+  /** Null when this tier earns nothing on rides, or an admin has paused them. */
+  rideRate: string | null;
+  /** Null when this tier earns nothing on airlines, or an admin has paused them. */
+  airlineRate: string | null;
+  /**
+   * The categories the cashback panel draws, as the API reports them — its
+   * list, its labels, its rates, in its order.
+   *
+   * Resolved here rather than in the panel so one call decides what this tier's
+   * screen says about categories: the rate on each row, the ride and airline
+   * figures in the perk copy, and whether a perk is advertised at all. A
+   * category an admin has paused is absent; one this tier simply does not earn
+   * on is present at 0, which is the locked row that sells the upgrade.
+   */
+  subscriptionCategories: CashbackCategory[];
   stats: { value: string; label: string }[];
-  perks: { title: string; description: string }[];
+  perks: { icon: PerkIconName; title: string; description: string }[];
 }
 
 const balanceCapLabel = (amount: number) =>
@@ -98,11 +144,28 @@ export function tierPresentationContent(
         : 0;
   const yieldRate = `${yieldPercentage > 0 ? '+' : ''}${yieldPercentage}%`;
 
+  // One resolution of this tier's category rates, shared by the cashback rows
+  // and the perk copy, so the panel and the prose beside it cannot disagree.
+  // It also carries the design rates for a backend that sends none, which is
+  // why the ride and airline figures no longer come off the fallback table.
+  const category = categoryCashbackPresentation(
+    tier,
+    subscriptionPercentage,
+    live?.subscriptionCategoryRates,
+  );
+  /** A rate to advertise: 0 for a category this tier is locked out of or an admin paused. */
+  const earns = (key: string): number => category.rateFor(key);
+  const ridePercentage = earns('rides');
+  const airlinePercentage = earns('airlines');
+
   return {
     ...fallback,
     subscriptionRate: hasSubscriptionRate
       ? `${subscriptionPercentage}%`
       : fallback.subscriptionRate,
+    rideRate: ridePercentage > 0 ? formatCashbackRate(ridePercentage) : null,
+    airlineRate: airlinePercentage > 0 ? formatCashbackRate(airlinePercentage) : null,
+    subscriptionCategories: category.categories,
     stats: fallback.stats.map(stat => ({
       ...stat,
       value:
@@ -112,15 +175,32 @@ export function tierPresentationContent(
             ? yieldRate
             : stat.value,
     })),
-    perks: fallback.perks.map(perk => ({
-      ...perk,
-      description:
-        perk.title === 'Yield boost'
-          ? `${yieldRate} APY on up to ${balanceCapLabel(balanceCap)} in savings`
-          : perk.title === 'Subscription rewards'
-            ? `${subscriptionPercentage}% on subscriptions`
-            : perk.description,
-    })),
+    perks: fallback.perks
+      // An airline perk with nothing behind it is an advert for a category the
+      // backend has stopped paying, so the row goes rather than reading "0%".
+      // Icons are named on the perk, not taken from its position, so dropping
+      // one does not slide the others onto the wrong glyph.
+      .filter(perk => perk.icon !== 'airline' || airlinePercentage > 0)
+      .map(perk => ({
+        ...perk,
+        // Rides drop out of the title as well as the copy: a perk headed
+        // "& ride rewards" is an advert for them, which is the one thing
+        // pausing a category has to stop.
+        title:
+          perk.icon === 'subscription' && ridePercentage <= 0 ? 'Subscription rewards' : perk.title,
+        description:
+          perk.icon === 'yield'
+            ? `${yieldRate} APY on up to ${balanceCapLabel(balanceCap)} in savings`
+            : perk.icon === 'subscription'
+              ? ridePercentage > 0
+                ? `${subscriptionPercentage}% on subscriptions, ${formatCashbackRate(
+                    ridePercentage,
+                  )} on rides`
+                : `${subscriptionPercentage}% on subscriptions`
+              : perk.icon === 'airline'
+                ? `${formatCashbackRate(airlinePercentage)} back on 12 global airlines`
+                : perk.description,
+      })),
   };
 }
 
