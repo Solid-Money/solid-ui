@@ -100,6 +100,13 @@ const SubscriptionCashbackContent = ({
     subscriptionDiscountRate,
     subscriptionCategoryRates,
   );
+  // Only the categories the backend still has switched on. The selection is
+  // held by key rather than derived, so a category paused while the sheet is
+  // open (or simply not on offer) falls back to the first one left instead of
+  // asking `CATEGORY_CASHBACK_BRANDS` for artwork that is no longer rendered.
+  const { categories } = presentation;
+  const activeCategory = categories.includes(selectedCategory) ? selectedCategory : categories[0];
+  const visibleTabs = CATEGORY_CASHBACK_TABS.filter(tab => categories.includes(tab.key));
 
   return (
     <View
@@ -127,41 +134,46 @@ const SubscriptionCashbackContent = ({
         {presentation.subtitle}
       </Text>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mt-7 h-9 w-full rounded-full bg-white/[0.08]"
-        contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
-        accessibilityRole="tablist"
-      >
-        {CATEGORY_CASHBACK_TABS.map(category => {
-          const selected = selectedCategory === category.key;
-          return (
-            <Pressable
-              key={category.key}
-              accessibilityRole="tab"
-              aria-selected={selected}
-              accessibilityLabel={category.label}
-              accessibilityState={{ selected }}
-              onPress={() => setSelectedCategory(category.key)}
-              className={cn(
-                'h-7 items-center justify-center rounded-full px-3',
-                selected && 'bg-white',
-              )}
-            >
-              <Text
-                className="text-sm font-medium"
-                style={{ color: selected ? '#0F0F11' : 'rgba(255,255,255,0.6)' }}
+      {/* An empty bar would be drawn as a bare pill if every category were off. */}
+      {visibleTabs.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-7 h-9 w-full rounded-full bg-white/[0.08]"
+          contentContainerStyle={{ padding: 4, flexGrow: 1, justifyContent: 'space-between' }}
+          accessibilityRole="tablist"
+        >
+          {visibleTabs.map(category => {
+            const selected = activeCategory === category.key;
+            return (
+              <Pressable
+                key={category.key}
+                accessibilityRole="tab"
+                aria-selected={selected}
+                accessibilityLabel={category.label}
+                accessibilityState={{ selected }}
+                onPress={() => setSelectedCategory(category.key)}
+                className={cn(
+                  'h-7 items-center justify-center rounded-full px-3',
+                  selected && 'bg-white',
+                )}
               >
-                {category.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      <View className="mt-4 w-full">
-        <CategoryCard category={selectedCategory} rate={presentation.rates[selectedCategory]} />
-      </View>
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: selected ? '#0F0F11' : 'rgba(255,255,255,0.6)' }}
+                >
+                  {category.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+      {activeCategory && (
+        <View className="mt-4 w-full">
+          <CategoryCard category={activeCategory} rate={presentation.rates[activeCategory]} />
+        </View>
+      )}
 
       <Text
         className="ml-[3px] mt-7 w-full max-w-[323px] self-start text-base text-white/70"
