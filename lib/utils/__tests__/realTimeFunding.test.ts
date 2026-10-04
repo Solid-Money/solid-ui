@@ -65,7 +65,6 @@ const status = (overrides: Partial<RainRtfStatus> = {}): RainRtfStatus => ({
     body: 'terms',
     consentLabel: 'I authorize transfers according to the Real-Time Funding Terms.',
   },
-  legacyRevokeAvailable: false,
   chains: [chain()],
   ...overrides,
 });

@@ -1110,8 +1110,6 @@ export interface RainRtfStatus {
     body: string;
     consentLabel: string;
   };
-  /** Whether revoking the legacy operator allowance may be offered yet. */
-  legacyRevokeAvailable: boolean;
   /**
    * Every chain to authorize. One signature each, unavoidably: a user
    * operation is executed by one chain's EntryPoint, so approvals on
