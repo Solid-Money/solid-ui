@@ -75,6 +75,7 @@ import {
   getCardDepositTokenSymbol,
   getCardFundingAddress,
 } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { getChain } from '@/lib/wagmi';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -808,7 +809,7 @@ export default function CardDepositInternalForm() {
         Toast.show({
           type: 'error',
           text1: 'Bridge failed',
-          text2: error instanceof Error ? error.message : 'Unknown error occurred',
+          text2: userFacingErrorMessage(error),
           props: { badgeText: 'Onchain' },
         });
       }

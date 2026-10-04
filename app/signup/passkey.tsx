@@ -20,6 +20,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { redactSecrets, userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
@@ -89,7 +90,7 @@ export default function SignupPasskey() {
       console.error('Failed to create passkey:', err);
 
       // Handle specific WebAuthn errors
-      let errorMessage = err?.message || 'Failed to create passkey. Please try again.';
+      let errorMessage = userFacingErrorMessage(err, 'Failed to create passkey. Please try again.');
       if (err?.name === 'NotAllowedError') {
         errorMessage = 'Passkey setup was cancelled. Please try again.';
       } else if (err?.name === 'TimeoutError') {
@@ -100,7 +101,7 @@ export default function SignupPasskey() {
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: errorMessage,
+        error: redactSecrets(err?.message || errorMessage),
         step: 'passkey',
       });
 

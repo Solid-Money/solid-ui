@@ -22,6 +22,7 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 
 const USDC_DECIMALS = 6;
@@ -135,7 +136,7 @@ export default function RescueToken() {
       Toast.show({
         type: 'error',
         text1: 'Rescue failed',
-        text2: err instanceof Error ? err.message : 'Please try again',
+        text2: userFacingErrorMessage(err),
         props: { badgeText: '' },
       });
     }

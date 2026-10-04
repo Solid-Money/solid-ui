@@ -24,6 +24,7 @@ import { emailSignUp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
+import { redactSecrets, userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { isUsernameTakenError } from '@/lib/utils/username';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
@@ -300,13 +301,19 @@ export default function SignupCreating() {
     } catch (err: any) {
       console.error('Failed to create account:', err);
 
-      let errorMessage = err?.message || 'Failed to create account. Please try again.';
+      // Account creation sets up the Safe client against our bundler and RPC, and
+      // viem's text for a failure there includes the request URL — which for the
+      // bundler carries its API key — so the raw message is never shown.
+      const errorMessage = userFacingErrorMessage(
+        err,
+        'Failed to create account. Please try again.',
+      );
 
       setError(errorMessage);
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: errorMessage,
+        error: redactSecrets(err?.message || errorMessage),
         ...attributionData,
         attribution_channel: attributionChannel,
       });

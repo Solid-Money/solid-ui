@@ -56,6 +56,7 @@ import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
@@ -88,11 +89,15 @@ Sentry.init({
 
   // Breadcrumbs
   maxBreadcrumbs: 100,
+  // viem error messages embed the failing RPC URL, and our bundler URLs carry the
+  // Pimlico API key in the query string — so a logged or captured user-operation
+  // failure would ship the key to Sentry verbatim. Scrub credentials from every
+  // breadcrumb and event before it leaves the device.
   beforeBreadcrumb(breadcrumb) {
     if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
       return null;
     }
-    return breadcrumb;
+    return redactSecretsDeep(breadcrumb);
   },
 
   beforeSend(event) {
@@ -102,7 +107,7 @@ Sentry.init({
     if (event.request?.cookies) {
       delete event.request.cookies;
     }
-    return event;
+    return redactSecretsDeep(event);
   },
 
   // Configure Session Replay - rates set upfront, integration added later
