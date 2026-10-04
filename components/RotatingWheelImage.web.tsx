@@ -1,9 +1,9 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-// Image here is only used for resolveAssetSource() (asset module -> URL). This
-// component renders a raw <img> so it can be driven by the Web Animations API,
-// so no React Native / expo-image component is ever mounted.
-// eslint-disable-next-line no-restricted-imports
-import { Image, StyleSheet } from 'react-native';
+// This component renders a raw <img> so it can be driven by the Web Animations
+// API, so no React Native / expo-image component is ever mounted.
+import { StyleSheet } from 'react-native';
+
+import { resolveAssetUri } from '@/lib/utils/assetUri';
 
 import type { RotatingWheelImageHandle, RotatingWheelImageProps } from './RotatingWheelImage';
 import type { CSSProperties } from 'react';
@@ -158,7 +158,7 @@ const RotatingWheelImage = forwardRef<RotatingWheelImageHandle, RotatingWheelIma
 
     useEffect(() => cancelAnimations, [cancelAnimations]);
 
-    const resolvedSource = Image.resolveAssetSource(source);
+    const resolvedUri = resolveAssetUri(source);
     const flattenedStyle = StyleSheet.flatten(style) as CSSProperties | undefined;
     const imageStyle = { width: size, height: size, ...flattenedStyle } as CSSProperties;
 
@@ -166,7 +166,7 @@ const RotatingWheelImage = forwardRef<RotatingWheelImageHandle, RotatingWheelIma
       <img
         ref={imageRef}
         className="rotating-wheel-image"
-        src={resolvedSource?.uri}
+        src={resolvedUri}
         alt=""
         draggable={false}
         style={imageStyle}
