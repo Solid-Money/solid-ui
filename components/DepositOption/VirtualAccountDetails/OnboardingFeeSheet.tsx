@@ -1,22 +1,27 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDimension } from '@/hooks/useDimension';
 import { useOnboardingFeePayment } from '@/hooks/useOnboardingFee';
 import { track } from '@/lib/analytics';
 import { OnboardingFeeProduct } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
-const SHEET_BACKGROUND = '#1A1A1A';
+/**
+ * The fee has one step, so the modal's forward/back animation has nothing to
+ * animate between. These exist only to satisfy ResponsiveModal's step API.
+ */
+const FEE_MODAL = { name: 'onboarding_fee', number: 1 };
+const FEE_MODAL_CLOSED = { name: 'close', number: 0 };
+
 const SUMMARY_BACKGROUND = '#252525';
 const DIVIDER = 'rgba(255,255,255,0.08)';
 const HANDLE = 'rgba(255,255,255,0.3)';
 const CTA_HEIGHT = 50;
-// The sheet's own bottom padding in Figma, before the device's home indicator.
-const SHEET_PADDING_BOTTOM = 34;
 
 /**
  * A dollar amount in prose — the headline, the badge, the button.
@@ -61,12 +66,21 @@ export interface OnboardingFeeSheetProps {
 }
 
 /**
- * The one-time setup fee, as a sheet over the pitch it gates.
+ * The one-time setup fee, over the pitch it gates.
  *
- * Deliberately not its own modal: the pitch stays mounted and visible behind
- * the scrim, which is both what the design shows and what makes "Not now" a
- * step back rather than a dead end — the user lands on the pitch they were
- * reading, not on an empty deposit screen.
+ * Presented through `ResponsiveModal` rather than a hand-rolled overlay: a
+ * centred popup from the medium breakpoint up, and a bottom-anchored drawer
+ * below it — the same presentation the "Add funds" deposit chooser uses.
+ *
+ * The overlay this replaced was an `absoluteFill` inside whatever rendered it,
+ * so it was bounded by its parent rather than the screen: on mobile it stopped
+ * short and sat above the tab bar, and on desktop it stretched into a
+ * full-width sheet where a dialog belonged. A modal portals out of that tree
+ * and is laid out against the viewport, which is what fixes both.
+ *
+ * The pitch stays mounted and visible behind the scrim, which is what makes
+ * "Not now" a step back rather than a dead end — the user lands on the pitch
+ * they were reading, not on an empty deposit screen.
  *
  * Renders nothing at all when there is nothing to pay. The fee is configured
  * per country and ships switched off, so "$0" is a normal answer and must not
@@ -74,7 +88,7 @@ export interface OnboardingFeeSheetProps {
  * instead, and the flow continues as if the sheet had never opened.
  */
 export const OnboardingFeeSheet = ({ product, onDismiss, onPaid }: OnboardingFeeSheetProps) => {
-  const insets = useSafeAreaInsets();
+  const { isScreenMedium } = useDimension();
   const {
     feeUsd,
     satisfied,
@@ -128,20 +142,25 @@ export const OnboardingFeeSheet = ({ product, onDismiss, onPaid }: OnboardingFee
   const amount = feeUsd ?? 0;
 
   return (
-    <View style={StyleSheet.absoluteFill} className="justify-end">
-      <Pressable
-        accessibilityLabel="Dismiss"
-        style={StyleSheet.absoluteFill}
-        className="bg-black/65"
-        onPress={isBusy ? undefined : onDismiss}
-      />
-
-      <View
-        style={[styles.sheet, { paddingBottom: SHEET_PADDING_BOTTOM + insets.bottom }]}
-        className="w-full items-center gap-[14px] overflow-hidden px-4 pt-[14px]"
-      >
-        <View style={styles.handle} />
-        <View style={styles.spacerLarge} />
+    <ResponsiveModal
+      currentModal={FEE_MODAL}
+      previousModal={FEE_MODAL_CLOSED}
+      isOpen
+      onOpenChange={open => {
+        // The scrim, the close affordance and the hardware back all arrive here.
+        // Ignored mid-payment: the transfer is already signed and dismissing
+        // would strand the confirmation.
+        if (!open && !isBusy) onDismiss();
+      }}
+      trigger={null}
+      contentKey="onboarding-fee"
+      shouldAnimate={false}
+      hideHeader
+      mobilePresentation="drawer"
+      contentClassName="bg-[#1A1A1A] md:max-w-md"
+    >
+      <View className="w-full items-center gap-[14px]">
+        {isScreenMedium ? null : <View style={styles.handle} />}
 
         <View style={styles.badge} className="items-center justify-center bg-brand/15">
           <Text className="text-[20px] font-semibold text-brand">{usd(amount)}</Text>
@@ -175,7 +194,7 @@ export const OnboardingFeeSheet = ({ product, onDismiss, onPaid }: OnboardingFee
           <Text className="w-full text-center text-[13px] leading-[18px] text-white/50">
             {insufficientFunds
               ? `Add at least ${usd(amount)} to your Solid balance to continue.`
-              : 'Next, you’ll verify your identity to open the account.'}
+              : 'Next, you\u2019ll verify your identity to open the account.'}
           </Text>
         )}
 
@@ -201,18 +220,12 @@ export const OnboardingFeeSheet = ({ product, onDismiss, onPaid }: OnboardingFee
           <Text className="text-[16px] font-medium text-white">Not now</Text>
         </Pressable>
       </View>
-    </View>
+    </ResponsiveModal>
   );
 };
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: SHEET_BACKGROUND,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
   handle: { width: 73, height: 5, borderRadius: 3, backgroundColor: HANDLE },
-  spacerLarge: { height: 8 },
   spacerSmall: { height: 2 },
   badge: { width: 64, height: 64, borderRadius: 100 },
   summary: { backgroundColor: SUMMARY_BACKGROUND, borderRadius: 16 },
