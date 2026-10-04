@@ -121,6 +121,8 @@ import {
   RainConsumerType,
   RainContractResponseDto,
   RainKycSubmitResponse,
+  RainRtfConfirmRequest,
+  RainRtfStatus,
   RecordStocksFeeParams,
   RecordSwapFeeParams,
   ReferralSummary,
@@ -1488,6 +1490,60 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Rain Real-Time Funding: what this cardholder must approve, and whether they
+ * have.
+ *
+ * Deliberately total — an account that is not offered RTF comes back
+ * `eligible: false` with a reason rather than a 4xx, so the card screen can ask
+ * on every open without an error state for a feature that simply is not on.
+ */
+export const getRainRtfStatus = async (): Promise<RainRtfStatus> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/rtf`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Records that the cardholder accepted the Real-Time Funding Terms and granted
+ * the allowances.
+ *
+ * Grants nothing. The allowance was created by the wallet's own signature, and
+ * the backend reads the chain to see what actually landed before writing — so
+ * calling this after a reverted transaction records the truth (no allowance)
+ * rather than an authorization that does not exist. What it buys is the
+ * compliance record of the consent, and a refreshed status so the card screen
+ * flips on the same interaction instead of waiting out a cache.
+ */
+export const confirmRainRtf = async (body: RainRtfConfirmRequest): Promise<RainRtfStatus> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/rtf/confirm`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) throw response;
