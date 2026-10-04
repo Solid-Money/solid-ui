@@ -1626,6 +1626,16 @@ export interface Cashback {
   fiatCurrency?: string;
   payoutAt?: string;
   /**
+   * The on-chain transfer that paid this row out, which is also the hash of the
+   * wallet activity the payout lands as — see `isCashbackPayoutActivity`, which
+   * uses it to keep that duplicate row out of the feed.
+   *
+   * Absent until the row is paid. A row settled against cashback debt rather
+   * than paid on-chain carries the sentinel `'DEDUCTED_FROM_DEBT'` instead of a
+   * hash, so never assume this parses as one.
+   */
+  payoutTxHash?: string;
+  /**
    * USD this row is projected to pay out when its escrow matures.
    *
    * An escrowed row has no payout amount yet — `soUsdAmount` is written when it
