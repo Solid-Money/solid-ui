@@ -19,6 +19,14 @@ import {
   FeePaymentAsset,
   selectFeePayment,
 } from '@/lib/utils/onboardingFee';
+import {
+  clearPendingPayment,
+  describePaymentError,
+  describePaymentFailure,
+  getPendingPayment,
+  PendingPayment,
+  setPendingPayment,
+} from '@/lib/utils/onboardingFeeRetry';
 import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
@@ -206,6 +214,50 @@ export const useOnboardingFeePayment = (
   const isLoading =
     isLoadingQuote || (canRead && owes && (isLoadingSoUsd || isLoadingUsdc || isLoadingRate));
 
+  /**
+   * Credit a payment that is already on chain.
+   *
+   * Clears the pending record only on success, or on a refusal the server will
+   * keep giving — a transient failure must leave it in place so the next press
+   * re-confirms this payment instead of making another one.
+   */
+  const settle = useCallback(
+    async (attempt: PendingPayment): Promise<boolean> => {
+      setPhase('confirming');
+      try {
+        const confirmed = await confirm({
+          product,
+          transactionHash: attempt.transactionHash,
+          chainId: attempt.chainId,
+        });
+
+        if (!confirmed.satisfied) {
+          setPhase('idle');
+          setError('We could not confirm your payment. Please contact support.');
+          return false;
+        }
+
+        clearPendingPayment(product);
+        setPhase('paid');
+        return true;
+      } catch (caught) {
+        const { message, retryable } = await describePaymentFailure(caught);
+
+        // A settled refusal — the transaction genuinely does not pay this fee,
+        // or has already been used. Re-confirming it will never succeed, so the
+        // record is dropped and the user can choose to pay again. Deliberately
+        // their choice: we do not spend their money a second time on their
+        // behalf after telling them the first one failed.
+        if (!retryable) clearPendingPayment(product);
+
+        setPhase('idle');
+        setError(message);
+        return false;
+      }
+    },
+    [confirm, product],
+  );
+
   const pay = useCallback(async (): Promise<boolean> => {
     setError(null);
 
@@ -217,6 +269,21 @@ export const useOnboardingFeePayment = (
     if (!quote || !user || !safeAddress) {
       setError('Your account is still loading. Please try again in a moment.');
       return false;
+    }
+
+    // A payment is already on chain and simply was not credited — confirm THAT
+    // one rather than sending more money. The transfer is the irreversible
+    // half; re-running it because our own bookkeeping call failed is how a user
+    // ends up paying twice for one fee.
+    //
+    // Checked BEFORE anything that reasons about the balance, and that order is
+    // the whole point: paying the fee is what takes the money, so the balance
+    // of a user with a pending payment is usually no longer enough to cover it.
+    // Asking "can you afford this?" first would answer "add funds" to someone
+    // who has already paid.
+    const pending = getPendingPayment(product);
+    if (pending) {
+      return await settle(pending);
     }
 
     const transfer =
@@ -268,27 +335,18 @@ export const useOnboardingFeePayment = (
         return false;
       }
 
-      setPhase('confirming');
-      const confirmed = await confirm({
-        product,
-        transactionHash,
-        chainId: FEE_CHAIN.id,
-      });
+      // Recorded BEFORE the confirmation is attempted, so a failure anywhere
+      // below leaves a record of money that has already moved.
+      const attempt: PendingPayment = { transactionHash, chainId: FEE_CHAIN.id };
+      setPendingPayment(product, attempt);
 
-      if (!confirmed.satisfied) {
-        setPhase('idle');
-        setError('We could not confirm your payment. Please contact support.');
-        return false;
-      }
-
-      setPhase('paid');
-      return true;
+      return await settle(attempt);
     } catch (caught) {
       setPhase('idle');
       setError(await describePaymentError(caught));
       return false;
     }
-  }, [confirm, payment, product, quote, safeAA, safeAddress, user]);
+  }, [payment, product, quote, safeAA, safeAddress, settle, user]);
 
   return {
     feeUsd: quote?.feeUsd,
@@ -311,23 +369,3 @@ export const useOnboardingFeePayment = (
  * been used" — is in the body and is the most useful thing we can say. Anything
  * unreadable falls back to a generic line rather than surfacing a status code.
  */
-async function describePaymentError(caught: unknown): Promise<string> {
-  const generic = 'Something went wrong paying the setup fee. Please try again.';
-
-  if (caught instanceof Error) {
-    return caught.message.includes('cancel') ? '' : caught.message || generic;
-  }
-
-  if (typeof Response !== 'undefined' && caught instanceof Response) {
-    try {
-      const body = (await caught.json()) as { message?: string };
-      return body?.message || generic;
-    } catch {
-      return generic;
-    }
-  }
-
-  return generic;
-}
-
-export default useOnboardingFeePayment;

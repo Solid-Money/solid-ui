@@ -1,8 +1,4 @@
-import {
-  CARD_DEPOSIT_TOLERANCE_USD,
-  MINIMUM_CARD_DEPOSIT_CENTS,
-  MINIMUM_CARD_DEPOSIT_USD,
-} from '@/constants/card';
+import { MINIMUM_CARD_DEPOSIT_CENTS } from '@/constants/card';
 import { CardProvider } from '@/lib/types';
 
 /**
@@ -55,21 +51,3 @@ export const requiresCardDeposit = ({
 /** Whether the user has deposited at least the minimum required collateral (cents). */
 export const hasMetCardDeposit = (depositedCents: number | null | undefined): boolean =>
   (depositedCents ?? 0) >= MINIMUM_CARD_DEPOSIT_CENTS;
-
-/**
- * Whether the user holds at least the minimum required amount in the savings
- * (soUSD) vault — the deposit step's completion condition, evaluated before any
- * card exists.
- *
- * `minimumUsd` comes from `/cards/status.minimumDepositUsd` where available, so
- * the bar can move without an app release; {@link MINIMUM_CARD_DEPOSIT_USD} is
- * the fallback. The tolerance absorbs bridge fees and share-rate rounding so a
- * genuine deposit is not left a few cents short.
- *
- * This mirrors what the backend checks, but it is not the check that matters:
- * the server re-reads the balance on-chain before spending anything.
- */
-export const hasMetSavingsDeposit = (
-  savingsUsd: number | null | undefined,
-  minimumUsd: number = MINIMUM_CARD_DEPOSIT_USD,
-): boolean => (savingsUsd ?? 0) >= minimumUsd - CARD_DEPOSIT_TOLERANCE_USD;

@@ -23,9 +23,9 @@ jest.mock('@/lib/utils', () => ({
 type PaymentState = ReturnType<typeof defaultPayment>;
 
 const defaultPayment = () => ({
-  feeUsd: 10,
+  feeUsd: 10 as number | undefined,
   satisfied: false,
-  payment: { asset: { symbol: 'soUSD' } },
+  payment: { asset: { symbol: 'soUSD' } } as { asset: { symbol: string } } | undefined,
   availableUsd: 1284.5,
   insufficientFunds: false,
   isLoading: false,
