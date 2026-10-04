@@ -157,24 +157,25 @@ export const scaleBrandGlyph = (glyph: { width: number; height: number }, badgeS
 /**
  * Comma-joined category names for mid-sentence copy: "AI, streaming, music".
  *
- * `liveKeys` are the categories the backend still has switched on, as the
- * rewards payload reports them. Pass them wherever they are to hand: a
- * category an admin has paused should not be named in the copy that sells the
- * perk. Omit them (an older backend sends none) to name the whole curated
- * list, which is what this did before the toggle existed.
+ * `live` are the categories the rewards payload reports — the API's list and
+ * its labels. Each is named with this module's curated mid-sentence form where
+ * it has one ("AI" rather than "ai"), and with the API's own label otherwise,
+ * so a category added in the admin portal is named instead of silently
+ * dropped, and a paused one is not named at all.
  *
- * When none of the curated categories is live the copy goes generic rather
- * than empty — the card it titles only renders when something still pays, and
- * that something may be a category this list does not cover (Rides).
+ * Omit `live` (an older backend sends no list) to name the curated list, which
+ * is what this did before the categories became config.
  */
-export const subscriptionCategoriesSentence = (liveKeys?: string[]) => {
-  const live = liveKeys
-    ? SUBSCRIPTION_CATEGORIES.filter(category => liveKeys.includes(category.key))
-    : SUBSCRIPTION_CATEGORIES;
+export const subscriptionCategoriesSentence = (live?: { key: string; label: string }[]) => {
+  if (!live) return SUBSCRIPTION_CATEGORIES.map(category => category.sentenceLabel).join(', ');
 
-  return live.length
-    ? live.map(category => category.sentenceLabel).join(', ')
-    : 'eligible card spend';
+  const names = live.map(
+    entry =>
+      SUBSCRIPTION_CATEGORIES.find(category => category.key === entry.key)?.sentenceLabel ??
+      entry.label,
+  );
+
+  return names.length ? names.join(', ') : 'eligible card spend';
 };
 
 /**

@@ -3,7 +3,7 @@ import { TIER_YIELD_BOOST_RATES } from '@/lib/tierYieldBoost';
 import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@/lib/types';
 
 import {
-  type CashbackCategoryKey,
+  type CashbackCategory,
   categoryCashbackPresentation,
   formatCashbackRate,
 } from './categoryCashback';
@@ -94,17 +94,16 @@ export interface TierPresentationContent {
   /** Null when this tier earns nothing on airlines, or an admin has paused them. */
   airlineRate: string | null;
   /**
-   * The categories the cashback panel should draw, in the order it draws them.
+   * The categories the cashback panel draws, as the API reports them — its
+   * list, its labels, its rates, in its order.
    *
    * Resolved here rather than in the panel so one call decides what this tier's
-   * screen says about categories — the rate on each row, the ride and airline
+   * screen says about categories: the rate on each row, the ride and airline
    * figures in the perk copy, and whether a perk is advertised at all. A
    * category an admin has paused is absent; one this tier simply does not earn
    * on is present at 0, which is the locked row that sells the upgrade.
    */
-  subscriptionCategories: CashbackCategoryKey[];
-  /** What this tier earns on each category, in percentage points. */
-  subscriptionCategoryRates: Record<CashbackCategoryKey, number>;
+  subscriptionCategories: CashbackCategory[];
   stats: { value: string; label: string }[];
   perks: { icon: PerkIconName; title: string; description: string }[];
 }
@@ -155,8 +154,7 @@ export function tierPresentationContent(
     live?.subscriptionCategoryRates,
   );
   /** A rate to advertise: 0 for a category this tier is locked out of or an admin paused. */
-  const earns = (key: CashbackCategoryKey): number =>
-    category.categories.includes(key) ? category.rates[key] : 0;
+  const earns = (key: string): number => category.rateFor(key);
   const ridePercentage = earns('rides');
   const airlinePercentage = earns('airlines');
 
@@ -168,7 +166,6 @@ export function tierPresentationContent(
     rideRate: ridePercentage > 0 ? formatCashbackRate(ridePercentage) : null,
     airlineRate: airlinePercentage > 0 ? formatCashbackRate(airlinePercentage) : null,
     subscriptionCategories: category.categories,
-    subscriptionCategoryRates: category.rates,
     stats: fallback.stats.map(stat => ({
       ...stat,
       value:

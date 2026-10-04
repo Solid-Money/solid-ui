@@ -26,6 +26,7 @@ import { RewardsTier, type TierBenefits, type TierFees, type TierOffer } from '@
 import {
   type CashbackCategoryKey,
   formatCashbackRate,
+  hasCategoryArtwork,
   unlockTierForCategory,
 } from './categoryCashback';
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
@@ -540,12 +541,14 @@ function PerksPanel({
  * other tiers have not loaded, or on a backend that sends no per-category
  * rates at all.
  */
-const lockedLabel = (key: CashbackCategoryKey, allBenefits?: TierBenefits[]): string => {
+const lockedLabel = (key: string, tier: RewardsTier, allBenefits?: TierBenefits[]): string => {
   const unlocks = allBenefits?.length ? unlockTierForCategory(key, allBenefits) : undefined;
+  if (unlocks) return TIER_LABELS[unlocks];
 
-  return unlocks
-    ? TIER_LABELS[unlocks]
-    : TIER_LABELS[key === 'airlines' ? RewardsTier.ULTRA : RewardsTier.PRIME];
+  // Nothing loaded to read it from: name the tier above this one, which is the
+  // only honest guess and holds for any category rather than the two the
+  // design happened to ship.
+  return TIER_LABELS[tier === RewardsTier.CORE ? RewardsTier.PRIME : RewardsTier.ULTRA];
 };
 
 /** How one category row draws itself. */
@@ -614,8 +617,7 @@ function CashbackPanel({
   // for the same category. A category an admin has paused is absent and gets
   // no row; one this tier simply does not earn on arrives at 0 and keeps its
   // locked row, which is the upsell.
-  const { subscriptionCategories: categories, subscriptionCategoryRates: rates } =
-    tierPresentationContent(tier, benefits);
+  const { subscriptionCategories: categories } = tierPresentationContent(tier, benefits);
 
   return (
     <Panel title="Cashback" s={s}>
@@ -631,14 +633,18 @@ function CashbackPanel({
           <Text style={medium(s)}>Every purchase</Text>
           <ValuePill value={formatTierCashbackRate(tier)} s={s} />
         </View>
-        {categories.map(key => {
-          const art = CATEGORY_ARTWORK[key];
-          const rate = rates[key];
-          const locked = rate <= 0;
+        {categories.map(category => {
+          // Artwork is the one thing the API cannot supply, so an unknown
+          // category draws its API label and no logos rather than being
+          // dropped from a panel the backend is paying on.
+          const art = hasCategoryArtwork(category.key)
+            ? CATEGORY_ARTWORK[category.key]
+            : { label: category.label, brands: [], asset: null, assetWidth: 0 };
+          const locked = category.rate <= 0;
 
           return (
             <View
-              key={key}
+              key={category.key}
               style={{ minHeight: 55 * s, flexDirection: 'row', alignItems: 'center' }}
             >
               <View
@@ -672,7 +678,11 @@ function CashbackPanel({
                 )}
               </View>
               <ValuePill
-                value={locked ? lockedLabel(key, allBenefits) : formatCashbackRate(rate)}
+                value={
+                  locked
+                    ? lockedLabel(category.key, tier, allBenefits)
+                    : formatCashbackRate(category.rate)
+                }
                 s={s}
                 locked={locked}
               />

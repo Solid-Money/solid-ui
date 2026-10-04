@@ -9,17 +9,20 @@ const apiRates = (rates: Record<string, number>) =>
   Object.entries(rates).map(([key, rate]) => ({ key, label: key, rate }));
 
 describe('category cashback presentation', () => {
+  /** The categories a result renders, as `{key: rate}` for readable assertions. */
+  const shown = (result: { categories: { key: string; rate: number }[] }) =>
+    Object.fromEntries(result.categories.map(category => [category.key, category.rate]));
+
   describe('with per-category rates from the API', () => {
-    it("uses the API's rate for every category it reports", () => {
+    it("uses the API's list, labels and rates", () => {
       const result = categoryCashbackPresentation(
         RewardsTier.PRIME,
         10,
         apiRates({ ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 }),
       );
 
-      expect(result.rates).toEqual({ ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 });
+      expect(shown(result)).toEqual({ ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 });
       expect(result.headlineRate).toBe(10);
-      expect(result.subtitle).toBe('on subscriptions and rides');
       expect(result.actionLabel).toBe('Upgrade to Ultra');
     });
 
@@ -30,47 +33,59 @@ describe('category cashback presentation', () => {
         apiRates({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 }),
       );
 
-      expect(result.rates).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
+      expect(shown(result)).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
       expect(result.headlineRate).toBe(20);
-      expect(result.subtitle).toBe('on subscriptions, rides and flights');
       expect(result.actionLabel).toBe('Got it');
     });
 
     // The API is the source of truth once it speaks: an admin who re-prices a
     // category in the portal must not be overridden by the design fallback.
-    it('prefers the API rate over both the flat rate and the design fallback', () => {
+    it('prefers the API rate over the design fallback', () => {
       const result = categoryCashbackPresentation(
         RewardsTier.PRIME,
         10,
         apiRates({ ai: 12, rides: 3 }),
       );
 
-      expect(result.rates.ai).toBe(12);
-      expect(result.rates.rides).toBe(3);
-      // Categories the API did not mention keep their design rate rather than
-      // silently reading as locked.
-      expect(result.rates.streaming).toBe(10);
+      expect(result.rateFor('ai')).toBe(12);
+      expect(result.rateFor('rides')).toBe(3);
       expect(result.headlineRate).toBe(12);
     });
 
-    // The payload carries every configured category, including ones this app
-    // has no tab or artwork for (Gaming, or anything added in the portal).
-    it('ignores categories the sheet cannot render', () => {
+    // The whole point of reading the list from the API: a category nobody has
+    // drawn logos for still has to appear, or the sheet disagrees with what the
+    // backend is paying. Its artwork is the caller's problem, not this one's.
+    it('keeps a category this app has no artwork for', () => {
       const result = categoryCashbackPresentation(
         RewardsTier.ULTRA,
         20,
-        apiRates({ gaming: 50, fitness: 99, ai: 20 }),
+        apiRates({ gaming: 50, fitness: 15, ai: 20 }),
       );
 
-      expect(Object.keys(result.rates).sort()).toEqual([
-        'ai',
-        'airlines',
-        'music',
-        'rides',
-        'streaming',
+      expect(Object.keys(shown(result))).toEqual(['gaming', 'fitness', 'ai']);
+      expect(result.headlineRate).toBe(50);
+    });
+
+    it('names a category with the API label, falling back to its key', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, [
+        { key: 'fitness', label: 'Gyms & Fitness', rate: 7 },
+        { key: 'books', label: '', rate: 5 },
       ]);
-      // Gaming's 50% must not become the headline for a sheet that never shows it.
-      expect(result.headlineRate).toBe(20);
+
+      expect(result.categories.map(category => category.label)).toEqual([
+        'Gyms & Fitness',
+        'books',
+      ]);
+    });
+
+    it('renders in the order the API sends', () => {
+      const result = categoryCashbackPresentation(
+        RewardsTier.ULTRA,
+        20,
+        apiRates({ rides: 10, ai: 20, streaming: 20 }),
+      );
+
+      expect(result.categories.map(category => category.key)).toEqual(['rides', 'ai', 'streaming']);
     });
 
     it('treats an unusable API rate as locked rather than NaN', () => {
@@ -80,9 +95,16 @@ describe('category cashback presentation', () => {
         apiRates({ ai: NaN, rides: -1, music: Infinity }),
       );
 
-      expect(result.rates.ai).toBe(0);
-      expect(result.rates.rides).toBe(0);
-      expect(result.rates.music).toBe(0);
+      expect(shown(result)).toEqual({ ai: 0, rides: 0, music: 0 });
+    });
+
+    it('drops an entry with no usable key', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, [
+        { key: '', label: 'Nameless', rate: 9 },
+        { key: 'ai', label: 'AI', rate: 10 },
+      ]);
+
+      expect(result.categories.map(category => category.key)).toEqual(['ai']);
     });
   });
 
@@ -90,7 +112,7 @@ describe('category cashback presentation', () => {
     it('spreads the flat rate over the subscription categories only', () => {
       const result = categoryCashbackPresentation(RewardsTier.PRIME, 25);
 
-      expect(result.rates).toEqual({ ai: 25, streaming: 25, music: 25, rides: 8, airlines: 0 });
+      expect(shown(result)).toEqual({ ai: 25, streaming: 25, music: 25, rides: 8, airlines: 0 });
       expect(result.headlineRate).toBe(25);
       expect(result.actionLabel).toBe('Upgrade to Ultra');
     });
@@ -98,24 +120,24 @@ describe('category cashback presentation', () => {
     it('keeps the design rides and airlines rates for Ultra', () => {
       const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20);
 
-      expect(result.rates).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
+      expect(shown(result)).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
       expect(result.actionLabel).toBe('Got it');
     });
 
     it('shows the locked Core offer without granting the preview benefit', () => {
       const result = categoryCashbackPresentation(RewardsTier.CORE, 0);
 
-      expect(Object.values(result.rates)).toEqual([0, 0, 0, 0, 0]);
+      expect(Object.values(shown(result))).toEqual([0, 0, 0, 0, 0]);
       expect(result.headlineRate).toBe(20);
       expect(result.actionLabel).toBe('Upgrade to Prime');
       expect(result.upgradeTier).toBe(RewardsTier.PRIME);
     });
 
-    it('does not replace an explicit zero or invalid API rate with a design rate', () => {
+    it('does not replace an explicit zero or invalid rate with a design rate', () => {
       for (const rate of [0, -1, NaN, Infinity]) {
         const result = categoryCashbackPresentation(RewardsTier.PRIME, rate);
-        expect(result.rates.ai).toBe(0);
-        expect(result.rates.music).toBe(0);
+        expect(result.rateFor('ai')).toBe(0);
+        expect(result.rateFor('music')).toBe(0);
         expect(result.headlineRate).toBe(8);
       }
     });
@@ -126,8 +148,8 @@ describe('category cashback presentation', () => {
   });
 
   // A category switched off in the admin portal is left out of the payload
-  // entirely. It has to disappear from the sheet — reappearing at its design
-  // rate would advertise cashback the backend has stopped paying.
+  // entirely. It has to disappear — reappearing at a design rate would
+  // advertise cashback the backend has stopped paying.
   describe('categories an admin has switched off', () => {
     it('shows only the categories the API still reports', () => {
       const result = categoryCashbackPresentation(
@@ -136,17 +158,8 @@ describe('category cashback presentation', () => {
         apiRates({ ai: 10, music: 10 }),
       );
 
-      expect(result.categories).toEqual(['ai', 'music']);
-    });
-
-    it('keeps the sheet-wide tab order rather than the payload order', () => {
-      const result = categoryCashbackPresentation(
-        RewardsTier.ULTRA,
-        20,
-        apiRates({ rides: 10, ai: 20, streaming: 20 }),
-      );
-
-      expect(result.categories).toEqual(['ai', 'streaming', 'rides']);
+      expect(result.categories.map(category => category.key)).toEqual(['ai', 'music']);
+      expect(result.rateFor('streaming')).toBe(0);
     });
 
     it('leaves a paused category out of the headline', () => {
@@ -156,18 +169,10 @@ describe('category cashback presentation', () => {
       expect(result.headlineRate).toBe(10);
     });
 
-    it('stops the subtitle promising a category that is off', () => {
-      expect(
-        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ ai: 20, airlines: 10 }))
-          .subtitle,
-      ).toBe('on subscriptions and flights');
-      expect(
-        categoryCashbackPresentation(RewardsTier.ULTRA, 20, apiRates({ rides: 10 })).subtitle,
-      ).toBe('on rides');
-    });
-
-    it('renders nothing when every category it knows is off', () => {
-      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, apiRates({ gaming: 10 }));
+    it('renders nothing when the API reports no categories at all', () => {
+      const result = categoryCashbackPresentation(RewardsTier.PRIME, 10, [
+        { key: '', label: '', rate: 0 },
+      ]);
 
       expect(result.categories).toEqual([]);
       expect(result.headlineRate).toBe(0);
@@ -175,14 +180,41 @@ describe('category cashback presentation', () => {
     });
 
     // Nothing to hide on a backend that cannot express the toggle.
-    it('shows every category when the API sends no per-category rates', () => {
-      expect(categoryCashbackPresentation(RewardsTier.PRIME, 10).categories).toEqual([
-        'ai',
-        'streaming',
-        'music',
-        'rides',
-        'airlines',
-      ]);
+    it('shows every design category when the API sends no list', () => {
+      expect(
+        categoryCashbackPresentation(RewardsTier.PRIME, 10).categories.map(
+          category => category.key,
+        ),
+      ).toEqual(['ai', 'streaming', 'music', 'rides', 'airlines']);
+    });
+  });
+
+  // The subtitle used to be a fixed phrase naming "subscriptions, rides and
+  // flights", which became a lie the first time a category was paused or a
+  // sixth was added. It is built from the live labels instead.
+  describe('subtitle', () => {
+    it('names the categories the tier actually earns on', () => {
+      expect(
+        categoryCashbackPresentation(
+          RewardsTier.PRIME,
+          10,
+          apiRates({ ai: 10, streaming: 10, rides: 8, airlines: 0 }),
+        ).subtitle,
+      ).toBe('on ai, streaming and rides');
+    });
+
+    it('names a category the admin added', () => {
+      expect(
+        categoryCashbackPresentation(RewardsTier.ULTRA, 20, [
+          { key: 'fitness', label: 'Fitness', rate: 9 },
+        ]).subtitle,
+      ).toBe('on Fitness');
+    });
+
+    it('advertises the whole offer on Core, which earns nothing', () => {
+      expect(
+        categoryCashbackPresentation(RewardsTier.CORE, 0, apiRates({ ai: 0, rides: 0 })).subtitle,
+      ).toBe('on ai and rides with Prime or Ultra');
     });
   });
 
@@ -241,6 +273,6 @@ describe('category cashback presentation', () => {
     );
 
     expect(result.headlineRate).toBe(20);
-    expect(result.subtitle).toBe('on subscriptions, rides and flights with Prime or Ultra');
+    expect(result.subtitle).toBe('on ai, streaming, music, rides and airlines with Prime or Ultra');
   });
 });

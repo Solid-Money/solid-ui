@@ -54,8 +54,8 @@ describe('tierPresentationContent', () => {
   });
 
   // Deep equality on the design fields only: the content also carries the
-  // resolved category list and rates, which are derived rather than designed
-  // and are asserted on their own below.
+  // resolved category list, which is derived from the API rather than designed
+  // and is asserted on its own below.
   it.each([CORE, PRIME, ULTRA])('keeps the design when %s numerical fields are absent', tier => {
     for (const content of [
       tierPresentationContent(tier),
@@ -63,11 +63,7 @@ describe('tierPresentationContent', () => {
     ]) {
       expect(content).toMatchObject(TIER_PRESENTATION[tier]);
       expect(Object.keys(content).sort()).toEqual(
-        [
-          ...Object.keys(TIER_PRESENTATION[tier]),
-          'subscriptionCategories',
-          'subscriptionCategoryRates',
-        ].sort(),
+        [...Object.keys(TIER_PRESENTATION[tier]), 'subscriptionCategories'].sort(),
       );
     }
   });
@@ -96,7 +92,9 @@ describe('tierPresentationContent', () => {
 
       expect(content.rideRate).toBe('12%');
       expect(content.airlineRate).toBe('15%');
-      expect(content.subscriptionCategoryRates.rides).toBe(12);
+      expect(content.subscriptionCategories.find(category => category.key === 'rides')?.rate).toBe(
+        12,
+      );
       expect(content.perks[1].description).toBe('20% on subscriptions, 12% on rides');
       expect(content.perks[2].description).toBe('15% back on 12 global airlines');
     });
@@ -110,7 +108,11 @@ describe('tierPresentationContent', () => {
         }),
       );
 
-      expect(content.subscriptionCategories).toEqual(['ai', 'streaming', 'music']);
+      expect(content.subscriptionCategories.map(category => category.key)).toEqual([
+        'ai',
+        'streaming',
+        'music',
+      ]);
       expect(content.rideRate).toBeNull();
       expect(content.airlineRate).toBeNull();
     });
@@ -154,8 +156,10 @@ describe('tierPresentationContent', () => {
         }),
       );
 
-      expect(content.subscriptionCategories).toContain('airlines');
-      expect(content.subscriptionCategoryRates.airlines).toBe(0);
+      expect(content.subscriptionCategories.map(category => category.key)).toContain('airlines');
+      expect(
+        content.subscriptionCategories.find(category => category.key === 'airlines')?.rate,
+      ).toBe(0);
       expect(content.airlineRate).toBeNull();
     });
   });
