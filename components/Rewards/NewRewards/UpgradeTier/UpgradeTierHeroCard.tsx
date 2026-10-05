@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CarFront } from 'lucide-react-native';
 
 import { IconBadge } from '@/components/Rewards/NewRewards/tierBenefitIcons';
 import { Text } from '@/components/ui/text';
@@ -135,6 +136,12 @@ const BenefitIcon = ({ benefitKey }: { benefitKey: TierUpgradeBenefit['key'] }) 
             contentFit="contain"
             style={{ width: 19, height: 18.6604 }}
           />
+        </IconBadge>
+      );
+    case 'rides':
+      return (
+        <IconBadge size={BENEFIT_ICON_SIZE}>
+          <CarFront size={18} color="white" strokeWidth={1.5} />
         </IconBadge>
       );
   }

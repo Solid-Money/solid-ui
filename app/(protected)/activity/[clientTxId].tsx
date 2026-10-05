@@ -64,6 +64,7 @@ import {
   getCardMerchantPlace,
   getCashbackAmount,
   isOutgoingCardTransaction,
+  mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
 import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
@@ -608,26 +609,6 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             ),
           }
         : null,
-      // The transfer that paid it. Its own row rather than folded into "Sweep":
-      // that hash is money we took to cover the purchase, this is money we sent
-      // back, and one label over both is how a cardholder ends up reading a
-      // refund as another charge.
-      refundUrl && refund?.tx_hash
-        ? {
-            key: 'refund-tx',
-            label: <Label>Refund</Label>,
-            value: (
-              <Pressable onPress={handleRefundPress} className="hover:opacity-70">
-                <View className="flex-row items-center gap-1">
-                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
-                    {eclipseAddress(refund.tx_hash)}
-                  </Underline>
-                  <ArrowUpRight color="white" size={16} />
-                </View>
-              </Pressable>
-            ),
-          }
-        : null,
       // What the merchant actually charged, in their own currency — the figure
       // the user will recognise from the till, against the dollars they were
       // billed at the top of this screen.
@@ -658,57 +639,99 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         label: <Label>soUSD price</Label>,
         value: <Value>${formatNumber(spend.so_usd_rate, 4)}</Value>,
       },
-      sweepUrl &&
-        sweepHash && {
-          key: 'sweep',
-          label: <Label>Sweep</Label>,
-          value: (
-            <Pressable onPress={handleSweepPress} className="hover:opacity-70">
-              <View className="flex-row items-center gap-1">
-                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
-                  {eclipseAddress(sweepHash)}
-                </Underline>
-                <ArrowUpRight color="white" size={16} />
-              </View>
-            </Pressable>
-          ),
-        },
-      txHash && {
-        key: 'explorer',
-        label: <Label>Explorer</Label>,
-        value: (
-          <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
-            <View className="flex-row items-center gap-1">
-              <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
-                {eclipseAddress(txHash)}
-              </Underline>
-              <ArrowUpRight color="white" size={16} />
-            </View>
-          </Pressable>
-        ),
-      },
     ].filter(Boolean) as DetailRow[];
 
     return allRows;
   }, [
     cashbackInfo,
     localDetails,
-    txHash,
-    handleExplorerPress,
     isApproved,
     isDeclined,
     cardProvider,
     spend,
-    sweepUrl,
-    sweepHash,
-    handleSweepPress,
     transaction.currency,
     declineReason,
     transaction.refunded_amount,
     refund,
-    refundUrl,
-    handleRefundPress,
   ]);
+
+  const onChainRows = useMemo(
+    () =>
+      [
+        sweepUrl &&
+          sweepHash && {
+            key: 'sweep',
+            label: <Label>Spend transaction</Label>,
+            value: (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="View spend transaction on the block explorer"
+                onPress={handleSweepPress}
+                className="active:opacity-70 web:hover:opacity-80"
+              >
+                <View className="flex-row items-center gap-1">
+                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                    {eclipseAddress(sweepHash)}
+                  </Underline>
+                  <ArrowUpRight color="white" size={16} />
+                </View>
+              </Pressable>
+            ),
+          },
+        explorerUrl &&
+          txHash && {
+            key: 'explorer',
+            label: <Label>Card transaction</Label>,
+            value: (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="View card transaction on the block explorer"
+                onPress={handleExplorerPress}
+                className="active:opacity-70 web:hover:opacity-80"
+              >
+                <View className="flex-row items-center gap-1">
+                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                    {eclipseAddress(txHash)}
+                  </Underline>
+                  <ArrowUpRight color="white" size={16} />
+                </View>
+              </Pressable>
+            ),
+          },
+        // Refunds return money to the wallet and have a separate transaction.
+        refundUrl &&
+          refund?.tx_hash && {
+            key: 'refund-tx',
+            label: <Label>Refund transaction</Label>,
+            value: (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="View refund transaction on the block explorer"
+                onPress={handleRefundPress}
+                className="active:opacity-70 web:hover:opacity-80"
+              >
+                <View className="flex-row items-center gap-1">
+                  <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                    {eclipseAddress(refund.tx_hash)}
+                  </Underline>
+                  <ArrowUpRight color="white" size={16} />
+                </View>
+              </Pressable>
+            ),
+          },
+      ].filter(Boolean) as DetailRow[],
+    [
+      txHash,
+      explorerUrl,
+      handleExplorerPress,
+      sweepUrl,
+      sweepHash,
+      handleSweepPress,
+      refund,
+      refundUrl,
+      handleRefundPress,
+    ],
+  );
 
   return (
     <PageLayout desktopOnly>
@@ -760,6 +783,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
         <DetailCard rows={merchantRows} />
         <DetailCard rows={rows} />
+        <DetailCard rows={onChainRows} />
         <ContactSupportCard transactionContext={transactionContext} />
       </View>
     </PageLayout>
@@ -845,13 +869,17 @@ export default function ActivityDetail() {
   // used to answer that with "Transaction … not found" about a transaction the
   // user was looking at a tap earlier. The row carries the merchant, amount,
   // currency, status and decline reason, which is everything below except the
-  // fees and our own ledger's view.
+  // fees and our own ledger's view. It can also carry an on-chain hash omitted
+  // by the detail response, so preserve those fields for the same transaction.
   const { transaction: listCardTransaction, isFetching: isCardListFetching } =
     useCardTransactionFromList(cardTxId, {
       fetchIfMissing: !!cardTxId && !cardTransaction && !isCardTransactionLoading,
     });
 
-  const cardTransactionDetail = cardTransaction ?? listCardTransaction;
+  const cardTransactionDetail = useMemo(
+    () => mergeCardTransactionDetails(cardTransaction, listCardTransaction),
+    [cardTransaction, listCardTransaction],
+  );
 
   // Fetch from backend if not found in cache (fallback for activities not yet loaded)
   const { data: backendActivity, isLoading: isBackendLoading } = useQuery({

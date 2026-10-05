@@ -324,7 +324,15 @@ export default function RewardsScreenNew() {
         {showJoinClubCard &&
         (joinClubTier === RewardsTier.PRIME || joinClubTier === RewardsTier.ULTRA) ? (
           <View className="mt-8 px-4">
-            <JoinTierClubCard tier={joinClubTier} onPress={() => handleUpgradeTier(joinClubTier)} />
+            <JoinTierClubCard
+              tier={joinClubTier}
+              onPress={() =>
+                router.push({
+                  pathname: '/rewards/benefits',
+                  params: { tier: joinClubTier },
+                })
+              }
+            />
           </View>
         ) : showTierUpgradeCard ? (
           <View className="mt-8 px-4">

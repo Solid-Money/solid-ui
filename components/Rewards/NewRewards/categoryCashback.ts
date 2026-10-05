@@ -13,6 +13,7 @@ export const DESIGN_CATEGORIES = [
   { key: 'ai', label: 'AI' },
   { key: 'streaming', label: 'Streaming' },
   { key: 'music', label: 'Music' },
+  { key: 'gaming', label: 'Gaming' },
   { key: 'rides', label: 'Rides' },
   { key: 'airlines', label: 'Airlines' },
 ] as const;
@@ -46,9 +47,9 @@ export interface CashbackCategory {
  * API. These are the v4 Figma values.
  */
 const FALLBACK_RATES: Record<RewardsTier, Record<CashbackCategoryKey, number>> = {
-  [RewardsTier.CORE]: { ai: 0, streaming: 0, music: 0, rides: 0, airlines: 0 },
-  [RewardsTier.PRIME]: { ai: 10, streaming: 10, music: 10, rides: 8, airlines: 0 },
-  [RewardsTier.ULTRA]: { ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 },
+  [RewardsTier.CORE]: { ai: 0, streaming: 0, music: 0, gaming: 0, rides: 0, airlines: 0 },
+  [RewardsTier.PRIME]: { ai: 10, streaming: 10, music: 10, gaming: 10, rides: 8, airlines: 0 },
+  [RewardsTier.ULTRA]: { ai: 20, streaming: 20, music: 20, gaming: 20, rides: 10, airlines: 10 },
 };
 
 /** The headline the Core sheet advertises: the best rate any tier reaches. */
@@ -105,7 +106,7 @@ const resolveCategories = (
 
   const fallback = FALLBACK_RATES[tier] ?? FALLBACK_RATES[RewardsTier.CORE];
   const flat = usableRate(subscriptionDiscountRate);
-  const subscriptionKeys: readonly string[] = ['ai', 'streaming', 'music'];
+  const subscriptionKeys: readonly string[] = ['ai', 'streaming', 'music', 'gaming'];
 
   return DESIGN_CATEGORIES.map(category => ({
     key: category.key,

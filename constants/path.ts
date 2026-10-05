@@ -24,6 +24,7 @@ type Path = {
   ONBOARDING: Href;
   WELCOME: Href;
   HOME: Href;
+  ASSETS: Href;
   // Email-first signup flow
   SIGNUP_EMAIL: Href;
   SIGNUP_OTP: Href;
@@ -111,6 +112,7 @@ export const path: Path = {
   ONBOARDING: '/onboarding',
   WELCOME: '/welcome',
   HOME: '/',
+  ASSETS: '/all-assets' as Href,
   // Email-first signup flow
   SIGNUP_EMAIL: '/signup/email',
   SIGNUP_OTP: '/signup/otp',

@@ -55,6 +55,8 @@ interface UnifiedTokenBalance extends TokenBalance {
 }
 
 interface BalanceData {
+  /** A failed network read must not be presented as a confirmed empty wallet. */
+  failedChainIds: number[];
   totalUSD: number;
   totalSoUSD: number;
   totalUSDExcludingVaultTokens: number;
@@ -310,6 +312,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
     };
   };
 
+  // Degrade as before: without the curated list every screen still gets balances. Throwing
+  // here took Send, Swap and the wallet down with the Assets overview.
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
@@ -689,6 +693,25 @@ const fetchTokenBalances = async (safeAddress: string) => {
 
   return {
     ...totals,
+    failedChainIds: Array.from(
+      new Set(
+        [
+          [BASE_CHAIN_ID, baseResponse],
+          [ETHEREUM_CHAIN_ID, ethereumResponse],
+          [FUSE_CHAIN_ID, fuseResponse],
+          [POLYGON_CHAIN_ID, polygonResponse],
+          [ARBITRUM_CHAIN_ID, arbitrumResponse],
+          [BSC_CHAIN_ID, bscResponse],
+          [ETHEREUM_CHAIN_ID, ethBalance],
+          [FUSE_CHAIN_ID, fuseBalance],
+          [BASE_CHAIN_ID, baseBalance],
+          [ARBITRUM_CHAIN_ID, arbitrumBalance],
+          [BSC_CHAIN_ID, bscBalance],
+        ]
+          .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
+          .map(([chainId]) => chainId as number),
+      ),
+    ),
     ethereumTokens: ethereumTokensFinal,
     fuseTokens: fuseTokensFinal,
     polygonTokens: polygonTokensFinal,
@@ -706,6 +729,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
 // render for as long as the query had no data — first load, and again after any
 // failure.
 const EMPTY_BALANCE_DATA = {
+  failedChainIds: [] as number[],
   totalUSD: 0,
   totalSoUSD: 0,
   totalUSDExcludingVaultTokens: 0,

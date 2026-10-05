@@ -572,6 +572,18 @@ export const ASSETS = {
   'images/home-fund.tsx': { module: require('@/assets/images/home-fund.tsx'), hash: 'b5101922' },
   'images/home-qr.tsx': { module: require('@/assets/images/home-qr.tsx'), hash: '0c89afeb' },
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
+  'images/home-spend-tiles/cashback-glow.svg': {
+    module: require('@/assets/images/home-spend-tiles/cashback-glow.svg'),
+    hash: '983bb273',
+  },
+  'images/home-spend-tiles/down.svg': {
+    module: require('@/assets/images/home-spend-tiles/down.svg'),
+    hash: 'f6b1176e',
+  },
+  'images/home-spend-tiles/spend-glow.svg': {
+    module: require('@/assets/images/home-spend-tiles/spend-glow.svg'),
+    hash: '28bc2ca1',
+  },
   'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: 'ba220974' },
   'images/identity-review.png': {
     module: require('@/assets/images/identity-review.png'),
@@ -1294,6 +1306,86 @@ export const ASSETS = {
     hash: '7663ac41',
   },
   'images/star.png': { module: require('@/assets/images/star.png'), hash: 'ed4389a9' },
+  'images/subscription-cashback/airfrance.svg': {
+    module: require('@/assets/images/subscription-cashback/airfrance.svg'),
+    hash: '6e83325c',
+  },
+  'images/subscription-cashback/americanairlines.svg': {
+    module: require('@/assets/images/subscription-cashback/americanairlines.svg'),
+    hash: 'fc557dbd',
+  },
+  'images/subscription-cashback/britishairways.svg': {
+    module: require('@/assets/images/subscription-cashback/britishairways.svg'),
+    hash: '78195449',
+  },
+  'images/subscription-cashback/cabify.png': {
+    module: require('@/assets/images/subscription-cashback/cabify.png'),
+    hash: '119c7d11',
+  },
+  'images/subscription-cashback/cursor.svg': {
+    module: require('@/assets/images/subscription-cashback/cursor.svg'),
+    hash: '7d1c9f38',
+  },
+  'images/subscription-cashback/deezer.svg': {
+    module: require('@/assets/images/subscription-cashback/deezer.svg'),
+    hash: 'cf2fb269',
+  },
+  'images/subscription-cashback/delta.svg': {
+    module: require('@/assets/images/subscription-cashback/delta.svg'),
+    hash: 'b8540980',
+  },
+  'images/subscription-cashback/easyjet.svg': {
+    module: require('@/assets/images/subscription-cashback/easyjet.svg'),
+    hash: '984c4999',
+  },
+  'images/subscription-cashback/freenow.svg': {
+    module: require('@/assets/images/subscription-cashback/freenow.svg'),
+    hash: 'c464f632',
+  },
+  'images/subscription-cashback/klm.svg': {
+    module: require('@/assets/images/subscription-cashback/klm.svg'),
+    hash: '401debad',
+  },
+  'images/subscription-cashback/lufthansa.svg': {
+    module: require('@/assets/images/subscription-cashback/lufthansa.svg'),
+    hash: '31106feb',
+  },
+  'images/subscription-cashback/lyft.svg': {
+    module: require('@/assets/images/subscription-cashback/lyft.svg'),
+    hash: 'f7f4d076',
+  },
+  'images/subscription-cashback/nintendo.png': {
+    module: require('@/assets/images/subscription-cashback/nintendo.png'),
+    hash: '06b09788',
+  },
+  'images/subscription-cashback/ola.svg': {
+    module: require('@/assets/images/subscription-cashback/ola.svg'),
+    hash: 'dda22530',
+  },
+  'images/subscription-cashback/playstation.svg': {
+    module: require('@/assets/images/subscription-cashback/playstation.svg'),
+    hash: 'fe8de99f',
+  },
+  'images/subscription-cashback/ryanair.svg': {
+    module: require('@/assets/images/subscription-cashback/ryanair.svg'),
+    hash: '99242380',
+  },
+  'images/subscription-cashback/unitedairlines.svg': {
+    module: require('@/assets/images/subscription-cashback/unitedairlines.svg'),
+    hash: '40c3b2d3',
+  },
+  'images/subscription-cashback/wizzair.svg': {
+    module: require('@/assets/images/subscription-cashback/wizzair.svg'),
+    hash: '019d651e',
+  },
+  'images/subscription-cashback/xbox.png': {
+    module: require('@/assets/images/subscription-cashback/xbox.png'),
+    hash: 'eaa4f917',
+  },
+  'images/subscription-cashback/youtube.svg': {
+    module: require('@/assets/images/subscription-cashback/youtube.svg'),
+    hash: 'f587f87b',
+  },
   'images/support-svg.tsx': {
     module: require('@/assets/images/support-svg.tsx'),
     hash: 'ecd74b24',

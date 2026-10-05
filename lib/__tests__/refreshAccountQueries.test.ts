@@ -18,6 +18,8 @@ describe('shared manual and live balance invalidation', () => {
       ['readContract', { functionName: 'balanceOf', args: ['0xabc'] }],
       ['readContract', { functionName: 'getRate', address: '0xaccountant' }],
       ['cardTransactions'],
+      ['portfolioCustody', 'account', '0xABC', 'lock', 'credit-module'],
+      ['tierMembership', 'account'],
       ['layerZeroStatus', 'hash'],
       ['tokenBalances', '0xDEF'],
       ['cardDetails', 'other-account'],
@@ -33,8 +35,8 @@ describe('shared manual and live balance invalidation', () => {
       }).subscribe(() => {}),
     );
     await refreshAccountQueries(client, 'account', '0xABC', true);
-    fetches.slice(0, 11).forEach(fetch => expect(fetch).toHaveBeenCalledTimes(1));
-    fetches.slice(11).forEach(fetch => expect(fetch).not.toHaveBeenCalled());
+    fetches.slice(0, 13).forEach(fetch => expect(fetch).toHaveBeenCalledTimes(1));
+    fetches.slice(13).forEach(fetch => expect(fetch).not.toHaveBeenCalled());
     unsubscribers.forEach(unsubscribe => unsubscribe());
     client.clear();
   });

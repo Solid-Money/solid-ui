@@ -17,16 +17,19 @@ interface SpendingModeCardProps {
  * "Spend mode › … Credit [Change]" (Figma 26134:24137), the row between the
  * action icons and the borrow position.
  *
- * The chevron beside the label is drawn but inert: the design puts an
- * explanation behind it that hasn't been written yet.
- *
  * The mode it names is read from whichever spend module operates the Safe, and is
  * `cash` for every cardholder still on v1 — which is all of them at launch. The
  * card screen only renders this row once the other modes are actually reachable,
  * so it never offers a change it cannot make.
  */
 const SpendingModeCard = ({ mode = 'cash', onChangeMode }: SpendingModeCardProps) => (
-  <View className="overflow-hidden rounded-[23px] bg-card" style={styles.row}>
+  <Pressable
+    accessibilityLabel="Change spend mode"
+    accessibilityRole="button"
+    className="overflow-hidden rounded-[23px] bg-card active:opacity-80"
+    onPress={onChangeMode}
+    style={styles.row}
+  >
     <View style={styles.label}>
       <Text className="text-[18px] font-medium leading-[25px] text-white">Spend mode</Text>
       <InlineChevronIcon />
@@ -35,17 +38,11 @@ const SpendingModeCard = ({ mode = 'cash', onChangeMode }: SpendingModeCardProps
       <Text className="text-[18px] font-medium leading-[25px] text-white">
         {SPEND_MODE_COPY[mode].label}
       </Text>
-      <Pressable
-        accessibilityLabel="Change spend mode"
-        accessibilityRole="button"
-        className="bg-white transition-all active:scale-95 active:opacity-80"
-        onPress={onChangeMode}
-        style={styles.button}
-      >
+      <View pointerEvents="none" className="bg-white" style={styles.button}>
         <Text className="text-[16px] font-semibold text-black">Change</Text>
-      </Pressable>
+      </View>
     </View>
-  </View>
+  </Pressable>
 );
 
 const styles = StyleSheet.create({
