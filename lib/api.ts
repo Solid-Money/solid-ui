@@ -2710,7 +2710,43 @@ export interface OnramperWidgetSession {
   url: string;
   /** ISO timestamp. Past this, the URL must be re-minted. */
   expiresAt: string;
+  /**
+   * Whether the URL carries the user's Sumsub verification for Onramper to
+   * import. Can be false even after the user agreed — a stale approval or a
+   * Sumsub outage — in which case the onramp verifies them itself. Absent from
+   * backends that predate upstream KYC.
+   */
+  kycShared?: boolean;
 }
+
+/**
+ * Whether the user could skip the onramp's own KYC by sharing their Sumsub
+ * verification with Onramper. The consent step is shown only when this is true.
+ */
+export interface OnramperKycShareAvailability {
+  available: boolean;
+}
+
+/** Asks the backend whether upstream KYC is on offer. Mints nothing. */
+export const fetchOnramperKycShareAvailability =
+  async (): Promise<OnramperKycShareAvailability> => {
+    const jwt = getJWTToken();
+
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/kyc-share`,
+      {
+        headers: {
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };
 
 /**
  * What an Onramper purchase funds: the wallet (the Safe), or the card by way of
@@ -2725,10 +2761,15 @@ export type OnramperDestination = 'wallet' | 'card';
  * authenticated user, so nothing the client says can redirect the delivery.
  * `destination` picks only the route, which the backend resolves to that user's
  * own Safe or card deposit address.
+ *
+ * `shareKyc` is the user's consent to pass their Sumsub verification to
+ * Onramper. Sent only when given, so a session without it is exactly the
+ * request it was before.
  */
 export const fetchOnramperWidgetSession = async (
   platform: 'web' | 'native',
   destination: OnramperDestination,
+  shareKyc = false,
 ): Promise<OnramperWidgetSession> => {
   const jwt = getJWTToken();
 
@@ -2742,7 +2783,7 @@ export const fetchOnramperWidgetSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ platform, destination }),
+      body: JSON.stringify({ platform, destination, ...(shareKyc && { shareKyc: true }) }),
     },
   );
 

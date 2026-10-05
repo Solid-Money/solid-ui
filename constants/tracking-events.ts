@@ -172,6 +172,14 @@ export const TRACKING_EVENTS = {
   ONBOARDING_FEE_PAID: 'onboarding_fee_paid',
   ONBOARDING_FEE_DISMISSED: 'onboarding_fee_dismissed',
 
+  // Deposit Method: Buy Crypto (Onramper widget) — upstream KYC. _VIEWED when
+  // the consent step is shown, _ACCEPTED/_DECLINED on the user's answer, and
+  // _RESULT with `shared` once the session says whether the share went through.
+  ONRAMPER_KYC_SHARE_VIEWED: 'onramper_kyc_share_viewed',
+  ONRAMPER_KYC_SHARE_ACCEPTED: 'onramper_kyc_share_accepted',
+  ONRAMPER_KYC_SHARE_DECLINED: 'onramper_kyc_share_declined',
+  ONRAMPER_KYC_SHARE_RESULT: 'onramper_kyc_share_result',
+
   // Deposit Method: Buy Crypto (TransFi onramp)
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
   BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
