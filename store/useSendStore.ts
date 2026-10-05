@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { SEND_MODAL } from '@/constants/modals';
 import { SendModal, TokenBalance, TransactionStatusModal } from '@/lib/types';
+import { CrossChainSendQuote, CrossChainSendRecord } from '@/lib/types/cross-chain-send';
 
 interface SendState {
   currentModal: SendModal;
@@ -13,6 +14,14 @@ interface SendState {
   address: string;
   name: string;
   searchQuery: string;
+  /** Cross-chain send: exchange id from the config (`own_wallet` for a wallet). */
+  exchange: string | null;
+  /** Cross-chain send: the network the recipient receives on. */
+  destinationChainId: number | null;
+  /** Cross-chain send: the quote the Review step shows and the voucher is priced against. */
+  crossChainQuote: CrossChainSendQuote | null;
+  /** Cross-chain send: the authorised send, tracked on the "On its way" screen. */
+  crossChainSend: CrossChainSendRecord | null;
   setModal: (modal: SendModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setCurrentTokenAddress: (address: string) => void;
@@ -21,13 +30,15 @@ interface SendState {
   setAddress: (address: string) => void;
   setName: (name: string) => void;
   setSearchQuery: (query: string) => void;
+  setExchange: (exchange: string | null) => void;
+  setDestinationChainId: (chainId: number | null) => void;
+  setCrossChainQuote: (quote: CrossChainSendQuote | null) => void;
+  setCrossChainSend: (send: CrossChainSendRecord | null) => void;
   clearForm: () => void;
   resetAll: () => void;
 }
 
-export const useSendStore = create<SendState>()((set, get) => ({
-  currentModal: SEND_MODAL.CLOSE,
-  previousModal: SEND_MODAL.CLOSE,
+const EMPTY_FORM = {
   transaction: {},
   currentTokenAddress: null,
   selectedToken: null,
@@ -35,6 +46,16 @@ export const useSendStore = create<SendState>()((set, get) => ({
   address: '',
   name: '',
   searchQuery: '',
+  exchange: null,
+  destinationChainId: null,
+  crossChainQuote: null,
+  crossChainSend: null,
+};
+
+export const useSendStore = create<SendState>()((set, get) => ({
+  currentModal: SEND_MODAL.CLOSE,
+  previousModal: SEND_MODAL.CLOSE,
+  ...EMPTY_FORM,
 
   setModal: modal =>
     set({
@@ -48,27 +69,16 @@ export const useSendStore = create<SendState>()((set, get) => ({
   setAddress: address => set({ address }),
   setName: name => set({ name }),
   setSearchQuery: query => set({ searchQuery: query }),
-  clearForm: () =>
-    set({
-      selectedToken: null,
-      currentTokenAddress: null,
-      transaction: {},
-      amount: '',
-      address: '',
-      name: '',
-      searchQuery: '',
-    }),
+  setExchange: exchange => set({ exchange }),
+  setDestinationChainId: chainId => set({ destinationChainId: chainId }),
+  setCrossChainQuote: quote => set({ crossChainQuote: quote }),
+  setCrossChainSend: send => set({ crossChainSend: send }),
+  clearForm: () => set({ ...EMPTY_FORM }),
   resetAll: () =>
     set({
       currentModal: SEND_MODAL.CLOSE,
       previousModal: SEND_MODAL.CLOSE,
-      transaction: {},
-      currentTokenAddress: null,
-      selectedToken: null,
-      amount: '',
-      address: '',
-      name: '',
-      searchQuery: '',
+      ...EMPTY_FORM,
     }),
 }));
 
@@ -78,5 +88,12 @@ export const useSendStore = create<SendState>()((set, get) => ({
  */
 export const hasUnsavedSendData = (): boolean => {
   const state = useSendStore.getState();
-  return !!(state.amount || state.address || state.selectedToken || state.name);
+  return !!(
+    state.amount ||
+    state.address ||
+    state.selectedToken ||
+    state.name ||
+    state.exchange ||
+    state.destinationChainId
+  );
 };

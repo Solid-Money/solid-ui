@@ -268,7 +268,7 @@ export const ADDRESSES: Addresses = {
       ? '0xb29B5F760d38587f7F4C896C458B9EEB5CAd9C0C'
       : '0xc864e169a1d40b957170E6c848BbcE49f28b361B',
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-    bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
+    bridgePaymasterAddress: '0x8D5333d3d9683D4D67F329027F0f5d4057f3306b',
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
     cardDepositManager: '0x22BBc13D022735f2586d4eb04a93f0F4E0173E50',
     // Deployed 2026-08-21. Non-upgradeable by design: a new module cannot be swapped

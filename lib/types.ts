@@ -1264,6 +1264,12 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   WITHDRAW = 'withdraw',
   SEND = 'send',
+  /**
+   * A stablecoin bridged from Fuse to another network through the
+   * BridgePaymaster. The Fuse receipt only means it left; the backend tracker
+   * marks it SUCCESS once LayerZero delivers on the destination.
+   */
+  CROSS_CHAIN_SEND = 'cross_chain_send',
   RECEIVE = 'receive', // Incoming token/native transfers from external sources
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
@@ -2829,12 +2835,21 @@ export interface AddressBookRequest {
   name?: string;
   walletAddress: string;
   skip2fa?: boolean;
+  /** Cross-chain send destination the contact was saved with (exchange id). */
+  exchange?: string;
+  /** Network the contact receives on, as a chain id. */
+  chainId?: number;
+  /** Token symbol the contact receives, e.g. "USDC". */
+  token?: string;
 }
 
 export interface AddressBookResponse {
   name?: string;
   walletAddress: string;
   skipped2faAt?: Date;
+  exchange?: string;
+  chainId?: number;
+  token?: string;
 }
 
 export type AgentSummary = {

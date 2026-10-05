@@ -1,6 +1,7 @@
 import { Address, pad } from 'viem';
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { StargateOFT_ABI } from '@/lib/abis/StargateOFT';
 import { StargateQuoteParams, StargateQuoteResponse } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
@@ -15,6 +16,8 @@ export const getStargateChainId = (chainId: number) => {
       return 30109;
     case arbitrum.id:
       return 30110;
+    case bsc.id:
+      return 30102;
     default:
       return null;
   }
@@ -30,6 +33,8 @@ export const getStargateChainKey = (chainId: number) => {
       return 'polygon';
     case arbitrum.id:
       return 'arbitrum';
+    case bsc.id:
+      return 'bsc';
     default:
       return null;
   }
@@ -57,10 +62,23 @@ const CHAIN_KEY_TO_EID: Record<string, number> = {
   base: 30184,
   polygon: 30109,
   arbitrum: 30110,
+  bsc: 30102,
 };
 
-// Stargate USDC Pool/OFT address on Fuse (implements quoteSend/send)
+// Stargate Pool/OFT addresses on Fuse (implement quoteSend/quoteOFT/send)
 const STARGATE_USDC_POOL_FUSE: Address = '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398';
+const STARGATE_USDT_POOL_FUSE: Address = '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6';
+
+/**
+ * The Stargate OFT on Fuse that burns a given token. USDC.e and USDT each have
+ * their own pool; anything else falls back to the USDC pool, which is what every
+ * caller before per-token routing assumed.
+ */
+export const getStargateOftOnFuse = (tokenAddress?: string): Address => {
+  if (tokenAddress?.toLowerCase() === USDT_STARGATE.toLowerCase()) return STARGATE_USDT_POOL_FUSE;
+  if (tokenAddress?.toLowerCase() === USDC_STARGATE.toLowerCase()) return STARGATE_USDC_POOL_FUSE;
+  return STARGATE_USDC_POOL_FUSE;
+};
 
 // Direct on-chain quote via Stargate OFT contract (replaces deprecated Stargate API)
 export const getStargateQuote = async (
@@ -82,12 +100,21 @@ export const getStargateQuote = async (
   };
 
   const client = publicClient(fuse.id);
-  const { nativeFee } = await client.readContract({
-    address: STARGATE_USDC_POOL_FUSE,
-    abi: StargateOFT_ABI,
-    functionName: 'quoteSend',
-    args: [sendParam, false],
-  });
+  const oft = getStargateOftOnFuse(params.srcToken);
+  const [{ nativeFee }, [limit, , receipt]] = await Promise.all([
+    client.readContract({
+      address: oft,
+      abi: StargateOFT_ABI,
+      functionName: 'quoteSend',
+      args: [sendParam, false],
+    }),
+    client.readContract({
+      address: oft,
+      abi: StargateOFT_ABI,
+      functionName: 'quoteOFT',
+      args: [sendParam],
+    }),
+  ]);
 
   return {
     quotes: [
@@ -95,8 +122,8 @@ export const getStargateQuote = async (
         route: 'stargate_v2_taxi',
         error: null,
         srcAmount: params.srcAmount,
-        dstAmount: params.srcAmount,
-        srcAmountMax: params.srcAmount,
+        dstAmount: receipt.amountReceivedLD.toString(),
+        srcAmountMax: limit.maxAmountLD.toString(),
         dstAmountMin: params.dstAmountMin,
         srcToken: params.srcToken,
         dstToken: params.dstToken,
@@ -120,7 +147,7 @@ export const getStargateQuote = async (
             sender: params.srcAddress,
             chainKey: params.srcChainKey,
             transaction: {
-              to: STARGATE_USDC_POOL_FUSE,
+              to: oft,
               value: nativeFee.toString(),
               data: '0x',
               from: params.srcAddress,

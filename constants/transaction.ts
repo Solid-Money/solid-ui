@@ -22,6 +22,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.WALLET_TRANSFER,
   },
+  [TransactionType.CROSS_CHAIN_SEND]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.EXTERNAL_WALLET_TRANSFER,
+  },
   [TransactionType.RECEIVE]: {
     sign: TransactionDirection.IN,
     category: TransactionCategory.RECEIVE,
@@ -247,6 +251,9 @@ export const SOURCE_RECEIPT_NON_FINAL_TYPES: ReadonlySet<TransactionType> = new 
   TransactionType.BRIDGE_DEPOSIT,
   TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
   TransactionType.CARD_DEPOSIT,
+  // Delivered by LayerZero minutes after the Fuse receipt; the backend tracker
+  // finalises it from the destination side.
+  TransactionType.CROSS_CHAIN_SEND,
 ]);
 
 /**
