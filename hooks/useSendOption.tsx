@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
-import CrossChainDestination from '@/components/Send/CrossChain/CrossChainDestination';
 import CrossChainForm from '@/components/Send/CrossChain/CrossChainForm';
 import CrossChainNetworks from '@/components/Send/CrossChain/CrossChainNetworks';
 import CrossChainReview from '@/components/Send/CrossChain/CrossChainReview';
@@ -39,18 +38,25 @@ const useSendOption = ({
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, selectedToken, exchange, setModal, resetAll } =
-    useSendStore(
-      useShallow(state => ({
-        currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
-        previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
-        transaction: state.transaction,
-        selectedToken: state.selectedToken,
-        exchange: state.exchange,
-        setModal: state.setModal,
-        resetAll: state.resetAll,
-      })),
-    );
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    selectedToken,
+    isCrossChain,
+    setModal,
+    resetAll,
+  } = useSendStore(
+    useShallow(state => ({
+      currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
+      previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
+      transaction: state.transaction,
+      selectedToken: state.selectedToken,
+      isCrossChain: state.isCrossChain,
+      setModal: state.setModal,
+      resetAll: state.resetAll,
+    })),
+  );
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 
@@ -61,21 +67,15 @@ const useSendOption = ({
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isAddressBook = currentModal.name === SEND_MODAL.OPEN_ADDRESS_BOOK.name;
   const isQRScanner = currentModal.name === SEND_MODAL.OPEN_QR_SCANNER.name;
-  const isCrossChainDestination =
-    currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION.name;
   const isCrossChainNetwork = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK.name;
   const isCrossChainForm = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_FORM.name;
   const isCrossChainReview = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_REVIEW.name;
   const isCrossChainStatus = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name;
   const isCrossChainStep =
-    isCrossChainDestination ||
-    isCrossChainNetwork ||
-    isCrossChainForm ||
-    isCrossChainReview ||
-    isCrossChainStatus;
+    isCrossChainNetwork || isCrossChainForm || isCrossChainReview || isCrossChainStatus;
   // The token selector is shared; in the cross-chain flow it returns to the
   // cross-chain amount step.
-  const isCrossChainTokenSelector = isTokenSelector && !!exchange;
+  const isCrossChainTokenSelector = isTokenSelector && isCrossChain;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== SEND_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -131,7 +131,6 @@ const useSendOption = ({
   );
 
   const getContent = () => {
-    if (isCrossChainDestination) return <CrossChainDestination />;
     if (isCrossChainNetwork) return <CrossChainNetworks />;
     if (isCrossChainForm) return <CrossChainForm />;
     if (isCrossChainReview) return <CrossChainReview />;
@@ -176,7 +175,6 @@ const useSendOption = ({
   };
 
   const getContentKey = () => {
-    if (isCrossChainDestination) return 'cross-chain-destination';
     if (isCrossChainNetwork) return 'cross-chain-network';
     if (isCrossChainForm) return 'cross-chain-form';
     if (isCrossChainReview) return 'cross-chain-review';
@@ -191,7 +189,6 @@ const useSendOption = ({
   };
 
   const getTitle = () => {
-    if (isCrossChainDestination) return 'Send to';
     if (isCrossChainNetwork) return 'Receive on';
     if (isCrossChainForm) return 'Send';
     if (isCrossChainReview) return 'Review';
@@ -215,7 +212,7 @@ const useSendOption = ({
     if (isQRScanner) return 'flex-1'; // Fill available space for camera view
     if (isSearch) return 'min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
-    if (isCrossChainDestination || isCrossChainForm) return 'min-h-[36rem]';
+    if (isCrossChainForm) return 'min-h-[36rem]';
     if (isCrossChainReview || isCrossChainStatus) return 'min-h-[30rem]';
     return '';
   };
@@ -258,7 +255,7 @@ const useSendOption = ({
 
   const handleBackPress = () => {
     if (isCrossChainNetwork) {
-      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION);
+      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
     } else if (isCrossChainForm) {
       setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
     } else if (isCrossChainReview) {

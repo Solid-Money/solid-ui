@@ -4,17 +4,13 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { AssetPath } from '@/lib/assets';
 import { TokenBalance } from '@/lib/types';
-import {
-  CrossChainSendExchangeConfig,
-  CrossChainSendNetworkConfig,
-  CrossChainSendToken,
-} from '@/lib/types/cross-chain-send';
+import { CrossChainSendNetworkConfig, CrossChainSendToken } from '@/lib/types/cross-chain-send';
 import { formatNumber } from '@/lib/utils/utils';
 
 /** Fuse decimals of both bridgeable stablecoins. */
 export const CROSS_CHAIN_SEND_DECIMALS = 6;
 
-export const OWN_WALLET_EXCHANGE = 'own_wallet';
+/** The backend's catch-all destination id: accepts every live route, no exchange rules. */
 export const OTHER_EXCHANGE = 'other_exchange';
 
 /**
@@ -70,28 +66,6 @@ export const CROSS_CHAIN_NETWORKS: Record<
   [bsc.id]: { key: 'bsc', name: 'BNB Chain' },
   [polygon.id]: { key: 'polygon', name: 'Polygon' },
   [fuse.id]: { key: 'fuse', name: 'Fuse' },
-};
-
-export const isOwnWallet = (exchange: string | null | undefined) =>
-  exchange === OWN_WALLET_EXCHANGE;
-
-/** "Binance", "My own wallet", or the raw id when the config doesn't know it. */
-export const getExchangeDisplayName = (
-  exchange: CrossChainSendExchangeConfig | null | undefined,
-  exchangeId: string | null | undefined,
-) => {
-  if (isOwnWallet(exchangeId)) return 'My own wallet';
-  return exchange?.name ?? exchangeId ?? '';
-};
-
-/** The letter avatar initial: the exchange's initial, "W" for the user's own wallet. */
-export const getExchangeInitial = (
-  exchange: CrossChainSendExchangeConfig | null | undefined,
-  exchangeId: string | null | undefined,
-) => {
-  if (isOwnWallet(exchangeId)) return 'W';
-  const name = exchange?.name ?? exchangeId ?? '';
-  return name.charAt(0).toUpperCase() || '?';
 };
 
 /** `Arrives as Binance-Peg USDC`, or `Native USDC` when that's already the wording. */

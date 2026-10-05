@@ -232,14 +232,11 @@ export const SEND_MODAL = {
     number: 1,
   },
   /**
-   * Cross-chain send ("Withdraw to another network"): the bridgeable Fuse
-   * stablecoins open on these steps instead of the search. Numbered in flow
-   * order so each step animates forward from the last.
+   * Cross-chain send ("Withdraw to another network"): after the recipient is
+   * picked on the search, a bridgeable Fuse stablecoin goes through these
+   * steps instead of the form. Numbered in flow order so each step animates
+   * forward from the last.
    */
-  OPEN_CROSS_CHAIN_DESTINATION: {
-    name: 'open_cross_chain_destination',
-    number: 2,
-  },
   OPEN_CROSS_CHAIN_NETWORK: {
     name: 'open_cross_chain_network',
     number: 3,

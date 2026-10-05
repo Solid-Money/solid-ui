@@ -24,28 +24,27 @@ const TokenSelector: React.FC = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const {
     selectedToken,
-    exchange,
+    isCrossChain,
     destinationChainId,
     setSelectedToken,
     setModal,
-    setExchange,
+    setIsCrossChain,
     setDestinationChainId,
     setCrossChainQuote,
   } = useSendStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
-      exchange: state.exchange,
+      isCrossChain: state.isCrossChain,
       destinationChainId: state.destinationChainId,
       setSelectedToken: state.setSelectedToken,
       setModal: state.setModal,
-      setExchange: state.setExchange,
+      setIsCrossChain: state.setIsCrossChain,
       setDestinationChainId: state.setDestinationChainId,
       setCrossChainQuote: state.setCrossChainQuote,
     })),
   );
   // Opened from the cross-chain amount step: only the two bridgeable Fuse
   // stablecoins apply, and selecting one returns there.
-  const isCrossChain = !!exchange;
   const { getRoute } = useCrossChainSendConfig({ enabled: isCrossChain });
   const {
     ethereumTokens,
@@ -106,7 +105,7 @@ const TokenSelector: React.FC = () => {
       if (!isCrossChainSendToken(token)) {
         // Not on Fuse, so no bridge: hand over to the regular send on the
         // token's own chain, keeping the recipient address already entered.
-        setExchange(null);
+        setIsCrossChain(false);
         setDestinationChainId(null);
         setCrossChainQuote(null);
         setModal(SEND_MODAL.OPEN_FORM);
@@ -123,7 +122,7 @@ const TokenSelector: React.FC = () => {
       isCrossChain,
       getRoute,
       destinationChainId,
-      setExchange,
+      setIsCrossChain,
       setDestinationChainId,
       setCrossChainQuote,
     ],

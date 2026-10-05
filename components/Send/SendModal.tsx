@@ -31,6 +31,7 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
   const setModal = useSendStore(state => state.setModal);
   const setSelectedToken = useSendStore(state => state.setSelectedToken);
   const setCurrentTokenAddress = useSendStore(state => state.setCurrentTokenAddress);
+  const setIsCrossChain = useSendStore(state => state.setIsCrossChain);
 
   // Only the two bridgeable Fuse stablecoins can take the cross-chain flow, and
   // only once the backend has enabled it for this user — so the config is
@@ -59,7 +60,10 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
         cross_chain: canBridge && !!config?.enabled,
       });
       if (canBridge && config?.enabled) {
-        setModal(SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION);
+        // Same recipient screen as a regular send (contacts, recents, paste,
+        // QR); picking a recipient then goes to the network step.
+        setIsCrossChain(true);
+        setModal(SEND_MODAL.OPEN_SEND_SEARCH);
         return;
       }
     }

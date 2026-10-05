@@ -4,9 +4,8 @@ import { useShallow } from 'zustand/react/shallow';
 
 import Plus from '@/assets/images/Plus';
 import { Text } from '@/components/ui/text';
-import { SEND_MODAL } from '@/constants/modals';
 import { eclipseAddress } from '@/lib/utils';
-import { useSendStore } from '@/store/useSendStore';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 interface AddAddressProps {
   address: string;
@@ -22,7 +21,7 @@ const AddAddress: React.FC<AddAddressProps> = ({ address }) => {
 
   const handlePress = () => {
     setAddress(address);
-    setModal(SEND_MODAL.OPEN_FORM);
+    setModal(recipientNextModal());
   };
 
   return (

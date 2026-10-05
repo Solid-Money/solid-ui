@@ -18,8 +18,8 @@ import {
   CrossChainSendRecord,
   CrossChainSendStatus as SendStatus,
 } from '@/lib/types/cross-chain-send';
-import { cn, withRefreshToken } from '@/lib/utils';
-import { formatLD, getExchangeDisplayName, isOwnWallet } from '@/lib/utils/cross-chain-send';
+import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
+import { formatLD } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
 import { BRAND } from './shared';
@@ -76,13 +76,14 @@ const timeOf = (iso?: string) => (iso ? format(new Date(iso), 'HH:mm') : '');
  */
 const CrossChainStatus: React.FC = () => {
   const router = useRouter();
-  const { crossChainSend, resetAll } = useSendStore(
+  const { crossChainSend, name, resetAll } = useSendStore(
     useShallow(state => ({
       crossChainSend: state.crossChainSend,
+      name: state.name,
       resetAll: state.resetAll,
     })),
   );
-  const { getExchange, getNetwork } = useCrossChainSendConfig();
+  const { getNetwork } = useCrossChainSendConfig();
   const { refetchAll } = useActivity();
   const sendId = crossChainSend?.sendId;
 
@@ -109,10 +110,7 @@ const CrossChainStatus: React.FC = () => {
     };
   }, [crossChainSend, polled]);
 
-  const exchange = getExchange(record?.exchange ?? null);
   const network = getNetwork(record?.dstChainId ?? null);
-  const ownWallet = isOwnWallet(record?.exchange);
-  const exchangeName = getExchangeDisplayName(exchange, record?.exchange);
   const networkName = network?.name ?? '';
   const status = record?.status;
   const isDelivered = status === 'delivered';
@@ -214,14 +212,12 @@ const CrossChainStatus: React.FC = () => {
           key: 'arrived',
           tone: 'pending',
           title: `Arrived on ${networkName}`,
-          subtitle: ownWallet
-            ? 'We’ll notify you when it lands'
-            : `We’ll notify you and show the transaction ID for ${exchangeName}`,
+          subtitle: 'We’ll notify you and show the transaction ID when it lands',
           subtitleTone: 'muted',
         };
 
     return [sent, bridging, arrived];
-  }, [record, isDelivered, isFailed, isStuck, networkName, ownWallet, exchangeName, openUrl]);
+  }, [record, isDelivered, isFailed, isStuck, networkName, openUrl]);
 
   const handleViewActivity = useCallback(() => {
     if (sendId) {
@@ -246,7 +242,8 @@ const CrossChainStatus: React.FC = () => {
             <ArrowUpRight size={32} color={BRAND} />
           </View>
           <Text className="text-center text-2xl font-semibold text-white">
-            {ownWallet ? 'On its way to your wallet' : `On its way to ${exchangeName}`}
+            On its way to{' '}
+            {name || (record.recipient ? eclipseAddress(record.recipient) : networkName)}
           </Text>
           <Text className="text-center text-base text-white/70">
             {formatLD(record.amountReceivedLD)} {record.token} · arrives on {networkName}
