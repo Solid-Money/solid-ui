@@ -16,6 +16,7 @@ import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -221,12 +222,16 @@ export default function CardReady() {
         // The read failed too; fall through and report the original failure.
       }
 
+      // Never the raw message: this is a bundler/paymaster failure, and viem's text
+      // for it is the RPC URL (API key included), the request body and the
+      // upstream reply. A customer once pasted exactly that into a support chat.
       Toast.show({
         type: 'error',
         text1: 'Card not activated',
-        text2: `${
-          error instanceof Error ? error.message : 'Something went wrong'
-        } — no card was created, please try again.`,
+        text2: `${userFacingErrorMessage(
+          error,
+          'We could not enable card spending. Please try again.',
+        )} No card was created.`,
         props: { badgeText: '' },
       });
       return false;
@@ -304,7 +309,9 @@ export default function CardReady() {
         // (BD) yet." rather than the generic line users quoted back to support —
         // because the API client throws an ApiError carrying the server message
         // instead of the bare Response, which is never an `Error`.
-        text2: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
+        // `userFacingErrorMessage` lets that server copy through and stops anything
+        // that reads as a dependency's dump.
+        text2: userFacingErrorMessage(error),
         props: { badgeText: '' },
       });
     } finally {

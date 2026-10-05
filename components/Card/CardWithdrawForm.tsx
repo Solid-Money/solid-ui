@@ -26,6 +26,7 @@ import {
   isDifferentCollateralAsset,
   toAmountInputValue,
 } from '@/lib/utils/cardHelpers';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
@@ -289,7 +290,7 @@ export default function CardWithdrawForm() {
           const body = await err.json().catch(() => ({}));
           message = (body as { message?: string })?.message ?? err.statusText ?? message;
         } else if (err instanceof Error) {
-          message = err.message;
+          message = userFacingErrorMessage(err, message);
         }
         // Collateral can move between the read and the submit (a charge settles,
         // a deposit lands), so re-read it before the user retries.
