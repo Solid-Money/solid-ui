@@ -1,9 +1,14 @@
-import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, PressableProps, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
+import CrossChainDestination from '@/components/Send/CrossChain/CrossChainDestination';
+import CrossChainForm from '@/components/Send/CrossChain/CrossChainForm';
+import CrossChainNetworks from '@/components/Send/CrossChain/CrossChainNetworks';
+import CrossChainReview from '@/components/Send/CrossChain/CrossChainReview';
+import CrossChainStatus from '@/components/Send/CrossChain/CrossChainStatus';
 import SendForm from '@/components/Send/SendForm';
 import SendQRScanner from '@/components/Send/SendQRScanner';
 import SendReview from '@/components/Send/SendReview';
@@ -17,6 +22,7 @@ import { path } from '@/constants/path';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { SendModal } from '@/lib/types';
 import { hasUnsavedSendData, useSendStore } from '@/store/useSendStore';
+
 import useResponsiveModal from './useResponsiveModal';
 
 export interface SendOptionProps {
@@ -33,13 +39,14 @@ const useSendOption = ({
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, selectedToken, setModal, resetAll } =
+  const { currentModal, previousModal, transaction, selectedToken, exchange, setModal, resetAll } =
     useSendStore(
       useShallow(state => ({
         currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
         previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
         transaction: state.transaction,
         selectedToken: state.selectedToken,
+        exchange: state.exchange,
         setModal: state.setModal,
         resetAll: state.resetAll,
       })),
@@ -54,6 +61,21 @@ const useSendOption = ({
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isAddressBook = currentModal.name === SEND_MODAL.OPEN_ADDRESS_BOOK.name;
   const isQRScanner = currentModal.name === SEND_MODAL.OPEN_QR_SCANNER.name;
+  const isCrossChainDestination =
+    currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION.name;
+  const isCrossChainNetwork = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK.name;
+  const isCrossChainForm = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_FORM.name;
+  const isCrossChainReview = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_REVIEW.name;
+  const isCrossChainStatus = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name;
+  const isCrossChainStep =
+    isCrossChainDestination ||
+    isCrossChainNetwork ||
+    isCrossChainForm ||
+    isCrossChainReview ||
+    isCrossChainStatus;
+  // The token selector is shared; in the cross-chain flow it returns to the
+  // cross-chain amount step.
+  const isCrossChainTokenSelector = isTokenSelector && !!exchange;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== SEND_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -109,6 +131,12 @@ const useSendOption = ({
   );
 
   const getContent = () => {
+    if (isCrossChainDestination) return <CrossChainDestination />;
+    if (isCrossChainNetwork) return <CrossChainNetworks />;
+    if (isCrossChainForm) return <CrossChainForm />;
+    if (isCrossChainReview) return <CrossChainReview />;
+    if (isCrossChainStatus) return <CrossChainStatus />;
+
     if (isTransactionStatus) {
       return (
         <TransactionStatus
@@ -148,6 +176,11 @@ const useSendOption = ({
   };
 
   const getContentKey = () => {
+    if (isCrossChainDestination) return 'cross-chain-destination';
+    if (isCrossChainNetwork) return 'cross-chain-network';
+    if (isCrossChainForm) return 'cross-chain-form';
+    if (isCrossChainReview) return 'cross-chain-review';
+    if (isCrossChainStatus) return 'cross-chain-status';
     if (isTransactionStatus) return 'transaction-status';
     if (isReview) return 'review';
     if (isTokenSelector) return 'token-selector';
@@ -158,6 +191,11 @@ const useSendOption = ({
   };
 
   const getTitle = () => {
+    if (isCrossChainDestination) return 'Send to';
+    if (isCrossChainNetwork) return 'Receive on';
+    if (isCrossChainForm) return 'Send';
+    if (isCrossChainReview) return 'Review';
+    if (isCrossChainStatus) return undefined;
     if (isTransactionStatus) return undefined;
     if (isReview) return 'Review';
     if (isTokenSelector) return 'Select token';
@@ -177,6 +215,8 @@ const useSendOption = ({
     if (isQRScanner) return 'flex-1'; // Fill available space for camera view
     if (isSearch) return 'min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
+    if (isCrossChainDestination || isCrossChainForm) return 'min-h-[36rem]';
+    if (isCrossChainReview || isCrossChainStatus) return 'min-h-[30rem]';
     return '';
   };
 
@@ -192,7 +232,10 @@ const useSendOption = ({
       } else {
         const currentModalName = useSendStore.getState().currentModal.name;
         // Skip discard prompt if transaction has already been initiated
-        if (currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name) {
+        if (
+          currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name ||
+          currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name
+        ) {
           resetAll();
         } else if (hasUnsavedSendData()) {
           setShowDiscardDialog(true);
@@ -214,7 +257,15 @@ const useSendOption = ({
   }, []);
 
   const handleBackPress = () => {
-    if (isReview) {
+    if (isCrossChainNetwork) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION);
+    } else if (isCrossChainForm) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
+    } else if (isCrossChainReview) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
+    } else if (isCrossChainTokenSelector) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
+    } else if (isReview) {
       setModal(SEND_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(SEND_MODAL.OPEN_FORM);
@@ -232,11 +283,21 @@ const useSendOption = ({
   const shouldOpen = !isClose;
 
   // QR scanner has its own header with close button, so don't show modal back button
-  const showBackButton = isForm || isTokenSelector || isReview || isAddressBook;
+  const showBackButton =
+    isForm ||
+    isTokenSelector ||
+    isReview ||
+    isAddressBook ||
+    isCrossChainNetwork ||
+    isCrossChainForm ||
+    isCrossChainReview;
+  // The cross-chain screens use the compact 40px header controls.
+  const compactHeader = isCrossChainStep || isCrossChainTokenSelector;
 
   return {
     shouldOpen,
     showBackButton,
+    compactHeader,
     shouldAnimate,
     isForward,
     getTrigger,

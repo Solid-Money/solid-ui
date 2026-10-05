@@ -48,6 +48,35 @@ export default narrow([
   },
   {
     type: 'function',
+    name: 'bridgeSend',
+    inputs: [
+      {
+        name: 'v',
+        type: 'tuple',
+        internalType: 'struct BridgePaymaster.SendVoucher',
+        components: [
+          { name: 'from', type: 'address', internalType: 'address' },
+          { name: 'oft', type: 'address', internalType: 'address' },
+          { name: 'dstEid', type: 'uint32', internalType: 'uint32' },
+          { name: 'to', type: 'address', internalType: 'address' },
+          { name: 'amountLD', type: 'uint256', internalType: 'uint256' },
+          { name: 'feeLD', type: 'uint256', internalType: 'uint256' },
+          { name: 'maxNativeFee', type: 'uint256', internalType: 'uint256' },
+          { name: 'minAmountLD', type: 'uint256', internalType: 'uint256' },
+          { name: 'nonce', type: 'uint256', internalType: 'uint256' },
+          { name: 'deadline', type: 'uint64', internalType: 'uint64' },
+        ],
+      },
+      { name: 'signature', type: 'bytes', internalType: 'bytes' },
+    ],
+    outputs: [
+      { name: 'nativeFee', type: 'uint256', internalType: 'uint256' },
+      { name: 'guid', type: 'bytes32', internalType: 'bytes32' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'initialize',
     inputs: [
       {

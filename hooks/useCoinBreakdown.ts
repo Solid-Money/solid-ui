@@ -25,6 +25,22 @@ export type CoinBreakdown = {
 };
 
 /**
+ * Whether two balances are the same coin on (possibly) different chains — the
+ * grouping a coin page uses. A vault share token is its own coin, never the
+ * underlying it was minted from.
+ */
+export const isSameCoin = (a: TokenBalance, b: TokenBalance): boolean => {
+  if (isVaultShareToken(a.contractAddress) !== isVaultShareToken(b.contractAddress)) return false;
+  return a.commonId ? b.commonId === a.commonId : b.contractTickerSymbol === a.contractTickerSymbol;
+};
+
+/** Every wallet balance of this coin, one per chain it is held on. */
+export const useCoinFamily = (token: TokenBalance | undefined): TokenBalance[] => {
+  const { tokens } = useWalletTokens();
+  return useMemo(() => (token ? tokens.filter(t => isSameCoin(token, t)) : []), [token, tokens]);
+};
+
+/**
  * Splits a coin's holdings into per-chain rows.
  *
  * A coin only ever groups with itself across chains — a vault share token
@@ -37,14 +53,7 @@ export const useCoinBreakdown = (token: TokenBalance | undefined): CoinBreakdown
   return useMemo(() => {
     if (!token) return undefined;
 
-    const isShare = isVaultShareToken(token.contractAddress);
-    const family = tokens.filter(t => {
-      if (isVaultShareToken(t.contractAddress) !== isShare) return false;
-
-      return token.commonId
-        ? t.commonId === token.commonId
-        : t.contractTickerSymbol === token.contractTickerSymbol;
-    });
+    const family = tokens.filter(t => isSameCoin(token, t));
 
     if (family.length === 0) return undefined;
 

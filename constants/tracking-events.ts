@@ -481,6 +481,16 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
+
+  // Cross-chain send ("Withdraw to another network"): USDC/USDT bridged from
+  // Fuse to an exchange or the user's own wallet through the BridgePaymaster.
+  CROSS_CHAIN_SEND_DESTINATION_SELECTED: 'cross_chain_send_destination_selected',
+  CROSS_CHAIN_SEND_NETWORK_SELECTED: 'cross_chain_send_network_selected',
+  CROSS_CHAIN_SEND_QUOTED: 'cross_chain_send_quoted',
+  CROSS_CHAIN_SEND_AUTHORISED: 'cross_chain_send_authorised',
+  CROSS_CHAIN_SEND_SUBMITTED: 'cross_chain_send_submitted',
+  CROSS_CHAIN_SEND_FAILED: 'cross_chain_send_failed',
+  CROSS_CHAIN_SEND_STATUS_VIEWED: 'cross_chain_send_status_viewed',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
