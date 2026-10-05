@@ -190,7 +190,8 @@ const SubscriptionCashbackContent = ({
         className="ml-[3px] mt-7 w-full max-w-[323px] self-start text-base text-white/70"
         style={{ fontFamily: 'MonaSans_400Regular', lineHeight: 16 }}
       >
-        Cashback is credited 14 days after the transaction settles.{' '}
+        Your existing subscriptions keep their current cashback; new ones earn the category rates
+        above. Cashback is credited 14 days after the transaction settles.{' '}
         <Text
           accessibilityRole="link"
           className="text-white/70"
