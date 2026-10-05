@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { fuse } from 'viem/chains';
+import { arbitrum, fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
@@ -12,14 +12,7 @@ import { useCrossChainSendConfig } from '@/hooks/useCrossChainSendConfig';
 import { track } from '@/lib/analytics';
 import { CrossChainSendNetworkConfig } from '@/lib/types/cross-chain-send';
 import { cn } from '@/lib/utils';
-import {
-  describeReceivesAs,
-  formatLD,
-  getCrossChainSendToken,
-  getExchangeDisplayName,
-  isOwnWallet,
-  OTHER_EXCHANGE,
-} from '@/lib/utils/cross-chain-send';
+import { describeReceivesAs, formatLD, getCrossChainSendToken } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
 import { Chip, NetworkIcon } from './shared';
@@ -32,50 +25,38 @@ type RowSpec = {
   dimmed: boolean;
 };
 
+/** The route shown first and marked "Recommended": the cheapest, fastest one exchanges widely accept. */
+const RECOMMENDED_CHAIN_ID = arbitrum.id;
+
 /**
- * Screen 2 of the cross-chain send: the networks the chosen exchange credits
- * for this token, then everything else greyed out with the reason — so a user
- * who expected Polygon or Fuse learns why it isn't offered instead of hunting.
+ * The network step of the cross-chain send: every network this token can be
+ * received on, then everything else greyed out with the reason — so a user who
+ * expected Polygon, or USDT on Base, learns why it isn't offered.
  */
 const CrossChainNetworks: React.FC = () => {
-  const {
-    exchange: exchangeId,
-    selectedToken,
-    setDestinationChainId,
-    setModal,
-  } = useSendStore(
+  const { selectedToken, setDestinationChainId, setModal } = useSendStore(
     useShallow(state => ({
-      exchange: state.exchange,
       selectedToken: state.selectedToken,
       setDestinationChainId: state.setDestinationChainId,
       setModal: state.setModal,
     })),
   );
-  const { config, getExchange, getRoute } = useCrossChainSendConfig();
+  const { config, getRoute } = useCrossChainSendConfig();
   const token = getCrossChainSendToken(selectedToken) ?? 'USDC';
-  const exchange = getExchange(exchangeId);
-  const ownWallet = isOwnWallet(exchangeId);
-  const exchangeName = getExchangeDisplayName(exchange, exchangeId);
-
-  const subtitle = ownWallet
-    ? `Networks you can receive ${token} on`
-    : exchangeId === OTHER_EXCHANGE
-      ? `Networks exchanges accept for ${token}`
-      : `Networks ${exchangeName} accepts for ${token}`;
 
   const { accepted, unavailable } = useMemo(() => {
     const acceptedRows: RowSpec[] = [];
     const unavailableRows: RowSpec[] = [];
     if (!config) return { accepted: acceptedRows, unavailable: unavailableRows };
 
-    const acceptedNetworks = exchange?.networks[token] ?? [];
     const perSendMax = BigInt(config.limits.perSendMax);
+    // Recommended first, then config order.
+    const networks = [...config.networks].sort(
+      (a, b) =>
+        Number(b.chainId === RECOMMENDED_CHAIN_ID) - Number(a.chainId === RECOMMENDED_CHAIN_ID),
+    );
 
-    for (const network of config.networks) {
-      const isFuse = network.chainId === fuse.id;
-      const acceptedEntry = acceptedNetworks.find(n => n.chainId === network.chainId);
-      const hasRouteForToken = network.tokens.includes(token);
-
+    for (const network of networks) {
       if (network.status === 'coming_soon') {
         unavailableRows.push({
           network,
@@ -87,28 +68,19 @@ const CrossChainNetworks: React.FC = () => {
         continue;
       }
 
-      if (isFuse) {
-        if (ownWallet) {
-          acceptedRows.push({
-            network,
-            subtitle: 'Instant · no bridge',
-            chips: null,
-            disabled: false,
-            dimmed: false,
-          });
-        } else {
-          unavailableRows.push({
-            network,
-            subtitle: `${exchangeName} doesn’t accept ${token} on Fuse`,
-            chips: null,
-            disabled: true,
-            dimmed: true,
-          });
-        }
+      // Same chain: a plain send, no bridge.
+      if (network.chainId === fuse.id) {
+        acceptedRows.push({
+          network,
+          subtitle: 'Instant · no bridge',
+          chips: null,
+          disabled: false,
+          dimmed: false,
+        });
         continue;
       }
 
-      if (!hasRouteForToken) {
+      if (!network.tokens.includes(token)) {
         unavailableRows.push({
           network,
           subtitle: `${token} can’t be received on ${network.name}. Send USDC instead`,
@@ -119,21 +91,12 @@ const CrossChainNetworks: React.FC = () => {
         continue;
       }
 
-      if (!acceptedEntry) {
-        unavailableRows.push({
-          network,
-          subtitle: `${exchangeName} doesn’t accept ${token} on ${network.name}`,
-          chips: null,
-          disabled: true,
-          dimmed: true,
-        });
-        continue;
-      }
-
       const route = getRoute(token, network.chainId);
       const chips = (
         <>
-          {acceptedEntry.recommended ? <Chip label="Recommended" tone="brand" /> : null}
+          {network.chainId === RECOMMENDED_CHAIN_ID ? (
+            <Chip label="Recommended" tone="brand" />
+          ) : null}
           <Chip label={`~${network.etaMinutes} min`} />
         </>
       );
@@ -163,21 +126,24 @@ const CrossChainNetworks: React.FC = () => {
       });
     }
 
+    // Fuse last among the available rows: the bridged networks are why the user is here.
+    acceptedRows.sort(
+      (a, b) => Number(a.network.chainId === fuse.id) - Number(b.network.chainId === fuse.id),
+    );
     return { accepted: acceptedRows, unavailable: unavailableRows };
-  }, [config, exchange, token, ownWallet, exchangeName, getRoute]);
+  }, [config, token, getRoute]);
 
   const handleSelect = useCallback(
     (network: CrossChainSendNetworkConfig) => {
       setDestinationChainId(network.chainId);
       track(TRACKING_EVENTS.CROSS_CHAIN_SEND_NETWORK_SELECTED, {
-        exchange: exchangeId,
         token,
         dst_chain_id: network.chainId,
         network: network.key,
       });
       setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
     },
-    [setDestinationChainId, setModal, exchangeId, token],
+    [setDestinationChainId, setModal, token],
   );
 
   const renderRow = (row: RowSpec) => (
@@ -186,7 +152,9 @@ const CrossChainNetworks: React.FC = () => {
 
   return (
     <View className="gap-5">
-      <Text className="text-center text-sm leading-[18px] text-white/70">{subtitle}</Text>
+      <Text className="text-center text-sm leading-[18px] text-white/70">
+        Networks you can receive {token} on
+      </Text>
 
       {accepted.length > 0 ? (
         <CardFundGroup>{accepted.map(renderRow)}</CardFundGroup>
@@ -194,7 +162,7 @@ const CrossChainNetworks: React.FC = () => {
         <View className="rounded-[15px] bg-card px-[18px] py-5">
           <Text className="text-base font-semibold text-white">No networks available</Text>
           <Text className="text-sm leading-[18px] text-white/70">
-            {exchangeName} doesn’t accept {token} on any network we can reach yet.
+            {token} can’t be sent to another network right now.
           </Text>
         </View>
       ) : null}

@@ -26,12 +26,7 @@ import { track } from '@/lib/analytics';
 import { Status, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { CrossChainSendQuote } from '@/lib/types/cross-chain-send';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
-import {
-  formatLD,
-  getCrossChainSendToken,
-  getExchangeDisplayName,
-  isOwnWallet,
-} from '@/lib/utils/cross-chain-send';
+import { formatLD, getCrossChainSendToken, OTHER_EXCHANGE } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
 import { BRAND, DetailCard, DetailRowSpec } from './shared';
@@ -49,7 +44,6 @@ const CrossChainReview: React.FC = () => {
     amount,
     address,
     name,
-    exchange: exchangeId,
     destinationChainId,
     setTransaction,
     setModal,
@@ -61,7 +55,6 @@ const CrossChainReview: React.FC = () => {
       amount: state.amount,
       address: state.address,
       name: state.name,
-      exchange: state.exchange,
       destinationChainId: state.destinationChainId,
       setTransaction: state.setTransaction,
       setModal: state.setModal,
@@ -69,19 +62,13 @@ const CrossChainReview: React.FC = () => {
       setCrossChainQuote: state.setCrossChainQuote,
     })),
   );
-  const { getExchange, getNetwork } = useCrossChainSendConfig();
+  const { getNetwork } = useCrossChainSendConfig();
   const { activities, refetchAll } = useActivity();
 
   const token = getCrossChainSendToken(selectedToken);
   const displayToken = token ?? 'USDC';
-  const exchange = getExchange(exchangeId);
   const network = getNetwork(destinationChainId);
-  const ownWallet = isOwnWallet(exchangeId);
-  const exchangeName = getExchangeDisplayName(exchange, exchangeId);
   const isFuseDestination = destinationChainId === fuse.id;
-  const depositNetworkLabel =
-    (token && exchange?.networks[token]?.find(n => n.chainId === destinationChainId))
-      ?.depositNetworkLabel ?? network?.name;
 
   const {
     quote: liveQuote,
@@ -131,7 +118,6 @@ const CrossChainReview: React.FC = () => {
   } = useAddressBook({
     defaultAddress: address || '',
     defaultName: name || '',
-    defaultExchange: exchangeId ?? undefined,
     defaultChainId: destinationChainId ?? undefined,
     defaultToken: token ?? undefined,
     optionalName: true,
@@ -202,15 +188,7 @@ const CrossChainReview: React.FC = () => {
   }, [selectedToken, amount, address, sameChain, setTransaction, refetchAll, setModal]);
 
   const handleCrossChainSend = useCallback(async () => {
-    if (
-      !selectedToken ||
-      !token ||
-      !quote ||
-      !address ||
-      !exchangeId ||
-      destinationChainId === null
-    )
-      return;
+    if (!selectedToken || !token || !quote || !address || destinationChainId === null) return;
     try {
       const result = await crossChain.send({
         token,
@@ -218,7 +196,8 @@ const CrossChainReview: React.FC = () => {
         dstChainId: destinationChainId,
         networkName: network?.name ?? String(destinationChainId),
         recipient: address as Address,
-        exchange: exchangeId,
+        // No exchange step any more: the backend's catch-all accepts every live route.
+        exchange: OTHER_EXCHANGE,
         amount,
         quote,
       });
@@ -244,7 +223,6 @@ const CrossChainReview: React.FC = () => {
     token,
     quote,
     address,
-    exchangeId,
     destinationChainId,
     crossChain,
     network?.name,
@@ -263,7 +241,7 @@ const CrossChainReview: React.FC = () => {
     }
   }, [saveContactIfAsked, isFuseDestination, handleSameChainSend, handleCrossChainSend]);
 
-  if (!selectedToken || !amount || !address || !exchangeId || destinationChainId === null) {
+  if (!selectedToken || !amount || !address || destinationChainId === null) {
     return (
       <View className="items-center">
         <Text className="max-w-64 text-center text-base font-medium">
@@ -281,9 +259,9 @@ const CrossChainReview: React.FC = () => {
   const quoted = (text: (q: CrossChainSendQuote) => string, className?: string) =>
     quote && !quoteError ? value(text(quote), className) : <ValueSkeleton />;
 
-  const toLabel = ownWallet
-    ? eclipseAddress(address as Address)
-    : `${name || exchangeName} · ${eclipseAddress(address as Address)}`;
+  const toLabel = name
+    ? `${name} · ${eclipseAddress(address as Address)}`
+    : eclipseAddress(address as Address);
 
   const rows: DetailRowSpec[] = [
     { key: 'to', label: 'To', value: value(toLabel) },
@@ -355,9 +333,9 @@ const CrossChainReview: React.FC = () => {
           <Info size={20} color={BRAND} />
           <View className="flex-1 gap-1">
             <Text className="text-[15px] font-medium leading-5 text-white">
-              {ownWallet
-                ? `Make sure your wallet is on ${network?.name} before you look for the funds.`
-                : `In ${exchangeName}, pick ${depositNetworkLabel} as the deposit network for ${displayToken}.`}
+              {isFuseDestination
+                ? `Make sure this address can receive ${displayToken} on Fuse.`
+                : `Make sure this address accepts ${displayToken} on ${network?.name}. On an exchange, pick ${network?.name} as the deposit network.`}
             </Text>
             {isFirstSendToDestination ? (
               <Text className="text-sm leading-[18px] text-white/70">

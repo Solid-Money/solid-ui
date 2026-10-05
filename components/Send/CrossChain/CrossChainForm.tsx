@@ -25,8 +25,6 @@ import {
   CROSS_CHAIN_SEND_DECIMALS,
   formatLD,
   getCrossChainSendToken,
-  getExchangeDisplayName,
-  getExchangeInitial,
 } from '@/lib/utils/cross-chain-send';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -40,35 +38,25 @@ const QuoteValueSkeleton = () => <Skeleton className="h-4 w-24 rounded-md bg-whi
 /**
  * Screen 3 of the cross-chain send: the amount, with the live quote under it.
  * The destination summary sits on top so the user can hop back to change the
- * exchange or the network without losing the amount.
+ * recipient or the network without losing the amount.
  */
 const CrossChainForm: React.FC = () => {
-  const {
-    selectedToken,
-    amount,
-    address,
-    name,
-    exchange: exchangeId,
-    destinationChainId,
-    setAmount,
-    setModal,
-  } = useSendStore(
-    useShallow(state => ({
-      selectedToken: state.selectedToken,
-      amount: state.amount,
-      address: state.address,
-      name: state.name,
-      exchange: state.exchange,
-      destinationChainId: state.destinationChainId,
-      setAmount: state.setAmount,
-      setModal: state.setModal,
-    })),
-  );
-  const { config, getExchange, getNetwork, getRoute } = useCrossChainSendConfig();
+  const { selectedToken, amount, address, name, destinationChainId, setAmount, setModal } =
+    useSendStore(
+      useShallow(state => ({
+        selectedToken: state.selectedToken,
+        amount: state.amount,
+        address: state.address,
+        name: state.name,
+        destinationChainId: state.destinationChainId,
+        setAmount: state.setAmount,
+        setModal: state.setModal,
+      })),
+    );
+  const { config, getNetwork, getRoute } = useCrossChainSendConfig();
   const { fuseTokens, isLoading } = useWalletTokens();
 
   const token = getCrossChainSendToken(selectedToken);
-  const exchange = getExchange(exchangeId);
   const network = getNetwork(destinationChainId);
   const route = getRoute(token, destinationChainId);
   const isFuseDestination = destinationChainId === fuse.id;
@@ -293,16 +281,18 @@ const CrossChainForm: React.FC = () => {
         <View className="overflow-hidden rounded-[15px] bg-card">
           <Pressable
             className="flex-row items-center gap-[13px] px-[18px] py-[14px] web:hover:bg-card-hover"
-            onPress={() => setModal(SEND_MODAL.OPEN_CROSS_CHAIN_DESTINATION)}
+            onPress={() => setModal(SEND_MODAL.OPEN_SEND_SEARCH)}
           >
-            <LetterAvatar letter={getExchangeInitial(exchange, exchangeId)} />
+            <LetterAvatar letter={(name || address || '?').charAt(name ? 0 : 2).toUpperCase()} />
             <View className="flex-1 gap-0.5">
               <Text className="text-lg font-semibold leading-[22px] text-white">
-                {name || getExchangeDisplayName(exchange, exchangeId)}
+                {name || (address ? eclipseAddress(address as Address) : '')}
               </Text>
-              <Text className="text-sm leading-[18px] text-white/70">
-                {address ? eclipseAddress(address as Address) : ''}
-              </Text>
+              {name && address ? (
+                <Text className="text-sm leading-[18px] text-white/70">
+                  {eclipseAddress(address as Address)}
+                </Text>
+              ) : null}
             </View>
             <ChevronRight size={20} color="white" />
           </Pressable>

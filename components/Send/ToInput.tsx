@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
 import { eclipseAddress, withRefreshToken } from '@/lib/utils';
-import { useSendStore } from '@/store/useSendStore';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 interface ToInputProps {
   placeholder?: string;
@@ -94,14 +94,14 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
         setAddress(entry.walletAddress);
         setName(entry.name || '');
         setSearchQuery(entry.name || entry.walletAddress);
-        setModal(SEND_MODAL.OPEN_FORM);
+        setModal(recipientNextModal());
       }
     } else if (isValidAddress) {
       const trimmedQuery = searchQuery.trim();
       setAddress(trimmedQuery);
       setName('');
       setSearchQuery(trimmedQuery);
-      setModal(SEND_MODAL.OPEN_FORM);
+      setModal(recipientNextModal());
     }
   };
 
