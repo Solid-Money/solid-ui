@@ -653,13 +653,11 @@ export interface CardStatusResponse {
   depositRequired?: boolean;
   /** The savings (soUSD) minimum the deposit step asks for, in USD. */
   minimumDepositUsd?: number;
-  /** {@link minimumDepositUsd}, named for what it actually is. */
-  /**
-   * True when there is nothing left to pay — the fee is settled, or none is
-   * owed (the line is off, or this country is exempt).
-   */
   /**
    * Identity verification passed, but the application has NOT been sent to the
+   * issuer because the applicant is no longer holding the minimum — typically
+   * they deposited to clear the first step and then moved the funds straight
+   * out. Renders the "deposit and hold" step, which submits the application via
    * `resumeRainKycForward` once the money is back.
    */
   rainForwardPendingDeposit?: boolean;
