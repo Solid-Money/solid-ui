@@ -9,6 +9,7 @@ export const useWalletTokens = () => {
   const queryClient = useQueryClient();
 
   const {
+    failedChainIds,
     totalUSD,
     soUSDEthereum,
     soUSDFuse,
@@ -68,6 +69,7 @@ export const useWalletTokens = () => {
   }, [queryClient, user?.safeAddress, refresh]);
 
   return {
+    failedChainIds,
     totalUSD,
     soUSDEthereum,
     soUSDFuse,

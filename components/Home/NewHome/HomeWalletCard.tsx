@@ -212,23 +212,17 @@ const HomeWalletCard = ({
     );
   }
 
-  /**
-   * Fly the card up into the pane. With `withSpendMode` the pane also puts the
-   * spend-mode sheet up once the card lands — the strip under the card is a shortcut to
-   * that sheet, and it takes the same flight so the card page it opens over is the one
-   * the cardholder watched arrive.
-   */
-  const flyToPane = (withSpendMode: boolean) => {
-    const open = withSpendMode ? openSpendMode : openPane;
+  /** Fly the card up into its details pane when the artwork is tapped. */
+  const flyToPane = () => {
     const node = ref.current;
     if (!node) {
-      open();
+      openPane();
       return;
     }
     // Both directions must use the overlay's root coordinate system.
     const openFromRect = (x: number, y: number, width: number, height: number) => {
       if (!width || !height) {
-        open();
+        openPane();
         return;
       }
       const from = { x, y, width, height };
@@ -246,7 +240,7 @@ const HomeWalletCard = ({
         }),
         last4 ?? '',
       );
-      open(from);
+      openPane(from);
     };
 
     if (Platform.OS === 'android') {
@@ -278,7 +272,7 @@ const HomeWalletCard = ({
               accessibilityLabel={`Spend mode: ${modeLabel}. Change spend mode`}
               accessibilityRole="button"
               className="flex-1 overflow-hidden rounded-[23px] bg-card active:opacity-80"
-              onPress={() => flyToPane(true)}
+              onPress={openSpendMode}
               style={styles.spendModeRow}
             >
               <View style={styles.spendModeLabel}>
@@ -317,7 +311,7 @@ const HomeWalletCard = ({
             </Pressable>
           </HeroExit>
           <Pressable
-            onPress={() => flyToPane(false)}
+            onPress={flyToPane}
             style={[styles.cardBodyFrame, isCardHidden && styles.hidden]}
           >
             <View ref={ref} collapsable={false} pointerEvents="none" style={styles.cardBox}>
@@ -335,7 +329,7 @@ const HomeWalletCard = ({
     // Hidden for as long as the pane owns the card — while it flies, and while the
     // pane is open — so no copy is left behind under the (background-less) pane.
     <Pressable
-      onPress={() => flyToPane(false)}
+      onPress={flyToPane}
       className="px-4"
       style={isCardHidden ? styles.hidden : undefined}
     >

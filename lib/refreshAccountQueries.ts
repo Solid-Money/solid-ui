@@ -9,6 +9,8 @@ const USER_QUERY_ROOTS = new Set([
   'cardBalance',
   'cardSpendRegistration',
   'cardSpendModeAccess',
+  'portfolioCustody',
+  'tierMembership',
 ]);
 const SHARED_QUERY_ROOTS = new Set([
   'vaultExchangeRate',

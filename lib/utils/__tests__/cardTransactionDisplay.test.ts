@@ -1,3 +1,4 @@
+import { CardTransaction } from '@/lib/types';
 import {
   cardSweepExplorerUrl,
   cardTransactionExplorerUrl,
@@ -6,7 +7,63 @@ import {
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
   isOutgoingCardTransaction,
+  mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+
+describe('mergeCardTransactionDetails', () => {
+  const details = { id: 'purchase-1', amount: '1.68', status: 'settled' } as CardTransaction;
+  const cryptoDetails = {
+    from_address: '0x1',
+    to_address: '',
+    tx_hash: '0xabc',
+    chain: 'base',
+  };
+
+  it('preserves a history hash and its chain without replacing current purchase details', () => {
+    const history = {
+      ...details,
+      status: 'approved',
+      crypto_transaction_details: cryptoDetails,
+      spend_details: { sweep_tx_hash: '0xsweep', chain_id: 122 },
+    };
+
+    expect(mergeCardTransactionDetails(details, history)).toMatchObject({
+      status: 'settled',
+      crypto_transaction_details: cryptoDetails,
+      spend_details: history.spend_details,
+    });
+  });
+
+  it('prefers the detail response when it has its own on-chain data', () => {
+    const current = {
+      ...details,
+      crypto_transaction_details: { ...cryptoDetails, tx_hash: '0xnew', chain: 'arbitrum' },
+      spend_details: { state: 'held' },
+    };
+    const history = {
+      ...details,
+      crypto_transaction_details: cryptoDetails,
+      spend_details: { sweep_tx_hash: '0xold', chain_id: 122 },
+    };
+
+    expect(mergeCardTransactionDetails(current, history)).toEqual(current);
+  });
+
+  it('never attaches another purchase hash', () => {
+    const history = {
+      ...details,
+      id: 'purchase-2',
+      crypto_transaction_details: cryptoDetails,
+    };
+
+    expect(mergeCardTransactionDetails(details, history)).toBe(details);
+  });
+
+  it('uses the history when the detail response is unavailable', () => {
+    expect(mergeCardTransactionDetails(null, details)).toBe(details);
+    expect(mergeCardTransactionDetails(undefined, undefined)).toBeUndefined();
+  });
+});
 
 describe('formatCardAmount', () => {
   it('keeps dollars when no currency is given', () => {

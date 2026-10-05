@@ -34,12 +34,9 @@ import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
-import SpendModeHelpModal from '@/components/Card/NewCardDetails/SpendMode/SpendModeHelpModal';
-import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheet';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
-import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
@@ -62,7 +59,6 @@ import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
-  canDepositToCard,
   canToggleCardFreeze,
   canWithdrawFromCard,
   isCustomerFundsRestricted,
@@ -70,8 +66,6 @@ import {
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
-import { useSpendModeHelpStore } from '@/store/useSpendModeHelpStore';
-import { useUserStore } from '@/store/useUserStore';
 
 const HEADER_FADE_EXTENT = 32;
 const HEADER_GRADIENT_FADE_MS = 280;
@@ -104,14 +98,7 @@ const CardDetailsPane = () => {
   const walletGuide = useCardPaneStore(state => state.walletGuide);
   const dismissWalletGuide = useCardPaneStore(state => state.dismissWalletGuide);
   const startFlight = useCardHeroStore(state => state.start);
-  const isHeroFlying = useCardHeroStore(state => state.active);
-  const spendModeRequested = useCardPaneStore(state => state.spendModeRequested);
-  const dismissSpendModeRequest = useCardPaneStore(state => state.dismissSpendModeRequest);
-  const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
-  const hasShownSpendModeHelp = useSpendModeHelpStore(
-    state => !selectedUserId || Boolean(state.shownByUserId[selectedUserId]),
-  );
-  const markSpendModeHelpShown = useSpendModeHelpStore(state => state.markShown);
+  const openSpendMode = useCardPaneStore(state => state.openSpendMode);
 
   // Shown here rather than on the old details route: card issuance sets this flag
   // and sends the user to /card/details, which on mobile now lands on this pane.
@@ -206,43 +193,8 @@ const CardDetailsPane = () => {
       // The hook recorded the reason as `error`, which the row shows in place of its subtitle.
     }
   }, [spendRegistration]);
-  const [isSpendModeOpen, setIsSpendModeOpen] = useState(false);
-  const [isSpendModeHelpOpen, setIsSpendModeHelpOpen] = useState(false);
-  // The explainer is an introduction to this sheet, so it opens only when the
-  // account first reaches Spend Mode. Mark it shown on opening: closing early
-  // still leaves the question-mark button available for a later revisit.
-  useEffect(() => {
-    if (!isOpen || !isSpendModeOpen || !selectedUserId || hasShownSpendModeHelp) return;
-    markSpendModeHelpShown(selectedUserId);
-    setIsSpendModeHelpOpen(true);
-  }, [hasShownSpendModeHelp, isOpen, isSpendModeOpen, markSpendModeHelpShown, selectedUserId]);
   // The borrow position's own sheet, opened by tapping the card that shows it.
   const [isBorrowPositionOpen, setIsBorrowPositionOpen] = useState(false);
-  // Add funds from inside the spend-mode sheet. Its own instance of the fund modal, driven
-  // from here, because the actions row's instance only opens from its own trigger.
-  const [isSpendModeFundOpen, setIsSpendModeFundOpen] = useState(false);
-  // The spend-mode sheet closes first: a funding flow opened over it would leave a sheet
-  // behind the modal that the cardholder has to dismiss again afterwards.
-  // The home screen's "Spend mode" strip opens the pane and asks for this sheet. It waits
-  // for the card to land: a sheet rising while the card is still flying up covers the
-  // flight, and the two animations fight for the same frames. Guarded on the mode being
-  // changeable, which is what the strip itself is gated on — a request that arrives for a
-  // card that can no longer change mode (spending since turned off) just opens the card page.
-  useEffect(() => {
-    if (!isOpen || !spendModeRequested || isHeroFlying) return;
-    if (spendModeFigures.canChangeMode) setIsSpendModeOpen(true);
-    dismissSpendModeRequest();
-  }, [
-    isOpen,
-    spendModeRequested,
-    isHeroFlying,
-    spendModeFigures.canChangeMode,
-    dismissSpendModeRequest,
-  ]);
-  const openFundsFromSpendMode = useCallback(() => {
-    setIsSpendModeOpen(false);
-    setIsSpendModeFundOpen(true);
-  }, []);
   // Stable identities: the reveal section folds its opener into the memoised toggle
   // handler, which would be rebuilt on every render of this pane otherwise.
   const openSpendSheet = useCallback(() => setSpendSheetSource('spending_sheet'), []);
@@ -282,10 +234,7 @@ const CardDetailsPane = () => {
     // rather than merely hiding it also stops the sheet reappearing on the next visit.
     setSpendSheetSource(null);
     setIsAddToWalletOpen(false);
-    setIsSpendModeOpen(false);
-    setIsSpendModeHelpOpen(false);
     setIsBorrowPositionOpen(false);
-    setIsSpendModeFundOpen(false);
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
@@ -418,10 +367,7 @@ const CardDetailsPane = () => {
               is deliberately never asked about. */}
           {spendModeFigures.canChangeMode ? (
             <HeroEnter spec={HERO_ENTER.spendMode} style={styles.spendModeCard}>
-              <SpendingModeCard
-                mode={spendModeFigures.mode}
-                onChangeMode={() => setIsSpendModeOpen(true)}
-              />
+              <SpendingModeCard mode={spendModeFigures.mode} onChangeMode={openSpendMode} />
             </HeroEnter>
           ) : null}
           {/* Cohort-only, and gone for good once enabled — the backend stores the enablement per
@@ -518,25 +464,6 @@ const CardDetailsPane = () => {
         }}
         canWithdraw={canWithdrawFromCard(fundsAccess)}
       />
-      <SpendModeSheet
-        isOpen={isOpen && isSpendModeOpen}
-        onOpenChange={setIsSpendModeOpen}
-        onHelpPress={() => setIsSpendModeHelpOpen(true)}
-        activeMode={spendModeFigures.mode}
-        // Same gate as the actions row's Add funds, so the two never disagree about whether
-        // funds can move right now. Spend modes are Wirex-only, and a Wirex card is funded
-        // through its Safe (`WirexCardFundModal`) rather than by deposit; the provider check
-        // just keeps this from ever opening the wrong flow.
-        onAddFunds={
-          canAddFundsToCard(fundsAccess) && !canDepositToCard(provider)
-            ? openFundsFromSpendMode
-            : undefined
-        }
-      />
-      <SpendModeHelpModal
-        isOpen={isOpen && isSpendModeHelpOpen}
-        onClose={() => setIsSpendModeHelpOpen(false)}
-      />
       {/* Gated on `isOpen` like every other modal here: this pane stays mounted
           behind the wallet screen, and a modal that ignored that would reopen
           itself over the wallet the moment the pane closed mid-approval. */}
@@ -550,10 +477,6 @@ const CardDetailsPane = () => {
         error={realTimeFunding.error}
         onClose={() => setIsRtfModalOpen(false)}
         onApprove={realTimeFunding.approve}
-      />
-      <WirexCardFundModal
-        isOpen={isOpen && isSpendModeFundOpen}
-        onOpenChange={setIsSpendModeFundOpen}
       />
       <BorrowPositionSheet
         isOpen={isOpen && isBorrowPositionOpen}

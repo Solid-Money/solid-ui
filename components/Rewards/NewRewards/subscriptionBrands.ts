@@ -4,10 +4,9 @@ import { type AssetPath } from '@/lib/assets';
  * The subscription services eligible for subscription cashback, grouped into
  * the categories the rewards program bills them under.
  *
- * Shared by the tier comparison screen (which draws the logos as a compact
- * overlapping stack per category) and the subscription cashback sheet (which
- * lists every brand by name), so the two can never disagree about what's
- * eligible.
+ * Used by the tier comparison screen's compact overlapping logo stacks and
+ * subscription perk copy. The cashback sheet keeps its 30px artwork layout in
+ * `categoryCashbackBrands`.
  *
  * Assets are named after the file they were exported as, which doesn't always
  * match the brand they draw — hence the explicit `name` on every entry.
@@ -46,6 +45,14 @@ export interface SubscriptionCategory {
 /** Badge size the `width`/`height` on every brand below are measured at. */
 export const REFERENCE_BADGE_SIZE = 22;
 
+const logoBrand = (name: string, asset: AssetPath): SubscriptionBrand => ({
+  name,
+  asset,
+  width: 16,
+  height: 16,
+  background: '#FFFFFF',
+});
+
 export const SUBSCRIPTION_CATEGORIES: SubscriptionCategory[] = [
   {
     key: 'ai',
@@ -72,6 +79,7 @@ export const SUBSCRIPTION_CATEGORIES: SubscriptionCategory[] = [
         height: 18,
         background: '#FFFFFF',
       },
+      logoBrand('Cursor', 'images/subscription-cashback/cursor.svg'),
     ],
   },
   {
@@ -87,7 +95,7 @@ export const SUBSCRIPTION_CATEGORIES: SubscriptionCategory[] = [
         background: '#000000',
       },
       {
-        name: 'Disney',
+        name: 'Disney+',
         asset: 'images/rewards-tiers/logo-disney-1.svg',
         width: 16,
         height: 16,
@@ -101,7 +109,7 @@ export const SUBSCRIPTION_CATEGORIES: SubscriptionCategory[] = [
         height: REFERENCE_BADGE_SIZE,
       },
       {
-        name: 'Amazon Prime',
+        name: 'Prime Video',
         asset: 'images/rewards-tiers/logo-generic-1.svg',
         width: 14,
         height: 14,
@@ -134,12 +142,24 @@ export const SUBSCRIPTION_CATEGORIES: SubscriptionCategory[] = [
         height: REFERENCE_BADGE_SIZE,
       },
       {
-        name: 'Youtube Music',
+        name: 'YouTube Music',
         asset: 'images/rewards-tiers/logo-generic-2.svg',
         width: 16,
         height: 11.2,
         background: '#FFFFFF',
       },
+      logoBrand('YouTube Premium', 'images/subscription-cashback/youtube.svg'),
+      logoBrand('Deezer', 'images/subscription-cashback/deezer.svg'),
+    ],
+  },
+  {
+    key: 'gaming',
+    sentenceLabel: 'gaming',
+    label: 'Gaming',
+    brands: [
+      logoBrand('Xbox Game Pass', 'images/subscription-cashback/xbox.png'),
+      logoBrand('PlayStation Plus', 'images/subscription-cashback/playstation.svg'),
+      logoBrand('Nintendo Switch Online', 'images/subscription-cashback/nintendo.png'),
     ],
   },
 ];
@@ -183,7 +203,7 @@ export const subscriptionCategoriesSentence = (live?: { key: string; label: stri
  *
  * Falls back to title-casing the key rather than returning null: the eligible
  * categories live in server config and this list is the curated marketing one,
- * so a key it has never heard of ("gaming") is expected, not a bug, and a
+ * so a key it has never heard of is expected, not a bug, and a
  * receipt that names it imperfectly beats one that names nothing.
  */
 export const subscriptionCategoryLabel = (key: string | undefined): string | undefined => {

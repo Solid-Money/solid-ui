@@ -23,7 +23,7 @@ export const TIER_PRESENTATION = {
     airlineRate: null,
     stats: [
       { value: formatTierCashbackRate(RewardsTier.CORE), label: 'Cashback' },
-      { value: '$0', label: 'Card cost' },
+      { value: '$0', label: 'Card cost*' },
     ],
     perks: [
       { icon: 'card', title: 'Free virtual card', description: 'Issued instantly' },
