@@ -164,6 +164,13 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
   VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
   VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
+  // The one-time Rain setup fee. The drop-off between the sheet and the payment
+  // is what tells us whether the fee is the thing stopping people, as distinct
+  // from the verification that follows it.
+  ONBOARDING_FEE_SHEET_VIEWED: 'onboarding_fee_sheet_viewed',
+  ONBOARDING_FEE_PAY_PRESSED: 'onboarding_fee_pay_pressed',
+  ONBOARDING_FEE_PAID: 'onboarding_fee_paid',
+  ONBOARDING_FEE_DISMISSED: 'onboarding_fee_dismissed',
 
   // Deposit Method: Buy Crypto (TransFi onramp)
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
