@@ -10,6 +10,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -93,7 +94,8 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             Oops, something went wrong
           </Text>
           <Text className="mb-4 text-center text-muted-foreground" numberOfLines={3}>
-            Error: {error?.message || 'An unexpected error occurred.'}
+            {/* Never the raw message: an uncaught viem error carries the RPC URL, Pimlico key included. */}
+            {userFacingErrorMessage(error, 'An unexpected error occurred.')}
           </Text>
           <View className="mt-2 flex-row gap-3">
             <Button
