@@ -456,6 +456,24 @@ export const cardTransactionExplorerUrl = (
   }
 };
 
+/** Keep on-chain details from the history when the detail response omits them. */
+export const mergeCardTransactionDetails = (
+  details: CardTransaction | null | undefined,
+  history: CardTransaction | undefined,
+): CardTransaction | undefined => {
+  if (!details) return history;
+  if (!history || history.id !== details.id) return details;
+
+  return {
+    ...details,
+    // Keep the hash and its chain together: they must describe the same leg.
+    crypto_transaction_details: details.crypto_transaction_details?.tx_hash
+      ? details.crypto_transaction_details
+      : (history.crypto_transaction_details ?? details.crypto_transaction_details),
+    spend_details: details.spend_details ?? history.spend_details,
+  };
+};
+
 /** Fuse — the only chain the soUSD sweep runs on. */
 const FUSE_CHAIN_ID = 122;
 

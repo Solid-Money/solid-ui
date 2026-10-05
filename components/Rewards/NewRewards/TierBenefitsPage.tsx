@@ -599,17 +599,17 @@ const brandRow = (key: string): CategoryArtwork => {
 
 /**
  * How each category draws on this panel: brand badges for the subscription
- * three, a single artwork strip for Rides and Airlines.
+ * categories, a single artwork strip for Rides and Airlines.
  *
  * Keyed by the category keys the API sends, and only the ones this screen has
- * artwork for — the payload also carries categories it does not ship (Gaming,
- * anything added in the admin portal), which `categoryCashbackPresentation`
- * has already dropped by the time a row is drawn.
+ * artwork for. Categories added in the admin portal still draw their API
+ * labels and rates, with no local artwork.
  */
 const CATEGORY_ARTWORK: Record<CashbackCategoryKey, CategoryArtwork> = {
   ai: brandRow('ai'),
   streaming: brandRow('streaming'),
   music: brandRow('music'),
+  gaming: brandRow('gaming'),
   rides: {
     label: 'Rides',
     brands: [],
@@ -754,6 +754,7 @@ export function TierBenefitsPage({
 }) {
   const s = scaleFor(width);
   const table = tierPresentationFees(tier, fees);
+  const visibleFeeLines = table.lines.filter(line => line.key !== 'fx');
   const offers = tierOfferRows(offer);
   const focused = useIsFocused();
   const reduceMotion = useReducedMotion();
@@ -842,7 +843,7 @@ export function TierBenefitsPage({
         <CashbackPanel tier={tier} s={s} benefits={benefits} allBenefits={allBenefits} />
         <Panel title="Fees & Caps" s={s}>
           <View style={{ paddingHorizontal: 19 * s, paddingVertical: 8 * s }}>
-            {table.lines.map(line => (
+            {visibleFeeLines.map(line => (
               <View
                 key={line.key}
                 style={{
@@ -865,7 +866,10 @@ export function TierBenefitsPage({
                 >
                   {line.label}
                 </Text>
-                <ValuePill value={line.value} s={s} />
+                <ValuePill
+                  value={line.key === 'virtual_card' ? `${line.value}*` : line.value}
+                  s={s}
+                />
               </View>
             ))}
             <View
@@ -884,6 +888,19 @@ export function TierBenefitsPage({
             </View>
           </View>
         </Panel>
+        <Text
+          style={[
+            regular(s),
+            {
+              marginHorizontal: 17 * s,
+              marginTop: 23 * s,
+              lineHeight: 15.4 * s,
+              color: 'rgba(255,255,255,0.5)',
+            },
+          ]}
+        >
+          * Some charges apply for select countries
+        </Text>
         {tier !== RewardsTier.CORE && offers.length > 0 && (
           <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>

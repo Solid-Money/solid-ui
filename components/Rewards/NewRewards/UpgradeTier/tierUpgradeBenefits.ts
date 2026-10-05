@@ -1,41 +1,83 @@
+import { formatCashbackRate } from '@/components/Rewards/NewRewards/categoryCashback';
 import { RewardsTier, TierBenefits } from '@/lib/types';
 
 /** One line of the tier card's benefit list. */
 export interface TierUpgradeBenefit {
-  key: 'cashback' | 'yield-boost' | 'subscription' | 'cashback-cap';
+  key: 'cashback' | 'yield-boost' | 'subscription' | 'rides' | 'cashback-cap';
   label: string;
 }
 
+const SUBSCRIPTION_CATEGORIES = [
+  { key: 'ai', label: 'AI' },
+  { key: 'streaming', label: 'streaming' },
+  { key: 'music', label: 'music' },
+] as const;
+
+const isPositiveRate = (rate: number | undefined): rate is number =>
+  typeof rate === 'number' && Number.isFinite(rate) && rate > 0;
+
+/** Group only categories that still earn the same rate in the backend configuration. */
+const subscriptionLabel = (benefits: TierBenefits): string | undefined => {
+  const groups = new Map<number, string[]>();
+
+  for (const category of SUBSCRIPTION_CATEGORIES) {
+    const rate =
+      benefits.subscriptionCategoryRates === undefined
+        ? benefits.subscriptionDiscountRate
+        : benefits.subscriptionCategoryRates.find(entry => entry.key === category.key)?.rate;
+    if (!isPositiveRate(rate)) continue;
+    const labels = groups.get(rate) ?? [];
+    labels.push(category.label);
+    groups.set(rate, labels);
+  }
+
+  if (groups.size) {
+    return [...groups]
+      .map(([rate, labels]) => {
+        const categories =
+          labels.length > 1
+            ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+            : labels[0];
+        return `${formatCashbackRate(rate)} on ${categories}`;
+      })
+      .join('\n');
+  }
+
+  // Backends without either structured rate field still supply their own display copy.
+  if (
+    benefits.subscriptionCategoryRates === undefined &&
+    benefits.subscriptionDiscountRate === undefined
+  ) {
+    const discount = benefits.subscriptionDiscount;
+    return discount?.subtitle ? `${discount.title} ${discount.subtitle}` : discount?.title;
+  }
+};
+
 /**
- * The four things a tier gets you, as the upgrade card lists them.
+ * The benefits of the offered tier, as the upgrade card lists them.
  *
- * Read off the same `tier-benefits` payload the comparison screen renders, so
- * the card cannot promise a rate the comparison table contradicts. A benefit the
- * backend has no copy for is dropped rather than rendered empty — a tier card
- * with three true lines is better than one with four and a blank.
- *
- * `subscriptionDiscount` is null for a tier that does not grant it, which is why
- * it is the only one that has to be checked for existence rather than for text.
+ * Read the same `tier-benefits` payload as the comparison screen. Category
+ * cashback names the eligible categories and quotes rides separately; paused
+ * or unavailable categories are omitted.
  */
 export const resolveTierUpgradeBenefits = (
   benefits: TierBenefits | undefined,
 ): TierUpgradeBenefit[] => {
   if (!benefits) return [];
 
+  const subscriptions = subscriptionLabel(benefits);
+  const ridesRate = benefits.subscriptionCategoryRates?.find(entry => entry.key === 'rides')?.rate;
+
   const lines: (TierUpgradeBenefit | null)[] = [
     benefits.cardCashback?.title
-      ? { key: 'cashback', label: `${benefits.cardCashback.title} Cashback` }
+      ? { key: 'cashback', label: `${benefits.cardCashback.title} cashback` }
       : null,
     benefits.depositBoost?.title
-      ? { key: 'yield-boost', label: `${benefits.depositBoost.title} Yield boost` }
+      ? { key: 'yield-boost', label: `${benefits.depositBoost.title} yield boost` }
       : null,
-    benefits.subscriptionDiscount?.title
-      ? {
-          key: 'subscription',
-          label: benefits.subscriptionDiscount.subtitle
-            ? `${benefits.subscriptionDiscount.title} ${benefits.subscriptionDiscount.subtitle}`
-            : benefits.subscriptionDiscount.title,
-        }
+    subscriptions ? { key: 'subscription', label: subscriptions } : null,
+    isPositiveRate(ridesRate)
+      ? { key: 'rides', label: `${formatCashbackRate(ridesRate)} on rides` }
       : null,
     benefits.cardCashbackCap?.title
       ? {

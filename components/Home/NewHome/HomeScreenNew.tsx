@@ -1,31 +1,27 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 
-import { BalancePillRow } from '@/components/BalanceHeadline';
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
+import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
 import HomeRecentActivity from '@/components/Home/NewHome/HomeRecentActivity';
+import HomeSpendCashbackTiles from '@/components/Home/NewHome/HomeSpendCashbackTiles';
 import HomeWalletCard from '@/components/Home/NewHome/HomeWalletCard';
-import {
-  getTotalBalance,
-  holdsFundsAnywhere,
-} from '@/components/Home/NewHome/OtherBalancesDropdown';
-import OtherBalancesDropdown from '@/components/Home/NewHome/OtherBalancesDropdown/OtherBalancesDropdown';
+import { holdsFundsAnywhere } from '@/components/Home/NewHome/OtherBalancesDropdown';
 import WalletActions from '@/components/Home/NewHome/WalletActions';
 import WalletBalanceHeadline from '@/components/Home/NewHome/WalletBalanceHeadline';
 import PageLayout from '@/components/PageLayout';
 import TierTrialSlot from '@/components/Rewards/NewRewards/TierTrialSlot';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { WalletInfo } from '@/components/Wallet';
-import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
-import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
 import { resolveDigitalWallet } from '@/constants/digital-wallet';
 import { CARD_INFO_SCREEN, CARD_INFO_WALLET_PARAM } from '@/constants/path';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
@@ -34,12 +30,14 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
+import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
+import { CardProvider } from '@/lib/types';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -52,10 +50,9 @@ import { useWhatsNewStore } from '@/store/useWhatsNewStore';
  * desktop-web users keep LegacyHome.
  *
  * Big "Balance" number = everything the user holds, Wallet + Card + Savings,
- * combined for display only; the pill below it opens the breakdown that keeps them
- * apart. A card with no balance of its own (Wirex) is left out of the sum and
- * shows up in the breakdown as "Spendable" instead — its balance is a slice of
- * savings, so adding it would count the same money twice. The green card is merged
+ * combined for display only; the Assets section below the card shows the breakdown.
+ * A card with no balance of its own (Wirex) is left out of the sum — its balance
+ * is a slice of savings, so adding it would count the same money twice. The green card is merged
  * in here; Activity is reached from "Recent activity → See all" at the bottom of
  * this screen, and the header's right-hand button opens support.
  */
@@ -63,6 +60,8 @@ export default function HomeScreenNew() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
 
   const { user } = useUser();
+  const portfolio = usePortfolio();
+  const [isRepayOpen, setIsRepayOpen] = useState(false);
   const queryClient = useQueryClient();
   const { refetchAll, isRefreshing } = useActivityRefresh();
   const {
@@ -78,13 +77,11 @@ export default function HomeScreenNew() {
   const { provider: cardProvider } = useCardProvider();
 
   const userHasCard = hasCard(cardStatus);
-  // The "Spend mode" strip under the card. `canChangeMode` already carries both gates — a
-  // Wirex card (the registration read only runs for Wirex) and a build that can reach v2 —
-  // the same condition the card page shows its own spend-mode row on, so the shortcut never
-  // leads to a sheet that is not there.
+  const showWirexTiles = userHasCard && cardProvider === CardProvider.WIREX;
+  // Wirex mode and availability use the same figures as the card's mode picker.
   const spendModeFigures = useSpendModeFigures();
   const homeSpendMode =
-    userHasCard && spendModeFigures.canChangeMode ? spendModeFigures.mode : null;
+    !showWirexTiles && userHasCard && spendModeFigures.canChangeMode ? spendModeFigures.mode : null;
   // Whether the card balance is a pot of its own or a view onto savings (Wirex).
   const cardHoldsOwnBalance = cardHoldsBalance(cardProvider);
 
@@ -123,7 +120,6 @@ export default function HomeScreenNew() {
     hasTokens,
     totalUSDExcludingVaultTokens,
     error: tokenError,
-    retry: retryTokens,
     refresh: refreshTokens,
   } = useWalletTokens();
 
@@ -198,7 +194,7 @@ export default function HomeScreenNew() {
     isBalanceLoading ||
     isTotalSavingsLoading ||
     isCardBalanceLoading ||
-    totalSavingsUSD === undefined;
+    portfolio.isLoading;
 
   useEffect(() => {
     if (isBalanceSectionLoading) {
@@ -216,15 +212,12 @@ export default function HomeScreenNew() {
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
   // Headline = everything the user holds. Combined for display only; the breakdown
-  // sheet keeps Wallet, Card / Spendable and Savings apart. The mobile header title
+  // in the Assets section keeps the holdings apart. The mobile header title
   // is the same figure, so scrolling the headline away doesn't change the number.
-  const totalBalance = getTotalBalance({
-    walletBalance,
-    cardBalance,
-    savingsBalance,
-    userHasCard,
-    cardHoldsOwnBalance,
-  });
+  // Balance is what the user holds net of what they've borrowed (Figma v2, credit home):
+  // the Assets rows, Borrowed included, add up to it. Gross holdings are "Total assets" on the
+  // overview. If debt couldn't be read the figure is flagged incomplete below the headline.
+  const totalBalance = portfolio.netBalance;
   // Whether the action row offers Swap and Send at all. Deliberately NOT
   // `depositCompleted` on its own: that only knows about wallet funding, and a
   // cardholder who funds their card directly has none of it — see
@@ -237,8 +230,8 @@ export default function HomeScreenNew() {
     userHasCard,
     cardHoldsOwnBalance,
   });
-  const walletTitle = isBalanceSectionLoading ? null : formatBalanceUSD(totalBalance);
-  const showAssets = isLoadingTokens || hasTokens || !!tokenError;
+  const walletTitle =
+    isBalanceSectionLoading || totalBalance === undefined ? null : formatBalanceUSD(totalBalance);
   // Which rung of the card funnel belongs under the card, if any — null once the
   // user is done or has snoozed the current one. See `resolveHomePromptStep`.
   const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
@@ -259,7 +252,13 @@ export default function HomeScreenNew() {
     <PageLayout
       mobileTitle={walletTitle}
       animateCardHeroExit
-      additionalContent={<CardDetailsPane />}
+      additionalContent={
+        <>
+          <CardDetailsPane />
+          <SpendModeModals figures={spendModeFigures} />
+          <BorrowPositionSheet isOpen={isRepayOpen} onOpenChange={setIsRepayOpen} />
+        </>
+      }
       scrollEnabled={!isCardPaneOpen}
       onRefresh={Platform.OS !== 'web' ? refetchAll : undefined}
       refreshing={isRefreshing}
@@ -267,14 +266,11 @@ export default function HomeScreenNew() {
       <View className="mb-5 w-full gap-5 pb-24">
         {isBalanceSectionLoading ? (
           // Mirror the loaded wrappers and their heights so the wallet card does
-          // not jump when the headline, breakdown pill and actions replace these.
+          // not jump when the headline and actions replace these.
           <View className="gap-5">
             <View className="items-center gap-1 pt-2">
               <Skeleton className="h-6 w-28 rounded-md" />
               <Skeleton className="h-[54px] w-48 rounded-xl" />
-            </View>
-            <View className="items-center" style={{ transform: [{ translateY: -10 }] }}>
-              <Skeleton className="h-[35px] w-36 rounded-full" />
             </View>
             <View className="flex-row items-center gap-3 px-4">
               <Skeleton className="h-14 flex-1 rounded-full" />
@@ -282,20 +278,35 @@ export default function HomeScreenNew() {
               <Skeleton className="h-14 flex-1 rounded-full" />
             </View>
           </View>
+        ) : totalBalance === undefined ? (
+          <View className="items-center gap-3">
+            <Text className="text-[16px] text-white/70">Balance</Text>
+            <Text className="text-[45px] font-semibold">—</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Retry balances"
+              onPress={() => void refetchAll()}
+            >
+              <Text className="text-[14px] text-[#94F27F]">Balances unavailable · Retry</Text>
+            </TouchableOpacity>
+            <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
+          </View>
         ) : (
           <View className="gap-5">
             <HeroExit spec={HERO_EXIT.balance}>
               <WalletBalanceHeadline balance={totalBalance} />
-            </HeroExit>
-            <HeroExit spec={HERO_EXIT.balance}>
-              <BalancePillRow>
-                <OtherBalancesDropdown
-                  cardBalance={cardBalance}
-                  savingsBalance={savingsBalance}
-                  userHasCard={userHasCard}
-                  walletBalance={walletBalance}
-                />
-              </BalancePillRow>
+              {portfolio.isError && (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry balances"
+                  onPress={() => void refetchAll()}
+                  className="items-center pt-1"
+                >
+                  <Text className="text-[13px] text-white/50">
+                    Some balances unavailable · <Text className="text-[#94F27F]">Retry</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
             </HeroExit>
             <HeroExit spec={HERO_EXIT.actions}>
               <WalletActions hasFunds={hasFunds} hasCard={userHasCard} />
@@ -316,7 +327,12 @@ export default function HomeScreenNew() {
               spendMode={homeSpendMode}
             />
           )}
-          {isPromptReady && promptKey && (
+          {showWirexTiles && !isBalanceSectionLoading && (
+            <HeroExit spec={HERO_EXIT.belowCard}>
+              <HomeSpendCashbackTiles figures={spendModeFigures} />
+            </HeroExit>
+          )}
+          {isPromptReady && promptKey && !(showWirexTiles && promptKey === 'cashback') && (
             <HeroExit spec={HERO_EXIT.belowCard}>
               <HomePromptCard
                 promptKey={promptKey}
@@ -334,29 +350,13 @@ export default function HomeScreenNew() {
           <HomePromoBanners />
         </View>
 
-        {showAssets && (
-          <HeroExit spec={HERO_EXIT.belowCard}>
-            <View className="mt-5 gap-3 px-4">
-              <Text className="text-base font-normal text-white/50">Balances</Text>
-              {tokenError ? (
-                <View className="flex-1 items-center justify-center p-4">
-                  <WalletInfo text="Failed to load tokens" />
-                  <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
-                  <TouchableOpacity
-                    onPress={retryTokens}
-                    className="mt-4 rounded-lg bg-primary px-4 py-2"
-                  >
-                    <Text className="text-primary-foreground">Retry</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : isLoadingTokens ? (
-                <TokenListSkeleton />
-              ) : (
-                <LazyWalletTabs />
-              )}
-            </View>
-          </HeroExit>
-        )}
+        <HeroExit spec={HERO_EXIT.belowCard}>
+          <HomeAssetsCard
+            portfolio={portfolio}
+            borrowApy={spendModeFigures.borrowApy}
+            onRepay={() => setIsRepayOpen(true)}
+          />
+        </HeroExit>
 
         <HeroExit spec={HERO_EXIT.belowCard}>
           <HomeRecentActivity />

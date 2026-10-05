@@ -1760,6 +1760,7 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
     carriedLimit: registration?.carriedLimit ?? null,
 
     isLoading: query.isLoading,
+    readError: query.error,
     isSwitchingMode: switchModeMutation.isPending,
     isRegistering: mutation.isPending,
     isUpdatingLimit: updateMutation.isPending,
