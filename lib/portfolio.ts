@@ -64,6 +64,52 @@ export const bridgedShareValues = (tokens: TokenBalance[]) => {
   return values;
 };
 
+/**
+ * A vault's share token as the user holds it: wallet shares on every network (savings and
+ * bridged alike) plus shares escrowed as credit collateral. The wallet shares, largest first,
+ * are what the Earn row opens; escrowed shares have no coin page of their own.
+ */
+export const vaultShareHoldings = (
+  tokens: TokenBalance[],
+  collateral: TokenBalance[],
+  type: VaultType,
+) => {
+  const held = (list: TokenBalance[]) =>
+    list
+      .filter(
+        token =>
+          portfolioShareVaultType(token.contractAddress) === type &&
+          BigInt(token.balance || '0') > 0n,
+      )
+      .map(token => ({
+        token,
+        amount: Number(formatUnits(BigInt(token.balance), token.contractDecimals)),
+      }));
+  const wallet = held(tokens).sort((a, b) => b.amount - a.amount);
+  const escrowed = held(collateral);
+  const all = [...wallet, ...escrowed];
+  return {
+    walletTokens: wallet.map(item => item.token),
+    shareAmount: all.length ? all.reduce((sum, item) => sum + item.amount, 0) : undefined,
+    shareNetworkCount: new Set(all.map(item => item.token.chainId)).size,
+  };
+};
+
+/**
+ * The yield pill: per day once that reaches a cent, else per month, else nothing. A small
+ * balance would otherwise read "+<$0.01 / day".
+ */
+export const yieldEstimate = (
+  daily: number | undefined,
+  monthly: number | undefined,
+): { amount: number; period: 'day' | 'month' } | undefined => {
+  if (daily !== undefined && Number.isFinite(daily) && daily >= 0.01)
+    return { amount: daily, period: 'day' };
+  if (monthly !== undefined && Number.isFinite(monthly) && monthly >= 0.01)
+    return { amount: monthly, period: 'month' };
+  return undefined;
+};
+
 /** Only a curated commonId can merge ERC20s across networks, never a ticker alone. */
 export const portfolioAssetId = (token: TokenBalance): string =>
   token.commonId

@@ -43,6 +43,7 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   cardBalance: 0,
   debt: 350,
   dailyYield: 0.35,
+  monthlyYield: 10.6,
   totalAssets: 3218.4002,
   netBalance: 2868.4002,
   isLoading: false,
@@ -58,6 +59,18 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
     isComplete: true,
     backsCredit: vault.type === VaultType.USDC,
     apy: vault.type === VaultType.USDC ? 4.5 : 2.9,
+    walletTokens:
+      vault.type === VaultType.ETH
+        ? [
+            {
+              ...cashToken('soETH', '0.0761', 4073, 8453),
+              contractAddress: vault.vaults[0].address,
+            },
+          ]
+        : [],
+    shareAmount:
+      vault.type === VaultType.USDC ? 2365.5 : vault.type === VaultType.ETH ? 0.0761 : undefined,
+    shareNetworkCount: vault.type === VaultType.FUSE ? 0 : 1,
   })),
 };
 

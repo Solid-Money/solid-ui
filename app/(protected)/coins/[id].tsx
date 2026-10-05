@@ -7,6 +7,7 @@ import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import CoinActionPills from '@/components/Coin/CoinActionPills';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
+import CoinEarnLink from '@/components/Coin/CoinEarnLink';
 import CoinSummary from '@/components/Coin/CoinSummary';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
@@ -69,6 +70,8 @@ export default function Coin() {
         <CoinSummary token={token} breakdown={breakdown} tokenVault={tokenVault} />
 
         <CoinActionPills tokenVault={tokenVault} token={sendToken} />
+
+        <CoinEarnLink token={token} tokenVault={tokenVault} />
 
         <CoinBalanceBreakdown breakdown={breakdown} />
 

@@ -91,7 +91,7 @@ it('hides USD amounts, token quantities and available credit together, and resto
   render();
   press('Hide amounts');
   const text = textContent();
-  for (const amount of ['3218', '2868', '350.00', '1,650', '10000', '0.0775', '0.0091'])
+  for (const amount of ['3218', '2868', '350.00', '1,650', '10000', '2365', '0.0761', '0.0091'])
     expect(text).not.toContain(amount);
   expect(text).toContain('••••');
   press('Show amounts');
@@ -103,6 +103,40 @@ it('opens the existing coin detail for a wallet holding and the position sheet f
   expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/1-/));
   press('View Borrowed');
   expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
+});
+it('names the share token on Earn rows and opens its coin page', () => {
+  render();
+  const text = textContent();
+  expect(text).toContain('2365.5 soUSD · backs your credit');
+  expect(text).toContain('0.0761 soETH');
+  press('View ETH Yield');
+  expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/8453-0x/i));
+});
+it('opens the position sheet for escrow-only shares and Earn when no share is in the wallet', () => {
+  render();
+  press('View USD Yield');
+  expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
+  expect(router.push).not.toHaveBeenCalled();
+  render({
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({
+      ...asset,
+      backsCredit: false,
+      walletTokens: [],
+      shareNetworkCount: 2,
+    })),
+  });
+  expect(textContent()).toContain('2365.5 soUSD · 2 networks');
+  press('View USD Yield');
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+});
+it('shows the yield estimate per day, per month when a day is under a cent, or not at all', () => {
+  render();
+  expect(textContent()).toContain('+$0.35 / day est.');
+  render({ dailyYield: 0.0035, monthlyYield: 0.107 });
+  expect(textContent()).toContain('+$0.11 / month est.');
+  expect(textContent()).not.toContain('day est.');
+  render({ dailyYield: 0.0001, monthlyYield: 0.003 });
+  expect(textContent()).not.toContain('est.');
 });
 it('keeps an unavailable total distinct from zero and offers retry', () => {
   render({ isError: true, totalAssets: undefined, netBalance: undefined });

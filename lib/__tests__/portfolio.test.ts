@@ -10,6 +10,8 @@ import {
   savingsUsdValue,
   splitSmallBalances,
   sumPortfolioValues,
+  vaultShareHoldings,
+  yieldEstimate,
 } from '@/lib/portfolio';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
 
@@ -189,6 +191,44 @@ describe('asset grouping and navigation', () => {
     expect(visible.some(asset => asset.valueUsd === undefined)).toBe(true);
     expect(small[0].valueUsd).toBeCloseTo(0.4);
     expect(cashValue(groups)).toEqual({ total: expect.closeTo(20.4), unpricedCount: 1 });
+  });
+  it('counts a vault share on every network and escrow, opening the largest wallet holding', () => {
+    const fuseSoUsd = token({
+      chainId: 122,
+      contractAddress: ADDRESSES.fuse.vault,
+      balance: '1000000',
+    });
+    const baseSoUsd = token({
+      chainId: 8453,
+      contractAddress: ADDRESSES.ethereum.vault,
+      balance: '24774869',
+    });
+    const escrowed = token({ chainId: 122, contractAddress: ADDRESSES.fuse.vault });
+    const empty = token({
+      chainId: 42161,
+      contractAddress: ADDRESSES.ethereum.vault,
+      balance: '0',
+    });
+    const holdings = vaultShareHoldings(
+      [fuseSoUsd, token(), baseSoUsd, empty],
+      [escrowed],
+      VaultType.USDC,
+    );
+    expect(holdings.walletTokens).toEqual([baseSoUsd, fuseSoUsd]);
+    expect(holdings.shareAmount).toBeCloseTo(125.774869);
+    expect(holdings.shareNetworkCount).toBe(2);
+    expect(vaultShareHoldings([token()], [], VaultType.USDC)).toEqual({
+      walletTokens: [],
+      shareAmount: undefined,
+      shareNetworkCount: 0,
+    });
+  });
+  it('estimates yield per day, falls back to per month under a cent, and hides dust', () => {
+    // $26.82 at 4.9% APY makes about $0.0035 a day and $0.11 a month.
+    expect(yieldEstimate(0.35, 10.6)).toEqual({ amount: 0.35, period: 'day' });
+    expect(yieldEstimate(0.0035, 0.107)).toEqual({ amount: 0.107, period: 'month' });
+    expect(yieldEstimate(0.0001, 0.003)).toBeUndefined();
+    expect(yieldEstimate(undefined, undefined)).toBeUndefined();
   });
   it('routes native tokens through the coin page zero address', () => {
     expect(

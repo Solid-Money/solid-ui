@@ -21,7 +21,13 @@ import { path } from '@/constants/path';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
-import { cashGroupTotal, coinAssetPath, PortfolioAsset, splitSmallBalances } from '@/lib/portfolio';
+import {
+  cashGroupTotal,
+  coinAssetPath,
+  PortfolioAsset,
+  splitSmallBalances,
+  yieldEstimate,
+} from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
@@ -57,6 +63,21 @@ const cashIcon = (asset: PortfolioAsset): PortfolioIconKind | undefined => {
   if (asset.symbol === 'FUSE') return 'fuse';
   return undefined;
 };
+type EarnAsset = ReturnType<typeof usePortfolio>['earnAssets'][number];
+
+/** "26.82 soUSD · 2 networks", or the underlying amount when no share balance is known. */
+const earnDetails = (asset: EarnAsset, hidden: boolean): string[] => {
+  const decimals = asset.vault.type === VaultType.ETH ? 4 : 2;
+  const amount = (value: number) => (hidden ? HIDDEN_AMOUNT : formatNumber(value, decimals));
+  const details: string[] = [];
+  if (asset.shareAmount !== undefined && asset.vault.vaultToken)
+    details.push(`${amount(asset.shareAmount)} ${asset.vault.vaultToken}`);
+  else if (asset.vault.type !== VaultType.USDC && asset.underlyingAmount !== undefined)
+    details.push(`${amount(asset.underlyingAmount)} ${asset.vault.type.toUpperCase()}`);
+  if (asset.backsCredit) details.push('backs your credit');
+  else if (asset.shareNetworkCount > 1) details.push(`${asset.shareNetworkCount} networks`);
+  return details;
+};
 
 export function AssetsOverview({
   portfolio,
@@ -80,6 +101,7 @@ export function AssetsOverview({
     asset => asset.valueUsd === undefined || asset.valueUsd > 0,
   );
   const hasDebt = (portfolio.debt ?? 0) > 0;
+  const estimate = yieldEstimate(portfolio.dailyYield, portfolio.monthlyYield);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
 
   const openCash = (asset: PortfolioAsset) => {
@@ -90,6 +112,14 @@ export function AssetsOverview({
       return;
     }
     router.push(coinAssetPath(token) as Href);
+  };
+  const openEarn = (asset: EarnAsset) => {
+    // The share token's coin page carries APY, networks, Send and history; it links back
+    // to Earn for withdrawals. Escrow-only shares belong to the position sheet.
+    const token = asset.walletTokens[0];
+    if (token) router.push(coinAssetPath(token) as Href);
+    else if (asset.backsCredit) setBorrowOpen(true);
+    else router.push({ pathname: '/savings', params: { vault: asset.vault.type } } as Href);
   };
 
   return (
@@ -150,18 +180,16 @@ export function AssetsOverview({
               mutedDecimals={false}
             />
           )}
-          {!portfolio.isLoading &&
-            portfolio.dailyYield !== undefined &&
-            portfolio.dailyYield > 0 && (
-              <View className="pt-[6px]">
-                <View className="rounded-full bg-card px-[14px] py-[7px]">
-                  <Text className="text-[16px] font-normal text-[#94F27F]">
-                    {hidden ? HIDDEN_AMOUNT : `+${assetAmountLabel(portfolio.dailyYield)}`} / day
-                    est.
-                  </Text>
-                </View>
+          {!portfolio.isLoading && estimate && (
+            <View className="pt-[6px]">
+              <View className="rounded-full bg-card px-[14px] py-[7px]">
+                <Text className="text-[16px] font-normal text-[#94F27F]">
+                  {hidden ? HIDDEN_AMOUNT : `+${assetAmountLabel(estimate.amount)}`} /{' '}
+                  {estimate.period} est.
+                </Text>
               </View>
-            )}
+            </View>
+          )}
           {hasDebt && (
             <Text className="pt-[12px] text-center text-[14px] text-white/50">
               Balance {assetAmountLabel(portfolio.netBalance, hidden)} after{' '}
@@ -218,20 +246,15 @@ export function AssetsOverview({
                           {asset.apy !== undefined && (
                             <Text className="text-[#94F27F]">{asset.apy.toFixed(1)}% APY</Text>
                           )}
-                          {asset.backsCredit
-                            ? `${asset.apy !== undefined ? ' · ' : ''}backs your credit`
-                            : asset.vault.type !== VaultType.USDC &&
-                                asset.underlyingAmount !== undefined
-                              ? `${asset.apy !== undefined ? ' · ' : ''}${hidden ? HIDDEN_AMOUNT : formatNumber(asset.underlyingAmount, asset.vault.type === VaultType.ETH ? 4 : 2)} ${asset.vault.type.toUpperCase()}`
-                              : ''}
+                          {earnDetails(asset, hidden)
+                            .map(
+                              (detail, i) =>
+                                (i > 0 || asset.apy !== undefined ? ' · ' : '') + detail,
+                            )
+                            .join('')}
                         </>
                       }
-                      onPress={() =>
-                        router.push({
-                          pathname: '/savings',
-                          params: { vault: asset.vault.type },
-                        } as Href)
-                      }
+                      onPress={() => openEarn(asset)}
                     />
                   </Fragment>
                 ))}
@@ -376,7 +399,7 @@ export function AssetsOverview({
           </>
         )}
         <Text className="text-[13px] font-normal text-white/40">
-          Tap an asset for details. Values in USD; APY is variable. Daily yield is an estimate.
+          Tap an asset for details. Values in USD; APY is variable. Yield is an estimate.
         </Text>
       </View>
     </PageLayout>
