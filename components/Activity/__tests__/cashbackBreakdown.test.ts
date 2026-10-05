@@ -98,7 +98,7 @@ describe('buildCashbackBreakdown', () => {
       footer: { kind: 'categories', linkLabel: 'See categories' },
     });
     expect(footerText(breakdown)).toBe(
-      'Prime also pays 10% on Streaming and Music, and 8% on Rides. ',
+      'Prime also pays 10% on Streaming, Music and Gaming, and 8% on Rides. ',
     );
     expect(
       breakdown.footer?.segments.filter(segment => segment.highlight).map(s => s.text),
@@ -115,7 +115,7 @@ describe('buildCashbackBreakdown', () => {
 
     expect(breakdown.tierLabel).toBe('Ultra');
     expect(footerText(breakdown)).toBe(
-      'Ultra also pays 20% on AI, Streaming and Music, and 10% on Rides and Airlines. ',
+      'Ultra also pays 20% on AI, Streaming, Music and Gaming, and 10% on Rides and Airlines. ',
     );
   });
 

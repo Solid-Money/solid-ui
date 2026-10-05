@@ -81,7 +81,7 @@ describe('CashbackDetailsCard', () => {
     expect(text).toContain('"Prime perk"');
     expect(text).toContain('"Paid out"');
     expect(text).toContain('"See categories"');
-    expect(text).toContain('" on Streaming and Music"');
+    expect(text).toContain('" on Streaming, Music and Gaming"');
 
     act(() => toggle(renderer).props.onPress());
     expect(textOf(renderer)).not.toContain('"Prime perk"');
