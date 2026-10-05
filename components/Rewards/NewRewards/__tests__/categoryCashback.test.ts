@@ -55,7 +55,7 @@ describe('category cashback presentation', () => {
     // The whole point of reading the list from the API: a category nobody has
     // drawn logos for still has to appear, or the sheet disagrees with what the
     // backend is paying. Its artwork is the caller's problem, not this one's.
-    it('keeps a category this app has no artwork for', () => {
+    it('keeps Gaming and categories this app has no artwork for', () => {
       const result = categoryCashbackPresentation(
         RewardsTier.ULTRA,
         20,
@@ -63,6 +63,7 @@ describe('category cashback presentation', () => {
       );
 
       expect(Object.keys(shown(result))).toEqual(['gaming', 'fitness', 'ai']);
+      expect(result.rateFor('gaming')).toBe(50);
       expect(result.headlineRate).toBe(50);
     });
 
@@ -112,7 +113,14 @@ describe('category cashback presentation', () => {
     it('spreads the flat rate over the subscription categories only', () => {
       const result = categoryCashbackPresentation(RewardsTier.PRIME, 25);
 
-      expect(shown(result)).toEqual({ ai: 25, streaming: 25, music: 25, rides: 8, airlines: 0 });
+      expect(shown(result)).toEqual({
+        ai: 25,
+        streaming: 25,
+        music: 25,
+        gaming: 25,
+        rides: 8,
+        airlines: 0,
+      });
       expect(result.headlineRate).toBe(25);
       expect(result.actionLabel).toBe('Upgrade to Ultra');
     });
@@ -120,14 +128,21 @@ describe('category cashback presentation', () => {
     it('keeps the design rides and airlines rates for Ultra', () => {
       const result = categoryCashbackPresentation(RewardsTier.ULTRA, 20);
 
-      expect(shown(result)).toEqual({ ai: 20, streaming: 20, music: 20, rides: 10, airlines: 10 });
+      expect(shown(result)).toEqual({
+        ai: 20,
+        streaming: 20,
+        music: 20,
+        gaming: 20,
+        rides: 10,
+        airlines: 10,
+      });
       expect(result.actionLabel).toBe('Got it');
     });
 
     it('shows the locked Core offer without granting the preview benefit', () => {
       const result = categoryCashbackPresentation(RewardsTier.CORE, 0);
 
-      expect(Object.values(shown(result))).toEqual([0, 0, 0, 0, 0]);
+      expect(Object.values(shown(result))).toEqual([0, 0, 0, 0, 0, 0]);
       expect(result.headlineRate).toBe(20);
       expect(result.actionLabel).toBe('Upgrade to Prime');
       expect(result.upgradeTier).toBe(RewardsTier.PRIME);
@@ -185,7 +200,7 @@ describe('category cashback presentation', () => {
         categoryCashbackPresentation(RewardsTier.PRIME, 10).categories.map(
           category => category.key,
         ),
-      ).toEqual(['ai', 'streaming', 'music', 'rides', 'airlines']);
+      ).toEqual(['ai', 'streaming', 'music', 'gaming', 'rides', 'airlines']);
     });
   });
 

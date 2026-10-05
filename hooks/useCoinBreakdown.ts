@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { CHAIN_NAMES } from '@/constants/chains';
+import { portfolioAssetId } from '@/lib/portfolio';
 import { TokenBalance } from '@/lib/types';
 import { isVaultShareToken } from '@/lib/vaults';
 import { getChain } from '@/lib/wagmi';
@@ -53,7 +54,12 @@ export const useCoinBreakdown = (token: TokenBalance | undefined): CoinBreakdown
   return useMemo(() => {
     if (!token) return undefined;
 
-    const family = tokens.filter(t => isSameCoin(token, t));
+    const isShare = isVaultShareToken(token.contractAddress);
+    const family = tokens.filter(t => {
+      if (isVaultShareToken(t.contractAddress) !== isShare) return false;
+
+      return portfolioAssetId(t) === portfolioAssetId(token);
+    });
 
     if (family.length === 0) return undefined;
 

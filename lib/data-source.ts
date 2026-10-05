@@ -28,7 +28,7 @@ const fetchBlockscoutTokenBalances = async (
   address: string,
 ): Promise<BlockscoutTokenBalance[]> => {
   const url = blockscoutUrlForChain(chainId);
-  if (!url) return [];
+  if (!url) throw new Error(`No balance fallback available for chain ${chainId}`);
   const response = await fetch(`${url}/api/v2/addresses/${address}/token-balances`, {
     headers: { accept: 'application/json' },
   });

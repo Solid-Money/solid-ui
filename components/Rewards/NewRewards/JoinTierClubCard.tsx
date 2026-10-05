@@ -4,24 +4,13 @@ import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { useTierBenefits } from '@/hooks/useRewards';
-import { formatTierCashbackRate } from '@/lib/tierCashback';
 import { getTierDisplayName } from '@/lib/tierNames';
-import { formatTierYieldBoost, resolveTierYieldBoostRate } from '@/lib/tierYieldBoost';
 import { RewardsTier } from '@/lib/types';
 
+import { joinTierClubBenefits } from './joinTierClubBenefits';
 import SubscriptionBrandBadge from './SubscriptionBrandBadge';
 import { SUBSCRIPTION_CATEGORIES } from './subscriptionBrands';
 import { BOTTOM_RIGHT_WASH } from './tierGradients';
-
-/**
- * The teaser's AI cashback figure per tier. The yield boost is deliberately not here:
- * it comes from the tier-benefits endpoint at render, so this card cannot advertise a
- * boost the rewards screen and the tier detail screen are not also quoting.
- */
-const TIER_PROMISE: Record<RewardsTier.PRIME | RewardsTier.ULTRA, { aiCashback: string }> = {
-  [RewardsTier.PRIME]: { aiCashback: '25%' },
-  [RewardsTier.ULTRA]: { aiCashback: '50%' },
-};
 
 const AI_BRANDS = SUBSCRIPTION_CATEGORIES.find(category => category.key === 'ai')!.brands;
 
@@ -33,9 +22,8 @@ interface JoinTierClubCardProps {
 /** The compact membership teaser from Figma node 26080:20859. */
 const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
   const tierName = getTierDisplayName(tier);
-  const promise = TIER_PROMISE[tier];
   const { data: tierBenefits } = useTierBenefits();
-  const yieldBoost = formatTierYieldBoost(resolveTierYieldBoostRate(tier, tierBenefits));
+  const benefits = joinTierClubBenefits(tier, tierBenefits);
 
   return (
     <Pressable
@@ -63,35 +51,43 @@ const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
           Unlock extra cashback and benefits
         </Text>
 
-        <View className="mt-[21px] flex-row flex-wrap gap-[10px]">
-          <View className="h-[37px] justify-center rounded-full bg-white/10 px-[14px]">
-            <Text className="text-[16px] leading-[20px] text-white/70">
-              {formatTierCashbackRate(tier)} Cashback
-            </Text>
+        {(benefits.cashback || benefits.yieldBoost) && (
+          <View className="mt-[21px] flex-row flex-wrap gap-[10px]">
+            {benefits.cashback && (
+              <View className="h-[37px] justify-center rounded-full bg-white/10 px-[14px]">
+                <Text className="text-[16px] leading-[20px] text-white/70">
+                  {benefits.cashback} Cashback
+                </Text>
+              </View>
+            )}
+            {benefits.yieldBoost && (
+              <View className="h-[37px] justify-center rounded-full bg-white/10 px-[14px]">
+                <Text className="text-[16px] leading-[20px] text-white/70">
+                  {benefits.yieldBoost} Yield boost
+                </Text>
+              </View>
+            )}
           </View>
-          <View className="h-[37px] justify-center rounded-full bg-white/10 px-[14px]">
-            <Text className="text-[16px] leading-[20px] text-white/70">
-              {yieldBoost} Yield boost
-            </Text>
-          </View>
-        </View>
+        )}
 
-        <View className="mt-[10px] h-[37px] flex-row items-center self-start rounded-full bg-white/10 pl-[15px] pr-[14px]">
-          <View className="mr-[8px] flex-row items-center">
-            {AI_BRANDS.map((brand, index) => (
-              <SubscriptionBrandBadge
-                key={brand.name}
-                brand={brand}
-                size={22}
-                overlap={index === 0 ? undefined : -3}
-                ring={index > 0}
-              />
-            ))}
+        {benefits.aiCashback && (
+          <View className="mt-[10px] h-[37px] flex-row items-center self-start rounded-full bg-white/10 pl-[15px] pr-[14px]">
+            <View className="mr-[8px] flex-row items-center">
+              {AI_BRANDS.map((brand, index) => (
+                <SubscriptionBrandBadge
+                  key={brand.name}
+                  brand={brand}
+                  size={22}
+                  overlap={index === 0 ? undefined : -3}
+                  ring={index > 0}
+                />
+              ))}
+            </View>
+            <Text className="text-[16px] leading-[20px] text-white/70">
+              {benefits.aiCashback} Cashback on AI
+            </Text>
           </View>
-          <Text className="text-[16px] leading-[20px] text-white/70">
-            {promise.aiCashback} Cashback on AI
-          </Text>
-        </View>
+        )}
       </View>
     </Pressable>
   );

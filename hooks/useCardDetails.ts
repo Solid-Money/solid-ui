@@ -53,10 +53,19 @@ export const useCardDetails = () => {
     () => ({
       ...detailsQuery,
       data: mergedData,
+      isError: detailsQuery.isError || (provider === CardProvider.RAIN && balanceQuery.isError),
+      error: detailsQuery.error ?? (provider === CardProvider.RAIN ? balanceQuery.error : null),
       isLoading:
         detailsQuery.isLoading ||
         (provider === CardProvider.RAIN && !!detailsQuery.data && balanceQuery.isLoading),
     }),
-    [detailsQuery, mergedData, provider, balanceQuery.isLoading],
+    [
+      detailsQuery,
+      mergedData,
+      provider,
+      balanceQuery.isLoading,
+      balanceQuery.isError,
+      balanceQuery.error,
+    ],
   );
 };

@@ -18,6 +18,18 @@ export interface CategoryCashbackBrand {
   badgeText?: string;
 }
 
+/** New merchant marks fit the same circular slots as the original artwork. */
+const logoBrand = (
+  name: string,
+  source: ImageSource,
+  ring?: CategoryCashbackBrand['ring'],
+): CategoryCashbackBrand => ({
+  name,
+  background: { color: '#FFFFFF' },
+  layers: [{ source, width: 22, height: 22, left: 4, top: 4 }],
+  ...(ring ? { ring } : {}),
+});
+
 // Positions and intrinsic SVG dimensions are the 30px merchant slots exported
 // from Figma 27572:3100, including the ring and transformed logo layers.
 export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashbackBrand[]> = {
@@ -60,6 +72,7 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
         },
       ],
     },
+    logoBrand('Cursor', require('@/assets/images/subscription-cashback/cursor.svg')),
   ],
   streaming: [
     {
@@ -76,7 +89,7 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
       ],
     },
     {
-      name: 'Disney',
+      name: 'Disney+',
       background: { color: '#FFFFFF', size: 29, left: 1 },
       layers: [
         {
@@ -108,7 +121,7 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
       ],
     },
     {
-      name: 'Amazon Prime',
+      name: 'Prime Video',
       background: { color: '#FFFFFF', size: 28, left: 1, top: 1 },
       layers: [
         {
@@ -159,7 +172,7 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
       ],
     },
     {
-      name: 'Youtube Music',
+      name: 'YouTube Music',
       background: { color: '#FFFFFF' },
       layers: [
         {
@@ -171,6 +184,16 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
         },
       ],
     },
+    logoBrand('YouTube Premium', require('@/assets/images/subscription-cashback/youtube.svg')),
+    logoBrand('Deezer', require('@/assets/images/subscription-cashback/deezer.svg')),
+  ],
+  gaming: [
+    logoBrand('Xbox Game Pass', require('@/assets/images/subscription-cashback/xbox.png')),
+    logoBrand('PlayStation Plus', require('@/assets/images/subscription-cashback/playstation.svg')),
+    logoBrand(
+      'Nintendo Switch Online',
+      require('@/assets/images/subscription-cashback/nintendo.png'),
+    ),
   ],
   rides: [
     {
@@ -230,6 +253,10 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
         },
       ],
     },
+    logoBrand('Lyft', require('@/assets/images/subscription-cashback/lyft.svg'), 'rides'),
+    logoBrand('Free Now', require('@/assets/images/subscription-cashback/freenow.svg'), 'rides'),
+    logoBrand('Cabify', require('@/assets/images/subscription-cashback/cabify.png'), 'rides'),
+    logoBrand('Ola Cabs', require('@/assets/images/subscription-cashback/ola.svg'), 'rides'),
   ],
   airlines: [
     {
@@ -290,12 +317,43 @@ export const CATEGORY_CASHBACK_BRANDS: Record<CashbackCategoryKey, CategoryCashb
         },
       ],
     },
-    {
-      name: '8 more airlines',
-      background: { color: '#333333' },
-      ring: 'airlines',
-      layers: [],
-      badgeText: '+8',
-    },
+    logoBrand('Ryanair', require('@/assets/images/subscription-cashback/ryanair.svg'), 'airlines'),
+    logoBrand('easyJet', require('@/assets/images/subscription-cashback/easyjet.svg'), 'airlines'),
+    logoBrand('Wizz Air', require('@/assets/images/subscription-cashback/wizzair.svg'), 'airlines'),
+    logoBrand(
+      'Lufthansa',
+      require('@/assets/images/subscription-cashback/lufthansa.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'British Airways',
+      require('@/assets/images/subscription-cashback/britishairways.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'Air France',
+      require('@/assets/images/subscription-cashback/airfrance.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'KLM Royal Dutch',
+      require('@/assets/images/subscription-cashback/klm.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'Delta Air Lines',
+      require('@/assets/images/subscription-cashback/delta.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'United Airlines',
+      require('@/assets/images/subscription-cashback/unitedairlines.svg'),
+      'airlines',
+    ),
+    logoBrand(
+      'American Airlines',
+      require('@/assets/images/subscription-cashback/americanairlines.svg'),
+      'airlines',
+    ),
   ],
 };

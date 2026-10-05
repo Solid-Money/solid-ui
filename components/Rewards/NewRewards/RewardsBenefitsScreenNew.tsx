@@ -12,7 +12,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import {
   SIDEBAR_BODY_TOP_GUTTER,
@@ -196,10 +196,17 @@ const PremiumUpgradeFooter = ({
 
 export default function RewardsBenefitsScreenNew() {
   const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
-  return <RewardsBenefitsForAccount key={userId ?? 'none'} />;
+  const { tier: requestedTier } = useLocalSearchParams<{ tier?: string }>();
+  const initialTier = TIERS.find(tier => tier === requestedTier) ?? null;
+  return (
+    <RewardsBenefitsForAccount
+      key={`${userId ?? 'none'}:${initialTier ?? 'current'}`}
+      initialTier={initialTier}
+    />
+  );
 }
 
-function RewardsBenefitsForAccount() {
+function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier | null }) {
   const {
     data: rewardsData,
     isError,
@@ -219,7 +226,7 @@ function RewardsBenefitsForAccount() {
       : undefined;
   const { data: membership } = useTierMembership();
   const openTierUpgrade = useTierUpgradeStore(state => state.open);
-  const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(null);
+  const [selectedTierOverride, setSelectedTierOverride] = useState<RewardsTier | null>(initialTier);
   const [isUpgradeSheetOpen, setIsUpgradeSheetOpen] = useState(false);
   const [upgradeTier, setUpgradeTier] = useState<RewardsTier.PRIME | RewardsTier.ULTRA>(
     RewardsTier.PRIME,
@@ -536,7 +543,10 @@ function RewardsBenefitsForAccount() {
                   allBenefits={tierBenefits}
                   fees={tierBenefits?.find(benefit => benefit.tier === tier)?.fees}
                   offer={membership?.enabled ? findOffer(membership, tier) : undefined}
-                  showUpgradeSpace={!ctaFor(tier).held && tier !== RewardsTier.CORE}
+                  showUpgradeSpace={
+                    !ctaFor(tier).held &&
+                    (tier !== RewardsTier.CORE || (isError && !isRewardsFetching))
+                  }
                   subtitle={(() => {
                     const pointsEnabled = membership?.pointsUnlockEnabled ?? true;
                     const offerCopy = membership?.enabled
