@@ -2249,6 +2249,46 @@ export interface ProductFeeRates {
   revenueWalletAddress?: string;
 }
 
+/**
+ * The one-time Rain onboarding fees, by product.
+ *
+ * The card and the virtual account are separate Rain onboardings, each with its
+ * own Didit session and its own Rain review, so each is charged once and
+ * separately. Paying for a card does not pay for an account.
+ */
+export enum OnboardingFeeProduct {
+  RAIN_CARD = 'rain_card',
+  RAIN_VIRTUAL_ACCOUNT = 'rain_virtual_account',
+}
+
+/** What this user owes to open a Rain product, and whether they have paid. */
+export interface OnboardingFeeQuote {
+  product: OnboardingFeeProduct;
+  /** The fee in USD. 0 means nothing is owed — the line is off, or exempt. */
+  feeUsd: number;
+  /** True when there is nothing left to pay: paid, or never owed. */
+  satisfied: boolean;
+  /** True when a payment is on record. */
+  paid: boolean;
+  paidAt?: string;
+  /**
+   * Where the fee must be sent.
+   *
+   * Absent when no treasury is configured, which the client must treat as "do
+   * not build a transfer": paying a guessed address would burn the user's
+   * money, and the backend would refuse the payment anyway.
+   */
+  treasuryAddress?: string;
+  /** Chains a payment is accepted on, most-preferred first. */
+  chainIds: number[];
+}
+
+export interface ConfirmOnboardingFeeParams {
+  product: OnboardingFeeProduct;
+  transactionHash: string;
+  chainId: number;
+}
+
 /** What the user will pay on one specific amount. */
 export interface ProductFeeQuote {
   product: FeeProduct;
