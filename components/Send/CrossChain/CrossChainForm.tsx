@@ -199,6 +199,21 @@ const CrossChainForm: React.FC = () => {
   );
 
   const inlineError = (errors.amount?.message as string | undefined) || limitError || quoteError;
+
+  // The quote card only makes sense for an amount that can actually be sent:
+  // empty, zero, over the balance, outside the limits or unquotable leaves it
+  // out instead of showing a card of loading placeholders. Checked here rather
+  // than through `errors`, which native only fills in on submit.
+  const showQuoteCard = useMemo(() => {
+    if (!amount || isNaN(Number(amount))) return false;
+    let amountLD: bigint;
+    try {
+      amountLD = parseUnits(amount, CROSS_CHAIN_SEND_DECIMALS);
+    } catch {
+      return false;
+    }
+    return amountLD > 0n && amountLD <= balanceWei && !limitError && !quoteError;
+  }, [amount, balanceWei, limitError, quoteError]);
   const quoteReady = isFuseDestination || (!!quote && !quoteError);
   const canReview = !!selectedToken && isValid && !limitError && quoteReady && !isQuoteLoading;
 
@@ -373,7 +388,7 @@ const CrossChainForm: React.FC = () => {
           ) : null}
         </View>
 
-        <DetailCard rows={quoteRows} />
+        {showQuoteCard ? <DetailCard rows={quoteRows} /> : null}
       </View>
 
       <Button
