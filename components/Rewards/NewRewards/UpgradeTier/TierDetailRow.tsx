@@ -49,7 +49,10 @@ const TierDetailRow = ({
             side="top"
             analyticsContext={tooltipAnalyticsContext}
             accessibilityLabel={`What is ${label}?`}
-            classNames={{ trigger: '-mt-[3px]' }}
+            classNames={{
+              root: '-ml-[13.5px]',
+              trigger: 'h-11 w-11 items-center justify-center pb-[3px]',
+            }}
           />
         ) : null}
       </View>

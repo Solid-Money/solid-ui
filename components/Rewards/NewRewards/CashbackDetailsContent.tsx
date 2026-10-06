@@ -71,14 +71,15 @@ const CashbackDetailsContent = ({
         </Text>
       </StatRow>
       <Divider />
-      <StatRow label="Cashback earned this month">
-        <Text className="text-lg font-medium text-[#94F27F]">
-          {formatBalanceUSD(monthlyCashbackTotal(cashbackThisMonth, cashbackPendingThisMonth))}
-        </Text>
-      </StatRow>
-      <Text className="-mt-2 px-[19px] pb-3 text-xs text-white/50">
-        Total includes pending cashback.
-      </Text>
+      <View className="gap-0.5 px-[19px] py-3">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-base font-medium text-white/70">Cashback earned this month</Text>
+          <Text className="text-lg font-medium text-[#94F27F]">
+            {formatBalanceUSD(monthlyCashbackTotal(cashbackThisMonth, cashbackPendingThisMonth))}
+          </Text>
+        </View>
+        <Text className="text-xs text-white/50">Total includes pending cashback.</Text>
+      </View>
       <Divider />
       <StatRow label="Monthly cap">
         <Text className="text-lg font-medium text-white">

@@ -109,11 +109,12 @@ const SubscriptionCashbackContent = ({
     subscriptionDiscountRate,
     subscriptionCategoryRates,
   );
-  // The tabs are whatever the API reports, in the order it reports them. The
-  // selection is held by key rather than index, so a category paused while the
-  // sheet is open falls back to the first one left instead of pointing at a row
-  // that is no longer there.
-  const { categories } = presentation;
+  // Keep AI first with its short tab label; the other categories retain the
+  // API's order. Selection is held by key, so a category paused while the sheet
+  // is open falls back to the first one left.
+  const categories = presentation.categories
+    .map(category => (category.key === 'ai' ? { ...category, label: 'AI' } : category))
+    .sort((left, right) => Number(right.key === 'ai') - Number(left.key === 'ai'));
   const activeCategory = categories.find(category => category.key === selectedKey) ?? categories[0];
 
   return (

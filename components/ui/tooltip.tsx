@@ -1,9 +1,12 @@
 import * as React from 'react';
-import { Platform, StyleSheet } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Platform, StyleSheet, View } from 'react-native';
 import * as TooltipPrimitive from '@rn-primitives/tooltip';
 
 import { TextClassContext } from '@/components/ui/text';
+import {
+  TOOLTIP_SURFACE_CLASS_NAME,
+  TOOLTIP_TEXT_CLASS_NAME,
+} from '@/components/ui/tooltip-styles';
 import { cn } from '@/lib/utils';
 
 const Tooltip = TooltipPrimitive.Root;
@@ -20,23 +23,32 @@ function TooltipContent({
 }) {
   return (
     <TooltipPrimitive.Portal hostName={portalHost}>
-      <TooltipPrimitive.Overlay style={Platform.OS !== 'web' ? StyleSheet.absoluteFill : undefined}>
-        <Animated.View
-          entering={Platform.select({ web: undefined, default: FadeIn })}
-          exiting={Platform.select({ web: undefined, default: FadeOut })}
-        >
-          <TextClassContext.Provider value="text-sm native:text-base text-primary-foreground">
+      <TooltipPrimitive.Overlay
+        style={
+          Platform.OS !== 'web'
+            ? [
+                StyleSheet.absoluteFill,
+                // Android orders sibling portals by their root layer. The content's
+                // z-index alone cannot place a tooltip above an elevated dialog.
+                Platform.OS === 'android' ? { zIndex: 50, elevation: 50 } : undefined,
+              ]
+            : undefined
+        }
+      >
+        <View>
+          <TextClassContext.Provider value={TOOLTIP_TEXT_CLASS_NAME}>
             <TooltipPrimitive.Content
               sideOffset={sideOffset}
               avoidCollisions={true}
               className={cn(
-                'z-50 max-w-xs overflow-hidden rounded-md bg-foreground px-3 py-1.5 shadow-md shadow-foreground/5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 web:animate-in web:fade-in-0 web:zoom-in-95',
+                'z-50 max-w-[288px] overflow-hidden',
+                TOOLTIP_SURFACE_CLASS_NAME,
                 className,
               )}
               {...props}
             />
           </TextClassContext.Provider>
-        </Animated.View>
+        </View>
       </TooltipPrimitive.Overlay>
     </TooltipPrimitive.Portal>
   );

@@ -47,6 +47,12 @@ import { findTierBenefits, resolveTierUpgradeBenefits } from './tierUpgradeBenef
 import UpgradeRouteSwitch from './UpgradeRouteSwitch';
 import UpgradeTierHeroCard from './UpgradeTierHeroCard';
 
+import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
+
+interface UpgradeTierContentProps {
+  onRouteSelected?: (route: TierUpgradeRoute, changed: boolean) => void;
+}
+
 /** Where "Learn more" and "How to earn points?" send the user. */
 export const MEMBERSHIP_HELP_URL =
   'https://support.solid.xyz/en/articles/15613716-solid-rewards-terms-and-conditions';
@@ -66,7 +72,7 @@ export const MEMBERSHIP_HELP_URL =
  * answer from, and the benefits pager is the one with the tier's case laid out
  * beside it.
  */
-const UpgradeTierContent = () => {
+const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
   const { data: membership, isLoading } = useTierMembership();
   const { data: tierBenefits } = useTierBenefits();
   const { data: chain } = useTierUpgradeChainState(membership?.contracts);
@@ -186,6 +192,7 @@ const UpgradeTierContent = () => {
 
   const handleRoute = (next: typeof route) => {
     setRoute(next);
+    onRouteSelected?.(next, next !== route);
     track(TRACKING_EVENTS.TIER_UPGRADE_ROUTE_SELECTED, { tier, route: next });
   };
 

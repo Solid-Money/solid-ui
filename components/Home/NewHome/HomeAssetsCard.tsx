@@ -155,7 +155,26 @@ export default function HomeAssetsCard({
         </Pressable>
       </View>
       {portfolio.isLoading ? (
-        <Skeleton className="h-[224px] rounded-[20px]" />
+        <View
+          accessibilityLabel="Loading assets"
+          accessibilityRole="progressbar"
+          accessibilityState={{ busy: true }}
+          className="overflow-hidden rounded-[20px] bg-card"
+        >
+          {rows.map(({ key }, index) => (
+            <Fragment key={key}>
+              {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+              <View className="flex-row items-center gap-[12px] px-[16px] py-[14px]">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <View className="min-w-0 flex-1 gap-[3px]">
+                  <Skeleton className="h-4 w-24 max-w-full" />
+                  <Skeleton className="h-3 w-32 max-w-full" />
+                </View>
+                <Skeleton className="h-4 w-[72px]" />
+              </View>
+            </Fragment>
+          ))}
+        </View>
       ) : (
         <Pressable
           onPress={openAssets}

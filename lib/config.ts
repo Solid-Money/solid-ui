@@ -217,6 +217,19 @@ type Addresses = {
 /** Stand-in for a contract this build has no address for. Never a valid call target. */
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
+/** Canonical production share tokens, also recognizable in development wallet previews. */
+export const PRODUCTION_VAULT_ADDRESSES = {
+  ethereum: {
+    vault: '0x6E575AE5e1A12e910641183F555Fad62eD1481F2',
+    soEthVault: '0xf9039d4f49686F34936b6937D13bBbe413f910c4',
+  },
+  fuse: {
+    vault: '0x75333830E7014e909535389a6E5b0C02aA62ca27',
+    fuseVault: '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C',
+    soEthVault: '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7',
+  },
+} as const;
+
 export const ADDRESSES: Addresses = {
   ethereum: {
     teller: isProduction
@@ -228,7 +241,7 @@ export const ADDRESSES: Addresses = {
     usds: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     vault: isProduction
-      ? '0x6E575AE5e1A12e910641183F555Fad62eD1481F2'
+      ? PRODUCTION_VAULT_ADDRESSES.ethereum.vault
       : '0x3e2cD0AeF639CD72Aff864b85acD5c07E2c5e3FA',
     paymasterAddress: '0x6666666666667849c56f2850848ce1c4da65c68b',
     bridgePaymasterAddress: '0xcE0c6c2a6C99dF88bd127e732EC3bb3E0cB4a507',
@@ -239,7 +252,7 @@ export const ADDRESSES: Addresses = {
       ? '0x10f3996904F1fA09Db48e5d46AAdD6D9fd516eFe'
       : '0xC594ea2B28F5766eB66D101E0F59A958Feb9C0c5',
     soEthVault: isProduction
-      ? '0xf9039d4f49686F34936b6937D13bBbe413f910c4'
+      ? PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault
       : '0x1e0d158ce986abb26b35da11f876268c60d7c9df',
     soEthTeller: isProduction
       ? '0x4149c11b479B26080428Dc5e688F4D27253C4783'
@@ -253,13 +266,13 @@ export const ADDRESSES: Addresses = {
   },
   fuse: {
     vault: isProduction
-      ? '0x75333830E7014e909535389a6E5b0C02aA62ca27'
+      ? PRODUCTION_VAULT_ADDRESSES.fuse.vault
       : '0x740636B7e6E6F6a4FD80A8781CfD3AA993821C1D',
     teller: isProduction
       ? '0x220d4667AA06E0Aa39f62c601690848f2e48BC15'
       : '0xcBA3D8DC1DdE5fbD4c04cBbD5624Dc79D300963d',
     fuseVault: isProduction
-      ? '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C'
+      ? PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault
       : '0xDA737B0C12a08D85C973F10f25459F07F2BB2882',
     fuseTeller: isProduction
       ? '0x4Aa13c96d45FDF14731acEF8F6a2DBf17D6BD53c'
@@ -294,7 +307,7 @@ export const ADDRESSES: Addresses = {
       ? '0x8a6612ff8bA43C4c8A1e7DD5c0eE2d7CBEDF0E66'
       : '0x5FD429278E39342920CD6629574f9E0c4766c675',
     soEthVault: isProduction
-      ? '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7'
+      ? PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault
       : '0xF88Ce04C3ef43F3501fA99eE06a5473f5ef33BED',
     soEthTeller: isProduction
       ? '0xEaacf4534cCC05CAd929830fAF611d872b291d41'
