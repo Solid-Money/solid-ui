@@ -144,6 +144,87 @@ describe('tierUpgradeCta', () => {
     });
 
     /**
+     * A gifted trial raises `currentTier` without the user owning anything, so
+     * it must not hide the lock they need to keep the tier after it ends.
+     */
+    describe('during a trial', () => {
+      it('offers the trial tier once the membership says it is not owned', () => {
+        expect(
+          cta({
+            selectedTier: ULTRA,
+            currentTier: ULTRA,
+            trialTier: ULTRA,
+            offerHeld: false,
+            routes: ['lock'],
+            lockFuse: 400_000,
+          }),
+        ).toEqual({
+          // Kept, not upgraded to: the user has Ultra today.
+          label: 'Keep',
+          subtitle: 'Deposit 400k FUSE to keep',
+          enabled: true,
+          held: false,
+        });
+      });
+
+      it('offers the tiers under the trial tier the user does not own', () => {
+        const result = cta({
+          selectedTier: PRIME,
+          currentTier: ULTRA,
+          trialTier: ULTRA,
+          offerHeld: false,
+          routes: ['cash', 'lock'],
+          annualFeeUsd: 199,
+          lockFuse: 50_000,
+        });
+
+        expect(result.held).toBe(false);
+        expect(result.label).toBe('Keep');
+        expect(result.subtitle).toBe('199$/Year or 50k FUSE to keep');
+      });
+
+      it('still says Upgrade for a tier above the trial', () => {
+        expect(
+          cta({
+            selectedTier: ULTRA,
+            currentTier: PRIME,
+            trialTier: PRIME,
+            offerHeld: false,
+            routes: ['lock'],
+            lockFuse: 400_000,
+          }),
+        ).toEqual({
+          label: 'Upgrade',
+          subtitle: 'Deposit 400k FUSE to upgrade',
+          enabled: true,
+          held: false,
+        });
+      });
+
+      it('still hides a tier the user owns alongside the trial', () => {
+        expect(
+          cta({ selectedTier: PRIME, currentTier: ULTRA, trialTier: ULTRA, offerHeld: true }).held,
+        ).toBe(true);
+      });
+
+      it('stays closed while the membership has not answered', () => {
+        expect(cta({ selectedTier: ULTRA, currentTier: ULTRA, trialTier: ULTRA }).held).toBe(true);
+      });
+
+      it('does not reach above the trial tier', () => {
+        // Owns Ultra by lock, trialling Prime: Ultra is current and owned.
+        const result = cta({
+          selectedTier: ULTRA,
+          currentTier: ULTRA,
+          trialTier: PRIME,
+          offerHeld: false,
+        });
+
+        expect(result.held).toBe(true);
+      });
+    });
+
+    /**
      * A reconciliation that has landed is over. Holding "Confirming tier…" on
      * screen after the membership agrees is a slower way of saying nothing.
      */

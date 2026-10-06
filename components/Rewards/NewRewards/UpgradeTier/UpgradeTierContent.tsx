@@ -33,6 +33,7 @@ import {
   formatMembershipDate,
   formatUsd,
   formatUsdHeld,
+  isTierOnTrial,
   membershipDateLabel,
   nextPurchasableTier,
   remainingFuseForTier,
@@ -131,6 +132,8 @@ const UpgradeTierContent = () => {
     );
   }
 
+  // A tier a trial is lending is being kept, not gained — see `isTierOnTrial`.
+  const keeping = isTierOnTrial(membership, tier);
   const benefits = resolveTierUpgradeBenefits(findTierBenefits(tierBenefits, tier));
   const dateLabel = membershipDateLabel(membership);
   const remainingFuse = remainingFuseForTier(offer, membership.lock.lockedFuse);
@@ -313,7 +316,7 @@ const UpgradeTierContent = () => {
 
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
-          ? `Upgrade to the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee. `
+          ? `${keeping ? 'Keep' : 'Upgrade to'} the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee${keeping ? ' after your trial' : ''}. `
           : paymentAsset === 'soFUSE'
             ? `Locks the FUSE already in your Savings for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
             : `Deposits your ${paymentAsset} into Savings and locks it for ${formatLockDuration(membership.lock.durationDays)} to hold the tier, in one transaction. It keeps earning while it is locked. `}
@@ -332,7 +335,7 @@ const UpgradeTierContent = () => {
         className="mt-8 h-14 rounded-full"
       >
         <Text className="text-base font-bold text-black">
-          {affordable ? 'Review upgrade' : 'Top up'}
+          {affordable ? (keeping ? 'Review' : 'Review upgrade') : 'Top up'}
         </Text>
       </Button>
 
