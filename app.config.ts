@@ -98,14 +98,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
         },
         {
-          // Crash Data - collected by Sentry
+          // Crash Data - collected by the error tracker (GlitchTip)
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
           NSPrivacyCollectedDataTypeLinked: false,
           NSPrivacyCollectedDataTypeTracking: false,
           NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
         },
         {
-          // Performance Data - collected by Sentry and Amplitude
+          // Performance Data - collected by Amplitude. The error tracker's
+          // tracing and profiling are disabled (GlitchTip is errors only).
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePerformanceData',
           NSPrivacyCollectedDataTypeLinked: false,
           NSPrivacyCollectedDataTypeTracking: false,
@@ -260,9 +261,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       '@sentry/react-native/expo',
       {
-        url: 'https://sentry.io/',
-        project: 'solid',
-        organization: 'fuse-4b',
+        // Self-hosted GlitchTip, not sentry.io. The SDK stays @sentry/react-native;
+        // only the ingest/upload host and the org/project slugs change. This block
+        // is what wires source map + debug symbol upload into the native builds,
+        // so the slugs must match the GlitchTip project exactly.
+        url: 'https://glitchtip.fuse.io/',
+        project: 'solid-ui',
+        organization: 'solid-money',
       },
     ],
     'expo-image',
