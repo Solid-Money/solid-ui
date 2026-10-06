@@ -26,7 +26,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
-import { detectPasskeySupported } from '@/hooks/usePasskey';
+import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import { useRealtime } from '@/hooks/useRealtime';
 import useUser from '@/hooks/useUser';
@@ -183,10 +183,10 @@ export default function ProtectedLayout() {
     }
   }, [resumeParams, handleResumeBankTransferParams]);
 
-  if (Platform.OS === 'web') {
-    // Since we wait for passkey check in root layout, this should never be null
-    if (Boolean(detectPasskeySupported())) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
-  }
+  // A browser that cannot create a passkey (another app's built-in browser,
+  // or no WebAuthn at all) can neither sign up nor sign in, so say so before
+  // anything else. Always null on native.
+  if (detectPasskeyBlock()) return <Redirect href={passkeyNotSupportedHref()} />;
 
   // Wait for Zustand store to hydrate before making redirect decisions
   // This prevents incorrect redirects when users array is empty during hydration

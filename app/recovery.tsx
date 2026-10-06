@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopHero } from '@/components/Onboarding';
+import PasskeySupportGate from '@/components/PasskeySupportGate';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
@@ -72,7 +73,18 @@ const SESSION_MARGIN_MS = 60 * 1000;
 
 const SESSION_EXPIRED_MESSAGE = 'Your recovery session expired. Request a new code to continue.';
 
-export default function RecoveryPasskey() {
+// Recovery ends by adding a passkey, so a browser that cannot create one is
+// stopped before the person asks for a code. Recovery links arrive by email,
+// and mail apps open them in their own browser.
+export default function Recovery() {
+  return (
+    <PasskeySupportGate>
+      <RecoveryPasskey />
+    </PasskeySupportGate>
+  );
+}
+
+function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession, httpClient, session } = useTurnkey();

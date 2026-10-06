@@ -693,6 +693,14 @@ const useUser = (): UseUserReturn => {
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
   const handleSessionExpired = useCallback(() => {
+    // Nobody signed in, so there is no session to have expired. Requests made
+    // without one still come back 401 and land here, and the redirect below
+    // used to pull a signed-out visitor off whatever page they were on, about
+    // a second after it loaded: the "open Solid in your browser" screen (so
+    // in-app browsers went on to sign up and failed at the passkey step),
+    // account recovery, or a signup link.
+    if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
+
     // Suppress re-entrant logout handling: clearing the cache below can make
     // still-mounted screens refetch, and those requests would 401 on the now
     // dead session and call this handler again. The flag is reset on next login.

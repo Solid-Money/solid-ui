@@ -278,6 +278,13 @@ export const TRACKING_EVENTS = {
   PASSKEY_ADDED: 'passkey_added',
   PASSKEY_SKIPPED: 'passkey_skipped',
   PASSKEY_CREATION_FAILED: 'passkey_creation_failed',
+  /** The "open Solid in your browser" screen; `reason` says why the browser was turned away. */
+  PASSKEY_NOT_SUPPORTED_VIEWED: 'passkey_not_supported_viewed',
+  /** Setup tips under the passkey step, after a failure; `error_kind` says which. */
+  PASSKEY_HELP_VIEWED: 'passkey_help_viewed',
+  /** `context`: `not_supported` (the screen above) or `passkey_help`. */
+  OPEN_IN_BROWSER_LINK_COPIED: 'open_in_browser_link_copied',
+  GET_APP_PRESSED: 'get_app_pressed',
 
   // Quest Wallet Events
   QUEST_WALLET_PAGE_VIEWED: 'quest_wallet_page_viewed',

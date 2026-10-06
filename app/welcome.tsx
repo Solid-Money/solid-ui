@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopHero } from '@/components/Onboarding';
+import PasskeySupportGate from '@/components/PasskeySupportGate';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { loginErrorMessage, PASSKEY_NOT_REGISTERED_CODE } from '@/constants/errors';
@@ -19,7 +20,16 @@ import { getAsset } from '@/lib/assets';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
 
+// Every account here signs in with a passkey.
 export default function Welcome() {
+  return (
+    <PasskeySupportGate>
+      <WelcomeScreen />
+    </PasskeySupportGate>
+  );
+}
+
+function WelcomeScreen() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
   const {
     users,
