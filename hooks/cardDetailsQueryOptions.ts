@@ -4,6 +4,9 @@ import { withRefreshToken } from '@/lib/utils';
 
 const CARD_DETAILS = 'cardDetails';
 
+/** Rain's live spending power, read separately from the details (see useCardDetails). */
+export const cardBalanceQueryKey = (userId: string | undefined) => ['cardBalance', userId];
+
 export const cardDetailsQueryOptions = (userId: string | undefined) => ({
   queryKey: [CARD_DETAILS, userId],
   queryFn: () =>

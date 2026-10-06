@@ -4674,16 +4674,9 @@ export const getHoldingFundsPointsMultiplier =
   };
 
 // ============================================
-// Real-Time Activity SSE & Webhook API Functions
+// Activity Webhook API Functions
+// (live updates arrive over the realtime socket — see lib/realtime)
 // ============================================
-
-/**
- * Get the SSE stream URL for real-time activity updates.
- * The URL includes the base path - caller needs to add auth headers via fetch.
- */
-export const getActivityStreamUrl = (): string => {
-  return `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity-stream`;
-};
 
 /**
  * Get current webhook registration status for the user.

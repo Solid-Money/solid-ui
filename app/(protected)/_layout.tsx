@@ -24,11 +24,11 @@ import TierUpgradeModalProvider from '@/components/Rewards/NewRewards/UpgradeTie
 import RewardsUpgradeFeedback from '@/components/Rewards/RewardsUpgradeFeedback';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
+import { useRealtime } from '@/hooks/useRealtime';
 import useUser from '@/hooks/useUser';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import FuseVault from '@/lib/abis/FuseVault';
@@ -118,8 +118,9 @@ export default function ProtectedLayout() {
   // startup data loading (the status fetch itself still runs immediately).
   useWebhookStatus({ autoSubscribe: startupDeferred });
 
-  // Enable real-time activity updates globally for logged-in users
-  useActivitySSE({ enabled: !!user, subscribe: false });
+  // Live activity, balance and card transaction updates for the signed-in user,
+  // over one Socket.IO connection (see lib/realtime/realtimeClient).
+  useRealtime(!!user);
 
   // MeaWallet MPP: initialize once on native (required before any MPP API use).
   // Deferred off the first-paint critical path — MPP isn't needed at startup.

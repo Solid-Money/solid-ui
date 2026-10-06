@@ -14,6 +14,7 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 jest.mock('@/hooks/cardDetailsQueryOptions', () => ({
   cardDetailsQueryOptions: () => ({ queryKey: ['cardDetails'] }),
+  cardBalanceQueryKey: (userId: string) => ['cardBalance', userId],
 }));
 jest.mock('@/hooks/useCardProvider', () => ({
   useCardProvider: () => ({ provider: mockProvider }),
