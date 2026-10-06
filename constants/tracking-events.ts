@@ -464,6 +464,12 @@ export const TRACKING_EVENTS = {
   STORE_REVIEW_UNAVAILABLE: 'store_review_unavailable',
   STORE_REVIEW_ERROR: 'store_review_error',
 
+  // OTA updates: a newer JS bundle was downloaded and the user was asked to
+  // restart into it
+  OTA_UPDATE_PROMPT_SHOWN: 'ota_update_prompt_shown',
+  OTA_UPDATE_APPLIED: 'ota_update_applied',
+  OTA_UPDATE_FAILED: 'ota_update_failed',
+
   // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',

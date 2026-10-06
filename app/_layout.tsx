@@ -40,6 +40,7 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
+import OtaUpdateGate from '@/components/OtaUpdateGate';
 import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
@@ -464,6 +465,7 @@ function RootLayout() {
                         </>
                       )}
                     </BottomSheetModalProvider>
+                    {Platform.OS !== 'web' && <OtaUpdateGate />}
                   </GestureHandlerRootView>
                 </Intercom>
               </ApolloProvider>
