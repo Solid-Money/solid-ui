@@ -1,4 +1,4 @@
-import { getTierAction } from '@/lib/rewardsUpgrade';
+import { getTierAction, isHigherTier } from '@/lib/rewardsUpgrade';
 
 import type { TierUpgradeRoute } from '@/lib/tierUpgrade';
 import type { RewardsTier } from '@/lib/types';
@@ -54,7 +54,8 @@ export const tierUpgradeCta = ({
   annualFeeUsd,
   lockFuse,
   remainingFuse,
-  offerHeld = false,
+  offerHeld,
+  trialTier,
 }: {
   selectedTier: RewardsTier;
   currentTier?: RewardsTier;
@@ -83,9 +84,22 @@ export const tierUpgradeCta = ({
    * offering a tier someone already holds is the worse of the two mistakes.
    */
   offerHeld?: boolean;
+  /**
+   * The tier a running trial grants, when there is one.
+   *
+   * `currentTier` folds the trial in, so on its own it says a gifted tier is
+   * already the user's — which hid the lock they need to keep it once the trial
+   * ends. Within the trial's tier, the membership endpoint (which leaves trials
+   * out of `offer.held`) decides instead, but only once it has actually said
+   * no: while it is still loading, the old fail-closed answer stands.
+   */
+  trialTier?: RewardsTier;
 }): TierUpgradeCta => {
   const action = getTierAction(selectedTier, currentTier, unavailable);
-  const held = offerHeld || action === 'current' || action === 'included';
+  const lentByTrial =
+    trialTier !== undefined && !isHigherTier(selectedTier, trialTier) && offerHeld === false;
+  const held =
+    offerHeld === true || ((action === 'current' || action === 'included') && !lentByTrial);
 
   // Checked before `pending`: a reconciliation that has landed is over, and
   // holding "Confirming tier…" on screen after the membership has agreed is

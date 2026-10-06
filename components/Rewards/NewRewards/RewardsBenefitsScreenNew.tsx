@@ -305,6 +305,9 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       // The membership endpoint's own verdict, so a skew between it and the
       // rewards endpoint cannot leave an upgrade CTA on a tier the user has.
       offerHeld: offer?.held,
+      // A gifted tier is lent, not owned: the user can still lock or subscribe
+      // to keep it once the trial ends.
+      trialTier: isError ? undefined : rewardsData?.activeTierTrial?.tier,
     });
     const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
     return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
