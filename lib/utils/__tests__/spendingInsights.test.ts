@@ -90,7 +90,7 @@ describe('buildSpendingInsights', () => {
     const { months } = build([
       tx({ id: 'food', amount: '50', merchant_category_code: '5812' }),
       tx({ id: 'shop', amount: '30', merchant_category_label: 'Online Shopping' }),
-      tx({ id: 'misc', amount: '80', merchant_category_code: '6011' }),
+      tx({ id: 'misc', amount: '80', merchant_category_code: '8398' }),
     ]);
     const categories = months[months.length - 1].categories;
 
@@ -183,7 +183,7 @@ describe('subscriptions', () => {
     expect(getSpendingCategory(tx({ id: 'd', merchant_category_code: '5815' }))).toBe(
       'subscriptions',
     );
-    expect(getSpendingCategory(tx({ id: 'b', merchant_name: 'Burger Bar' }))).toBe('other');
+    expect(getSpendingCategory(tx({ id: 'b', merchant_name: 'Burger Bar' }))).toBe('food');
   });
 
   it('lists each service once, with the cashback it actually earned', () => {
