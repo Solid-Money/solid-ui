@@ -151,7 +151,7 @@ const useCrossChainSend = () => {
         {
           type: TransactionType.CROSS_CHAIN_SEND,
           clientTxId: authorisedSend.sendId,
-          title: `Send ${amountLabel} to ${params.networkName}`,
+          title: `Send ${params.token} to ${params.networkName}`,
           shortTitle: `Send ${amountLabel}`,
           amount: params.amount,
           symbol: params.token,
