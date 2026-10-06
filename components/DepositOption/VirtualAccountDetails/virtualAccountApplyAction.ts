@@ -22,11 +22,16 @@ export interface VirtualAccountApplyActionInput {
   provider: VirtualAccountProvider;
   rainApplicationStatus?: RainApplicationStatus | string | null;
   /**
-   * Whether a provider consumer already exists. When it does, creating a new
-   * Didit session is refused with 409 KYC_ALREADY_EXISTS, so 'start-kyc' is
-   * never a valid answer.
+   * Whether a RAIN consumer already exists. When it does, creating a new Didit
+   * session is refused with 409 KYC_ALREADY_EXISTS, so 'start-kyc' is never a
+   * valid answer.
+   *
+   * Specifically the RAIN row, not any card customer. The server decides the
+   * same question the same way (`findRainByUserId`), and the two must agree:
+   * reading "any customer" here diverted Wirex cardholders to the card
+   * application page for a Rain account the server would have let them open.
    */
-  kycApplicationEstablished?: boolean;
+  rainKycApplicationEstablished?: boolean;
 }
 
 /**
@@ -41,12 +46,17 @@ export interface VirtualAccountApplyActionInput {
  *    them back out — a spinner, then a card page, no verification ever opened.
  *  - A Rain user who already has a consumer hits the identical 409. A missing
  *    `rainApplicationStatus` is not evidence that nothing exists, so it can
- *    only mean 'start-kyc' when we positively know no consumer was created.
+ *    only mean 'start-kyc' when we positively know no RAIN consumer was
+ *    created — which is why this reads `rainKycApplicationEstablished` and not
+ *    the card flow's `kycApplicationEstablished`. The latter answers for the
+ *    primary card customer, so a Wirex cardholder read as "already has an
+ *    application" and was sent to the card page instead of the Rain
+ *    verification that would have succeeded.
  */
 export function resolveVirtualAccountApplyAction({
   provider,
   rainApplicationStatus,
-  kycApplicationEstablished,
+  rainKycApplicationEstablished,
 }: VirtualAccountApplyActionInput): VirtualAccountApplyAction {
   if (provider === 'wirex') return { type: 'wirex-details' };
 
@@ -63,7 +73,7 @@ export function resolveVirtualAccountApplyAction({
     return { type: 'rain-application' };
   }
 
-  if (kycApplicationEstablished) return { type: 'rain-application' };
+  if (rainKycApplicationEstablished) return { type: 'rain-application' };
 
   return { type: 'start-kyc' };
 }

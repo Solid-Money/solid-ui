@@ -629,6 +629,16 @@ export interface CardStatusResponse {
    * to go through `applicationExternalVerificationLink` instead.
    */
   kycApplicationEstablished?: boolean;
+  /**
+   * Whether a RAIN consumer exists, as opposed to any card customer at all.
+   *
+   * The virtual-account flow's version of {@link kycApplicationEstablished}:
+   * that one reads the primary card-customer row, which for a Wirex cardholder
+   * is their Wirex card, so it reports an "application" for someone with no
+   * Rain anything. This asks the Rain row — the same one the server checks
+   * before opening a `va` verification session.
+   */
+  rainKycApplicationEstablished?: boolean;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**

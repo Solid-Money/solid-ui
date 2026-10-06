@@ -192,7 +192,7 @@ export const VirtualAccountApplyModal = ({
     const action = resolveVirtualAccountApplyAction({
       provider: virtualAccountProvider,
       rainApplicationStatus: rainStatus,
-      kycApplicationEstablished: cardStatus?.kycApplicationEstablished,
+      rainKycApplicationEstablished: cardStatus?.rainKycApplicationEstablished,
     });
 
     // Wirex issues this user's account, not Rain, so no amount of Rain approval
@@ -218,7 +218,7 @@ export const VirtualAccountApplyModal = ({
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
       provider: 'rain',
       rain_application_status: rainStatus ?? 'not_started',
-      kyc_application_established: Boolean(cardStatus?.kycApplicationEstablished),
+      kyc_application_established: Boolean(cardStatus?.rainKycApplicationEstablished),
     });
 
     setKycFlow('va');
