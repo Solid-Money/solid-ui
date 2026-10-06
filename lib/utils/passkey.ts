@@ -188,3 +188,96 @@ export const isPasskeyPromptError = (error: unknown): boolean => {
   const haystack = [err.message, err.code].filter(part => typeof part === 'string').join(' ');
   return PASSKEY_ERROR_PATTERNS.some(pattern => pattern.test(haystack));
 };
+
+/**
+ * Name for a passkey added from Settings, as Turnkey stores it.
+ *
+ * Same constraints as {@link buildRecoveryPasskeyName} — ASCII, and unique on
+ * every attempt — and nobody reads it: Settings shows the label Solid stores
+ * for the passkey instead. It only has to be accepted.
+ */
+export const buildSettingsPasskeyName = (now: Date = new Date()): string =>
+  `Passkey - ${now.toISOString()}`;
+
+/**
+ * The account a new passkey is filed under in the user's password manager —
+ * what they see in iCloud Keychain or Google Password Manager.
+ *
+ * Built as signup builds it, so every Solid passkey on an account is filed
+ * under the same name. Turnkey's name rule has no room for "@", which is why
+ * the email loses its at-sign; the username stands in for accounts without one.
+ */
+export const buildPasskeyAccountName = ({
+  email,
+  username,
+}: {
+  email?: string;
+  username?: string;
+}): string => {
+  const sanitize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '')
+      .substring(0, 64);
+  return sanitize(email ?? '') || sanitize(username ?? '') || 'solid';
+};
+
+/** Whether two credential lists hold the same credentials, in any order. */
+export const isSameCredentialSet = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every(credentialId => b.includes(credentialId));
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+/**
+ * "today", "yesterday", "3 Oct", or "3 Oct 2025" outside the current year, in
+ * the device's time zone. Null for a timestamp that does not parse.
+ */
+export const formatPasskeyDate = (iso: string, now: Date = new Date()): string | null => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  if (isSameDay(date, now)) return 'today';
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameDay(date, yesterday)) return 'yesterday';
+
+  const dayMonth = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === now.getFullYear() ? dayMonth : `${dayMonth} ${date.getFullYear()}`;
+};
+
+/**
+ * The line under a passkey's name.
+ *
+ * The list keeps it short — whether it is this device's, and when it last
+ * signed in, falling back to when it was added — and the passkey's own sheet
+ * shows all of it. "Signed in" rather than "used", because sign-ins are the
+ * only use Solid sees: approvals go from the device straight to Turnkey.
+ */
+export const describePasskeyActivity = (
+  passkey: { createdAt: string | null; lastSignInAt: string | null },
+  {
+    isThisDevice,
+    detailed = false,
+    now = new Date(),
+  }: { isThisDevice: boolean; detailed?: boolean; now?: Date },
+): string => {
+  const added = passkey.createdAt ? formatPasskeyDate(passkey.createdAt, now) : null;
+  const signedIn = passkey.lastSignInAt ? formatPasskeyDate(passkey.lastSignInAt, now) : null;
+
+  const parts: string[] = [];
+  if (isThisDevice) parts.push('This device');
+  if (detailed) {
+    if (added) parts.push(`Added ${added}`);
+    if (signedIn) parts.push(`Last signed in ${signedIn}`);
+  } else if (signedIn) {
+    parts.push(`Signed in ${signedIn}`);
+  } else if (added) {
+    parts.push(`Added ${added}`);
+  }
+  return parts.join(' · ');
+};

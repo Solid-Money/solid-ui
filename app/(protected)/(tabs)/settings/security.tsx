@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { KeyRound } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
@@ -10,12 +11,14 @@ import { SettingsCard } from '@/components/Settings';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { useDimension } from '@/hooks/useDimension';
+import { usePasskeyManager } from '@/hooks/usePasskeyManager';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn } from '@/lib/utils';
+import { getThisDeviceNoun } from '@/lib/utils/passkeyDevice';
 
 // Lazy load heavy modal components - only loaded when user opens them
 const SecurityEmailModal = lazyWithRetry(() =>
@@ -48,6 +51,18 @@ export default function Security() {
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
   const [isLoadingTotpStatus, setIsLoadingTotpStatus] = useState(true);
+  const { passkeys, isLoading: isLoadingPasskeys, thisDeviceCredentialId } = usePasskeyManager();
+
+  // "1 passkey · this iPhone", matching how the Passkeys screen labels it.
+  const passkeysSummary = isLoadingPasskeys
+    ? 'Loading...'
+    : passkeys.length
+      ? `${passkeys.length} ${passkeys.length === 1 ? 'passkey' : 'passkeys'}${
+          passkeys.length === 1 && passkeys[0].credentialId === thisDeviceCredentialId
+            ? ` · ${getThisDeviceNoun()}`
+            : ''
+        }`
+      : undefined;
 
   const handleUnlock = useCallback(async () => {
     setIsUnlocking(true);
@@ -213,6 +228,22 @@ export default function Security() {
               )}
             </View>
           )}
+
+          {/* Passkeys Section — not behind Unlock: every change there asks for a passkey */}
+          <Text className="mb-2 text-base font-bold text-white">Passkeys</Text>
+          <Text className="mb-4 text-base font-medium text-[#ACACAC]">
+            Passkeys sign you in and approve changes to your account.
+          </Text>
+          <View className="mb-9 overflow-hidden rounded-xl bg-[#1c1c1c]">
+            <SettingsCard
+              title="Passkeys"
+              description={passkeysSummary}
+              icon={<KeyRound size={22} color="#FFFFFF" />}
+              isDesktop={isDesktop}
+              titleStyle="font-medium"
+              link="/settings/passkeys"
+            />
+          </View>
 
           {/* Email Section */}
           <Text className="mb-2 text-base font-bold text-white">Email</Text>
