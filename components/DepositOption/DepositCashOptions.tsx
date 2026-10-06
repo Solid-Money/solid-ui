@@ -15,10 +15,10 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
+import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
@@ -68,7 +68,7 @@ const DepositCashOptions = () => {
 
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const isCashAppAvailable = useIsCashAppAvailable();
-  const { provider: cardProvider } = useCardProvider();
+  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
   // The local currencies are all TransFi; USD is not, so it stays.
@@ -77,12 +77,14 @@ const DepositCashOptions = () => {
   const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
 
   // USD opens the chooser of its methods. The bank rail and Apple Pay are
-  // usually there, but a Wirex cardholder has no bank rail and production has no
-  // Apple Pay yet, so outside the US (no Cash App) USD can have none — and then
-  // its row is hidden rather than opening an empty chooser.
+  // usually there, but a Wirex-issued virtual account has no bank rail and
+  // production has no Apple Pay yet, so outside the US (no Cash App) USD can
+  // have none — and then its row is hidden rather than opening an empty
+  // chooser. Keyed on the virtual account, not the card: a Wirex CARDHOLDER is
+  // routed to a Rain account, which does have the rail.
   const usdMethodChips = getUsdMethodChips(
     isCashAppAvailable,
-    canFundByUsdBankTransfer(cardProvider),
+    canFundByUsdBankTransfer(virtualAccountProvider),
   );
 
   const handleUsdPress = () => {
