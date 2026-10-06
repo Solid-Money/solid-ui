@@ -24,7 +24,7 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   },
   [TransactionType.CROSS_CHAIN_SEND]: {
     sign: TransactionDirection.OUT,
-    category: TransactionCategory.EXTERNAL_WALLET_TRANSFER,
+    category: TransactionCategory.SEND,
   },
   [TransactionType.RECEIVE]: {
     sign: TransactionDirection.IN,
