@@ -117,13 +117,17 @@ export const usePasskeyManager = () => {
       return failed("We couldn't find your account details. Sign in again and retry.");
     }
 
+    // The device names the passkey twice: in the password manager, where it
+    // is all the system picker can show, and as Solid's own label.
+    const deviceLabel = getPasskeyDeviceLabel().slice(0, PASSKEY_NAME_MAX_LENGTH);
+
     let step: 'create' | 'approve' | 'save' = 'create';
     try {
       // The system sheet creates the passkey and lets the user choose where it
       // is saved: this device's keychain, a password manager, a security key,
       // or a phone over QR. Nothing is on the account yet.
       const { encodedChallenge, attestation } = await createPasskey({
-        name: buildPasskeyAccountName(user),
+        name: buildPasskeyAccountName({ ...user, deviceLabel }),
       });
 
       // One of the user's existing passkeys approves adding it. Built on the
@@ -150,9 +154,8 @@ export const usePasskeyManager = () => {
       // re-syncs the account's credentials too, so it doubles as the refresh.
       step = 'save';
       const authenticatorId = result?.authenticatorIds?.[0];
-      const label = getPasskeyDeviceLabel().slice(0, PASSKEY_NAME_MAX_LENGTH);
       const list = await withRefreshToken(() =>
-        authenticatorId ? renamePasskey(authenticatorId, label) : getPasskeys(),
+        authenticatorId ? renamePasskey(authenticatorId, deviceLabel) : getPasskeys(),
       ).catch(() => withRefreshToken(() => getPasskeys()));
       applyList(list);
 

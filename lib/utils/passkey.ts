@@ -201,25 +201,47 @@ export const buildSettingsPasskeyName = (now: Date = new Date()): string =>
 
 /**
  * The account a new passkey is filed under in the user's password manager —
- * what they see in iCloud Keychain or Google Password Manager.
+ * what the system passkey picker and iCloud Keychain or Google Password
+ * Manager show for it.
  *
- * Built as signup builds it, so every Solid passkey on an account is filed
- * under the same name. Turnkey's name rule has no room for "@", which is why
- * the email loses its at-sign; the username stands in for accounts without one.
+ * The account part is built as signup builds it: Turnkey's name rule has no
+ * room for "@", which is why the email loses its at-sign, and the username
+ * stands in for accounts without one.
+ *
+ * Passkeys added from Settings also carry the device they were made on
+ * ("mulengafuse.io - iPhone 15"). Without it every Solid passkey on a device
+ * shows up under the same name in the picker, and the label Solid keeps for
+ * each one is invisible there. The password manager cannot be updated later,
+ * so this is the one chance to tell them apart; it syncs as written.
  */
 export const buildPasskeyAccountName = ({
   email,
   username,
+  deviceLabel,
 }: {
   email?: string;
   username?: string;
+  deviceLabel?: string;
 }): string => {
   const sanitize = (value: string) =>
     value
       .toLowerCase()
       .replace(/[^a-z0-9._-]/g, '')
       .substring(0, 64);
-  return sanitize(email ?? '') || sanitize(username ?? '') || 'solid';
+  const account = sanitize(email ?? '') || sanitize(username ?? '') || 'solid';
+
+  // Same alphabet Turnkey allows, keeping the label's case and spaces.
+  const device = (deviceLabel ?? '')
+    .replace(/[^a-zA-Z0-9 _\-:/.]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 30);
+  if (!device) return account;
+
+  // The device is what tells passkeys apart, so the account gives way to fit
+  // Turnkey's 64-character limit.
+  const suffix = ` - ${device}`;
+  return `${account.substring(0, 64 - suffix.length)}${suffix}`;
 };
 
 /** Whether two credential lists hold the same credentials, in any order. */

@@ -36,6 +36,35 @@ describe('passkey names for Settings', () => {
   it('never hands Turnkey an empty name', () => {
     expect(buildPasskeyAccountName({ email: '@@@', username: '' })).toBe('solid');
   });
+
+  it('names the device, so the system picker can tell passkeys apart', () => {
+    const name = buildPasskeyAccountName({ email: 'eli@fuse.io', deviceLabel: 'iPhone 15' });
+
+    expect(name).toBe('elifuse.io - iPhone 15');
+    expect(isValidTurnkeyPasskeyName(name)).toBe(true);
+  });
+
+  it('drops characters Turnkey refuses from the device', () => {
+    const name = buildPasskeyAccountName({ email: 'eli@fuse.io', deviceLabel: 'Galaxy S24+ (5G)' });
+
+    expect(name).toBe('elifuse.io - Galaxy S24 5G');
+    expect(isValidTurnkeyPasskeyName(name)).toBe(true);
+  });
+
+  it('shortens the account, not the device, to stay within 64 characters', () => {
+    const name = buildPasskeyAccountName({
+      email: `${'a'.repeat(60)}@fuse.io`,
+      deviceLabel: 'Chrome on Windows',
+    });
+
+    expect(name).toHaveLength(64);
+    expect(name.endsWith(' - Chrome on Windows')).toBe(true);
+    expect(isValidTurnkeyPasskeyName(name)).toBe(true);
+  });
+
+  it('falls back to the account alone when the device has no usable name', () => {
+    expect(buildPasskeyAccountName({ email: 'eli@fuse.io', deviceLabel: '✨' })).toBe('elifuse.io');
+  });
 });
 
 describe('isSameCredentialSet', () => {
