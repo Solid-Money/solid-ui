@@ -1456,6 +1456,12 @@ export enum TransactionType {
    */
   TIER_LOCK = 'tier_lock',
   TIER_SUBSCRIPTION = 'tier_subscription',
+  /**
+   * Cash-out to a bank account or mobile wallet: the USDC sent from the Safe to
+   * a TransFi deposit address. Not SEND — a deposit address is not a contact,
+   * and under SEND it would be offered as a recent recipient.
+   */
+  CASH_OUT = 'cash_out',
 }
 
 export enum TransactionDirection {
@@ -3315,6 +3321,100 @@ export interface TransfiOrderStatusResponse {
   usdcAmount: string;
   fiatCurrency: string;
   feeData?: TransfiFeeData;
+}
+
+// ---------------------------------------------------------------------------
+// Cash-out (TransFi offramp) — mirrors transfi-cashout.interface.ts
+// ---------------------------------------------------------------------------
+
+export type TransfiPayoutFieldType = 'text' | 'number' | 'email' | 'phone' | 'select';
+
+/** One field a payout method needs, with the rules the backend checks it against. */
+export interface TransfiPayoutField {
+  key: string;
+  label: string;
+  type: TransfiPayoutFieldType;
+  required: boolean;
+  minLength?: number;
+  maxLength?: number;
+  /** TransFi's regex, checked after normalisation. */
+  pattern?: string;
+  options?: { value: string; label: string }[];
+  description?: string;
+  /** Pre-filled from the verified profile. */
+  value?: string;
+  /** The account holder — shown read-only; the server always uses the verified value. */
+  locked?: boolean;
+}
+
+export interface TransfiCashoutPaymentMethod {
+  paymentCode: string;
+  paymentName?: string;
+  /** 'bank_transfer', 'local_wallet'… */
+  paymentType?: string;
+  logo?: string;
+  /** Fiat limits as TransFi lists them on the method. */
+  minAmount?: number;
+  maxAmount?: number;
+  fields: TransfiPayoutField[];
+}
+
+export interface TransfiCashoutConfig {
+  currencies: TransfiCurrencyOption[];
+  defaultCurrency?: string;
+  tokenSymbol: string;
+  tokenNetwork: string;
+  /** Chain the USDC is sent from. */
+  chainId: number;
+}
+
+export interface TransfiCashoutQuote {
+  usdcAmount: string;
+  fiatCurrency: string;
+  paymentCode: string;
+  fiatAmount?: number;
+  exchangeRate?: number;
+  totalFee?: number;
+  /** USDC limits for this corridor. */
+  minLimit?: number;
+  maxLimit?: number;
+}
+
+/** Where to send the USDC for an opened cash-out. Only ever read from the backend. */
+export interface TransfiCashoutDepositInstructions {
+  orderId: string;
+  status: string;
+  depositAddress: string;
+  depositAmount: string;
+  tokenSymbol: string;
+  depositNetwork: string;
+  chainId: number;
+  fiatCurrency: string;
+  fiatAmount?: number;
+  feeData?: TransfiFeeData;
+  payoutLabel: string;
+}
+
+export type TransfiCashoutPhase =
+  | 'awaiting_deposit'
+  | 'processing'
+  | 'completed'
+  | 'expired'
+  | 'failed';
+
+export interface TransfiCashoutOrderStatus {
+  orderId: string;
+  status: string;
+  phase: TransfiCashoutPhase;
+  usdcAmount: string;
+  depositAmount: string;
+  fiatCurrency: string;
+  fiatAmount?: number;
+  paymentName?: string;
+  payoutLabel: string;
+  depositTxHash?: string;
+  failureCode?: string;
+  failureMessage?: string;
 }
 
 export interface VaultDepositConfig {

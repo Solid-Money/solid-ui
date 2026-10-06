@@ -40,6 +40,10 @@ export const EXPO_PUBLIC_SENTRY_RELEASE = process.env.EXPO_PUBLIC_SENTRY_RELEASE
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
+// Show "Cash out to bank or mobile money" in the Send drawer (TransFi offramp).
+// Off unless set: it needs offramp enabled on our TransFi merchant account.
+export const EXPO_PUBLIC_TRANSFI_CASHOUT_ENABLED =
+  process.env.EXPO_PUBLIC_TRANSFI_CASHOUT_ENABLED === 'true';
 // Comma-separated ISO alpha-2 codes TransFi refuses to onboard (UA,RU,BY…).
 // Unset falls back to the list in constants/compliance.ts; set it empty to block none.
 export const EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES =

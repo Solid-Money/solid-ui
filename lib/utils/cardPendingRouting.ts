@@ -11,7 +11,7 @@ import { getActiveCardRoute, hasCard } from './cardStatusRouting';
  * store would pull MMKV in and make it untestable under jest-expo, which is the
  * whole reason this decision lives outside the page component.
  */
-export type CardPendingKycFlow = 'card' | 'va' | 'transfi';
+export type CardPendingKycFlow = 'card' | 'va' | 'transfi' | 'transfi_cashout';
 
 /**
  * Statuses that mean "the decision is still being made", i.e. the only two the
