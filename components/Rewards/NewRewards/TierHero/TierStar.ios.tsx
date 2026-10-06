@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { useVideoPlayer, type VideoPlayer, VideoView } from 'expo-video';
 
 import { RewardsTier } from '@/lib/types';
 
 import { TIER_STAR_SIZES, tierStarOffset } from './starLayout';
+import {
+  configureTierStarPlayer,
+  TIER_STAR_VIDEOS,
+  usePreloadedTierStarPlayer,
+} from './TierStarPreload.ios';
 
 /**
  * iOS plays the stars as HEVC-with-alpha video rather than animated WebP.
@@ -29,38 +34,31 @@ import { TIER_STAR_SIZES, tierStarOffset } from './starLayout';
  *
  * Regenerate the .mov files with scripts/webp-to-hevc-alpha.sh.
  */
-const TIER_STAR_VIDEOS: Record<RewardsTier, number> = {
-  [RewardsTier.CORE]: require('@/assets/animations/star-1.mov'),
-  [RewardsTier.PRIME]: require('@/assets/animations/star-2.mov'),
-  [RewardsTier.ULTRA]: require('@/assets/animations/star-3.mov'),
-};
-
-const TierStar = ({
-  tier,
-  size = TIER_STAR_SIZES[tier],
-  playing = true,
-  onReady,
-}: {
+type TierStarProps = {
   tier: RewardsTier;
   size?: number;
   playing?: boolean;
   onReady?: () => void;
-}) => {
+  preload?: boolean;
+};
+
+const TierStarVideo = ({
+  tier,
+  size = TIER_STAR_SIZES[tier],
+  playing = true,
+  onReady,
+  player,
+}: TierStarProps & { player: VideoPlayer }) => {
   const [hasFrame, setHasFrame] = useState(false);
-  const player = useVideoPlayer(TIER_STAR_VIDEOS[tier], p => {
-    p.loop = true;
-    p.muted = true;
-    // Silences the "is this playing audio" bookkeeping for a decorative loop,
-    // so it never interrupts the user's music or claims the now-playing slot.
-    p.audioMixingMode = 'mixWithOthers';
-    p.play();
-  });
   useEffect(() => {
     // Warm the first frame once, then pause inactive stars without destroying
     // their player or decoded surface. A slide change can resume immediately.
     if (playing || !hasFrame) player.play();
     else player.pause();
   }, [hasFrame, player, playing]);
+  // Stop a borrowed player when leaving benefits. Layout cleanup runs before
+  // Expo's passive cleanup releases it if the whole Rewards stack unmounts.
+  useLayoutEffect(() => () => player.pause(), [player]);
 
   return (
     <VideoView
@@ -81,6 +79,22 @@ const TierStar = ({
       pointerEvents="none"
       accessible={false}
     />
+  );
+};
+
+const OwnedTierStar = (props: TierStarProps) => {
+  const player = useVideoPlayer(TIER_STAR_VIDEOS[props.tier], configureTierStarPlayer);
+  return <TierStarVideo {...props} player={player} />;
+};
+
+const TierStar = (props: TierStarProps) => {
+  const preloaded = usePreloadedTierStarPlayer(props.tier);
+  // Only the benefits pager borrows these players. Stars in banners, sheets,
+  // and popups still own independent players and cannot pause each other.
+  return props.preload && preloaded ? (
+    <TierStarVideo {...props} player={preloaded} />
+  ) : (
+    <OwnedTierStar {...props} />
   );
 };
 

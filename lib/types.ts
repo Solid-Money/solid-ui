@@ -1622,6 +1622,11 @@ export interface Cashback {
    * grow, so never assume a key is one the app knows about.
    */
   subscriptionCategory?: string;
+  /**
+   * Merchant as the issuer named it when the row was written. Sent by the
+   * backend on every row; read by the spending insights' subscription list.
+   */
+  merchantName?: string;
   /** soUSD payout amount (6dp) and the soUSD/USD rate used at payout. */
   soUsdAmount?: string;
   soUsdRate?: string;
@@ -1650,6 +1655,15 @@ export interface Cashback {
    * that predate the projection.
    */
   projectedUsdValue?: number;
+  /**
+   * The rate this row earns, as a fraction (0.03 is 3%), frozen when the row
+   * was written. What the receipt quotes, rather than the cardholder's rate
+   * today: a tier change during escrow does not re-price a purchase. Absent on
+   * subscription rows and on rows written before the field existed.
+   */
+  cashbackPercentage?: number;
+  /** Which level set {@link cashbackPercentage}: one transaction, the cardholder, or their tier. */
+  cashbackPercentageSource?: 'Transaction' | 'User' | 'Tier';
   createdAt: string;
 }
 

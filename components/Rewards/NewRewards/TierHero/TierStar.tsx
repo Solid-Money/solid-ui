@@ -10,7 +10,7 @@ import { TIER_STAR_SIZES, tierStarOffset } from './starLayout';
 // decode it off the main thread. Only iOS needs the video route, so the WebPs
 // are required here rather than in the shared parent, which keeps them out of
 // the iOS bundle entirely (~26 MB).
-const TIER_STAR_ANIMATIONS: Record<RewardsTier, number> = {
+export const TIER_STAR_ANIMATIONS: Record<RewardsTier, number> = {
   [RewardsTier.CORE]: require('@/assets/animations/star-1.webp'),
   [RewardsTier.PRIME]: require('@/assets/animations/star-2.webp'),
   [RewardsTier.ULTRA]: require('@/assets/animations/star-3.webp'),
@@ -26,6 +26,7 @@ const TierStar = ({
   size?: number;
   playing?: boolean;
   onReady?: () => void;
+  preload?: boolean;
 }) => {
   const image = useRef<Image>(null);
   const syncPlayback = useCallback(() => {
@@ -45,6 +46,7 @@ const TierStar = ({
         transform: tierStarOffset(tier, size),
       }}
       contentFit="contain"
+      cachePolicy="memory-disk"
       autoplay={playing}
       transition={0}
       onLoad={syncPlayback}

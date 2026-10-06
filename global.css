@@ -122,6 +122,27 @@
   width: 100%;
 }
 
+/* The tier artwork uses a light face and a soft vertical tint on its live stats. */
+.tier-benefits-stat {
+  background-image: linear-gradient(to bottom, #ffffff, rgba(255, 255, 255, 0.55));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tier-benefits-stat-core {
+  background-image: linear-gradient(to bottom, #d0f5c7, #81b276 50%, rgba(148, 242, 127, 0.55));
+}
+
+.tier-benefits-stat-ultra {
+  background-image: linear-gradient(
+    to bottom,
+    #ffffff,
+    rgba(207, 198, 145, 0.77) 50%,
+    rgba(175, 167, 121, 0.55)
+  );
+}
+
 @media (max-width: 768px) {
   .yield-box {
     width: 50%;

@@ -26,6 +26,12 @@ const EXACT_CATEGORIES: Record<string, string> = {
   '5812': 'Restaurant',
   '5813': 'Bars & Nightlife',
   '5814': 'Fast Food',
+  // Digital goods sit inside the 5800s restaurant range, so without these a
+  // Netflix, Spotify or App Store charge (5815–5818) read as "Restaurant".
+  '5815': 'Digital Services',
+  '5816': 'Digital Services',
+  '5817': 'Digital Services',
+  '5818': 'Digital Services',
   '5912': 'Pharmacy',
   '5921': 'Alcohol',
   '5941': 'Sports',
