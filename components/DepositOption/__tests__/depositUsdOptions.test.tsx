@@ -26,6 +26,7 @@ jest.mock('@/hooks/useVirtualAccountEntry', () => ({
     open: mockOpenVirtualAccount,
     isApplyOpen: false,
     closeApply: jest.fn(),
+    provider: mockVirtualAccount.provider,
   }),
 }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -44,6 +45,7 @@ jest.mock('@/store/useOrchestraStore', () => ({
 const mockConfig = { isDevFeatureEnabled: true };
 const mockCashApp = { isAvailable: false };
 const mockCard: { provider: CardProvider | null } = { provider: null };
+const mockVirtualAccount: { provider: 'rain' | 'wirex' | 'loading' } = { provider: 'rain' };
 const mockOpenVirtualAccount = jest.fn();
 const mockDeposit = { setModal: jest.fn() };
 
@@ -63,6 +65,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockCashApp.isAvailable = false;
   mockCard.provider = null;
+  mockVirtualAccount.provider = 'rain';
   mockConfig.isDevFeatureEnabled = true;
 });
 
@@ -95,19 +98,39 @@ it('still opens the virtual account from the bank rail', () => {
   act(() => root.unmount());
 });
 
-it('keeps the bank rail for a Rain cardholder', () => {
-  mockCard.provider = CardProvider.RAIN;
+it('keeps the bank rail for a Rain-issued account', () => {
+  mockVirtualAccount.provider = 'rain';
   const root = render();
   expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Apple Pay']);
   act(() => root.unmount());
 });
 
-it('hides the bank rail from a Wirex cardholder, who has no wire leg to their card', () => {
+it('keeps the bank rail for a WIREX CARDHOLDER, who is routed to a Rain account', () => {
+  // The regression this guards: the rail used to be keyed on the card, so a
+  // Wirex cardholder was shown no USD bank option at all — even though Wirex
+  // has not launched its virtual account and they are routed to a Rain one,
+  // which does support wire and ACH.
   mockCard.provider = CardProvider.WIREX;
+  mockVirtualAccount.provider = 'rain';
+  mockCashApp.isAvailable = true;
+  const root = render();
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Cash App', 'Apple Pay']);
+  act(() => root.unmount());
+});
+
+it('hides the bank rail from a Wirex-ISSUED account, which supports no wire', () => {
+  mockVirtualAccount.provider = 'wirex';
   mockCashApp.isAvailable = true;
   const root = render();
   expect(titlesOf(root)).toEqual(['Cash App', 'Apple Pay']);
   expect(mockOpenVirtualAccount).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+it('keeps the rail while the provider is still loading, so it does not pop in', () => {
+  mockVirtualAccount.provider = 'loading';
+  const root = render();
+  expect(titlesOf(root)).toContain('Wire transfer, ACH');
   act(() => root.unmount());
 });
 

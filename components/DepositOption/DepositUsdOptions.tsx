@@ -7,7 +7,6 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
@@ -118,16 +117,20 @@ export const getUsdMethodChips = (isCashAppAvailable: boolean, hasBankTransfer =
  * Cash App over Lightning.
  *
  * Apple Pay is offered everywhere it is enabled (qa/preview builds only, for
- * now). The bank rail is too, except to a Wirex cardholder, who has no wire and no ACH leg to their
- * card (`canFundByUsdBankTransfer`). Cash App is US-only, and its row appears
- * only where the server says it is available.
+ * now). The bank rail is too, except to a user whose virtual account is issued
+ * by Wirex, which supports no wire (`canFundByUsdBankTransfer`). Cash App is
+ * US-only, and its row appears only where the server says it is available.
  */
 const DepositUsdOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const resetOrchestra = useOrchestraStore(state => state.reset);
-  const { open: openVirtualAccount, isApplyOpen, closeApply } = useVirtualAccountEntry();
+  const {
+    open: openVirtualAccount,
+    isApplyOpen,
+    closeApply,
+    provider: virtualAccountProvider,
+  } = useVirtualAccountEntry();
   const isCashAppAvailable = useIsCashAppAvailable();
-  const { provider: cardProvider } = useCardProvider();
 
   useEffect(() => {
     track(TRACKING_EVENTS.DEPOSIT_USD_METHOD_VIEWED);
@@ -158,7 +161,7 @@ const DepositUsdOptions = () => {
     <>
       <UsdMethodList
         onBankTransferPress={
-          canFundByUsdBankTransfer(cardProvider) ? openVirtualAccount : undefined
+          canFundByUsdBankTransfer(virtualAccountProvider) ? openVirtualAccount : undefined
         }
         onCashAppPress={isCashAppAvailable ? handleCashAppPress : undefined}
         onApplePayPress={handleApplePayPress}
