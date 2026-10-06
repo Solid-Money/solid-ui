@@ -533,7 +533,7 @@ export const formatTransactions = async (
   return formattedTransactions.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
 };
 
-export const isDepositedQueryOptions = (safeAddress: string) => {
+export const isDepositedQueryOptions = (safeAddress: string | undefined) => {
   return {
     queryKey: [ANALYTICS, 'isDeposited', safeAddress],
     queryFn: async () => {
@@ -550,7 +550,8 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
   };
 };
 
-export const fetchIsDeposited = (queryClient: QueryClient, safeAddress: string) => {
+export const fetchIsDeposited = (queryClient: QueryClient, safeAddress: string | undefined) => {
+  if (!safeAddress) return Promise.resolve(0);
   return queryClient.fetchQuery(isDepositedQueryOptions(safeAddress));
 };
 
