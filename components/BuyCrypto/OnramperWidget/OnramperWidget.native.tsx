@@ -6,6 +6,7 @@ import { openBrowserAsync } from 'expo-web-browser';
 import { Text } from '@/components/ui/text';
 import useOnramperWidget from '@/hooks/useOnramperWidget';
 
+import { OnramperKycGate } from './OnramperKycGate';
 import {
   ONRAMPER_WIDGET_HEIGHT,
   OnramperWidgetError,
@@ -29,8 +30,12 @@ const APP_SCHEME = 'solid://';
  * `mediaCapturePermissionGrantType` answers the WebView's own camera prompt,
  * which is asked separately from the OS permission.
  */
-export const OnramperWidget = ({ destination = 'wallet', onOutcome }: OnramperWidgetProps) => {
-  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination);
+const OnramperWebView = ({
+  destination = 'wallet',
+  onOutcome,
+  shareKyc,
+}: OnramperWidgetProps & { shareKyc: boolean }) => {
+  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination, shareKyc);
   const [isOpeningBrowser, setIsOpeningBrowser] = useState(false);
 
   /**
@@ -106,5 +111,12 @@ export const OnramperWidget = ({ destination = 'wallet', onOutcome }: OnramperWi
     </View>
   );
 };
+
+/** The WebView, behind the upstream-KYC consent step for users it applies to. */
+export const OnramperWidget = (props: OnramperWidgetProps) => (
+  <OnramperKycGate>
+    {shareKyc => <OnramperWebView {...props} shareKyc={shareKyc} />}
+  </OnramperKycGate>
+);
 
 export default OnramperWidget;

@@ -1,5 +1,6 @@
 import useOnramperWidget from '@/hooks/useOnramperWidget';
 
+import { OnramperKycGate } from './OnramperKycGate';
 import {
   ONRAMPER_WIDGET_HEIGHT,
   ONRAMPER_WIDGET_WIDTH,
@@ -16,8 +17,11 @@ import {
  * missing entry raises no error — the step just quietly does nothing, deep
  * inside a provider's flow where we have no visibility at all.
  */
-export const OnramperWidget = ({ destination = 'wallet' }: OnramperWidgetProps) => {
-  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination);
+const OnramperFrame = ({
+  destination = 'wallet',
+  shareKyc,
+}: OnramperWidgetProps & { shareKyc: boolean }) => {
+  const { data: session, isPending, isError, refetch } = useOnramperWidget(destination, shareKyc);
 
   if (isPending) return <OnramperWidgetLoading />;
   if (isError || !session) {
@@ -40,5 +44,10 @@ export const OnramperWidget = ({ destination = 'wallet' }: OnramperWidgetProps) 
     />
   );
 };
+
+/** The frame, behind the upstream-KYC consent step for users it applies to. */
+export const OnramperWidget = (props: OnramperWidgetProps) => (
+  <OnramperKycGate>{shareKyc => <OnramperFrame {...props} shareKyc={shareKyc} />}</OnramperKycGate>
+);
 
 export default OnramperWidget;
