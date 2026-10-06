@@ -4,7 +4,8 @@ import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query';
 import { getCardTransactions } from '@/lib/api';
 import { CardTransaction, CardTransactionsResponse } from '@/lib/types';
 
-type QueryResponse = {
+/** One page of the card history as the infinite query caches it. */
+export type CardTransactionsPage = {
   data: CardTransactionsResponse['data'];
   nextPage: string | undefined;
   hasNextPage: boolean;
@@ -17,9 +18,9 @@ type QueryResponse = {
  */
 export const useCardTransactions = (options?: { enabled?: boolean }) => {
   return useInfiniteQuery<
-    QueryResponse,
+    CardTransactionsPage,
     Error,
-    InfiniteData<QueryResponse>,
+    InfiniteData<CardTransactionsPage>,
     string[],
     string | undefined
   >({
@@ -40,6 +41,20 @@ export const useCardTransactions = (options?: { enabled?: boolean }) => {
 };
 
 export const cardTransactionsQueryKey = ['cardTransactions'];
+
+/**
+ * The spending insights' history, which sits under the card history's root so a
+ * manual refresh of one reaches the other. Anything that writes to the list
+ * itself has to name {@link cardTransactionsQueryKey} exactly, or it reaches
+ * these too.
+ */
+export const spendingHistoryQueryKey = [...cardTransactionsQueryKey, 'insights'];
+
+/** One transaction's own read, as the activity detail screen makes it. */
+export const cardTransactionQueryKey = (transactionId: string | null | undefined) => [
+  'card-transaction',
+  transactionId,
+];
 
 /**
  * One transaction out of the cached card history.

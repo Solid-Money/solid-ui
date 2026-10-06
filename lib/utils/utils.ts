@@ -145,6 +145,41 @@ export const isAnyHTTPError = (error: any, statuses: number[]) => {
   return statuses.some(status => isHTTPError(error, status));
 };
 
+/**
+ * Refresh the session now, joining a refresh already in flight rather than
+ * starting a second one — two refreshes racing with the same refresh token is
+ * how a rotated token gets rejected. Saves the new tokens on native; on web the
+ * browser keeps the cookies the response sets.
+ *
+ * Throws whatever the refresh endpoint threw, and leaves deciding what that
+ * means (logging out, retrying later) to the caller.
+ */
+export const refreshSessionTokens = async (): Promise<void> => {
+  // Use existing refresh token promise if one is in progress
+  const isNewRefresh = !refreshTokenPromise;
+  if (isNewRefresh) {
+    refreshTokenPromise = refreshToken()
+      .then(async response => {
+        const data: { tokens: AuthTokens } = await response.json();
+        return data.tokens;
+      })
+      .finally(() => {
+        refreshTokenPromise = null;
+      });
+  } else {
+    console.warn('[TokenRefresh] Reusing in-flight token refresh');
+  }
+
+  const tokens = await refreshTokenPromise;
+
+  // Only save new tokens on mobile platforms
+  // On web, we don't need to save new tokens
+  // because the browser will handle it
+  if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
+    saveNewTokens(tokens);
+  }
+};
+
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
@@ -164,29 +199,7 @@ export const withRefreshToken = async <T>(
     }
 
     try {
-      // Use existing refresh token promise if one is in progress
-      const isNewRefresh = !refreshTokenPromise;
-      if (isNewRefresh) {
-        refreshTokenPromise = refreshToken()
-          .then(async response => {
-            const data: { tokens: AuthTokens } = await response.json();
-            return data.tokens;
-          })
-          .finally(() => {
-            refreshTokenPromise = null;
-          });
-      } else {
-        console.warn('[TokenRefresh] Reusing in-flight token refresh');
-      }
-
-      const tokens = await refreshTokenPromise;
-
-      // Only save new tokens on mobile platforms
-      // On web, we don't need to save new tokens
-      // because the browser will handle it
-      if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
-        saveNewTokens(tokens);
-      }
+      await refreshSessionTokens();
     } catch (refreshTokenError) {
       if (onError) {
         onError();

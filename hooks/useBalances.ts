@@ -756,10 +756,10 @@ export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
 });
 
 /**
- * SSE handles real-time updates (useActivitySSE invalidates ['tokenBalances']
- * on every balance event); polling is the fallback for missed events or SSE
- * failure. The price lookups inside a refresh are cached for a minute, so this
- * interval doesn't drive Prices API usage.
+ * The realtime socket handles live updates (lib/realtime refreshes
+ * ['tokenBalances'] on every balance event); polling is the fallback for missed
+ * events or a dropped socket. The price lookups inside a refresh are cached for
+ * a minute, so this interval doesn't drive Prices API usage.
  */
 const BALANCES_POLL_INTERVAL_MS = 5_000;
 

@@ -22,7 +22,7 @@ const FALLBACK_STALE_TIME_MS = 60_000; // 60 seconds
  * 1. Creates Activity records when card deposits are detected via Bridge webhook
  * 2. Emits SSE 'created' and 'updated' events for card deposit activities
  *
- * The useActivitySSE hook (singleton) handles all activity updates including CARD_TRANSACTION.
+ * The realtime client (lib/realtime, singleton) handles all activity updates including CARD_TRANSACTION.
  *
  * WHY THIS STILL EXISTS:
  * This hook is kept as a safety net fallback in case:
@@ -36,7 +36,7 @@ const FALLBACK_STALE_TIME_MS = 60_000; // 60 seconds
  * FUTURE: This hook can be fully removed once SSE reliability is confirmed in production
  * over several weeks. Monitor Sentry for any 'card_deposit_fallback_triggered' events.
  *
- * @see useActivitySSE - Primary real-time update mechanism
+ * @see lib/realtime/realtimeClient - Primary real-time update mechanism
  * @see IMPL-BE-CARD - Backend implementation that added SSE support
  */
 export const useCardDepositPoller = () => {
@@ -61,7 +61,7 @@ export const useCardDepositPoller = () => {
   );
 
   // FALLBACK: Fetch Bridge API only if we have pending card deposits
-  // Primary updates should come via SSE from useActivitySSE hook
+  // Primary updates should come via the realtime socket (lib/realtime)
   // This is a safety net with long staleTime to catch any missed SSE events
   const { data: cardTransactions } = useQuery({
     queryKey: [CARD_TRANSACTIONS_KEY],
