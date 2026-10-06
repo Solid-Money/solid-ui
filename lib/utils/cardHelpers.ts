@@ -19,6 +19,8 @@ import {
   KycStatus,
 } from '@/lib/types';
 
+import type { VirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
+
 /** The freeze fields every card surface reads, so callers can pass a partial. */
 type FreezeState = Pick<CardResponse, 'status' | 'freezes'> | undefined | null;
 
@@ -139,16 +141,31 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
   provider !== CardProvider.WIREX;
 
 /**
- * Whether the USD bank rail (Wire transfer / ACH) is offered as a way to fund.
+ * Whether the wallet's USD bank rail (Wire transfer / ACH) is offered.
  *
- * A Wirex cardholder funds their card through the wallet deposit flow, and that
- * flow's USD rail has no leg to their card: the Wirex virtual account supports
- * no wire, and what it receives settles into the Wirex balance, not the Safe
- * the card spends from. "Fund your card" leaves it off for the same reason
- * (`WIREX_CARD_FUND_SECTIONS.cashDeposit`), and the wallet flow now agrees.
+ * Keyed on which provider issues the user's VIRTUAL ACCOUNT, not on who issues
+ * their card. The exclusion only ever had one reason — a Wirex virtual account
+ * supports no wire, and what it receives settles into the Wirex balance rather
+ * than the Safe — and that is a fact about the account, not the card.
+ *
+ * Reading it off the card was the same answer only while a Wirex cardholder
+ * necessarily got a Wirex account. They no longer do: Wirex has not launched
+ * its virtual account, so every user is routed to a RAIN one, which does
+ * support wire and ACH and does settle into the Safe. Keyed on the card, this
+ * hid the rail from Wirex cardholders who had a perfectly good Rain account
+ * waiting — the wallet offered them no USD bank option at all.
+ *
+ * `loading` counts as having the rail, so the row does not pop in for everyone
+ * while the lookup settles; the entry point re-reads the provider when pressed.
+ *
+ * This is the WALLET deposit flow only. "Fund your card" still leaves the rail
+ * off for a Wirex cardholder (`WIREX_CARD_FUND_SECTIONS.cashDeposit`), and that
+ * is still right: a Rain account funds the Safe, which is not where a Wirex
+ * card spends from.
  */
-export const canFundByUsdBankTransfer = (provider: CardProvider | null | undefined): boolean =>
-  provider !== CardProvider.WIREX;
+export const canFundByUsdBankTransfer = (
+  virtualAccountProvider: VirtualAccountProvider | null | undefined,
+): boolean => virtualAccountProvider !== 'wirex';
 
 /**
  * Whether the savings Deposit button opens the direct-deposit flow — currency,
