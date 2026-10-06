@@ -40,9 +40,16 @@ interface PromptContent {
   description: string;
   icon: React.ReactNode;
   /**
-   * The CTA label and where it goes. Absent on the two banners the user cannot
-   * act on — a verification under review and a declined one are both news, not
-   * a next step, so the design draws no button on either.
+   * The CTA label and where it goes. Absent only on the banner the user cannot
+   * act on: a verification still under review is news, not a next step, so the
+   * design draws no button on it.
+   *
+   * A declined verification used to be in that set too (Figma 25141:7189 draws
+   * no button). It is not any more. "Declined" with no button and no reason was
+   * a dead end — the home screen said the application had failed and offered no
+   * way to find out why, which is what users reported as "KYC, no option". The
+   * card screen has carried the provider's own reason for the decline all
+   * along; this banner just never let anyone reach it.
    */
   cta?: { label: string; href: Href };
 }
@@ -81,10 +88,15 @@ const CONTENT: Record<Exclude<HomePromptKey, 'cashback'>, PromptContent> = {
     icon: <FaceScan />,
   },
   // Figma 25141:7189 — the same face with a flat mouth instead of a smile.
+  // The CTA is deliberately not drawn in that frame; see `cta` above for why it
+  // is here anyway. It goes to the same `/card/activate` as every other
+  // verification banner, which is the only screen that renders the decline
+  // reason the provider gave.
   'kyc-rejected': {
     title: 'Your verification declined',
     description: 'Unfortunately, we were unable to approve your identity verification',
     icon: <FaceScan expression="flat" />,
+    cta: { label: 'See why', href: path.CARD_ACTIVATE },
   },
   // Figma 25141:7224
   'activate-card': {
