@@ -31,6 +31,7 @@ const TokenSelector: React.FC = () => {
     setIsCrossChain,
     setDestinationChainId,
     setCrossChainQuote,
+    setCrossChainEntry,
   } = useSendStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
@@ -41,11 +42,14 @@ const TokenSelector: React.FC = () => {
       setIsCrossChain: state.setIsCrossChain,
       setDestinationChainId: state.setDestinationChainId,
       setCrossChainQuote: state.setCrossChainQuote,
+      setCrossChainEntry: state.setCrossChainEntry,
     })),
   );
-  // Opened from the cross-chain amount step: only the two bridgeable Fuse
-  // stablecoins apply, and selecting one returns there.
-  const { getRoute } = useCrossChainSendConfig({ enabled: isCrossChain });
+  // Opened from the cross-chain amount step, only the two bridgeable Fuse
+  // stablecoins (and the same coin elsewhere) are listed. From the regular
+  // form every token is, and the config decides whether picking a bridgeable
+  // one enters the bridge flow.
+  const { config, getRoute } = useCrossChainSendConfig();
   const {
     ethereumTokens,
     fuseTokens,
@@ -99,6 +103,16 @@ const TokenSelector: React.FC = () => {
     (token: TokenBalance) => {
       setSelectedToken(token);
       if (!isCrossChain) {
+        // From the regular form: a bridgeable Fuse stablecoin goes on to the
+        // network step and the bridge; every other token back to the form.
+        if (isCrossChainSendToken(token) && config?.enabled) {
+          setIsCrossChain(true);
+          setCrossChainEntry('token');
+          setDestinationChainId(null);
+          setCrossChainQuote(null);
+          setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
+          return;
+        }
         setModal(SEND_MODAL.OPEN_FORM);
         return;
       }
@@ -125,6 +139,8 @@ const TokenSelector: React.FC = () => {
       setIsCrossChain,
       setDestinationChainId,
       setCrossChainQuote,
+      setCrossChainEntry,
+      config?.enabled,
     ],
   );
 

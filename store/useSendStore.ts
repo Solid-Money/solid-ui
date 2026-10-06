@@ -19,6 +19,12 @@ interface SendState {
    * picked recipient goes to the network step instead of the regular form.
    */
   isCrossChain: boolean;
+  /**
+   * How the bridge flow was entered: a coin page's Send (`recipient`, the
+   * network step follows the recipient) or picking a bridgeable token on the
+   * regular send form (`token`). Decides where Back goes from the network step.
+   */
+  crossChainEntry: 'recipient' | 'token';
   /** Cross-chain send: the network the recipient receives on. */
   destinationChainId: number | null;
   /** Cross-chain send: the quote the Review step shows and the voucher is priced against. */
@@ -34,6 +40,7 @@ interface SendState {
   setName: (name: string) => void;
   setSearchQuery: (query: string) => void;
   setIsCrossChain: (isCrossChain: boolean) => void;
+  setCrossChainEntry: (entry: 'recipient' | 'token') => void;
   setDestinationChainId: (chainId: number | null) => void;
   setCrossChainQuote: (quote: CrossChainSendQuote | null) => void;
   setCrossChainSend: (send: CrossChainSendRecord | null) => void;
@@ -50,6 +57,7 @@ const EMPTY_FORM = {
   name: '',
   searchQuery: '',
   isCrossChain: false,
+  crossChainEntry: 'recipient' as 'recipient' | 'token',
   destinationChainId: null,
   crossChainQuote: null,
   crossChainSend: null,
@@ -73,6 +81,7 @@ export const useSendStore = create<SendState>()((set, get) => ({
   setName: name => set({ name }),
   setSearchQuery: query => set({ searchQuery: query }),
   setIsCrossChain: isCrossChain => set({ isCrossChain }),
+  setCrossChainEntry: crossChainEntry => set({ crossChainEntry }),
   setDestinationChainId: chainId => set({ destinationChainId: chainId }),
   setCrossChainQuote: quote => set({ crossChainQuote: quote }),
   setCrossChainSend: send => set({ crossChainSend: send }),

@@ -255,7 +255,14 @@ const useSendOption = ({
 
   const handleBackPress = () => {
     if (isCrossChainNetwork) {
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      if (useSendStore.getState().crossChainEntry === 'token') {
+        // Entered by picking the token on the regular form: back to the picker,
+        // out of the bridge flow, so any token can be chosen again.
+        useSendStore.getState().setIsCrossChain(false);
+        setModal(SEND_MODAL.OPEN_TOKEN_SELECTOR);
+      } else {
+        setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      }
     } else if (isCrossChainForm) {
       setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
     } else if (isCrossChainReview) {

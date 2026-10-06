@@ -63,6 +63,7 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
         // Same recipient screen as a regular send (contacts, recents, paste,
         // QR); picking a recipient then goes to the network step.
         setIsCrossChain(true);
+        useSendStore.getState().setCrossChainEntry('recipient');
         setModal(SEND_MODAL.OPEN_SEND_SEARCH);
         return;
       }
