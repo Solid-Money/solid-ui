@@ -39,7 +39,7 @@ import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardTransactionFromList } from '@/hooks/useCardTransactions';
+import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
@@ -835,8 +835,10 @@ export default function ActivityDetail() {
   const cardTxId = isCardTransaction ? clientTxId.replace('card-', '') : null;
 
   // Fetch card transaction from API
+  // Kept current by the realtime client, which re-reads it when the issuer
+  // reports a change to this transaction (see lib/realtime).
   const { data: cardTransaction, isLoading: isCardTransactionLoading } = useQuery({
-    queryKey: ['card-transaction', cardTxId],
+    queryKey: cardTransactionQueryKey(cardTxId),
     queryFn: () => withRefreshToken(() => getCardTransaction(cardTxId!)),
     enabled: !!cardTxId,
   });

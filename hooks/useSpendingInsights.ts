@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { cardTransactionsQueryKey } from '@/hooks/useCardTransactions';
+import { spendingHistoryQueryKey } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { getCardTransactions } from '@/lib/api';
@@ -75,7 +75,7 @@ const fetchSpendingHistory = async (cutoffMs: number): Promise<SpendingHistory> 
   return { transactions, historyComplete: false };
 };
 
-export const spendingHistoryQueryKey = [...cardTransactionsQueryKey, 'insights'];
+export { spendingHistoryQueryKey };
 
 export type UseSpendingInsightsResult = SpendingInsights & {
   isLoading: boolean;
