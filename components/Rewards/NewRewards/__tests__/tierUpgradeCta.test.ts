@@ -159,23 +159,46 @@ describe('tierUpgradeCta', () => {
             lockFuse: 400_000,
           }),
         ).toEqual({
-          label: 'Upgrade',
-          subtitle: 'Deposit 400k FUSE to upgrade',
+          // Kept, not upgraded to: the user has Ultra today.
+          label: 'Keep',
+          subtitle: 'Deposit 400k FUSE to keep',
           enabled: true,
           held: false,
         });
       });
 
       it('offers the tiers under the trial tier the user does not own', () => {
+        const result = cta({
+          selectedTier: PRIME,
+          currentTier: ULTRA,
+          trialTier: ULTRA,
+          offerHeld: false,
+          routes: ['cash', 'lock'],
+          annualFeeUsd: 199,
+          lockFuse: 50_000,
+        });
+
+        expect(result.held).toBe(false);
+        expect(result.label).toBe('Keep');
+        expect(result.subtitle).toBe('199$/Year or 50k FUSE to keep');
+      });
+
+      it('still says Upgrade for a tier above the trial', () => {
         expect(
           cta({
-            selectedTier: PRIME,
-            currentTier: ULTRA,
-            trialTier: ULTRA,
+            selectedTier: ULTRA,
+            currentTier: PRIME,
+            trialTier: PRIME,
             offerHeld: false,
-            routes: ['cash', 'lock'],
-          }).held,
-        ).toBe(false);
+            routes: ['lock'],
+            lockFuse: 400_000,
+          }),
+        ).toEqual({
+          label: 'Upgrade',
+          subtitle: 'Deposit 400k FUSE to upgrade',
+          enabled: true,
+          held: false,
+        });
       });
 
       it('still hides a tier the user owns alongside the trial', () => {

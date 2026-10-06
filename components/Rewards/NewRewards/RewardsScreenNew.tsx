@@ -20,7 +20,7 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { nextPurchasableTier } from '@/lib/tierUpgrade';
+import { isTierOnTrial, nextPurchasableTier } from '@/lib/tierUpgrade';
 import { RewardsTier } from '@/lib/types';
 import { useRewardsIntroStore } from '@/store/useRewardsIntroStore';
 import { useRewardsWelcomePopupStore } from '@/store/useRewardsWelcomePopupStore';
@@ -326,6 +326,7 @@ export default function RewardsScreenNew() {
           <View className="mt-8 px-4">
             <JoinTierClubCard
               tier={joinClubTier}
+              onTrial={isTierOnTrial(membership, joinClubTier)}
               onPress={() =>
                 router.push({
                   pathname: '/rewards/benefits',

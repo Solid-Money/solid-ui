@@ -5,6 +5,10 @@ import type { RewardsTier } from '@/lib/types';
 
 /** The button and the line above it, on the benefits pager's footer. */
 export interface TierUpgradeCta {
+  /**
+   * `Upgrade` and `Keep` are verbs the footer completes with the tier's name
+   * ("Upgrade to Ultra", "Keep Ultra"); anything else is shown as it is.
+   */
   label: string;
   subtitle: string;
   /** Whether pressing it does anything. */
@@ -100,6 +104,10 @@ export const tierUpgradeCta = ({
     trialTier !== undefined && !isHigherTier(selectedTier, trialTier) && offerHeld === false;
   const held =
     offerHeld === true || ((action === 'current' || action === 'included') && !lentByTrial);
+  // Buying a tier the trial is lending keeps it after the trial; it does not
+  // move the user anywhere today, so "Upgrade" would be the wrong word.
+  const verb = lentByTrial ? 'keep' : 'upgrade';
+  const actionLabel = lentByTrial ? 'Keep' : 'Upgrade';
 
   // Checked before `pending`: a reconciliation that has landed is over, and
   // holding "Confirming tier…" on screen after the membership has agreed is
@@ -151,15 +159,18 @@ export const tierUpgradeCta = ({
     const fuseAmount = lockFuse != null && lockFuse > 0 ? `${lockFuse / 1000}k` : undefined;
     const pricedSubtitle =
       routeKey === 'cash,lock' && annualFeeUsd != null && annualFeeUsd > 0 && fuseAmount
-        ? `${annualFeeUsd}$/Year or ${fuseAmount} FUSE to upgrade`
+        ? `${annualFeeUsd}$/Year or ${fuseAmount} FUSE to ${verb}`
         : routeKey === 'lock' && fuseAmount
-          ? `Deposit ${fuseAmount} FUSE to upgrade`
+          ? `Deposit ${fuseAmount} FUSE to ${verb}`
           : undefined;
 
     return {
-      label: 'Upgrade',
+      label: actionLabel,
       // Sorted so the key does not depend on the order the offer listed them in.
-      subtitle: pricedSubtitle ?? ROUTE_SUBTITLE[routeKey] ?? 'Upgrade to hold the tier',
+      subtitle:
+        pricedSubtitle ??
+        ROUTE_SUBTITLE[routeKey] ??
+        (lentByTrial ? 'Keep the tier after your trial' : 'Upgrade to hold the tier'),
       enabled: true,
       held: false,
     };
@@ -167,8 +178,8 @@ export const tierUpgradeCta = ({
 
   if (remainingFuse !== undefined) {
     return {
-      label: 'Upgrade',
-      subtitle: `Deposit ${remainingFuse.toLocaleString('en-US')} FUSE to Savings to upgrade`,
+      label: actionLabel,
+      subtitle: `Deposit ${remainingFuse.toLocaleString('en-US')} FUSE to Savings to ${verb}`,
       enabled: true,
       held: false,
     };

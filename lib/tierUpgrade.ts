@@ -1,3 +1,4 @@
+import { isHigherTier } from '@/lib/rewardsUpgrade';
 import { RewardsTier, TierMembershipState, TierOffer, TierSubscriptionStatus } from '@/lib/types';
 
 /** soFUSE shares and the accountant rate are both 18-decimal. */
@@ -155,6 +156,23 @@ export const findOffer = (
   membership: TierMembershipState | undefined,
   tier: RewardsTier,
 ): TierOffer | undefined => membership?.offers.find(offer => offer.tier === tier);
+
+/**
+ * Whether the user has this tier only on loan from a running trial.
+ *
+ * Read off the membership endpoint alone: `currentTier` there folds the trial
+ * in and `offer.held` leaves it out, so a tier the first reaches and the second
+ * does not is one a trial is lending. Buying it does not upgrade anything the
+ * user can see today — it keeps the tier once the trial ends — and the copy has
+ * to say so rather than "Upgrade".
+ */
+export const isTierOnTrial = (
+  membership: TierMembershipState | undefined,
+  tier: RewardsTier,
+): boolean => {
+  const offer = findOffer(membership, tier);
+  return !!membership && !!offer && !offer.held && !isHigherTier(tier, membership.currentTier);
+};
 
 /**
  * The tier the upgrade screen should open on.
