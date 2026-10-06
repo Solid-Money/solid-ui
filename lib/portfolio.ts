@@ -1,5 +1,6 @@
 import { formatUnits, zeroAddress } from 'viem';
 
+import { isDisplayStablecoin } from '@/constants/stablecoins';
 import { VAULTS } from '@/constants/vaults';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
 
@@ -13,6 +14,8 @@ export type PortfolioAsset = {
   networkCount: number;
   backsCredit: boolean;
   heldInWallet: boolean;
+  /** Grouped under Stablecoins; everything else that is not a vault share is Crypto. */
+  stable: boolean;
 };
 
 export const savingsUsdValue = (
@@ -159,6 +162,7 @@ export function groupPortfolioCash(
           networkCount: 1,
           backsCredit,
           heldInWallet: !backsCredit,
+          stable: isDisplayStablecoin(token.contractTickerSymbol),
         });
       }
     }
@@ -225,6 +229,24 @@ export const portfolioTotals = ({
     netBalance: assets.total === undefined ? undefined : assets.total - (debt ?? 0),
     isComplete: complete && assets.complete && debt !== undefined,
   };
+};
+
+const formatDecimals = (amount: number, max: number, min: number) =>
+  new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: max,
+    minimumFractionDigits: Math.min(min, max),
+  }).format(amount);
+
+/**
+ * Token quantities kept short: stablecoins to the cent; other tokens to 4 decimals, 2 above
+ * 1,000, and about 4 significant digits below 1 (0.0091 ETH).
+ */
+export const formatTokenAmount = (amount: number, stable = false): string => {
+  if (!Number.isFinite(amount) || amount <= 0) return '0';
+  if (stable || amount >= 1000) return amount < 0.01 ? '<0.01' : formatDecimals(amount, 2, 2);
+  if (amount >= 1) return formatDecimals(amount, 4, 2);
+  const decimals = Math.min(8, Math.ceil(-Math.log10(amount)) + 3);
+  return formatDecimals(amount, decimals, 0);
 };
 
 /** The Cash group's figure: wallet cash plus a card that holds its own balance. */

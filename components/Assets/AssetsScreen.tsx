@@ -5,10 +5,7 @@ import { Href, router } from 'expo-router';
 import { EyeOff } from 'lucide-react-native';
 
 import AssetRow, { assetAmountLabel, HIDDEN_AMOUNT } from '@/components/Assets/AssetRow';
-import PortfolioIcon, {
-  PORTFOLIO_ICONS,
-  PortfolioIconKind,
-} from '@/components/Assets/PortfolioIcon';
+import PortfolioIcon, { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
 import { BalanceHeadline } from '@/components/BalanceHeadline';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
@@ -24,8 +21,10 @@ import { useWirexUnifiedBalances } from '@/hooks/useWirexBankAccounts';
 import {
   cashGroupTotal,
   coinAssetPath,
+  formatTokenAmount,
   PortfolioAsset,
   splitSmallBalances,
+  sumKnownValues,
   yieldEstimate,
 } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
@@ -56,19 +55,13 @@ const Group = ({
     <View className="overflow-hidden rounded-[20px] bg-card">{children}</View>
   </View>
 );
-const cashIcon = (asset: PortfolioAsset): PortfolioIconKind | undefined => {
-  // Dynamic token imagery stays dynamic. These three known symbols use the design's icons.
-  if (asset.symbol === 'USDC') return 'usdc';
-  if (asset.symbol === 'ETH') return 'eth';
-  if (asset.symbol === 'FUSE') return 'fuse';
-  return undefined;
-};
 type EarnAsset = ReturnType<typeof usePortfolio>['earnAssets'][number];
+type HoldingKind = 'stable' | 'crypto';
+type HoldingList = { all: PortfolioAsset[]; shown: PortfolioAsset[]; small: PortfolioAsset[] };
 
-/** "26.82 soUSD · 2 networks", or the underlying amount when no share balance is known. */
+/** "3,704.88 soUSD · 2 networks", or the underlying amount when no share balance is known. */
 const earnDetails = (asset: EarnAsset, hidden: boolean): string[] => {
-  const decimals = asset.vault.type === VaultType.ETH ? 4 : 2;
-  const amount = (value: number) => (hidden ? HIDDEN_AMOUNT : formatNumber(value, decimals));
+  const amount = (value: number) => (hidden ? HIDDEN_AMOUNT : formatTokenAmount(value));
   const details: string[] = [];
   if (asset.shareAmount !== undefined && asset.vault.vaultToken)
     details.push(`${amount(asset.shareAmount)} ${asset.vault.vaultToken}`);
@@ -78,6 +71,17 @@ const earnDetails = (asset: EarnAsset, hidden: boolean): string[] => {
   else if (asset.shareNetworkCount > 1) details.push(`${asset.shareNetworkCount} networks`);
   return details;
 };
+
+/** "21.00 USDC · 3 networks" */
+const holdingDetails = (asset: PortfolioAsset, hidden: boolean) =>
+  [
+    `${hidden ? HIDDEN_AMOUNT : formatTokenAmount(asset.balance, asset.stable)} ${asset.symbol}`,
+    asset.networkCount > 1 && `${asset.networkCount} networks`,
+    asset.valueUsd === undefined && 'no price',
+    asset.backsCredit && 'backs your credit',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 export function AssetsOverview({
   portfolio,
@@ -93,13 +97,29 @@ export function AssetsOverview({
   isRefreshing: boolean;
 }) {
   const [hidden, setHidden] = useState(false);
-  const [showSmall, setShowSmall] = useState(false);
+  const [expanded, setExpanded] = useState<Record<HoldingKind, boolean>>({
+    stable: false,
+    crypto: false,
+  });
   const [borrowOpen, setBorrowOpen] = useState(false);
-  const { visible, small } = splitSmallBalances(portfolio.cashAssets);
-  const cashAssets = showSmall ? portfolio.cashAssets : visible;
+  const holdings = (assets: PortfolioAsset[], kind: HoldingKind): HoldingList => {
+    const { visible, small } = splitSmallBalances(assets);
+    return { all: assets, shown: expanded[kind] ? assets : visible, small };
+  };
+  const stable = holdings(portfolio.stableAssets, 'stable');
+  const crypto = holdings(portfolio.cryptoAssets, 'crypto');
   const earnAssets = portfolio.earnAssets.filter(
     asset => asset.valueUsd === undefined || asset.valueUsd > 0,
   );
+  const showLocked = (portfolio.lockedFuse ?? 0) > 0;
+  const showEarn = earnAssets.length > 0 || showLocked;
+  // The locked FUSE is soFUSE in the tier lock, still earning, so it sits under Earn.
+  const earnGroupTotal = sumKnownValues([
+    portfolio.earnTotal,
+    showLocked ? portfolio.lockedTotal : 0,
+  ]).total;
+  const showStable = stable.all.length > 0 || portfolio.hasCardBalance;
+  const isEmpty = !showStable && !showEarn && crypto.all.length === 0;
   const hasDebt = (portfolio.debt ?? 0) > 0;
   const estimate = yieldEstimate(portfolio.dailyYield, portfolio.monthlyYield);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace(path.HOME));
@@ -120,6 +140,50 @@ export function AssetsOverview({
     if (token) router.push(coinAssetPath(token) as Href);
     else if (asset.backsCredit) setBorrowOpen(true);
     else router.push({ pathname: '/savings', params: { vault: asset.vault.type } } as Href);
+  };
+  const renderHoldings = (list: HoldingList, kind: HoldingKind) =>
+    list.shown.map((asset, index) => (
+      <Fragment key={`${kind}:${asset.id}`}>
+        {index > 0 && <Divider />}
+        <AssetRow
+          title={asset.symbol}
+          value={asset.valueUsd}
+          hidden={hidden}
+          icon={<PortfolioIcon token={asset.tokens[0]} />}
+          subtitle={holdingDetails(asset, hidden)}
+          onPress={() => openCash(asset)}
+        />
+      </Fragment>
+    ));
+  const renderSmallToggle = (list: HoldingList, kind: HoldingKind) => {
+    if (!list.small.length) return null;
+    const isOpen = expanded[kind];
+    return (
+      <>
+        {(list.shown.length > 0 || (kind === 'stable' && portfolio.hasCardBalance)) && <Divider />}
+        <Pressable
+          onPress={() => setExpanded(value => ({ ...value, [kind]: !value[kind] }))}
+          accessibilityRole="button"
+          accessibilityLabel={`${isOpen ? 'Hide' : 'Show'} small ${kind === 'stable' ? 'stablecoin' : 'crypto'} balances`}
+          accessibilityState={{ expanded: isOpen }}
+          className="flex-row items-center justify-center gap-[6px] py-[14px]"
+        >
+          <Text className="text-[14px] text-white/50">
+            {isOpen ? 'Hide' : 'Show'} {list.small.length} small{' '}
+            {list.small.length === 1 ? 'balance' : 'balances'}
+          </Text>
+          <Image
+            source={PORTFOLIO_ICONS.down}
+            contentFit="contain"
+            style={{
+              width: 16,
+              height: 16,
+              transform: [{ rotate: isOpen ? '180deg' : '0deg' }],
+            }}
+          />
+        </Pressable>
+      </>
+    );
   };
 
   return (
@@ -221,24 +285,43 @@ export function AssetsOverview({
           </>
         ) : (
           <>
-            {earnAssets.length > 0 && (
-              <Group title="Earn" total={portfolio.earnTotal} hidden={hidden}>
+            {showStable && (
+              <Group
+                title="Stablecoins"
+                total={cashGroupTotal(portfolio.stableTotal, portfolio.cardBalance)}
+                hidden={hidden}
+              >
+                {renderHoldings(stable, 'stable')}
+                {portfolio.hasCardBalance && (
+                  <>
+                    {stable.shown.length > 0 && <Divider />}
+                    <AssetRow
+                      title="Card balance"
+                      icon={<PortfolioIcon kind="card" />}
+                      value={portfolio.cardBalance}
+                      hidden={hidden}
+                      subtitle="Available on your card"
+                      onPress={() => router.push(path.CARD_INFO)}
+                    />
+                  </>
+                )}
+                {renderSmallToggle(stable, 'stable')}
+              </Group>
+            )}
+
+            {showEarn && (
+              <Group title="Earn" total={earnGroupTotal} hidden={hidden}>
                 {earnAssets.map((asset, index) => (
                   <Fragment key={asset.vault.type}>
                     {index > 0 && <Divider />}
                     <AssetRow
-                      title={asset.vault.vaultName ?? `${asset.vault.type} Yield`}
+                      title={asset.vault.vaultToken}
                       value={asset.valueUsd}
                       hidden={hidden}
                       icon={
                         <PortfolioIcon
-                          kind={
-                            asset.vault.type === VaultType.USDC
-                              ? 'usd'
-                              : asset.vault.type === VaultType.ETH
-                                ? 'eth'
-                                : 'fuse'
-                          }
+                          token={asset.walletTokens[0]}
+                          symbol={asset.vault.vaultToken}
                         />
                       }
                       subtitle={
@@ -258,96 +341,39 @@ export function AssetsOverview({
                     />
                   </Fragment>
                 ))}
-              </Group>
-            )}
-
-            {(portfolio.lockedFuse ?? 0) > 0 && (
-              <Group title="Locked" total={portfolio.lockedTotal} hidden={hidden}>
-                <AssetRow
-                  title="Locked FUSE"
-                  icon={<PortfolioIcon kind="fuse" locked />}
-                  value={portfolio.lockedTotal}
-                  hidden={hidden}
-                  subtitle={
-                    hidden
-                      ? HIDDEN_AMOUNT
-                      : lockedFuseDescription(portfolio.lockedFuse, portfolio.nextUnlockAt)
-                  }
-                  detail="Still earning"
-                  onPress={() => router.push(path.REWARDS)}
-                />
-              </Group>
-            )}
-
-            <Group
-              title="Cash"
-              total={cashGroupTotal(portfolio.cashTotal, portfolio.cardBalance)}
-              hidden={hidden}
-            >
-              {cashAssets.map((asset, index) => (
-                <Fragment key={asset.id}>
-                  {index > 0 && <Divider />}
-                  <AssetRow
-                    title={asset.symbol === 'ETH' ? 'Ethereum' : asset.symbol}
-                    value={asset.valueUsd}
-                    hidden={hidden}
-                    icon={<PortfolioIcon kind={cashIcon(asset)} token={asset.tokens[0]} />}
-                    subtitle={
-                      <>
-                        {hidden
+                {showLocked && (
+                  <>
+                    {earnAssets.length > 0 && <Divider />}
+                    <AssetRow
+                      title="Locked FUSE"
+                      icon={<PortfolioIcon symbol="FUSE" locked />}
+                      value={portfolio.lockedTotal}
+                      hidden={hidden}
+                      subtitle={
+                        hidden
                           ? HIDDEN_AMOUNT
-                          : `${formatNumber(asset.balance, asset.symbol === 'ETH' && asset.balance >= 0.0001 ? 4 : 8, asset.symbol === 'USDC' ? 2 : 0)} ${asset.symbol}`}
-                        {asset.networkCount > 1 ? ` · ${asset.networkCount} networks` : ''}
-                        {asset.valueUsd === undefined ? ' · no price' : ''}
-                        {asset.backsCredit ? ' · backs your credit' : ''}
-                      </>
-                    }
-                    onPress={() => openCash(asset)}
-                  />
-                </Fragment>
-              ))}
-              {portfolio.hasCardBalance && (
-                <>
-                  {cashAssets.length > 0 && <Divider />}
-                  <AssetRow
-                    title="Card balance"
-                    icon={<PortfolioIcon kind="card" />}
-                    value={portfolio.cardBalance}
-                    hidden={hidden}
-                    subtitle="Available on your card"
-                    onPress={() => router.push(path.CARD_INFO)}
-                  />
-                </>
-              )}
-              {small.length > 0 && (
-                <>
-                  {(cashAssets.length > 0 || portfolio.hasCardBalance) && <Divider />}
-                  <Pressable
-                    onPress={() => setShowSmall(value => !value)}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: showSmall }}
-                    className="flex-row items-center justify-center gap-[6px] py-[14px]"
-                  >
-                    <Text className="text-[14px] text-white/50">
-                      {showSmall ? 'Hide' : 'Show'} {small.length} small{' '}
-                      {small.length === 1 ? 'balance' : 'balances'}
-                    </Text>
-                    <Image
-                      source={PORTFOLIO_ICONS.down}
-                      contentFit="contain"
-                      style={{
-                        width: 16,
-                        height: 16,
-                        transform: [{ rotate: showSmall ? '180deg' : '0deg' }],
-                      }}
+                          : lockedFuseDescription(portfolio.lockedFuse, portfolio.nextUnlockAt)
+                      }
+                      detail="Still earning"
+                      onPress={() => router.push(path.REWARDS)}
                     />
-                  </Pressable>
-                </>
-              )}
-              {!portfolio.cashAssets.length && !portfolio.hasCardBalance && (
-                <Text className="p-[16px] text-[14px] text-white/60">No cash balances</Text>
-              )}
-            </Group>
+                  </>
+                )}
+              </Group>
+            )}
+
+            {crypto.all.length > 0 && (
+              <Group title="Crypto" total={portfolio.cryptoTotal} hidden={hidden}>
+                {renderHoldings(crypto, 'crypto')}
+                {renderSmallToggle(crypto, 'crypto')}
+              </Group>
+            )}
+
+            {isEmpty && (
+              <View className="rounded-[20px] bg-card p-[16px]">
+                <Text className="text-[14px] text-white/60">No assets yet</Text>
+              </View>
+            )}
 
             {hasDebt && (
               <Group title="Credit" total={-portfolio.debt!} hidden={hidden}>

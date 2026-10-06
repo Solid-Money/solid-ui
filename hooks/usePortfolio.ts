@@ -147,6 +147,11 @@ export function usePortfolio() {
     const walletUnavailable = !!wallet.error && wallet.tokens.length === 0;
     const cash = cashValue(cashAssets);
     const cashTotal = walletUnavailable ? undefined : cash.total;
+    // Wallet holdings outside the vaults, split for display: Stablecoins and Crypto.
+    const stableAssets = cashAssets.filter(asset => asset.stable);
+    const cryptoAssets = cashAssets.filter(asset => !asset.stable);
+    const stableTotal = walletUnavailable ? undefined : cashValue(stableAssets).total;
+    const cryptoTotal = walletUnavailable ? undefined : cashValue(cryptoAssets).total;
     const cashComplete =
       !walletUnavailable &&
       !wallet.error &&
@@ -189,6 +194,10 @@ export function usePortfolio() {
     return {
       cashAssets,
       cashTotal,
+      stableAssets,
+      stableTotal,
+      cryptoAssets,
+      cryptoTotal,
       unpricedCashCount: cash.unpricedCount,
       earnAssets,
       earnTotal: earn.total,

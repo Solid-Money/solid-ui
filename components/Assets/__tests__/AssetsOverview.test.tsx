@@ -91,7 +91,7 @@ it('hides USD amounts, token quantities and available credit together, and resto
   render();
   press('Hide amounts');
   const text = textContent();
-  for (const amount of ['3218', '2868', '350.00', '1,650', '10000', '2365', '0.0761', '0.0091'])
+  for (const amount of ['3218', '2868', '350.00', '1,650', '10000', '2,365', '0.0761', '0.0091'])
     expect(text).not.toContain(amount);
   expect(text).toContain('••••');
   press('Show amounts');
@@ -107,14 +107,14 @@ it('opens the existing coin detail for a wallet holding and the position sheet f
 it('names the share token on Earn rows and opens its coin page', () => {
   render();
   const text = textContent();
-  expect(text).toContain('2365.5 soUSD · backs your credit');
+  expect(text).toContain('2,365.50 soUSD · backs your credit');
   expect(text).toContain('0.0761 soETH');
-  press('View ETH Yield');
+  press('View soETH');
   expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/8453-0x/i));
 });
 it('opens the position sheet for escrow-only shares and Earn when no share is in the wallet', () => {
   render();
-  press('View USD Yield');
+  press('View soUSD');
   expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
   expect(router.push).not.toHaveBeenCalled();
   render({
@@ -125,9 +125,24 @@ it('opens the position sheet for escrow-only shares and Earn when no share is in
       shareNetworkCount: 2,
     })),
   });
-  expect(textContent()).toContain('2365.5 soUSD · 2 networks');
-  press('View USD Yield');
+  expect(textContent()).toContain('2,365.50 soUSD · 2 networks');
+  press('View soUSD');
   expect(router.push).toHaveBeenCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+});
+it('groups holdings as Stablecoins, Earn (with the FUSE lock) and Crypto, in that order', () => {
+  render();
+  const titles = root.root
+    .findAllByType('Text')
+    .map((node: any) => node.children.join(''))
+    .filter((title: string) => ['Stablecoins', 'Earn', 'Crypto', 'Cash', 'Locked'].includes(title));
+  expect(titles).toEqual(['Stablecoins', 'Earn', 'Crypto']);
+  const text = textContent();
+  expect(text).toContain('180.00 USDC · 3 networks');
+  expect(text).toContain('0.0091 ETH');
+  expect(text).toContain('1,000.00 FUSE');
+  expect(text).toContain('Locked FUSE');
+  // Earn's subtotal adds the lock: $2,870 in the vaults and $120 locked.
+  expect(text).toContain('$2990.00');
 });
 it('shows the yield estimate per day, per month when a day is under a cent, or not at all', () => {
   render();
@@ -195,19 +210,37 @@ it('offers no repayment from home while the credit position is unavailable', () 
 it('leaves Earn off the home card when there is nothing in it', () => {
   act(() => {
     root = create(
-      <HomeAssetsCard portfolio={{ ...portfolioFixture, earnTotal: 0, debt: 0, earnAssets: [] }} />,
+      <HomeAssetsCard
+        portfolio={{ ...portfolioFixture, earnTotal: 0, debt: 0, earnAssets: [], lockedFuse: 0 }}
+      />,
     );
   });
   expect(textContent()).not.toContain('Earn');
-  expect(textContent()).toContain('Cash');
+  expect(textContent()).toContain('Stablecoins');
+  expect(textContent()).toContain('Crypto');
   expect(textContent()).not.toContain('Borrowed');
 });
-it('keeps the known Cash total when the card balance is unavailable', () => {
+it('shows the same groups on the home card, with the lock counted in Earn', () => {
+  act(() => {
+    root = create(<HomeAssetsCard portfolio={{ ...portfolioFixture, debt: 0 }} />);
+  });
+  const text = textContent();
+  expect(text).toContain('Stablecoins');
+  expect(text).toContain('$180.00');
+  expect(text).toContain('Up to 4.5% APY');
+  expect(text).toContain(' · soUSD, soETH, locked FUSE');
+  expect(text).toContain('$2990.00');
+  expect(text).toContain('ETH, FUSE');
+  expect(text).toContain('$48.40');
+  expect(text).not.toContain('Cash');
+  expect(text).not.toContain('SMALL1');
+});
+it('keeps the known Stablecoins total when the card balance is unavailable', () => {
   act(() => {
     root = create(
       <HomeAssetsCard portfolio={{ ...portfolioFixture, cardBalance: undefined, isError: true }} />,
     );
   });
-  expect(textContent()).toContain('$228.40');
+  expect(textContent()).toContain('$180.00');
   expect(textContent()).toContain('Some balances are unavailable');
 });
