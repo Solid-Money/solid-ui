@@ -5,12 +5,20 @@ import { isDummyUserId } from '@/constants/dummyCard';
 import { getCardBalance } from '@/lib/api';
 import { CardDetailsResponseDto, CardProvider } from '@/lib/types';
 import { formatCentsToDollars, withRefreshToken } from '@/lib/utils';
+import { selectIsRealtimeLive, useRealtimeStore } from '@/store/useRealtimeStore';
 import { useUserStore } from '@/store/useUserStore';
 
-import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
+import { cardBalanceQueryKey, cardDetailsQueryOptions } from './cardDetailsQueryOptions';
 import { useCardProvider } from './useCardProvider';
 
-const CARD_BALANCE = 'cardBalance';
+/**
+ * How often Rain's spending power is re-read. Every 5s is only needed while
+ * nothing pushes changes: with the realtime socket up, a card purchase or a
+ * deposit refreshes it the moment it lands (see lib/realtime), and the slow
+ * poll is just a safety net for changes no event announces.
+ */
+const CARD_BALANCE_POLL_MS = 5_000;
+const CARD_BALANCE_LIVE_POLL_MS = 60_000;
 
 // Query options for prefetching card details
 // export const cardDetailsQueryOptions = () => ({
@@ -25,12 +33,13 @@ export const useCardDetails = () => {
   const isDummyUser = isDummyUserId(selectedUserId);
   const detailsQuery = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { provider } = useCardProvider();
+  const isRealtimeLive = useRealtimeStore(selectIsRealtimeLive);
   const balanceQuery = useQuery({
-    queryKey: [CARD_BALANCE, selectedUserId],
+    queryKey: cardBalanceQueryKey(selectedUserId),
     queryFn: () => withRefreshToken(() => getCardBalance()),
     enabled: !isDummyUser && provider === CardProvider.RAIN && !!detailsQuery.data,
     retry: false,
-    refetchInterval: 5000,
+    refetchInterval: isRealtimeLive ? CARD_BALANCE_LIVE_POLL_MS : CARD_BALANCE_POLL_MS,
   });
 
   const mergedData = useMemo((): CardDetailsResponseDto | undefined => {
