@@ -102,7 +102,7 @@ const CashbackDetailsContent = ({
       <Text
         className="text-white/70"
         style={{
-          fontFamily: 'MonaSans_700Bold',
+          fontFamily: 'SolidLink_700Bold',
           lineHeight: 18,
           textDecorationLine: 'underline',
         }}

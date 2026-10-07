@@ -107,14 +107,16 @@ const SubscriptionCashbackContent = ({
   const presentation = categoryCashbackPresentation(
     currentTier,
     subscriptionDiscountRate,
-    subscriptionCategoryRates,
+    subscriptionCategoryRates?.map(category =>
+      category.key === 'ai' ? { ...category, label: 'AI' } : category,
+    ),
   );
-  // Keep AI first with its short tab label; the other categories retain the
+  // Keep AI first with its short label in the subtitle and tabs; the other categories retain the
   // API's order. Selection is held by key, so a category paused while the sheet
   // is open falls back to the first one left.
-  const categories = presentation.categories
-    .map(category => (category.key === 'ai' ? { ...category, label: 'AI' } : category))
-    .sort((left, right) => Number(right.key === 'ai') - Number(left.key === 'ai'));
+  const categories = [...presentation.categories].sort(
+    (left, right) => Number(right.key === 'ai') - Number(left.key === 'ai'),
+  );
   const activeCategory = categories.find(category => category.key === selectedKey) ?? categories[0];
 
   return (
@@ -197,7 +199,7 @@ const SubscriptionCashbackContent = ({
           accessibilityRole="link"
           className="text-white/70"
           style={{
-            fontFamily: 'MonaSans_700Bold',
+            fontFamily: 'SolidLink_700Bold',
             lineHeight: 16,
             textDecorationLine: 'underline',
           }}

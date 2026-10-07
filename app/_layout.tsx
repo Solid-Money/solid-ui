@@ -284,6 +284,9 @@ function RootLayout() {
         MonaSans_300Light,
         MonaSans_500Medium,
         MonaSans_700Bold,
+        // The bundled font's underline thickness is 320/1000 em (6.4pt at 20pt).
+        // This identical-glyph variant uses 50/1000 em for the cashback links.
+        SolidLink_700Bold: require('@/assets/fonts/SolidLink-Bold.ttf'),
         MonaSans_800ExtraBold,
         MonaSans_900Black,
       }).catch(e => console.warn('Error loading secondary fonts:', e));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
@@ -193,9 +193,14 @@ const styles = StyleSheet.create({
     top: CONTROL_INSET,
   },
   segment: { flex: 1, justifyContent: 'center' },
-  // Figma places the 25pt name 10pt inside the pill, then a 5pt gap before the
-  // 14pt figure. Keep that top padding instead of centring the 44pt stack.
-  labels: { alignItems: 'center', flex: 1, gap: 5, paddingTop: 10 },
+  // Keep the name 10pt inside the pill and tighten the iOS spacer without
+  // reducing the text boxes that protect the glyphs from clipping.
+  labels: {
+    alignItems: 'center',
+    flex: 1,
+    gap: Platform.OS === 'ios' ? 3 : 5,
+    paddingTop: 10,
+  },
 });
 
 export default SpendModeSegmentedControl;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight, X } from 'lucide-react-native';
 import { Address } from 'viem';
@@ -10,6 +10,7 @@ import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { BackButton } from '@/components/ui/back-button';
+import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';

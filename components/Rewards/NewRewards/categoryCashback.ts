@@ -173,7 +173,10 @@ export const categoryCashbackPresentation = (
   const best = unlocked.length ? Math.max(...unlocked.map(category => category.rate)) : 0;
   // Core sees 0 on everything, so it advertises the whole offer rather than an
   // empty sentence; every other tier names only what it actually earns on.
-  const named = tier === RewardsTier.CORE ? categories : unlocked;
+  // Match the sheet's AI-first tabs while keeping the other live labels in order.
+  const named = [...(tier === RewardsTier.CORE ? categories : unlocked)].sort(
+    (left, right) => Number(right.key === 'ai') - Number(left.key === 'ai'),
+  );
 
   return {
     categories,

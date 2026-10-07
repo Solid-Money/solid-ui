@@ -929,19 +929,6 @@ export function TierBenefitsPage({
             </View>
           </View>
         </Panel>
-        <Text
-          style={[
-            regular(s),
-            {
-              marginHorizontal: 17 * s,
-              marginTop: 23 * s,
-              lineHeight: 15.4 * s,
-              color: 'rgba(255,255,255,0.5)',
-            },
-          ]}
-        >
-          * Some charges apply for select countries
-        </Text>
         {tier !== RewardsTier.CORE && offers.length > 0 && (
           <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>
@@ -965,6 +952,19 @@ export function TierBenefitsPage({
             </View>
           </Panel>
         )}
+        <Text
+          style={[
+            regular(s),
+            {
+              marginHorizontal: 17 * s,
+              marginTop: 23 * s,
+              lineHeight: 15.4 * s,
+              color: 'rgba(255,255,255,0.5)',
+            },
+          ]}
+        >
+          * Some charges apply for select countries
+        </Text>
       </Animated.View>
     </View>
   );

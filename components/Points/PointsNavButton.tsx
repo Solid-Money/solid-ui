@@ -1,6 +1,7 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 
+import { Text } from '@/components/ui/text';
 import { usePoints } from '@/hooks/usePoints';
 import { getAsset } from '@/lib/assets';
 
