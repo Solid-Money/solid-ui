@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,8 +6,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useBalances } from '@/hooks/useBalances';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
+import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
 import { resumeRainKycForward } from '@/lib/api';
@@ -15,15 +17,17 @@ import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
-import { requiresCardDeposit, withRefreshToken } from '@/lib/utils';
+import { hasMetSavingsDeposit, requiresCardDeposit, withRefreshToken } from '@/lib/utils';
 import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { useCountryStore } from '@/store/useCountryStore';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 // Import helpers
 import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
 import { resolveRainKycAction } from './rainKycAction';
+import { openCardSavingsDeposit } from './savingsDepositEntry';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -103,6 +107,19 @@ export function useCardSteps(
   const { cardActivated, activatingCard, syncCardActivationState, pushCardDetails, pushCardReady } =
     useCardActivation(router);
 
+  // Opens the deposit-to-savings (soUSD) flow used by the minimum-deposit
+  // steps. The global DepositModalProvider is mounted app-wide, so this works
+  // from the card activation screen without mounting a modal locally.
+  //
+  // See openCardSavingsDeposit: this is the savings direct-deposit flow (token →
+  // network → per-session address, polled for the transfer), replacing the
+  // legacy static-Safe-address route.
+  const openDepositFlow = useOpenDepositFlow();
+  const openSavingsDepositModal = useCallback(
+    () => openCardSavingsDeposit(useDepositStore.getState(), openDepositFlow),
+    [openDepositFlow],
+  );
+
   // Whether to show the minimum-deposit steps at all.
   //
   // `/cards/status.depositRequired` is the answer — it comes from the same
@@ -120,26 +137,24 @@ export function useCardSteps(
     issuer: cardStatusResponse?.provider ?? prospectiveIssuer,
   });
 
-  // The setup-fee step completes when the fee is SETTLED, which only the server
-  // knows: it verified the payment on chain, and a $0 fee (the line off, or
-  // this country exempt) is settled with nothing paid at all. There is no local
-  // balance to read any more — the money has left the user's wallet, so holding
-  // it is no longer the question.
-  const onboardingFeePaid = Boolean(cardStatusResponse?.onboardingFeePaid);
-
-  // Opens the fee sheet. Owned by the screen, which hosts it — this hook only
-  // decides that a step needs one.
-  const [isFeeSheetOpen, setIsFeeSheetOpen] = useState(false);
-  const openFeeSheet = useCallback(() => setIsFeeSheetOpen(true), []);
-  const closeFeeSheet = useCallback(() => setIsFeeSheetOpen(false), []);
+  // The minimum-deposit step completes from the savings (soUSD) balance, not
+  // card collateral — the card doesn't exist yet when the deposit happens. The
+  // bar comes from the backend so it can move without an app release.
+  const { totalSoUSD } = useBalances();
+  const savingsDepositMet = hasMetSavingsDeposit(
+    totalSoUSD,
+    cardStatusResponse?.minimumDepositUsd ?? undefined,
+  );
 
   /**
-   * Submits an application that was parked on the setup fee — the "hold"
-   * step's action.
+   * Submits an application that was parked because the applicant stopped
+   * holding their deposit — the "hold" step's action.
    *
-   * The server re-checks the fee as it submits, so a stale local view cannot
-   * get an unpaid application through; it can only produce the
-   * `deposit_required` answer handled below.
+   * The balance shown here is a client-side read and is only what decides
+   * whether the button is offered. The server re-reads the position on-chain as
+   * it submits, so a stale or optimistic local balance cannot get an unfunded
+   * application through; it can only produce the `deposit_required` answer
+   * handled below.
    */
   const queryClient = useQueryClient();
   const { mutate: runSubmitPendingApplication, isPending: isSubmittingPendingApplication } =
@@ -149,14 +164,15 @@ export function useCardSteps(
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'deposit_hold_resume',
           resumeStatus: result?.status,
-          feeUsd: result?.minimumUsd,
+          balanceUsd: result?.balanceUsd,
         });
 
         if (result?.status === 'deposit_required') {
           Toast.show({
             type: 'error',
-            text1: 'Setup fee not received yet',
-            text2: result.reason ?? `Pay the $${result.minimumUsd} setup fee, then try again.`,
+            text1: 'Deposit not received yet',
+            text2:
+              result.reason ?? `Keep at least $${result.minimumUsd} in savings, then try again.`,
             props: { badgeText: '' },
           });
         } else if (result?.status === 'failed' || result?.status === 'not_ready') {
@@ -399,8 +415,8 @@ export function useCardSteps(
           depositRequired,
           minimumDepositUsd: cardStatusResponse?.minimumDepositUsd,
           cardCollateralDeposited: cardStatusResponse?.cardCollateralDeposited,
-          onboardingFeePaid,
-          openFeeSheet,
+          savingsDepositMet,
+          openSavingsDepositModal,
           rainForwardPendingDeposit: cardStatusResponse?.rainForwardPendingDeposit,
           submitPendingApplication,
           isSubmittingPendingApplication,
@@ -419,13 +435,13 @@ export function useCardSteps(
       cardStatusResponse?.minimumDepositUsd,
       cardStatusResponse?.cardCollateralDeposited,
       cardStatusResponse?.rainForwardPendingDeposit,
-      onboardingFeePaid,
+      savingsDepositMet,
       handleProceedToKyc,
       pushCardReady,
       pushCardDetails,
       cardIssuer,
       handleRainKYCPress,
-      openFeeSheet,
+      openSavingsDepositModal,
       submitPendingApplication,
       isSubmittingPendingApplication,
     ],
@@ -445,10 +461,5 @@ export function useCardSteps(
     // Exposed so the failure banner can offer the same action the activate
     // step does, rather than owning a second, divergent route to issuance.
     pushCardReady,
-    // The setup-fee sheet is hosted by the screen rather than here: it has to
-    // render over the whole steps list, and a hook cannot.
-    isFeeSheetOpen,
-    openFeeSheet,
-    closeFeeSheet,
   };
 }

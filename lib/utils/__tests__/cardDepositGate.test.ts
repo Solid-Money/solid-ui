@@ -2,6 +2,7 @@ import { MINIMUM_CARD_DEPOSIT_USD } from '@/constants/card';
 import { CardProvider } from '@/lib/types';
 import {
   hasMetCardDeposit,
+  hasMetSavingsDeposit,
   requiresCardDeposit,
 } from '@/lib/utils/cardDepositGate';
 
@@ -44,6 +45,36 @@ describe('requiresCardDeposit', () => {
   });
 });
 
+describe('hasMetSavingsDeposit', () => {
+  it('clears a position at or above the minimum', () => {
+    expect(hasMetSavingsDeposit(MINIMUM_CARD_DEPOSIT_USD)).toBe(true);
+    expect(hasMetSavingsDeposit(120)).toBe(true);
+  });
+
+  it('refuses a position well below it', () => {
+    expect(hasMetSavingsDeposit(4)).toBe(false);
+    expect(hasMetSavingsDeposit(0)).toBe(false);
+    expect(hasMetSavingsDeposit(null)).toBe(false);
+    expect(hasMetSavingsDeposit(undefined)).toBe(false);
+  });
+
+  it('absorbs the few cents a $10 transfer loses on the way in', () => {
+    // Bridge/on-ramp fees plus share-rate rounding land a genuine $10 deposit
+    // just under the bar; without the tolerance those users are stranded with
+    // no way to see why.
+    expect(hasMetSavingsDeposit(9.7)).toBe(true);
+  });
+
+  it('does not absorb a materially smaller deposit', () => {
+    expect(hasMetSavingsDeposit(8)).toBe(false);
+  });
+
+  it('follows a minimum served by the backend instead of the built-in default', () => {
+    // The bar can move without an app release.
+    expect(hasMetSavingsDeposit(20, 25)).toBe(false);
+    expect(hasMetSavingsDeposit(25, 25)).toBe(true);
+  });
+});
 
 describe('hasMetCardDeposit', () => {
   // Legacy: collateral funded onto an issued card, reported in cents.

@@ -462,4 +462,8 @@ export {
 // same reason as the routing ones above: they are load-bearing and this file's
 // import graph does not load under jest-expo. Re-exported so `@/lib/utils`
 // stays the single import path.
-export { hasMetCardDeposit, requiresCardDeposit } from '@/lib/utils/cardDepositGate';
+export {
+  hasMetCardDeposit,
+  hasMetSavingsDeposit,
+  requiresCardDeposit,
+} from '@/lib/utils/cardDepositGate';

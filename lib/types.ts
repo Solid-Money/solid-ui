@@ -680,27 +680,14 @@ export interface CardStatusResponse {
    * a client that decides for itself is a client a VPN can talk out of it.
    */
   depositRequired?: boolean;
-  /**
-   * The one-time setup fee, in USD.
-   *
-   * Keeps the name it had when it was the savings minimum this fee replaced —
-   * the server keeps it too, so builds already installed carry on rendering the
-   * amount. {@link onboardingFeeUsd} is the same number under a name that says
-   * what it is; prefer that one in new code.
-   */
+  /** The savings (soUSD) minimum the deposit step asks for, in USD. */
   minimumDepositUsd?: number;
-  /** {@link minimumDepositUsd}, named for what it actually is. */
-  onboardingFeeUsd?: number;
-  /**
-   * True when there is nothing left to pay — the fee is settled, or none is
-   * owed (the line is off, or this country is exempt).
-   */
-  onboardingFeePaid?: boolean;
   /**
    * Identity verification passed, but the application has NOT been sent to the
-   * issuer because the setup fee is unpaid — typically a verification started
-   * before the fee existed. Renders the outstanding-payment step, which submits
-   * the application via `resumeRainKycForward` once the fee is settled.
+   * issuer because the applicant is no longer holding the minimum — typically
+   * they deposited to clear the first step and then moved the funds straight
+   * out. Renders the "deposit and hold" step, which submits the application via
+   * `resumeRainKycForward` once the money is back.
    */
   rainForwardPendingDeposit?: boolean;
 }
@@ -709,13 +696,8 @@ export interface CardStatusResponse {
 export interface ResumeRainForwardResponse {
   status: 'forwarded' | 'already_forwarded' | 'deposit_required' | 'not_ready' | 'failed';
   reason?: string;
-  /**
-   * The outstanding setup fee, in USD.
-   *
-   * Keeps the name it had when it was the savings minimum this fee replaced,
-   * because the server keeps it too — see the backend DTO. `deposit_required`
-   * now means "the fee is unpaid".
-   */
+  /** The soUSD position the server read, in USD. Present on `deposit_required`. */
+  balanceUsd?: number;
   minimumUsd: number;
   providerCustomerId?: string;
   kycStatus?: KycStatus;

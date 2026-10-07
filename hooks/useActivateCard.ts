@@ -77,8 +77,6 @@ export function useActivateCard() {
     activatingCard,
     cardsEndorsement,
     pushCardReady,
-    isFeeSheetOpen,
-    closeFeeSheet,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   // Derived: under review state — the screen shows "your card is on its way"
@@ -163,9 +161,6 @@ export function useActivateCard() {
     toggleStep,
     canToggleStep,
     activatingCard,
-    // The setup-fee sheet. Hosted by the screen so it can cover the steps list.
-    isFeeSheetOpen,
-    closeFeeSheet,
     // Navigation
     handleGoBack,
   };
