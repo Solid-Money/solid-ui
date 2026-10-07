@@ -116,12 +116,19 @@ describe('getDepositFeeRatePpm', () => {
       'with %s',
       (_label, provider) => {
         it.each([
-          ['soUSD', mainnet.id],
           ['soETH', mainnet.id],
           ['soFUSE', fuse.id],
         ])('charges %s deposits everywhere but its vault chain', (vaultToken, vaultChainId) => {
           expectFreeOnlyOn([vaultChainId], chainId =>
             getDepositFeeRatePpm({ provider, product: 'savings', chainId, vaultToken }),
+          );
+        });
+
+        // soUSD's home moves from Ethereum to Base on a backend switch, and the
+        // backend quotes its home chain as free, so it is asked everywhere.
+        it('asks the backend about soUSD deposits on every chain', () => {
+          expectFreeOnlyOn([], chainId =>
+            getDepositFeeRatePpm({ provider, product: 'savings', chainId, vaultToken: 'soUSD' }),
           );
         });
 
