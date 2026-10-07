@@ -6,10 +6,10 @@ import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { useVirtualAccountEntry } from '@/hooks/useVirtualAccountEntry';
 import { track } from '@/lib/analytics';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOrchestraStore } from '@/store/useOrchestraStore';
@@ -27,16 +27,12 @@ type UsdMethodListProps = {
   onBankTransferPress?: () => void;
   /** Omit to hide the row — Cash App is only offered where the server allows it. */
   onCashAppPress?: () => void;
-  /** Its row shows only on qa/preview builds — see {@link isApplePayEnabled}. */
-  onApplePayPress: () => void;
+  /**
+   * Omit to hide the row — Onramper is for whitelisted users only, see
+   * `useHasFeature('onramper')`.
+   */
+  onApplePayPress?: () => void;
 };
-
-/**
- * Apple Pay (Onramper's widget) is still being tested, so it is offered on
- * qa/preview builds and hidden in production. A function rather than a
- * constant so tests can flip the flag. Remove it at launch.
- */
-export const isApplePayEnabled = () => isDevFeatureEnabled;
 
 /**
  * The USD methods as rows. Shared by this screen and the card funding modals'
@@ -68,7 +64,7 @@ export const UsdMethodList = ({
     ) : null}
     {/* Onramper's hosted widget. It takes Apple Pay, Google Pay and cards, so
         the row is named for the card and the subtitle lists the wallets. */}
-    {isApplePayEnabled() ? (
+    {onApplePayPress ? (
       <CardFundRow
         className="min-h-[93px]"
         icon={
@@ -107,25 +103,34 @@ export const UsdMethodList = ({
 /**
  * The chips for a USD row that opens {@link UsdMethodList}, naming the methods
  * it lists, in the order it lists them — ACH / Wire only where the bank rail
- * is, Credit card only where it is enabled, and Cash App only where it is
+ * is, Credit card only for a whitelisted user, and Cash App only where it is
  * offered, since only there does the list show them. An empty list means USD
  * has no method. Shared by the wallet's cash list and the card funding
  * options, so the two USD rows cannot drift apart.
  */
-export const getUsdMethodChips = (isCashAppAvailable: boolean, hasBankTransfer = true) => [
+export const getUsdMethodChips = ({
+  hasBankTransfer = true,
+  hasCreditCard,
+  hasCashApp,
+}: {
+  hasBankTransfer?: boolean;
+  hasCreditCard: boolean;
+  hasCashApp: boolean;
+}) => [
   ...(hasBankTransfer ? ['ACH', 'Wire'] : []),
-  ...(isApplePayEnabled() ? ['Credit card'] : []),
-  ...(isCashAppAvailable ? ['Cash App'] : []),
+  ...(hasCreditCard ? ['Credit card'] : []),
+  ...(hasCashApp ? ['Cash App'] : []),
 ];
 
 /**
- * How to fund in USD: the bank rail, Apple Pay through Onramper's widget, or
- * Cash App over Lightning.
+ * How to fund in USD: the bank rail, a credit card through Onramper's widget,
+ * or Cash App over Lightning.
  *
- * Apple Pay is offered everywhere it is enabled (qa/preview builds only, for
- * now). The bank rail is too, except to a user whose virtual account is issued
- * by Wirex, which supports no wire (`canFundByUsdBankTransfer`). Cash App is
- * US-only, and its row appears only where the server says it is available.
+ * The bank rail is offered to everyone except a user whose virtual account is
+ * issued by Wirex, which supports no wire (`canFundByUsdBankTransfer`). Credit
+ * card is for whitelisted users (everyone on qa). Cash App is US-only, plus
+ * whitelisted users, and its row appears only where the server says it is
+ * available.
  */
 const DepositUsdOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
@@ -137,6 +142,7 @@ const DepositUsdOptions = () => {
     provider: virtualAccountProvider,
   } = useVirtualAccountEntry();
   const isCashAppAvailable = useIsCashAppAvailable();
+  const hasCreditCard = useHasFeature('onramper');
 
   useEffect(() => {
     track(TRACKING_EVENTS.DEPOSIT_USD_METHOD_VIEWED);
@@ -170,7 +176,7 @@ const DepositUsdOptions = () => {
           canFundByUsdBankTransfer(virtualAccountProvider) ? openVirtualAccount : undefined
         }
         onCashAppPress={isCashAppAvailable ? handleCashAppPress : undefined}
-        onApplePayPress={handleApplePayPress}
+        onApplePayPress={hasCreditCard ? handleApplePayPress : undefined}
       />
 
       <VirtualAccountApplyDialog isOpen={isApplyOpen} onClose={closeApply} />

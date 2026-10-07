@@ -4,24 +4,26 @@ import { ChevronRight, Landmark } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCashoutEntry } from '@/hooks/useCashout';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 import { track } from '@/lib/analytics';
-import { EXPO_PUBLIC_TRANSFI_CASHOUT_ENABLED } from '@/lib/config';
 import { useCashoutStore } from '@/store/useCashoutStore';
 
 /**
  * "Bank or mobile money" at the top of Send search — the way into cash-out.
  *
- * Hidden unless the flag is on and TransFi serves the user's country: it runs
- * through TransFi, and a row that dead-ends in "not available here" is worse
- * than no row.
+ * Hidden unless the user is on the feature whitelist (everyone on qa) and
+ * TransFi serves their country: it runs through TransFi, and a row that
+ * dead-ends in "not available here" is worse than no row. Order creation
+ * refuses a non-whitelisted user too, so this hides nothing the server allows.
  */
 export const CashoutEntryRow = () => {
+  const hasCashout = useHasFeature('cashout');
   const { isAvailable } = useTransfiCountryAvailability();
   const { startCashout, isChecking } = useCashoutEntry();
   const resetCashout = useCashoutStore(state => state.reset);
 
-  if (!EXPO_PUBLIC_TRANSFI_CASHOUT_ENABLED || !isAvailable) return null;
+  if (!hasCashout || !isAvailable) return null;
 
   const handlePress = () => {
     track(TRACKING_EVENTS.CASH_OUT_STARTED);
