@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
-import { Building2, Zap } from 'lucide-react-native';
+import { Building2, CreditCard, Zap } from 'lucide-react-native';
 
-import ApplePayCircle from '@/assets/images/apple-pay-circle';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -67,6 +66,24 @@ export const UsdMethodList = ({
         chips={BANK_CHIPS}
       />
     ) : null}
+    {/* Onramper's hosted widget. It takes Apple Pay, Google Pay and cards, so
+        the row is named for the card and the subtitle lists the wallets. */}
+    {isApplePayEnabled() ? (
+      <CardFundRow
+        className="min-h-[93px]"
+        icon={
+          <View
+            className="items-center justify-center rounded-full bg-[#333333]"
+            style={{ width: ICON_SIZE, height: ICON_SIZE }}
+          >
+            <CreditCard size={18} color="#FFFFFF" />
+          </View>
+        }
+        title="Credit card"
+        subtitle="Pay with Google/Apple Pay or a card"
+        onPress={onApplePayPress}
+      />
+    ) : null}
     {onCashAppPress ? (
       <CardFundRow
         className="min-h-[93px]"
@@ -84,32 +101,21 @@ export const UsdMethodList = ({
         chips={CASH_APP_CHIPS}
       />
     ) : null}
-    {/* Onramper's hosted widget. Apple Pay is the name the row goes by, but the
-        widget also takes cards, so the subtitle says so. */}
-    {isApplePayEnabled() ? (
-      <CardFundRow
-        className="min-h-[93px]"
-        icon={<ApplePayCircle width={ICON_SIZE} height={ICON_SIZE} />}
-        title="Apple Pay"
-        subtitle="Pay with Apple Pay or a card"
-        onPress={onApplePayPress}
-      />
-    ) : null}
   </CardFundGroup>
 );
 
 /**
  * The chips for a USD row that opens {@link UsdMethodList}, naming the methods
- * it lists — Cash App only where it is offered, and ACH / Wire only where the
- * bank rail is, and Apple Pay only where it is enabled, since only there does
- * the list show them. An empty list means USD has no method. Shared by the
- * wallet's cash list and the card funding options, so the two USD rows cannot
- * drift apart.
+ * it lists, in the order it lists them — ACH / Wire only where the bank rail
+ * is, Credit card only where it is enabled, and Cash App only where it is
+ * offered, since only there does the list show them. An empty list means USD
+ * has no method. Shared by the wallet's cash list and the card funding
+ * options, so the two USD rows cannot drift apart.
  */
 export const getUsdMethodChips = (isCashAppAvailable: boolean, hasBankTransfer = true) => [
   ...(hasBankTransfer ? ['ACH', 'Wire'] : []),
+  ...(isApplePayEnabled() ? ['Credit card'] : []),
   ...(isCashAppAvailable ? ['Cash App'] : []),
-  ...(isApplePayEnabled() ? ['Apple Pay'] : []),
 ];
 
 /**

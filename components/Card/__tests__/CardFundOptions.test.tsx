@@ -9,7 +9,7 @@ const { act, create } = require('react-test-renderer');
 /**
  * "Fund your card", step 1.
  *
- * Cash App is a USD method, so it is listed under USD, beside Apple Pay, rather
+ * Cash App is a USD method, so it is listed under USD, beside Credit card, rather
  * than as a row of its own at the bottom of the list — and an issuer with no
  * USD section (Wirex) does not offer it at all.
  */
@@ -90,14 +90,14 @@ beforeEach(() => {
 it('names Cash App on the USD row instead of giving it a row at the bottom', () => {
   const root = render({ ...RAIN_PROPS, isCashAppAvailable: true });
   expect(titlesOf(root)).not.toContain('Cash App');
-  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Cash App', 'Apple Pay']);
+  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Credit card', 'Cash App']);
   act(() => root.unmount());
 });
 
 it('leaves Cash App off the USD row where it is not offered', () => {
   const root = render(RAIN_PROPS);
   expect(titlesOf(root)).not.toContain('Cash App');
-  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Apple Pay']);
+  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Credit card']);
   act(() => root.unmount());
 });
 
