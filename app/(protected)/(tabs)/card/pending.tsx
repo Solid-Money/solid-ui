@@ -23,8 +23,16 @@ export default function CardPending() {
   const { data: cardStatusResponse } = useCardStatus({ refetchInterval: POLL_INTERVAL_MS });
   const kycFlow = useKycStore(state => state.kycFlow);
 
-  const rainApplicationStatus = cardStatusResponse?.rainApplicationStatus;
-  const verificationLink = cardStatusResponse?.applicationExternalVerificationLink;
+  // Fall back to the Rain row's own application state. The flat fields are
+  // reported from the primary card-customer row, which for a Wirex cardholder
+  // is their Wirex card and carries no Rain fields — so a Wirex cardholder
+  // opening a Rain virtual account arrived here with Rain waiting on a
+  // verification step and nothing on screen to start it.
+  const rainApplicationStatus =
+    cardStatusResponse?.rainApplicationStatus ?? cardStatusResponse?.rainApplication?.status;
+  const verificationLink =
+    cardStatusResponse?.applicationExternalVerificationLink ??
+    cardStatusResponse?.rainApplication?.externalVerificationLink;
   const isVirtualAccountFlow = kycFlow === 'va';
 
   // Rain "needsVerification" / "needsInformation" are synchronous and

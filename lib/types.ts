@@ -642,6 +642,25 @@ export interface CardStatusResponse {
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
   /**
+   * The Rain row's application state, always, however the two fields above
+   * were resolved.
+   *
+   * Those come from the primary card-customer row, and for a Wirex cardholder
+   * that is their Wirex card — a row with no Rain fields on it. So a Wirex
+   * cardholder opening a Rain virtual account reported no Rain application and
+   * no verification link, and the pending page, which renders its "continue
+   * verification" CTA off exactly those, left them on the passive screen with
+   * nothing to press.
+   *
+   * Separate from the flat fields because `useCardSteps` reads their presence
+   * as "this user is a Rain cardholder" — filling them in for a Wirex
+   * cardholder would send their card journey to Didit instead of Sumsub.
+   */
+  rainApplication?: {
+    status?: RainApplicationStatus | string;
+    externalVerificationLink?: { url: string; params: Record<string, string> };
+  };
+  /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
    * Didit decision, which runs proof of address, so it is evidenced rather than
    * an IP guess.
