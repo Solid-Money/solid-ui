@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 
 import {
   BuyCryptoNavigate,
+  TransfiKycFlow,
+  useBuyCryptoKycFlow,
   useBuyCryptoNavigation,
 } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -25,16 +27,23 @@ import { useKycStore } from '@/store/useKycStore';
  * Shared by the entry point and by the mid-flow recovery paths — TransFi can
  * reject a share as needs_kyc if the verification it received was incomplete.
  */
-export const useBuyCryptoKycRoute = (navigateOverride?: BuyCryptoNavigate) => {
+export const useBuyCryptoKycRoute = (
+  navigateOverride?: BuyCryptoNavigate,
+  kycFlowOverride?: TransfiKycFlow,
+) => {
   const contextNavigate = useBuyCryptoNavigation();
   const setModal = navigateOverride ?? contextNavigate;
+  // Cash-out runs these same screens; the flow decides where the user comes
+  // back to once they've verified.
+  const contextKycFlow = useBuyCryptoKycFlow();
+  const kycFlow = kycFlowOverride ?? contextKycFlow;
   const setKycFlow = useKycStore(state => state.setKycFlow);
   const setKycProvider = useKycStore(state => state.setKycProvider);
   const router = useRouter();
 
   return useCallback(
     async (fallbackProvider?: KycProvider) => {
-      setKycFlow('transfi');
+      setKycFlow(kycFlow);
 
       // 'onramp': this identity is for TransFi, which uses Sumsub independently of
       // the Wirex card, so it must not be switched off with the card's kill switch.
@@ -43,7 +52,7 @@ export const useBuyCryptoKycRoute = (navigateOverride?: BuyCryptoNavigate) => {
       setKycProvider(kycProvider);
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
         action: 'route',
-        kycFlow: 'transfi',
+        kycFlow,
         kycProvider,
         countryCode,
       });
@@ -51,7 +60,7 @@ export const useBuyCryptoKycRoute = (navigateOverride?: BuyCryptoNavigate) => {
       setModal(DEPOSIT_MODAL.CLOSE);
       router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
     },
-    [router, setKycFlow, setKycProvider, setModal],
+    [kycFlow, router, setKycFlow, setKycProvider, setModal],
   );
 };
 

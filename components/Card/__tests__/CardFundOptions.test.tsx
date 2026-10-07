@@ -9,7 +9,7 @@ const { act, create } = require('react-test-renderer');
 /**
  * "Fund your card", step 1.
  *
- * Cash App is a USD method, so it is listed under USD, beside Apple Pay, rather
+ * Cash App is a USD method, so it is listed under USD, beside Credit card, rather
  * than as a row of its own at the bottom of the list — and an issuer with no
  * USD section (Wirex) does not offer it at all.
  */
@@ -53,6 +53,7 @@ jest.mock(
   () => 'VirtualAccountApplyDialog',
 );
 jest.mock('@/hooks/useCardProvider', () => ({}));
+jest.mock('@/hooks/useFeatureAccess', () => ({}));
 jest.mock('@/hooks/useOrchestra', () => ({}));
 jest.mock('@/hooks/useVirtualAccountEntry', () => ({}));
 jest.mock('@/lib/analytics', () => ({}));
@@ -74,9 +75,10 @@ const titlesOf = (root: any) => rowsOf(root).map((row: any) => row.props.title);
 const rowTitled = (root: any, title: string) =>
   rowsOf(root).find((row: any) => row.props.title === title);
 
-/** What the Rain modals pass, less Cash App. */
+/** What the Rain modals pass to a whitelisted user, less Cash App. */
 const RAIN_PROPS: Partial<Props> = {
   sections: RAIN_CARD_FUND_SECTIONS,
+  isCreditCardAvailable: true,
   onUsdPress: jest.fn(),
   onLocalCurrencyPress: jest.fn(),
   onMoveFromSavingsPress: jest.fn(),
@@ -90,14 +92,20 @@ beforeEach(() => {
 it('names Cash App on the USD row instead of giving it a row at the bottom', () => {
   const root = render({ ...RAIN_PROPS, isCashAppAvailable: true });
   expect(titlesOf(root)).not.toContain('Cash App');
-  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Cash App', 'Apple Pay']);
+  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Credit card', 'Cash App']);
   act(() => root.unmount());
 });
 
 it('leaves Cash App off the USD row where it is not offered', () => {
   const root = render(RAIN_PROPS);
   expect(titlesOf(root)).not.toContain('Cash App');
-  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Apple Pay']);
+  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Credit card']);
+  act(() => root.unmount());
+});
+
+it('leaves Credit card off the USD row for a user who is not whitelisted', () => {
+  const root = render({ ...RAIN_PROPS, isCreditCardAvailable: false, isCashAppAvailable: true });
+  expect(rowTitled(root, 'USD').props.chips).toEqual(['ACH', 'Wire', 'Cash App']);
   act(() => root.unmount());
 });
 

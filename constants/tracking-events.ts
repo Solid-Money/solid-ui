@@ -172,7 +172,25 @@ export const TRACKING_EVENTS = {
   ONBOARDING_FEE_PAID: 'onboarding_fee_paid',
   ONBOARDING_FEE_DISMISSED: 'onboarding_fee_dismissed',
 
+  // Deposit Method: Buy Crypto (Onramper widget) — upstream KYC. _VIEWED when
+  // the consent step is shown, _ACCEPTED/_DECLINED on the user's answer, and
+  // _RESULT with `shared` once the session says whether the share went through.
+  ONRAMPER_KYC_SHARE_VIEWED: 'onramper_kyc_share_viewed',
+  ONRAMPER_KYC_SHARE_ACCEPTED: 'onramper_kyc_share_accepted',
+  ONRAMPER_KYC_SHARE_DECLINED: 'onramper_kyc_share_declined',
+  ONRAMPER_KYC_SHARE_RESULT: 'onramper_kyc_share_result',
+
   // Deposit Method: Buy Crypto (TransFi onramp)
+  // Cash-out to bank / mobile money (TransFi offramp), from the Send drawer.
+  CASH_OUT_STARTED: 'cash_out_started',
+  CASH_OUT_CURRENCY_SELECTED: 'cash_out_currency_selected',
+  CASH_OUT_METHOD_SELECTED: 'cash_out_method_selected',
+  CASH_OUT_DETAILS_SUBMITTED: 'cash_out_details_submitted',
+  CASH_OUT_REVIEW_VIEWED: 'cash_out_review_viewed',
+  CASH_OUT_ORDER_CREATED: 'cash_out_order_created',
+  CASH_OUT_ORDER_FAILED: 'cash_out_order_failed',
+  CASH_OUT_DEPOSIT_SENT: 'cash_out_deposit_sent',
+  CASH_OUT_DEPOSIT_FAILED: 'cash_out_deposit_failed',
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
   BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
   BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',
@@ -278,6 +296,8 @@ export const TRACKING_EVENTS = {
   PASSKEY_ADDED: 'passkey_added',
   PASSKEY_SKIPPED: 'passkey_skipped',
   PASSKEY_CREATION_FAILED: 'passkey_creation_failed',
+  PASSKEY_REMOVED: 'passkey_removed',
+  PASSKEY_RENAMED: 'passkey_renamed',
   /** The "open Solid in your browser" screen; `reason` says why the browser was turned away. */
   PASSKEY_NOT_SUPPORTED_VIEWED: 'passkey_not_supported_viewed',
   /** Setup tips under the passkey step, after a failure; `error_kind` says which. */

@@ -58,6 +58,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.BANK_WITHDRAWAL,
   },
+  [TransactionType.CASH_OUT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.BANK_WITHDRAWAL,
+  },
   [TransactionType.CARD_TRANSACTION]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,

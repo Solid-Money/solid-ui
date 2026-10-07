@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
 import { AlertTriangle, RefreshCw } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,20 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
           platform: Platform.OS,
           stack: typeof error?.stack === 'string' ? error.stack.slice(0, 1000) : undefined,
         });
+        // A render crash that reaches this boundary is the most severe error the
+        // app produces, and it used to go to analytics only — which is why the
+        // error tracker looked quieter than the app actually was. A stale bundle
+        // is excluded: it is a deploy artifact, not a defect, and it recovers on
+        // reload.
+        if (!isStaleBundle) {
+          Sentry.captureException(error, {
+            tags: { source: 'error_boundary', platform: Platform.OS },
+            extra: { pathname },
+          });
+        }
       }
     } catch {}
-  }, [error, pathname]);
+  }, [error, isStaleBundle, pathname]);
 
   const handleRetry = useCallback(() => {
     track(TRACKING_EVENTS.RETRY_ATTEMPTED, {

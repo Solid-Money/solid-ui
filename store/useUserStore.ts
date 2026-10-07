@@ -29,6 +29,7 @@ interface UserState {
     identity: { turnkeyUserId?: string; email?: string },
     credentialIds: string[],
   ) => void;
+  replaceUserCredentialIds: (userId: string, credentialIds: string[]) => void;
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
@@ -207,6 +208,29 @@ export const useUserStore = create<UserState>()(
         );
       },
 
+      /**
+       * Replace a signed-in user's credentials with the set Turnkey holds now,
+       * after the passkey manager adds or removes one.
+       *
+       * Unlike {@link setCredentialIdsForIdentity}, a `credentialId` that left
+       * the set is cleared rather than moved to another credential. It is the
+       * passkey this device last signed in with — Settings labels it "This
+       * device" — and handing that to a different passkey would tell the user
+       * the wrong one is here. The next login sets it again from the stamp.
+       */
+      replaceUserCredentialIds: (userId, credentialIds) => {
+        set(
+          produce(state => {
+            const user = state.users.find((u: User) => u.userId === userId);
+            if (!user) return;
+            user.credentialIds = credentialIds.length ? credentialIds : undefined;
+            if (user.credentialId && !credentialIds.includes(user.credentialId)) {
+              user.credentialId = undefined;
+            }
+          }),
+        );
+      },
+
       removeUsers: () => {
         set({ users: [] });
       },
@@ -233,9 +257,30 @@ export const useUserStore = create<UserState>()(
       onRehydrateStorage: () => state => {
         state?.setHasHydrated(true);
       },
+      // `loginInfo` and `signupInfo` describe a request in flight, which cannot
+      // outlive the app. Persisting them meant a login interrupted mid-way — the
+      // app killed during the passkey prompt, or a request that never returned —
+      // came back on the next launch as "pending": the Log in button stayed
+      // disabled behind "Authenticating..." and nothing could clear it.
       partialize: state => {
-        const { redirectFrom, pendingAuthUserId, ...rest } = state;
+        const {
+          redirectFrom,
+          pendingAuthUserId,
+          loginInfo: _loginInfo,
+          signupInfo: _signupInfo,
+          ...rest
+        } = state;
         return rest;
+      },
+      // Installs that persisted them before still carry them in storage, so
+      // they are dropped on the way in too, not only on the way out.
+      merge: (persistedState, currentState) => {
+        const {
+          loginInfo: _loginInfo,
+          signupInfo: _signupInfo,
+          ...rest
+        } = (persistedState ?? {}) as Partial<UserState>;
+        return { ...currentState, ...rest };
       },
     },
   ),

@@ -21,6 +21,7 @@ import { CARD_DEPOSIT_MODAL, DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useOrchestraCardEntry } from '@/hooks/useOrchestraCardEntry';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
@@ -170,6 +171,8 @@ export default function CardDirectDepositModalMobile({
   // values too, and navigateBuyCrypto already maps CLOSE and OPEN_OPTIONS onto
   // this modal's own actions.
   const { openCashApp, isAvailable: isCashAppAvailable } = useOrchestraCardEntry(navigateBuyCrypto);
+  // Onramper's Credit card row is for whitelisted users only.
+  const hasCreditCard = useHasFeature('onramper');
 
   useEffect(
     () => () => {
@@ -350,6 +353,7 @@ export default function CardDirectDepositModalMobile({
           onExternalWalletPress={handleExternalWallet}
           onUsdPress={handleUsdPress}
           isCashAppAvailable={isCashAppAvailable}
+          isCreditCardAvailable={hasCreditCard}
           onLocalCurrencyPress={handleLocalCurrencyPress}
         />
       );
@@ -360,7 +364,7 @@ export default function CardDirectDepositModalMobile({
         <UsdMethodList
           onBankTransferPress={handleBankTransferPress}
           onCashAppPress={isCashAppAvailable ? openCashApp : undefined}
-          onApplePayPress={handleApplePayPress}
+          onApplePayPress={hasCreditCard ? handleApplePayPress : undefined}
         />
       );
     }

@@ -89,6 +89,7 @@ import {
   EphemeralKeyResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
+  FeatureAccessResponse,
   FeeProduct,
   FromCurrency,
   FullRewardsConfig,
@@ -152,6 +153,11 @@ import {
   TokenPriceByAddress,
   TokenPriceUsd,
   TotalAPYResponse,
+  TransfiCashoutConfig,
+  TransfiCashoutDepositInstructions,
+  TransfiCashoutOrderStatus,
+  TransfiCashoutPaymentMethod,
+  TransfiCashoutQuote,
   TransfiCreateOrderResponse,
   TransfiKycLevel,
   TransfiKycRetryResponse,
@@ -1931,6 +1937,96 @@ export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStat
   return response.json();
 };
 
+// -----------------------------------------------------------------------------
+// TransFi cash-out (offramp). Same error contract as the buy-crypto calls.
+// -----------------------------------------------------------------------------
+
+const CASHOUT_BASE = () => `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/cashout`;
+
+/** Payout currencies, a suggested default, and the chain the USDC leaves from. */
+export const getTransfiCashoutConfig = async (): Promise<TransfiCashoutConfig> => {
+  const response = await fetch(`${CASHOUT_BASE()}/config`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Payout methods for a currency, each with the fields TransFi needs for it. */
+export const getTransfiCashoutPaymentMethods = async (
+  currency: string,
+): Promise<TransfiCashoutPaymentMethod[]> => {
+  const params = new URLSearchParams({ currency });
+  const response = await fetch(`${CASHOUT_BASE()}/payment-methods?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** What a USDC amount pays out in the chosen currency and method. */
+export const getTransfiCashoutQuote = async (
+  amount: string,
+  currency: string,
+  paymentCode: string,
+  signal?: AbortSignal,
+): Promise<TransfiCashoutQuote> => {
+  const params = new URLSearchParams({ amount, currency, paymentCode });
+  const response = await fetch(`${CASHOUT_BASE()}/quote?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+    signal,
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Open a cash-out; resolves with where to send the USDC. */
+export const createTransfiCashoutOrder = async (body: {
+  usdcAmount: string;
+  currency: string;
+  paymentCode: string;
+  paymentDetails: Record<string, string>;
+}): Promise<TransfiCashoutDepositInstructions> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Record the hash of the USDC transfer that funds a cash-out. */
+export const submitTransfiCashoutDeposit = async (
+  orderId: string,
+  txHash: string,
+): Promise<TransfiCashoutOrderStatus> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders/${orderId}/deposit`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify({ txHash }),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Poll a cash-out's status. */
+export const getTransfiCashoutOrder = async (
+  orderId: string,
+): Promise<TransfiCashoutOrderStatus> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders/${orderId}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
 /** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
 export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
   const jwt = getJWTToken();
@@ -2710,7 +2806,43 @@ export interface OnramperWidgetSession {
   url: string;
   /** ISO timestamp. Past this, the URL must be re-minted. */
   expiresAt: string;
+  /**
+   * Whether the URL carries the user's Sumsub verification for Onramper to
+   * import. Can be false even after the user agreed — a stale approval or a
+   * Sumsub outage — in which case the onramp verifies them itself. Absent from
+   * backends that predate upstream KYC.
+   */
+  kycShared?: boolean;
 }
+
+/**
+ * Whether the user could skip the onramp's own KYC by sharing their Sumsub
+ * verification with Onramper. The consent step is shown only when this is true.
+ */
+export interface OnramperKycShareAvailability {
+  available: boolean;
+}
+
+/** Asks the backend whether upstream KYC is on offer. Mints nothing. */
+export const fetchOnramperKycShareAvailability =
+  async (): Promise<OnramperKycShareAvailability> => {
+    const jwt = getJWTToken();
+
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramper/kyc-share`,
+      {
+        headers: {
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+        credentials: 'include',
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };
 
 /**
  * What an Onramper purchase funds: the wallet (the Safe), or the card by way of
@@ -2725,10 +2857,15 @@ export type OnramperDestination = 'wallet' | 'card';
  * authenticated user, so nothing the client says can redirect the delivery.
  * `destination` picks only the route, which the backend resolves to that user's
  * own Safe or card deposit address.
+ *
+ * `shareKyc` is the user's consent to pass their Sumsub verification to
+ * Onramper. Sent only when given, so a session without it is exactly the
+ * request it was before.
  */
 export const fetchOnramperWidgetSession = async (
   platform: 'web' | 'native',
   destination: OnramperDestination,
+  shareKyc = false,
 ): Promise<OnramperWidgetSession> => {
   const jwt = getJWTToken();
 
@@ -2742,7 +2879,7 @@ export const fetchOnramperWidgetSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ platform, destination }),
+      body: JSON.stringify({ platform, destination, ...(shareKyc && { shareKyc: true }) }),
     },
   );
 
@@ -3496,6 +3633,73 @@ export const getTotpStatus = async (): Promise<{ verified: boolean }> => {
   return response.json();
 };
 
+/** One passkey on the account, as `GET /auths/passkeys` describes it. */
+export interface PasskeySummary {
+  /** Turnkey's id for the passkey — what removing one takes. */
+  authenticatorId: string;
+  /** The WebAuthn credential id — what passkey prompts filter on. */
+  credentialId: string;
+  name: string;
+  createdAt: string | null;
+  /** The last login this passkey made. Approvals go to Turnkey and do not count. */
+  lastSignInAt: string | null;
+}
+
+export interface PasskeyList {
+  /** The Turnkey user the passkeys belong to; older installs never stored it. */
+  turnkeyUserId: string | null;
+  passkeys: PasskeySummary[];
+}
+
+/**
+ * The account's passkeys, read live from Turnkey. The backend re-syncs the
+ * account's stored credentials as it reads, so this is also the call to make
+ * after adding or removing one.
+ */
+export const getPasskeys = async (): Promise<PasskeyList> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/passkeys`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Name a passkey. Stored by Solid — Turnkey cannot rename one. */
+export const renamePasskey = async (
+  authenticatorId: string,
+  name: string,
+): Promise<PasskeyList> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/passkeys/${encodeURIComponent(authenticatorId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {
@@ -4049,6 +4253,23 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Which whitelisted features this user has — see useHasFeature. */
+export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/feature-access`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 

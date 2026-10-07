@@ -277,6 +277,38 @@ export const SEND_MODAL = {
     name: 'open_qr_scanner',
     number: 9,
   },
+  // Cash-out to a bank account or mobile wallet (TransFi offramp). Numbered
+  // between search (1) and the crypto form (2): they branch off search, and
+  // the numbers only decide which way the drawer animates.
+  /** TransFi's KYC screens, embedded — see useCashoutKycGate. */
+  OPEN_CASHOUT_KYC: {
+    name: 'open_cashout_kyc',
+    number: 1.1,
+  },
+  OPEN_CASHOUT_CURRENCY: {
+    name: 'open_cashout_currency',
+    number: 1.2,
+  },
+  OPEN_CASHOUT_METHOD: {
+    name: 'open_cashout_method',
+    number: 1.3,
+  },
+  OPEN_CASHOUT_DETAILS: {
+    name: 'open_cashout_details',
+    number: 1.4,
+  },
+  OPEN_CASHOUT_AMOUNT: {
+    name: 'open_cashout_amount',
+    number: 1.5,
+  },
+  OPEN_CASHOUT_REVIEW: {
+    name: 'open_cashout_review',
+    number: 1.6,
+  },
+  OPEN_CASHOUT_STATUS: {
+    name: 'open_cashout_status',
+    number: 1.7,
+  },
 };
 
 export const WITHDRAW_MODAL = {

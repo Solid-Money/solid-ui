@@ -26,6 +26,7 @@ import { getCrossChainSendToken } from '@/lib/utils/cross-chain-send';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 import AddAddress from './AddAddress';
+import { CashoutEntryRow } from './Cashout/CashoutEntryRow';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
@@ -153,6 +154,9 @@ const SendSearch: React.FC = () => {
   return (
     <View className="gap-8">
       <ToInput />
+
+      {/* Off-ramp to fiat: hidden while the user is searching for a wallet. */}
+      {!searchQuery.trim() ? <CashoutEntryRow /> : null}
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredRecentActivities.length > 0 && (

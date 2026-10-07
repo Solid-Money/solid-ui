@@ -57,6 +57,14 @@ export default function SettingsLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="passkeys"
+        options={{
+          title: 'Passkeys',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

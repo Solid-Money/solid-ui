@@ -4,7 +4,11 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { KycProvider } from '@/lib/types';
 
-export type KycFlow = 'card' | 'va' | 'transfi';
+/**
+ * `transfi` and `transfi_cashout` both verify for TransFi; they differ only in
+ * where the user lands afterwards — the buy-crypto drawer or the cash-out one.
+ */
+export type KycFlow = 'card' | 'va' | 'transfi' | 'transfi_cashout';
 
 interface KycState {
   kycLinkId: string | null;

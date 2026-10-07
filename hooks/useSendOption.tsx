@@ -4,6 +4,13 @@ import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
+import { CashoutAmount } from '@/components/Send/Cashout/CashoutAmount';
+import { CashoutCurrencySelector } from '@/components/Send/Cashout/CashoutCurrencySelector';
+import { CashoutDetailsForm } from '@/components/Send/Cashout/CashoutDetailsForm';
+import { CashoutKycStep } from '@/components/Send/Cashout/CashoutKycStep';
+import { CashoutMethodSelector } from '@/components/Send/Cashout/CashoutMethodSelector';
+import { CashoutReview } from '@/components/Send/Cashout/CashoutReview';
+import { CashoutStatus } from '@/components/Send/Cashout/CashoutStatus';
 import CrossChainForm from '@/components/Send/CrossChain/CrossChainForm';
 import CrossChainNetworks from '@/components/Send/CrossChain/CrossChainNetworks';
 import CrossChainReview from '@/components/Send/CrossChain/CrossChainReview';
@@ -18,8 +25,11 @@ import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useTransfiCashoutPaymentMethods } from '@/hooks/useTransfiCashout';
+import { getBuyCryptoTitle } from '@/lib/buyCryptoFlow';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { SendModal } from '@/lib/types';
+import { hasUnsavedCashoutData, useCashoutStore } from '@/store/useCashoutStore';
 import { hasUnsavedSendData, useSendStore } from '@/store/useSendStore';
 
 import useResponsiveModal from './useResponsiveModal';
@@ -77,6 +87,39 @@ const useSendOption = ({
   // cross-chain amount step.
   const isCrossChainTokenSelector = isTokenSelector && isCrossChain;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
+  const isCashoutKyc = currentModal.name === SEND_MODAL.OPEN_CASHOUT_KYC.name;
+  const isCashoutCurrency = currentModal.name === SEND_MODAL.OPEN_CASHOUT_CURRENCY.name;
+  const isCashoutMethod = currentModal.name === SEND_MODAL.OPEN_CASHOUT_METHOD.name;
+  const isCashoutDetails = currentModal.name === SEND_MODAL.OPEN_CASHOUT_DETAILS.name;
+  const isCashoutAmount = currentModal.name === SEND_MODAL.OPEN_CASHOUT_AMOUNT.name;
+  const isCashoutReview = currentModal.name === SEND_MODAL.OPEN_CASHOUT_REVIEW.name;
+  const isCashoutStatus = currentModal.name === SEND_MODAL.OPEN_CASHOUT_STATUS.name;
+  const isCashout =
+    isCashoutKyc ||
+    isCashoutCurrency ||
+    isCashoutMethod ||
+    isCashoutDetails ||
+    isCashoutAmount ||
+    isCashoutReview ||
+    isCashoutStatus;
+
+  const resetCashout = useCashoutStore(state => state.reset);
+  const cashoutKycModal = useCashoutStore(state => state.kycModal);
+  const cashoutCurrency = useCashoutStore(state => state.currency);
+  const cashoutPaymentCode = useCashoutStore(state => state.paymentCode);
+  const { data: cashoutMethods } = useTransfiCashoutPaymentMethods(
+    isCashoutDetails ? cashoutCurrency : undefined,
+  );
+  const cashoutMethodName = cashoutMethods?.find(
+    method => method.paymentCode === cashoutPaymentCode,
+  )?.paymentName;
+
+  // The drawer's reset also clears a cash-out in progress: the two flows share
+  // the drawer, and a half-typed IBAN must not greet the next send.
+  const resetDrawer = useCallback(() => {
+    resetAll();
+    resetCashout();
+  }, [resetAll, resetCashout]);
   const shouldAnimate = previousModal.name !== SEND_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
 
@@ -131,6 +174,13 @@ const useSendOption = ({
   );
 
   const getContent = () => {
+    if (isCashoutKyc) return <CashoutKycStep />;
+    if (isCashoutCurrency) return <CashoutCurrencySelector />;
+    if (isCashoutMethod) return <CashoutMethodSelector />;
+    if (isCashoutDetails) return <CashoutDetailsForm />;
+    if (isCashoutAmount) return <CashoutAmount />;
+    if (isCashoutReview) return <CashoutReview />;
+    if (isCashoutStatus) return <CashoutStatus />;
     if (isCrossChainNetwork) return <CrossChainNetworks />;
     if (isCrossChainForm) return <CrossChainForm />;
     if (isCrossChainReview) return <CrossChainReview />;
@@ -175,6 +225,13 @@ const useSendOption = ({
   };
 
   const getContentKey = () => {
+    if (isCashoutKyc) return `cashout-kyc-${cashoutKycModal?.name ?? 'pending'}`;
+    if (isCashoutCurrency) return 'cashout-currency';
+    if (isCashoutMethod) return 'cashout-method';
+    if (isCashoutDetails) return 'cashout-details';
+    if (isCashoutAmount) return 'cashout-amount';
+    if (isCashoutReview) return 'cashout-review';
+    if (isCashoutStatus) return 'cashout-status';
     if (isCrossChainNetwork) return 'cross-chain-network';
     if (isCrossChainForm) return 'cross-chain-form';
     if (isCrossChainReview) return 'cross-chain-review';
@@ -189,6 +246,14 @@ const useSendOption = ({
   };
 
   const getTitle = () => {
+    if (isCashoutKyc) {
+      return cashoutKycModal ? (getBuyCryptoTitle(cashoutKycModal) ?? 'Cash out') : 'Verifying';
+    }
+    if (isCashoutCurrency || isCashoutMethod) return 'Cash out';
+    if (isCashoutDetails) return cashoutMethodName ?? 'Account details';
+    if (isCashoutAmount) return 'Amount';
+    if (isCashoutReview) return 'Review';
+    if (isCashoutStatus) return undefined;
     if (isCrossChainNetwork) return 'Receive on';
     if (isCrossChainForm) return 'Send';
     if (isCrossChainReview) return 'Review';
@@ -212,6 +277,7 @@ const useSendOption = ({
     if (isQRScanner) return 'flex-1'; // Fill available space for camera view
     if (isSearch) return 'min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
+    if (isCashout) return 'min-h-[30rem]';
     if (isCrossChainForm) return 'min-h-[36rem]';
     if (isCrossChainReview || isCrossChainStatus) return 'min-h-[30rem]';
     return '';
@@ -231,29 +297,39 @@ const useSendOption = ({
         // Skip discard prompt if transaction has already been initiated
         if (
           currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name ||
-          currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name
+          currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name ||
+          currentModalName === SEND_MODAL.OPEN_CASHOUT_STATUS.name
         ) {
-          resetAll();
-        } else if (hasUnsavedSendData()) {
+          resetDrawer();
+        } else if (hasUnsavedSendData() || hasUnsavedCashoutData()) {
           setShowDiscardDialog(true);
         } else {
-          resetAll();
+          resetDrawer();
         }
       }
     },
-    [modal, setModal, resetAll],
+    [modal, setModal, resetDrawer],
   );
 
   const handleDiscardConfirm = useCallback(() => {
     setShowDiscardDialog(false);
-    resetAll();
-  }, [resetAll]);
+    resetDrawer();
+  }, [resetDrawer]);
 
   const handleDiscardCancel = useCallback(() => {
     setShowDiscardDialog(false);
   }, []);
 
   const handleBackPress = () => {
+    if (isCashoutKyc || isCashoutCurrency) {
+      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      return;
+    }
+    if (isCashoutMethod) return setModal(SEND_MODAL.OPEN_CASHOUT_CURRENCY);
+    if (isCashoutDetails) return setModal(SEND_MODAL.OPEN_CASHOUT_METHOD);
+    if (isCashoutAmount) return setModal(SEND_MODAL.OPEN_CASHOUT_DETAILS);
+    if (isCashoutReview) return setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
+
     if (isCrossChainNetwork) {
       if (useSendStore.getState().crossChainEntry === 'token') {
         // Entered by picking the token on the regular form: back to the picker,
@@ -294,7 +370,8 @@ const useSendOption = ({
     isAddressBook ||
     isCrossChainNetwork ||
     isCrossChainForm ||
-    isCrossChainReview;
+    isCrossChainReview ||
+    (isCashout && !isCashoutStatus);
   // The cross-chain screens use the compact 40px header controls.
   const compactHeader = isCrossChainStep || isCrossChainTokenSelector;
 

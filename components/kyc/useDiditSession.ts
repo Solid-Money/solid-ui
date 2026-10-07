@@ -4,16 +4,15 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useReinitOnRefocus } from '@/components/kyc/useReinitOnRefocus';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
 import { resolveRoutingCountry } from '@/lib/kycProviderRouting';
+import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -64,7 +63,7 @@ export function useDiditSession() {
       // TransFi. The user resumes in the Add-funds modal, which is mounted on
       // the home screen — see redirectBasedOnKycStatus, which re-opens that
       // modal at the buy-crypto KYC pending step before navigating here.
-      if (kycFlow === 'transfi') return String(path.HOME);
+      if (isTransfiKycFlow(kycFlow)) return String(path.HOME);
 
       if (kycStatus === KycStatus.APPROVED) {
         // Didit KYC approved: route by Rain status. Approved -> ready.
@@ -107,8 +106,8 @@ export function useDiditSession() {
       // KYC pending step, which forwards the freshly-approved Didit KYC to
       // TransFi and polls. Set before navigating so the modal is already staged
       // when the home screen that mounts it comes into focus.
-      if (kycFlow === 'transfi') {
-        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+      if (isTransfiKycFlow(kycFlow)) {
+        resumeTransfiKycFlow(kycFlow);
       }
 
       setSession({ phase: 'completed', outcome: handoff, destination });
@@ -187,7 +186,7 @@ export function useDiditSession() {
       // a fiat-only user — buying crypto is how they would fund that balance.
       // Their card application stays gated regardless: the hand-off to the
       // issuer re-checks the deposit whichever flow started the session.
-      const diditFlow = kycFlow === 'va' ? 'va' : kycFlow === 'transfi' ? 'onramp' : 'card';
+      const diditFlow = kycFlow === 'va' ? 'va' : isTransfiKycFlow(kycFlow) ? 'onramp' : 'card';
       // The card flow sends its country so the server can refuse a market Wirex
       // serves — Wirex wins every jurisdiction both issuers cover, and this
       // session is what would otherwise pin the user to Rain permanently. Only
