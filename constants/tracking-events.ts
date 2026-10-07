@@ -286,6 +286,8 @@ export const TRACKING_EVENTS = {
   PASSKEY_ADDED: 'passkey_added',
   PASSKEY_SKIPPED: 'passkey_skipped',
   PASSKEY_CREATION_FAILED: 'passkey_creation_failed',
+  PASSKEY_REMOVED: 'passkey_removed',
+  PASSKEY_RENAMED: 'passkey_renamed',
 
   // Quest Wallet Events
   QUEST_WALLET_PAGE_VIEWED: 'quest_wallet_page_viewed',

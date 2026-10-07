@@ -168,3 +168,39 @@ describe('clearUserCredentialId', () => {
     expect(selectSelectedCredentialIds(useUserStore.getState())).toEqual([]);
   });
 });
+
+describe('replaceUserCredentialIds', () => {
+  const ADDED = 'bmV3U2VjdXJpdHlLZXk';
+
+  it('takes on a passkey added in Settings', () => {
+    setUsers([buildUser({ credentialId: OLD, credentialIds: [OLD] })]);
+
+    useUserStore.getState().replaceUserCredentialIds('user-1', [OLD, ADDED]);
+
+    expect(currentUser().credentialIds).toEqual([OLD, ADDED]);
+    // Still the passkey this device signed in with.
+    expect(currentUser().credentialId).toBe(OLD);
+  });
+
+  it("clears the device's credential when it was the one removed", () => {
+    // Moving it to ADDED instead would label the wrong passkey "This device".
+    setUsers([buildUser({ credentialId: OLD, credentialIds: [OLD, ADDED] })]);
+
+    useUserStore.getState().replaceUserCredentialIds('user-1', [ADDED]);
+
+    expect(currentUser().credentialIds).toEqual([ADDED]);
+    expect(currentUser().credentialId).toBeUndefined();
+    expect(selectSelectedCredentialIds(useUserStore.getState())).toEqual([ADDED]);
+  });
+
+  it('leaves other local accounts alone', () => {
+    setUsers([
+      buildUser({ credentialId: OLD, credentialIds: [OLD] }),
+      buildUser({ userId: 'user-2', selected: false, credentialIds: [RECOVERED] }),
+    ]);
+
+    useUserStore.getState().replaceUserCredentialIds('user-1', [ADDED]);
+
+    expect(useUserStore.getState().users[1].credentialIds).toEqual([RECOVERED]);
+  });
+});

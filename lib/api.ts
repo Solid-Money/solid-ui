@@ -3537,6 +3537,73 @@ export const getTotpStatus = async (): Promise<{ verified: boolean }> => {
   return response.json();
 };
 
+/** One passkey on the account, as `GET /auths/passkeys` describes it. */
+export interface PasskeySummary {
+  /** Turnkey's id for the passkey — what removing one takes. */
+  authenticatorId: string;
+  /** The WebAuthn credential id — what passkey prompts filter on. */
+  credentialId: string;
+  name: string;
+  createdAt: string | null;
+  /** The last login this passkey made. Approvals go to Turnkey and do not count. */
+  lastSignInAt: string | null;
+}
+
+export interface PasskeyList {
+  /** The Turnkey user the passkeys belong to; older installs never stored it. */
+  turnkeyUserId: string | null;
+  passkeys: PasskeySummary[];
+}
+
+/**
+ * The account's passkeys, read live from Turnkey. The backend re-syncs the
+ * account's stored credentials as it reads, so this is also the call to make
+ * after adding or removing one.
+ */
+export const getPasskeys = async (): Promise<PasskeyList> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/passkeys`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Name a passkey. Stored by Solid — Turnkey cannot rename one. */
+export const renamePasskey = async (
+  authenticatorId: string,
+  name: string,
+): Promise<PasskeyList> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/passkeys/${encodeURIComponent(authenticatorId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {
