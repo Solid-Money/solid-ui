@@ -17,6 +17,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { getCardFundingAddress } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCreditLineStore } from '@/store/useCreditLineStore';
 
@@ -105,7 +106,7 @@ export default function CreditLineConfirm() {
       Toast.show({
         type: 'error',
         text1: 'Borrow failed',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
+        text2: userFacingErrorMessage(error),
         props: { badgeText: 'Onchain' },
       });
     } finally {

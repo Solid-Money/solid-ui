@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +43,7 @@ import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/use
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
@@ -66,6 +68,7 @@ import {
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -964,6 +967,10 @@ export default function ActivityDetail() {
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
+  const isCrossChainSend = finalActivity?.type === TransactionType.CROSS_CHAIN_SEND;
+  const crossChainNetwork = isCrossChainSend
+    ? CROSS_CHAIN_NETWORKS[Number(finalActivity?.metadata?.dstChainId)]
+    : undefined;
 
   const statusTextColor = useMemo(() => {
     if (isFailed) return 'text-red-400';
@@ -1035,6 +1042,41 @@ export default function ActivityDetail() {
         label: <Label>Status</Label>,
         value: <Value>{toTitleCase(status)}</Value>,
       },
+      isCrossChainSend &&
+        crossChainNetwork && {
+          key: 'receive-on',
+          label: <Label>Receive on</Label>,
+          value: (
+            <View className="flex-row items-center gap-2">
+              <Image
+                source={getAsset(NETWORK_ICONS[crossChainNetwork.key])}
+                style={{ width: 18, height: 18, borderRadius: 9 }}
+              />
+              <Value>{crossChainNetwork.name}</Value>
+            </View>
+          ),
+        },
+      isCrossChainSend &&
+        metadata?.dstTxHash && {
+          key: 'destination-tx',
+          label: <Label>Destination transaction</Label>,
+          value: (
+            <Pressable
+              onPress={() => {
+                if (metadata.dstExplorerUrl) Linking.openURL(metadata.dstExplorerUrl as string);
+              }}
+              disabled={!metadata.dstExplorerUrl}
+              className="hover:opacity-70"
+            >
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(metadata.dstTxHash as string)}
+                </Underline>
+                {metadata.dstExplorerUrl ? <ArrowUpRight color="white" size={16} /> : null}
+              </View>
+            </Pressable>
+          ),
+        },
       isWirexBank &&
         metadata?.rail && {
           key: 'rail',
@@ -1115,6 +1157,8 @@ export default function ActivityDetail() {
     isDeposit,
     isFund,
     isBridgeDeposit,
+    isCrossChainSend,
+    crossChainNetwork,
     isWirexBank,
     isPending,
     isDetected,

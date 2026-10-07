@@ -3,8 +3,12 @@ import { View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
+import {
+  TOOLTIP_SURFACE_CLASS_NAME,
+  TOOLTIP_TEXT_CLASS_NAME,
+} from '@/components/ui/tooltip-styles';
 import { ChartPayload } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { useCoinStore } from '@/store/useCoinStore';
 
@@ -17,7 +21,6 @@ interface ChartTooltipProps {
   payload?: TooltipPayload[];
   data?: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
-  compact?: boolean;
 }
 
 export function calculatePercentageChange(oldValue: number, newValue: number) {
@@ -28,13 +31,7 @@ export function calculatePercentageChange(oldValue: number, newValue: number) {
   return ((newValue - oldValue) / oldValue) * 100;
 }
 
-const ChartTooltip = ({
-  active,
-  payload,
-  data,
-  formatToolTip,
-  compact = false,
-}: ChartTooltipProps) => {
+const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProps) => {
   const { selectedPrice, setSelectedPriceChange, setSelectedPrice } = useCoinStore(
     useShallow(state => ({
       selectedPrice: state.selectedPrice,
@@ -93,30 +90,12 @@ const ChartTooltip = ({
   };
 
   return (
-    <View
-      className={
-        compact
-          ? 'rounded-lg bg-primary px-2 py-1.5 shadow-md'
-          : 'rounded-xl bg-primary p-3 shadow-md'
-      }
-    >
-      <View className={compact ? 'gap-0.5' : 'gap-1'}>
-        <Text
-          className={
-            compact
-              ? 'text-[13px] font-semibold leading-[15px] text-primary-foreground'
-              : 'text-lg font-semibold text-primary-foreground'
-          }
-        >
+    <View className={TOOLTIP_SURFACE_CLASS_NAME}>
+      <View className="gap-1">
+        <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'font-semibold')}>
           {formatToolTip ? formatToolTip(selectedPrice) : format(selectedPrice)}
         </Text>
-        <Text
-          className={
-            compact
-              ? 'text-[10px] leading-3 text-muted-foreground'
-              : 'text-sm text-muted-foreground'
-          }
-        >
+        <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'text-black/60')}>
           {formatChartTooltipDate(currentTimestamp)}
         </Text>
       </View>

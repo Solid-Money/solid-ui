@@ -17,7 +17,7 @@ interface BarChartProps {
   formatToolTip?: (value: number | null) => string;
 }
 
-const COMPACT_TOOLTIP_WIDTH = 88;
+const COMPACT_TOOLTIP_WIDTH = 140;
 const COMPACT_TOOLTIP_GAP = 6;
 
 type CompactBarTooltipProps = Partial<TooltipContentProps<number, string>> & {
@@ -63,7 +63,6 @@ const CompactBarTooltip = ({
         payload={tooltipPayload}
         data={data}
         formatToolTip={formatToolTip}
-        compact
       />
     </div>
   );
@@ -105,7 +104,7 @@ const Chart = ({ data, height = 150, compact = false, formatToolTip }: BarChartP
           cursor={compact ? false : undefined}
           position={compact ? { x: 0, y: 0 } : undefined}
           wrapperStyle={compact ? { width: '100%', height: '100%' } : undefined}
-          isAnimationActive={compact ? false : undefined}
+          isAnimationActive={false}
         />
 
         <Bar

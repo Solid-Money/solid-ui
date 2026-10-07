@@ -7,8 +7,12 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { calculatePercentageChange } from '@/components/ChartTooltip';
 import { Text } from '@/components/ui/text';
+import {
+  TOOLTIP_SURFACE_CLASS_NAME,
+  TOOLTIP_TEXT_CLASS_NAME,
+} from '@/components/ui/tooltip-styles';
 import { ChartPayload } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { formatChartAxisLabel, formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { useCoinStore } from '@/store/useCoinStore';
 
@@ -239,27 +243,19 @@ const ChartContent = ({
       {/* Tooltip */}
       {tooltipVisible && tooltipData && (
         <View
+          className={TOOLTIP_SURFACE_CLASS_NAME}
           style={{
             position: 'absolute',
             top: 8,
             right: 8,
             minWidth: 140,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            backgroundColor: '#FFFFFF',
-            borderRadius: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 8,
           }}
           pointerEvents="none"
         >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#18181B' }}>
-            {tooltipData.price}
+          <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'font-semibold')}>{tooltipData.price}</Text>
+          <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'mt-1 text-black/60')}>
+            {tooltipData.date}
           </Text>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>{tooltipData.date}</Text>
         </View>
       )}
     </>

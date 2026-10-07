@@ -31,6 +31,7 @@ import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider } from '@/lib/types';
 import { buildModuleDisables, includesModule, SENTINEL_MODULES } from '@/lib/utils/safeModules';
+import { redactSecrets, userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -1221,9 +1222,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to set up card spending';
+      // The raw message is a viem dump for a failed user operation — bundler URL
+      // (API key included) and request body — so the sheet gets our copy.
+      const message = userFacingErrorMessage(mutationError, 'Failed to set up card spending');
       setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_REGISTER_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_SPEND_REGISTER_FAILED, {
+        error: redactSecrets(mutationError?.message || message),
+      });
     },
   });
 
@@ -1331,9 +1336,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to change your limit';
+      // The raw message is a viem dump for a failed user operation — bundler URL
+      // (API key included) and request body — so the sheet gets our copy.
+      const message = userFacingErrorMessage(mutationError, 'Failed to change your limit');
       setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_FAILED, {
+        error: redactSecrets(mutationError?.message || message),
+      });
     },
   });
 
@@ -1375,9 +1384,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to cancel the limit change';
+      // The raw message is a viem dump for a failed user operation — bundler URL
+      // (API key included) and request body — so the sheet gets our copy.
+      const message = userFacingErrorMessage(mutationError, 'Failed to cancel the limit change');
       setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_PENDING_INCREASE_CANCEL_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_SPEND_PENDING_INCREASE_CANCEL_FAILED, {
+        error: redactSecrets(mutationError?.message || message),
+      });
     },
   });
 
@@ -1538,9 +1551,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to change your spend mode';
+      // The raw message is a viem dump for a failed user operation — bundler URL
+      // (API key included) and request body — so the sheet gets our copy.
+      const message = userFacingErrorMessage(mutationError, 'Failed to change your spend mode');
       setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, {
+        error: redactSecrets(mutationError?.message || message),
+      });
     },
   });
 
@@ -1601,9 +1618,13 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to turn off card spending';
+      // The raw message is a viem dump for a failed user operation — bundler URL
+      // (API key included) and request body — so the sheet gets our copy.
+      const message = userFacingErrorMessage(mutationError, 'Failed to turn off card spending');
       setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_FAILED, { error: message });
+      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_FAILED, {
+        error: redactSecrets(mutationError?.message || message),
+      });
     },
   });
 

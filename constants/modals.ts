@@ -231,29 +231,51 @@ export const SEND_MODAL = {
     name: 'open_send_search',
     number: 1,
   },
+  /**
+   * Cross-chain send ("Withdraw to another network"): after the recipient is
+   * picked on the search, a bridgeable Fuse stablecoin goes through these
+   * steps instead of the form. Numbered in flow order so each step animates
+   * forward from the last.
+   */
+  OPEN_CROSS_CHAIN_NETWORK: {
+    name: 'open_cross_chain_network',
+    number: 3,
+  },
+  OPEN_CROSS_CHAIN_FORM: {
+    name: 'open_cross_chain_form',
+    number: 4,
+  },
   OPEN_FORM: {
     name: 'open_form',
-    number: 2,
+    number: 4,
   },
   OPEN_TOKEN_SELECTOR: {
     name: 'open_token_selector',
-    number: 3,
+    number: 5,
+  },
+  OPEN_CROSS_CHAIN_REVIEW: {
+    name: 'open_cross_chain_review',
+    number: 6,
   },
   OPEN_REVIEW: {
     name: 'open_review',
-    number: 4,
+    number: 6,
+  },
+  OPEN_CROSS_CHAIN_STATUS: {
+    name: 'open_cross_chain_status',
+    number: 7,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 5,
+    number: 7,
   },
   OPEN_ADDRESS_BOOK: {
     name: 'open_address_book',
-    number: 6,
+    number: 8,
   },
   OPEN_QR_SCANNER: {
     name: 'open_qr_scanner',
-    number: 7,
+    number: 9,
   },
   // Cash-out to a bank account or mobile wallet (TransFi offramp). Numbered
   // between search (1) and the crypto form (2): they branch off search, and

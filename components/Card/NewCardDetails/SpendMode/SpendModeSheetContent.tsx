@@ -38,7 +38,6 @@ import {
   type SpendModePanel,
 } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 import SpendModeSegmentedControl from '@/components/Card/NewCardDetails/SpendMode/SpendModeSegmentedControl';
-import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
@@ -46,22 +45,23 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 
 /**
  * Vertical rhythm, measured off the Figma sheets (419pt artboard; the Credit frame,
- * 26974:12806, is 628pt tall). Everything below is the gap from the element above it, so
+ * 26974:12806, is 644pt tall). Everything below is the gap from the element above it, so
  * a taller stack pushes the button down without the rest drifting.
  *
- *   heading top        55      control           126
- *   caption            218     notice            255   (Credit only)
- *   first panel        360     action button     520
+ *   heading top        50      subtitle           95
+ *   control           143     caption           235
+ *   notice            272     first panel       377   (Credit only)
+ *   action button     537
  *
- * That frame sits 1pt lower than the earlier ones throughout; the gaps are what carry
- * over. A mode with no notice starts its first card {@link CAPTION_TO_PANEL} below the
- * caption instead.
+ * A mode with no notice starts its first card {@link CAPTION_TO_PANEL} below the caption
+ * instead.
  *
  * The heading is given a 36pt line box rather than Figma's 24, which would clip
- * a 30pt face on Android; starting it at 55 puts that taller box back on the
- * centre line Figma's 61–85 box sits on.
+ * a 30pt face on Android; starting it at 50 puts that taller box back on the
+ * centre line Figma's 56–80 box sits on.
  */
-const HEADING_TO_CONTROL = 35;
+const HEADING_TO_SUBTITLE = 9;
+const SUBTITLE_TO_CONTROL = 30;
 const CONTROL_TO_CAPTION = 19;
 const CAPTION_TO_PANEL = 49;
 const CAPTION_TO_NOTICE = 17;
@@ -69,7 +69,7 @@ const NOTICE_TO_PANEL = 42;
 const PANEL_GAP = 12;
 const PANEL_TO_ACTION = 34;
 /** Where the heading starts, measured from the sheet's top edge. */
-export const SPEND_MODE_SHEET_TOP = 55;
+export const SPEND_MODE_SHEET_TOP = 50;
 /** The sheet keeps this much below the button, before any safe-area inset. */
 export const SPEND_MODE_SHEET_BOTTOM = 57;
 
@@ -239,19 +239,9 @@ const SpendModeSheetContent = ({
 
   return (
     <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
-      <View
-        style={[
-          styles.helpButton,
-          presentation === 'sheet'
-            ? { top: topPadding - 37, transform: [{ scale: 0.88 }] }
-            : styles.modalHelpButton,
-        ]}
-      >
-        <HeaderHelpButton accessibilityLabel="How spend mode works" onPress={onHelpPress} />
-      </View>
       <View style={styles.heading}>
         <Text className="text-center text-[30px] font-medium leading-[36px] text-white">
-          Select spend mode
+          Spend mode
         </Text>
         {presentation === 'modal' ? (
           <SheetIconButton
@@ -262,6 +252,12 @@ const SpendModeSheetContent = ({
           />
         ) : null}
       </View>
+      <Text
+        className="text-center text-[16px] font-normal leading-[18px] text-white/70"
+        style={styles.subtitle}
+      >
+        Select your card spend mode
+      </Text>
 
       <View style={styles.control}>
         <SpendModeSegmentedControl
@@ -287,7 +283,15 @@ const SpendModeSheetContent = ({
         <Text className="text-center text-[16px] font-normal leading-[18px] text-white/70">
           {SPEND_MODE_COPY[selected].caption}
         </Text>
-        <HelpBadge />
+        <Pressable
+          accessibilityLabel="How spend mode works"
+          accessibilityRole="button"
+          className="active:opacity-80"
+          hitSlop={12}
+          onPress={onHelpPress}
+        >
+          <HelpBadge />
+        </Pressable>
       </Animated.View>
 
       {/* Not keyed, so it holds its height while the keyed panels swap inside it. */}
@@ -385,15 +389,12 @@ const SpendModeSheetContent = ({
 };
 
 const styles = StyleSheet.create({
-  // Figma 26974:12806 places the 44pt control 21pt below the sheet edge.
-  // Scale the shared 50pt help icon to the 44pt circle used on this sheet.
-  helpButton: { position: 'absolute', right: 17, zIndex: 1 },
-  modalHelpButton: { right: 40, top: -7, transform: [{ scale: 0.72 }] },
   // The close button sits in the heading's row, centred on its 36pt line box, so the modal
   // spends no height on a row of its own.
   heading: { justifyContent: 'center' },
   close: { position: 'absolute', right: 0, top: (36 - MODAL_CONTROL_SIZE) / 2 },
-  control: { marginTop: HEADING_TO_CONTROL },
+  subtitle: { marginTop: HEADING_TO_SUBTITLE },
+  control: { marginTop: SUBTITLE_TO_CONTROL },
   caption: {
     alignItems: 'center',
     flexDirection: 'row',

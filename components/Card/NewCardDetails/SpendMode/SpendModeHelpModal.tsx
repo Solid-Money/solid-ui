@@ -20,6 +20,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, X } from 'lucide-react-native';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import VideoIllustration from '@/components/ui/video-illustration';
@@ -33,6 +34,9 @@ const DOT_TRANSITION_MS = 250;
 const DESKTOP_MODAL_WIDTH = 512;
 const DESKTOP_MODAL_HEIGHT = 720;
 const TITLE_SLOT_HEIGHT = 40;
+const TITLE_LINE_HEIGHT = 34;
+const BADGE_HEIGHT = 28;
+const BADGE_TITLE_GAP = 16 - (TITLE_SLOT_HEIGHT - TITLE_LINE_HEIGHT) / 2;
 const BODY_SLOT_HEIGHT = 72;
 const COPY_BOTTOM_PADDING = 32;
 
@@ -150,12 +154,24 @@ const HelpPage = ({
           left: 0,
           right: 0,
           paddingBottom: COPY_BOTTOM_PADDING,
+          // Keep the title anchored while the badge uses normal flow; Yoga's
+          // percentage bottom inset includes this container's padding differently.
+          transform: slide.badge ? [{ translateY: -(BADGE_HEIGHT + BADGE_TITLE_GAP) }] : undefined,
         }}
       >
+        {slide.badge ? (
+          <Badge
+            variant="brand"
+            className="border-0 bg-brand/10 py-[6px] pl-[10px] pr-[12px]"
+            style={{ marginBottom: BADGE_TITLE_GAP }}
+          >
+            <Text className="text-[14px] font-medium leading-[16px] text-brand">{slide.badge}</Text>
+          </Badge>
+        ) : null}
         <View className="w-full items-center justify-center" style={{ height: TITLE_SLOT_HEIGHT }}>
           <Text
             className="text-center text-[28px] font-semibold text-white"
-            style={{ lineHeight: 34 }}
+            style={{ lineHeight: TITLE_LINE_HEIGHT }}
           >
             {slide.title}
           </Text>
@@ -203,17 +219,23 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
   const pagerRef = useRef<ScrollView>(null);
   const navigationTargetRef = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
+  const [isPresented, setIsPresented] = useState(false);
   const [playbackSession, setPlaybackSession] = useState(0);
   const slide = SPEND_MODE_HELP_SLIDES[index];
   const isLastSlide = index === SPEND_MODE_HELP_SLIDES.length - 1;
 
-  // Reset the pager and restart the first illustration each time the modal opens.
+  // Keep the illustrations paused during presentation. Reset while closed so
+  // reopening cannot briefly show the previous slide or restart a playing video.
   useEffect(() => {
     navigationTargetRef.current = null;
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsPresented(false);
+      setIndex(0);
+      setPlaybackSession(session => session + 1);
+      return;
+    }
 
     setIndex(0);
-    setPlaybackSession(session => session + 1);
     const frame = requestAnimationFrame(() => {
       pagerRef.current?.scrollTo({ x: 0, animated: false });
     });
@@ -248,6 +270,8 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
   // page active and the visible illustration paused on its first frame.
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!isOpen || !isPresented) return;
+
       const offsetX = event.nativeEvent.contentOffset.x;
       const navigationTarget = navigationTargetRef.current;
 
@@ -267,7 +291,7 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
       const boundedIndex = Math.max(0, Math.min(targetIndex, SPEND_MODE_HELP_SLIDES.length - 1));
       setIndex(currentIndex => (currentIndex === boundedIndex ? currentIndex : boundedIndex));
     },
-    [pageWidth],
+    [isOpen, isPresented, pageWidth],
   );
 
   return (
@@ -276,6 +300,10 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
       animationType="fade"
       transparent={isDesktopPopup}
       statusBarTranslucent
+      navigationBarTranslucent
+      onShow={() => {
+        if (isOpen) setIsPresented(true);
+      }}
       onRequestClose={onClose}
     >
       <View
@@ -331,7 +359,7 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
               <HelpPage
                 key={item.key}
                 slide={item}
-                isActive={itemIndex === index}
+                isActive={isOpen && isPresented && itemIndex === index}
                 reduceMotion={reduceMotion}
                 playbackSession={playbackSession}
                 pageWidth={pageWidth}
@@ -350,13 +378,14 @@ const SpendModeHelpModal = ({ isOpen, onClose }: SpendModeHelpModalProps) => {
 
           <View
             className="px-4"
-            style={{ paddingBottom: (isDesktopPopup ? 0 : insets.bottom) + 16 }}
+            style={{ flexShrink: 0, paddingBottom: (isDesktopPopup ? 0 : insets.bottom) + 16 }}
           >
             <Button
               variant="brand"
               size="lg"
               onPress={handleNext}
-              className="h-14 w-full rounded-full bg-brand"
+              className="w-full rounded-full bg-brand"
+              style={{ height: 50, flexShrink: 0 }}
             >
               <Text className="text-base font-semibold text-black">{slide.cta}</Text>
             </Button>

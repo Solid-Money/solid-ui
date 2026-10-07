@@ -12,6 +12,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const ESTIMATED_TIMES: Record<number, string> = {
@@ -113,7 +114,7 @@ const DepositDirectlyNetworks = () => {
       Toast.show({
         type: 'error',
         text1: 'Failed to create deposit session',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
+        text2: userFacingErrorMessage(error),
       });
     }
   };

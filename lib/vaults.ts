@@ -1,6 +1,9 @@
+import { arbitrum, base, fuse, mainnet } from 'viem/chains';
+
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
-import { DepositMethod, TokenBalance, Vault, VaultDepositConfig } from '@/lib/types';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
 
 const DEFAULT_METHODS: DepositMethod[] = [
   'wallet',
@@ -21,6 +24,39 @@ export type TokenVault = {
   vault: Vault;
   /** Index into VAULTS — what useSavingStore.selectVaultForDeposit expects. */
   index: number;
+};
+
+const productionShares = [
+  { type: VaultType.USDC, chainId: mainnet.id, address: PRODUCTION_VAULT_ADDRESSES.ethereum.vault },
+  { type: VaultType.USDC, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.vault },
+  { type: VaultType.FUSE, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault },
+  {
+    type: VaultType.ETH,
+    chainId: mainnet.id,
+    address: PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault,
+  },
+  { type: VaultType.ETH, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault },
+];
+
+/** Display APY only for known share contracts, including production shares in a dev wallet.
+ * This does not change the environment-specific savings reads or portfolio accounting. */
+export const getEarningTokenVault = (
+  token?: Pick<TokenBalance, 'contractAddress' | 'chainId'>,
+): TokenVault | undefined => {
+  const address = token?.contractAddress?.toLowerCase();
+  if (!token || !address) return undefined;
+  const matches = (type: VaultType, network: { address: string; chainId: number }) =>
+    network.address.toLowerCase() === address &&
+    (network.chainId === token.chainId ||
+      (type === VaultType.USDC &&
+        network.chainId === mainnet.id &&
+        (token.chainId === base.id || token.chainId === arbitrum.id)));
+  const configured = LIVE_VAULTS.find(vault =>
+    vault.vaults.some(network => matches(vault.type, network)),
+  );
+  const type = configured?.type ?? productionShares.find(share => matches(share.type, share))?.type;
+  const vault = LIVE_VAULTS.find(vault => vault.type === type);
+  return vault ? { vault, index: VAULTS.indexOf(vault) } : undefined;
 };
 
 /** True when the address is a vault share token (soUSD / soFUSE / soETH), i.e. a savings position. */

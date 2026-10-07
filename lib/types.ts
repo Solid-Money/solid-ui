@@ -629,8 +629,37 @@ export interface CardStatusResponse {
    * to go through `applicationExternalVerificationLink` instead.
    */
   kycApplicationEstablished?: boolean;
+  /**
+   * Whether a RAIN consumer exists, as opposed to any card customer at all.
+   *
+   * The virtual-account flow's version of {@link kycApplicationEstablished}:
+   * that one reads the primary card-customer row, which for a Wirex cardholder
+   * is their Wirex card, so it reports an "application" for someone with no
+   * Rain anything. This asks the Rain row — the same one the server checks
+   * before opening a `va` verification session.
+   */
+  rainKycApplicationEstablished?: boolean;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
+  /**
+   * The Rain row's application state, always, however the two fields above
+   * were resolved.
+   *
+   * Those come from the primary card-customer row, and for a Wirex cardholder
+   * that is their Wirex card — a row with no Rain fields on it. So a Wirex
+   * cardholder opening a Rain virtual account reported no Rain application and
+   * no verification link, and the pending page, which renders its "continue
+   * verification" CTA off exactly those, left them on the passive screen with
+   * nothing to press.
+   *
+   * Separate from the flat fields because `useCardSteps` reads their presence
+   * as "this user is a Rain cardholder" — filling them in for a Wirex
+   * cardholder would send their card journey to Didit instead of Sumsub.
+   */
+  rainApplication?: {
+    status?: RainApplicationStatus | string;
+    externalVerificationLink?: { url: string; params: Record<string, string> };
+  };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
    * Didit decision, which runs proof of address, so it is evidenced rather than
@@ -1416,6 +1445,12 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   WITHDRAW = 'withdraw',
   SEND = 'send',
+  /**
+   * A stablecoin bridged from Fuse to another network through the
+   * BridgePaymaster. The Fuse receipt only means it left; the backend tracker
+   * marks it SUCCESS once LayerZero delivers on the destination.
+   */
+  CROSS_CHAIN_SEND = 'cross_chain_send',
   RECEIVE = 'receive', // Incoming token/native transfers from external sources
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
@@ -1788,6 +1823,16 @@ export interface Cashback {
   fiatAmount?: string;
   fiatCurrency?: string;
   payoutAt?: string;
+  /**
+   * The on-chain transfer that paid this row out, which is also the hash of the
+   * wallet activity the payout lands as — see `isCashbackPayoutActivity`, which
+   * uses it to keep that duplicate row out of the feed.
+   *
+   * Absent until the row is paid. A row settled against cashback debt rather
+   * than paid on-chain carries the sentinel `'DEDUCTED_FROM_DEBT'` instead of a
+   * hash, so never assume this parses as one.
+   */
+  payoutTxHash?: string;
   /**
    * USD this row is projected to pay out when its escrow matures.
    *
@@ -3031,12 +3076,21 @@ export interface AddressBookRequest {
   name?: string;
   walletAddress: string;
   skip2fa?: boolean;
+  /** Cross-chain send destination the contact was saved with (exchange id). */
+  exchange?: string;
+  /** Network the contact receives on, as a chain id. */
+  chainId?: number;
+  /** Token symbol the contact receives, e.g. "USDC". */
+  token?: string;
 }
 
 export interface AddressBookResponse {
   name?: string;
   walletAddress: string;
   skipped2faAt?: Date;
+  exchange?: string;
+  chainId?: number;
+  token?: string;
 }
 
 export type AgentSummary = {

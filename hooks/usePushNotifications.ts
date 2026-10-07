@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { Href, useRouter } from 'expo-router';
+import { Href, useNavigationContainerRef, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
 import { KNOWN_HOSTS } from '@/constants/deeplink';
@@ -32,9 +32,19 @@ type NotificationData = {
    */
   localAmount?: string;
   localCurrency?: string;
-  /** Card spend only. Projected USDC cashback and the rate that produced it. */
+  /**
+   * Card spend only. Projected cashback and the rate that produced it.
+   *
+   * `cashbackAmount` is always the USD/USDC accrual, because USDC is what is
+   * actually credited. When the merchant charged in another currency the push
+   * copy quotes the reward in that currency instead, and the converted figure
+   * it showed rides along in the `cashbackLocal*` pair below — so a delivery
+   * log can answer "what did this cardholder read" without re-deriving the rate.
+   */
   cashbackAmount?: string;
   cashbackRate?: string;
+  cashbackLocalAmount?: string;
+  cashbackLocalCurrency?: string;
   /**
    * Campaign attribution, stamped by the backend on every push
    * (`libs/common/src/constants/push-attribution.constants.ts`). `utm_source`
@@ -253,6 +263,110 @@ function recordOpen(data?: NotificationData) {
 }
 
 /**
+ * Notification responses already acted on, by the notification's own id.
+ *
+ * There are two ways a tap reaches this file and they overlap: the live
+ * listener, and the launch response replayed below. A tap that arrives while
+ * the app is running is seen by both, and navigating twice for one tap is a
+ * flicker at best and a wrong screen at worst.
+ *
+ * Module scope rather than a ref because it has to outlive the effect: the
+ * effect re-runs whenever auth flips (a logout and back in, a token refresh
+ * that re-selects the user), and `getLastNotificationResponseAsync` keeps
+ * returning the same launch response for the life of the process. A ref would
+ * be empty on the second run and replay a tap from twenty minutes ago,
+ * yanking the user off whatever they were doing.
+ */
+const handledResponseIds = new Set<string>();
+
+/**
+ * How many ids to remember. Only enough to cover the overlap above — a session
+ * that receives hundreds of pushes must not grow this without bound, and by the
+ * time it has, the oldest entries can no longer be replayed by anything.
+ */
+const MAX_HANDLED_RESPONSES = 50;
+
+function rememberResponse(id: string) {
+  handledResponseIds.add(id);
+  if (handledResponseIds.size > MAX_HANDLED_RESPONSES) {
+    // Sets iterate in insertion order, so this drops the oldest.
+    const oldest = handledResponseIds.values().next();
+    if (!oldest.done) handledResponseIds.delete(oldest.value);
+  }
+}
+
+/** Record the open, then send the user where the push points. */
+function handleNotificationResponse(
+  response: Notifications.NotificationResponse,
+  navigate: (href: Href) => void,
+): void {
+  // No id is not a reason to drop the tap: route it, and accept that the
+  // (vanishingly rare) duplicate would route twice to the same screen.
+  const id = response.notification?.request?.identifier;
+  if (id) {
+    if (handledResponseIds.has(id)) return;
+    rememberResponse(id);
+  }
+
+  const data = response.notification.request.content.data as NotificationData | undefined;
+  recordOpen(data);
+
+  try {
+    navigate(getNotificationRoute(data));
+  } catch (error) {
+    // The navigator went away between the readiness check and here. Forget the
+    // response so the next delivery — or the next run of the effect, which
+    // replays the launch response — gets to try again instead of finding it
+    // marked as done.
+    if (id) handledResponseIds.delete(id);
+    console.warn('Failed to open the screen a push notification pointed at:', error);
+  }
+}
+
+/** How often to re-ask whether the root navigator has mounted. */
+const NAVIGATION_READY_POLL_MS = 100;
+
+/**
+ * Whether there is a navigator to navigate yet.
+ *
+ * This matters because of where the push hook lives. It is called at the very
+ * top of the root layout, which returns `null` until the app-ready flag and the
+ * critical fonts land — so its first effects run with no `<Stack>` mounted, and
+ * `router.replace` in that window throws "Attempted to navigate before mounting
+ * the Root Layout component". On a cold start that window is exactly when a
+ * notification tap arrives, so the tap was thrown away and the user landed on
+ * home: the whole of "the payment notification never opens the transaction".
+ *
+ * Polled rather than subscribed because `isReady()` flips inside React
+ * Navigation's own mount effect and nothing re-renders this hook when it does.
+ * `useNavigationContainerRef` is safe to call before the container exists (it
+ * hands back a detached ref whose `isReady()` simply answers false), the first
+ * check runs during render for the common case where the navigator is already
+ * up, and the timer stops for good on the first true answer.
+ *
+ * @param enabled Pass false to skip the polling entirely — there is no point
+ * waiting for a navigator when nothing is going to navigate.
+ */
+function useNavigationReady(enabled: boolean): boolean {
+  const navigationRef = useNavigationContainerRef();
+  const [isReady, setIsReady] = useState(() => navigationRef.isReady());
+
+  useEffect(() => {
+    if (!enabled || isReady) return;
+
+    const timer = setInterval(() => {
+      if (!navigationRef.isReady()) return;
+      clearInterval(timer);
+      setIsReady(true);
+    }, NAVIGATION_READY_POLL_MS);
+
+    return () => clearInterval(timer);
+  }, [enabled, isReady, navigationRef]);
+
+  return isReady;
+}
+
+/**
  * Manages push notification lifecycle: token refresh and notification tap handling.
  * Must be mounted inside the root layout so listeners are active for the entire session.
  * Only activates when a user is authenticated (has a selected user with tokens).
@@ -262,7 +376,10 @@ export function usePushNotifications() {
   const isAuthenticated = useUserStore(state =>
     state.users.some(u => u.selected && !!u.tokens?.accessToken),
   );
+  const isNavigationReady = useNavigationReady(isAuthenticated && Platform.OS !== 'web');
 
+  // Token registration. Kept apart from the tap handling below because it has
+  // nothing to do with navigation and must not wait on a navigator.
   useEffect(() => {
     if (!isAuthenticated) return;
     if (Platform.OS === 'web') return;
@@ -282,23 +399,58 @@ export function usePushNotifications() {
       }
     });
 
+    return unsubscribeTokenRefresh;
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (Platform.OS === 'web') return;
+    if (!isNavigationReady) return;
+
     // Handle notification taps (user taps a notification from the system tray).
     // Record the open and its campaign first, then deep-link on the link the
     // backend stamped on the push (falling back to `type` for older ones).
     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
-      response => {
-        const data = response.notification.request.content.data as NotificationData | undefined;
-        recordOpen(data);
-        router.replace(getNotificationRoute(data));
-      },
+      response => handleNotificationResponse(response, href => router.replace(href)),
     );
 
+    // The tap that launched the app, which the listener above never sees.
+    //
+    // This is the common case for a spend push, not an edge case: a card
+    // purchase notification is usually read minutes or hours later, with the
+    // app long since killed. The response that woke the process is emitted by
+    // the native side before any JS listener can exist, so expo-notifications
+    // holds on to it — and until this read, nothing asked for it, so every
+    // cold-start tap was dropped and the user landed on home.
+    //
+    // Deliberately inside the auth and navigator gates above: replaying a tap
+    // before there is a session would only bounce the user to the welcome
+    // screen, and replaying it before there is a navigator would throw. Both
+    // lose the tap a second time, which is the bug, not a smaller version of it.
+    //
+    // Re-running this effect replays the same response, so
+    // `handleNotificationResponse` drops one it has already acted on.
+    try {
+      const launchResponse = Notifications.getLastNotificationResponse();
+      if (launchResponse) {
+        handleNotificationResponse(launchResponse, href => router.replace(href));
+      }
+    } catch (error) {
+      // Only reachable where the native module has no such method. A tap we
+      // cannot read is not worth taking the app down for.
+      console.warn('Failed to read the notification that launched the app:', error);
+    }
+
     return () => {
-      unsubscribeTokenRefresh();
       notificationResponseSubscription.remove();
     };
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isNavigationReady, router]);
 }
 
 /** Exported for tests: routing is the contract between backend links and screens. */
-export const __testing = { getNotificationRoute, routeForLink };
+export const __testing = {
+  getNotificationRoute,
+  routeForLink,
+  handleNotificationResponse,
+  resetHandledResponses: () => handledResponseIds.clear(),
+};

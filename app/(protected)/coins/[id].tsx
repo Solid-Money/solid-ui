@@ -7,13 +7,16 @@ import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import CoinActionPills from '@/components/Coin/CoinActionPills';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
+import CoinEarnLink from '@/components/Coin/CoinEarnLink';
 import CoinSummary from '@/components/Coin/CoinSummary';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useCoinBreakdown } from '@/hooks/useCoinBreakdown';
+import { useCoinBreakdown, useCoinFamily } from '@/hooks/useCoinBreakdown';
+import { useCrossChainSendConfig } from '@/hooks/useCrossChainSendConfig';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
+import { isCrossChainSendToken } from '@/lib/utils/cross-chain-send';
 import { getTokenVault } from '@/lib/vaults';
 
 function normalizeCoinAddress(contractAddress: string): string {
@@ -51,13 +54,24 @@ export default function Coin() {
 
   const tokenVault = useMemo(() => getTokenVault(token), [token]);
   const breakdown = useCoinBreakdown(token);
+  // A coin page covers the coin on every chain, but only its Fuse USDC.e / USDT
+  // balance can be bridged. When the coin has one, Send starts there (the
+  // bridge flow), whichever chain the page was opened from; its token picker
+  // still reaches the other chains through the regular send.
+  // Only when the bridge is on: otherwise Send keeps the page's own token, as before.
+  const family = useCoinFamily(token);
+  const fuseLeg = useMemo(() => family.find(isCrossChainSendToken), [family]);
+  const { config: crossChainConfig } = useCrossChainSendConfig({ enabled: !!fuseLeg });
+  const sendToken = fuseLeg && crossChainConfig?.enabled ? fuseLeg : token;
 
   const headerContent = useMemo(
     () => (
       <View className="gap-8 py-6">
         <CoinSummary token={token} breakdown={breakdown} tokenVault={tokenVault} />
 
-        <CoinActionPills tokenVault={tokenVault} />
+        <CoinActionPills tokenVault={tokenVault} token={sendToken} />
+
+        <CoinEarnLink token={token} tokenVault={tokenVault} />
 
         <CoinBalanceBreakdown breakdown={breakdown} />
 
@@ -66,7 +80,7 @@ export default function Coin() {
         )}
       </View>
     ),
-    [token, breakdown, tokenVault],
+    [token, breakdown, tokenVault, sendToken],
   );
 
   return (

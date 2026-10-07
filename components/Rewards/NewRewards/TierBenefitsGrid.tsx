@@ -7,7 +7,6 @@ import { RewardsTier, type SubscriptionCategoryRate } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
 import CashbackDetailsSheet from './CashbackDetailsSheet';
-import { subscriptionCategoriesSentence } from './subscriptionBrands';
 import SubscriptionCashbackSheet from './SubscriptionCashbackSheet';
 import { chunkIntoRows, resolveTierBenefitKeys, type TierBenefitKey } from './tierBenefitCards';
 import { CashbackIcon, ReferralsIcon, SubscriptionIcon, YieldBoostIcon } from './tierBenefitIcons';
@@ -145,7 +144,7 @@ const TierBenefitsGrid = ({
         trigger={
           <BenefitCard
             title={`${subscriptionRate} Cashback`}
-            description={`On ${subscriptionCategoriesSentence(subscriptionCategoryRates)}`}
+            description="On select categories"
             icon={<SubscriptionIcon rate={subscriptionRate} />}
           />
         }

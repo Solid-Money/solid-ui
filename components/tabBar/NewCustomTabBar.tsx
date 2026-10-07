@@ -33,6 +33,7 @@ const TAB_BAR_MIN_BOTTOM_INSET = 35;
 const TAB_BAR_ANDROID_EXTRA_INSET = 16;
 const TAB_BAR_PADDING_TOP = 10;
 const TAB_BAR_GRADIENT_EXTENSION = 30;
+const TAB_BAR_GRADIENT_OFFSET = 35;
 
 const ACTIVE_TAB_COLOR = 'white';
 const INACTIVE_TAB_COLOR = 'rgba(255, 255, 255, 0.5)';
@@ -148,6 +149,9 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
     insets.bottom + (Platform.OS === 'android' ? TAB_BAR_ANDROID_EXTRA_INSET : 0),
     TAB_BAR_MIN_BOTTOM_INSET,
   );
+  const tabBarHeight = TAB_BAR_CONTENT_HEIGHT + bottomInset;
+  const gradientHeight = tabBarHeight + TAB_BAR_GRADIENT_EXTENSION;
+  const gradientFadeEnd = (gradientHeight * 0.6) / (gradientHeight + TAB_BAR_GRADIENT_OFFSET);
 
   const visibleRoutes = useMemo(
     () => state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name)),
@@ -248,19 +252,17 @@ export function NewCustomTabBar({ state, descriptors, navigation }: BottomTabBar
       : {};
 
   return (
-    <View
-      style={[
-        styles.tabBar,
-        { height: TAB_BAR_CONTENT_HEIGHT + bottomInset, paddingBottom: bottomInset },
-      ]}
-    >
-      {/* Extend only the fade above the bar so content starts disappearing sooner
-          without changing the tab bar's size or moving its buttons. */}
+    <View style={[styles.tabBar, { height: tabBarHeight, paddingBottom: bottomInset }]}>
+      {/* Shift the fade upward without stretching its transition. The opaque
+          tail still covers the bottom safe area. */}
       <LinearGradient
         colors={['rgba(17, 17, 17, 0)', '#111111', '#111111']}
-        locations={[0, 0.6, 1]}
+        locations={[0, gradientFadeEnd, 1]}
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { top: -TAB_BAR_GRADIENT_EXTENSION }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { top: -(TAB_BAR_GRADIENT_EXTENSION + TAB_BAR_GRADIENT_OFFSET) },
+        ]}
       />
       <View style={styles.row}>
         <Animated.View pointerEvents="none" style={[styles.pill, WEB_ACTIVE_PILL, pillStyle]}>

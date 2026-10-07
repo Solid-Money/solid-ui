@@ -76,9 +76,7 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
                 />
               </View>
             }
-            content={
-              <Text className="text-sm">{protocols[protocol as keyof typeof protocols]}</Text>
-            }
+            content={<Text>{protocols[protocol as keyof typeof protocols]}</Text>}
           />
         ))}
       </View>

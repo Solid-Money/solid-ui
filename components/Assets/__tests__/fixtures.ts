@@ -24,17 +24,23 @@ export const cashToken = (
   contractAddress: `0x${symbol === 'USDC' ? '1' : '2'.repeat(1)}`.padEnd(42, '0'),
 });
 
+const cashAssets = groupPortfolioCash([
+  cashToken('USDC', '80', 1),
+  cashToken('USDC', '50', 1, 122),
+  cashToken('USDC', '50', 1, 8453),
+  cashToken('ETH', '0.0091', 4000),
+  cashToken('FUSE', '1000', 0.012, 122),
+  cashToken('SMALL1', '0.0001', 1),
+  cashToken('SMALL2', '0.0001', 1),
+]);
+
 export const portfolioFixture: ReturnType<typeof usePortfolio> = {
-  cashAssets: groupPortfolioCash([
-    cashToken('USDC', '80', 1),
-    cashToken('USDC', '50', 1, 122),
-    cashToken('USDC', '50', 1, 8453),
-    cashToken('ETH', '0.0091', 4000),
-    cashToken('FUSE', '1000', 0.012, 122),
-    cashToken('SMALL1', '0.0001', 1),
-    cashToken('SMALL2', '0.0001', 1),
-  ]),
+  cashAssets,
   cashTotal: 228.4002,
+  stableAssets: cashAssets.filter(asset => asset.stable),
+  stableTotal: 180,
+  cryptoAssets: cashAssets.filter(asset => !asset.stable),
+  cryptoTotal: 48.4002,
   unpricedCashCount: 0,
   isComplete: true,
   earnTotal: 2870,
@@ -43,6 +49,7 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   cardBalance: 0,
   debt: 350,
   dailyYield: 0.35,
+  monthlyYield: 10.6,
   totalAssets: 3218.4002,
   netBalance: 2868.4002,
   isLoading: false,
@@ -58,6 +65,18 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
     isComplete: true,
     backsCredit: vault.type === VaultType.USDC,
     apy: vault.type === VaultType.USDC ? 4.5 : 2.9,
+    walletTokens:
+      vault.type === VaultType.ETH
+        ? [
+            {
+              ...cashToken('soETH', '0.0761', 4073, 8453),
+              contractAddress: vault.vaults[0].address,
+            },
+          ]
+        : [],
+    shareAmount:
+      vault.type === VaultType.USDC ? 2365.5 : vault.type === VaultType.ETH ? 0.0761 : undefined,
+    shareNetworkCount: vault.type === VaultType.FUSE ? 0 : 1,
   })),
 };
 

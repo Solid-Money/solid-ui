@@ -1,17 +1,25 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAddress } from 'viem';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
-import { SEND_MODAL } from '@/constants/modals';
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useSendStore } from '@/store/useSendStore';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
+
+/**
+ * Where a cross-chain send contact receives: its network and the token. Saved
+ * with the address so the next send can skip the network step.
+ */
+const crossChainFields = {
+  chainId: z.number().optional(),
+  token: z.string().optional(),
+};
 
 const addressBookSchema = z.object({
   walletAddress: z
@@ -24,6 +32,7 @@ const addressBookSchema = z.object({
     .min(1, { error: 'Name is required' })
     .transform(val => val.trim()),
   skip2fa: z.boolean().optional(),
+  ...crossChainFields,
 });
 
 const addressBookSchemaOptionalName = z.object({
@@ -37,6 +46,7 @@ const addressBookSchemaOptionalName = z.object({
     .transform(val => val.trim())
     .optional(),
   skip2fa: z.boolean().optional(),
+  ...crossChainFields,
 });
 
 export type AddressBookFormData = z.infer<typeof addressBookSchema>;
@@ -45,6 +55,9 @@ export type AddressBookFormDataOptionalName = z.infer<typeof addressBookSchemaOp
 export const useAddressBook = (options?: {
   defaultAddress?: string;
   defaultName?: string;
+  /** Cross-chain send destination to store alongside the address. */
+  defaultChainId?: number;
+  defaultToken?: string;
   onSuccess?: () => void;
   onError?: () => void;
   optionalName?: boolean;
@@ -82,6 +95,8 @@ export const useAddressBook = (options?: {
       walletAddress: options?.defaultAddress || '',
       name: options?.defaultName || '',
       skip2fa: false,
+      chainId: options?.defaultChainId,
+      token: options?.defaultToken,
     },
   });
 
@@ -99,7 +114,7 @@ export const useAddressBook = (options?: {
             badgeText: 'Success',
           },
         });
-        setModal(SEND_MODAL.OPEN_FORM);
+        setModal(recipientNextModal());
       }
     },
     onError: () => {
@@ -122,6 +137,8 @@ export const useAddressBook = (options?: {
       walletAddress: formData.walletAddress,
       name: formData.name,
       skip2fa: formData.skip2fa,
+      chainId: formData.chainId,
+      token: formData.token,
     });
   };
 

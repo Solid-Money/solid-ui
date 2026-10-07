@@ -822,6 +822,16 @@ class RealtimeClient {
           void queryClient
             .invalidateQueries({ queryKey: ['rewards', 'userData', userId] })
             .catch(() => undefined);
+          // An incoming transfer may be a cashback payout landing. The feed hides
+          // those rows by payout hash (see `lib/utils/cashbackActivity`), and can
+          // only do so once the cashback record carries the hash — so refresh the
+          // cashbacks with the activity, rather than leaving an unlabelled
+          // "Receive soUSD" on screen until something else refetches them.
+          if (event.balance.changeType === 'transfer_in') {
+            void queryClient
+              .invalidateQueries({ queryKey: cashbacksQueryKey })
+              .catch(() => undefined);
+          }
           // External deposits, withdrawals and share transfers can change tier
           // eligibility. Reconcile past the vault cache without inferring a tier.
           if (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { AlertCircle, ChevronRight, KeyRound, Plus } from 'lucide-react-native';
 
@@ -9,7 +9,7 @@ import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { usePasskey } from '@/hooks/usePasskey';
+import { detectPasskeyBlock } from '@/hooks/usePasskey';
 import { usePasskeyManager } from '@/hooks/usePasskeyManager';
 import { PasskeySummary } from '@/lib/api';
 import { cn, describePasskeyActivity } from '@/lib/utils';
@@ -60,7 +60,8 @@ const PasskeyRow = ({ passkey, isThisDevice, onPress }: PasskeyRowProps) => {
  */
 export default function Passkeys() {
   const { isDesktop } = useDimension();
-  const { isPasskeySupported } = usePasskey();
+  // Same check the (protected) layout gates on; always null in the app.
+  const isPasskeySupported = useMemo(() => detectPasskeyBlock() === null, []);
   const {
     passkeys,
     isLoading,
@@ -78,8 +79,7 @@ export default function Passkeys() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const hasOnePasskey = passkeys.length === 1;
-  // Null while the browser is still being probed; passkeys always work in the app.
-  const canAdd = isPasskeySupported !== false;
+  const canAdd = isPasskeySupported;
 
   const handleAdd = async () => {
     setIsAdding(true);

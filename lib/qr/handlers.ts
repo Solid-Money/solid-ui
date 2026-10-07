@@ -9,8 +9,7 @@
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 
-import { SEND_MODAL } from '@/constants/modals';
-import { useSendStore } from '@/store/useSendStore';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 import {
   QRCodeType,
@@ -34,7 +33,7 @@ function handleEthereumAddress(data: QREthereumAddress): QRHandlerResult {
 
   // Navigate to Send form
   setTimeout(() => {
-    setModal(SEND_MODAL.OPEN_FORM);
+    setModal(recipientNextModal());
   }, 100);
 
   return {
@@ -73,7 +72,7 @@ function handleEIP681URI(data: QREIP681URI): QRHandlerResult {
 
   // Navigate to Send form
   setTimeout(() => {
-    setModal(SEND_MODAL.OPEN_FORM);
+    setModal(recipientNextModal());
   }, 100);
 
   return {

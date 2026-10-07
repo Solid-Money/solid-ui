@@ -26,6 +26,8 @@ import {
 import { useDimension } from '@/hooks/useDimension';
 import { cn } from '@/lib/utils';
 
+import type { ScrollViewProps } from 'react-native';
+
 const ANIMATION_DURATION = 350;
 /** The 50px mobile title row plus its former 32px gap above the scroll content. */
 export const MOBILE_GRADIENT_HEADER_INSET = 82;
@@ -70,6 +72,11 @@ export interface ResponsiveModalProps {
   // Layout
   /** Disable ScrollView wrapper when children manage their own scrolling (e.g. FlatList, camera views) */
   disableScroll?: boolean;
+  scrollViewRef?: React.Ref<ScrollView>;
+  scrollViewProps?: Pick<
+    ScrollViewProps,
+    'onLayout' | 'onContentSizeChange' | 'onScroll' | 'onScrollBeginDrag'
+  >;
   hideHeader?: boolean;
   /**
    * Web only: cap the modal to the viewport height and flex the body, so the
@@ -113,6 +120,8 @@ const ResponsiveModal = ({
   isForward = currentModal.number > previousModal.number,
   contentKey,
   disableScroll = false,
+  scrollViewRef,
+  scrollViewProps,
   hideHeader = false,
   fillViewportHeight = false,
   mobilePresentation = 'sheet',
@@ -321,6 +330,8 @@ const ResponsiveModal = ({
                   style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
                 >
                   <ScrollView
+                    ref={scrollViewRef}
+                    {...scrollViewProps}
                     className="web:max-h-[80vh]"
                     contentContainerClassName="pb-4 md:pb-10"
                     // The sheet runs to the bottom edge of the screen, so the last
@@ -338,18 +349,21 @@ const ResponsiveModal = ({
                     onLayout={e => {
                       containerHeightRef.current = e.nativeEvent.layout.height;
                       setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
+                      scrollViewProps?.onLayout?.(e);
                     }}
-                    onContentSizeChange={(_, h) => {
+                    onContentSizeChange={(w, h) => {
                       contentHeightRef.current = h;
                       if (containerHeightRef.current > 0) {
                         setShowBottomFade(h > containerHeightRef.current + 4);
                       }
+                      scrollViewProps?.onContentSizeChange?.(w, h);
                     }}
                     onScroll={e => {
                       const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
                       const atBottom =
                         contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
                       setShowBottomFade(!atBottom);
+                      scrollViewProps?.onScroll?.(e);
                     }}
                     scrollEventThrottle={16}
                   >

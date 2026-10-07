@@ -33,7 +33,7 @@ const mockManager = {
 const mockSheet: { props?: Record<string, unknown> } = {};
 
 jest.mock('@/hooks/usePasskeyManager', () => ({ usePasskeyManager: () => mockManager }));
-jest.mock('@/hooks/usePasskey', () => ({ usePasskey: () => ({ isPasskeySupported: true }) }));
+jest.mock('@/hooks/usePasskey', () => ({ detectPasskeyBlock: () => null }));
 jest.mock('@/hooks/useDimension', () => ({ useDimension: () => ({ isDesktop: false }) }));
 jest.mock('@/lib/api', () => ({}));
 jest.mock('@/lib/utils/passkeyDevice', () => ({ getThisDeviceNoun: () => 'this iPhone' }));

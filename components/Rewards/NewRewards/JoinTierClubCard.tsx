@@ -16,19 +16,25 @@ const AI_BRANDS = SUBSCRIPTION_CATEGORIES.find(category => category.key === 'ai'
 
 interface JoinTierClubCardProps {
   tier: RewardsTier.PRIME | RewardsTier.ULTRA;
+  /**
+   * The user already has this tier on a trial. They are not joining anything
+   * or unlocking benefits they lack — they are keeping what they have.
+   */
+  onTrial?: boolean;
   onPress: () => void;
 }
 
 /** The compact membership teaser from Figma node 26080:20859. */
-const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
+const JoinTierClubCard = ({ tier, onTrial = false, onPress }: JoinTierClubCardProps) => {
   const tierName = getTierDisplayName(tier);
+  const title = onTrial ? `Keep ${tierName}` : `Join ${tierName} Club`;
   const { data: tierBenefits } = useTierBenefits();
   const benefits = joinTierClubBenefits(tier, tierBenefits);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Join ${tierName} Club`}
+      accessibilityLabel={title}
       onPress={onPress}
       className="min-h-[188px] overflow-hidden rounded-[23px] bg-[#1C1C1C] active:opacity-80"
     >
@@ -42,13 +48,13 @@ const JoinTierClubCard = ({ tier, onPress }: JoinTierClubCardProps) => {
 
       <View className="px-[21px] pb-[20px] pt-[17px]">
         <View className="flex-row items-center justify-between">
-          <Text className="text-[18px] font-bold leading-[22px] text-white">
-            Join {tierName} Club
-          </Text>
+          <Text className="text-[18px] font-bold leading-[22px] text-white">{title}</Text>
           <ChevronRight color="rgba(255,255,255,0.8)" size={20} strokeWidth={2} />
         </View>
         <Text className="mt-[6px] text-[14px] leading-[18px] text-white/70">
-          Unlock extra cashback and benefits
+          {onTrial
+            ? 'Keep your benefits after your trial ends'
+            : 'Unlock extra cashback and benefits'}
         </Text>
 
         {(benefits.cashback || benefits.yieldBoost) && (

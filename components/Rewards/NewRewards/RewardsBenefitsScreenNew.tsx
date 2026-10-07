@@ -80,7 +80,12 @@ const PremiumUpgradeFooter = ({
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const { label: actionLabel, subtitle: ctaSubtitle, enabled: canUpgrade, held } = cta;
-  const label = actionLabel === 'Upgrade' ? `Upgrade to ${TIER_LABELS[selectedTier]}` : actionLabel;
+  const label =
+    actionLabel === 'Upgrade'
+      ? `Upgrade to ${TIER_LABELS[selectedTier]}`
+      : actionLabel === 'Keep'
+        ? `Keep ${TIER_LABELS[selectedTier]}`
+        : actionLabel;
   // Gone, not greyed out, for any tier the user already has.
   //
   // Was `selectedTier !== currentTier`, which only ever hid the footer on the
@@ -305,14 +310,19 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
       // The membership endpoint's own verdict, so a skew between it and the
       // rewards endpoint cannot leave an upgrade CTA on a tier the user has.
       offerHeld: offer?.held,
+      // A gifted tier is lent, not owned: the user can still lock or subscribe
+      // to keep it once the trial ends.
+      trialTier: isError ? undefined : rewardsData?.activeTierTrial?.tier,
     });
     const offerCopy = membership?.enabled ? tierOfferSubtitle(offer) : null;
+    // Same verb as the button: a tier the trial is lending is kept, not gained.
+    const purpose = cta.label === 'Keep' ? 'to keep it' : 'to upgrade';
     return cta.enabled && !isError && !pending && upgradeRoutes(tier).length > 0 && offerCopy
       ? {
           ...cta,
           subtitle: offerCopy.includes('locked')
-            ? offerCopy.replace(/^Requires /, 'Lock ').replace(' locked', ' to upgrade')
-            : `${offerCopy} to upgrade`,
+            ? offerCopy.replace(/^Requires /, 'Lock ').replace(' locked', ` ${purpose}`)
+            : `${offerCopy} ${purpose}`,
         }
       : cta;
   };

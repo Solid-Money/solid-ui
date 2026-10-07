@@ -17,6 +17,7 @@ import {
   getCardDepositTokenSymbol,
   getCardFundingAddress,
 } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { getChain } from '@/lib/wagmi';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
@@ -159,7 +160,7 @@ const useCardDeposit = (): CardDepositResult => {
         Toast.show({
           type: 'error',
           text1: 'Deposit failed',
-          text2: err instanceof Error ? err.message : 'Please try again',
+          text2: userFacingErrorMessage(err),
           props: { badgeText: 'Onchain' },
         });
         throw err;

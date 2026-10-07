@@ -112,6 +112,10 @@ export const ASSETS = {
     module: require('@/assets/animations/win_screen_2.json'),
     hash: '4d9cc420',
   },
+  'fonts/SolidLink-Bold.ttf': {
+    module: require('@/assets/fonts/SolidLink-Bold.ttf'),
+    hash: 'efcd5402',
+  },
   'fonts/SpaceMono-Regular.ttf': {
     module: require('@/assets/fonts/SpaceMono-Regular.ttf'),
     hash: '4c322514',
@@ -144,6 +148,10 @@ export const ASSETS = {
   'images/agent-wallet.png': {
     module: require('@/assets/images/agent-wallet.png'),
     hash: '297f7f78',
+  },
+  'images/app-update-hero.png': {
+    module: require('@/assets/images/app-update-hero.png'),
+    hash: '4ac925b5',
   },
   'images/apple-google-pay.png': {
     module: require('@/assets/images/apple-google-pay.png'),
@@ -764,6 +772,42 @@ export const ASSETS = {
     hash: 'ffc02ca9',
   },
   'images/polygon.png': { module: require('@/assets/images/polygon.png'), hash: 'ba45be44' },
+  'images/portfolio/back.svg': {
+    module: require('@/assets/images/portfolio/back.svg'),
+    hash: 'cdb8b9d9',
+  },
+  'images/portfolio/card.svg': {
+    module: require('@/assets/images/portfolio/card.svg'),
+    hash: '9a4b95e5',
+  },
+  'images/portfolio/down.svg': {
+    module: require('@/assets/images/portfolio/down.svg'),
+    hash: '8a42dd6f',
+  },
+  'images/portfolio/eth.svg': {
+    module: require('@/assets/images/portfolio/eth.svg'),
+    hash: '39342e23',
+  },
+  'images/portfolio/eye.svg': {
+    module: require('@/assets/images/portfolio/eye.svg'),
+    hash: '4ea6be2c',
+  },
+  'images/portfolio/fuse.svg': {
+    module: require('@/assets/images/portfolio/fuse.svg'),
+    hash: 'fb03b872',
+  },
+  'images/portfolio/lock.svg': {
+    module: require('@/assets/images/portfolio/lock.svg'),
+    hash: '5eaf10de',
+  },
+  'images/portfolio/usd.svg': {
+    module: require('@/assets/images/portfolio/usd.svg'),
+    hash: 'b76a1a4a',
+  },
+  'images/portfolio/usdc.svg': {
+    module: require('@/assets/images/portfolio/usdc.svg'),
+    hash: '0b73bbc5',
+  },
   'images/process.tsx': { module: require('@/assets/images/process.tsx'), hash: '64facfee' },
   'images/profile.tsx': { module: require('@/assets/images/profile.tsx'), hash: 'd9b450e5' },
   'images/public_address.png': {
@@ -1388,7 +1432,7 @@ export const ASSETS = {
   },
   'images/subscription-cashback/cursor.svg': {
     module: require('@/assets/images/subscription-cashback/cursor.svg'),
-    hash: 'a3c04a17',
+    hash: '7d1c9f38',
   },
   'images/subscription-cashback/deezer.svg': {
     module: require('@/assets/images/subscription-cashback/deezer.svg'),

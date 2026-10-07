@@ -40,6 +40,7 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
+import OtaUpdateGate from '@/components/OtaUpdateGate';
 import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
@@ -61,6 +62,8 @@ import {
   isProduction,
 } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
+import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
@@ -105,21 +108,31 @@ Sentry.init({
 
   // Breadcrumbs
   maxBreadcrumbs: 100,
+  // viem error messages embed the failing RPC URL, and our bundler URLs carry the
+  // Pimlico API key in the query string — so a logged or captured user-operation
+  // failure would ship the key to Sentry verbatim. Scrub credentials from every
+  // breadcrumb and event before it leaves the device.
   beforeBreadcrumb(breadcrumb) {
     if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
       return null;
     }
-    return breadcrumb;
+    return redactSecretsDeep(breadcrumb);
   },
 
-  beforeSend(event) {
+  beforeSend(event, hint) {
     // Deliberately no environment gate here. Staging and production report to
     // the same GlitchTip project and are told apart by `environment`; dropping
     // non-production events is what made staging unverifiable before.
     if (event.request?.cookies) {
       delete event.request.cookies;
     }
-    return event;
+    // A dismissed passkey prompt is the person's choice, not a failure, but
+    // several places still capture it as an error, the transaction hooks
+    // among them, which rethrow it as `User cancelled transaction`.
+    if (event.level === 'error' && isCancelledByUser(hint?.originalException)) {
+      event.level = 'info';
+    }
+    return redactSecretsDeep(event);
   },
 
   // Default integrations only. Anything added here must be something GlitchTip
@@ -268,6 +281,9 @@ function RootLayout() {
         MonaSans_300Light,
         MonaSans_500Medium,
         MonaSans_700Bold,
+        // The bundled font's underline thickness is 320/1000 em (6.4pt at 20pt).
+        // This identical-glyph variant uses 50/1000 em for the cashback links.
+        SolidLink_700Bold: require('@/assets/fonts/SolidLink-Bold.ttf'),
         MonaSans_800ExtraBold,
         MonaSans_900Black,
       }).catch(e => console.warn('Error loading secondary fonts:', e));
@@ -456,6 +472,7 @@ function RootLayout() {
                         </>
                       )}
                     </BottomSheetModalProvider>
+                    {Platform.OS !== 'web' && <OtaUpdateGate />}
                   </GestureHandlerRootView>
                 </Intercom>
               </ApolloProvider>

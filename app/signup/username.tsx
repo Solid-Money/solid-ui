@@ -164,8 +164,14 @@ export default function SignupUsername() {
     setError(null);
     track(TRACKING_EVENTS.USERNAME_SUBMITTED, { email });
 
-    setStep('passkey');
-    router.push(path.SIGNUP_PASSKEY);
+    // Back here from account creation (the name was taken in the meantime, or
+    // the email had to be verified again) with a passkey already made: create
+    // the account with that one. A second passkey would sit on the device next
+    // to the first and only one of them would ever open the account.
+    const { challenge, attestation } = useSignupFlowStore.getState();
+    const hasPasskey = Boolean(challenge && attestation);
+    setStep(hasPasskey ? 'creating' : 'passkey');
+    router.push(hasPasskey ? path.SIGNUP_CREATING : path.SIGNUP_PASSKEY);
   }, [isSubmitting, value, email, setUsername, setError, setStep, router]);
 
   const handleBack = () => {

@@ -123,6 +123,31 @@ let globalLogoutHandler: (() => void) | null = null;
 
 let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
 
+// refresh-token is throttled at 10/min per IP. Once it answers 429, retrying on
+// every 401 keeps the client locked out indefinitely, so hold off refreshing
+// until the window has passed, doubling the wait on each consecutive 429.
+const REFRESH_BACKOFF_BASE_MS = 60_000;
+const REFRESH_BACKOFF_MAX_MS = 5 * 60_000;
+let refreshBlockedUntil = 0;
+let refreshRateLimitStrikes = 0;
+
+// Seconds from a Retry-After header. On web it is only readable if CORS exposes
+// it, so a missing header falls back to the backoff schedule.
+const getRetryAfterMs = (error: any): number | null => {
+  const value = error?.headers?.get?.('Retry-After');
+  const seconds = Number(value);
+  return value && Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null;
+};
+
+const noteRefreshRateLimited = (error: any) => {
+  refreshRateLimitStrikes += 1;
+  const backoff = Math.min(
+    REFRESH_BACKOFF_BASE_MS * 2 ** (refreshRateLimitStrikes - 1),
+    REFRESH_BACKOFF_MAX_MS,
+  );
+  refreshBlockedUntil = Date.now() + Math.max(backoff, getRetryAfterMs(error) ?? 0);
+};
+
 // Flag to suppress session-expired handler during intentional logout
 let isLoggingOut = false;
 
@@ -155,6 +180,11 @@ export const isAnyHTTPError = (error: any, statuses: number[]) => {
  * means (logging out, retrying later) to the caller.
  */
 export const refreshSessionTokens = async (): Promise<void> => {
+  // Still inside a 429 backoff: don't hit refresh-token again yet.
+  if (Date.now() < refreshBlockedUntil) {
+    throw new Error('Session refresh is rate limited');
+  }
+
   // Use existing refresh token promise if one is in progress
   const isNewRefresh = !refreshTokenPromise;
   if (isNewRefresh) {
@@ -170,7 +200,17 @@ export const refreshSessionTokens = async (): Promise<void> => {
     console.warn('[TokenRefresh] Reusing in-flight token refresh');
   }
 
-  const tokens = await refreshTokenPromise;
+  let tokens: AuthTokens | null = null;
+  try {
+    tokens = await refreshTokenPromise;
+  } catch (error) {
+    // Callers sharing one in-flight refresh all land here; count the 429 once.
+    if (isHTTPError(error, 429) && Date.now() >= refreshBlockedUntil) {
+      noteRefreshRateLimited(error);
+    }
+    throw error;
+  }
+  refreshRateLimitStrikes = 0;
 
   // Only save new tokens on mobile platforms
   // On web, we don't need to save new tokens
@@ -198,12 +238,22 @@ export const withRefreshToken = async <T>(
       throw error;
     }
 
+    // Still inside a 429 backoff: surface the 401 without hitting refresh-token.
+    if (Date.now() < refreshBlockedUntil) {
+      throw error;
+    }
+
     try {
       await refreshSessionTokens();
     } catch (refreshTokenError) {
       if (onError) {
         onError();
-      } else if (!isLoggingOut && isAnyHTTPError(refreshTokenError, [401, 403, 500])) {
+      } else if (
+        !isLoggingOut &&
+        // 404: the backend has no refresh token for this user (logged out
+        // elsewhere or rotated away), so the session can never be revived.
+        isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])
+      ) {
         globalLogoutHandler?.();
       }
       throw refreshTokenError;

@@ -5,11 +5,14 @@ import {
   bridgedShareValues,
   cashValue,
   coinAssetPath,
+  formatTokenAmount,
   groupPortfolioCash,
   portfolioTotals,
   savingsUsdValue,
   splitSmallBalances,
   sumPortfolioValues,
+  vaultShareHoldings,
+  yieldEstimate,
 } from '@/lib/portfolio';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
 
@@ -189,6 +192,78 @@ describe('asset grouping and navigation', () => {
     expect(visible.some(asset => asset.valueUsd === undefined)).toBe(true);
     expect(small[0].valueUsd).toBeCloseTo(0.4);
     expect(cashValue(groups)).toEqual({ total: expect.closeTo(20.4), unpricedCount: 1 });
+  });
+  it('counts a vault share on every network and escrow, opening the largest wallet holding', () => {
+    const fuseSoUsd = token({
+      chainId: 122,
+      contractAddress: ADDRESSES.fuse.vault,
+      balance: '1000000',
+    });
+    const baseSoUsd = token({
+      chainId: 8453,
+      contractAddress: ADDRESSES.ethereum.vault,
+      balance: '24774869',
+    });
+    const escrowed = token({ chainId: 122, contractAddress: ADDRESSES.fuse.vault });
+    const empty = token({
+      chainId: 42161,
+      contractAddress: ADDRESSES.ethereum.vault,
+      balance: '0',
+    });
+    const holdings = vaultShareHoldings(
+      [fuseSoUsd, token(), baseSoUsd, empty],
+      [escrowed],
+      VaultType.USDC,
+    );
+    expect(holdings.walletTokens).toEqual([baseSoUsd, fuseSoUsd]);
+    expect(holdings.shareAmount).toBeCloseTo(125.774869);
+    expect(holdings.shareNetworkCount).toBe(2);
+    expect(vaultShareHoldings([token()], [], VaultType.USDC)).toEqual({
+      walletTokens: [],
+      shareAmount: undefined,
+      shareNetworkCount: 0,
+    });
+  });
+  it('estimates yield per day, falls back to per month under a cent, and hides dust', () => {
+    // $26.82 at 4.9% APY makes about $0.0035 a day and $0.11 a month.
+    expect(yieldEstimate(0.35, 10.6)).toEqual({ amount: 0.35, period: 'day' });
+    expect(yieldEstimate(0.0035, 0.107)).toEqual({ amount: 0.107, period: 'month' });
+    expect(yieldEstimate(0.0001, 0.003)).toBeUndefined();
+    expect(yieldEstimate(undefined, undefined)).toBeUndefined();
+  });
+  it('splits wallet holdings into stablecoins and crypto by ticker', () => {
+    const groups = groupPortfolioCash([
+      token(),
+      token({ contractTickerSymbol: 'USDC.e', chainId: 122, commonId: undefined }),
+      token({
+        contractTickerSymbol: 'EURC',
+        contractAddress: '0x4444444444444444444444444444444444444444',
+        commonId: 'euro-coin',
+      }),
+      token({
+        contractTickerSymbol: 'FUSE',
+        type: TokenType.NATIVE,
+        chainId: 122,
+        contractAddress: 'native',
+        commonId: undefined,
+      }),
+      token({
+        contractTickerSymbol: 'G$',
+        contractAddress: '0x5555555555555555555555555555555555555555',
+        commonId: 'gooddollar',
+      }),
+    ]);
+    const stable = Object.fromEntries(groups.map(asset => [asset.symbol, asset.stable]));
+    expect(stable).toEqual({ USDC: true, 'USDC.e': true, EURC: true, FUSE: false, G$: false });
+  });
+  it('keeps token amounts short', () => {
+    expect(formatTokenAmount(97.729917, true)).toBe('97.73');
+    expect(formatTokenAmount(0.004, true)).toBe('<0.01');
+    expect(formatTokenAmount(1891.90649197)).toBe('1,891.91');
+    expect(formatTokenAmount(1.00031)).toBe('1.0003');
+    expect(formatTokenAmount(0.0091)).toBe('0.0091');
+    expect(formatTokenAmount(0.000123456)).toBe('0.0001235');
+    expect(formatTokenAmount(0)).toBe('0');
   });
   it('routes native tokens through the coin page zero address', () => {
     expect(

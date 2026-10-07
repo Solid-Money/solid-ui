@@ -12,6 +12,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useBridgeDepositStatuses } from '@/hooks/useBridgeDepositStatuses';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
+import { useCashbackPayoutHashes } from '@/hooks/useCashbackPayoutHashes';
 import { useProcessingActivitiesPolling } from '@/hooks/useTransactionReceiptPolling';
 import {
   ActivityEvent,
@@ -21,6 +22,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, isTransactionStuck } from '@/lib/utils';
+import { isCashbackPayoutActivity } from '@/lib/utils/cashbackActivity';
 import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -94,10 +96,17 @@ export default function ActivityTransactions({
 
   useCardDepositPoller();
 
+  // A cashback payout lands as a bare "Receive soUSD" row that says nothing
+  // about what it is, and the card row it was earned on already names the
+  // figure — so it is kept out here too, not just in the main feed. See
+  // `lib/utils/cashbackActivity`.
+  const cashbackPayoutHashes = useCashbackPayoutHashes();
+
   // Filter by tab and symbol.
   // Only recomputes when updatedActivities, tab, or symbol change
   const tabFilteredActivities = useMemo(() => {
     return updatedActivities.filter(transaction => {
+      if (isCashbackPayoutActivity(transaction, cashbackPayoutHashes)) return false;
       if (tab === ActivityTab.WALLET) {
         if (transaction.type === TransactionType.CARD_WITHDRAWAL) return false;
         if (symbol) {
@@ -110,7 +119,7 @@ export default function ActivityTransactions({
       }
       return false;
     });
-  }, [updatedActivities, tab, symbol]);
+  }, [updatedActivities, tab, symbol, cashbackPayoutHashes]);
 
   // Deduplicate and group by time.
   // Only recomputes when tabFilteredActivities change

@@ -1,5 +1,6 @@
 export interface SpendModeHelpSlide {
   key: 'twoWays' | 'keepEarning' | 'repayAnytime';
+  badge?: string;
   title: string;
   description: string;
   cta: 'Next' | 'Got it';
@@ -9,6 +10,7 @@ export interface SpendModeHelpSlide {
 export const SPEND_MODE_HELP_SLIDES: SpendModeHelpSlide[] = [
   {
     key: 'twoWays',
+    badge: 'Introducing - Credit mode',
     title: 'Two ways to pay',
     description:
       'Cash pays from your USD balance. Credit lets you spend without selling your assets.',

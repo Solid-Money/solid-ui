@@ -23,6 +23,8 @@ type TriggerProps = React.ComponentProps<typeof Pressable>;
 // "Add Funds" at 16pt bold — it wrapped onto two lines on 360–390dp phones.
 // Compact mode shrinks the label, icons and spacing instead of letting one pill
 // grow taller/narrower than its neighbours.
+// Keep native labels at 14/16px and let them fit their pill when iOS text scaling
+// would otherwise truncate them.
 const COMPACT_WIDTH = 400;
 
 // Keep the modal/trigger implementation out of flex sizing. Each visible action
@@ -54,8 +56,13 @@ const AddFundsTrigger = ({
   >
     <Text
       numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.85}
       maxFontSizeMultiplier={1.2}
-      className={cn('font-bold text-black', compact ? 'text-sm' : 'text-base')}
+      className={cn(
+        'native:min-w-0 native:shrink font-bold text-black',
+        compact ? 'native:text-[14px] text-sm' : 'native:text-[16px] text-base',
+      )}
     >
       Add Funds
     </Text>
@@ -78,8 +85,13 @@ const ActionPill = ({ children, compact, ...props }: TriggerProps & { compact?: 
 const PillLabel = ({ compact, children }: { compact?: boolean; children: string }) => (
   <Text
     numberOfLines={1}
+    adjustsFontSizeToFit
+    minimumFontScale={0.85}
     maxFontSizeMultiplier={1.2}
-    className={cn('font-semibold text-white', compact ? 'text-sm' : 'text-base')}
+    className={cn(
+      'native:min-w-0 native:shrink font-semibold text-white',
+      compact ? 'native:text-[14px] text-sm' : 'native:text-[16px] text-base',
+    )}
   >
     {children}
   </Text>

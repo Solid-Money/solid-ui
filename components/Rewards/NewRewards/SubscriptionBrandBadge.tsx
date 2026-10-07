@@ -3,7 +3,11 @@ import { Image } from 'expo-image';
 
 import { getAsset } from '@/lib/assets';
 
-import { scaleBrandGlyph, type SubscriptionBrand } from './subscriptionBrands';
+import {
+  REFERENCE_BADGE_SIZE,
+  scaleBrandGlyph,
+  type SubscriptionBrand,
+} from './subscriptionBrands';
 
 interface SubscriptionBrandBadgeProps {
   brand: SubscriptionBrand;
@@ -38,27 +42,38 @@ const SubscriptionBrandBadge = ({ brand, size, overlap, ring }: SubscriptionBran
     );
   }
 
-  const glyph = scaleBrandGlyph(brand, size);
+  // Exported badges have a 22px face and a 2px ring on a 26px canvas. Match
+  // that geometry for badges assembled from a background and a bare glyph.
+  const faceSize = ring ? (size * REFERENCE_BADGE_SIZE) / (REFERENCE_BADGE_SIZE + 4) : size;
+  const glyph = scaleBrandGlyph(brand, faceSize);
 
   return (
     <View
       className={`items-center justify-center overflow-hidden rounded-full ${
-        ring ? 'border-2 border-card' : ''
+        ring ? 'bg-card' : ''
       }`}
-      style={[{ width: size, height: size, backgroundColor: brand.background }, offset]}
+      style={[
+        { width: size, height: size, backgroundColor: ring ? undefined : brand.background },
+        offset,
+      ]}
     >
-      <Image
-        source={getAsset(brand.asset)}
-        style={{ width: glyph.width, height: glyph.height }}
-        contentFit="contain"
-      />
-      {brand.overlay ? (
+      <View
+        className="items-center justify-center overflow-hidden rounded-full"
+        style={{ width: faceSize, height: faceSize, backgroundColor: brand.background }}
+      >
         <Image
-          source={getAsset(brand.overlay.asset)}
-          style={[{ position: 'absolute' }, scaleBrandGlyph(brand.overlay, size)]}
+          source={getAsset(brand.asset)}
+          style={{ width: glyph.width, height: glyph.height }}
           contentFit="contain"
         />
-      ) : null}
+        {brand.overlay ? (
+          <Image
+            source={getAsset(brand.overlay.asset)}
+            style={[{ position: 'absolute' }, scaleBrandGlyph(brand.overlay, faceSize)]}
+            contentFit="contain"
+          />
+        ) : null}
+      </View>
     </View>
   );
 };

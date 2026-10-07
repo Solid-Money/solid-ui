@@ -3,8 +3,10 @@ import { decodeFunctionData, erc20Abi } from 'viem';
 import {
   buildApprovalBatch,
   describeApprovalWork,
+  describeApprovedFunding,
   formatTokenAmount,
   pendingApprovalsFor,
+  rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
 } from '@/lib/utils/realTimeFunding';
@@ -467,5 +469,137 @@ describe('shouldOfferRtf', () => {
 
   it('does not offer it before the status has arrived', () => {
     expect(shouldOfferRtf({ isRainCard: true, status: undefined })).toBe(false);
+  });
+});
+
+/** An asset whose every spender already holds an unlimited allowance. */
+const approvedAsset = (overrides: Partial<RainRtfAsset> = {}): RainRtfAsset =>
+  asset({
+    spenders: [
+      { kind: 'collateral', address: COLLATERAL, currentAllowance: UINT256_MAX, isApproved: true },
+      { kind: 'operator', address: OPERATOR, currentAllowance: UINT256_MAX, isApproved: true },
+    ],
+    isApproved: true,
+    ...overrides,
+  });
+
+describe('rtfSectionState', () => {
+  it('is pending while an approval is outstanding', () => {
+    expect(rtfSectionState({ isRainCard: true, status: status() })).toBe('pending');
+  });
+
+  it('settles to approved rather than disappearing', () => {
+    // The whole point of the third state. The row used to vanish here, which
+    // left a cardholder who had just granted an unlimited allowance with no
+    // confirmation it worked and nothing to check later.
+    expect(
+      rtfSectionState({
+        isRainCard: true,
+        status: status({ chains: [chain({ assets: [approvedAsset()] })] }),
+      }),
+    ).toBe('approved');
+  });
+
+  it('stays pending while some chains are done and others are not', () => {
+    // Mid-walk through a multi-chain approval. The unfinished work is what
+    // the cardholder needs to see, so pending outranks approved.
+    expect(
+      rtfSectionState({
+        isRainCard: true,
+        status: status({
+          chains: [
+            chain({ chainId: 8453, name: 'Base', assets: [approvedAsset()] }),
+            chain({ chainId: 84532, name: 'Base Sepolia' }),
+          ],
+        }),
+      }),
+    ).toBe('pending');
+  });
+
+  it('hides on a non-Rain card even when a chain looks approved', () => {
+    expect(
+      rtfSectionState({
+        isRainCard: false,
+        status: status({ chains: [chain({ assets: [approvedAsset()] })] }),
+      }),
+    ).toBe('hidden');
+  });
+
+  it('hides while the tenant is not enabled', () => {
+    expect(rtfSectionState({ isRainCard: true, status: status({ tenantEnabled: false }) })).toBe(
+      'hidden',
+    );
+  });
+
+  it('hides when there is nothing to approve and nothing approved', () => {
+    // A chain with no spenders: Rain has provisioned no collateral contract
+    // and the operator is off. Nothing to do and nothing to report, so the
+    // receipt must not claim otherwise.
+    expect(
+      rtfSectionState({
+        isRainCard: true,
+        status: status({
+          chains: [chain({ assets: [asset({ spenders: [] })], collateralAddress: null })],
+        }),
+      }),
+    ).toBe('hidden');
+  });
+
+  it('hides when the backend has not answered yet', () => {
+    expect(rtfSectionState({ isRainCard: true, status: undefined })).toBe('hidden');
+  });
+});
+
+describe('describeApprovedFunding', () => {
+  it('names every approved chain and asset', () => {
+    expect(
+      describeApprovedFunding(
+        status({
+          chains: [
+            chain({ chainId: 8453, name: 'Base', assets: [approvedAsset()] }),
+            chain({
+              chainId: 9745,
+              name: 'Plasma',
+              assets: [approvedAsset({ symbol: 'USDT0', tokenAddress: EURC })],
+            }),
+          ],
+        }),
+      ),
+    ).toEqual({ chainNames: ['Base', 'Plasma'], assetSymbols: ['USDC', 'USDT0'] });
+  });
+
+  it('deduplicates an asset held on more than one chain', () => {
+    // Two allowances, but one thing to name — "USDC and USDC" tells a
+    // cardholder nothing.
+    expect(
+      describeApprovedFunding(
+        status({
+          chains: [
+            chain({ chainId: 8453, name: 'Base', assets: [approvedAsset()] }),
+            chain({ chainId: 42161, name: 'Arbitrum', assets: [approvedAsset()] }),
+          ],
+        }),
+      ).assetSymbols,
+    ).toEqual(['USDC']);
+  });
+
+  it('reports nothing while nothing is approved', () => {
+    expect(describeApprovedFunding(status())).toEqual({ chainNames: [], assetSymbols: [] });
+  });
+
+  it('leaves out a chain that is still pending', () => {
+    // The receipt must name only what is actually approved; listing a pending
+    // chain would tell a cardholder their card draws on a network where the
+    // next authorization will in fact decline.
+    expect(
+      describeApprovedFunding(
+        status({
+          chains: [
+            chain({ chainId: 8453, name: 'Base', assets: [approvedAsset()] }),
+            chain({ chainId: 84532, name: 'Base Sepolia' }),
+          ],
+        }),
+      ).chainNames,
+    ).toEqual(['Base']);
   });
 });
