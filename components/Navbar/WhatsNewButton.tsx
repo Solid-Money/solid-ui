@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable } from 'react-native';
-import { X } from 'lucide-react-native';
+import { Sparkle, X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
@@ -15,10 +15,11 @@ const WhatsNewButton = ({ className }: { className?: string }) => {
     <Pressable
       onPress={showLatest}
       className={cn(
-        'h-9 flex-row items-center gap-1 rounded-full bg-[#2A2A2A] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover',
+        'h-9 flex-row items-center gap-1.5 rounded-full bg-[#2A2A2A] pl-3.5 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover',
         className,
       )}
     >
+      <Sparkle size={14} color="#94F27F" />
       <Text className="text-base font-medium text-white/70">What&apos;s new?</Text>
       <Pressable
         onPress={e => {
