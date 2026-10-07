@@ -1,14 +1,15 @@
-import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
+import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useShallow } from 'zustand/react/shallow';
 
 import { updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { fetchIsDeposited } from './useAnalytics';
-import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -76,7 +77,12 @@ export const usePostSignupInit = (user: User | undefined) => {
                   isDeposited: true,
                 });
               }
-            } catch (error) {
+            } catch (error: any) {
+              // queryClient.clear() during session expiry/logout cancels in-flight
+              // TanStack Query fetches with a CancelledError. This is expected
+              // control flow, not a real failure — swallow it silently, analogous
+              // to the AbortError guard in lib/utils/utils.ts.
+              if (error?.name === 'CancelledError') return;
               Sentry.captureException(error, {
                 tags: {
                   type: 'balance_check_error_lazy',
