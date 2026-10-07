@@ -384,11 +384,17 @@ const CardDetailsPane = () => {
             </HeroEnter>
           ) : null}
           {/* Until the allowance is granted, Rain declines every authorization on
-              this card — so this is a blocking task, not an option, and it sits
-              with the other "how this card spends" rows rather than lower down
-              with the promotional surfaces. It disappears for good once the
-              approval lands, which is why it reads as something to finish. */}
-          {realTimeFunding.shouldOffer && realTimeFunding.chain ? (
+              this card — so this starts as a blocking task, not an option, and
+              it sits with the other "how this card spends" rows rather than
+              lower down with the promotional surfaces.
+
+              Once the approvals land the row stays, as a receipt. It used to
+              disappear, which left the cardholder who had just granted an
+              unlimited allowance with no confirmation it worked and no way to
+              check later: the only evidence is an allowance on a chain they
+              cannot read. `sectionState` carries the distinction — `pending`
+              is the task, `approved` is the receipt. */}
+          {realTimeFunding.sectionState === 'pending' && realTimeFunding.chain ? (
             <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.realTimeFundingCard}>
               <EnableRealTimeFundingCard
                 assetSymbols={realTimeFunding.work.assetSymbols}
@@ -397,6 +403,17 @@ const CardDetailsPane = () => {
                 isApproving={realTimeFunding.isApproving}
                 error={realTimeFunding.error}
                 onApprove={openRtfModal}
+              />
+            </HeroEnter>
+          ) : null}
+          {realTimeFunding.sectionState === 'approved' &&
+          realTimeFunding.approved.chainNames.length > 0 ? (
+            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.realTimeFundingCard}>
+              <EnableRealTimeFundingCard
+                isApproved
+                assetSymbols={realTimeFunding.approved.assetSymbols}
+                chainName={realTimeFunding.approved.chainNames[0]}
+                networkCount={realTimeFunding.approved.chainNames.length}
               />
             </HeroEnter>
           ) : null}
@@ -464,7 +481,7 @@ const CardDetailsPane = () => {
         }}
         canWithdraw={canWithdrawFromCard(fundsAccess)}
       />
-{/* Gated on `isOpen` like every other modal here: this pane stays mounted
+      {/* Gated on `isOpen` like every other modal here: this pane stays mounted
           behind the wallet screen, and a modal that ignored that would reopen
           itself over the wallet the moment the pane closed mid-approval. */}
       <RealTimeFundingModal
