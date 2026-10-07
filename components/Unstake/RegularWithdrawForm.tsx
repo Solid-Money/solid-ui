@@ -20,7 +20,7 @@ import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { getVaultKey, isSolidTokenSymbol } from '@/constants/withdraw';
-import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
+import useBridgeForWithdraw from '@/hooks/useBridgeForWithdraw';
 import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance, useSoEthVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
@@ -30,6 +30,12 @@ import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoEth from '@/hooks/useWithdrawSoEth';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import getTokenIcon from '@/lib/getTokenIcon';
+import {
+  getSoUsdWithdrawChain,
+  SOUSD_WITHDRAW_CHAIN_ID,
+  SOUSD_WITHDRAW_CHAINS,
+  SoUsdWithdrawChainId,
+} from '@/lib/soUsdWithdraw';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { describeWithdrawError } from '@/lib/utils/withdrawErrors';
@@ -58,7 +64,7 @@ const RegularWithdrawForm = () => {
   );
 
   // Unfinished withdraw for the selected vault (bridged in a previous session,
-  // still waiting on the Ethereum-side withdraw). When present, the flow
+  // still waiting on the destination-side withdraw). When present, the flow
   // resumes on step 2 with step 1 disabled and the amount prefilled.
   const session = useMemo(
     () => selectWithdrawSession(sessions, selectedVault, user?.safeAddress),
@@ -225,9 +231,20 @@ const RegularWithdrawForm = () => {
   });
 
   const watchedAmount = watch('amount');
-  const { bridge, bridgeStatus } = useBridgeToMainnet();
+
+  // Where soUSD is withdrawn. Shares already sitting on Base or Ethereum are
+  // queued where they are. Shares on Fuse bridge to the current hub (Base once
+  // it is switched on), unless a resumed withdraw already bridged them: a
+  // session from before the move has no chain and went to Ethereum.
+  const tokenWithdrawChainId = getSoUsdWithdrawChain(selectedToken?.chainId);
+  const sessionWithdrawChainId: SoUsdWithdrawChainId | undefined =
+    session?.vault === 'USD' ? (getSoUsdWithdrawChain(session.chainId) ?? 1) : undefined;
+  const withdrawChainId = tokenWithdrawChainId ?? sessionWithdrawChainId ?? SOUSD_WITHDRAW_CHAIN_ID;
+  const withdrawChain = SOUSD_WITHDRAW_CHAINS[withdrawChainId];
+
+  const { bridge, bridgeStatus } = useBridgeForWithdraw(withdrawChainId);
   const { bridgeSoEth, bridgeSoEthStatus } = useBridgeToMainnetSoEth();
-  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw();
+  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw(withdrawChainId);
   const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth();
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
@@ -238,21 +255,23 @@ const RegularWithdrawForm = () => {
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Bridging vaults (soUSD, soETH) always render both steps. A token held on
-  // Fuse starts on step 1 (bridge); a token already on Ethereum — or an
-  // unfinished withdraw resumed from storage — jumps to step 2 (withdraw).
+  // Fuse starts on step 1 (bridge); a token already on the withdraw chain (Base
+  // or Ethereum for soUSD, Ethereum for soETH) — or an unfinished withdraw
+  // resumed from storage — jumps to step 2 (withdraw).
   // soFUSE has no bridge and keeps its single-step layout.
   const isUsdVault = !isSoFuse && !isSoEth;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
+  const isOnWithdrawChain = isUsdVault ? tokenWithdrawChainId !== undefined : isOnEthereum;
 
   useEffect(() => {
     // While a bridge is in-flight in THIS view, stay on step 1 — onBridgeSubmit
     // advances to step 2 once it completes. The resume session is persisted at
     // broadcast time, so without this guard a freshly-created session would
-    // unlock step 2 before the bridged funds have arrived on Ethereum.
+    // unlock step 2 before the bridged funds have arrived on the other chain.
     if (isBridgeLoading || isBridgeSoEthLoading) return;
-    setActiveStep(hasPendingSession || isOnEthereum ? 2 : 1);
-  }, [hasPendingSession, isOnEthereum, isBridgeLoading, isBridgeSoEthLoading]);
+    setActiveStep(hasPendingSession || isOnWithdrawChain ? 2 : 1);
+  }, [hasPendingSession, isOnWithdrawChain, isBridgeLoading, isBridgeSoEthLoading]);
 
   // Prefill the amount from a resumed session once per vault so the user does
   // not have to re-enter what they already bridged.
@@ -318,7 +337,7 @@ const RegularWithdrawForm = () => {
         text2: `${data.amount} ${selectedToken?.contractTickerSymbol || 'soUSD'}`,
         props: {
           badgeText: 'Onchain',
-          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          link: `${withdrawChain.chain.blockExplorers?.default.url}/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({
             tokenSymbol: 'soUSD',
@@ -506,7 +525,11 @@ const RegularWithdrawForm = () => {
               />
               <View className="flex-col">
                 <Text className="text-base">
-                  {isSoFuse ? 'WFUSE on Fuse' : isSoEth ? 'WETH on Ethereum' : 'USDC on Ethereum'}
+                  {isSoFuse
+                    ? 'WFUSE on Fuse'
+                    : isSoEth
+                      ? 'WETH on Ethereum'
+                      : `USDC on ${withdrawChain.name}`}
                 </Text>
               </View>
             </View>
@@ -577,7 +600,7 @@ const RegularWithdrawForm = () => {
             </View>
           ) : isUsdVault ? (
             <>
-              {/* Step 1: Bridge to Ethereum */}
+              {/* Step 1: Bridge to the withdraw chain */}
               <View className="px-5 py-6 md:p-5">
                 <View className="mb-4 flex-row items-center gap-2">
                   <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-muted-foreground/20">
@@ -592,7 +615,9 @@ const RegularWithdrawForm = () => {
                         })}
                         size={22}
                       />
-                      <Text className="text-base font-bold text-white">Bridge to Ethereum</Text>
+                      <Text className="text-base font-bold text-white">
+                        Bridge to {withdrawChain.name}
+                      </Text>
                     </View>
                     <Text className="text-base font-medium text-muted-foreground">~2 min</Text>
                   </View>
@@ -661,7 +686,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={
-                    isOnEthereum && !hasPendingSession
+                    isOnWithdrawChain && !hasPendingSession
                       ? handleSubmit(onSwapSubmit)
                       : () => onSwapSubmit({ amount: watchedAmount })
                   }
@@ -672,7 +697,7 @@ const RegularWithdrawForm = () => {
                     // Submitting before the approval check settles is what
                     // skipped the approve leg and reverted the withdrawal.
                     isAllowanceLoading ||
-                    (isOnEthereum && !hasPendingSession && !isBridgeValid)
+                    (isOnWithdrawChain && !hasPendingSession && !isBridgeValid)
                   }
                 >
                   {isWithdrawLoading ? (

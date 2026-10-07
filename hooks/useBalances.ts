@@ -316,8 +316,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
   // here took Send, Swap and the wallet down with the Assets overview.
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
+  // soUSD shares are never in the swap list, but must still show: soUSD on Base
+  // is where a withdrawal sits between its bridge and its queue request.
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
-    if (list.length === 0) return true;
+    if (list.length === 0 || isSoUSDToken(address)) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );

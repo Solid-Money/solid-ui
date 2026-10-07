@@ -24,8 +24,9 @@ export interface VaultMeta {
   /** Asset the user ultimately receives when withdrawing. */
   destinationSymbol: string;
   /**
-   * Whether reaching the destination requires bridging Fuse -> Ethereum first
-   * (a 2-step flow). soFUSE withdraws directly on Fuse in a single step.
+   * Whether reaching the destination requires bridging off Fuse first (a 2-step
+   * flow): to Base or Ethereum for soUSD, Ethereum for soETH. soFUSE withdraws
+   * directly on Fuse in a single step.
    */
   requiresBridge: boolean;
 }

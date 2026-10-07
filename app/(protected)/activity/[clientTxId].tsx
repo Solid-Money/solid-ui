@@ -1004,8 +1004,8 @@ export default function ActivityDetail() {
 
   const handleCancelWithdraw = useCallback(async () => {
     if (!isCancelWithdraw || !finalActivity?.requestId) return;
-    await cancelOnchainWithdraw(finalActivity.requestId);
-  }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
+    await cancelOnchainWithdraw(finalActivity.requestId, finalActivity.chainId);
+  }, [isCancelWithdraw, finalActivity?.requestId, finalActivity?.chainId, cancelOnchainWithdraw]);
 
   const handleExplorerPress = useCallback(() => {
     if (finalActivity?.url) Linking.openURL(finalActivity.url);

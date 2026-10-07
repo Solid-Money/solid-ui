@@ -21,7 +21,6 @@ jest.mock('viem/utils', () => ({
   encodeFunctionData: () => '0xdata',
   parseUnits: (_val: string, _dec: number) => BigInt(1_000_000),
 }));
-jest.mock('viem/chains', () => ({ mainnet: { id: 1 } }));
 jest.mock('wagmi', () => ({
   useReadContract: () => ({
     data: BigInt(0),
@@ -53,12 +52,14 @@ jest.mock('@/hooks/useUser', () => ({
 }));
 jest.mock('@/hooks/useVault', () => ({ VAULT: 'vault' }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
-jest.mock('@/lib/config', () => ({
-  ADDRESSES: {
-    ethereum: {
-      vault: '0xvault',
-      boringQueue: '0xqueue',
-      usdc: '0xusdc',
+jest.mock('@/lib/soUsdWithdraw', () => ({
+  SOUSD_WITHDRAW_CHAINS: {
+    1: { chain: { id: 1 }, vault: '0xvault', boringQueue: '0xqueue', usdc: '0xusdc' },
+    8453: {
+      chain: { id: 8453 },
+      vault: '0xbasevault',
+      boringQueue: '0xbasequeue',
+      usdc: '0xbaseusdc',
     },
   },
 }));
@@ -78,10 +79,11 @@ const captureException = Sentry.captureException as jest.Mock;
 const receipt = { transactionHash: '0xhash' };
 
 let hook: ReturnType<typeof useWithdraw>;
+let chainId: 1 | 8453 = 1;
 let root: ReturnType<typeof create>;
 
 function Harness() {
-  const result = useWithdraw();
+  const result = useWithdraw(chainId);
   useEffect(() => {
     hook = result;
   });
@@ -90,6 +92,7 @@ function Harness() {
 
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  chainId = 1;
   jest.clearAllMocks();
   execute.mockResolvedValue({ transaction: receipt });
 });
@@ -131,4 +134,15 @@ it('reports to Sentry when executeTransactions returns USER_CANCELLED_TRANSACTIO
     await expect(hook.withdraw('100')).rejects.toThrow('User cancelled transaction');
   });
   expect(captureException).not.toHaveBeenCalled();
+});
+
+it('approves and queues on the Base vault when withdrawing on Base', async () => {
+  chainId = 8453;
+  mount();
+  await act(async () => {
+    await hook.withdraw('100');
+  });
+  const [, transactions, , chain] = execute.mock.calls[0];
+  expect(chain).toEqual({ id: 8453 });
+  expect(transactions.map((tx: { to: string }) => tx.to)).toEqual(['0xbasevault', '0xbasequeue']);
 });
