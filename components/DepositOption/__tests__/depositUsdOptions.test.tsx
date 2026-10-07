@@ -7,8 +7,11 @@ import { CardProvider } from '@/lib/types';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
 
-jest.mock('lucide-react-native', () => ({ Building2: 'Building2', Zap: 'Zap' }));
-jest.mock('@/assets/images/apple-pay-circle', () => 'ApplePayCircle');
+jest.mock('lucide-react-native', () => ({
+  Building2: 'Building2',
+  CreditCard: 'CreditCard',
+  Zap: 'Zap',
+}));
 jest.mock('@/components/Card/CardFund/CardFundGroup', () => 'CardFundGroup');
 jest.mock('@/components/Card/CardFund/CardFundRow', () => 'CardFundRow');
 jest.mock(
@@ -86,6 +89,7 @@ it('opens the Onramper widget from the card row', () => {
   const root = render();
   const card = rowsOf(root).find((row: any) => row.props.title === 'Credit card');
   expect(card.props.subtitle).toBe('Pay with Google/Apple Pay or a card');
+  expect(card.props.icon.props.children.type).toBe('CreditCard');
   act(() => card.props.onPress());
   expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
   act(() => root.unmount());
@@ -136,10 +140,10 @@ it('keeps the rail while the provider is still loading, so it does not pop in', 
 });
 
 it('drops the ACH and Wire chips where the bank rail is hidden', () => {
-  expect(getUsdMethodChips(true)).toEqual(['ACH', 'Wire', 'Cash App', 'Apple Pay']);
-  expect(getUsdMethodChips(false)).toEqual(['ACH', 'Wire', 'Apple Pay']);
-  expect(getUsdMethodChips(true, false)).toEqual(['Cash App', 'Apple Pay']);
-  expect(getUsdMethodChips(false, false)).toEqual(['Apple Pay']);
+  expect(getUsdMethodChips(true)).toEqual(['ACH', 'Wire', 'Credit card', 'Cash App']);
+  expect(getUsdMethodChips(false)).toEqual(['ACH', 'Wire', 'Credit card']);
+  expect(getUsdMethodChips(true, false)).toEqual(['Credit card', 'Cash App']);
+  expect(getUsdMethodChips(false, false)).toEqual(['Credit card']);
 });
 
 describe('in production, where Apple Pay is not offered yet', () => {
@@ -154,7 +158,7 @@ describe('in production, where Apple Pay is not offered yet', () => {
     act(() => root.unmount());
   });
 
-  it('drops the Apple Pay chip, leaving none where USD has no other method', () => {
+  it('drops the Credit card chip, leaving none where USD has no other method', () => {
     expect(getUsdMethodChips(true)).toEqual(['ACH', 'Wire', 'Cash App']);
     expect(getUsdMethodChips(false)).toEqual(['ACH', 'Wire']);
     expect(getUsdMethodChips(false, false)).toEqual([]);

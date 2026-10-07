@@ -33,13 +33,13 @@ type CardFundOptionsProps = {
   onMoveFromSavingsPress?: () => void;
   onExternalWalletPress?: () => void;
   /**
-   * USD — opens its methods: the virtual account (ACH / Wire), Cash App where
-   * it is offered, and Apple Pay.
+   * USD — opens its methods: the virtual account (ACH / Wire), Credit card,
+   * and Cash App where it is offered.
    */
   onUsdPress?: () => void;
   /**
    * Whether USD's methods include Cash App, so the USD row's chips name it.
-   * The Cash App row itself is on the host's USD step, beside Apple Pay.
+   * The Cash App row itself is on the host's USD step, beside Credit card.
    */
   isCashAppAvailable?: boolean;
   /**
