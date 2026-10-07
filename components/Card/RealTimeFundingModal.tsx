@@ -97,16 +97,40 @@ const Bullet = ({ icon, title, body }: { icon: React.ReactNode; title: string; b
  *
  * ## The terms text comes from the backend
  *
- * Deliberately not a constant in this file. What is displayed and what is
- * stored against the consent must be the same string — a consent record
- * pointing at wording the app never showed is not a record of anything — and
- * legal moves this text without shipping an app release. The version rides
- * along so an old build records the wording it actually displayed.
+ * Served by the backend rather than held as a constant here. What is
+ * displayed and what is stored against the consent must be the same string —
+ * a consent record pointing at wording the app never showed is not a record
+ * of anything — and legal moves this text without shipping an app release.
+ * The version rides along so an old build records the wording it actually
+ * displayed.
+ *
+ * {@link FALLBACK_TERMS_BODY} covers the one case that breaks: a response
+ * that arrives without a body. Rain requires this authorization language to
+ * be presented before the allowance is granted, so a blank where it should be
+ * is not a cosmetic bug — it is an approval taken without the disclosure that
+ * makes it lawful. The fallback means the screen cannot render without one.
  *
  * Uses React Native's native `Modal` (its own OS-level window) rather than the
  * shared Dialog, so it reliably covers the card pane and tab bar — the same
  * reason `SpendModeHelpModal` does.
  */
+/**
+ * Rain's authorization language, verbatim, for when the backend sends none.
+ *
+ * Kept in sync with `RAIN_RTF_TERMS_BODY` in the accounts service by hand —
+ * which is tolerable precisely because it is never normally used: the served
+ * copy wins whenever there is one, so this is a floor, not a second source of
+ * truth. `[Partner]` in Rain's template is substituted for our own name.
+ */
+export const FALLBACK_TERMS_BODY =
+  'By tapping "Approve," you authorize the operator smart contract deployed by ' +
+  'Rain to transfer stablecoins from your wallet to a non-custodial smart ' +
+  'contract to fund your card transactions at the time of each card swipe. The ' +
+  'operator contract executes transfers automatically pursuant to pre-programmed ' +
+  'logic and does not hold or receive your funds. No person or entity initiates ' +
+  'individual transfers. You may revoke this authorization at any time by ' +
+  'contacting Solid or initiating a revocation directly on-chain.';
+
 const RealTimeFundingModal = ({
   isOpen,
   status,
@@ -305,11 +329,18 @@ const RealTimeFundingModal = ({
               </Text>
             ) : null}
 
-            {status ? (
-              <Text className="text-[12px] leading-[17px] text-muted-foreground">
-                {status.terms.body}
+            {/* Bordered and at body size rather than as muted fine print. Rain
+                requires this language to be presented before the allowance is
+                granted, and 12px grey under a scroll fold is the layout most
+                likely to be scrolled past — which is the one outcome that
+                makes the consent record worthless. It sits directly above the
+                checkbox so the thing being agreed to is the thing just read. */}
+            <View className="gap-2 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3.5">
+              <Text className="text-[13px] font-semibold text-white">Authorization</Text>
+              <Text className="text-[13px] leading-[19px] text-white/80">
+                {status?.terms.body?.trim() || FALLBACK_TERMS_BODY}
               </Text>
-            ) : null}
+            </View>
 
             <Pressable
               className="flex-row items-start gap-3 rounded-2xl bg-[#1C1C1C] px-4 py-4"
