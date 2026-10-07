@@ -78,7 +78,9 @@ export default function Security() {
       setIsUnlocked(true);
     } catch (error) {
       const isTimeout = error instanceof Error && error.message.includes('timed out');
-      const isCancelled = error instanceof Error && error.name === 'NotAllowedError';
+      const isCancelled =
+        (error instanceof Error && error.name === 'NotAllowedError') ||
+        (error as any)?.error === 'UserCancelled';
 
       if (isTimeout) {
         setUnlockError('Authentication timed out. Please try again.');
