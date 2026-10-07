@@ -67,6 +67,17 @@ export const UsdMethodList = ({
         chips={BANK_CHIPS}
       />
     ) : null}
+    {/* Onramper's hosted widget. It takes Apple Pay, Google Pay and cards, so
+        the row is named for the card and the subtitle lists the wallets. */}
+    {isApplePayEnabled() ? (
+      <CardFundRow
+        className="min-h-[93px]"
+        icon={<ApplePayCircle width={ICON_SIZE} height={ICON_SIZE} />}
+        title="Credit card"
+        subtitle="Pay with Google/Apple Pay or a card"
+        onPress={onApplePayPress}
+      />
+    ) : null}
     {onCashAppPress ? (
       <CardFundRow
         className="min-h-[93px]"
@@ -82,17 +93,6 @@ export const UsdMethodList = ({
         subtitle="Pay from your Cash App balance"
         onPress={onCashAppPress}
         chips={CASH_APP_CHIPS}
-      />
-    ) : null}
-    {/* Onramper's hosted widget. Apple Pay is the name the row goes by, but the
-        widget also takes cards, so the subtitle says so. */}
-    {isApplePayEnabled() ? (
-      <CardFundRow
-        className="min-h-[93px]"
-        icon={<ApplePayCircle width={ICON_SIZE} height={ICON_SIZE} />}
-        title="Apple Pay"
-        subtitle="Pay with Apple Pay or a card"
-        onPress={onApplePayPress}
       />
     ) : null}
   </CardFundGroup>

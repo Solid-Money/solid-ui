@@ -69,23 +69,24 @@ beforeEach(() => {
   mockConfig.isDevFeatureEnabled = true;
 });
 
-it('offers Apple Pay beside the bank rail where Cash App is not available', () => {
+it('offers the card beside the bank rail where Cash App is not available', () => {
   const root = render();
-  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Apple Pay']);
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Credit card']);
   act(() => root.unmount());
 });
 
-it('adds Cash App between them where it is available', () => {
+it('adds Cash App after them where it is available', () => {
   mockCashApp.isAvailable = true;
   const root = render();
-  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Cash App', 'Apple Pay']);
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Credit card', 'Cash App']);
   act(() => root.unmount());
 });
 
-it('opens the Onramper widget from Apple Pay', () => {
+it('opens the Onramper widget from the card row', () => {
   const root = render();
-  const applePay = rowsOf(root).find((row: any) => row.props.title === 'Apple Pay');
-  act(() => applePay.props.onPress());
+  const card = rowsOf(root).find((row: any) => row.props.title === 'Credit card');
+  expect(card.props.subtitle).toBe('Pay with Google/Apple Pay or a card');
+  act(() => card.props.onPress());
   expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_ONRAMPER_WIDGET);
   act(() => root.unmount());
 });
@@ -101,7 +102,7 @@ it('still opens the virtual account from the bank rail', () => {
 it('keeps the bank rail for a Rain-issued account', () => {
   mockVirtualAccount.provider = 'rain';
   const root = render();
-  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Apple Pay']);
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Credit card']);
   act(() => root.unmount());
 });
 
@@ -114,7 +115,7 @@ it('keeps the bank rail for a WIREX CARDHOLDER, who is routed to a Rain account'
   mockVirtualAccount.provider = 'rain';
   mockCashApp.isAvailable = true;
   const root = render();
-  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Cash App', 'Apple Pay']);
+  expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Credit card', 'Cash App']);
   act(() => root.unmount());
 });
 
@@ -122,7 +123,7 @@ it('hides the bank rail from a Wirex-ISSUED account, which supports no wire', ()
   mockVirtualAccount.provider = 'wirex';
   mockCashApp.isAvailable = true;
   const root = render();
-  expect(titlesOf(root)).toEqual(['Cash App', 'Apple Pay']);
+  expect(titlesOf(root)).toEqual(['Credit card', 'Cash App']);
   expect(mockOpenVirtualAccount).not.toHaveBeenCalled();
   act(() => root.unmount());
 });
@@ -146,7 +147,7 @@ describe('in production, where Apple Pay is not offered yet', () => {
     mockConfig.isDevFeatureEnabled = false;
   });
 
-  it('hides the Apple Pay row', () => {
+  it('hides the card row', () => {
     mockCashApp.isAvailable = true;
     const root = render();
     expect(titlesOf(root)).toEqual(['Wire transfer, ACH', 'Cash App']);
