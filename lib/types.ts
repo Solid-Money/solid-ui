@@ -967,6 +967,17 @@ export interface WirexThreeDsDecisionResponse {
  * UserOperation the Safe signs for itself, so this decides what the app offers, never what
  * the chain allows.
  */
+/**
+ * Features held back from the public. The server's whitelist decides who has
+ * them — see useHasFeature.
+ */
+export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout';
+
+/** `GET /accounts/v1/feature-access`. */
+export interface FeatureAccessResponse {
+  features: Partial<Record<WhitelistedFeature, boolean>>;
+}
+
 export interface CardSpendModeAccessResponse {
   /** Whether to render the spend-mode card and the borrow position at all. */
   enabled: boolean;

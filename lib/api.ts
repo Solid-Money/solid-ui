@@ -89,6 +89,7 @@ import {
   EphemeralKeyResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
+  FeatureAccessResponse,
   FeeProduct,
   FromCurrency,
   FullRewardsConfig,
@@ -4252,6 +4253,23 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Which whitelisted features this user has — see useHasFeature. */
+export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/feature-access`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 

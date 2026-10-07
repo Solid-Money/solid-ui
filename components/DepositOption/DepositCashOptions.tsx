@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
@@ -58,7 +59,7 @@ export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/
 
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens its
- * methods (the virtual account's ACH/wire, Apple Pay, and Cash App in the US);
+ * methods (the virtual account's ACH/wire, Credit card, and Cash App in the US);
  * every other currency opens the TransFi onramp preseeded with it.
  */
 const DepositCashOptions = () => {
@@ -68,6 +69,7 @@ const DepositCashOptions = () => {
 
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const isCashAppAvailable = useIsCashAppAvailable();
+  const hasCreditCard = useHasFeature('onramper');
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
@@ -76,16 +78,17 @@ const DepositCashOptions = () => {
 
   const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
 
-  // USD opens the chooser of its methods. The bank rail and Apple Pay are
-  // usually there, but a Wirex-issued virtual account has no bank rail and
-  // production has no Apple Pay yet, so outside the US (no Cash App) USD can
-  // have none — and then its row is hidden rather than opening an empty
-  // chooser. Keyed on the virtual account, not the card: a Wirex CARDHOLDER is
-  // routed to a Rain account, which does have the rail.
-  const usdMethodChips = getUsdMethodChips(
-    isCashAppAvailable,
-    canFundByUsdBankTransfer(virtualAccountProvider),
-  );
+  // USD opens the chooser of its methods. The bank rail is usually there, but
+  // a Wirex-issued virtual account has no bank rail and Credit card is for
+  // whitelisted users only, so outside the US (no Cash App) USD can have none —
+  // and then its row is hidden rather than opening an empty chooser. Keyed on
+  // the virtual account, not the card: a Wirex CARDHOLDER is routed to a Rain
+  // account, which does have the rail.
+  const usdMethodChips = getUsdMethodChips({
+    hasBankTransfer: canFundByUsdBankTransfer(virtualAccountProvider),
+    hasCreditCard,
+    hasCashApp: isCashAppAvailable,
+  });
 
   const handleUsdPress = () => {
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);

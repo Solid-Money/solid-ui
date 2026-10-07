@@ -43,6 +43,11 @@ type CardFundOptionsProps = {
    */
   isCashAppAvailable?: boolean;
   /**
+   * Whether USD's methods include Credit card (Onramper — whitelisted users
+   * only), so the USD row's chips name it.
+   */
+  isCreditCardAvailable?: boolean;
+  /**
    * A local currency (BRL, BDT…) — opens the buy-crypto onramp for it. Omit to
    * hide the local-currency rows entirely.
    */
@@ -72,6 +77,7 @@ const CardFundOptions = ({
   onExternalWalletPress,
   onUsdPress,
   isCashAppAvailable = false,
+  isCreditCardAvailable = false,
   onLocalCurrencyPress,
   onBuyCryptoPress,
   isExternalWalletLoading,
@@ -116,7 +122,10 @@ const CardFundOptions = ({
                 <Image source={CARD_FUND_USD_ICON} style={TOKEN_ICON_STYLE} contentFit="cover" />
               }
               title="USD"
-              chips={getUsdMethodChips(isCashAppAvailable)}
+              chips={getUsdMethodChips({
+                hasCreditCard: isCreditCardAvailable,
+                hasCashApp: isCashAppAvailable,
+              })}
               onPress={onUsdPress}
             />
           ) : null}
