@@ -1,3 +1,4 @@
+import { getDefaultConfig } from 'expo/metro-config';
 import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -9,6 +10,8 @@ const __dirname = path.dirname(__filename);
 
 const ASSETS_DIR = path.join(__dirname, '../assets');
 const ASSETS_FILE = path.join(__dirname, '../lib/assets.ts');
+const { assetExts, sourceExts } = getDefaultConfig(path.join(__dirname, '..')).resolver;
+const BUNDLEABLE_EXTENSIONS = new Set([...assetExts, ...sourceExts]);
 
 function getFiles(dir: string): string[] {
   const files: string[] = [];
@@ -48,10 +51,15 @@ function isDensityVariant(filePath: string): boolean {
 }
 
 function updateRegistry() {
+  // Documentation and licenses stay in the assets folder, but Metro cannot
+  // import them. Use its supported extensions to keep them out of every bundle.
   // Metro resolves @2x/@3x files automatically from the base asset. Requiring
   // those variants directly makes native bundling fail.
   const allFiles = getFiles(ASSETS_DIR).filter(
-    file => !isDensityVariant(file) && !isPlatformSpecificVideo(file),
+    file =>
+      BUNDLEABLE_EXTENSIONS.has(path.extname(file).slice(1).toLowerCase()) &&
+      !isDensityVariant(file) &&
+      !isPlatformSpecificVideo(file),
   );
   const registryEntries: string[] = [];
 
