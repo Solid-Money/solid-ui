@@ -31,6 +31,7 @@ const OUTGOING_BADGE_TYPES = new Set<TransactionType>([
   TransactionType.REPAY_AND_WITHDRAW_COLLATERAL,
   TransactionType.WITHDRAW_COLLATERAL,
   TransactionType.WIREX_BANK_PAYOUT,
+  TransactionType.CASH_OUT,
 ]);
 
 type ActivityTokenIconProps = {

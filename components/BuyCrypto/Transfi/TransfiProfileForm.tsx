@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import {
+  useBuyCryptoKycFlow,
+  useBuyCryptoNavigation,
+} from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
@@ -26,6 +29,7 @@ import { useTransfiStore } from '@/store/useTransfiStore';
  */
 export const TransfiProfileForm = () => {
   const setModal = useBuyCryptoNavigation();
+  const isCashout = useBuyCryptoKycFlow() === 'transfi_cashout';
   const error = useTransfiStore(state => state.error);
   const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
@@ -92,8 +96,7 @@ export const TransfiProfileForm = () => {
   return (
     <View className="flex-1 gap-4">
       <Text className="text-base text-muted-foreground">
-        Our payment partner needs a little more before you can buy crypto. This is only used to
-        verify your account.
+        {`Our payment partner needs a little more before you can ${isCashout ? 'cash out' : 'buy crypto'}. This is only used to verify your account.`}
       </Text>
 
       <ScrollView

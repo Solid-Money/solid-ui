@@ -2,7 +2,10 @@ import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { Check, ShieldCheck } from 'lucide-react-native';
 
-import { useBuyCryptoNavigation } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import {
+  useBuyCryptoKycFlow,
+  useBuyCryptoNavigation,
+} from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -33,6 +36,7 @@ const SHARED_ITEMS = [
  */
 export const TransfiKycConsent = () => {
   const setModal = useBuyCryptoNavigation();
+  const isCashout = useBuyCryptoKycFlow() === 'transfi_cashout';
   const setError = useTransfiStore(state => state.setError);
   const routeToKyc = useBuyCryptoKycRoute();
   const { mutate: share, isPending } = useShareTransfiKyc();
@@ -86,8 +90,8 @@ export const TransfiKycConsent = () => {
         <View className="items-center gap-2 px-4">
           <Text className="text-center text-2xl font-bold text-primary">Verify to continue</Text>
           <Text className="text-center text-base text-muted-foreground">
-            To buy crypto we&apos;ll securely share your verified identity with our payment partner
-            TransFi. This lets you skip a second verification.
+            To {isCashout ? 'cash out' : 'buy crypto'} we&apos;ll securely share your verified
+            identity with our payment partner TransFi. This lets you skip a second verification.
           </Text>
         </View>
       </View>

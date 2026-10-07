@@ -11,15 +11,21 @@ import { TransfiPaymentMethodSelector } from '@/components/BuyCrypto/Transfi/Tra
 import { TransfiProfileForm } from '@/components/BuyCrypto/Transfi/TransfiProfileForm';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 
-import type { BuyCryptoNavigate } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import type {
+  BuyCryptoNavigate,
+  TransfiKycFlow,
+} from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import type { DepositModal } from '@/lib/types';
 
 export const BuyCryptoFlowContent = ({
   modal,
   navigate,
+  kycFlow,
 }: {
   modal: DepositModal;
   navigate: BuyCryptoNavigate;
+  /** Where an identity check started here returns to; buy crypto by default. */
+  kycFlow?: TransfiKycFlow;
 }) => {
   const content = (() => {
     switch (modal.name) {
@@ -53,5 +59,9 @@ export const BuyCryptoFlowContent = ({
     }
   })();
 
-  return <BuyCryptoNavigationProvider navigate={navigate}>{content}</BuyCryptoNavigationProvider>;
+  return (
+    <BuyCryptoNavigationProvider navigate={navigate} kycFlow={kycFlow}>
+      {content}
+    </BuyCryptoNavigationProvider>
+  );
 };

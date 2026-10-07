@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 
-import { BuyCryptoNavigate } from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
+import {
+  BuyCryptoNavigate,
+  TransfiKycFlow,
+} from '@/components/BuyCrypto/Transfi/BuyCryptoNavigation';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoKycRoute } from '@/hooks/useBuyCryptoKycRoute';
@@ -23,15 +26,21 @@ import { useDepositStore } from '@/store/useDepositStore';
  * backend reports can_share for a Sumsub applicant and for an approved Didit
  * session alike. Only genuinely unverified users are routed to a provider.
  */
-export const useBuyCryptoEntry = (navigateOverride?: BuyCryptoNavigate) => {
+export const useBuyCryptoEntry = (
+  navigateOverride?: BuyCryptoNavigate,
+  kycFlow?: TransfiKycFlow,
+) => {
   const globalNavigate = useDepositStore(state => state.setModal);
   const setModal = navigateOverride ?? globalNavigate;
-  const routeToKyc = useBuyCryptoKycRoute(setModal);
+  const routeToKyc = useBuyCryptoKycRoute(setModal, kycFlow);
   const [isChecking, setIsChecking] = useState(false);
 
   const handleBuyCryptoPress = useCallback(async () => {
     if (isChecking) return;
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'buy_crypto' });
+    // Cash-out runs the same gate; it is not a deposit method being chosen.
+    if (kycFlow !== 'transfi_cashout') {
+      track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, { deposit_method: 'buy_crypto' });
+    }
 
     // Sandbox override: skip the status check and the KYC flow entirely.
     if (EXPO_PUBLIC_TRANSFI_SKIP_KYC) {
@@ -66,7 +75,7 @@ export const useBuyCryptoEntry = (navigateOverride?: BuyCryptoNavigate) => {
     } finally {
       setIsChecking(false);
     }
-  }, [isChecking, routeToKyc, setModal]);
+  }, [isChecking, kycFlow, routeToKyc, setModal]);
 
   return { handleBuyCryptoPress, isChecking };
 };

@@ -12,6 +12,7 @@ import { TRANSFI_STATUS_KEY } from '@/hooks/useTransfi';
 import { WIREX_BANK_OVERVIEW_KEY } from '@/hooks/useWirexBankAccounts';
 import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
+import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -64,8 +65,11 @@ export function useSumsubSession() {
   // record onramp users as Wirex card customers, and so it gates the Wirex claim
   // on the right country list — the bank lists for a virtual account, the card
   // list for a card. They disagree in both directions.
-  const sumsubFlow: SumsubSessionFlow =
-    kycFlow === 'transfi' ? 'onramp' : kycFlow === 'va' ? 'virtual_account' : 'card';
+  const sumsubFlow: SumsubSessionFlow = isTransfiKycFlow(kycFlow)
+    ? 'onramp'
+    : kycFlow === 'va'
+      ? 'virtual_account'
+      : 'card';
 
   /**
    * The country to offer the backend for a CARD session, read at call time.
@@ -94,7 +98,7 @@ export function useSumsubSession() {
       // The TransFi buy-crypto flow is not a card journey: the verification is
       // shared with TransFi and the user resumes in the Add-funds modal, which
       // is mounted on the home screen.
-      if (kycFlow === 'transfi') return String(path.HOME);
+      if (isTransfiKycFlow(kycFlow)) return String(path.HOME);
       // Virtual account: the bank screen lives in the deposit modal, which is
       // mounted on the home screen — so the destination is home and the modal is
       // opened alongside it, the same shape as the transfi flow. The user lands
@@ -125,9 +129,9 @@ export function useSumsubSession() {
       // (which fires the share and polls) and return to the home screen where
       // that modal is mounted. Invalidating the gating query first stops the
       // pending screen mounting against a stale needs_kyc.
-      if (kycFlow === 'transfi') {
+      if (isTransfiKycFlow(kycFlow)) {
         queryClient.invalidateQueries({ queryKey: [TRANSFI_STATUS_KEY] });
-        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_KYC_PENDING);
+        resumeTransfiKycFlow(kycFlow);
       }
 
       // Virtual account: reopen the bank screen. Its overview is invalidated

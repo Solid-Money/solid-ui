@@ -1,6 +1,6 @@
+import React, { useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import React, { useState } from 'react';
 import { erc20Abi, TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
@@ -12,6 +12,7 @@ import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TokenType, TransactionType } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
+
 import useUser from './useUser';
 
 type SendProps = {
@@ -22,8 +23,25 @@ type SendProps = {
   tokenType: TokenType;
 };
 
+/**
+ * How the transfer is recorded in Activity, when it is not an ordinary send —
+ * a cash-out's deposit to TransFi, say, which must not appear as a send to a
+ * recent contact.
+ */
+export type SendActivityOverride = {
+  type: TransactionType;
+  title: string;
+  shortTitle?: string;
+  description?: string;
+  metadata?: Record<string, string>;
+};
+
 type SendResult = {
-  send: (amount: string, to: Address) => Promise<TransactionReceipt>;
+  send: (
+    amount: string,
+    to: Address,
+    activity?: SendActivityOverride,
+  ) => Promise<TransactionReceipt>;
   sendStatus: Status;
   error: string | null;
   resetSendStatus: () => void;
@@ -48,7 +66,7 @@ const useSend = ({
   } | null>(null);
   const chain = getChain(chainId);
 
-  const send = async (amount: string, to: Address) => {
+  const send = async (amount: string, to: Address, activity?: SendActivityOverride) => {
     try {
       if (!user) {
         throw new Error('User not found');
@@ -106,16 +124,17 @@ const useSend = ({
 
       const result = await trackTransaction(
         {
-          type: TransactionType.SEND,
-          title: `Send ${amount} ${tokenSymbol}`,
-          shortTitle: `Send ${amount}`,
+          type: activity?.type ?? TransactionType.SEND,
+          title: activity?.title ?? `Send ${amount} ${tokenSymbol}`,
+          shortTitle: activity?.shortTitle ?? `Send ${amount}`,
           amount,
           symbol: tokenSymbol,
           chainId,
           fromAddress: user.safeAddress,
           toAddress: to,
           metadata: {
-            description: `Send ${amount} ${tokenSymbol} to ${to}`,
+            ...activity?.metadata,
+            description: activity?.description ?? `Send ${amount} ${tokenSymbol} to ${to}`,
             tokenAddress,
             tokenDecimals: tokenDecimals.toString(),
           },

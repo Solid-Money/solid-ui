@@ -152,6 +152,11 @@ import {
   TokenPriceByAddress,
   TokenPriceUsd,
   TotalAPYResponse,
+  TransfiCashoutConfig,
+  TransfiCashoutDepositInstructions,
+  TransfiCashoutOrderStatus,
+  TransfiCashoutPaymentMethod,
+  TransfiCashoutQuote,
   TransfiCreateOrderResponse,
   TransfiKycLevel,
   TransfiKycRetryResponse,
@@ -1927,6 +1932,96 @@ export const getTransfiOrder = async (orderId: string): Promise<TransfiOrderStat
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/orders/${orderId}`,
     { credentials: 'include', headers: transfiHeaders() },
   );
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+// -----------------------------------------------------------------------------
+// TransFi cash-out (offramp). Same error contract as the buy-crypto calls.
+// -----------------------------------------------------------------------------
+
+const CASHOUT_BASE = () => `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/transfi/cashout`;
+
+/** Payout currencies, a suggested default, and the chain the USDC leaves from. */
+export const getTransfiCashoutConfig = async (): Promise<TransfiCashoutConfig> => {
+  const response = await fetch(`${CASHOUT_BASE()}/config`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Payout methods for a currency, each with the fields TransFi needs for it. */
+export const getTransfiCashoutPaymentMethods = async (
+  currency: string,
+): Promise<TransfiCashoutPaymentMethod[]> => {
+  const params = new URLSearchParams({ currency });
+  const response = await fetch(`${CASHOUT_BASE()}/payment-methods?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** What a USDC amount pays out in the chosen currency and method. */
+export const getTransfiCashoutQuote = async (
+  amount: string,
+  currency: string,
+  paymentCode: string,
+  signal?: AbortSignal,
+): Promise<TransfiCashoutQuote> => {
+  const params = new URLSearchParams({ amount, currency, paymentCode });
+  const response = await fetch(`${CASHOUT_BASE()}/quote?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+    signal,
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Open a cash-out; resolves with where to send the USDC. */
+export const createTransfiCashoutOrder = async (body: {
+  usdcAmount: string;
+  currency: string;
+  paymentCode: string;
+  paymentDetails: Record<string, string>;
+}): Promise<TransfiCashoutDepositInstructions> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Record the hash of the USDC transfer that funds a cash-out. */
+export const submitTransfiCashoutDeposit = async (
+  orderId: string,
+  txHash: string,
+): Promise<TransfiCashoutOrderStatus> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders/${orderId}/deposit`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...transfiHeaders() },
+    body: JSON.stringify({ txHash }),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** Poll a cash-out's status. */
+export const getTransfiCashoutOrder = async (
+  orderId: string,
+): Promise<TransfiCashoutOrderStatus> => {
+  const response = await fetch(`${CASHOUT_BASE()}/orders/${orderId}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
   if (!response.ok) throw await toTransfiError(response);
   return response.json();
 };

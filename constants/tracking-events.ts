@@ -181,6 +181,16 @@ export const TRACKING_EVENTS = {
   ONRAMPER_KYC_SHARE_RESULT: 'onramper_kyc_share_result',
 
   // Deposit Method: Buy Crypto (TransFi onramp)
+  // Cash-out to bank / mobile money (TransFi offramp), from the Send drawer.
+  CASH_OUT_STARTED: 'cash_out_started',
+  CASH_OUT_CURRENCY_SELECTED: 'cash_out_currency_selected',
+  CASH_OUT_METHOD_SELECTED: 'cash_out_method_selected',
+  CASH_OUT_DETAILS_SUBMITTED: 'cash_out_details_submitted',
+  CASH_OUT_REVIEW_VIEWED: 'cash_out_review_viewed',
+  CASH_OUT_ORDER_CREATED: 'cash_out_order_created',
+  CASH_OUT_ORDER_FAILED: 'cash_out_order_failed',
+  CASH_OUT_DEPOSIT_SENT: 'cash_out_deposit_sent',
+  CASH_OUT_DEPOSIT_FAILED: 'cash_out_deposit_failed',
   BUY_CRYPTO_KYC_CONSENT_VIEWED: 'buy_crypto_kyc_consent_viewed',
   BUY_CRYPTO_KYC_CONSENT_ACCEPTED: 'buy_crypto_kyc_consent_accepted',
   BUY_CRYPTO_KYC_SHARE_RESULT: 'buy_crypto_kyc_share_result',

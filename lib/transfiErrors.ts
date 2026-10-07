@@ -27,6 +27,8 @@ export const TRANSFI_ERROR_CODE = {
   /** The order breached the limits of the user's current TransFi KYC level. */
   STANDARD_KYC_REQUIRED: 'STANDARD_KYC_REQUIRED',
   ENHANCED_KYC_REQUIRED: 'ENHANCED_KYC_REQUIRED',
+  /** Cash-out payout details failed the method's rules; see `fieldErrors`. */
+  CASHOUT_INVALID_DETAILS: 'TRANSFI_CASHOUT_INVALID_DETAILS',
   UNKNOWN: 'TRANSFI_UNKNOWN_ERROR',
 } as const;
 
@@ -50,6 +52,8 @@ export class TransfiError extends Error {
       fiatCurrency?: string;
       missing?: string[];
       transfiKycStatus?: string;
+      /** Per-field problems with cash-out payout details, keyed by field key. */
+      fieldErrors?: Record<string, string>;
     } = {},
   ) {
     super(message);
@@ -147,7 +151,16 @@ export const toTransfiError = async (response: Response): Promise<TransfiError> 
       : undefined,
     transfiKycStatus:
       typeof body?.transfiKycStatus === 'string' ? body.transfiKycStatus : undefined,
+    fieldErrors: readFieldErrors(body?.fieldErrors),
   });
+};
+
+const readFieldErrors = (value: unknown): Record<string, string> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  );
+  return entries.length ? Object.fromEntries(entries) : undefined;
 };
 
 /**
