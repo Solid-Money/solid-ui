@@ -5068,3 +5068,69 @@ export const fetchSavingsSummary = async (
 
   return response.json();
 };
+
+/**
+ * Which kinds of push the account wants, by category.
+ *
+ * 3D Secure approvals, security alerts and account notices are not in here:
+ * those always go out.
+ */
+export interface NotificationPreferences {
+  cardPayments: boolean;
+  depositsTransfers: boolean;
+  earn: boolean;
+  cashbackRewards: boolean;
+  productNews: boolean;
+}
+
+/**
+ * The account's push preferences, or null when this backend does not offer
+ * them yet (404) — the screen then leaves the categories out rather than
+ * showing switches that change nothing.
+ */
+export const getNotificationPreferences = async (): Promise<NotificationPreferences | null> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/notification-preferences`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Change some push preferences. Returns the full set as saved. */
+export const updateNotificationPreferences = async (
+  changes: Partial<NotificationPreferences>,
+): Promise<NotificationPreferences> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/notification-preferences`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(changes),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};

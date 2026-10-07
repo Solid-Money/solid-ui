@@ -1,43 +1,48 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
-import { Image } from 'expo-image';
-import { ChevronRight, X } from 'lucide-react-native';
+import { View } from 'react-native';
+import { Href, router } from 'expo-router';
+import { CircleCheck, Mail, Trash2, UserRound, Wallet } from 'lucide-react-native';
 import { Address } from 'viem';
 
-import WalletIcon from '@/assets/images/wallet';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
-import { SettingsCard } from '@/components/Settings';
+import { DELETE_ACCOUNT_FOOTNOTE } from '@/components/Profile/deleteAccount';
+import DeleteAccountSheet from '@/components/Profile/DeleteAccountSheet';
+import { ProfileRow, ProfileRowGroup, ProfileSectionLabel } from '@/components/Profile/ProfileRow';
 import { BackButton } from '@/components/ui/back-button';
+import { Text } from '@/components/ui/text';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { getAsset } from '@/lib/assets';
-import { cn, eclipseAddress, getUserDisplayName } from '@/lib/utils';
+import { KycStatus } from '@/lib/types';
+import { cn, eclipseAddress } from '@/lib/utils';
+import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
-const AccountDetailsIcon = getAsset('images/settings_account_details.png');
+const ICON_SIZE = 18;
+const ICON_COLOR = '#FFFFFF';
 
+/**
+ * Settings → Account details (Figma "Account details").
+ *
+ * Who the account is — username, email, whether identity is verified — the
+ * wallet it holds, and at the bottom the way to close it.
+ */
 export default function Account() {
-  const { user, handleDeleteAccount } = useUser();
+  const { user } = useUser();
   const { isDesktop } = useDimension();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
+  const [isDeleteSheetOpen, setIsDeleteSheetOpen] = useState(false);
 
-  const handleDeletePress = () => {
-    setShowDeleteModal(true);
-  };
+  // Email-first signups get a generated `user_…` handle nobody chose or uses.
+  const username = user?.username && !user.username.startsWith('user_') ? user.username : undefined;
 
-  const confirmDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await handleDeleteAccount();
-    } catch (_error) {
-      Alert.alert('Error', 'Failed to delete account. Please try again.');
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
+  const verification =
+    cardStatus?.kycStatus === KycStatus.APPROVED
+      ? { badge: 'Verified' }
+      : isKycAwaitingDecision(cardStatus)
+        ? { value: 'In review' }
+        : { value: 'Not verified' };
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
@@ -61,136 +66,57 @@ export default function Account() {
     </>
   );
 
-  const deleteModal = (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={showDeleteModal}
-      onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
-    >
-      <View className="flex-1 items-center justify-center bg-black/70 px-4">
-        <View className="w-full max-w-sm rounded-3xl bg-[#1c1c1c] p-6">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-white">Delete Account</Text>
-            <Pressable onPress={() => !isDeleting && setShowDeleteModal(false)}>
-              <X size={24} color="#ffffff" />
-            </Pressable>
-          </View>
-
-          <Text className="mb-6 text-base text-gray-300">
-            Are you sure you want to delete your account? This action cannot be undone and will:
-          </Text>
-
-          <View className="mb-6">
-            <Text className="mb-2 text-sm text-gray-300">• Remove all your data</Text>
-            <Text className="mb-2 text-sm text-gray-300">• Cancel any active cards</Text>
-            <Text className="mb-2 text-sm text-gray-300">• Delete your transaction history</Text>
-            <Text className="text-sm text-gray-300">• Remove access to your wallet</Text>
-          </View>
-
-          <View className="flex-row justify-between">
-            <Pressable
-              onPress={() => setShowDeleteModal(false)}
-              className="mr-2 flex-1 rounded-xl bg-gray-700 py-4"
-              disabled={isDeleting}
-            >
-              <Text className="text-center font-semibold text-white">Cancel</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={confirmDelete}
-              className={cn('ml-2 flex-1 rounded-xl py-4', {
-                'bg-red-400': isDeleting,
-                'bg-red-600': !isDeleting,
-              })}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-center font-semibold text-white">Delete Account</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   return (
     <PageLayout
       customMobileHeader={mobileHeader}
       customDesktopHeader={desktopHeader}
       useDesktopBreakpoint
-      additionalContent={deleteModal}
+      additionalContent={
+        <DeleteAccountSheet isOpen={isDeleteSheetOpen} onOpenChange={setIsDeleteSheetOpen} />
+      }
       scrollable={false}
     >
       <View
-        className={cn('mx-auto w-full flex-1 px-4 py-4', {
+        className={cn('mx-auto w-full flex-1 px-4 pb-4', {
           'max-w-[512px]': isDesktop,
           'max-w-7xl': !isDesktop,
         })}
       >
-        {/* Top Content */}
         <View>
-          {/* Email Section - shown for all users who have email */}
-          {/* {user?.email && (
-            <>
-              <Text className="text-white text-base font-bold mb-4">Email</Text>
-              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
-                <SettingsCard
-                  title={user.email}
-                  icon={<Mail color="#ffffff" size={22} />}
-                  isDesktop={isDesktop}
-                  hideIconBackground
-                  titleStyle="font-medium"
-                />
-              </View>
-            </>
-          )} */}
+          <Text className="mb-2 mt-2 text-sm text-[#8E8E8E]">Profile</Text>
+          <ProfileRowGroup>
+            {username ? (
+              <ProfileRow
+                icon={<UserRound size={ICON_SIZE} color={ICON_COLOR} />}
+                title="Username"
+                subtitle={`@${username}`}
+                accessory={
+                  <CopyToClipboard text={username} size={18} iconClassName="text-white/70" />
+                }
+              />
+            ) : null}
+            <ProfileRow
+              icon={<Mail size={ICON_SIZE} color={ICON_COLOR} />}
+              title="Email"
+              subtitle={user?.email || 'Not set'}
+              onPress={() => router.push('/settings/email' as Href)}
+              accessibilityLabel={user?.email ? 'Change email' : 'Add an email'}
+            />
+            <ProfileRow
+              icon={<CircleCheck size={ICON_SIZE} color={ICON_COLOR} />}
+              title="Identity verification"
+              isLoading={isCardStatusLoading}
+              {...verification}
+            />
+          </ProfileRowGroup>
 
-          {/* User Name Section - shown for legacy users or users with custom username */}
-          {user?.username && !user.username.startsWith('user_') && (
-            <>
-              <Text className="mb-4 text-base font-bold text-white">User Name</Text>
-              <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">
-                <SettingsCard
-                  title={user.username}
-                  icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
-                  isDesktop={isDesktop}
-                  hideIconBackground
-                  titleStyle="font-medium"
-                />
-              </View>
-            </>
-          )}
-
-          {/* Fallback for users with neither email nor username (should not happen) */}
-          {!user?.email && (!user?.username || user.username.startsWith('user_')) && (
-            <>
-              <Text className="mb-4 text-base font-bold text-white">Account</Text>
-              <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">
-                <SettingsCard
-                  title={getUserDisplayName(user)}
-                  icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
-                  isDesktop={isDesktop}
-                  hideIconBackground
-                  titleStyle="font-medium"
-                />
-              </View>
-            </>
-          )}
-
-          {/* Wallet Address Section */}
-          <Text className="mb-4 mt-2 text-base font-bold text-white">Wallet address</Text>
-          <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
-            <SettingsCard
-              title={eclipseAddress(user?.safeAddress as Address)}
-              icon={<WalletIcon color="#ffffff" width={21} height={21} />}
-              isDesktop={isDesktop}
-              hideIconBackground
-              titleStyle="font-medium"
-              customAction={
+          <ProfileSectionLabel>Wallet</ProfileSectionLabel>
+          <ProfileRowGroup>
+            <ProfileRow
+              icon={<Wallet size={ICON_SIZE} color={ICON_COLOR} />}
+              title="Wallet address"
+              subtitle={user?.safeAddress ? eclipseAddress(user.safeAddress as Address) : '—'}
+              accessory={
                 user?.safeAddress ? (
                   <CopyToClipboard
                     text={user.safeAddress}
@@ -200,32 +126,26 @@ export default function Account() {
                 ) : null
               }
             />
-          </View>
+          </ProfileRowGroup>
+          <Text className="mt-2 px-1 text-sm leading-5 text-[#8E8E8E]">
+            This is your self-custodial wallet. Only you can move funds out of it.
+          </Text>
         </View>
 
-        {/* Spacer */}
         <View className="flex-1" />
 
-        {/* Delete Account Section - at bottom */}
-        <View className={cn('pb-4', { 'pb-24': !isDesktop })}>
-          <Pressable
-            onPress={handleDeletePress}
-            className="overflow-hidden rounded-xl bg-[#1c1c1c]"
-          >
-            <SettingsCard
+        <View className={cn('pt-6', { 'pb-24': !isDesktop })}>
+          <ProfileRowGroup>
+            <ProfileRow
+              icon={<Trash2 size={ICON_SIZE} color="#FF7D7D" />}
               title="Delete account"
-              icon={
-                <Image
-                  source={AccountDetailsIcon}
-                  style={{ width: 22, height: 22, tintColor: '#FF7D7D' }}
-                />
-              }
-              isDesktop={isDesktop}
-              customAction={<ChevronRight size={20} />}
-              titleStyle="text-[#FF7D7D]"
-              hideIconBackground
+              tone="danger"
+              onPress={() => setIsDeleteSheetOpen(true)}
             />
-          </Pressable>
+          </ProfileRowGroup>
+          <Text className="mt-2 px-1 text-sm leading-5 text-[#8E8E8E]">
+            {DELETE_ACCOUNT_FOOTNOTE}
+          </Text>
         </View>
       </View>
     </PageLayout>
