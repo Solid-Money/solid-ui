@@ -16,6 +16,7 @@ import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn } from '@/lib/utils';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
 
 // Lazy load heavy modal components - only loaded when user opens them
 const SecurityEmailModal = lazyWithRetry(() =>
@@ -78,7 +79,11 @@ export default function Security() {
       setIsUnlocked(true);
     } catch (error) {
       const isTimeout = error instanceof Error && error.message.includes('timed out');
-      const isCancelled = error instanceof Error && error.name === 'NotAllowedError';
+      // On the app a dismissed prompt is react-native-passkey's plain
+      // `{ error: 'UserCancelled' }`, not a NotAllowedError: it was told
+      // unlocking had failed, and filed in Sentry as an error.
+      const passkeyError = getPasskeyErrorDetails(error);
+      const isCancelled = passkeyError.kind === 'cancelled' || passkeyError.kind === 'not_allowed';
 
       if (isTimeout) {
         setUnlockError('Authentication timed out. Please try again.');
@@ -87,10 +92,16 @@ export default function Security() {
         setUnlockError(null);
       } else {
         setUnlockError('Failed to unlock. Please try again.');
+      }
+
+      if (!isTimeout) {
         Sentry.captureException(error, {
+          level: passkeyError.severity,
+          fingerprint: ['{{ default }}', passkeyError.kind],
           tags: {
             type: 'security_unlock_error',
             source: 'security_settings',
+            passkey_error_kind: passkeyError.kind,
           },
         });
       }

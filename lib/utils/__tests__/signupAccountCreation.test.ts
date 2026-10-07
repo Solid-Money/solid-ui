@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 import {
   getAccountCreationRecovery,
+  getAccountCreationSeverity,
   getAccountCreationStatus,
   isRateLimitedError,
 } from '@/lib/utils/signupAccountCreation';
@@ -59,5 +60,38 @@ describe('getAccountCreationStatus', () => {
     expect(getAccountCreationStatus(apiError(401, 'x'))).toBe(401);
     expect(getAccountCreationStatus({ statusCode: 503 })).toBe(503);
     expect(getAccountCreationStatus(new Error('x'))).toBeUndefined();
+  });
+});
+
+describe('getAccountCreationSeverity', () => {
+  const severityOf = (error: unknown) =>
+    getAccountCreationSeverity(error, getAccountCreationRecovery(error));
+
+  it('files the server enforcing its rules as info', () => {
+    expect(severityOf(apiError(409, 'This username is already taken'))).toBe('info');
+    expect(severityOf(apiError(409, 'Email already registered'))).toBe('info');
+  });
+
+  it('files an expired verification, the rate limit and a dropped connection as warnings', () => {
+    expect(severityOf(apiError(401, 'Invalid or expired verification token'))).toBe('warning');
+    expect(severityOf(apiError(429, 'ThrottlerException: Too Many Requests'))).toBe('warning');
+    expect(severityOf(new TypeError('Failed to fetch'))).toBe('warning');
+    // Safari's wording, under viem's wrapper: the wallet step after signup.
+    expect(
+      severityOf(
+        Object.assign(new Error('HTTP request failed.'), {
+          name: 'HttpRequestError',
+          details: 'Load failed',
+          version: 'viem@2.47.10',
+        }),
+      ),
+    ).toBe('warning');
+  });
+
+  it('keeps what the app or server could be at fault for as an error', () => {
+    expect(severityOf(apiError(400, 'Passkey data is required'))).toBe('error');
+    expect(severityOf(apiError(502, 'Bad Gateway'))).toBe('error');
+    expect(severityOf(apiError(400, 'Failed to create account'))).toBe('error');
+    expect(severityOf(undefined)).toBe('error');
   });
 });

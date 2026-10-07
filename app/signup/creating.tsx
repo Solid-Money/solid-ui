@@ -28,6 +28,7 @@ import { User } from '@/lib/types';
 import {
   AccountCreationRecovery,
   getAccountCreationRecovery,
+  getAccountCreationSeverity,
   getAccountCreationStatus,
   isRateLimitedError,
 } from '@/lib/utils/signupAccountCreation';
@@ -399,7 +400,12 @@ export default function SignupCreating() {
         attribution_channel: attributionChannel,
       });
 
+      // A taken username or an existing account is the server's rules at work,
+      // and a dropped connection nobody's fault: not errors to fix.
+      const severity = getAccountCreationSeverity(err, recovery);
       Sentry.captureException(err, {
+        level: severity,
+        fingerprint: ['{{ default }}', recovery, severity],
         tags: {
           type: 'signup_account_creation_error',
           signup_recovery: recovery,

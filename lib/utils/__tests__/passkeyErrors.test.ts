@@ -1,5 +1,9 @@
 /// <reference types="jest" />
-import { getPasskeyErrorDetails, INSTANT_REFUSAL_MS } from '@/lib/utils/passkeyErrors';
+import {
+  getPasskeyErrorDetails,
+  INSTANT_REFUSAL_MS,
+  isCancelledByUser,
+} from '@/lib/utils/passkeyErrors';
 
 /** Turnkey's error class: `name` is always `TurnkeyError`, the reason is in `cause`. */
 const turnkeyError = (message: string, code: string, cause?: unknown) =>
@@ -31,6 +35,7 @@ describe('getPasskeyErrorDetails', () => {
 
       expect(getPasskeyErrorDetails(error, { elapsedMs: 6000 })).toEqual({
         kind: 'not_allowed',
+        severity: 'info',
         code: 'SELECT_PASSKEY_CANCELLED',
         causeName: 'NotAllowedError',
         causeMessage: CHROME_NOT_ALLOWED,
@@ -91,6 +96,7 @@ describe('getPasskeyErrorDetails', () => {
         ),
       ).toEqual({
         kind: 'unsupported',
+        severity: 'warning',
         code: 'CREATE_PASSKEY_ERROR',
         causeName: 'Error',
         causeMessage: 'webauthn is not supported by this browser',
@@ -150,6 +156,7 @@ describe('getPasskeyErrorDetails', () => {
 
       expect(getPasskeyErrorDetails(error)).toEqual({
         kind: 'cancelled',
+        severity: 'info',
         code: 'CREATE_PASSKEY_ERROR',
         causeName: 'UserCancelled',
         causeMessage: 'The user cancelled the request.',
@@ -207,6 +214,7 @@ describe('getPasskeyErrorDetails', () => {
       getPasskeyErrorDetails(turnkeyError('Client is not initialized.', 'CLIENT_NOT_INITIALIZED')),
     ).toEqual({
       kind: 'unknown',
+      severity: 'error',
       code: 'CLIENT_NOT_INITIALIZED',
       causeName: undefined,
       causeMessage: undefined,
@@ -230,5 +238,192 @@ describe('getPasskeyErrorDetails', () => {
       domException('UnknownError', 'x'.repeat(1000)),
     );
     expect(getPasskeyErrorDetails(error).causeMessage).toHaveLength(300);
+  });
+});
+
+/**
+ * React-native-passkey's errors as they arrive: login and unlock get them bare,
+ * signup under Turnkey's two wrappers. Anything its switch does not know
+ * becomes `{ error: 'Native error', message: String(error) }`.
+ */
+const rnPasskey = (error: string, message: string) => ({ error, message });
+
+describe('severity', () => {
+  // Modelled on what Sentry reported from signup, login and unlock in the 90
+  // days to 21 September 2026, all of it filed at `error` (Sentry filtered
+  // Facebook's message, so that one is Chrome's wording). BadConfiguration was
+  // not among them: it is here because it is our own setup, so stays an error.
+  it.each([
+    [
+      'Chrome: a prompt dismissed after it showed',
+      'not_allowed',
+      'info',
+      turnkeyError(
+        'Passkey creation was cancelled by the user.',
+        'SELECT_PASSKEY_CANCELLED',
+        domException('NotAllowedError', CHROME_NOT_ALLOWED),
+      ),
+    ],
+    [
+      'iOS and Android: UserCancelled',
+      'cancelled',
+      'info',
+      rnPasskey('UserCancelled', 'The user cancelled the request.'),
+    ],
+    [
+      'Android: Play services cancel code',
+      'cancelled',
+      'info',
+      rnPasskey('Native error', 'Error: [16] Cancelled by user.'),
+    ],
+    [
+      'Android: Credential Manager cancel',
+      'cancelled',
+      'info',
+      rnPasskey('Native error', 'Error: User canceled the request'),
+    ],
+    [
+      'Android: biometric prompt cancel',
+      'cancelled',
+      'info',
+      rnPasskey('Native error', 'Error: User verification is cancelled by the user.'),
+    ],
+    [
+      'Android: Credential Manager interrupted',
+      'not_allowed',
+      'info',
+      rnPasskey('Interrupted', 'The operation was interrupted and may be retried.'),
+    ],
+    [
+      'Facebook on Android: no passkey support (login, bare)',
+      'unsupported',
+      'warning',
+      domException('NotSupportedError', 'The user agent does not support public key credentials.'),
+    ],
+    [
+      'Android: too old for passkeys',
+      'unsupported',
+      'warning',
+      rnPasskey(
+        'NotSupported',
+        'Passkeys are not supported on this device. iOS 15 or Android SDK 28 and above is required to use Passkeys',
+      ),
+    ],
+    [
+      'Android: Play services folsom',
+      'device_setup',
+      'warning',
+      rnPasskey('Native error', 'Error: [50162] Unsuccessful result from folsom activity.'),
+    ],
+    [
+      'Android: key creation failed after consent',
+      'device_setup',
+      'warning',
+      rnPasskey('Native error', 'Error: Get Key Material failed after Record Consent.'),
+    ],
+    [
+      'iOS: ASAuthorization request failed',
+      'device_setup',
+      'warning',
+      rnPasskey('RequestFailed', 'The request failed. No Credentials were returned.'),
+    ],
+    [
+      'Firefox: transient authenticator failure',
+      'device_setup',
+      'warning',
+      domException('UnknownError', 'The operation failed for an unknown transient reason'),
+    ],
+    [
+      'iOS: the app is not set up for the domain',
+      'unknown',
+      'error',
+      rnPasskey(
+        'BadConfiguration',
+        'Your app is not properly configured. Refer to the docs for help.',
+      ),
+    ],
+    [
+      "react-native-passkey's catch-all",
+      'unknown',
+      'error',
+      rnPasskey('Unknown error', 'An unknown error occurred'),
+    ],
+  ])('%s: %s, at %s', (_label, kind, severity, error) => {
+    expect(getPasskeyErrorDetails(error, { elapsedMs: 5000 })).toMatchObject({ kind, severity });
+  });
+
+  it('keeps the wrapped signup errors at the same level as the bare ones', () => {
+    const cancel = nativeError(
+      rnPasskey('UserCancelled', 'The user cancelled the request.'),
+      'Failed to create passkey',
+    );
+    expect(getPasskeyErrorDetails(cancel).severity).toBe('info');
+  });
+
+  it('calls an instant refusal a warning, and a security error ours to fix', () => {
+    const refusal = turnkeyError(
+      'Failed to create passkey',
+      'CREATE_PASSKEY_ERROR',
+      domException('NotAllowedError', SAFARI_NOT_ALLOWED),
+    );
+    expect(getPasskeyErrorDetails(refusal, { elapsedMs: 40 })).toMatchObject({
+      kind: 'blocked',
+      severity: 'warning',
+    });
+
+    const rpIdMismatch = turnkeyError(
+      'Failed to create passkey',
+      'CREATE_PASSKEY_ERROR',
+      domException('SecurityError', 'The relying party ID is not a registrable domain suffix.'),
+    );
+    expect(getPasskeyErrorDetails(rpIdMismatch)).toMatchObject({
+      kind: 'blocked',
+      severity: 'error',
+    });
+  });
+
+  it('leaves what it cannot place at error', () => {
+    expect(getPasskeyErrorDetails(new Error('Error logging in')).severity).toBe('error');
+    expect(
+      getPasskeyErrorDetails(
+        turnkeyError(
+          'Failed to create passkey',
+          'CREATE_PASSKEY_ERROR',
+          domException('InvalidStateError', 'A request is already pending.'),
+        ),
+      ).severity,
+    ).toBe('error');
+  });
+});
+
+describe('isCancelledByUser', () => {
+  it('recognises a dismissed prompt, including a signing one', () => {
+    expect(isCancelledByUser(rnPasskey('UserCancelled', 'The user cancelled the request.'))).toBe(
+      true,
+    );
+    // What the transaction hooks throw when `executeTransactions` reports a cancel.
+    expect(isCancelledByUser(new Error('User cancelled transaction'))).toBe(true);
+    expect(
+      isCancelledByUser(
+        Object.assign(new Error('Failed to sign: The user cancelled the request.'), {
+          name: 'TurnkeyActivityError',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not take Turnkey's rewording of a NotAllowedError as a cancel", () => {
+    const error = turnkeyError(
+      'Passkey creation was cancelled by the user.',
+      'SELECT_PASSKEY_CANCELLED',
+      domException('NotAllowedError', CHROME_NOT_ALLOWED),
+    );
+    expect(isCancelledByUser(error)).toBe(false);
+  });
+
+  it('is false for anything else', () => {
+    expect(isCancelledByUser(new Error('Error logging in'))).toBe(false);
+    expect(isCancelledByUser(new TypeError('Failed to fetch'))).toBe(false);
+    expect(isCancelledByUser(undefined)).toBe(false);
   });
 });

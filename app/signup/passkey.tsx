@@ -39,7 +39,7 @@ import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 
-/** The kinds a person chose, or may have chosen; not reported to Sentry. */
+/** The kinds a person chose, or may have chosen. */
 const USER_DRIVEN_FAILURES: PasskeyFailureKind[] = ['cancelled', 'not_allowed'];
 
 type PasskeyFailure = { kind: PasskeyFailureKind; count: number };
@@ -189,22 +189,24 @@ export default function SignupPasskey() {
         in_app_browser: browser.app ?? (browser.inAppBrowser ? 'unknown' : undefined),
       });
 
-      if (!USER_DRIVEN_FAILURES.includes(details.kind)) {
-        Sentry.captureException(err, {
-          tags: {
-            type: 'signup_passkey_creation_error',
-            passkey_error_kind: details.kind,
-            passkey_error_cause: details.causeName ?? 'none',
-          },
-          extra: {
-            email,
-            code: details.code,
-            causeMessage: details.causeMessage,
-            elapsedMs,
-            attempt: attemptRef.current,
-          },
-        });
-      }
+      // At the kind's level (a dismissed prompt is `info`), and grouped by it:
+      // Sentry otherwise files cancels and real failures under one issue.
+      Sentry.captureException(err, {
+        level: details.severity,
+        fingerprint: ['{{ default }}', details.kind],
+        tags: {
+          type: 'signup_passkey_creation_error',
+          passkey_error_kind: details.kind,
+          passkey_error_cause: details.causeName ?? 'none',
+        },
+        extra: {
+          email,
+          code: details.code,
+          causeMessage: details.causeMessage,
+          elapsedMs,
+          attempt: attemptRef.current,
+        },
+      });
     } finally {
       setIsLoading(false);
     }

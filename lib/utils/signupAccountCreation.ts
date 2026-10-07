@@ -12,6 +12,8 @@
  *
  * Free of React Native imports so it can be unit-tested directly.
  */
+import { PasskeyErrorSeverity } from '@/lib/utils/passkeyErrors';
+import { isNetworkError } from '@/lib/utils/userFacingError';
 import { isUsernameTakenError } from '@/lib/utils/username';
 
 export type AccountCreationRecovery =
@@ -54,3 +56,30 @@ export const isRateLimitedError = (error: unknown): boolean =>
   statusOf(error) === 429 || /ThrottlerException|Too Many Requests/i.test(messageOf(error));
 
 export const getAccountCreationStatus = statusOf;
+
+/**
+ * How loudly Sentry should hear about a failed account creation.
+ *
+ * Every one used to be an `error`. Only a failure the app or the server could
+ * be at fault for still is: a server error, an unrecognised failure, or a
+ * signup that reached the server without its passkey.
+ */
+export const getAccountCreationSeverity = (
+  error: unknown,
+  recovery: AccountCreationRecovery,
+): PasskeyErrorSeverity => {
+  switch (recovery) {
+    // The server's rules doing their job, and the screen says what to do next.
+    case 'choose_username':
+    case 'log_in':
+      return 'info';
+    // Recoverable, but often enough would mean verifications expire too soon.
+    case 'verify_email':
+      return 'warning';
+    case 'new_passkey':
+      return 'error';
+    default:
+      // The connection, or the per-IP limit: neither is a fault to fix.
+      return isRateLimitedError(error) || isNetworkError(error) ? 'warning' : 'error';
+  }
+};

@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 import {
   GENERIC_ERROR_MESSAGE,
+  isNetworkError,
   isTechnicalErrorText,
   NETWORK_FEE_UNAVAILABLE_MESSAGE,
   NETWORK_UNREACHABLE_MESSAGE,
@@ -130,6 +131,8 @@ describe('userFacingErrorMessage', () => {
     expect(userFacingErrorMessage(new TypeError('Network request failed'))).toBe(
       NETWORK_UNREACHABLE_MESSAGE,
     );
+    // Safari's `fetch` failure.
+    expect(userFacingErrorMessage(new TypeError('Load failed'))).toBe(NETWORK_UNREACHABLE_MESSAGE);
   });
 
   it('lets copy our own code or backend wrote through', () => {
@@ -163,5 +166,22 @@ describe('redactSecretsDeep', () => {
     expect(JSON.stringify(out)).not.toContain(FAKE_KEY);
     expect(out.breadcrumbs[0].data.n).toBe(1);
     expect(out.breadcrumbs[0].message).toBe('ok');
+  });
+});
+
+describe('isNetworkError', () => {
+  it("recognises Chrome's, Safari's and React Native's wording, through a cause chain", () => {
+    expect(isNetworkError(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isNetworkError(new TypeError('Load failed'))).toBe(true);
+    expect(
+      isNetworkError(
+        new Error('Signup failed', { cause: new TypeError('Network request failed') }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false for an answer from the server', () => {
+    expect(isNetworkError(new Error('Bad Gateway'))).toBe(false);
+    expect(isNetworkError(undefined)).toBe(false);
   });
 });

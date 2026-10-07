@@ -37,8 +37,13 @@ export type PasskeyFailureKind =
   | 'device_setup'
   | 'unknown';
 
+/** Sentry's level for a failure: a subset of `SeverityLevel`. */
+export type PasskeyErrorSeverity = 'error' | 'warning' | 'info';
+
 export type PasskeyErrorDetails = {
   kind: PasskeyFailureKind;
+  /** How loudly to report it. See `severityOf`. */
+  severity: PasskeyErrorSeverity;
   /** Turnkey's error code, e.g. `CREATE_PASSKEY_ERROR`. */
   code?: string;
   /** The innermost error's name, e.g. `NotAllowedError`, or the native module's `error`. */
@@ -93,7 +98,10 @@ const errorChain = (error: unknown): ErrorNode[] => {
   return nodes;
 };
 
-/** react-native-passkey and Credential Manager wording for a dismissed prompt. */
+/**
+ * react-native-passkey and Credential Manager wording for a dismissed prompt,
+ * and the transaction hooks' own `User cancelled transaction`.
+ */
 const NATIVE_CANCEL_PATTERNS = [
   /\bUserCancelled\b/,
   /\bcancell?ed by (the )?user\b/i,
@@ -117,6 +125,8 @@ const DEVICE_SETUP_PATTERNS = [
   /password manager/i,
   /screen lock/i,
   /no create options available/i,
+  // Play services after the person consented: "Get Key Material failed after Record Consent."
+  /key material/i,
   /\bNotConfigured\b/,
   /\bNoCredentials\b/,
 ];
@@ -128,6 +138,49 @@ const DEVICE_SETUP_NATIVE_CODES = [
   'RequestFailed',
   'UnknownError',
 ];
+
+/**
+ * Whether `error` says the person dismissed the prompt.
+ *
+ * Not a `NotAllowedError`: Turnkey rewrites Chrome's into "cancelled by the
+ * user" whatever happened, so that wording is no evidence of a cancel there.
+ */
+export const isCancelledByUser = (error: unknown): boolean => {
+  const chain = errorChain(error);
+  if (chain.some(node => node.name === 'NotAllowedError')) return false;
+  const text = chain.map(node => node.message ?? '').join('\n');
+  return (
+    chain.some(node => node.error === 'UserCancelled') ||
+    NATIVE_CANCEL_PATTERNS.some(pattern => pattern.test(text))
+  );
+};
+
+/**
+ * How loudly Sentry should hear about a failed passkey prompt.
+ *
+ * Only what could be the app's own fault is an `error`. Before this, every
+ * failure was one: Sentry filed dismissed login and signup prompts as errors,
+ * beside in-app browsers and phones without a working password manager.
+ */
+const severityOf = (kind: PasskeyFailureKind, names: string[]): PasskeyErrorSeverity => {
+  switch (kind) {
+    // The person's choice, or what WebAuthn will not tell apart from it.
+    case 'cancelled':
+    case 'not_allowed':
+      return 'info';
+    // Every passkey route is a secure, top-level page, which leaves a
+    // SecurityError one cause: a relying party ID that does not match the
+    // origin, i.e. our configuration. An instant refusal is the browser's.
+    case 'blocked':
+      return names.includes('SecurityError') ? 'error' : 'warning';
+    // The browser or phone, which the person can change and the app cannot.
+    case 'unsupported':
+    case 'device_setup':
+      return 'warning';
+    default:
+      return 'error';
+  }
+};
 
 export const getPasskeyErrorDetails = (
   error: unknown,
@@ -158,13 +211,16 @@ export const getPasskeyErrorDetails = (
     ) {
       return 'unsupported';
     }
+    if (isCancelledByUser(error)) return 'cancelled';
+    // Ran out of time, or Credential Manager was interrupted, which Android
+    // documents as worth retrying: it did not finish, and another tap may.
     if (
-      nativeCodes.includes('UserCancelled') ||
-      NATIVE_CANCEL_PATTERNS.some(pattern => pattern.test(text))
+      nativeCodes.includes('TimedOut') ||
+      nativeCodes.includes('Interrupted') ||
+      names.includes('TimeoutError')
     ) {
-      return 'cancelled';
+      return 'not_allowed';
     }
-    if (nativeCodes.includes('TimedOut') || names.includes('TimeoutError')) return 'not_allowed';
     if (
       names.some(name => DEVICE_SETUP_NAMES.includes(name)) ||
       nativeCodes.some(nativeCode => DEVICE_SETUP_NATIVE_CODES.includes(nativeCode)) ||
@@ -177,6 +233,7 @@ export const getPasskeyErrorDetails = (
 
   return {
     kind,
+    severity: severityOf(kind, names),
     code,
     causeName: root?.name ?? root?.error,
     causeMessage: root?.message?.slice(0, MAX_MESSAGE_LENGTH),
