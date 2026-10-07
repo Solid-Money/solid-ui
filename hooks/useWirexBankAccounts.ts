@@ -19,6 +19,7 @@ import {
   WirexUnifiedBalanceDto,
 } from '@/lib/types/wirex-bank';
 import { withRefreshToken } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
 
 export const WIREX_BANK_OVERVIEW_KEY = 'wirexBankOverview';
 const WIREX_BANK_TRANSFERS_KEY = 'wirexBankTransfers';
@@ -35,10 +36,14 @@ const PENDING_POLL_INTERVAL_MS = 15_000;
 
 /** Per-rail capability state plus any provisioned requisites. */
 export function useWirexBankOverview(enabled = true) {
+  // The modal providers mounted at the root ask for this on every page, signed
+  // in or not. Signed out, the answer is a 401 and a refresh-token round trip
+  // (throttled per IP) on every page load, for nothing.
+  const isSignedIn = useUserStore(state => state.users.some(user => user.selected));
   return useQuery({
     queryKey: [WIREX_BANK_OVERVIEW_KEY],
     queryFn: () => withRefreshToken(() => getWirexBankOverview()),
-    enabled,
+    enabled: enabled && isSignedIn,
     retry: 1,
     refetchInterval: query => {
       const data = query.state.data as WirexBankOverviewDto | undefined;

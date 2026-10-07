@@ -42,6 +42,8 @@ import {
   setIsLoggingOut,
   withRefreshToken,
 } from '@/lib/utils';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
+import { isNetworkError } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -429,21 +431,28 @@ const useUser = (): UseUserReturn => {
     } catch (error: any) {
       const errorMessage = loginErrorMessage(error);
 
-      if (error?.name === 'NotAllowedError') {
-        Sentry.captureMessage(errorMessage, {
-          level: 'warning',
-          extra: {
-            error,
-          },
-        });
-      } else {
-        Sentry.captureException(new Error('Error logging in'), {
-          extra: {
-            error,
-            errorMessage,
-          },
-        });
-      }
+      // Only a NotAllowedError on web used to be told apart from a real
+      // failure: on the app a dismissed prompt is react-native-passkey's
+      // `{ error: 'UserCancelled' }`, which was filed as an error. Report each
+      // at its level, and grouped by why, so cancels stay out of real failures.
+      const passkeyError = getPasskeyErrorDetails(error);
+      const reason = isUnlinkedPasskeyError(error)
+        ? 'unlinked_passkey'
+        : isNetworkError(error)
+          ? 'network'
+          : passkeyError.kind;
+      Sentry.captureException(new Error('Error logging in'), {
+        // A passkey without an account and a dropped connection are handled
+        // on screen and are not the app's to fix.
+        level:
+          reason === 'unlinked_passkey' || reason === 'network' ? 'warning' : passkeyError.severity,
+        fingerprint: ['{{ default }}', reason],
+        tags: { login_error_reason: reason },
+        extra: {
+          error,
+          errorMessage,
+        },
+      });
 
       track(TRACKING_EVENTS.LOGIN_FAILED, {
         username: user?.username,
@@ -693,6 +702,14 @@ const useUser = (): UseUserReturn => {
   }, [users, removeUsers, clearKycLinkId, removeEvents, router, queryClient]);
 
   const handleSessionExpired = useCallback(() => {
+    // Nobody signed in, so there is no session to have expired. Requests made
+    // without one still come back 401 and land here, and the redirect below
+    // used to pull a signed-out visitor off whatever page they were on, about
+    // a second after it loaded: the "open Solid in your browser" screen (so
+    // in-app browsers went on to sign up and failed at the passkey step),
+    // account recovery, or a signup link.
+    if (!useUserStore.getState().users.some(existingUser => existingUser.selected)) return;
+
     // Suppress re-entrant logout handling: clearing the cache below can make
     // still-mounted screens refetch, and those requests would 401 on the now
     // dead session and call this handler again. The flag is reset on next login.

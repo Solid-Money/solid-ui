@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopHero } from '@/components/Onboarding';
+import PasskeySupportGate from '@/components/PasskeySupportGate';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
 import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { selectLastKnownIdentity, useUserStore } from '@/store/useUserStore';
 
@@ -72,7 +74,18 @@ const SESSION_MARGIN_MS = 60 * 1000;
 
 const SESSION_EXPIRED_MESSAGE = 'Your recovery session expired. Request a new code to continue.';
 
-export default function RecoveryPasskey() {
+// Recovery ends by adding a passkey, so a browser that cannot create one is
+// stopped before the person asks for a code. Recovery links arrive by email,
+// and mail apps open them in their own browser.
+export default function Recovery() {
+  return (
+    <PasskeySupportGate>
+      <RecoveryPasskey />
+    </PasskeySupportGate>
+  );
+}
+
+function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession, httpClient, session } = useTurnkey();
@@ -267,8 +280,20 @@ export default function RecoveryPasskey() {
       // exists on `cause`. Report it, or this step stays undiagnosable: the
       // signup passkey flow is instrumented and this one was not, so none of
       // these failures reached Sentry at all.
+      //
+      // A dismissed prompt is `info`. A phone that cannot hold the passkey is a
+      // warning, and so is an expired recovery session, which sends the
+      // person back for a new code below.
+      const passkeyError = getPasskeyErrorDetails(err);
+      const sessionExpired = isTurnkeySessionError(err);
       Sentry.captureException(err, {
-        tags: { type: 'recovery_passkey_creation_error', turnkey_error_code: err?.code },
+        level: sessionExpired ? 'warning' : passkeyError.severity,
+        fingerprint: ['{{ default }}', sessionExpired ? 'session_expired' : passkeyError.kind],
+        tags: {
+          type: 'recovery_passkey_creation_error',
+          turnkey_error_code: err?.code,
+          passkey_error_kind: passkeyError.kind,
+        },
         extra: {
           identifier,
           turnkeyUserId: recoveryData.userId,
@@ -278,7 +303,7 @@ export default function RecoveryPasskey() {
         },
       });
 
-      if (isTurnkeySessionError(err)) {
+      if (sessionExpired) {
         sendBackForNewCode();
         return;
       }

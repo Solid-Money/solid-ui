@@ -131,10 +131,15 @@ const isSponsorshipFailure = (text: string): boolean =>
     text,
   );
 
+// `Load failed` is Safari's wording for what Chrome calls `Failed to fetch`.
 const isNetworkFailure = (text: string): boolean =>
-  /network request failed|failed to fetch|\bnetworkerror\b|request timed out|took too long to respond/i.test(
+  /network request failed|failed to fetch|\bload failed\b|\bnetworkerror\b|request timed out|took too long to respond/i.test(
     text,
   );
+
+/** Whether the connection failed, rather than anything at the other end. */
+export const isNetworkError = (error: unknown): boolean =>
+  isNetworkFailure(collectErrorText(error));
 
 /**
  * The sentence to show for a failure, never the raw `error.message` of a

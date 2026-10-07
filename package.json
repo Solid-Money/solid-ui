@@ -37,7 +37,6 @@
     "@amplitude/plugin-session-replay-browser": "^1.27.6",
     "@amplitude/plugin-session-replay-react-native": "^0.4.9",
     "@apollo/client": "^4.1.6",
-    "@braintree/browser-detection": "^2.1.1",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
     "@didit-protocol/sdk-react-native": "^3.2.5",

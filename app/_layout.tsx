@@ -57,6 +57,7 @@ import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
@@ -101,12 +102,18 @@ Sentry.init({
     return redactSecretsDeep(breadcrumb);
   },
 
-  beforeSend(event) {
+  beforeSend(event, hint) {
     if (event.environment !== 'production') {
       return null;
     }
     if (event.request?.cookies) {
       delete event.request.cookies;
+    }
+    // A dismissed passkey prompt is the person's choice, not a failure, but
+    // several places still capture it as an error, the transaction hooks
+    // among them, which rethrow it as `User cancelled transaction`.
+    if (event.level === 'error' && isCancelledByUser(hint?.originalException)) {
+      event.level = 'info';
     }
     return redactSecretsDeep(event);
   },
