@@ -75,19 +75,12 @@ export function useActivateCard() {
     toggleStep,
     canToggleStep,
     activatingCard,
-    cardsEndorsement,
     pushCardReady,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   // Derived: under review state — the screen shows "your card is on its way"
-  // instead of a steps list the user cannot move. Previously read from the
-  // bridge.xyz endorsement alone, which is a concept neither live issuer has, so
-  // a Wirex/Sumsub or Rain/Didit applicant mid-decision fell through to the
-  // steps list and was asked to verify all over again.
-  const isUnderReview = isCardIssuanceUnderReview({
-    cardStatus: cardStatusResponse,
-    cardsEndorsement,
-  });
+  // instead of a steps list the user cannot move.
+  const isUnderReview = isCardIssuanceUnderReview({ cardStatus: cardStatusResponse });
 
   // Track page view on mount
   useEffect(() => {

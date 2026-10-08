@@ -1,5 +1,3 @@
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
-
 /**
  * Stable identifier for a card-activation step. Consumers key off this instead
  * of the array index or numeric `id`, so steps can appear, disappear or be
@@ -22,7 +20,6 @@ export interface Step {
   buttonText?: string;
   onPress?: () => void;
   status?: 'pending' | 'completed';
-  endorsementStatus?: EndorsementStatus;
   /** Renders the step's action as busy, e.g. while its request is in flight. */
   isLoading?: boolean;
 }

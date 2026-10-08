@@ -76,9 +76,9 @@ interface CardActionsRowProps {
   onFreezeToggle: () => void;
   onManagePress: () => void;
   /**
-   * Whether funds can move onto the card: not frozen, and KYC not paused or
-   * offboarded. Derived by the parent (`canAddFundsToCard`) rather than here, so
-   * this row and the freeze state it renders come from one reading of the card.
+   * Whether funds can move onto the card: it is not frozen. Derived by the
+   * parent (`canAddFundsToCard`) rather than here, so this row and the freeze
+   * state it renders come from one reading of the card.
    */
   canAddFunds: boolean;
 }

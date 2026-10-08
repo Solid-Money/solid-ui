@@ -1,24 +1,10 @@
 /// <reference types="jest" />
 
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
-import {
-  BridgeCustomerEndorsement,
-  CardProvider,
-  CardStatusResponse,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { isCardIssuanceUnderReview } from '@/lib/utils/cardReviewState';
 
-const endorsement = (overrides: {
-  status: EndorsementStatus;
-  requirements?: { pending?: string[] };
-}): BridgeCustomerEndorsement => ({ name: 'cards', ...overrides }) as BridgeCustomerEndorsement;
-
-const isUnderReview = (
-  cardStatus: CardStatusResponse | null | undefined,
-  cardsEndorsement?: BridgeCustomerEndorsement,
-) => isCardIssuanceUnderReview({ cardStatus, cardsEndorsement });
+const isUnderReview = (cardStatus: CardStatusResponse | null | undefined) =>
+  isCardIssuanceUnderReview({ cardStatus });
 
 /**
  * `/card/activate` used to read this from the bridge.xyz endorsement alone —
@@ -123,33 +109,6 @@ describe('isCardIssuanceUnderReview', () => {
           rainForwardPendingDeposit: true,
         }),
       ).toBe(false);
-    });
-  });
-
-  describe('the deprecated bridge.xyz/Persona path, unchanged', () => {
-    it('holds an endorsement with pending requirements', () => {
-      expect(
-        isUnderReview(
-          {},
-          endorsement({
-            status: EndorsementStatus.INCOMPLETE,
-            requirements: { pending: ['kyc_with_proof_of_address'] },
-          }),
-        ),
-      ).toBe(true);
-    });
-
-    it('does not hold an incomplete endorsement with nothing pending', () => {
-      expect(
-        isUnderReview(
-          {},
-          endorsement({ status: EndorsementStatus.INCOMPLETE, requirements: { pending: [] } }),
-        ),
-      ).toBe(false);
-    });
-
-    it('does not hold an approved endorsement', () => {
-      expect(isUnderReview({}, endorsement({ status: EndorsementStatus.APPROVED }))).toBe(false);
     });
   });
 });

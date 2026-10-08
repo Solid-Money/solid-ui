@@ -8,7 +8,6 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
-import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
@@ -34,31 +33,25 @@ import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelp
 export type { Step } from './types';
 
 /**
- * Hook that manages the card activation flow steps
- * Now uses cards endorsement status as the source of truth for step display
+ * Hook that manages the card activation flow steps. Every step reads
+ * `/cards/status` — the bridge.xyz customer and its "cards" endorsement are not
+ * consulted: Bridge cards are retired, and that lookup now only fails.
  */
 export function useCardSteps(
   initialKycStatus?: KycStatus,
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const {
-    kycLinkId,
-    processingUntil,
-    setProcessingUntil,
-    clearProcessingUntil,
-    setKycFlow,
-    setKycProvider,
-  } = useKycStore(
-    useShallow(state => ({
-      kycLinkId: state.kycLinkId,
-      processingUntil: state.processingUntil,
-      setProcessingUntil: state.setProcessingUntil,
-      clearProcessingUntil: state.clearProcessingUntil,
-      setKycFlow: state.setKycFlow,
-      setKycProvider: state.setKycProvider,
-    })),
-  );
+  const { processingUntil, setProcessingUntil, clearProcessingUntil, setKycFlow, setKycProvider } =
+    useKycStore(
+      useShallow(state => ({
+        processingUntil: state.processingUntil,
+        setProcessingUntil: state.setProcessingUntil,
+        clearProcessingUntil: state.clearProcessingUntil,
+        setKycFlow: state.setKycFlow,
+        setKycProvider: state.setKycProvider,
+      })),
+    );
   // Consider Rain when the API returns rainApplicationStatus (provider may be
   // omitted). An external verification link is Rain-only too, so treat it as
   // the same evidence: if the response carries a resubmission link, the Rain
@@ -71,21 +64,10 @@ export function useCardSteps(
       ? CardProvider.RAIN
       : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
 
-  // Get customer data with cards endorsement
-  const { data: customer } = useCustomer();
-  const cardsEndorsement = useMemo(
-    () => customer?.endorsements?.find(e => e.name === 'cards'),
-    [customer?.endorsements],
-  );
-
-  // Get KYC link status (still needed for redirect flow)
-  const { data: kycLink } = useKycLinkFromBridge(kycLinkId || undefined);
-
-  // Compute KYC status (for processing window logic)
-  const kycStatus = useMemo(
-    () => computeKycStatus(kycLink?.kyc_status, initialKycStatus),
-    [kycLink?.kyc_status, initialKycStatus],
-  );
+  // Compute KYC status (for processing window logic). Only the status the KYC
+  // screen returned with: the bridge.xyz KYC link this used to poll belongs to
+  // the bank-transfer rail now, not to any card application.
+  const kycStatus = useMemo(() => computeKycStatus(initialKycStatus), [initialKycStatus]);
 
   // Manage processing window
   useProcessingWindow(
@@ -94,13 +76,12 @@ export function useCardSteps(
     processingUntil,
     setProcessingUntil,
     clearProcessingUntil,
-    kycLink,
   );
 
   // Compute UI KYC status with processing window override (for tracking)
   const uiKycStatus = useMemo(
-    () => computeUiKycStatus(processingUntil, kycLink?.kyc_status as KycStatus, kycStatus),
-    [processingUntil, kycLink?.kyc_status, kycStatus],
+    () => computeUiKycStatus(processingUntil, kycStatus),
+    [processingUntil, kycStatus],
   );
 
   // Card activation state and handlers
@@ -213,9 +194,7 @@ export function useCardSteps(
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'start',
       kycStatus: uiKycStatus,
-      kycLinkId,
       hasProcessingWindow: Boolean(processingUntil),
-      endorsementStatus: cardsEndorsement?.status,
       cardIssuer,
     });
 
@@ -280,9 +259,8 @@ export function useCardSteps(
        * already finished.
        *
        * `kycStatus`, not `uiKycStatus`: the latter can be an optimistic
-       * post-submit window, while this needs the backend's own answer — and
-       * for a Wirex user there is no Bridge kycLink, so it is exactly what
-       * /cards/status reported.
+       * post-submit window, while this needs the backend's own answer, which
+       * is exactly what /cards/status reported.
        */
       if (kycStatus === KycStatus.UNDER_REVIEW) {
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
@@ -318,17 +296,7 @@ export function useCardSteps(
     }
 
     router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
-  }, [
-    router,
-    kycLinkId,
-    kycStatus,
-    uiKycStatus,
-    processingUntil,
-    cardsEndorsement?.status,
-    cardIssuer,
-    setKycFlow,
-    setKycProvider,
-  ]);
+  }, [router, kycStatus, uiKycStatus, processingUntil, cardIssuer, setKycFlow, setKycProvider]);
 
   // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)
   const handleRainKYCPress = useCallback(() => {
@@ -384,12 +352,10 @@ export function useCardSteps(
     handleProceedToKyc,
   ]);
 
-  // Build steps based on endorsement status (Bridge) or Rain KYC status
+  // Build steps from the card status (Rain application or backend KYC status)
   const steps = useMemo(
     () =>
       buildCardSteps(
-        cardsEndorsement,
-        customer?.rejection_reasons,
         cardActivated,
         // A failure nothing on this screen can clear gates the activate step
         // exactly like the sticky block does: pressing "Activate card" on an
@@ -423,8 +389,6 @@ export function useCardSteps(
         },
       ),
     [
-      cardsEndorsement,
-      customer?.rejection_reasons,
       cardActivated,
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationFailure,
@@ -457,7 +421,6 @@ export function useCardSteps(
     toggleStep,
     canToggleStep,
     activatingCard,
-    cardsEndorsement,
     // Exposed so the failure banner can offer the same action the activate
     // step does, rather than owning a second, divergent route to issuance.
     pushCardReady,

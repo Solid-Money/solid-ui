@@ -100,7 +100,6 @@ import {
   KycLink,
   KycLinkAgreements,
   KycLinkForExistingCustomer,
-  KycLinkFromBridgeResponse,
   LandingPageApyConfig,
   LayerZeroTransaction,
   LeaderboardResponse,
@@ -776,46 +775,6 @@ export const createKycLink = async (
     credentials: 'include',
     body: JSON.stringify(body),
   });
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-export const getKycLink = async (kycLinkId: string): Promise<KycLink> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link/${kycLinkId}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-export const getKycLinkFromBridge = async (
-  kycLinkId: string,
-): Promise<KycLinkFromBridgeResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/kyc-link-from-bridge/${kycLinkId}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    },
-  );
 
   if (!response.ok) throw response;
 
