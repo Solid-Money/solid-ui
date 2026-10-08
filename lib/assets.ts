@@ -482,6 +482,7 @@ export const ASSETS = {
     module: require('@/assets/images/eur-fiat-currency.tsx'),
     hash: 'db4e5f78',
   },
+  'images/eurc.png': { module: require('@/assets/images/eurc.png'), hash: '8e00e6b6' },
   'images/exclamation-mark.tsx': {
     module: require('@/assets/images/exclamation-mark.tsx'),
     hash: '0c62ca51',

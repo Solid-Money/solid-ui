@@ -201,6 +201,31 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   },
 };
 
+/**
+ * EURC, Circle's euro stablecoin, on the chains "Fund your card" offers it on.
+ *
+ * Deliberately not in `BRIDGE_TOKENS`: every surface that offers a token on a
+ * chain reads that map, and EURC belongs to one of them. The backend delivers a
+ * EURC card deposit as EURC to the user's Safe on Base, where the Base
+ * spend-module instance sells it for euro purchases. It mints no savings share,
+ * and EURC sent straight to the Safe on Ethereum would stay on Ethereum.
+ *
+ * Base only for now. The backend also accepts EURC sent from Ethereum
+ * (0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c) and bridges it to Base, but that
+ * leg is not offered until the backend wallet carries an Ethereum EURC float to
+ * pay the bridge's exact-output overshoot. Adding the entry back offers it.
+ */
+export const EURC_TOKENS: Record<number, BridgeToken> = {
+  [base.id]: {
+    name: 'EURC',
+    fullName: 'EURC',
+    address: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',
+    decimals: 6,
+    icon: require('@/assets/images/eurc.png'),
+    isPermit: false,
+  },
+};
+
 export const getUsdcAddress = (chainId: number) => {
   const usdcAddress = BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
   if (!usdcAddress) {
