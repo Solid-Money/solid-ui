@@ -37,6 +37,13 @@ export const EXPO_PUBLIC_SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
  * and overriding it here would point events at a release that has no artifacts.
  */
 export const EXPO_PUBLIC_SENTRY_RELEASE = process.env.EXPO_PUBLIC_SENTRY_RELEASE ?? '';
+/**
+ * Report app errors (error toasts, failed API calls, crashes, failed flows) to
+ * the accounts service for the admin Errors page. On unless set to `false`;
+ * never sends anything from a dev build either way (see lib/telemetry).
+ */
+export const EXPO_PUBLIC_ERRORS_INGEST_ENABLED =
+  process.env.EXPO_PUBLIC_ERRORS_INGEST_ENABLED !== 'false';
 // Sandbox: skip the TransFi buy-crypto KYC gate on the client and go straight to
 // the amount/quote screen. Pair with backend TRANSFI_SKIP_KYC. Never set in prod.
 export const EXPO_PUBLIC_TRANSFI_SKIP_KYC = process.env.EXPO_PUBLIC_TRANSFI_SKIP_KYC === 'true';
