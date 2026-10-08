@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { mainnet } from 'viem/chains';
 
-import { fetchTokenPriceUsd } from '@/lib/api';
+import { fetchTokenPricesBySymbol } from '@/lib/api';
 import { publicClient } from '@/lib/wagmi';
 
 const GAS_ESTIMATE_KEY = 'gas-estimate';
@@ -19,7 +19,8 @@ async function estimateGasCost(
   // Apply fast gas price multiplier
   const fastGasPrice = (baseGasPrice * 195n) / 100n; // 85% above base for fast transactions
 
-  const tokenPriceUsd = await fetchTokenPriceUsd(token);
+  const priceMap = await fetchTokenPricesBySymbol([token]);
+  const tokenPriceUsd = priceMap[token];
 
   const gasCostInWei = gasEstimate * fastGasPrice;
 

@@ -8,7 +8,7 @@ import {
   fetchCoinSimplePrice,
   fetchTokenList,
   fetchTokenPricesByAddress,
-  fetchTokenPriceUsd,
+  fetchTokenPricesBySymbol,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
@@ -581,15 +581,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
   if (symbolsToFetch.length > 0) {
     try {
-      const results = await Promise.allSettled(symbolsToFetch.map(s => fetchTokenPriceUsd(s)));
-      const symbolToPrice: Record<string, number> = {};
-      symbolsToFetch.forEach((sym, i) => {
-        const r = results[i];
-        if (r.status === 'fulfilled') {
-          const p = parsePrice(r.value);
-          if (p != null && p > 0) symbolToPrice[sym] = p;
-        }
-      });
+      const symbolToPrice = await fetchTokenPricesBySymbol(symbolsToFetch);
       allTokens = allTokens.map(t => {
         if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
         const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];

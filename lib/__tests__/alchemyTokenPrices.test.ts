@@ -32,7 +32,9 @@ jest.mock('axios', () => {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const post = (require('axios') as { default: { post: jest.Mock } }).default.post;
-const { fetchTokenPricesByAddress } = require('@/lib/api') as typeof import('@/lib/api');
+const get = (require('axios') as { default: { get: jest.Mock } }).default.get;
+const { fetchTokenPricesByAddress, fetchTokenPricesBySymbol } =
+  require('@/lib/api') as typeof import('@/lib/api');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -45,7 +47,10 @@ const priced = (network: string, address: string, value: string) => ({
   prices: [{ currency: 'usd', value, lastUpdatedAt: '2026-09-09T00:00:00Z' }],
 });
 
-beforeEach(() => post.mockReset());
+beforeEach(() => {
+  post.mockReset();
+  get.mockReset();
+});
 
 describe('fetchTokenPricesByAddress', () => {
   it('keys prices by chain id and lowercased address', async () => {
@@ -176,5 +181,86 @@ describe('fetchTokenPricesByAddress', () => {
   it('does not call Alchemy when nothing needs a price', async () => {
     await expect(fetchTokenPricesByAddress([])).resolves.toEqual({});
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+const pricedBySymbol = (symbol: string, value: string) => ({
+  symbol,
+  prices: [{ currency: 'usd', value, lastUpdatedAt: '2026-09-09T00:00:00Z' }],
+});
+
+describe('fetchTokenPricesBySymbol', () => {
+  it('returns prices keyed by symbol', async () => {
+    get.mockResolvedValue({
+      data: { data: [pricedBySymbol('ETH', '2500'), pricedBySymbol('BTC', '60000')] },
+    });
+
+    const prices = await fetchTokenPricesBySymbol(['ETH', 'BTC']);
+
+    expect(prices).toEqual({ ETH: 2500, BTC: 60000 });
+  });
+
+  it('sends a single request with all symbols as query params', async () => {
+    get.mockResolvedValue({ data: { data: [] } });
+
+    await fetchTokenPricesBySymbol(['ETH', 'BTC']);
+
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls[0][0]).toContain('symbols=ETH');
+    expect(get.mock.calls[0][0]).toContain('symbols=BTC');
+  });
+
+  it('deduplicates repeated symbols', async () => {
+    get.mockResolvedValue({ data: { data: [pricedBySymbol('ETH', '2500')] } });
+
+    await fetchTokenPricesBySymbol(['ETH', 'ETH', 'ETH']);
+
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls[0][0]).toMatch(/symbols=ETH(?!.*symbols=ETH)/);
+  });
+
+  it('chunks past ALCHEMY_PRICE_BATCH_SIZE and merges the results', async () => {
+    const symbols = Array.from({ length: ALCHEMY_PRICE_BATCH_SIZE + 3 }, (_, i) => `TOK${i}`);
+    get.mockImplementation((url: string) => {
+      const matched = [...url.matchAll(/symbols=([^&]+)/g)].map(m => m[1]);
+      return Promise.resolve({
+        data: { data: matched.map(s => pricedBySymbol(s, '1')) },
+      });
+    });
+
+    const prices = await fetchTokenPricesBySymbol(symbols);
+
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(Object.keys(prices)).toHaveLength(ALCHEMY_PRICE_BATCH_SIZE + 3);
+  });
+
+  it('keeps prices from successful batches when another fails', async () => {
+    const symbols = Array.from({ length: ALCHEMY_PRICE_BATCH_SIZE + 1 }, (_, i) => `TOK${i}`);
+    get
+      .mockResolvedValueOnce({ data: { data: [pricedBySymbol(symbols[0], '5')] } })
+      .mockRejectedValueOnce(new Error('429 Too Many Requests'));
+
+    await expect(fetchTokenPricesBySymbol(symbols)).resolves.toEqual({ [symbols[0]]: 5 });
+  });
+
+  it('drops symbols with zero or missing prices', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [
+          { symbol: 'ETH', prices: [] },
+          { symbol: 'BTC', prices: [{ currency: 'usd', value: '0', lastUpdatedAt: '' }] },
+          pricedBySymbol('FUSE', '0.004'),
+        ],
+      },
+    });
+
+    const prices = await fetchTokenPricesBySymbol(['ETH', 'BTC', 'FUSE']);
+
+    expect(prices).toEqual({ FUSE: 0.004 });
+  });
+
+  it('does not call Alchemy when the symbol list is empty', async () => {
+    await expect(fetchTokenPricesBySymbol([])).resolves.toEqual({});
+    expect(get).not.toHaveBeenCalled();
   });
 });

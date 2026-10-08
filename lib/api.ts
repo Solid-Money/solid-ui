@@ -452,6 +452,48 @@ export const fetchTokenPriceUsd = async (token: string) => {
 };
 
 /**
+ * USD prices for a set of token symbols from Alchemy's Prices API, keyed by
+ * symbol (upper-case as returned by Alchemy).
+ *
+ * Preferred over calling {@link fetchTokenPriceUsd} in a loop: all symbols are
+ * packed into batched GET requests (`?symbols=ETH&symbols=BTC&…`) so that N
+ * tokens produce at most ⌈N / ALCHEMY_PRICE_BATCH_SIZE⌉ requests instead of N.
+ *
+ * Never throws: a failed batch resolves to no prices for that batch so the
+ * remaining price sources still get their turn.
+ */
+export const fetchTokenPricesBySymbol = async (
+  symbols: string[],
+): Promise<Record<string, number>> => {
+  const unique = [...new Set(symbols.filter(Boolean))];
+  if (unique.length === 0) return {};
+
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+    batches.push(unique.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+  }
+
+  const responses = await Promise.allSettled(
+    batches.map(batch => {
+      const query = batch.map(s => `symbols=${encodeURIComponent(s)}`).join('&');
+      return externalAxios.get<TokenPriceUsd>(`${ALCHEMY_PRICES_URL}/by-symbol?${query}`);
+    }),
+  );
+
+  const prices: Record<string, number> = {};
+  responses.forEach(response => {
+    if (response.status !== 'fulfilled') return;
+    for (const entry of response.value.data?.data ?? []) {
+      const value = Number(entry.prices?.find(price => price.currency === 'usd')?.value);
+      if (!entry.symbol || !Number.isFinite(value) || value <= 0) continue;
+      prices[entry.symbol] = value;
+    }
+  });
+
+  return prices;
+};
+
+/**
  * USD prices for ERC-20s from Alchemy's Prices API, keyed by
  * `${chainId}:${lowercased address}`.
  *

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchCoinSimplePrice, fetchTokenPriceUsd } from '@/lib/api';
+import { fetchCoinSimplePrice, fetchTokenPricesBySymbol } from '@/lib/api';
 
 /**
  * Native-token USD price fetcher for a chain (Alchemy first, CoinGecko fallback).
@@ -10,16 +10,18 @@ import { fetchCoinSimplePrice, fetchTokenPriceUsd } from '@/lib/api';
 export const makeNativePriceFetcher =
   (chainId: number) => async (): Promise<string | undefined> => {
     try {
-      const price = await fetchTokenPriceUsd(NATIVE_TOKENS[chainId]);
-      if (price != null && Number(price) > 0) return price;
+      const symbol = NATIVE_TOKENS[chainId];
+      const priceMap = await fetchTokenPricesBySymbol([symbol]);
+      const price = priceMap[symbol];
+      if (price != null && price > 0) return String(price);
     } catch {
       // fall through to CoinGecko
     }
 
     const coinId = NATIVE_COINGECKO_TOKENS[chainId];
     if (!coinId) return undefined;
-    const priceMap = await fetchCoinSimplePrice([coinId]);
-    const usd = priceMap[coinId]?.usd;
+    const coinPriceMap = await fetchCoinSimplePrice([coinId]);
+    const usd = coinPriceMap[coinId]?.usd;
     return usd != null && usd > 0 ? String(usd) : undefined;
   };
 
