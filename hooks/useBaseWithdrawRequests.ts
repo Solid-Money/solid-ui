@@ -33,8 +33,8 @@ export const isBaseWithdrawRequest = (
  * by the lowercased request transaction hash. A request missing from the map
  * has not been read yet, or could not be.
  *
- * A request still in the queue is re-read every minute. Once solved or
- * cancelled it cannot change again, so it is never re-read.
+ * A request still in the queue is re-read every minute. Once it has left the
+ * queue it cannot change again, so it is never re-read.
  */
 export function useBaseWithdrawRequests(
   activities: ActivityEvent[] | undefined,

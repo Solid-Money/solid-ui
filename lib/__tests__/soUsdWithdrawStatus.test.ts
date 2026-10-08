@@ -1,4 +1,4 @@
-import { encodeAbiParameters, encodeEventTopics, Hex, toEventSelector } from 'viem';
+import { encodeAbiParameters, encodeEventTopics, Hex } from 'viem';
 
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
@@ -9,13 +9,10 @@ const USER = '0x0000000000000000000000000000000000005afe';
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const REQUEST_ID = `0x${'ab'.repeat(32)}` as Hex;
 const TX = `0x${'01'.repeat(32)}` as Hex;
-const SOLVED = toEventSelector('OnChainWithdrawSolved(bytes32,address,uint256)');
-const CANCELLED = toEventSelector('OnChainWithdrawCancelled(bytes32,address,uint256)');
 
 const client = {
   getTransactionReceipt: jest.fn(),
   readContract: jest.fn(),
-  request: jest.fn(),
 };
 
 jest.mock('@/lib/wagmi', () => ({ publicClient: () => client }));
@@ -50,7 +47,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   client.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(QUEUE)));
   client.readContract.mockResolvedValue([]);
-  client.request.mockResolvedValue([]);
 });
 
 it('is pending while the request is in the queue', async () => {
@@ -59,39 +55,14 @@ it('is pending while the request is in the queue', async () => {
     requestId: REQUEST_ID,
     status: 'pending',
   });
-  expect(client.request).not.toHaveBeenCalled();
 });
 
-it('is solved once it left the queue with a solve event', async () => {
-  client.request.mockResolvedValue([{ topics: [SOLVED, REQUEST_ID] }]);
+it('is finished once the request left the queue', async () => {
+  client.readContract.mockResolvedValue([`0x${'cd'.repeat(32)}`]);
   await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
     requestId: REQUEST_ID,
-    status: 'solved',
+    status: 'finished',
   });
-  // Searched from the request's own block, for either outcome of this request only.
-  expect(client.request).toHaveBeenCalledWith({
-    method: 'eth_getLogs',
-    params: [
-      {
-        address: QUEUE,
-        fromBlock: '0x31e87db',
-        toBlock: 'latest',
-        topics: [[SOLVED, CANCELLED], REQUEST_ID],
-      },
-    ],
-  });
-});
-
-it('is cancelled once it left the queue with a cancel event', async () => {
-  client.request.mockResolvedValue([{ topics: [CANCELLED, REQUEST_ID] }]);
-  await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
-    requestId: REQUEST_ID,
-    status: 'cancelled',
-  });
-});
-
-it('throws rather than guess when the request left the queue without a trace', async () => {
-  await expect(readBaseWithdrawRequest(TX)).rejects.toThrow(/no solve or cancel/);
 });
 
 it('ignores the same event from another contract', async () => {
