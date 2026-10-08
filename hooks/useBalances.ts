@@ -275,10 +275,14 @@ const fetchTokenBalances = async (safeAddress: string) => {
     chainId: number,
   ): TokenBalance => {
     const address = getAddress(item);
-    const tokenFromList = tokenListData.find(
-      token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
-    );
     const isSoUSD = isSoUSDToken(address);
+    // soUSD on Base, where withdrawals pass through, is not in the curated list.
+    // It takes another chain's soUSD entry, so it links to the same coin.
+    const tokenFromList =
+      tokenListData.find(
+        token =>
+          token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
+      ) ?? (isSoUSD ? tokenListData.find(token => isSoUSDToken(token.address ?? '')) : undefined);
     const isSoFUSE = isSoFUSEToken(address);
     const isSoETH = isSoETHToken(address);
     // Vault shares are priced off their accountant rate, not off a market quote

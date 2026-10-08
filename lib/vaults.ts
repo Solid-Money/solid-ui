@@ -29,6 +29,7 @@ export type TokenVault = {
 const productionShares = [
   { type: VaultType.USDC, chainId: mainnet.id, address: PRODUCTION_VAULT_ADDRESSES.ethereum.vault },
   { type: VaultType.USDC, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.vault },
+  { type: VaultType.USDC, chainId: base.id, address: PRODUCTION_VAULT_ADDRESSES.base.vault },
   { type: VaultType.FUSE, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault },
   {
     type: VaultType.ETH,

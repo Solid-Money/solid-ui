@@ -267,6 +267,9 @@ export const PRODUCTION_VAULT_ADDRESSES = {
     fuseVault: '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C',
     soEthVault: '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7',
   },
+  base: {
+    vault: '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31',
+  },
 } as const;
 
 export const ADDRESSES: Addresses = {
@@ -360,7 +363,7 @@ export const ADDRESSES: Addresses = {
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     vault: isProduction
-      ? '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31'
+      ? PRODUCTION_VAULT_ADDRESSES.base.vault
       : ((process.env.EXPO_PUBLIC_BASE_SOUSD_VAULT_ADDRESS ?? ZERO_ADDRESS) as Address),
     teller: isProduction
       ? '0xf84cAB7b080fDE4C19C303bd7A1A60beEbe11c13'
