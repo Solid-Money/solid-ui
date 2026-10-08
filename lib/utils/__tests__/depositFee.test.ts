@@ -66,6 +66,17 @@ describe('getDepositFeeRatePpm', () => {
       );
     });
 
+    it('charges a Wirex cardholder EURC everywhere but Base, where it is delivered', () => {
+      expectFreeOnlyOn([base.id], chainId =>
+        getDepositFeeRatePpm({
+          provider: CardProvider.WIREX,
+          product: 'wallet',
+          chainId,
+          symbol: 'EURC',
+        }),
+      );
+    });
+
     it.each(NON_STABLECOINS)('never charges a Wirex cardholder %s', symbol => {
       expectFreeOnlyOn(CHAIN_IDS, chainId =>
         getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),

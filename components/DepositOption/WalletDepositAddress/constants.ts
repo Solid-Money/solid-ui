@@ -1,7 +1,7 @@
 import { ImageSourcePropType } from 'react-native';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
 import { CardProvider, DepositAsset } from '@/lib/types';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
@@ -60,7 +60,20 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
 const DEFAULT_MINIMUM_DEPOSIT = 1;
 
 /** The stablecoins the deposit pipeline has a route for. */
-const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
+const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
+
+/** EURC, which the screen offers on `EURC_TOKENS`' chains rather than `BRIDGE_TOKENS`'. */
+const EURC_SYMBOL = 'EURC';
+
+/**
+ * Whether the screen offers EURC at all: to Wirex cardholders only.
+ *
+ * The pipeline delivers it as EURC to their Safe on Base, the balance the Base
+ * spend-module instance sells for euro purchases. For anyone else it would be
+ * a balance nothing spends, so they are not offered it.
+ */
+export const offersWalletDepositEurc = (provider: CardProvider | null | undefined): boolean =>
+  provider === CardProvider.WIREX;
 
 /**
  * Whether the deposit address is one the pipeline mints, rather than the Safe.
@@ -72,7 +85,9 @@ const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT']);
  *   Fuse, which is the same balance their card settles from. For a Rain
  *   cardholder it would deliver to the card, and for someone with no card there
  *   is no issuer to resolve — so everyone else is shown the Safe, everywhere.
- * - A stablecoin. ETH, WETH, FUSE and WFUSE have no route through the pipeline;
+ * - A stablecoin. EURC counts: for it the pipeline delivers to their Safe on
+ *   Base instead, where the card's euro balance is spent from.
+ *   ETH, WETH, FUSE and WFUSE have no route through the pipeline;
  *   they land in the Safe and stay as the token that was sent, so there the Safe
  *   address is the right answer rather than a fallback.
  */
@@ -85,7 +100,7 @@ export const usesDirectDepositAddress = (
  * The order "Select token" leads with. The stablecoins people actually deposit
  * come first, then ETH; everything else follows in network order.
  */
-const TOKEN_DISPLAY_ORDER = ['USDC', 'USDT', 'ETH'];
+const TOKEN_DISPLAY_ORDER = ['USDC', 'USDT', 'EURC', 'ETH'];
 
 /**
  * The contract the pipeline credits for a native asset. It lists WETH and WFUSE;
@@ -104,6 +119,7 @@ const TOKEN_ICON_FALLBACKS: Record<string, ImageSourcePropType> = {
   WETH: getAsset('images/weth.png'),
   FUSE: getAsset('images/fuse-4x.png'),
   WFUSE: getAsset('images/wfuse.png'),
+  EURC: getAsset('images/eurc.png'),
 };
 
 export const getWalletDepositTokenIcon = (chainId: number, symbol: string): ImageSourcePropType => {
@@ -111,9 +127,16 @@ export const getWalletDepositTokenIcon = (chainId: number, symbol: string): Imag
   return icon ?? TOKEN_ICON_FALLBACKS[symbol] ?? TOKEN_ICON_FALLBACKS.USDC;
 };
 
-/** The currencies that chain accepts, in the order `BRIDGE_TOKENS` lists them. */
-export const getWalletDepositTokens = (chainId: number): WalletDepositToken[] =>
-  getAllowedTokensForChain(chainId).map(symbol => ({
+/**
+ * The currencies that chain accepts, in the order `BRIDGE_TOKENS` lists them,
+ * then EURC where `EURC_TOKENS` lists it and `withEurc` (see
+ * `offersWalletDepositEurc`) says to offer it.
+ */
+export const getWalletDepositTokens = (chainId: number, withEurc = false): WalletDepositToken[] =>
+  [
+    ...getAllowedTokensForChain(chainId),
+    ...(withEurc && EURC_TOKENS[chainId] ? [EURC_SYMBOL] : []),
+  ].map(symbol => ({
     symbol,
     icon: getWalletDepositTokenIcon(chainId, symbol),
   }));
@@ -148,8 +171,9 @@ export const getWalletDepositNetworks = (): WalletDepositNetwork[] => {
 export const resolveWalletDepositSymbol = (
   chainId: number,
   symbol?: string,
+  withEurc = false,
 ): string | undefined => {
-  const tokens = getWalletDepositTokens(chainId);
+  const tokens = getWalletDepositTokens(chainId, withEurc);
   return tokens.some(token => token.symbol === symbol) ? symbol : tokens[0]?.symbol;
 };
 
@@ -219,7 +243,7 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
  * is not the order anyone looks for them in. Whatever is not named there follows
  * in network order. Each is drawn with the icon of the first chain carrying it.
  */
-export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
+export const getAllWalletDepositTokens = (withEurc = false): WalletDepositToken[] => {
   const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
   const chainIds = [
     defaultChainId,
@@ -229,7 +253,7 @@ export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
   ];
   const seen = new Set<string>();
   const tokens = chainIds.flatMap(chainId =>
-    getWalletDepositTokens(chainId).filter(token => {
+    getWalletDepositTokens(chainId, withEurc).filter(token => {
       if (seen.has(token.symbol)) return false;
       seen.add(token.symbol);
       return true;
@@ -249,10 +273,13 @@ export const getAllWalletDepositTokens = (): WalletDepositToken[] => {
  * carry it, so switching chain can never quietly switch the currency too. All of
  * them when nothing is chosen yet, or no chain carries it.
  */
-export const getWalletDepositNetworksForToken = (symbol?: string): WalletDepositNetwork[] => {
+export const getWalletDepositNetworksForToken = (
+  symbol?: string,
+  withEurc = false,
+): WalletDepositNetwork[] => {
   const networks = getWalletDepositNetworks();
   const carrying = networks.filter(network =>
-    getWalletDepositTokens(network.chainId).some(token => token.symbol === symbol),
+    getWalletDepositTokens(network.chainId, withEurc).some(token => token.symbol === symbol),
   );
 
   return carrying.length ? carrying : networks;
@@ -265,8 +292,14 @@ export const getWalletDepositNetworksForToken = (symbol?: string): WalletDeposit
  * from the address screen keeps the chain. Otherwise the default chain (see
  * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
  */
-export const resolveWalletDepositChain = (symbol: string, currentChainId?: number): number => {
-  const carrying = getWalletDepositNetworksForToken(symbol).map(network => network.chainId);
+export const resolveWalletDepositChain = (
+  symbol: string,
+  currentChainId?: number,
+  withEurc = false,
+): number => {
+  const carrying = getWalletDepositNetworksForToken(symbol, withEurc).map(
+    network => network.chainId,
+  );
   if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
 
   const { chainId: defaultChainId } = getDefaultWalletDepositSelection();

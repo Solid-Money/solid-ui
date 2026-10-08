@@ -8,6 +8,7 @@ import {
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
   getWalletDepositTokens,
+  offersWalletDepositEurc,
   resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
@@ -90,6 +91,7 @@ describe('usesDirectDepositAddress', () => {
   it('mints for a Wirex cardholder sending a stablecoin', () => {
     expect(usesDirectDepositAddress('USDC', CardProvider.WIREX)).toBe(true);
     expect(usesDirectDepositAddress('USDT', CardProvider.WIREX)).toBe(true);
+    expect(usesDirectDepositAddress('EURC', CardProvider.WIREX)).toBe(true);
   });
 
   // Minting resolves by issuer: for Rain it would deliver to the card, and with
@@ -239,5 +241,50 @@ describe('resolveWalletDepositChain', () => {
   it('keeps the current chain when it carries the currency', () => {
     expect(resolveWalletDepositChain('USDC', polygon.id)).toBe(polygon.id);
     expect(resolveWalletDepositChain('ETH', polygon.id)).toBe(mainnet.id);
+  });
+});
+
+/**
+ * EURC is offered to Wirex cardholders only, on Base only, and through the
+ * minted address - the pipeline delivers it to their Safe on Base.
+ */
+describe('EURC', () => {
+  it('is offered to Wirex cardholders only', () => {
+    expect(offersWalletDepositEurc(CardProvider.WIREX)).toBe(true);
+    expect(offersWalletDepositEurc(CardProvider.RAIN)).toBe(false);
+    expect(offersWalletDepositEurc(null)).toBe(false);
+    expect(offersWalletDepositEurc(undefined)).toBe(false);
+  });
+
+  it('is left out unless asked for', () => {
+    expect(getAllWalletDepositTokens().map(token => token.symbol)).not.toContain('EURC');
+    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual(['USDC']);
+  });
+
+  it('follows the stablecoins in "Select token"', () => {
+    const symbols = getAllWalletDepositTokens(true).map(token => token.symbol);
+    expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
+  });
+
+  it('is offered on Base only', () => {
+    expect(getWalletDepositTokens(base.id, true).map(token => token.symbol)).toEqual([
+      'USDC',
+      'EURC',
+    ]);
+    expect(getWalletDepositTokens(mainnet.id, true).map(token => token.symbol)).not.toContain(
+      'EURC',
+    );
+    expect(getWalletDepositNetworksForToken('EURC', true).map(network => network.chainId)).toEqual([
+      base.id,
+    ]);
+  });
+
+  it('opens on Base, whatever chain was showing', () => {
+    expect(resolveWalletDepositChain('EURC', undefined, true)).toBe(base.id);
+    expect(resolveWalletDepositChain('EURC', fuse.id, true)).toBe(base.id);
+  });
+
+  it('carries its own icon', () => {
+    expect(getWalletDepositTokenIcon(base.id, 'EURC')).toBe('images/eurc.png');
   });
 });

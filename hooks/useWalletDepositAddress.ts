@@ -19,7 +19,7 @@ export const WALLET_DEPOSIT_ADDRESS_QUERY_KEY = 'wallet-deposit-address';
  *
  * The destination is the card's (`RAIN_CARD`), which is historical naming: the
  * backend resolves the issuer, and for Wirex that means their Safe on Fuse —
- * the balance their card settles from. Which is exactly why the rule is theirs
+ * the balance their card settles from — or, for EURC, their Safe on Base. Which is exactly why the rule is theirs
  * alone: the same call for a Rain cardholder would deliver to the card, and for
  * someone with no card there is no issuer to resolve.
  *

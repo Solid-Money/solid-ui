@@ -14,6 +14,7 @@ import { CardProvider, DepositFeeQuote } from '@/lib/types';
  * | -------------- | --------------- | ------------------------------------------------- |
  * | Fund your card | Rain            | Every chain but Base, where the card is funded    |
  * | Fund your card | Either, EURC    | Every chain but Base, where EURC is delivered     |
+ * | Wallet         | Wirex, EURC     | Every chain but Base, where EURC is delivered     |
  * | Wallet         | Wirex           | Stablecoins, on every chain but Fuse, where the   |
  * |                |                 | Safe the card spends from lives                   |
  * | Wallet         | No card         | Nothing                                           |
@@ -86,7 +87,8 @@ export function getDepositFeeRatePpm({
 
   // A EURC card deposit goes to the Safe on Base whoever issued the card, so it
   // is charged only when it has to be bridged there.
-  if (product === 'card' && symbol?.toUpperCase() === 'EURC') {
+  const isEurc = symbol?.toUpperCase() === 'EURC';
+  if (isEurc && (product === 'card' || (product === 'wallet' && isWirex))) {
     return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
   }
 

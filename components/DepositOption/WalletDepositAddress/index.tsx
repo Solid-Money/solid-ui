@@ -22,6 +22,7 @@ import {
   getDefaultWalletDepositSelection,
   getWalletDepositNetworks,
   getWalletDepositTokenIcon,
+  offersWalletDepositEurc,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
@@ -107,11 +108,13 @@ const WalletDepositAddress = () => {
     (nextChainId: number) => {
       setWalletDeposit({
         chainId: nextChainId,
-        symbol: resolveWalletDepositSymbol(nextChainId, symbol) ?? symbol,
+        symbol:
+          resolveWalletDepositSymbol(nextChainId, symbol, offersWalletDepositEurc(provider)) ??
+          symbol,
       });
       setIsNetworkOpen(false);
     },
-    [setWalletDeposit, symbol],
+    [provider, setWalletDeposit, symbol],
   );
 
   return (
