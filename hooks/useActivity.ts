@@ -189,19 +189,33 @@ export function useActivity() {
     );
 
     // Base withdraw requests are read from the Base queue itself: it has no
-    // subgraph. Solved keeps SUCCESS, cancelled is CANCELLED, and a request
-    // still in the queue - or not read yet - is PROCESSING. The request id is
-    // attached so the activity screen can offer a cancel.
+    // subgraph. A request still in the queue - or not read yet - is PROCESSING.
+    // Once it left, the queue cannot say whether it was solved or cancelled, so
+    // a request the user cancelled in the app is CANCELLED and any other is
+    // SUCCESS. A request the solver cancels after its deadline has no cancel
+    // activity, so it shows as SUCCESS. The request id is attached so the
+    // activity screen can offer a cancel.
+    const cancelledRequestIds = new Set(
+      userEvents
+        .filter(
+          activity =>
+            activity.type === TransactionType.CANCEL_WITHDRAW &&
+            activity.status === TransactionStatus.SUCCESS &&
+            typeof activity.metadata?.requestId === 'string',
+        )
+        .map(activity => (activity.metadata?.requestId as string).toLowerCase()),
+    );
     userEvents = userEvents.map(activity => {
       if (!isBaseWithdrawRequest(activity)) return activity;
       const request = baseWithdrawRequests[activity.hash.toLowerCase()];
       if (!request) return { ...activity, status: TransactionStatus.PROCESSING };
       const withRequestId = { ...activity, requestId: request.requestId };
-      if (request.status === 'solved') return withRequestId;
-      if (request.status === 'cancelled') {
-        return { ...withRequestId, status: TransactionStatus.CANCELLED };
+      if (request.status === 'pending') {
+        return { ...withRequestId, status: TransactionStatus.PROCESSING };
       }
-      return { ...withRequestId, status: TransactionStatus.PROCESSING };
+      return cancelledRequestIds.has(request.requestId.toLowerCase())
+        ? { ...withRequestId, status: TransactionStatus.CANCELLED }
+        : withRequestId;
     });
 
     // Cross-reference WITHDRAW activities against the BoringQueue subgraph to
