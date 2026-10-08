@@ -16,7 +16,8 @@ import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
+import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
+import { requestNotificationPermissionOrOpenSettings } from '@/lib/requestNotificationPermission';
 
 const FIGMA_SHEET_HEIGHT = 462;
 const MOTION_DURATION_MS = 2200;
@@ -154,6 +155,7 @@ export default function NotificationPermissionSheet({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
+  const { status: permissionStatus } = useNotificationPermissionStatus();
   const sheetHeight = Math.min(FIGMA_SHEET_HEIGHT, height - insets.top - 8);
   const snapPoints = useMemo(() => [sheetHeight], [sheetHeight]);
 
@@ -169,7 +171,7 @@ export default function NotificationPermissionSheet({
     setIsLoading(true);
 
     try {
-      await registerForPushNotificationsAsync();
+      await requestNotificationPermissionOrOpenSettings();
     } catch (error) {
       console.error('Notification registration failed:', error);
     } finally {
@@ -221,7 +223,13 @@ export default function NotificationPermissionSheet({
           onPress={handleContinue}
           disabled={isLoading}
         >
-          <Text style={styles.buttonLabel}>{isLoading ? 'Loading...' : 'Continue'}</Text>
+          <Text style={styles.buttonLabel}>
+            {isLoading
+              ? 'Loading...'
+              : permissionStatus === 'Denied'
+                ? 'Open Settings'
+                : 'Continue'}
+          </Text>
         </Button>
       </BottomSheetView>
     </BottomSheetModal>
