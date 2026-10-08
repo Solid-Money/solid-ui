@@ -10,12 +10,12 @@ const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const REQUEST_ID = `0x${'ab'.repeat(32)}` as Hex;
 const TX = `0x${'01'.repeat(32)}` as Hex;
 
-const client = {
+const mockClient = {
   getTransactionReceipt: jest.fn(),
   readContract: jest.fn(),
 };
 
-jest.mock('@/lib/wagmi', () => ({ publicClient: () => client }));
+jest.mock('@/lib/wagmi', () => ({ publicClient: () => mockClient }));
 jest.mock('@/lib/config', () => ({
   ADDRESSES: { base: { boringQueue: '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2' } },
 }));
@@ -45,12 +45,12 @@ const receiptWith = (...logs: unknown[]) => ({ blockNumber: 52_332_507n, logs })
 
 beforeEach(() => {
   jest.clearAllMocks();
-  client.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(QUEUE)));
-  client.readContract.mockResolvedValue([]);
+  mockClient.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(QUEUE)));
+  mockClient.readContract.mockResolvedValue([]);
 });
 
 it('is pending while the request is in the queue', async () => {
-  client.readContract.mockResolvedValue([`0x${'cd'.repeat(32)}`, REQUEST_ID.toUpperCase()]);
+  mockClient.readContract.mockResolvedValue([`0x${'cd'.repeat(32)}`, REQUEST_ID.toUpperCase()]);
   await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
     requestId: REQUEST_ID,
     status: 'pending',
@@ -58,7 +58,7 @@ it('is pending while the request is in the queue', async () => {
 });
 
 it('is finished once the request left the queue', async () => {
-  client.readContract.mockResolvedValue([`0x${'cd'.repeat(32)}`]);
+  mockClient.readContract.mockResolvedValue([`0x${'cd'.repeat(32)}`]);
   await expect(readBaseWithdrawRequest(TX)).resolves.toEqual({
     requestId: REQUEST_ID,
     status: 'finished',
@@ -66,7 +66,7 @@ it('is finished once the request left the queue', async () => {
 });
 
 it('ignores the same event from another contract', async () => {
-  client.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(OTHER)));
+  mockClient.getTransactionReceipt.mockResolvedValue(receiptWith(requestedLog(OTHER)));
   await expect(readBaseWithdrawRequest(TX)).resolves.toBeNull();
-  expect(client.readContract).not.toHaveBeenCalled();
+  expect(mockClient.readContract).not.toHaveBeenCalled();
 });
