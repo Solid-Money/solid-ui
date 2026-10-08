@@ -220,8 +220,7 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
   } = useRewardsUserData();
   const { data: tierBenefits } = useTierBenefits();
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
-  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
-  const timedOut = useRewardsUpgradeStore(state => state.timedOut);
+  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil);
   const currentTier = isError ? undefined : confirmed?.currentTier;
   const upgradeTarget = (tier: RewardsTier) =>
     rewardsData?.fuseSkipLine?.enabled
@@ -527,12 +526,6 @@ function RewardsBenefitsForAccount({ initialTier }: { initialTier: RewardsTier |
         sidebarTopGutter={Platform.OS === 'web' ? 0 : undefined}
         blurTargetRef={selectorBlurTarget}
       >
-        {timedOut && (
-          <Text className="mt-28 px-5 text-center text-white/70">
-            Savings refreshed. No higher tier has been confirmed yet. Check your FUSE Savings
-            balance and tier requirement before adding more.
-          </Text>
-        )}
         <GestureDetector gesture={swipeGesture} touchAction="pan-y">
           {/* Desktop: the row is three columns wide, so clip the neighbouring tiers at
             the column's edge — on mobile they simply hang off-screen. */}

@@ -218,36 +218,40 @@ export const useTierUpgradeChainState = (contracts?: {
   });
 };
 
-/** Everything an upgrade invalidates, in one place so no path forgets one. */
+/** Everything a membership change invalidates, in one place so no path forgets one. */
 const useInvalidateAfterUpgrade = () => {
   const queryClient = useQueryClient();
 
-  return useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [TIER_MEMBERSHIP_QUERY_KEY] });
-    queryClient.invalidateQueries({ queryKey: [TIER_UPGRADE_BALANCES_QUERY_KEY] });
-    // The tier itself has moved, so anything describing it is stale — the
-    // rewards screen, the benefits table, the fees the user is quoted. Same key
-    // shape `refreshRewardsAfterSavings` invalidates, minus the user id, so one
-    // upgrade refreshes whichever account is selected.
-    queryClient.invalidateQueries({ queryKey: ['rewards', 'userData'] });
+  return useCallback(
+    ({ purchased }: { purchased: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: [TIER_MEMBERSHIP_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [TIER_UPGRADE_BALANCES_QUERY_KEY] });
+      // The tier itself has moved, so anything describing it is stale — the
+      // rewards screen, the benefits table, the fees the user is quoted. Same key
+      // shape `refreshRewardsAfterSavings` invalidates, minus the user id, so one
+      // upgrade refreshes whichever account is selected.
+      queryClient.invalidateQueries({ queryKey: ['rewards', 'userData'] });
 
-    // And open the reconciliation window, which is what actually gets the
-    // "You're on Prime now!" card shown.
-    //
-    // `RewardsUpgradeFeedback` celebrates a tier it sees *rise* between two
-    // reads of the rewards payload. One invalidation gives it a single read,
-    // taken the instant the transaction lands — before the backend has
-    // re-derived the tier from a lock it has not indexed yet, or a
-    // subscription row written in the same breath. That read returns the old
-    // tier, nothing appears to have risen, and the upgrade the user just paid
-    // for is never acknowledged.
-    //
-    // Arming the window makes it poll until the new tier arrives, exactly as a
-    // savings deposit does. Same mechanism, so all four routes into a tier —
-    // points, savings, a lock, an annual fee — get the identical celebration.
-    const userId = selectedRewardsUserId();
-    if (userId) useRewardsUpgradeStore.getState().savingsChanged(userId);
-  }, [queryClient]);
+      // A purchase also opens the reconciliation window, which is what actually
+      // gets the "You're on Prime now!" card shown.
+      //
+      // `RewardsUpgradeFeedback` celebrates a tier it sees *rise* between two
+      // reads of the rewards payload. One invalidation gives it a single read,
+      // taken the instant the transaction lands — before the backend has
+      // re-derived the tier from a lock it has not indexed yet, or a
+      // subscription row written in the same breath. That read returns the old
+      // tier, nothing appears to have risen, and the upgrade the user just paid
+      // for is never acknowledged. Arming the window makes it poll until the new
+      // tier arrives.
+      //
+      // Cancelling or resuming a membership raises nothing, so it has nothing to
+      // wait for.
+      if (!purchased) return;
+      const userId = selectedRewardsUserId();
+      if (userId) useRewardsUpgradeStore.getState().tierPurchased(userId);
+    },
+    [queryClient],
+  );
 };
 
 /**
@@ -332,7 +336,7 @@ export const useLockFuseForTier = () => {
     },
     onSuccess: result => {
       if (!result) return;
-      invalidate();
+      invalidate({ purchased: true });
       track(TRACKING_EVENTS.TIER_LOCK_COMPLETED, {
         tier: result.tier,
         fuse_amount: result.fuseAmount,
@@ -443,7 +447,7 @@ export const useSubscribeToTier = () => {
     },
     onSuccess: result => {
       if (!result) return;
-      invalidate();
+      invalidate({ purchased: true });
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_COMPLETED, {
         tier: result.tier,
         price_usd: result.priceUsd,
@@ -480,7 +484,7 @@ export const useCancelTierSubscription = () => {
   return useMutation({
     mutationFn: (reason?: string) => cancelTierSubscription({ reason }),
     onSuccess: subscription => {
-      invalidate();
+      invalidate({ purchased: false });
       track(TRACKING_EVENTS.TIER_SUBSCRIPTION_CANCEL_COMPLETED, {
         tier: subscription.tier,
         period_end: subscription.currentPeriodEnd,
@@ -496,7 +500,7 @@ export const useResumeTierSubscription = () => {
   return useMutation({
     mutationFn: () => resumeTierSubscription(),
     onSuccess: subscription => {
-      invalidate();
+      invalidate({ purchased: false });
       track(TRACKING_EVENTS.TIER_SUBSCRIPTION_RESUME_COMPLETED, { tier: subscription.tier });
     },
   });
