@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TransactionReceipt } from 'viem';
 import { mainnet } from 'viem/chains';
 import { encodeFunctionData } from 'viem/utils';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
+import { BASE_WITHDRAW_REQUEST } from '@/hooks/useBaseWithdrawRequests';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -29,6 +31,7 @@ type CancelOnChainWithdrawResult = {
 const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
+  const queryClient = useQueryClient();
   const [cancelOnchainWithdrawStatus, setCancelOnchainWithdrawStatus] = useState<Status>(
     Status.IDLE,
   );
@@ -117,6 +120,10 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
         chain_id: chain.id,
         source: 'useCancelOnchainWithdraw',
       });
+
+      // A Base request's status is read from the queue; re-read it now rather
+      // than on the next poll, so the withdraw shows as cancelled at once.
+      void queryClient.invalidateQueries({ queryKey: [BASE_WITHDRAW_REQUEST] }).catch(() => {});
 
       setCancelOnchainWithdrawStatus(Status.SUCCESS);
       return transaction;
