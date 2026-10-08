@@ -832,14 +832,14 @@ class RealtimeClient {
               .invalidateQueries({ queryKey: cashbacksQueryKey })
               .catch(() => undefined);
           }
-          // External deposits, withdrawals and share transfers can change tier
-          // eligibility. Reconcile past the vault cache without inferring a tier.
+          // External deposits, withdrawals and share transfers move the savings
+          // the rewards screen reports, so refetch it.
           if (
             ['deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'bonus'].includes(
               event.balance.changeType,
             )
           ) {
-            refreshRewardsAfterSavings(queryClient, userId, user?.safeAddress, false);
+            refreshRewardsAfterSavings(queryClient, userId, user?.safeAddress);
           }
         }),
       delay,

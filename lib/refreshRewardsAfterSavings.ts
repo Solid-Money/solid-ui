@@ -1,15 +1,21 @@
 import { QueryClient } from '@tanstack/react-query';
 
-import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
+import { selectedRewardsUserId } from '@/store/useRewardsUpgradeStore';
 
+/**
+ * Refetch what a savings balance change makes stale: the rewards payload and
+ * the account's balances.
+ *
+ * It does not wait for a promotion. Only a lock or an annual fee raises a tier
+ * now — see `tierPurchased` — so polling after a deposit or a claim only ever
+ * ran out, and told the user no higher tier had been confirmed.
+ */
 export const refreshRewardsAfterSavings = (
   queryClient: QueryClient,
   userId: string,
   safeAddress?: string,
-  confirmedSavings = true,
 ) => {
   if (selectedRewardsUserId() !== userId) return;
-  useRewardsUpgradeStore.getState().savingsChanged(userId, confirmedSavings);
   void queryClient.invalidateQueries({ queryKey: ['rewards', 'userData', userId] });
   if (safeAddress) {
     const address = safeAddress.toLowerCase();

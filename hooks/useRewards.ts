@@ -186,8 +186,7 @@ export const useClaimYieldBoost = () => {
     },
     onSuccess: ({ summary, userId, safeAddress }) => {
       queryClient.setQueryData<YieldBoostSummary>([REWARDS, 'yieldBoost', userId], summary);
-      // The payout lands in the soFUSE vault, which is savings — and FUSE held
-      // there can move the user's tier.
+      // The payout lands in the soFUSE vault, so the savings figures move.
       refreshRewardsAfterSavings(queryClient, userId, safeAddress);
     },
   });
