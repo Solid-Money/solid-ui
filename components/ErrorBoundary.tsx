@@ -10,7 +10,9 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { EXPO_PUBLIC_SENTRY_DSN } from '@/lib/config';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
+import { reportError } from '@/lib/telemetry/reportError';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -38,12 +40,24 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
         // error tracker looked quieter than the app actually was. A stale bundle
         // is excluded: it is a deploy artifact, not a defect, and it recovers on
         // reload.
-        if (!isStaleBundle) {
-          Sentry.captureException(error, {
-            tags: { source: 'error_boundary', platform: Platform.OS },
-            extra: { pathname },
-          });
-        }
+        const glitchtipEventId = isStaleBundle
+          ? undefined
+          : Sentry.captureException(error, {
+              tags: { source: 'error_boundary', platform: Platform.OS },
+              extra: { pathname },
+            });
+        // The one Errors page event for this crash (the `error_boundary` track
+        // above is deliberately not mirrored there), linked to its GlitchTip
+        // event when GlitchTip is on. A stale bundle is reported as info.
+        reportError({
+          kind: 'crash',
+          flow: 'app',
+          severity: isStaleBundle ? 'info' : 'error',
+          code: isStaleBundle ? 'STALE_BUNDLE' : error?.name,
+          message: `${error?.name ?? 'Error'}: ${String(error?.message ?? '')}`,
+          screen: pathname,
+          glitchtipEventId: EXPO_PUBLIC_SENTRY_DSN ? glitchtipEventId : undefined,
+        });
       }
     } catch {}
   }, [error, isStaleBundle, pathname]);

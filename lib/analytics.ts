@@ -35,6 +35,7 @@ import {
   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
 } from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
+import { isErrorEvent, reportFlowError } from '@/lib/telemetry/errorEvents';
 import { sanitize, toTitleCase } from '@/lib/utils/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 
@@ -269,6 +270,12 @@ export const track = (
       trackFirebaseEvent(event, sanitizedParams),
       Promise.resolve(trackGTMEvent(event, sanitizedParams)),
     ]);
+
+    // Failures also go to the admin Errors page, whatever `amplitude` says:
+    // that option is about double-counting in Amplitude, not about errors.
+    if (isErrorEvent(event)) {
+      reportFlowError(event, formatAmplitudeEvent(event), params);
+    }
   } catch (error) {
     console.error('Error tracking event:', error);
   }
