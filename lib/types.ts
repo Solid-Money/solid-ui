@@ -1396,6 +1396,27 @@ export interface OnrampAutomationResponseDto {
   updatedAt: string;
 }
 
+/**
+ * A deposit under Rain's $2 minimum that reached the user's virtual account.
+ *
+ * Rain never converts these, so none of it is in any balance. Most are a bank
+ * or broker verifying the account: it sends a few cents and asks the user to
+ * type the amount back.
+ */
+export interface VirtualAccountMicroDeposit {
+  id: string;
+  /** Dollars as a decimal string — "0.23" is 23 cents, not 23 dollars. */
+  amount: string;
+  currency: string;
+  /** `ach` or `wire`. */
+  rail: string;
+  /** Who sent it — the bank or broker asking for the amount. */
+  originatorName?: string;
+  /** False for a small payment that simply fell under the minimum. */
+  isAccountVerification: boolean;
+  receivedAt: string;
+}
+
 export enum LayerZeroTransactionStatus {
   INFLIGHT = 'INFLIGHT',
   CONFIRMING = 'CONFIRMING',

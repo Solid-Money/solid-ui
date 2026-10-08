@@ -164,6 +164,7 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
   VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
   VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
+  VIRTUAL_ACCOUNT_MICRO_DEPOSIT_COPIED: 'virtual_account_micro_deposit_copied',
   // The one-time Rain setup fee. The drop-off between the sheet and the payment
   // is what tells us whether the fee is the thing stopping people, as distinct
   // from the verification that follows it.

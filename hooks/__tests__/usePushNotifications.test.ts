@@ -293,3 +293,48 @@ describe('handleNotificationResponse', () => {
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('verification deposit pushes', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useDepositStore } = require('@/store/useDepositStore');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DEPOSIT_MODAL } = require('@/constants/modals');
+
+  const microDeposit = {
+    type: 'virtual-account-micro-deposit',
+    amount: '0.23',
+    currency: 'USD',
+    utm_source: 'virtual_account_verification_deposit',
+    utm_medium: 'push',
+    utm_campaign: 'solid_transactional',
+  };
+
+  beforeEach(() => {
+    resetHandledResponses();
+    useDepositStore.getState().setModal(DEPOSIT_MODAL.CLOSE);
+  });
+
+  it('lands on home, where the virtual account sheet opens', () => {
+    expect(getNotificationRoute(microDeposit)).toEqual(path.HOME);
+  });
+
+  it('opens the virtual account details, where the amounts are listed', () => {
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('micro-1', microDeposit), navigate);
+
+    expect(navigate).toHaveBeenCalledWith(path.HOME);
+    expect(useDepositStore.getState().currentModal).toEqual(
+      DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS,
+    );
+  });
+
+  it('leaves the deposit modal alone for every other push', () => {
+    handleNotificationResponse(
+      responseFor('spend-1', { type: 'card-transaction', transactionId: 'tx_1' }),
+      jest.fn(),
+    );
+
+    expect(useDepositStore.getState().currentModal).toEqual(DEPOSIT_MODAL.CLOSE);
+  });
+});

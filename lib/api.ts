@@ -172,6 +172,7 @@ import {
   User,
   VaultBreakdown,
   VaultType,
+  VirtualAccountMicroDeposit,
   WalletEligibilityResponse,
   WebhookStatus,
   WebProvisioningTokenResponse,
@@ -1631,6 +1632,29 @@ export const createOnrampAutomation = async (
     },
     body: JSON.stringify({ rail }),
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * The user's recent deposits under Rain's $2 minimum (last 30 days, newest
+ * first) — the amounts a bank sends to verify the virtual account.
+ */
+export const getVirtualAccountMicroDeposits = async (): Promise<VirtualAccountMicroDeposit[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/onramp-automations/micro-deposits`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (!response.ok) throw response;
 

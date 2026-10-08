@@ -5,13 +5,18 @@ import { Href, useNavigationContainerRef, useRouter } from 'expo-router';
 import messaging from '@react-native-firebase/messaging';
 
 import { KNOWN_HOSTS } from '@/constants/deeplink';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { cardThreeDsRequestPath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { registerPushToken } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { useAttributionStore } from '@/store/useAttributionStore';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
+
+/** `data.type` of the push for a bank deposit under Rain's $2 minimum. */
+const MICRO_DEPOSIT_PUSH_TYPE = 'virtual-account-micro-deposit';
 
 /** What the backend puts in a push's `data`. FCM values are always strings. */
 type NotificationData = {
@@ -172,6 +177,10 @@ function getNotificationRoute(data?: NotificationData): Href {
             cardLast4: data.cardLast4,
           })
         : path.CARD_3DS;
+    // A verification deposit's amounts live on the virtual account sheet, which
+    // is a modal over home rather than a route — see openSheetForPush.
+    case MICRO_DEPOSIT_PUSH_TYPE:
+      return path.HOME;
   }
 
   const linked = routeForLink(data?.link);
@@ -214,6 +223,21 @@ function getNotificationRoute(data?: NotificationData): Href {
   }
 
   return path.HOME;
+}
+
+/**
+ * Open the sheet a push points at, for the destinations that are not routes.
+ *
+ * The verification-deposit push asks the user to type an amount back to their
+ * bank; the amounts are listed under their virtual account details, which only
+ * exist as a step of the global deposit modal. The modal reads a Zustand store,
+ * so setting it here works even before the deferred providers have mounted —
+ * the sheet opens over home as soon as they do.
+ */
+function openSheetForPush(data?: NotificationData) {
+  if (data?.type === MICRO_DEPOSIT_PUSH_TYPE) {
+    useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+  }
 }
 
 /**
@@ -313,6 +337,7 @@ function handleNotificationResponse(
 
   try {
     navigate(getNotificationRoute(data));
+    openSheetForPush(data);
   } catch (error) {
     // The navigator went away between the readiness check and here. Forget the
     // response so the next delivery — or the next run of the effect, which

@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
+import { useVirtualAccountMicroDeposits } from '@/hooks/useVirtualAccountMicroDeposits';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 
 import { BankAccountDetailsView } from './BankAccountDetailsView';
+import { MicroDepositsCard } from './MicroDepositsCard';
 
 interface VirtualAccountDetailsModalProps {
   /**
@@ -22,6 +24,9 @@ interface VirtualAccountDetailsModalProps {
 
 export const VirtualAccountDetailsModal = ({ onRetry }: VirtualAccountDetailsModalProps = {}) => {
   const { data: automation, isLoading, refetch } = useOnrampAutomation();
+  // Only once there is an account for deposits to have landed in. A failure
+  // here just hides the list; the bank details matter more than the cents.
+  const { data: microDeposits } = useVirtualAccountMicroDeposits(!!automation);
 
   // The user reaching their bank details is what "the virtual account works"
   // means; a load failure here is a dead end with an account already issued.
@@ -71,6 +76,7 @@ export const VirtualAccountDetailsModal = ({ onRetry }: VirtualAccountDetailsMod
       // Which field was copied says whether the user is wiring or setting up an
       // ACH pull — the value itself is never sent.
       onCopyField={field => track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAIL_COPIED, { field })}
+      footer={<MicroDepositsCard deposits={microDeposits ?? []} />}
     />
   );
 };
