@@ -13,7 +13,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react-native';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityStatusPill, {
@@ -964,7 +964,10 @@ export default function ActivityDetail() {
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
-  const isCancelWithdraw = finalActivity?.requestId && isPending;
+  // A Base request reads as PROCESSING while it waits in the queue (see
+  // useBaseWithdrawRequests), and can be cancelled until it is solved.
+  const isCancelWithdraw =
+    finalActivity?.requestId && (isPending || (isProcessing && finalActivity.chainId === base.id));
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
   const isCrossChainSend = finalActivity?.type === TransactionType.CROSS_CHAIN_SEND;
