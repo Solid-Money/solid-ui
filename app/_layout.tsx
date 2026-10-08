@@ -61,6 +61,10 @@ import {
   isProduction,
 } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { installFetchReporter } from '@/lib/telemetry/installFetchReporter';
+import { installToastReporter } from '@/lib/telemetry/installToastReporter';
+import { setCurrentScreen } from '@/lib/telemetry/reportError';
+import { getSentryUser, installSentryUserSync } from '@/lib/telemetry/sentryUser';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
@@ -79,8 +83,9 @@ Sentry.init({
   // `<bundleId>@<version>+<build>`, which is what the Expo plugin uploads under.
   ...(EXPO_PUBLIC_SENTRY_RELEASE ? { release: EXPO_PUBLIC_SENTRY_RELEASE } : {}),
 
-  // No PII: this is a financial app, and GlitchTip is our own box but still
-  // not a place for user identifiers, headers or cookies.
+  // No default PII (IP address, headers, cookies): this is a financial app.
+  // The signed-in user is attached explicitly instead — backend user id and
+  // username, never the email — by lib/telemetry/sentryUser.
   sendDefaultPii: false,
 
   // GlitchTip is error tracking only. Tracing, profiling, replay, user
@@ -119,6 +124,13 @@ Sentry.init({
     if (event.request?.cookies) {
       delete event.request.cookies;
     }
+    // Some captures still pass `user: { id: suborgId }` inline, which replaces
+    // the scope's user for that event. The signed-in backend user id wins, so
+    // every event from one person is filed under the same id.
+    const signedInUser = getSentryUser();
+    if (signedInUser) {
+      event.user = { ...event.user, ...signedInUser };
+    }
     return event;
   },
 
@@ -130,6 +142,13 @@ Sentry.init({
 // EAS Observe: native-side startup/performance metric collection begins at
 // launch, so configure dispatching before the app renders.
 configureObserve();
+
+// Admin Errors page: failed calls to our backend and every error toast are
+// reported from here on (both inert in dev builds), and GlitchTip follows the
+// signed-in user. Installed before the app renders.
+installFetchReporter();
+installToastReporter();
+installSentryUserSync();
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
@@ -343,6 +362,11 @@ function RootLayout() {
     if (!analyticsReady) return;
     trackScreen(pathname, params);
   }, [pathname, params, analyticsReady]);
+
+  // Error reports carry the screen the user was on.
+  useEffect(() => {
+    setCurrentScreen(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     if (fontError) {
