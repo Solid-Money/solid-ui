@@ -2,7 +2,11 @@ import { ImageSourcePropType } from 'react-native';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getAsset } from '@/lib/assets';
-import { CARD_FUND_TOKEN_SYMBOLS, getCardFundChains } from '@/lib/utils/cardFunding';
+import {
+  CARD_FUND_EURC_SYMBOL,
+  CARD_FUND_TOKEN_SYMBOLS,
+  getCardFundChains,
+} from '@/lib/utils/cardFunding';
 
 // What the flow offers and accepts lives in its own leaf module so it is unit
 // testable (this file's import graph pulls `lib/assets`, which does not load
@@ -11,6 +15,7 @@ import { CARD_FUND_TOKEN_SYMBOLS, getCardFundChains } from '@/lib/utils/cardFund
 export type { CardFundSections } from '@/lib/utils/cardFunding';
 export {
   CARD_FUND_DESTINATION_TYPE,
+  CARD_FUND_EURC_SYMBOL,
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
   getCardFundChains,
@@ -38,17 +43,29 @@ export type CardFundNetwork = {
  *
  * The symbols come from `CARD_FUND_TOKEN_SYMBOLS` so the rows shown and the
  * routes offered are the same list — a token with an icon here but no entry
- * there would be a row whose deposits nothing accepts.
+ * there would be a row whose deposits nothing accepts. EURC is the one addition,
+ * offered on its own terms (see `CARD_FUND_EURC_SYMBOL`).
  */
 export const CARD_FUND_TOKEN_ICONS: Record<string, ImageSourcePropType> = {
   USDC: getAsset('images/deposit-crypto-usdc.png'),
   USDT: getAsset('images/deposit-crypto-usdt.png'),
+  [CARD_FUND_EURC_SYMBOL]: getAsset('images/eurc.png'),
 };
 
+/** The dollar stablecoin rows, which both issuers offer. */
 export const CARD_FUND_TOKENS: CardFundToken[] = CARD_FUND_TOKEN_SYMBOLS.map(symbol => ({
   symbol,
   icon: CARD_FUND_TOKEN_ICONS[symbol],
 }));
+
+/**
+ * The Wirex rows: the dollar stablecoins, then EURC. Rain is not offered EURC -
+ * it would land in the Safe on Base, not on the Rain card, which cannot spend it.
+ */
+export const WIREX_CARD_FUND_TOKENS: CardFundToken[] = [
+  ...CARD_FUND_TOKENS,
+  { symbol: CARD_FUND_EURC_SYMBOL, icon: CARD_FUND_TOKEN_ICONS[CARD_FUND_EURC_SYMBOL] },
+];
 
 export const CARD_FUND_USD_ICON = getAsset('images/deposit-cash-us.png');
 
@@ -67,7 +84,7 @@ export const CARD_FUND_LEARN_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
 
 export const getCardFundTokenIcon = (symbol: string): ImageSourcePropType =>
-  CARD_FUND_TOKENS.find(token => token.symbol === symbol)?.icon ?? CARD_FUND_TOKENS[0].icon;
+  CARD_FUND_TOKEN_ICONS[symbol] ?? CARD_FUND_TOKEN_ICONS.USDC;
 
 /**
  * Chains that can receive a direct deposit of `symbol`, in display order, each

@@ -40,6 +40,11 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/usdt.png'),
       };
+    case 'EURC':
+      return {
+        type: 'image',
+        source: getAsset('images/eurc.png'),
+      };
     case 'WETH':
     case 'ETH':
       return {

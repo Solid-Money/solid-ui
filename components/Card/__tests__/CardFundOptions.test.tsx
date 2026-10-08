@@ -53,6 +53,11 @@ jest.mock(
   () => 'VirtualAccountApplyDialog',
 );
 jest.mock('@/hooks/useCardProvider', () => ({}));
+// Its import graph reaches react-native-mmkv, whose native module does not load
+// under jest-expo; the local-currency rows only need its answer.
+jest.mock('@/hooks/useTransfiCountryAvailability', () => ({
+  useTransfiCountryAvailability: () => ({ isAvailable: true }),
+}));
 jest.mock('@/hooks/useFeatureAccess', () => ({}));
 jest.mock('@/hooks/useOrchestra', () => ({}));
 jest.mock('@/hooks/useVirtualAccountEntry', () => ({}));
@@ -119,5 +124,25 @@ it('offers Wirex no Cash App, even where it is available, having no USD section'
   const titles = titlesOf(root);
   expect(titles).not.toContain('USD');
   expect(titles).not.toContain('Cash App');
+  act(() => root.unmount());
+});
+
+it('lists the stablecoin rows it is given, EURC included', () => {
+  const root = render({
+    sections: WIREX_CARD_FUND_SECTIONS,
+    // Bundled images are module ids, i.e. numbers.
+    tokens: [
+      { symbol: 'USDC', icon: 1 },
+      { symbol: 'USDT', icon: 2 },
+      { symbol: 'EURC', icon: 3 },
+    ],
+  });
+  expect(titlesOf(root).slice(0, 3)).toEqual(['USDC', 'USDT', 'EURC']);
+  act(() => root.unmount());
+});
+
+it('offers Rain only the dollar stablecoins', () => {
+  const root = render(RAIN_PROPS);
+  expect(titlesOf(root)).not.toContain('EURC');
   act(() => root.unmount());
 });

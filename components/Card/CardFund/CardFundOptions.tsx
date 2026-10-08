@@ -13,6 +13,7 @@ import {
   CARD_FUND_TOKENS,
   CARD_FUND_USD_ICON,
   CardFundSections,
+  CardFundToken,
   getCardFundNetworkChips,
   getCardFundRoutesTooltip,
   RAIN_CARD_FUND_SECTIONS,
@@ -28,8 +29,13 @@ import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailabi
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
 type CardFundOptionsProps = {
-  /** Stablecoin picked for the direct-deposit flow (USDC / USDT). */
+  /** Stablecoin picked for the direct-deposit flow (USDC / USDT / EURC). */
   onTokenPress: (symbol: string) => void;
+  /**
+   * The stablecoin rows, in display order. Defaults to the dollar stablecoins
+   * both issuers take; the Wirex flow adds EURC.
+   */
+  tokens?: CardFundToken[];
   onMoveFromSavingsPress?: () => void;
   onExternalWalletPress?: () => void;
   /**
@@ -73,6 +79,7 @@ type CardFundOptionsProps = {
 /** Step 1 of the card funding flow — "Fund your card". */
 const CardFundOptions = ({
   onTokenPress,
+  tokens = CARD_FUND_TOKENS,
   onMoveFromSavingsPress,
   onExternalWalletPress,
   onUsdPress,
@@ -99,10 +106,10 @@ const CardFundOptions = ({
       {sections.stablecoins ? (
         <CardFundGroup
           label="Stablecoins"
-          labelTooltip={getCardFundRoutesTooltip()}
+          labelTooltip={getCardFundRoutesTooltip(tokens.map(token => token.symbol))}
           labelTooltipContext="card_fund_supported_routes"
         >
-          {CARD_FUND_TOKENS.map(token => (
+          {tokens.map(token => (
             <CardFundRow
               key={token.symbol}
               icon={<Image source={token.icon} style={TOKEN_ICON_STYLE} contentFit="cover" />}

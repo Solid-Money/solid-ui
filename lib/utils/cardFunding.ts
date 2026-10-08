@@ -1,4 +1,4 @@
-import { BRIDGE_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
+import { BRIDGE_TOKENS, EURC_TOKENS, getBridgeTokenDecimals } from '@/constants/bridge';
 import { CardFundRoute } from '@/lib/utils/cardFundMove';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 
@@ -17,6 +17,16 @@ import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 /** Stablecoins the direct-deposit flow offers, in display order. */
 export const CARD_FUND_TOKEN_SYMBOLS = ['USDC', 'USDT'] as const;
 
+/**
+ * EURC, offered after the dollar stablecoins to Wirex cardholders only.
+ *
+ * Not one of `CARD_FUND_TOKEN_SYMBOLS`. Those are delivered to wherever the
+ * issuer spends from; EURC is delivered as EURC to the Safe on Base, where the
+ * Base spend-module instance sells it, whoever issued the card - and is offered
+ * only on the chains `EURC_TOKENS` lists (Base, for now).
+ */
+export const CARD_FUND_EURC_SYMBOL = 'EURC';
+
 /** One chain a card deposit can arrive from. */
 export interface CardFundChain {
   chainId: number;
@@ -33,11 +43,16 @@ export interface CardFundChain {
  */
 export const getCardFundChains = (symbol: string): CardFundChain[] => {
   const depositConfig = getVaultDepositConfig();
+  // EURC is kept out of BRIDGE_TOKENS (see EURC_TOKENS), so it has its own table.
+  const carries = (chainId: number) =>
+    symbol === CARD_FUND_EURC_SYMBOL
+      ? !!EURC_TOKENS[chainId]
+      : getAllowedTokensForChain(chainId).includes(symbol);
 
   return Object.entries(BRIDGE_TOKENS)
     .map(([id, chain]) => ({ chainId: Number(id), chain }))
     .filter(({ chainId }) => depositConfig.supportedChains.includes(chainId))
-    .filter(({ chainId }) => getAllowedTokensForChain(chainId).includes(symbol))
+    .filter(({ chainId }) => carries(chainId))
     .sort((a, b) => a.chain.sort - b.chain.sort)
     .map(({ chainId, chain }) => ({
       chainId,
@@ -47,8 +62,11 @@ export const getCardFundChains = (symbol: string): CardFundChain[] => {
 };
 
 /**
- * Every (network, stablecoin, contract) the pipeline accepts, which is exactly
- * what the token rows offer.
+ * Every (network, stablecoin, contract) the pipeline accepts in dollars, which
+ * is exactly what the dollar token rows offer.
+ *
+ * EURC is not a route to move along. On Base it already sits in the Safe the
+ * euro balance is spent from, so a move would only send it out and back.
  *
  * The contract comes from `BRIDGE_TOKENS`, the same table the backend resolves a
  * detected transfer against, so a holding matched here is one it will whitelist
@@ -75,15 +93,17 @@ export const getCardFundRoutes = (): CardFundRoute[] =>
   );
 
 /**
- * Every network any offered stablecoin can be sent from, in display order.
+ * Every network any of `symbols` can be sent from, in display order.
  *
  * The per-token rows already carry their own chips; this is the union, for copy
  * that has to describe the whole flow rather than one row of it.
  */
-export const getCardFundSupportedNetworkNames = (): string[] => {
+export const getCardFundSupportedNetworkNames = (
+  symbols: readonly string[] = CARD_FUND_TOKEN_SYMBOLS,
+): string[] => {
   const seen = new Map<number, string>();
 
-  for (const symbol of CARD_FUND_TOKEN_SYMBOLS) {
+  for (const symbol of symbols) {
     for (const chain of getCardFundChains(symbol)) {
       if (!chain.isComingSoon) seen.set(chain.chainId, chain.name);
     }
@@ -102,21 +122,31 @@ export const getCardFundSupportedNetworkNames = (): string[] => {
  * reads as money lost rather than a mistake with a fix.
  *
  * Interpolated from the same tables the flow routes on, so a network added or
- * withdrawn cannot leave this sentence claiming otherwise.
+ * withdrawn cannot leave this sentence claiming otherwise. EURC, when offered,
+ * gets its own clause: it is accepted on far fewer networks than the dollars.
  */
-export const getCardFundRoutesTooltip = (): string => {
-  const tokens = CARD_FUND_TOKEN_SYMBOLS.join(' or ');
-  const networks = getCardFundSupportedNetworkNames();
-  const list =
-    networks.length > 1
-      ? `${networks.slice(0, -1).join(', ')} or ${networks[networks.length - 1]}`
-      : networks[0];
+export const getCardFundRoutesTooltip = (
+  symbols: readonly string[] = CARD_FUND_TOKEN_SYMBOLS,
+): string => {
+  const dollars = symbols.filter(symbol => symbol !== CARD_FUND_EURC_SYMBOL);
+  const routes = [
+    `${dollars.join(' or ')} only, on ${joinWithOr(getCardFundSupportedNetworkNames(dollars))}`,
+  ];
+  if (symbols.includes(CARD_FUND_EURC_SYMBOL)) {
+    routes.push(
+      `${CARD_FUND_EURC_SYMBOL} only on ${joinWithOr(getCardFundSupportedNetworkNames([CARD_FUND_EURC_SYMBOL]))}`,
+    );
+  }
 
   return (
-    `${tokens} only, on ${list}. ` +
+    `${routes.join('; ')}. ` +
     'Send to the address this flow shows — a deposit to your own wallet address lands in Wallet, not on your card.'
   );
 };
+
+/** "A", "A or B", "A, B or C". */
+const joinWithOr = (names: string[]): string =>
+  names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}` : names[0];
 
 /**
  * The direct-deposit destination that selects the *card* deposit address.
@@ -125,7 +155,8 @@ export const getCardFundRoutesTooltip = (): string => {
  * derived, and its salt — and so every address already handed out — has to stay
  * exactly as it was. A Wirex cardholder deposits to the same address; the
  * backend resolves the issuer and delivers the funds to the Rain card on Base
- * or to the cardholder's Safe on Fuse accordingly.
+ * or to the cardholder's Safe on Fuse accordingly. EURC is the exception: it
+ * goes to the Safe on Base, as EURC, whichever the issuer.
  */
 export const CARD_FUND_DESTINATION_TYPE = 'RAIN_CARD' as const;
 
