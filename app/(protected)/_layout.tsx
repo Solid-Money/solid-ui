@@ -67,7 +67,7 @@ export default function ProtectedLayout() {
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
   const isWhatsNewVisible = useWhatsNewStore(state => state.isVisible);
   const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
-  const depositModal = useDepositStore(state => state.modal);
+  const depositModal = useDepositStore(state => state.currentModal);
   const { visible: isNotificationReminderVisible, dismiss: dismissNotificationReminder } =
     useNotificationPermissionReminder(
       !!user &&
