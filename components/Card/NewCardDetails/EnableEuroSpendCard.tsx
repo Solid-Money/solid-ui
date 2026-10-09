@@ -10,7 +10,7 @@ interface EnableEuroSpendCardProps {
 }
 
 /**
- * "Enable euro lending" — the card that opens the Base spend instance for a cohort user.
+ * "Enable euro spending" — the card that opens the Base spend instance for a cohort user.
  *
  * ## Who sees it, and when it goes away
  *
@@ -21,12 +21,9 @@ interface EnableEuroSpendCardProps {
  *
  * ## A note on the copy
  *
- * The label says "lending", and at launch nothing is lent. The Base instance is dollar-denominated
- * and EURC is configured `spendable: true, collateral: false` — borrowing against a balance whose
- * dollar value moves with an exchange rate is a decision being taken separately, with its own risk
- * parameters. What this actually enables is spending a euro balance. The wording is the product's
- * and is kept, but it should not be read as describing a credit line, and it will be wrong in a
- * way worth revisiting if EURC is ever promoted to collateral.
+ * "Spending", not "lending": nothing is lent, and lending is not planned. The Base instance is
+ * dollar-denominated and EURC is configured `spendable: true, collateral: false`, so what this
+ * enables is spending a euro balance. Revisit the copy only if EURC is ever promoted to collateral.
  *
  * Laid out as the "Spend mode" row is (`SpendingModeCard`): a 23px card, 17px side inset, label
  * left and action right — so it reads as another row of the card pane rather than a promo banner.
@@ -34,7 +31,9 @@ interface EnableEuroSpendCardProps {
 const EnableEuroSpendCard = ({ isEnabling, error, onEnable }: EnableEuroSpendCardProps) => (
   <View className="overflow-hidden rounded-[23px] bg-card" style={styles.row}>
     <View style={styles.label}>
-      <Text className="text-[18px] font-medium leading-[25px] text-white">Enable euro lending</Text>
+      <Text className="text-[18px] font-medium leading-[25px] text-white">
+        Enable euro spending
+      </Text>
       <Text
         className={`text-[14px] leading-[18px] ${error ? 'text-red-400' : 'text-muted-foreground'}`}
       >
@@ -42,7 +41,7 @@ const EnableEuroSpendCard = ({ isEnabling, error, onEnable }: EnableEuroSpendCar
       </Text>
     </View>
     <Pressable
-      accessibilityLabel="Enable euro lending"
+      accessibilityLabel="Enable euro spending"
       accessibilityRole="button"
       accessibilityState={{ disabled: isEnabling, busy: isEnabling }}
       // Disabled while the user operation is in flight. Enabling twice would build a second batch

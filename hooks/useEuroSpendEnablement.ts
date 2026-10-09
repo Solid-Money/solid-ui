@@ -125,9 +125,8 @@ interface EuroSpendEnablement {
  * ## Note on the name
  *
  * The Base instance is **dollar-denominated**; EURC is a spendable asset within it and is
- * explicitly not collateral at launch, so nothing here lends against euros. The copy this powers
- * says "euro", which is what the user experiences — spending a euro balance — and is fine as long
- * as nobody reads the code and concludes there is a euro credit line.
+ * not collateral, so nothing here lends against euros — and lending is not planned. The copy this
+ * powers says "euro spending", which is exactly what the user gets: spending a euro balance.
  */
 export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const { user, safeAA } = useUser();
