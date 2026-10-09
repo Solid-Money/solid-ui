@@ -14,7 +14,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { UNSTAKE_MODAL } from '@/constants/modals';
-import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
+import useBridgeForWithdraw from '@/hooks/useBridgeForWithdraw';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
@@ -71,7 +71,7 @@ const Unstake = () => {
 
   const watchedBridgeAmount = watchBridge('amount');
 
-  const { bridge, bridgeStatus } = useBridgeToMainnet();
+  const { bridge, bridgeStatus } = useBridgeForWithdraw();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
 
   const getBridgeText = () => {

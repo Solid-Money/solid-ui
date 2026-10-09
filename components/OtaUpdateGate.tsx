@@ -26,31 +26,35 @@ export default function OtaUpdateGate() {
   return (
     <View style={StyleSheet.absoluteFill} className="z-50 bg-background">
       <SafeAreaView edges={['bottom']} className="flex-1">
-        {/* Shrinks on short screens so the copy and button always fit. */}
-        <View className="min-h-0 flex-1 items-center justify-end">
-          <Image
-            source={require('@/assets/images/app-update-hero.png')}
-            style={{ width: '100%', maxHeight: '100%', aspectRatio: 375 / 480 }}
-            contentFit="contain"
-            contentPosition="bottom"
-          />
-        </View>
+        {/* Hero and copy sit at the top as in the design; spare height on tall
+            screens goes above the button. On short screens the hero shrinks
+            so the copy and button still fit. */}
+        <View className="min-h-0 flex-1">
+          <View className="min-h-0 shrink" style={{ width: '100%', aspectRatio: 375 / 480 }}>
+            <Image
+              source={require('@/assets/images/app-update-hero.png')}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              contentPosition="top"
+            />
+          </View>
 
-        <View className="-mt-1.5 items-center gap-4 px-7">
-          <View className="flex-row items-center gap-[7px] rounded-full bg-brand/15 py-1.5 pl-2.5 pr-3">
-            <View className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <Text className="text-xs font-semibold uppercase leading-4 tracking-[0.72px] text-brand">
-              New version
+          <View className="-mt-1.5 shrink-0 items-center gap-4 px-7">
+            <View className="flex-row items-center gap-[7px] rounded-full bg-brand/15 py-1.5 pl-2.5 pr-3">
+              <View className="h-1.5 w-1.5 rounded-full bg-brand" />
+              <Text className="text-xs font-semibold uppercase leading-4 tracking-[0.72px] text-brand">
+                New version
+              </Text>
+            </View>
+            <Text className="max-w-[319px] text-center text-[30px] font-medium leading-[30px] tracking-[-0.9px]">
+              New app update available
+            </Text>
+            <Text className="max-w-[300px] text-center text-base leading-5 text-white/70">
+              {applyFailed
+                ? "We couldn't restart the app. Try again, or keep using this version for now."
+                : 'Please update to the latest version to keep earning, spending and moving.'}
             </Text>
           </View>
-          <Text className="max-w-[319px] text-center text-[30px] font-medium leading-[30px] tracking-[-0.9px]">
-            New app update available
-          </Text>
-          <Text className="max-w-[300px] text-center text-base leading-5 text-white/70">
-            {applyFailed
-              ? "We couldn't restart the app. Try again, or keep using this version for now."
-              : 'Please update to the latest version to keep earning, spending and moving.'}
-          </Text>
         </View>
 
         <View className="gap-2 px-[18px] pb-4 pt-10">

@@ -7,12 +7,12 @@ import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 
 /**
- * Two-step vaults (soUSD, soETH) bridge Fuse -> Ethereum in step 1 and withdraw
- * on Ethereum in step 2. If the user closes the flow after step 1, the bridged
- * funds are sitting on Ethereum waiting to be withdrawn. We persist that
- * unfinished withdraw so the flow can resume directly on step 2 (prefilled,
- * step 1 disabled) instead of the user having to rediscover that they must
- * switch to the Ethereum-side token to continue.
+ * Two-step vaults (soUSD, soETH) bridge off Fuse in step 1 and withdraw on the
+ * destination chain in step 2: Base or Ethereum for soUSD, Ethereum for soETH.
+ * If the user closes the flow after step 1, the bridged funds are sitting there
+ * waiting to be withdrawn. We persist that unfinished withdraw so the flow can
+ * resume directly on step 2 (prefilled, step 1 disabled) instead of the user
+ * having to rediscover that they must switch to the bridged token to continue.
  */
 export interface WithdrawSession {
   /** Safe address the bridged funds belong to. */
@@ -23,6 +23,11 @@ export interface WithdrawSession {
   amount: string;
   /** Asset the user receives on completion (for display). */
   destinationSymbol: string;
+  /**
+   * Chain step 1 bridged to, where step 2 must withdraw. Missing on sessions
+   * written before soUSD moved to Base: those always bridged to Ethereum.
+   */
+  chainId?: number;
   createdAt: number;
 }
 

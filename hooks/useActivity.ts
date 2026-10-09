@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hash } from 'viem';
+import { base } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import useUser from '@/hooks/useUser';
@@ -13,6 +14,7 @@ import { useActivityStore } from '@/store/useActivityStore';
 import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
+import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -86,6 +88,7 @@ export function useActivity() {
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
   const withdraws = userTransactions?.withdraws;
+  const baseWithdrawRequests = useBaseWithdrawRequests(userEventsFromStore);
 
   // Fetch a page of activities directly from the API and push to Zustand
   const fetchPage = useCallback(
@@ -185,6 +188,36 @@ export function useActivity() {
         typeof activity.status === 'string',
     );
 
+    // Base withdraw requests are read from the Base queue itself: it has no
+    // subgraph. A request still in the queue - or not read yet - is PROCESSING.
+    // Once it left, the queue cannot say whether it was solved or cancelled, so
+    // a request the user cancelled in the app is CANCELLED and any other is
+    // SUCCESS. A request the solver cancels after its deadline has no cancel
+    // activity, so it shows as SUCCESS. The request id is attached so the
+    // activity screen can offer a cancel.
+    const cancelledRequestIds = new Set(
+      userEvents
+        .filter(
+          activity =>
+            activity.type === TransactionType.CANCEL_WITHDRAW &&
+            activity.status === TransactionStatus.SUCCESS &&
+            typeof activity.metadata?.requestId === 'string',
+        )
+        .map(activity => (activity.metadata?.requestId as string).toLowerCase()),
+    );
+    userEvents = userEvents.map(activity => {
+      if (!isBaseWithdrawRequest(activity)) return activity;
+      const request = baseWithdrawRequests[activity.hash.toLowerCase()];
+      if (!request) return { ...activity, status: TransactionStatus.PROCESSING };
+      const withRequestId = { ...activity, requestId: request.requestId };
+      if (request.status === 'pending') {
+        return { ...withRequestId, status: TransactionStatus.PROCESSING };
+      }
+      return cancelledRequestIds.has(request.requestId.toLowerCase())
+        ? { ...withRequestId, status: TransactionStatus.CANCELLED }
+        : withRequestId;
+    });
+
     // Cross-reference WITHDRAW activities against the BoringQueue subgraph to
     // show the solver fulfillment status.  The on-chain withdraw request goes
     // through a solver queue — "SUCCESS" on-chain only means the request was
@@ -198,7 +231,8 @@ export function useActivity() {
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
-          activity.status === TransactionStatus.SUCCESS
+          activity.status === TransactionStatus.SUCCESS &&
+          activity.chainId !== base.id
         ) {
           const matchingWithdraw = withdraws.find(w => {
             const activityHash = activity.hash?.toLowerCase();
@@ -241,7 +275,8 @@ export function useActivity() {
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
-          activity.status === TransactionStatus.SUCCESS
+          activity.status === TransactionStatus.SUCCESS &&
+          activity.chainId !== base.id
         ) {
           return { ...activity, status: TransactionStatus.PROCESSING };
         }
@@ -263,7 +298,7 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [userEventsFromStore, user?.userId, withdraws]);
+  }, [userEventsFromStore, user?.userId, withdraws, baseWithdrawRequests]);
 
   useEffect(() => {
     if (!activities?.length) return;

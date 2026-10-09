@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type ClassValue, clsx } from 'clsx';
 import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
-import { Address, keccak256, toHex } from 'viem';
+import { Address, keccak256, toHex, zeroAddress } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
 import { refreshToken } from '@/lib/api';
@@ -303,9 +303,17 @@ export const isSoFUSEToken = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
 };
 
+/** soUSD on Base, where withdrawals bridge to once the vault moved off Ethereum. */
+export const isSoUSDBase = (contractAddress: string): boolean => {
+  if (!contractAddress || ADDRESSES.base.vault === zeroAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.base.vault.toLowerCase();
+};
+
 export const isSoUSDToken = (contractAddress: string): boolean => {
   if (!contractAddress) return false;
-  return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
+  return (
+    isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress) || isSoUSDBase(contractAddress)
+  );
 };
 
 export const isSoETHEthereum = (contractAddress: string): boolean => {

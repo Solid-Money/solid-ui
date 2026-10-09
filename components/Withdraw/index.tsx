@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { Info, Minus, Wallet } from 'lucide-react-native';
+import { mainnet } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -73,7 +74,8 @@ const Withdraw = () => {
 
   const watchedWithdrawAmount = watchWithdraw('amount');
 
-  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw();
+  // This modal withdraws the soUSD already sitting on Ethereum.
+  const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw(mainnet.id);
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
 
   const getWithdrawText = () => {
