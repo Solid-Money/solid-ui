@@ -255,9 +255,8 @@ export function useCardSteps(
      * ended up on Rain permanently: the Didit session creates a card customer
      * that defaults to Rain, and nothing ever rewrites it.
      *
-     * Ask instead of guessing. This is the same screen the Sumsub branch
-     * below uses, and it is only reached when the IP lookup failed too — a
-     * country that resolved keeps going without an extra step.
+     * Ask instead of guessing. This is the same screen the declared-country
+     * check below sends to; it is split out only so the event says why.
      */
     if (!countryCode) {
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
@@ -292,29 +291,33 @@ export function useCardSteps(
         router.push(path.CARD_PENDING as any);
         return;
       }
+    }
 
-      /**
-       * Sumsub card sessions REQUIRE a country the user declared themselves —
-       * an IP guess is refused server-side, because `user.country` pins which
-       * issuer serves them and nothing writes it back. Ask here rather than
-       * letting the session fail: this is the entry point the home setup step
-       * uses (`useHomeSetupSteps` calls this action directly rather than
-       * `startCardOnboarding`), so it is reached with no gate having run at
-       * all, and `resolveKycProvider` deliberately does not persist the
-       * country it routes on.
-       *
-       * The selection screen writes `source: 'manual'` and re-enters the flow
-       * via `/card/activate?countryConfirmed=true`, so this asks once.
-       */
-      if (useCountryStore.getState().countryInfo?.source !== 'manual') {
-        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-          action: 'country_selection_required',
-          kycProvider,
-          countryCode,
-        });
-        router.push(path.CARD_COUNTRY_SELECTION as any);
-        return;
-      }
+    /**
+     * Every card verification, Didit included, starts from a country the user
+     * declared themselves. This is the entry point the home setup step uses
+     * (`useHomeSetupSteps` calls this action directly rather than
+     * `startCardOnboarding`), so it is reached with no gate having run at all.
+     *
+     * Sumsub refuses an IP guess server-side, so that branch always needed
+     * this. Didit used to skip it, and the IP answer then picked the issuer:
+     * a Hong Kong resident whose IP resolved to Singapore was routed to Didit,
+     * which created a Rain card customer that nothing rewrites, in a Didit
+     * questionnaire that does not offer Hong Kong. The backend only refuses a
+     * Didit card session for a country Wirex serves, and an IP in a Rain-only
+     * market gives it nothing to refuse on.
+     *
+     * The selection screen writes `source: 'manual'` and re-enters the flow
+     * via `/card/activate?countryConfirmed=true`, so this asks once.
+     */
+    if (useCountryStore.getState().countryInfo?.source !== 'manual') {
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'country_selection_required',
+        kycProvider,
+        countryCode,
+      });
+      router.push(path.CARD_COUNTRY_SELECTION as any);
+      return;
     }
 
     router.push((kycProvider === KycProvider.SUMSUB ? path.SUMSUB_KYC : path.KYC) as any);
