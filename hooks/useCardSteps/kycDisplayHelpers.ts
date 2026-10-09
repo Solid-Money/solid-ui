@@ -1,53 +1,4 @@
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
-import {
-  BridgeCustomerEndorsement,
-  BridgeEndorsementIssue,
-  BridgeRejectionReason,
-  CardProvider,
-  KycStatus,
-  KycWarning,
-  RainApplicationStatus,
-} from '@/lib/types';
-
-// ============================================================================
-// Issue Formatting Functions
-// ============================================================================
-
-/**
- * Format a code string to be user-friendly (replace underscores, capitalize)
- */
-function formatCodeToReadable(code: string): string {
-  return code.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-}
-
-/**
- * Format a single endorsement issue for display
- */
-function formatEndorsementIssue(issue: BridgeEndorsementIssue): string {
-  if (typeof issue === 'string') {
-    return formatCodeToReadable(issue);
-  }
-  // For objects like { id_front_photo: "id_expired" }
-  return Object.entries(issue)
-    .map(([field, error]) => `${formatCodeToReadable(field)}: ${formatCodeToReadable(error)}`)
-    .join('. ');
-}
-
-/**
- * Format rejection reasons from customer response
- */
-function formatRejectionReasons(rejectionReasons: BridgeRejectionReason[] | undefined): string[] {
-  if (!rejectionReasons || rejectionReasons.length === 0) return [];
-  return rejectionReasons.map(r => r.reason).filter(r => r && r.trim().length > 0);
-}
-
-/**
- * Check if endorsement has pending requirements (under review)
- */
-function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement): boolean {
-  const pending = cardsEndorsement.requirements?.pending;
-  return Array.isArray(pending) && pending.length > 0;
-}
+import { CardProvider, KycStatus, KycWarning, RainApplicationStatus } from '@/lib/types';
 
 // ============================================================================
 // Rain KYC state helpers (application status from Rain API)
@@ -208,18 +159,14 @@ export function isRainKYCButtonDisabled(
 // ============================================================================
 
 /**
- * Get the description text for the KYC step based on endorsement status or Rain KYC status
+ * Get the description text for the KYC step from the Rain application or backend KYC status
  */
-export function getStepDescription(
-  cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  customerRejectionReasons?: BridgeRejectionReason[],
-  options?: {
-    cardIssuer?: CardProvider | null;
-    rainApplicationStatus?: RainApplicationStatus | null;
-    kycStatus?: KycStatus | null;
-    kycWarnings?: KycWarning[] | null;
-  },
-): string {
+export function getStepDescription(options?: {
+  cardIssuer?: CardProvider | null;
+  rainApplicationStatus?: RainApplicationStatus | null;
+  kycStatus?: KycStatus | null;
+  kycWarnings?: KycWarning[] | null;
+}): string {
   // Only use Rain description for recognized Rain application statuses
   const isRecognizedRainStatus =
     options?.rainApplicationStatus &&
@@ -231,9 +178,9 @@ export function getStepDescription(
     return getKYCDescription(options.rainApplicationStatus, warnings);
   }
 
-  // Approved by the issuer (Wirex/Sumsub has no Bridge endorsement to fall back
-  // on, so without this it dropped to DEFAULT_KYC_DESCRIPTION and still told an
-  // approved user that "verification is required for us to issue your card").
+  // Approved by the issuer (without this a Wirex/Sumsub approval dropped to
+  // DEFAULT_KYC_DESCRIPTION and still told an approved user that "verification
+  // is required for us to issue your card").
   if (options?.kycStatus === KycStatus.APPROVED) {
     return 'Identity verification complete. You can now order your card.';
   }
@@ -268,83 +215,17 @@ export function getStepDescription(
     return 'Your information is being reviewed. This usually takes a few minutes.';
   }
 
-  // No endorsement yet - default message
-  if (!cardsEndorsement) {
-    return DEFAULT_KYC_DESCRIPTION;
-  }
-
-  const requirements = cardsEndorsement.requirements;
-  const issues = requirements?.issues || [];
-  const missingKeys = requirements?.missing ? Object.keys(requirements.missing) : [];
-
-  // APPROVED - verification complete
-  if (cardsEndorsement.status === EndorsementStatus.APPROVED) {
-    return 'Identity verification complete. You can now order your card.';
-  }
-
-  // REVOKED - show rejection reasons or expiry message
-  if (cardsEndorsement.status === EndorsementStatus.REVOKED) {
-    // Show customer rejection reasons if available
-    const reasons = formatRejectionReasons(customerRejectionReasons);
-    if (reasons.length > 0) {
-      return `We couldn't verify your identity:\n- ${reasons.join('\n- ')}`;
-    }
-
-    // Default expiry message
-    return 'Your verification has expired. Please complete the process again within 24 hours of approval.';
-  }
-
-  // INCOMPLETE - check if pending review or needs action
-  if (cardsEndorsement.status === EndorsementStatus.INCOMPLETE) {
-    // Pending review - user should wait
-    if (hasEndorsementPendingReview(cardsEndorsement)) {
-      return 'Your information is being reviewed. This usually takes a few minutes.';
-    }
-
-    // Show what's missing or has issues
-    const parts: string[] = [];
-
-    // Customer rejection reasons take priority
-    const reasons = formatRejectionReasons(customerRejectionReasons);
-    if (reasons.length > 0) {
-      return `We couldn't verify your identity:\n- ${reasons.join('\n- ')}`;
-    }
-
-    // Missing requirements
-    if (missingKeys.length > 0) {
-      const formattedMissing = missingKeys.map(formatCodeToReadable).join(', ');
-      parts.push(`Missing: ${formattedMissing}`);
-    }
-
-    // Issues with submitted data
-    if (issues.length > 0) {
-      const formattedIssues = issues.map(formatEndorsementIssue).join('. ');
-      parts.push(formattedIssues);
-    }
-
-    if (parts.length > 0) {
-      return `Additional verification required:\n${parts.join('\n')}`;
-    }
-
-    // Default message
-    return 'Additional information needed to complete verification.';
-  }
-
-  // Default fallback
   return DEFAULT_KYC_DESCRIPTION;
 }
 
 /**
- * Get the button text for the KYC step based on endorsement status or Rain KYC status
+ * Get the button text for the KYC step from the Rain application or backend KYC status
  */
-export function getStepButtonText(
-  cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  options?: {
-    cardIssuer?: CardProvider | null;
-    rainApplicationStatus?: RainApplicationStatus | null;
-    kycStatus?: KycStatus | null;
-  },
-): string | undefined {
+export function getStepButtonText(options?: {
+  cardIssuer?: CardProvider | null;
+  rainApplicationStatus?: RainApplicationStatus | null;
+  kycStatus?: KycStatus | null;
+}): string | undefined {
   const isRecognizedRainStatus =
     options?.rainApplicationStatus &&
     Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
@@ -354,9 +235,9 @@ export function getStepButtonText(
   }
 
   // Approved — the step is done, so there is no action left. Without this it fell
-  // through to the no-endorsement default and rendered "Continue verification"
-  // on an already-approved step, which just bounced the user off the Sumsub
-  // screen (createSession 409s once KYC is approved) and back again.
+  // through to the default and rendered "Continue verification" on an
+  // already-approved step, which just bounced the user off the Sumsub screen
+  // (createSession 409s once KYC is approved) and back again.
   if (options?.kycStatus === KycStatus.APPROVED) {
     return undefined;
   }
@@ -376,44 +257,17 @@ export function getStepButtonText(
     return 'Under Review';
   }
 
-  // No endorsement - start KYC
-  if (!cardsEndorsement) {
-    return 'Continue verification';
-  }
-
-  switch (cardsEndorsement.status) {
-    case EndorsementStatus.APPROVED:
-      // Step is complete, no button needed
-      return undefined;
-
-    case EndorsementStatus.REVOKED:
-      // Allow retry even for region restrictions (user may have another nationality)
-      return 'Retry KYC';
-
-    case EndorsementStatus.INCOMPLETE:
-      // Pending review - user should wait
-      if (hasEndorsementPendingReview(cardsEndorsement)) {
-        return 'Under Review';
-      }
-      // Allow retry even for region restrictions (user may have another nationality)
-      return 'Continue verification';
-
-    default:
-      return 'Continue verification';
-  }
+  return 'Continue verification';
 }
 
 /**
  * Check if the button should be disabled (for pending review or Rain under_review)
  */
-export function isStepButtonDisabled(
-  cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  options?: {
-    cardIssuer?: CardProvider | null;
-    rainApplicationStatus?: RainApplicationStatus | null;
-    kycStatus?: KycStatus | null;
-  },
-): boolean {
+export function isStepButtonDisabled(options?: {
+  cardIssuer?: CardProvider | null;
+  rainApplicationStatus?: RainApplicationStatus | null;
+  kycStatus?: KycStatus | null;
+}): boolean {
   const isRecognizedRainStatus =
     options?.rainApplicationStatus &&
     Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
@@ -429,23 +283,6 @@ export function isStepButtonDisabled(
 
   // Didit rejected — final decision, no action available
   if (options?.kycStatus === KycStatus.REJECTED && !isRecognizedRainStatus) {
-    return true;
-  }
-
-  if (!cardsEndorsement) {
-    return false;
-  }
-
-  // Pending review - disabled
-  if (
-    cardsEndorsement.status === EndorsementStatus.INCOMPLETE &&
-    hasEndorsementPendingReview(cardsEndorsement)
-  ) {
-    return true;
-  }
-
-  // Approved - step is complete, button hidden anyway
-  if (cardsEndorsement.status === EndorsementStatus.APPROVED) {
     return true;
   }
 

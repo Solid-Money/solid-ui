@@ -16,7 +16,6 @@ import {
   CashbackType,
   CryptoTransactionDetails,
   FreezeInitiator,
-  KycStatus,
 } from '@/lib/types';
 
 import type { VirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
@@ -53,26 +52,10 @@ const canCustomerUnfreezeCard = (cardDetails: FreezeState): boolean => {
 export const canToggleCardFreeze = (cardDetails: FreezeState): boolean =>
   cardDetails?.status !== CardStatus.FROZEN || canCustomerUnfreezeCard(cardDetails);
 
-/**
- * KYC states where we move no money for the customer in either direction.
- *
- * Paused and offboarded are holds on the person rather than on the card, so they
- * are the one thing that stops a withdrawal too — a card-level problem doesn't.
- * Anything else, an unresolved status included, leaves both actions offered.
- *
- * Takes a bare string because that is what `/bridge-customer` is typed as: the
- * endpoint passes Bridge's status through unmodelled, and only the two values
- * named here are acted on, so an unrecognised one restricts nothing.
- */
-export const isCustomerFundsRestricted = (status: string | undefined | null): boolean =>
-  status === KycStatus.PAUSED || status === KycStatus.OFFBOARDED;
-
 /** What the card action row needs to know before offering to move money. */
 export interface CardFundsAccess {
   /** The card is frozen — by the cardholder or by the provider. */
   isCardFrozen: boolean;
-  /** KYC is paused or the customer is offboarded — see `isCustomerFundsRestricted`. */
-  isCustomerRestricted: boolean;
   /**
    * Which issuer the card is on. `null`/`undefined` while it is still
    * resolving — treated as Rain, so a slow query never hides an action a Rain
@@ -87,10 +70,7 @@ export interface CardFundsAccess {
  * A frozen card cannot spend, so a deposit onto one only moves the user's
  * balance somewhere it does less for them. The action waits for the unfreeze.
  */
-export const canAddFundsToCard = ({
-  isCardFrozen,
-  isCustomerRestricted,
-}: CardFundsAccess): boolean => !isCardFrozen && !isCustomerRestricted;
+export const canAddFundsToCard = ({ isCardFrozen }: CardFundsAccess): boolean => !isCardFrozen;
 
 /**
  * Whether to offer Withdraw. Deliberately does **not** read `isCardFrozen`.
@@ -118,8 +98,8 @@ export const canAddFundsToCard = ({
  * is in savings and comes out through the savings withdrawal, so offering this
  * action was offering a dead end.
  */
-export const canWithdrawFromCard = ({ isCustomerRestricted, provider }: CardFundsAccess): boolean =>
-  !isCustomerRestricted && cardHoldsBalance(provider);
+export const canWithdrawFromCard = ({ provider }: CardFundsAccess): boolean =>
+  cardHoldsBalance(provider);
 
 /**
  * Whether this card can be funded by depositing onto it.

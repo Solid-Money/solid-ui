@@ -3,7 +3,7 @@ import { BackHandler, Platform } from 'react-native';
 
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
-import { CardProvider, CardStatus, KycStatus } from '@/lib/types';
+import { CardProvider, CardStatus } from '@/lib/types';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useSpendModeHelpStore } from '@/store/useSpendModeHelpStore';
 
@@ -11,7 +11,6 @@ import { useSpendModeHelpStore } from '@/store/useSpendModeHelpStore';
 const { act, create } = require('react-test-renderer');
 
 let mockCardStatus = CardStatus.ACTIVE;
-let mockCustomerStatus = KycStatus.APPROVED;
 let mockProvider = CardProvider.WIREX;
 
 jest.mock('@/hooks/useCardDetails', () => ({
@@ -19,9 +18,6 @@ jest.mock('@/hooks/useCardDetails', () => ({
 }));
 jest.mock('@/hooks/useCardProvider', () => ({
   useCardProvider: () => ({ provider: mockProvider }),
-}));
-jest.mock('@/hooks/useCustomer', () => ({
-  useCustomer: () => ({ data: { status: mockCustomerStatus } }),
 }));
 jest.mock('@/store/useUserStore', () => ({
   useUserStore: (selector: any) => selector({ users: [{ selected: true, userId: 'user-a' }] }),
@@ -63,7 +59,6 @@ const open = () => act(() => useCardPaneStore.getState().openSpendMode());
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   mockCardStatus = CardStatus.ACTIVE;
-  mockCustomerStatus = KycStatus.APPROVED;
   mockProvider = CardProvider.WIREX;
   useCardPaneStore.setState({ isOpen: false, isSpendModeOpen: false, originRect: null });
   useSpendModeHelpStore.setState({ shownByUserId: {} });
@@ -153,17 +148,13 @@ test('closes the selector before funding and returns to Home afterwards', () => 
   expect(sheet().isOpen).toBe(false);
 });
 
-test.each(['frozen card', 'restricted customer', 'Rain card'])(
-  'keeps Add funds unavailable for a %s',
-  restriction => {
-    if (restriction === 'frozen card') mockCardStatus = CardStatus.FROZEN;
-    if (restriction === 'restricted customer') mockCustomerStatus = KycStatus.PAUSED;
-    if (restriction === 'Rain card') mockProvider = CardProvider.RAIN;
-    render();
-    open();
-    expect(sheet().onAddFunds).toBeUndefined();
-  },
-);
+test.each(['frozen card', 'Rain card'])('keeps Add funds unavailable for a %s', restriction => {
+  if (restriction === 'frozen card') mockCardStatus = CardStatus.FROZEN;
+  if (restriction === 'Rain card') mockProvider = CardProvider.RAIN;
+  render();
+  open();
+  expect(sheet().onAddFunds).toBeUndefined();
+});
 
 test('discards an unavailable selector without opening the card pane or marking help seen', () => {
   render(false);

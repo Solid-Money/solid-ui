@@ -1,15 +1,9 @@
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { buildCardSteps } from '@/hooks/useCardSteps/stepHelpers';
-import {
-  BridgeCustomerEndorsement,
-  CardProvider,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
+import { CardProvider, KycStatus, RainApplicationStatus } from '@/lib/types';
 
 const noop = () => {};
 
-type Options = Parameters<typeof buildCardSteps>[7];
+type Options = Parameters<typeof buildCardSteps>[5];
 
 const build = ({
   cardActivated = false,
@@ -21,8 +15,6 @@ const build = ({
   options?: Options;
 } = {}) =>
   buildCardSteps(
-    undefined, // cardsEndorsement
-    undefined, // customerRejectionReasons
     cardActivated,
     activationBlocked,
     noop, // handleProceedToKyc
@@ -281,33 +273,35 @@ describe('buildCardSteps - a blocked activation', () => {
   });
 });
 
-describe('buildCardSteps - a retired Bridge endorsement', () => {
-  // An old bridge.xyz customer keeps their "cards" endorsement on Bridge's side.
-  const approvedBridgeEndorsement = {
-    name: 'cards',
-    status: EndorsementStatus.APPROVED,
-  } as unknown as BridgeCustomerEndorsement;
-
+describe('buildCardSteps - an applicant with no card customer yet', () => {
+  // `/cards/status` reports no kycStatus until a card customer exists. The
+  // retired bridge.xyz "cards" endorsement used to stand in for it here; nothing
+  // does now, so the applicant is simply asked to start verification.
   const kycStepFor = (kycStatus?: KycStatus) =>
-    buildCardSteps(approvedBridgeEndorsement, undefined, false, undefined, noop, noop, noop, {
+    buildCardSteps(false, undefined, noop, noop, noop, {
       cardIssuer: CardProvider.WIREX,
       kycStatus,
       depositRequired: false,
     }).find(s => s.key === 'kyc');
 
-  it('does not complete KYC for a Wirex applicant who has not verified', () => {
-    // The backend reports a card customer, so its kycStatus is the answer —
-    // the Bridge approval is for a card that no longer exists.
-    const kyc = kycStepFor(KycStatus.NOT_STARTED);
+  it.each([undefined, KycStatus.NOT_STARTED])(
+    'offers to start verification (kycStatus %s)',
+    kycStatus => {
+      const kyc = kycStepFor(kycStatus);
 
-    expect(kyc?.completed).toBe(false);
-    expect(kyc?.buttonText).toBe('Continue verification');
-    expect(kyc?.onPress).toBeDefined();
-  });
+      expect(kyc?.completed).toBe(false);
+      expect(kyc?.buttonText).toBe('Continue verification');
+      expect(kyc?.onPress).toBeDefined();
+    },
+  );
 
-  it('still honours the endorsement for a Bridge-only user with no card customer', () => {
-    const kyc = kycStepFor(undefined);
+  it('does not offer to activate a card', () => {
+    const activate = buildCardSteps(false, undefined, noop, noop, noop, {
+      cardIssuer: CardProvider.WIREX,
+      depositRequired: false,
+    }).find(s => s.key === 'activate');
 
-    expect(kyc?.completed).toBe(true);
+    expect(activate?.buttonText).toBeUndefined();
+    expect(activate?.onPress).toBeUndefined();
   });
 });

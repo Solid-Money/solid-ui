@@ -352,21 +352,6 @@ export type KycLink = {
   tosLink: string;
 };
 
-export type KycRejectionReason = { reason: string };
-
-export type KycLinkFromBridgeResponse = {
-  id: string;
-  full_name: string;
-  email: string;
-  type: string;
-  kyc_link: string;
-  tos_link: string;
-  kyc_status: string;
-  rejection_reasons: KycRejectionReason[];
-  tos_status: string;
-  customer_id: string;
-};
-
 export type KycLinkForExistingCustomer = {
   url: string;
 };

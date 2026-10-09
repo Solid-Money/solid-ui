@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Router } from 'expo-router';
 
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { MINIMUM_CARD_DEPOSIT_USD } from '@/constants/card';
 import { path } from '@/constants/path';
 import {
-  BridgeCustomerEndorsement,
-  BridgeRejectionReason,
   CardProvider,
   CardStatus,
   KycStatus,
@@ -22,11 +19,9 @@ import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './k
 import { Step } from './types';
 
 /**
- * Build the card activation steps array based on endorsement status (Bridge) or Rain KYC status
+ * Build the card activation steps array from the Rain application or backend KYC status
  */
 export function buildCardSteps(
-  cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  customerRejectionReasons: BridgeRejectionReason[] | undefined,
   cardActivated: boolean,
   activationBlocked: boolean | undefined,
   handleProceedToKyc: () => void,
@@ -63,12 +58,6 @@ export function buildCardSteps(
     isSubmittingPendingApplication?: boolean;
   },
 ): Step[] {
-  // The Bridge endorsement is a fallback for Bridge-only users, who have no card
-  // customer and so no `kycStatus`. Once `/cards/status` reports one, the
-  // application is on Rain or Wirex and bridge.xyz has no say in it: an old
-  // Bridge "cards" approval would otherwise mark a Wirex applicant's KYC step
-  // done (and offer "Activate card") before they have verified with Sumsub.
-  const legacyEndorsement = options?.kycStatus != null ? undefined : cardsEndorsement;
   const stepOptions =
     options?.cardIssuer != null || options?.kycStatus != null
       ? {
@@ -78,18 +67,15 @@ export function buildCardSteps(
           kycWarnings: options?.kycWarnings,
         }
       : undefined;
-  const description = getStepDescription(legacyEndorsement, customerRejectionReasons, stepOptions);
-  const buttonText = getStepButtonText(legacyEndorsement, stepOptions);
-  const isButtonDisabled = isStepButtonDisabled(legacyEndorsement, stepOptions);
+  const description = getStepDescription(stepOptions);
+  const buttonText = getStepButtonText(stepOptions);
+  const isButtonDisabled = isStepButtonDisabled(stepOptions);
 
   const isRainKycApproved =
     options?.cardIssuer === CardProvider.RAIN &&
     options?.rainApplicationStatus === RainApplicationStatus.APPROVED;
-  // Wirex has no Bridge endorsement and no Rain application, so it must key off
-  // the canonical backend kycStatus. Without this branch it fell through to the
-  // endorsement check, which is a Bridge concept that never exists for a Wirex
-  // user — leaving isKycComplete permanently false, so the KYC step stayed open
-  // and "Activate your card" never became enabled even once Wirex had approved.
+  // Wirex has no Rain application, so it must key off the canonical backend
+  // kycStatus.
   const isKycComplete =
     options?.cardIssuer === CardProvider.RAIN
       ? isRainKycApproved
@@ -97,10 +83,10 @@ export function buildCardSteps(
         // return cardProvider, so cardIssuer is null for Wirex users and a
         // provider-specific branch never matched — leaving the step incomplete
         // and the activate button unrendered even with kycStatus "approved".
-        // kycStatus is the canonical backend decision for every non-Rain issuer,
-        // with the Bridge endorsement kept as the legacy fallback.
-        options?.kycStatus === KycStatus.APPROVED ||
-        legacyEndorsement?.status === EndorsementStatus.APPROVED;
+        // kycStatus is the canonical backend decision for every non-Rain issuer.
+        // (The retired bridge.xyz "cards" endorsement is deliberately not read:
+        // it would offer "Activate card" to someone no live issuer approved.)
+        options?.kycStatus === KycStatus.APPROVED;
 
   // Deliberately does NOT repeat the failure reason. `CardStatusBanner` already
   // carries it — as a headline, with the detail and a support action — and
@@ -169,7 +155,6 @@ export function buildCardSteps(
       : description,
     completed: kycStepComplete,
     status: kycStepComplete ? 'completed' : 'pending',
-    endorsementStatus: legacyEndorsement?.status,
     buttonText: showHoldStep ? undefined : buttonText,
     onPress: showHoldStep || isButtonDisabled ? undefined : kycStepOnPress,
   };

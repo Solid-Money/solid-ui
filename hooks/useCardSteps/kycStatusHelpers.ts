@@ -1,22 +1,13 @@
 import { useEffect } from 'react';
 
-import { KycLinkFromBridgeResponse, KycStatus } from '@/lib/types';
+import { KycStatus } from '@/lib/types';
 import { isFinalKycStatus } from '@/lib/utils/kyc';
 
 /**
- * Compute KYC status from multiple sources (prefer live link status)
+ * Compute KYC status from the status the KYC screen returned with
  */
-export function computeKycStatus(
-  kycLinkStatus: string | undefined,
-  initialKycStatus: KycStatus | undefined,
-): KycStatus {
-  if (kycLinkStatus) {
-    return (kycLinkStatus as KycStatus) || KycStatus.UNDER_REVIEW;
-  }
-  if (initialKycStatus) {
-    return initialKycStatus;
-  }
-  return KycStatus.NOT_STARTED;
+export function computeKycStatus(initialKycStatus: KycStatus | undefined): KycStatus {
+  return initialKycStatus ?? KycStatus.NOT_STARTED;
 }
 
 /**
@@ -24,33 +15,10 @@ export function computeKycStatus(
  */
 export function computeUiKycStatus(
   processingUntil: number | null,
-  liveStatus: KycStatus | undefined,
   kycStatus: KycStatus,
 ): KycStatus {
-  const now = Date.now();
-  const activeWindow =
-    Boolean(processingUntil && now < processingUntil) && !isFinalKycStatus(liveStatus);
+  const activeWindow = Boolean(processingUntil && Date.now() < processingUntil);
   return activeWindow ? KycStatus.UNDER_REVIEW : kycStatus;
-}
-
-/**
- * Format rejection reasons for display
- */
-export function formatRejectionReasons(
-  kycLink: KycLinkFromBridgeResponse | undefined,
-): string | undefined {
-  const reasons = (kycLink as any)?.rejection_reasons;
-  if (!reasons || !Array.isArray(reasons) || reasons.length === 0) return undefined;
-
-  try {
-    const items = reasons
-      .map((r: any) => (typeof r === 'string' ? r : r?.reason))
-      .filter((r: any) => typeof r === 'string' && r.trim().length > 0);
-    if (!items.length) return undefined;
-    return `We couldn't verify your identity:\n- ${items.join('\n- ')}`;
-  } catch {
-    return undefined;
-  }
 }
 
 /**
@@ -62,7 +30,6 @@ export function useProcessingWindow(
   processingUntil: number | null,
   setProcessingUntil: (time: number) => void,
   clearProcessingUntil: () => void,
-  kycLink: KycLinkFromBridgeResponse | undefined,
 ): void {
   // Initialize processing window when returning from redirect
   useEffect(() => {
@@ -74,7 +41,7 @@ export function useProcessingWindow(
         setProcessingUntil(next);
       }
     }
-  }, [initialKycStatus, kycStatus, processingUntil, setProcessingUntil, kycLink]);
+  }, [initialKycStatus, kycStatus, processingUntil, setProcessingUntil]);
 
   // Clear processing window on final status
   useEffect(() => {

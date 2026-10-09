@@ -6,13 +6,8 @@ import SpendModeSheet from '@/components/Card/NewCardDetails/SpendMode/SpendMode
 import WirexCardFundModal from '@/components/Card/WirexCardFundModal';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCustomer } from '@/hooks/useCustomer';
 import { CardStatus } from '@/lib/types';
-import {
-  canAddFundsToCard,
-  canDepositToCard,
-  isCustomerFundsRestricted,
-} from '@/lib/utils/cardHelpers';
+import { canAddFundsToCard, canDepositToCard } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useSpendModeHelpStore } from '@/store/useSpendModeHelpStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -36,12 +31,10 @@ const SpendModeModals = ({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isFundOpen, setIsFundOpen] = useState(false);
   const { data: cardDetails } = useCardDetails();
-  const { data: customer } = useCustomer();
   const { provider } = useCardProvider();
   const canAddFunds =
     canAddFundsToCard({
       isCardFrozen: cardDetails?.status === CardStatus.FROZEN,
-      isCustomerRestricted: isCustomerFundsRestricted(customer?.status),
       provider,
     }) && !canDepositToCard(provider);
 
