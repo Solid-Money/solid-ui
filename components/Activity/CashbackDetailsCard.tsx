@@ -218,7 +218,8 @@ const CashbackDetailsCard = memo(function CashbackDetailsCard({
         </View>
         {isIneligible ? (
           <Text className={NOTE}>
-            Cash withdrawals, money transfers and government payments don&apos;t earn cashback
+            Cash withdrawals, money transfers, wallet top-ups, gambling and government payments
+            don&apos;t earn cashback
           </Text>
         ) : isPendingCharge ? (
           <Text className={NOTE}>

@@ -113,6 +113,11 @@ export default function ReferralProgramContentNew({
   const merchantTarget = summary?.qualification.merchantTarget ?? 3;
   const windowDays = summary?.qualification.windowDays ?? 30;
   const payoutDelayDays = summary?.qualification.payoutDelayDays ?? 30;
+  // The anti-abuse rules. No fallbacks: a backend that does not report one is
+  // not enforcing it, and the copy must not promise a rule nobody applies.
+  const minPurchaseUsd = summary?.qualification.minPurchaseUsd;
+  const minMerchantSpendUsd = summary?.qualification.minMerchantSpendUsd;
+  const activityMinPurchaseUsd = summary?.qualification.activityMinPurchaseUsd ?? null;
   const referrals = summary?.referrals ?? [];
   const totalRewardedUsd = summary?.totalRewardedUsd ?? 0;
   // The reward is quoted in dollars but settled in a token, so the "how it
@@ -289,9 +294,13 @@ export default function ReferralProgramContentNew({
             >
               Via bank deposit or crypto
             </ChecklistRow>
-            <ChecklistRow icon="images/referral-new-icon-wallet.png" title="Make 3+ purchases">
-              spend {formatUsdWhole(spendTarget)} across {merchantTarget}+ payments at different
-              merchants within {windowDays} days.
+            <ChecklistRow
+              icon="images/referral-new-icon-wallet.png"
+              title={`Shop at ${merchantTarget}+ merchants`}
+            >
+              {minMerchantSpendUsd
+                ? `spend ${formatUsdWhole(spendTarget)} within ${windowDays} days, with at least ${formatUsdWhole(minMerchantSpendUsd)} at each of ${merchantTarget}+ different merchants.`
+                : `spend ${formatUsdWhole(spendTarget)} across ${merchantTarget}+ payments at different merchants within ${windowDays} days.`}
             </ChecklistRow>
           </View>
         </View>
@@ -334,6 +343,8 @@ export default function ReferralProgramContentNew({
                   index={index}
                   spendTargetUsd={spendTarget}
                   merchantTarget={merchantTarget}
+                  minMerchantSpendUsd={minMerchantSpendUsd}
+                  activityMinPurchaseUsd={activityMinPurchaseUsd}
                   onPayoutDue={handlePayoutDue}
                 />
               ))}
@@ -371,14 +382,35 @@ export default function ReferralProgramContentNew({
               • Deposit to their account via bank deposit or crypto.
             </Text>
             <Text className="text-sm text-white/70">
-              • Spend {formatUsdWhole(spendTarget)} across {merchantTarget}+ different merchants.
+              • Spend {formatUsdWhole(spendTarget)} across {merchantTarget}+ different merchants
+              {minMerchantSpendUsd
+                ? `, with at least ${formatUsdWhole(minMerchantSpendUsd)} at each`
+                : ''}
+              .
             </Text>
+            {minPurchaseUsd !== undefined ? (
+              <Text className="text-sm text-white/70">
+                Only everyday purchases count, in the US dollars charged
+                {minPurchaseUsd > 0
+                  ? `. Purchases under ${formatUsdWhole(minPurchaseUsd)} don't count, and neither do`
+                  : ' — not'}{' '}
+                cash withdrawals, money transfers, wallet or card top-ups, QR-code transfers, game
+                credit, gambling, or tax and government payments.
+              </Text>
+            ) : null}
             <Text className="text-sm text-white/70">
               You get {formatUsdWhole(referrerUsd)} and they get {formatUsdWhole(newUserUsd)}
               {payoutToken ? ` in ${payoutToken}` : ''}, credited {payoutDelayDays} days after they
               qualify — that window covers refunds and disputes. You&apos;ll see the exact unlock
               date on each friend above. One reward per friend, no cap.
             </Text>
+            {activityMinPurchaseUsd ? (
+              <Text className="text-sm text-white/70">
+                To unlock the reward, your friend needs to keep using their card: one more purchase
+                of {formatUsdWhole(activityMinPurchaseUsd)} or more before the unlock date, or the
+                reward is cancelled.
+              </Text>
+            ) : null}
             {paysVaultShare && (
               <Text className="text-sm text-white/70">
                 Rewards land in your FUSE savings, so they keep earning yield and count towards your
