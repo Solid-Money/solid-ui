@@ -370,7 +370,7 @@ const CardDetailsPane = () => {
               <SpendingModeCard mode={spendModeFigures.mode} onChangeMode={openSpendMode} />
             </HeroEnter>
           ) : null}
-          {/* Cohort-only, and gone for good once enabled — the backend stores the enablement per
+          {/* Wirex cards only, and gone for good once enabled — the backend stores the enablement per
               chain, so it does not come back on another device. Placed directly under the spend
               mode row because it is the same kind of thing: a property of how this card spends,
               not a promotion. */}

@@ -14,8 +14,9 @@ interface EnableEuroSpendCardProps {
  *
  * ## Who sees it, and when it goes away
  *
- * Only members of the `wirexTeamMembers` cohort, only where the backend reports a working Base
- * deployment, and only until they enable it. That last part is why enablement is stored per chain
+ * Every Wirex cardholder — decided in the app from the card on screen — unless the backend has
+ * switched the Base deployment off, and only until they enable it. That last part is why
+ * enablement is stored per chain
  * server-side: the card disappearing for good is the whole point, and a client-side flag would
  * bring it back on the next device the user signs in on.
  *
