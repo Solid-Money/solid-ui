@@ -8,8 +8,8 @@ import {
   declineWirexThreeDsRequest,
   getWirexThreeDsRequests,
 } from '@/lib/api';
-import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { CardProvider, WirexThreeDsDecisionOutcome, WirexThreeDsRequest } from '@/lib/types';
+import { isPasskeyPromptError } from '@/lib/utils/passkey';
 
 export const WIREX_THREE_DS_QUERY_KEY = ['wirexThreeDsRequests'];
 
@@ -82,7 +82,7 @@ export function useWirexThreeDs(options?: { pollMs?: number }) {
       try {
         signature = await signMessage(messageTemplate.replace(NONCE_PLACEHOLDER, String(nonce)));
       } catch (error) {
-        if (isWebAuthnUserCancelledError(error)) return THREE_DS_CANCELLED;
+        if (isPasskeyPromptError(error)) return THREE_DS_CANCELLED;
         throw error;
       }
 
