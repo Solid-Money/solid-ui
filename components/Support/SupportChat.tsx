@@ -1,0 +1,212 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList, FlashListRef } from '@shopify/flash-list';
+import { Sparkles } from 'lucide-react-native';
+
+import {
+  ContextCard,
+  CsatPrompt,
+  IncidentBanner,
+  QuickReplies,
+  TypingIndicator,
+} from '@/components/Support/ChatExtras';
+import Composer from '@/components/Support/Composer';
+import MessageRow, { buildRows, ChatRow } from '@/components/Support/MessageRow';
+import ReplayMask from '@/components/Support/ReplayMask';
+import { Text } from '@/components/ui/text';
+import { useSupportChatScreen } from '@/hooks/useSupportChat';
+import { loadOlder, sendMessage } from '@/lib/support/sync';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
+
+import type { SupportFile } from '@/lib/types/support';
+
+export const SUPPORT_EMAIL = 'hello@solid.xyz';
+
+const useKeyboardVisible = () => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setVisible(true),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return visible;
+};
+
+const Welcome = ({ expectedReplyText }: { expectedReplyText: string | null }) => (
+  <View className="mb-4 mt-2 items-center gap-2 px-6">
+    <View className="h-12 w-12 items-center justify-center rounded-full bg-card">
+      <Sparkles size={22} color="#94F27F" />
+    </View>
+    <Text className="text-center text-base font-semibold text-white">How can we help?</Text>
+    <Text className="text-center text-sm leading-5 text-white/60">
+      Solid AI answers right away and hands over to our team when you need a person.
+      {expectedReplyText ? ` ${expectedReplyText}` : ''}
+    </Text>
+  </View>
+);
+
+/** Shown when the chat cannot load at all: retry, or email us instead. */
+const Unreachable = ({ onRetry }: { onRetry: () => void }) => (
+  <View className="flex-1 items-center justify-center gap-4 px-8">
+    <Text className="text-center text-base font-semibold text-white">
+      We could not load your messages
+    </Text>
+    <Text className="text-center text-sm leading-5 text-white/60">
+      Check your connection and try again. If it keeps happening, email us at {SUPPORT_EMAIL} and we
+      will reply there.
+    </Text>
+    <View className="flex-row gap-3">
+      <Pressable
+        onPress={onRetry}
+        accessibilityRole="button"
+        className="rounded-full bg-brand px-5 py-2.5 active:opacity-80"
+      >
+        <Text className="text-sm font-semibold text-brand-foreground">Try again</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
+        accessibilityRole="button"
+        className="rounded-full bg-card px-5 py-2.5 active:opacity-80"
+      >
+        <Text className="text-sm font-semibold text-white">Email us</Text>
+      </Pressable>
+    </View>
+  </View>
+);
+
+/**
+ * The in-house support chat: one thread per user, newest at the bottom,
+ * replies from Solid AI and the team arriving live over the app's socket.
+ */
+export default function SupportChat() {
+  const { loadState, retry } = useSupportChatScreen();
+  const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
+  const listRef = useRef<FlashListRef<ChatRow>>(null);
+  const [offsetTop, setOffsetTop] = useState(0);
+  const wrapperRef = useRef<View>(null);
+
+  const loaded = useSupportChatStore(state => state.loaded);
+  const messages = useSupportChatStore(state => state.messages);
+  const pending = useSupportChatStore(state => state.pending);
+  const currentCase = useSupportChatStore(state => state.currentCase);
+  const aiTyping = useSupportChatStore(state => state.aiTyping);
+  const incidents = useSupportChatStore(state => state.incidents);
+  const ai = useSupportChatStore(state => state.ai);
+  const hasOlder = useSupportChatStore(state => state.hasOlder);
+  const draftContext = useSupportChatStore(state => state.draftContext);
+  const setDraftContext = useSupportChatStore(state => state.setDraftContext);
+
+  const rows = useMemo(() => buildRows(messages, pending), [messages, pending]);
+  const caseClosed = !currentCase || currentCase.status === 'resolved';
+  const showQuickReplies = loaded && pending.length === 0 && caseClosed && !aiTyping;
+
+  const send = useCallback(
+    (body: string, files: SupportFile[]) => {
+      const context = useSupportChatStore.getState().draftContext;
+      sendMessage({
+        body,
+        files,
+        context: context ? { kind: context.kind, id: context.id } : null,
+      });
+      if (context) setDraftContext(null);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    },
+    [setDraftContext],
+  );
+
+  const handleOlder = useCallback(() => {
+    if (hasOlder) loadOlder().catch(() => undefined);
+  }, [hasOlder]);
+
+  // The keyboard avoider needs its distance from the top of the screen (the header above it).
+  const measure = useCallback(() => {
+    wrapperRef.current?.measureInWindow((_x, y) =>
+      setOffsetTop(current => (current === y ? current : y)),
+    );
+  }, []);
+
+  if (!loaded && loadState === 'error') return <Unreachable onRetry={retry} />;
+  if (!loaded) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator color="#FFFFFF" />
+      </View>
+    );
+  }
+
+  return (
+    <View ref={wrapperRef} onLayout={measure} className="flex-1">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={
+          Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined
+        }
+        keyboardVerticalOffset={offsetTop}
+      >
+        <ReplayMask style={{ flex: 1 }}>
+          <IncidentBanner incidents={incidents} />
+          <FlashList
+            ref={listRef}
+            data={rows}
+            keyExtractor={row => row.key}
+            getItemType={row =>
+              row.type === 'message' ? `${row.type}-${row.message.author.type}` : row.type
+            }
+            renderItem={({ item }) => <MessageRow row={item} />}
+            maintainVisibleContentPosition={{
+              startRenderingFromBottom: true,
+              autoscrollToBottomThreshold: 0.2,
+            }}
+            onStartReached={handleOlder}
+            onStartReachedThreshold={0.5}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}
+            ListHeaderComponent={
+              hasOlder ? (
+                <View className="py-3">
+                  <ActivityIndicator color="#6B6B6B" />
+                </View>
+              ) : (
+                <Welcome expectedReplyText={ai?.expectedReplyText ?? null} />
+              )
+            }
+            ListFooterComponent={
+              <View>
+                {aiTyping && <TypingIndicator />}
+                {currentCase?.awaitingRating && (
+                  <CsatPrompt key={currentCase.id} supportCase={currentCase} />
+                )}
+                {showQuickReplies && <QuickReplies onPick={text => send(text, [])} />}
+              </View>
+            }
+          />
+          {draftContext && (
+            <ContextCard context={draftContext} onRemove={() => setDraftContext(null)} />
+          )}
+          <Composer onSend={send} bottomInset={keyboardVisible ? 0 : insets.bottom} />
+        </ReplayMask>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}

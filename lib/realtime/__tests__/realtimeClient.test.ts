@@ -17,6 +17,7 @@ import {
 import { refreshSessionTokens } from '@/lib/utils';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useRealtimeStore } from '@/store/useRealtimeStore';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
 import { useUserStore } from '@/store/useUserStore';
 
 jest.mock('socket.io-client', () => {
@@ -592,6 +593,64 @@ describe('the realtime client', () => {
       expect(refreshSessionTokens).not.toHaveBeenCalled();
       jest.advanceTimersByTime(6_250);
       expect(socket.connectCalls).toBe(2);
+    });
+  });
+
+  describe('the support chat', () => {
+    const reply = {
+      id: 'm1',
+      seq: 4,
+      clientMessageId: null,
+      caseId: 'case1',
+      author: { type: 'agent', name: 'Dana' },
+      body: 'Your deposit has arrived.',
+      attachments: [],
+      context: null,
+      redacted: false,
+      createdAt: '2026-10-11T08:00:00.000Z',
+    };
+
+    beforeEach(() => useSupportChatStore.getState().reset());
+
+    it('puts a live reply in the shared thread', () => {
+      const socket = goLive();
+
+      socket.serverEmit('support_message', { conversationId: 'conv1', message: reply });
+
+      expect(useSupportChatStore.getState().messages).toEqual([
+        expect.objectContaining({ id: 'm1' }),
+      ]);
+      expect(useSupportChatStore.getState().unread).toBe(1);
+    });
+
+    it('asks the chat to catch up on every session', () => {
+      const before = useSupportChatStore.getState().syncEpoch;
+      const socket = goLive();
+      socket.serverEmit('disconnect', 'transport close');
+      socket.serverEmit('connect');
+      socket.serverEmit('session', { userId: 'user-1', expiresAt: Date.now() + 3600_000 });
+
+      expect(useSupportChatStore.getState().syncEpoch).toBe(before + 2);
+    });
+
+    it("forgets the thread when the account changes, and never shows one user another's replies", () => {
+      const socket = goLive();
+      socket.serverEmit('support_message', { conversationId: 'conv1', message: reply });
+
+      useUserStore.setState({
+        users: [
+          { ...user, selected: false },
+          { ...user, userId: 'user-2', selected: true },
+        ],
+      });
+      // The old socket's listeners are gone, so a late event from it lands nowhere.
+      socket.serverEmit('support_message', {
+        conversationId: 'conv1',
+        message: { ...reply, id: 'm2' },
+      });
+
+      expect(useSupportChatStore.getState().messages).toHaveLength(0);
+      expect(useSupportChatStore.getState().unread).toBe(0);
     });
   });
 

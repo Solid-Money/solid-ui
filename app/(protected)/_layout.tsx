@@ -318,6 +318,13 @@ export default function ProtectedLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="support/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
         </Stack>
       </SidebarShell>
       {/* Root-level hero overlay for the card view-transition (redesigned

@@ -12,13 +12,19 @@ export type MarkdownStyle = {
 type MarkdownProps = {
   value: string;
   style?: MarkdownStyle;
+  /** Body text colour; defaults to the muted grey used on content pages. */
+  textColor?: ColorValue;
 };
 
-const Markdown = ({ value, style = { backgroundColor: 'transparent' } }: MarkdownProps) => {
+const Markdown = ({
+  value,
+  style = { backgroundColor: 'transparent' },
+  textColor = '#A1A1A1',
+}: MarkdownProps) => {
   const elements = useMarkdown(value, {
     styles: {
       text: {
-        color: '#A1A1A1',
+        color: textColor,
       },
       strong: {
         color: '#ffffff',
