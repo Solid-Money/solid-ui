@@ -21,6 +21,8 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
 jest.mock('expo-image', () => ({ Image: 'Image' }));
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (href: string) => mockPush(href) } }));
 
 const texts = (tree: any) =>
   tree.root
@@ -88,6 +90,29 @@ describe('MessageRow', () => {
     });
     expect(texts(tree)).toContain('Solid AI');
     expect(tree.root.findByType('Markdown').props.value).toBe('**Hi**');
+  });
+
+  it('lists the help articles a Solid AI answer was based on, and opens them in the app', () => {
+    const tree = render({
+      type: 'message',
+      key: 's',
+      message: message({
+        body: 'Open Wallet and add the card.',
+        sources: [
+          { articleId: 'a1', versionId: 'v1', title: 'Apple Pay', slug: 'apple-pay' },
+          { articleId: 'a2', versionId: 'v2', title: null, slug: null },
+        ],
+      }),
+      first: true,
+      last: true,
+    });
+    expect(texts(tree)).toContain('Sources');
+    expect(texts(tree)).toContain('Apple Pay');
+    const links = tree.root.findAll(
+      (node: any) => node.props.accessibilityRole === 'link' && node.props.onPress,
+    );
+    act(() => links[0].props.onPress());
+    expect(mockPush).toHaveBeenCalledWith('/help/articles/apple-pay');
   });
 
   it('names an agent and never renders a user message as markdown', () => {

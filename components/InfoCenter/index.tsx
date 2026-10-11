@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
-import { Linking, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
 
 import DocsIcon from '@/assets/images/docs';
 import QuestionIcon from '@/assets/images/question';
 import SupportIcon from '@/assets/images/support';
 import { Text } from '@/components/ui/text';
+import { openHelpLink } from '@/lib/help/links';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 const InfoCenterTrigger = (props: any) => {
@@ -41,7 +42,7 @@ const InfoCenterDocs = () => {
 };
 
 const onInfoCenterDocsPress = () => {
-  Linking.openURL('https://support.solid.xyz');
+  openHelpLink('https://support.solid.xyz');
 };
 
 const InfoCenterLegal = () => {
@@ -54,7 +55,7 @@ const InfoCenterLegal = () => {
 };
 
 const onInfoCenterLegalPress = () => {
-  Linking.openURL(
+  openHelpLink(
     'https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce',
   );
 };

@@ -20,6 +20,7 @@ import { useDimension } from '@/hooks/useDimension';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import useUser from '@/hooks/useUser';
+import { openHelpLink } from '@/lib/help/links';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
 import { cn, getUserDisplayName } from '@/lib/utils';
@@ -319,15 +320,11 @@ const DesktopSettings = () => {
         ? 'text-[#FFB347]'
         : 'text-[#ACACAC]';
 
-  const handleLegalPress = () => {
-    const url =
-      'https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce';
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank');
-    } else {
-      Linking.openURL(url);
-    }
-  };
+  // In the app's help center when it can; the website otherwise.
+  const handleLegalPress = () =>
+    openHelpLink(
+      'https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce',
+    );
 
   const desktopHeader = (
     <>

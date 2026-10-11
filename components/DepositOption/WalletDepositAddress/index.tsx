@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ImageSourcePropType, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, ImageSourcePropType, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -15,6 +15,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
+import { openHelpLink } from '@/lib/help/links';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -208,7 +209,7 @@ const WalletDepositAddress = () => {
         />
         <Pressable
           className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
-          onPress={() => Linking.openURL(WALLET_DEPOSIT_LEARN_URL)}
+          onPress={() => openHelpLink(WALLET_DEPOSIT_LEARN_URL)}
         >
           <Text className="text-sm text-white">Learn about deposits</Text>
           <ChevronRight color="white" size={16} />

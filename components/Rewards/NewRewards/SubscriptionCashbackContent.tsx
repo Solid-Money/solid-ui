@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { openHelpLink } from '@/lib/help/links';
 import { RewardsTier } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
@@ -203,7 +204,7 @@ const SubscriptionCashbackContent = ({
             lineHeight: 16,
             textDecorationLine: 'underline',
           }}
-          onPress={() => void Linking.openURL(REWARDS_TERMS_URL)}
+          onPress={() => openHelpLink(REWARDS_TERMS_URL)}
         >
           Learn more
         </Text>
