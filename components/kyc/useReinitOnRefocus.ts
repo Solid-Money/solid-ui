@@ -7,8 +7,13 @@ import { useFocusEffect } from 'expo-router';
  *
  * `started` and `ready` are deliberately absent — a verification is in flight
  * there, and restarting it under a running SDK would discard the user's work.
+ *
+ * `cancelled` is the user having closed the SDK themselves. It used to be left
+ * as `started`, so coming back showed "Verification opened. Complete it and
+ * return here." over an SDK that was no longer open — with nothing to press
+ * short of killing the app.
  */
-const TERMINAL_PHASES: readonly string[] = ['completed', 'error', 'unavailable'];
+const TERMINAL_PHASES: readonly string[] = ['completed', 'error', 'unavailable', 'cancelled'];
 
 /**
  * Whether re-focusing a KYC screen should start a fresh session.

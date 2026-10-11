@@ -659,6 +659,14 @@ export interface CardStatusResponse {
   rainApplication?: {
     status?: RainApplicationStatus | string;
     externalVerificationLink?: { url: string; params: Record<string, string> };
+    /**
+     * The Rain row's own KYC status. For a Wirex cardholder the flat
+     * `kycStatus` is their Wirex card's, so a Didit decline on their
+     * virtual-account verification is only visible here.
+     */
+    kycStatus?: KycStatus | string;
+    /** Didit approved, but the hand-off to Rain is held on the savings deposit. */
+    forwardPendingDeposit?: boolean;
   };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the

@@ -22,6 +22,7 @@ import { getAsset } from '@/lib/assets';
 import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
 import { DepositModal, OnboardingFeeProduct } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { getVirtualAccountRainStatus } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -188,7 +189,11 @@ export const VirtualAccountApplyModal = ({
   );
 
   const proceed = useCallback(() => {
-    const rainStatus = cardStatus?.rainApplicationStatus;
+    // The Rain row's state, not the primary row's. For a Wirex cardholder the
+    // primary row is their Wirex card, so the flat field read "not started"
+    // after Rain had approved them — and with a Rain consumer on file that sent
+    // them to the passive pending page instead of the terms step.
+    const rainStatus = getVirtualAccountRainStatus(cardStatus);
     const action = resolveVirtualAccountApplyAction({
       provider: virtualAccountProvider,
       rainApplicationStatus: rainStatus,

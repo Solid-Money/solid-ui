@@ -31,6 +31,12 @@ export type SessionState =
     }
   | { phase: 'started'; sessionId?: string }
   /**
+   * The user closed the SDK without submitting. Terminal, so re-entering the
+   * screen starts a fresh session (see `useReinitOnRefocus`) instead of showing
+   * "Verification opened" over an SDK that is no longer open.
+   */
+  | { phase: 'cancelled' }
+  /**
    * Hand-off: the user is being routed off /kyc. `destination` is retained so a
    * navigation that does not land can be retried, and so the interstitial can
    * offer a manual button instead of stranding the user on "Redirecting...".
@@ -364,6 +370,10 @@ export function useDiditSession() {
    * SDK and trap them in a loop, so send them back to the screen that started KYC.
    */
   const onVerificationCancelled = useCallback(() => {
+    // Mark the session spent before leaving. The screen is frozen, not
+    // unmounted, so whatever phase it holds now is what the next visit finds —
+    // and `started` read as "still in flight", so the SDK was never relaunched.
+    setSession({ phase: 'cancelled' });
     if (router.canGoBack()) {
       router.back();
       return;
