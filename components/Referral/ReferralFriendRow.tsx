@@ -151,6 +151,10 @@ interface ReferralFriendRowProps {
   /** Program-level targets, for rows the API sends without their own bar. */
   spendTargetUsd: number;
   merchantTarget: number;
+  /** Spend a merchant needs before it counts toward the target, when the program has one. */
+  minMerchantSpendUsd?: number;
+  /** The purchase a qualified friend still needs to make before payout, when required. */
+  activityMinPurchaseUsd?: number | null;
   /** Called when a countdown reaches zero, so the screen can re-fetch. */
   onPayoutDue?: () => void;
 }
@@ -160,6 +164,8 @@ export default function ReferralFriendRow({
   index,
   spendTargetUsd: programSpendTargetUsd,
   merchantTarget: programMerchantTarget,
+  minMerchantSpendUsd,
+  activityMinPurchaseUsd,
   onPayoutDue,
 }: ReferralFriendRowProps) {
   // The row's own bar when the API sends one: a friend who qualified before the
@@ -270,6 +276,31 @@ export default function ReferralFriendRow({
   // was sent.
   const paidLine = item.stage === ReferralFriendStage.PAID ? formatPayoutToken(item) : null;
 
+  // Why the progress reads lower than what the friend has spent, so the
+  // referrer can tell them what still counts rather than guess.
+  const ruleNotes: string[] = [];
+  if (item.stage === ReferralFriendStage.SPENDING) {
+    const belowMinimum = item.merchantsBelowMinimum ?? 0;
+    if (belowMinimum > 0 && minMerchantSpendUsd) {
+      ruleNotes.push(
+        `${belowMinimum} ${belowMinimum === 1 ? 'merchant needs' : 'merchants need'} ${formatUsdWhole(
+          minMerchantSpendUsd,
+        )}+ to count`,
+      );
+    }
+    if ((item.excludedSpendUsd ?? 0) >= 1) {
+      ruleNotes.push(`${formatUsdCompact(item.excludedSpendUsd ?? 0)} doesn't count`);
+    }
+  }
+  // Qualified, but the payout will be cancelled unless the friend makes one
+  // more purchase — the one thing the referrer can still do something about.
+  const activityNote =
+    item.stage === ReferralFriendStage.REWARD_UNLOCKING && item.awaitingActivity
+      ? activityMinPurchaseUsd
+        ? `Needs one more ${formatUsdWhole(activityMinPurchaseUsd)}+ purchase to unlock`
+        : 'Needs one more purchase to unlock'
+      : null;
+
   const detailChip = presentation.detail ? (
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>
   ) : null;
@@ -320,6 +351,12 @@ export default function ReferralFriendRow({
               {formatJoined(item.signupAt)}
             </Text>
             <Text className="text-xs leading-[14px] text-white/50">{spentLine}</Text>
+            {ruleNotes.length > 0 ? (
+              <Text className="text-xs leading-[14px] text-white/40">{ruleNotes.join(' · ')}</Text>
+            ) : null}
+            {activityNote ? (
+              <Text className="text-xs leading-[14px] text-rewards">{activityNote}</Text>
+            ) : null}
             {paidLine ? (
               <Text className="text-xs leading-[14px] text-white/50">Paid {paidLine}</Text>
             ) : null}

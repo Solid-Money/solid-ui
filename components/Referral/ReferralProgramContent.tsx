@@ -129,6 +129,10 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
   const spendTarget = summary?.qualification.spendTargetUsd ?? 75;
   const merchantTarget = summary?.qualification.merchantTarget ?? 3;
   const windowDays = summary?.qualification.windowDays ?? 30;
+  // The anti-abuse rules: shown only when the backend reports them, since one
+  // that does not is not enforcing them.
+  const minMerchantSpendUsd = summary?.qualification.minMerchantSpendUsd;
+  const activityMinPurchaseUsd = summary?.qualification.activityMinPurchaseUsd ?? null;
   const hasActiveCard = summary?.hasActiveCard ?? false;
   const referrals = summary?.referrals ?? [];
   // The reward is quoted in dollars but settled in a token; name it rather than
@@ -209,7 +213,11 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
           payments at different merchants within {windowDays} days.
         </InfoRow>
         <Text className="text-xs leading-4 text-white/50">
-          Qualified spend excludes reversed or charged-back transactions.
+          Qualified spend excludes reversed or charged-back transactions
+          {summary?.qualification.minMerchantSpendUsd !== undefined
+            ? ', cash withdrawals, transfers, top-ups, game credit and gambling'
+            : ''}
+          .
         </Text>
       </View>
 
@@ -273,8 +281,18 @@ export default function ReferralProgramContent({ onClose }: ReferralProgramConte
           </Text>
           <Text className="text-sm text-white/70">• Order and activate a Solid card.</Text>
           <Text className="text-sm text-white/70">
-            • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants.
+            • Spend {formatUsd(spendTarget)} across {merchantTarget}+ different merchants
+            {minMerchantSpendUsd
+              ? `, with at least ${formatUsdWhole(minMerchantSpendUsd)} at each`
+              : ''}
+            .
           </Text>
+          {activityMinPurchaseUsd ? (
+            <Text className="text-sm text-white/70">
+              • Make one more purchase of {formatUsdWhole(activityMinPurchaseUsd)} or more before
+              the reward unlocks.
+            </Text>
+          ) : null}
           <Text className="text-sm text-white/70">
             You get {formatUsd(referrerUsd)} and they get {formatUsd(newUserUsd)}
             {payoutToken ? ` in ${payoutToken}` : ''}, credited about 40 days after they qualify.

@@ -3562,7 +3562,21 @@ export interface ReferralRewardListItem {
   payoutEtaAt?: string;
   paidAt?: string;
   spendUsd: number;
+  /** Merchants that count toward the target: those with the per-merchant minimum spent there. */
   merchantCount: number;
+  /**
+   * Spend the referral rules left out — excluded merchants (cash, transfers,
+   * top-ups, game credit…) and purchases under the minimum. Absent on backends
+   * that predate the rules.
+   */
+  excludedSpendUsd?: number;
+  /** Merchants the friend spent at that have not reached the per-merchant minimum yet. */
+  merchantsBelowMinimum?: number;
+  /**
+   * Qualified, but the friend has not yet made the one more purchase the payout
+   * needs — the referrer's cue to nudge them before the reward unlocks.
+   */
+  awaitingActivity?: boolean;
   /**
    * The bar this row is measured against. For a friend who has qualified it is
    * the bar they cleared, which can be lower than today's — the target moved
@@ -3615,6 +3629,15 @@ export interface ReferralSummary {
     windowDays: number;
     /** Days between qualifying and the payout — the dispute/chargeback cover. */
     payoutDelayDays: number;
+    /** Purchases under this (USD) count for nothing. Absent on older backends. */
+    minPurchaseUsd?: number;
+    /** A merchant counts toward the target once this much (USD) is spent there. */
+    minMerchantSpendUsd?: number;
+    /**
+     * The purchase (USD) the friend must make between qualifying and the
+     * payout; null when none is required, absent on older backends.
+     */
+    activityMinPurchaseUsd?: number | null;
   };
   totalRewardedUsd: number;
   friendsInvited: number;
