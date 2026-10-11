@@ -10,6 +10,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { registerPushToken } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
+import { SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -89,6 +90,7 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/rewards': path.REWARDS,
   '/rewards/benefits': path.REWARDS_BENEFITS,
   '/savings/fuse': path.SAVINGS_FUSE,
+  '/support': path.SUPPORT,
 };
 
 /**
@@ -176,6 +178,9 @@ function getNotificationRoute(data?: NotificationData): Href {
 
   const linked = routeForLink(data?.link);
   if (linked) return linked;
+
+  // A support reply always opens the chat, whatever host its link was built with.
+  if (type === SUPPORT_PUSH_TYPE) return path.SUPPORT;
 
   // Legacy routing, for pushes that predate the deep link. Lifecycle types are
   // deliberately absent: they never had a branch here, so every one of them

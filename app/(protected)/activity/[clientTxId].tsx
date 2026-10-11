@@ -82,7 +82,7 @@ import {
   getTransactionUsdAmount,
   SPENDING_CATEGORIES,
 } from '@/lib/utils/spendingInsights';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { openSupportDrawer, SupportDrawerRequest } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
   label: React.ReactNode;
@@ -112,7 +112,8 @@ type BackProps = {
 };
 
 type SupportSectionProps = {
-  transactionContext?: string;
+  /** A draft for Intercom plus a reference for the in-house chat. */
+  transactionContext?: SupportDrawerRequest;
 };
 
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
@@ -352,9 +353,16 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return lines.length ? `\n${lines.join('\n')}` : '';
   }, [spend, sweepHash, refund, transaction.usd_amount]);
 
-  const transactionContext = useMemo(
-    () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+  const transactionContext = useMemo<SupportDrawerRequest>(
+    () => ({
+      chatMessage: `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+      // Display only: the server looks the purchase up by id.
+      context: {
+        kind: 'card_transaction',
+        id: transaction.id,
+        label: `${merchantName} · ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}`,
+      },
+    }),
     [
       merchantName,
       transaction.amount,
@@ -785,9 +793,15 @@ const UnknownCardTransaction = memo(function UnknownCardTransaction({
 }: {
   clientTxId: string;
 }) {
-  const transactionContext = useMemo(
-    () =>
-      `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+  const transactionContext = useMemo<SupportDrawerRequest>(
+    () => ({
+      chatMessage: `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+      context: {
+        kind: 'card_transaction',
+        id: clientTxId.replace(/^card-/, ''),
+        label: 'A card purchase the app could not load',
+      },
+    }),
     [clientTxId],
   );
 
@@ -1321,14 +1335,27 @@ export default function ActivityDetail() {
     handleExplorerPress,
   ]);
 
-  const transactionContext = useMemo(() => {
-    if (!finalActivity) return '';
-    return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
+  const transactionContext = useMemo<SupportDrawerRequest | undefined>(() => {
+    if (!finalActivity) return undefined;
+    const amount = `${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}`;
+    return {
+      chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
+      context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },
+    };
   }, [finalActivity, statusSign, clientTxId]);
 
-  const missingTransactionContext = useMemo(
+  const missingTransactionContext = useMemo<SupportDrawerRequest | undefined>(
     () =>
-      `Question about transaction:\n\nTransaction ID: ${clientTxId}\nI cannot open its details in the app.\n\nMy question: `,
+      clientTxId
+        ? {
+            chatMessage: `Question about transaction:\n\nTransaction ID: ${clientTxId}\nI cannot open its details in the app.\n\nMy question: `,
+            context: {
+              kind: 'activity',
+              id: clientTxId,
+              label: 'A transaction the app could not load',
+            },
+          }
+        : undefined,
     [clientTxId],
   );
 

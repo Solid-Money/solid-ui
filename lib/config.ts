@@ -15,6 +15,12 @@ export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_K
 export const EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID =
   process.env.EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID ?? '';
 export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_BASE_URL ?? '';
+/**
+ * flash-support-service (the in-house support chat), e.g.
+ * https://support-api.solid.xyz. Empty means the chat is unavailable and the
+ * app keeps using Intercom.
+ */
+export const EXPO_PUBLIC_SUPPORT_API_BASE_URL = process.env.EXPO_PUBLIC_SUPPORT_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? '';
