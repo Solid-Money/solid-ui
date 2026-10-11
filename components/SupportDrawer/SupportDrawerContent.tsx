@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useSupportChatEnabled } from '@/hooks/useSupportChat';
+import { openHelpLink } from '@/lib/help/links';
 import { useIntercom } from '@/lib/intercom';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
 import { closeSupportDrawer, useSupportDrawerStore } from '@/store/useSupportDrawerStore';
@@ -152,7 +153,8 @@ const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => 
   const openLink = useCallback(
     (url: string) => {
       runAfterDismiss(() => {
-        void Linking.openURL(url);
+        // Help center links open in the app's help center when it is on.
+        openHelpLink(url);
       });
     },
     [runAfterDismiss],

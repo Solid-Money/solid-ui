@@ -77,6 +77,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 const call = <T>(path: string, init?: RequestInit) =>
   withRefreshToken(() => request<T>(path, init));
 
+/** For the help center client (lib/api/help.ts): same base, session and errors. */
+export const supportCall = call;
+
 export const getSupportThread = (signal?: AbortSignal) =>
   call<SupportThread>('/thread', { signal });
 
