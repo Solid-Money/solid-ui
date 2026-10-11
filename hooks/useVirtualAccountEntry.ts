@@ -6,7 +6,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
-import { RainApplicationStatus } from '@/lib/types';
+import { isVirtualAccountRainApproved } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
@@ -27,7 +27,10 @@ export const useVirtualAccountEntry = () => {
   const [isApplyOpen, setIsApplyOpen] = useState(false);
 
   const { data: cardStatus } = useCardStatus();
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  // The Rain row, not the primary one: a Wirex cardholder's primary row is their
+  // Wirex card, so the flat field never reads approved for them and an account
+  // they already hold would never be looked up.
+  const isRainApproved = isVirtualAccountRainApproved(cardStatus);
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
   const { provider } = useVirtualAccountProvider();
 
