@@ -23,6 +23,7 @@ import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
+import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import { Status, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { CrossChainSendQuote } from '@/lib/types/cross-chain-send';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -180,10 +181,15 @@ const CrossChainReview: React.FC = () => {
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_FAILED, {
         token_symbol: selectedToken.contractTickerSymbol,
         amount,
-        error: String(err),
+        // Sanitized: a failed user operation's message carries the bundler URL,
+        // API key included.
+        error: sanitizeTechnicalMessage(err),
         source: 'cross_chain_send_fuse',
       });
-      Toast.show({ type: 'error', text1: 'Error while sending', props: { badgeText: 'Onchain' } });
+      void showFailureSheet(err, {
+        action: 'send',
+        details: { amount, token: selectedToken.contractTickerSymbol, network: fuse.name },
+      });
     }
   }, [selectedToken, amount, address, sameChain, setTransaction, refetchAll, setModal]);
 

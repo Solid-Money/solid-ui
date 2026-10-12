@@ -21,7 +21,7 @@ import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
-import { showFailureSheet } from '@/lib/errors';
+import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -146,7 +146,9 @@ const SendReview: React.FC = () => {
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_FAILED, {
         token_symbol: selectedToken?.contractTickerSymbol,
         amount: amount.toString(),
-        error: String(error),
+        // Sanitized: a failed user operation's message carries the bundler URL,
+        // API key included.
+        error: sanitizeTechnicalMessage(error),
         source: 'send_modal',
       });
       void showFailureSheet(error, {
