@@ -8,6 +8,11 @@ import {
   declineWirexThreeDsRequest,
   getWirexThreeDsRequests,
 } from '@/lib/api';
+import {
+  getUserErrorMessage,
+  isSafeServerMessage,
+  normalizeErrorAsync,
+} from '@/lib/errors/classify';
 import { isWebAuthnUserCancelledError } from '@/lib/execute';
 import { CardProvider, WirexThreeDsDecisionOutcome, WirexThreeDsRequest } from '@/lib/types';
 
@@ -121,15 +126,9 @@ export function useWirexThreeDs(options?: { pollMs?: number }) {
  * read; without unpacking it every failure reads as "something went wrong".
  */
 export async function describeThreeDsError(error: unknown): Promise<string> {
-  if (error instanceof Response) {
-    try {
-      const body = await error.json();
-      const message = Array.isArray(body?.message) ? body.message.join(' ') : body?.message;
-      if (typeof message === 'string' && message.trim()) return message;
-    } catch {
-      // Fall through — an unreadable body is no reason to say nothing.
-    }
-  }
-  if (error instanceof Error && error.message) return error.message;
-  return 'Something went wrong. Please try again.';
+  // The server's own reason when it reads like copy; Wirex's relayed text and
+  // raw SDK messages are replaced with plain copy.
+  const { serverMessage } = await normalizeErrorAsync(error);
+  if (isSafeServerMessage(serverMessage)) return serverMessage;
+  return getUserErrorMessage(error, { action: 'card_settings' }) || 'Try again in a moment.';
 }

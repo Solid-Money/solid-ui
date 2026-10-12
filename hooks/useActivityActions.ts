@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { Hash } from 'viem';
 
 import { createActivityEvent, updateActivityEvent } from '@/lib/api';
+import { activityFailureMetadata } from '@/lib/errors';
 import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ActivityEvent, TransactionStatus, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -240,22 +241,17 @@ export function useActivityActions() {
           throw error;
         }
 
+        // Sanitized cause plus the Ref the failure sheet will show for this error.
         if (clientTxId) {
           updateActivity(clientTxId, {
             status: TransactionStatus.FAILED,
-            metadata: {
-              error: error?.message || 'Transaction failed',
-              failedAt: new Date().toISOString(),
-            },
+            metadata: activityFailureMetadata(error),
           });
         } else {
           const failedClientTxId = await createActivity(params);
           updateActivity(failedClientTxId, {
             status: TransactionStatus.FAILED,
-            metadata: {
-              error: error?.message || 'Transaction failed',
-              failedAt: new Date().toISOString(),
-            },
+            metadata: activityFailureMetadata(error),
           });
         }
 

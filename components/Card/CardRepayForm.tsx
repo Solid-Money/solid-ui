@@ -37,6 +37,7 @@ import useRepayFromCollateral from '@/hooks/useRepayFromCollateral';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { TradeState } from '@/lib/types/trade-state';
@@ -456,12 +457,7 @@ export default function CardRepayForm() {
       } catch (error) {
         setRepayStatus(Status.ERROR);
         console.error('Repay error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Repay failed',
-          text2: 'Please try again or check your wallet balance',
-          props: { badgeText: 'Onchain' },
-        });
+        void showFailureSheet(error, { action: 'card_repay', details: { amount: data.amount } });
       }
     },
     [

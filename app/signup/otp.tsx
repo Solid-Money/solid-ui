@@ -21,6 +21,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { initSignupOtp, verifySignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
@@ -152,7 +153,11 @@ export default function SignupOtp() {
         setStep(isSharedReviewAccess ? 'creating' : 'username');
         router.push(isSharedReviewAccess ? path.SIGNUP_CREATING : path.SIGNUP_USERNAME);
       } catch (err: any) {
-        const errorMessage = err?.message || 'Invalid verification code. Please try again.';
+        // Our own copy ("Invalid verification code") when the server wrote it for
+        // users; raw SDK or network text never reaches the screen.
+        const errorMessage =
+          getUserErrorMessage(err, { action: 'sign_up' }) ||
+          'Invalid verification code. Try again.';
         setError(errorMessage);
 
         track(TRACKING_EVENTS.EMAIL_VERIFICATION_FAILED, {

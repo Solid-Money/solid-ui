@@ -20,6 +20,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors';
 import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
 import { selectLastKnownIdentity, useUserStore } from '@/store/useUserStore';
 
@@ -120,7 +121,10 @@ export default function RecoveryPasskey() {
       setStep(STEPS.OTP_VERIFY);
     } catch (err: any) {
       console.error('Failed to send OTP:', err);
-      setApiError(err?.message || 'Failed to send verification code. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to send verification code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -160,7 +164,10 @@ export default function RecoveryPasskey() {
         setStep(STEPS.ADD_PASSKEY);
       } catch (err: any) {
         console.error('Failed to verify OTP:', err);
-        setApiError(err?.message || 'Invalid verification code. Please try again.');
+        setApiError(
+          getUserErrorMessage(err, { action: 'account' }) ||
+            'Invalid verification code. Please try again.',
+        );
       } finally {
         setLoading(false);
       }
@@ -280,7 +287,10 @@ export default function RecoveryPasskey() {
         return;
       }
 
-      setApiError(err?.message || 'Failed to create passkey. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to create passkey. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -311,7 +321,10 @@ export default function RecoveryPasskey() {
       setOtpId(response.otpId);
     } catch (err: any) {
       console.error('Failed to resend OTP:', err);
-      setApiError(err?.message || 'Failed to resend code. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to resend code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }

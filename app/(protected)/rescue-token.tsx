@@ -20,6 +20,7 @@ import useRescueToken from '@/hooks/useRescueToken';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
@@ -132,11 +133,9 @@ export default function RescueToken() {
       });
       router.replace(path.HOME);
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Rescue failed',
-        text2: err instanceof Error ? err.message : 'Please try again',
-        props: { badgeText: '' },
+      void showFailureSheet(err, {
+        action: 'rescue_token',
+        details: { amount: formatNumber(usdcAmount), token: 'USDC', network: 'Ethereum' },
       });
     }
   };

@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
 import { isProduction } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
@@ -56,11 +57,9 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
       });
       onSuccess();
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Deposit failed',
-        text2: err instanceof Error ? err.message : 'Unknown error',
-        props: { badgeText: 'Onchain' },
+      void showFailureSheet(err, {
+        action: 'agent_fund',
+        details: { amount: sliderValue.toString(), token: 'USDC' },
       });
     }
   };

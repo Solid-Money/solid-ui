@@ -12,6 +12,7 @@ import { TRANSFI_STATUS_KEY } from '@/hooks/useTransfi';
 import { WIREX_BANK_OVERVIEW_KEY } from '@/hooks/useWirexBankAccounts';
 import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
+import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -288,9 +289,8 @@ export function useSumsubSession() {
         router.replace(path.CARD_COUNTRY_SELECTION as any);
         return;
       }
-      const message = e?.message || 'Failed to create verification session';
-      setSession({ phase: 'error', message });
-      Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
+      setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
+      void showErrorToast(e, { action: 'kyc' });
     }
   }, [debugState, readDeclaredCountry, redirectBasedOnKycStatus, router, sumsubFlow]);
 
@@ -341,7 +341,7 @@ export function useSumsubSession() {
     Toast.show({
       type: 'info',
       text1: 'More information needed',
-      text2: reason || 'Please re-upload the requested document to continue.',
+      text2: isSafeServerMessage(reason) ? reason : 'Re-upload the requested document to continue.',
       props: { badgeText: '' },
     });
     setSession({ phase: 'started' });
@@ -361,14 +361,17 @@ export function useSumsubSession() {
     router.replace(path.CARD_ACTIVATE as any);
   }, [router]);
 
+  // `message` is the SDK's own text: reported, never shown.
   const onVerificationError = useCallback((message: string) => {
-    Toast.show({
-      type: 'error',
-      text1: 'Verification failed',
-      text2: message,
-      props: { badgeText: '' },
+    void showErrorToast(new Error(message), {
+      action: 'kyc',
+      title: 'Verification didn’t finish',
+      tags: { kyc_provider: 'sumsub' },
     });
-    setSession({ phase: 'error', message });
+    setSession({
+      phase: 'error',
+      message: 'Verification didn’t finish. Try again, or contact support if it keeps happening.',
+    });
   }, []);
 
   // Poll the backend for the canonical status while the SDK is active.

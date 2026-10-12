@@ -47,3 +47,16 @@ export const useIntercom = (): IntercomAPI => {
 export const openIntercom = () => {
   Intercom.present();
 };
+
+/**
+ * Open the chat with a message already typed, without the React provider: for
+ * screens that render outside it, such as the root error boundary. Same
+ * string-only guard as `showNewMessage`.
+ */
+export const openIntercomWithMessage = (message: string) => {
+  if (typeof message === 'string' && message !== '') {
+    Intercom.presentMessageComposer(message);
+  } else {
+    Intercom.present();
+  }
+};

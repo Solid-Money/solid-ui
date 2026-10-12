@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -20,6 +18,12 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import {
+  getUserErrorMessage,
+  reportError,
+  sanitizeTechnicalMessage,
+  showErrorToast,
+} from '@/lib/errors';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
@@ -88,34 +92,31 @@ export default function SignupPasskey() {
     } catch (err: any) {
       console.error('Failed to create passkey:', err);
 
-      // Handle specific WebAuthn errors
-      let errorMessage = err?.message || 'Failed to create passkey. Please try again.';
-      if (err?.name === 'NotAllowedError') {
-        errorMessage = 'Passkey setup was cancelled. Please try again.';
-      } else if (err?.name === 'TimeoutError') {
-        errorMessage = 'Passkey setup timed out. Please try again.';
-      }
+      // A cancel or timeout keeps its own wording (the next tap can work);
+      // anything else gets user copy, never the raw SDK message.
+      const errorMessage =
+        err?.name === 'NotAllowedError'
+          ? 'Passkey setup was cancelled. Try again.'
+          : err?.name === 'TimeoutError'
+            ? 'Passkey setup timed out. Try again.'
+            : getUserErrorMessage(err, { action: 'passkey' });
 
       setError(errorMessage);
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: errorMessage,
+        // Sanitized: raw messages here carried RPC URLs with API keys.
+        error: sanitizeTechnicalMessage(err),
         step: 'passkey',
       });
 
-      if (Platform.OS === 'web') {
-        Toast.show({
-          type: 'error',
-          text1: 'Passkey Setup Failed',
-          text2: errorMessage,
-        });
-      }
-
-      Sentry.captureException(err, {
+      const context = {
+        action: 'passkey' as const,
+        title: 'Couldn’t set up your passkey',
         tags: { type: 'signup_passkey_creation_error' },
-        extra: { email },
-      });
+      };
+      if (Platform.OS === 'web') void showErrorToast(err, context);
+      else void reportError(err, context, 'inline');
     } finally {
       setIsLoading(false);
     }

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Appearance, AppState, Platform, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import * as Font from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { Stack, useGlobalSearchParams, usePathname } from 'expo-router';
@@ -28,7 +27,9 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import {
   focusManager,
+  MutationCache,
   onlineManager,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
@@ -43,7 +44,7 @@ import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
 import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
-import { toastProps } from '@/components/Toast';
+import { AppToast } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
@@ -60,6 +61,11 @@ import {
   EXPO_PUBLIC_SENTRY_RELEASE,
   isProduction,
 } from '@/lib/config';
+import {
+  handleMutationError,
+  handleQueryError,
+  handleQuerySuccess,
+} from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
@@ -192,6 +198,10 @@ if (Platform.OS !== 'web') {
 }
 
 export const queryClient = new QueryClient({
+  // Global error handling (lib/errors/queryErrors.ts): a toast when a background
+  // refresh fails, and the shared failure UI for mutations that opt in via meta.
+  queryCache: new QueryCache({ onError: handleQueryError, onSuccess: handleQuerySuccess }),
+  mutationCache: new MutationCache({ onError: handleMutationError }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
@@ -462,7 +472,7 @@ function RootLayout() {
             </QueryClientProvider>
           </WagmiProvider>
         </LazyThirdwebProvider>
-        <Toast {...toastProps} />
+        <AppToast />
       </TurnkeyProvider>
     </SafeAreaProvider>
   );

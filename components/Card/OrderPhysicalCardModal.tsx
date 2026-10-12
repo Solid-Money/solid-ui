@@ -11,6 +11,7 @@ import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getPhysicalCardShippingData, orderPhysicalCard } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { cn, withRefreshToken } from '@/lib/utils/utils';
 
 export const PHYSICAL_CARD_STATUS_QUERY_KEY = 'physicalCardStatus';
@@ -128,12 +129,10 @@ export default function OrderPhysicalCardModal({
         props: { badgeText: '' },
       });
     },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to order physical card',
-        text2: 'Please try again.',
-        props: { badgeText: '' },
+    onError: error => {
+      void showErrorToast(error, {
+        action: 'card_order',
+        title: 'Couldn’t order your physical card',
       });
     },
   });

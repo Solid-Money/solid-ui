@@ -1,14 +1,15 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAddress } from 'viem';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import { SEND_MODAL } from '@/constants/modals';
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
@@ -102,14 +103,8 @@ export const useAddressBook = (options?: {
         setModal(SEND_MODAL.OPEN_FORM);
       }
     },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to add to contacts',
-        props: {
-          badgeText: 'Error',
-        },
-      });
+    onError: error => {
+      void showErrorToast(error, { action: 'account', title: 'Couldn’t add to your contacts' });
       if (options?.onError) {
         options.onError();
       }

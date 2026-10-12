@@ -9,9 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -22,6 +20,12 @@ import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
+import {
+  getUserErrorMessage,
+  reportError,
+  sanitizeTechnicalMessage,
+  showErrorToast,
+} from '@/lib/errors';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
 import { isUsernameTakenError } from '@/lib/utils/username';
@@ -300,29 +304,26 @@ export default function SignupCreating() {
     } catch (err: any) {
       console.error('Failed to create account:', err);
 
-      let errorMessage = err?.message || 'Failed to create account. Please try again.';
+      // User copy for the screen; our own 4xx wording ("Username already
+      // exists") still comes through, raw SDK and RPC text never does.
+      const errorMessage = getUserErrorMessage(err, { action: 'sign_up' });
 
       setError(errorMessage);
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: errorMessage,
+        // Sanitized: raw messages here carried RPC URLs with API keys.
+        error: sanitizeTechnicalMessage(err),
         ...attributionData,
         attribution_channel: attributionChannel,
       });
 
-      if (Platform.OS === 'web') {
-        Toast.show({
-          type: 'error',
-          text1: 'Account Setup Failed',
-          text2: errorMessage,
-        });
-      }
-
-      Sentry.captureException(err, {
+      const context = {
+        action: 'sign_up' as const,
         tags: { type: 'signup_account_creation_error' },
-        extra: { email },
-      });
+      };
+      if (Platform.OS === 'web') void showErrorToast(err, context);
+      else void reportError(err, context, 'inline');
 
       // A handle claimed between the availability check and this request is
       // fixed by picking another one, so send the user back to that step

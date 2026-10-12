@@ -165,7 +165,11 @@ describe('onboarding, when a passkey login fails', () => {
 
     expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ text1: 'Login failed', text2: 'Network request failed' }),
+      // User copy, not the raw transport message.
+      expect.objectContaining({
+        text1: 'Login failed',
+        text2: 'Check your connection and try again.',
+      }),
     );
     expect(mockRendered.welcome?.recoveryLink).toBeTruthy();
   });

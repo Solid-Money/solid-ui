@@ -39,6 +39,12 @@ import {
 import { useActivityActions } from '@/hooks/useActivityActions';
 import useUser from '@/hooks/useUser';
 import { topUpGoodDollarGas } from '@/lib/api';
+import {
+  activityFailureMetadata,
+  getUserErrorMessage,
+  showErrorToast,
+  showFailureSheet,
+} from '@/lib/errors';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
@@ -233,7 +239,7 @@ const useGoodDollarClaim = () => {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: getErrorMessage(error, 'Failed to load GoodDollar status'),
+        error: getUserErrorMessage(error, { action: 'load' }) || 'Couldn’t load GoodDollar.',
       }));
     }
   }, [getSdks, user?.walletAddress]);
@@ -325,17 +331,14 @@ const useGoodDollarClaim = () => {
       setIsVerifying(false);
       await pollForWhitelist();
     } catch (error) {
+      // Backing out is a decision, not a failure: nothing to show or report.
       if (!isUserCancelled(error)) {
-        Sentry.captureException(error, { tags: { type: 'gooddollar_verify_error' } });
+        void showErrorToast(error, {
+          action: 'kyc',
+          title: 'Couldn’t verify you',
+          tags: { type: 'gooddollar_verify_error' },
+        });
       }
-      Toast.show({
-        type: 'error',
-        text1: 'Verification failed',
-        text2: isUserCancelled(error)
-          ? 'Verification was cancelled'
-          : getErrorMessage(error, 'Please try again'),
-        props: { badgeText: 'Error' },
-      });
     } finally {
       setIsVerifying(false);
     }
@@ -474,20 +477,16 @@ const useGoodDollarClaim = () => {
       if (clientTxId) {
         void updateActivity(clientTxId, {
           status: TransactionStatus.FAILED,
-          metadata: { error: getErrorMessage(error, 'Claim failed') },
+          metadata: activityFailureMetadata(error, 'Claim failed'),
         });
       }
       if (!isUserCancelled(error)) {
-        Sentry.captureException(error, { tags: { type: 'gooddollar_claim_error' } });
+        void showFailureSheet(error, {
+          action: 'claim',
+          title: 'Couldn’t claim your G$',
+          tags: { type: 'gooddollar_claim_error' },
+        });
       }
-      Toast.show({
-        type: 'error',
-        text1: 'Claim failed',
-        text2: isUserCancelled(error)
-          ? 'Passkey prompt was cancelled'
-          : getErrorMessage(error, 'Please try again'),
-        props: { badgeText: 'Onchain' },
-      });
     } finally {
       setIsClaiming(false);
       setClaimMessage(null);
@@ -609,20 +608,16 @@ const useGoodDollarClaim = () => {
       if (clientTxId) {
         void updateActivity(clientTxId, {
           status: TransactionStatus.FAILED,
-          metadata: { error: getErrorMessage(error, 'Sweep failed') },
+          metadata: activityFailureMetadata(error, 'Sweep failed'),
         });
       }
       if (!isUserCancelled(error)) {
-        Sentry.captureException(error, { tags: { type: 'gooddollar_sweep_error' } });
+        void showFailureSheet(error, {
+          action: 'bridge',
+          title: 'Couldn’t move your G$',
+          tags: { type: 'gooddollar_sweep_error' },
+        });
       }
-      Toast.show({
-        type: 'error',
-        text1: 'Move failed',
-        text2: isUserCancelled(error)
-          ? 'Passkey prompt was cancelled'
-          : getErrorMessage(error, 'Please try again'),
-        props: { badgeText: 'Onchain' },
-      });
     } finally {
       setIsSweeping(false);
     }

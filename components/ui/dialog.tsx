@@ -9,11 +9,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import Toast from 'react-native-toast-message';
 import { BlurView } from 'expo-blur';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 
-import { toastProps } from '@/components/Toast';
+import { AppToast } from '@/components/Toast';
 import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
@@ -314,7 +313,7 @@ const DialogContent = React.forwardRef<
             >
               {content}
             </Animated.View>
-            <Toast {...toastProps} />
+            <AppToast />
           </View>
         </DialogPortal>
       );
@@ -356,7 +355,7 @@ const DialogContent = React.forwardRef<
                 {content}
               </Animated.View>
             ) : null}
-            <Toast {...toastProps} />
+            <AppToast />
           </DialogOverlay>
         </DialogPortal>
       );
@@ -372,7 +371,7 @@ const DialogContent = React.forwardRef<
           >
             {content}
           </Animated.View>
-          <Toast {...toastProps} />
+          <AppToast />
         </DialogOverlay>
       </DialogPortal>
     );

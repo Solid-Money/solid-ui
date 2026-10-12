@@ -15,6 +15,7 @@ import {
   cowSubmitPresignOrder,
   USDC_MAINNET,
 } from '@/lib/cowswap';
+import { getUserErrorMessage } from '@/lib/errors';
 import { executeTransactions } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 import { BatchTransaction, SwapFee } from '@/lib/utils/swapFee';
@@ -106,7 +107,7 @@ export function useCowQuote(params: CowQuoteParams) {
       }
     } catch (e: any) {
       if (mountedRef.current) {
-        setError(e.message ?? 'Failed to get quote');
+        setError(getUserErrorMessage(e, { action: 'swap', title: 'Couldn’t get a quote' }) || null);
       }
     } finally {
       if (mountedRef.current) {
@@ -315,7 +316,7 @@ export function useCowOrder(
         startPolling(uid);
       } catch (e: any) {
         if (mountedRef.current) {
-          setError(e.message ?? 'Failed to place order');
+          setError(getUserErrorMessage(e, { action: 'swap' }) || null);
           setIsSubmitting(false);
         }
         throw e;

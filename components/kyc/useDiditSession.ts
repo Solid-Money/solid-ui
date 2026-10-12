@@ -9,6 +9,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
+import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { resolveRoutingCountry } from '@/lib/kycProviderRouting';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
@@ -267,7 +268,9 @@ export function useDiditSession() {
         Toast.show({
           type: 'error',
           text1: 'Deposit required first',
-          text2: e?.message || 'Add funds to your savings to start verification.',
+          text2: isSafeServerMessage(e?.message)
+            ? e.message
+            : 'Add funds to your savings to start verification.',
           props: { badgeText: '' },
         });
         router.replace(String(path.CARD_ACTIVATE) as any);
@@ -287,15 +290,14 @@ export function useDiditSession() {
       if (isUnavailable) {
         setSession({
           phase: 'unavailable',
-          message:
-            e?.message ||
-            'Identity verification is temporarily unavailable. Please try again shortly.',
+          message: isSafeServerMessage(e?.message)
+            ? e.message
+            : 'Identity verification is unavailable right now. Try again shortly.',
         });
         return;
       }
-      const message = e?.message || 'Failed to create verification session';
-      setSession({ phase: 'error', message });
-      Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
+      setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
+      void showErrorToast(e, { action: 'kyc' });
     }
   }, [debugState, kycFlow, redirectBasedOnKycStatus, router]);
 
@@ -365,14 +367,17 @@ export function useDiditSession() {
    * /kyc and shows the error UI with a Try-again button — distinct from Declined, which is a
    * KYC outcome we want surfaced on /card/activate alongside the warnings.
    */
+  // `message` is the SDK's own text: reported, never shown.
   const onVerificationError = useCallback((message: string) => {
-    Toast.show({
-      type: 'error',
-      text1: 'Verification failed',
-      text2: message,
-      props: { badgeText: '' },
+    void showErrorToast(new Error(message), {
+      action: 'kyc',
+      title: 'Verification didn’t finish',
+      tags: { kyc_provider: 'didit' },
     });
-    setSession({ phase: 'error', message });
+    setSession({
+      phase: 'error',
+      message: 'Verification didn’t finish. Try again, or contact support if it keeps happening.',
+    });
   }, []);
 
   // Poll for verification status while SDK is active

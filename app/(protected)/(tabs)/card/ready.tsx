@@ -14,6 +14,7 @@ import { path } from '@/constants/path';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -221,13 +222,9 @@ export default function CardReady() {
         // The read failed too; fall through and report the original failure.
       }
 
-      Toast.show({
-        type: 'error',
-        text1: 'Card not activated',
-        text2: `${
-          error instanceof Error ? error.message : 'Something went wrong'
-        } — no card was created, please try again.`,
-        props: { badgeText: '' },
+      void showErrorToast(error, {
+        action: 'card_activate',
+        body: 'No card was created. Try again in a moment.',
       });
       return false;
     }
@@ -297,16 +294,10 @@ export default function CardReady() {
       // explanation from it. Refetch so that reason is there the moment the user
       // looks, rather than a poll-interval later.
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-      Toast.show({
-        type: 'error',
-        text1: 'Error activating card',
-        // Now reaches the real reason — "Cards are not available in Bangladesh
-        // (BD) yet." rather than the generic line users quoted back to support —
-        // because the API client throws an ApiError carrying the server message
-        // instead of the bare Response, which is never an `Error`.
-        text2: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
-        props: { badgeText: '' },
-      });
+      // Still reaches the real reason when the backend wrote it for users ("Cards
+      // are not available in Bangladesh (BD) yet."), via ApiError's server message;
+      // anything that reads like an internal error is replaced with plain copy.
+      void showErrorToast(error, { action: 'card_activate' });
     } finally {
       setActivationPhase('idle');
     }

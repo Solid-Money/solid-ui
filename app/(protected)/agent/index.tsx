@@ -27,6 +27,7 @@ import {
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_FLASH_API_BASE_URL, isProduction } from '@/lib/config';
+import { showErrorToast } from '@/lib/errors';
 import { eclipseAddress } from '@/lib/utils';
 
 const formatUsdc = (raw?: bigint) => {
@@ -118,12 +119,8 @@ export default function AgentPage() {
     try {
       const result = await generateApiKey.mutateAsync(undefined);
       setRevealedKey(result.key);
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to generate API key',
-        props: { badgeText: 'Error' },
-      });
+    } catch (error) {
+      void showErrorToast(error, { action: 'account', title: 'Couldn’t create an API key' });
     }
   };
 

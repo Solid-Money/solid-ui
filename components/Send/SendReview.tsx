@@ -21,6 +21,7 @@ import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -148,10 +149,13 @@ const SendReview: React.FC = () => {
         error: String(error),
         source: 'send_modal',
       });
-      Toast.show({
-        type: 'error',
-        text1: 'Error while sending',
-        props: { badgeText: 'Onchain' },
+      void showFailureSheet(error, {
+        action: 'send',
+        details: {
+          amount: amount.toString(),
+          token: selectedToken?.contractTickerSymbol,
+          network: getChain(selectedToken?.chainId)?.name,
+        },
       });
     }
   };

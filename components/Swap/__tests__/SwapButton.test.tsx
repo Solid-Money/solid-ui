@@ -225,20 +225,22 @@ it.each(['LOADING', 'SYNCING'])('shows quote progress while the route is %s', st
 });
 
 it('shows a rejected purchase on screen and lets the user retry', async () => {
-  mockExecute.mockRejectedValueOnce(new Error('Wallet confirmation failed. Please try again.'));
+  // The SDK's wording never reaches the screen; the shared copy does. A revert
+  // in estimation means the swap never went out.
+  const shown = 'Nothing was sent. Try again in a moment.';
+  mockExecute.mockRejectedValueOnce(new Error('Execution reverted for an unknown reason.'));
   mount({ label: 'Buy FUSE' });
   await act(async () => {
     await press();
   });
-  expect(JSON.stringify(root.toJSON())).toContain('Wallet confirmation failed. Please try again.');
+  expect(JSON.stringify(root.toJSON())).toContain(shown);
+  expect(JSON.stringify(root.toJSON())).not.toContain('Execution reverted');
   expect(root.root.findByType('Button').props.disabled).toBe(false);
   mockExecute.mockResolvedValueOnce(undefined);
   await act(async () => {
     await press();
   });
-  expect(JSON.stringify(root.toJSON())).not.toContain(
-    'Wallet confirmation failed. Please try again.',
-  );
+  expect(JSON.stringify(root.toJSON())).not.toContain(shown);
 });
 
 it('shows progress immediately while wallet confirmation is pending', async () => {

@@ -15,6 +15,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { showFailureSheet } from '@/lib/errors';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { getCardFundingAddress } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
@@ -102,12 +103,7 @@ export default function CreditLineConfirm() {
       setModal(CREDIT_LINE_MODAL.OPEN_SUCCESS);
     } catch (error) {
       console.error('Borrow error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Borrow failed',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
-        props: { badgeText: 'Onchain' },
-      });
+      void showFailureSheet(error, { action: 'credit_line', details: { amount: String(amount) } });
     } finally {
       setIsSubmitting(false);
     }

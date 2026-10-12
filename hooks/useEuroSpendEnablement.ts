@@ -12,6 +12,7 @@ import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { track } from '@/lib/analytics';
 import { confirmCardSpendDeployment, getCardSpendDeployments } from '@/lib/api';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardSpendDeployment } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
@@ -276,8 +277,9 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to enable euro spending';
-      setError(message);
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to enable euro spending';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_FAILED, { error: message });
     },
   });

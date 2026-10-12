@@ -27,6 +27,7 @@ import { useBalances } from '@/hooks/useBalances';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
+import { showFailureSheet } from '@/lib/errors';
 import { Status, TokenType } from '@/lib/types';
 import { cn, formatNumber, withRefreshToken } from '@/lib/utils';
 import { getMovableHoldings, MovableHolding } from '@/lib/utils/cardFundMove';
@@ -211,11 +212,12 @@ export const WirexMoveAmount = ({
       });
       onDone();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Please try again';
-      // The user backing out of the passkey prompt is a decision, not a failure.
-      if (!message.toLowerCase().includes('cancelled')) {
-        Toast.show({ type: 'error', text1: 'Move failed', text2: message });
-      }
+      // Never the raw message: it carried the full viem RPC error, Pimlico URL
+      // and API key included. Backing out of the passkey prompt shows nothing.
+      void showFailureSheet(err, {
+        action: 'move_to_card',
+        details: { amount, token: holding.symbol, network: chainName(holding.chainId) },
+      });
     } finally {
       setIsSubmitting(false);
     }
