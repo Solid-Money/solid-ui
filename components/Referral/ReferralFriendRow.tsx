@@ -159,6 +159,10 @@ interface ReferralFriendRowProps {
   onPayoutDue?: () => void;
 }
 
+/** Shown to a referrer whose share of a friend's reward was withheld. */
+export const REFERRER_REWARD_WITHHELD_NOTE =
+  "Your friend got their reward; this one doesn't earn you one";
+
 export default function ReferralFriendRow({
   item,
   index,
@@ -305,9 +309,7 @@ export default function ReferralFriendRow({
 
   // The friend was paid and the referrer was not: say so, rather than leave
   // a bare "Not eligible" next to a friend who clearly qualified.
-  const withheldNote = item.referrerRewardWithheld
-    ? "Your friend got their reward; this one doesn't earn you one"
-    : null;
+  const withheldNote = item.referrerRewardWithheld ? REFERRER_REWARD_WITHHELD_NOTE : null;
 
   const detailChip = presentation.detail ? (
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>

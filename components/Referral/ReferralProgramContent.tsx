@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
+import { REFERRER_REWARD_WITHHELD_NOTE } from '@/components/Referral/ReferralFriendRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -83,15 +84,25 @@ function StatCard({
 }
 
 function ReferralListItem({ item }: { item: ReferralRewardListItem }) {
-  const rewarded = item.status === ReferralRewardStatus.PAID;
+  // A withheld share keeps the ledger status — `paid` once the friend is —
+  // so it must not read "Rewarded +$0" here.
+  const withheld = !!item.referrerRewardWithheld;
+  const rewarded = item.status === ReferralRewardStatus.PAID && !withheld;
   return (
     <View className="flex-row items-center justify-between border-t border-white/5 py-3">
       <View>
         <Text className="text-sm font-medium text-white">
           {/* `status` is null until the cashback engine seeds a tracking
               record; the friend is still in progress at that point. */}
-          {item.status ? STATUS_LABEL[item.status] : 'In progress'}
+          {withheld
+            ? STATUS_LABEL[ReferralRewardStatus.REVERSED]
+            : item.status
+              ? STATUS_LABEL[item.status]
+              : 'In progress'}
         </Text>
+        {withheld ? (
+          <Text className="text-xs text-white/50">{REFERRER_REWARD_WITHHELD_NOTE}</Text>
+        ) : null}
         <Text className="text-xs text-white/50">
           {formatUsd(item.spendUsd)} spent · {item.merchantCount} merchant
           {item.merchantCount === 1 ? '' : 's'}
