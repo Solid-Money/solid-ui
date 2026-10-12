@@ -114,6 +114,7 @@ const CONTEXT_LABELS: Record<string, string> = {
   card: 'Card',
   virtual_account: 'Bank account',
   rewards: 'Rewards',
+  help_article: 'Help article',
   error: 'Something that failed',
 };
 

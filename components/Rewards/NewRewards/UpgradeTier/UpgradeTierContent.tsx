@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -14,6 +14,7 @@ import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
+import { openHelpLink } from '@/lib/help/links';
 import { lockTokenRow } from '@/lib/lockTokenRows';
 import {
   availableLockAssets,
@@ -329,7 +330,7 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
             : `Deposits your ${paymentAsset} into Savings and locks it for ${formatLockDuration(membership.lock.durationDays)} to hold the tier, in one transaction. It keeps earning while it is locked. `}
         <Text
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(MEMBERSHIP_HELP_URL)}
+          onPress={() => openHelpLink(MEMBERSHIP_HELP_URL)}
           className="text-[15px] leading-5 text-white underline"
         >
           Learn more

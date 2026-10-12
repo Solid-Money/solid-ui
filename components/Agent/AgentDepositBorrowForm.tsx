@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { BorrowSlider } from '@/components/Card/BorrowSlider';
@@ -11,6 +11,7 @@ import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
 import { isProduction } from '@/lib/config';
 import { showFailureSheet } from '@/lib/errors';
+import { openHelpLink } from '@/lib/help/links';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
@@ -122,7 +123,7 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
             earning yield.{' '}
             <Text
               onPress={() => {
-                Linking.openURL(
+                openHelpLink(
                   'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
                 );
               }}

@@ -1,6 +1,5 @@
 import { ReactNode, useState } from 'react';
 import {
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
+import { openHelpLink } from '@/lib/help/links';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 import { CopyFieldIcon, InfoRowIcon } from './icons';
@@ -189,7 +189,7 @@ export const BankAccountDetailsView = ({
           <LinkRow
             icon={<InfoRowIcon />}
             label="More information"
-            onPress={() => Linking.openURL(VIRTUAL_ACCOUNT_TERMS_URL)}
+            onPress={() => openHelpLink(VIRTUAL_ACCOUNT_TERMS_URL)}
           />
           {/*
             Wrapped, not passed bare: Pressable hands onPress the press event,

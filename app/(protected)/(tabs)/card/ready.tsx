@@ -15,6 +15,7 @@ import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
+import { openHelpLink } from '@/lib/help/links';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
@@ -308,7 +309,7 @@ export default function CardReady() {
       <View className="mt-4 w-full gap-3">
         <ConsentRow checked={consents.agreedToEsign} onToggle={() => toggle('agreedToEsign')}>
           I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => Linking.openURL(ESIGN_CONSENT_URL)}>
+          <Underline inline {...underlineProps} onPress={() => openHelpLink(ESIGN_CONSENT_URL)}>
             E-Sign Consent
           </Underline>
           .
@@ -323,7 +324,7 @@ export default function CardReady() {
             <Underline
               inline
               {...underlineProps}
-              onPress={() => Linking.openURL(ACCOUNT_OPENING_PRIVACY_URL)}
+              onPress={() => openHelpLink(ACCOUNT_OPENING_PRIVACY_URL)}
             >
               Account Opening Privacy Notice
             </Underline>
@@ -336,7 +337,7 @@ export default function CardReady() {
           onToggle={() => toggle('isTermsOfServiceAccepted')}
         >
           I accept the{' '}
-          <Underline inline {...underlineProps} onPress={() => Linking.openURL(cardTermsUrl)}>
+          <Underline inline {...underlineProps} onPress={() => openHelpLink(cardTermsUrl)}>
             Solid Card Terms
           </Underline>{' '}
           and the{' '}

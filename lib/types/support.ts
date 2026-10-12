@@ -37,6 +37,8 @@ export const SUPPORT_CONTEXT_KINDS = [
   'card',
   'virtual_account',
   'rewards',
+  // A help center article (id: its slug), after "Did this help? No".
+  'help_article',
   // A failure the app showed; the id is its event ID, the one behind the Ref.
   'error',
 ] as const;
@@ -57,8 +59,17 @@ export interface SupportMessage {
   body: string | null;
   attachments: SupportAttachment[];
   context: { kind: string; id: string | null } | null;
+  /** Help center articles a Solid AI answer was based on (older servers omit it). */
+  sources?: SupportMessageSource[];
   redacted: boolean;
   createdAt: string;
+}
+
+export interface SupportMessageSource {
+  articleId: string;
+  versionId: string;
+  title: string | null;
+  slug: string | null;
 }
 
 export interface SupportCase {
