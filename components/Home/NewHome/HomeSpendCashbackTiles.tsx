@@ -21,6 +21,7 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 const spendGlow = require('@/assets/images/home-spend-tiles/spend-glow.svg');
 const cashbackGlow = require('@/assets/images/home-spend-tiles/cashback-glow.svg');
 const down = require('@/assets/images/home-spend-tiles/down.svg');
+const TILE_ARTWORK_WIDTH = 182;
 const tilePressClassName =
   'ios:active:bg-[#2A2A2A] native:transition-transform native:duration-200 native:ease-out native:active:scale-[0.98] native:active:opacity-90 bg-[#1C1C1C]';
 const tileRipple =
@@ -35,13 +36,19 @@ type HomeSpendCashbackTilesProps = {
 
 /** Figma 27864:7806 / 27864:7789, beneath the Wirex card on home. */
 const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
-  const [tileWidth, setTileWidth] = useState(182);
+  const [tileWidth, setTileWidth] = useState(TILE_ARTWORK_WIDTH);
   const tilePadding = tileWidth < 160 ? 12 : tileWidth < 180 ? 16 : 20;
   // Web Text truncates instead of auto-fitting. Keep the full captions visible
   // in narrow columns while retaining the design's type size on wider ones.
   const captionSize = Math.min(14, ((tileWidth - tilePadding * 2) / 145) * 14);
   const tileStyle = [styles.tile, { padding: tilePadding }];
   const captionStyle = [styles.caption, { fontSize: captionSize }];
+  // The artwork was positioned for a phone-width tile. Scale its whole canvas
+  // on web so wider tiles don't expose the glow's circular edge before it fades.
+  const artworkStyle = [
+    styles.artwork,
+    Platform.OS === 'web' && { transform: [{ scale: tileWidth / TILE_ARTWORK_WIDTH }] },
+  ];
   const openSpendMode = useCardPaneStore(state => state.openSpendMode);
   const { data: rewardsData } = useRewardsUserData();
   const { data: cardDetails } = useCardDetails();
@@ -69,19 +76,21 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
           className={tilePressClassName}
           style={tileStyle}
         >
-          <View pointerEvents="none" style={styles.spendGlowStage}>
-            <Image
-              accessible={false}
-              source={spendGlow}
-              contentFit="fill"
-              style={styles.spendGlow}
-            />
-          </View>
-          <View pointerEvents="none" style={styles.spendBeamStage}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.05)']}
-              style={styles.spendBeam}
-            />
+          <View pointerEvents="none" style={artworkStyle}>
+            <View style={styles.spendGlowStage}>
+              <Image
+                accessible={false}
+                source={spendGlow}
+                contentFit="fill"
+                style={styles.spendGlow}
+              />
+            </View>
+            <View style={styles.spendBeamStage}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.05)']}
+                style={styles.spendBeam}
+              />
+            </View>
           </View>
           <View style={styles.modeChip}>
             <Text
@@ -131,19 +140,21 @@ const HomeSpendCashbackTiles = ({ figures }: HomeSpendCashbackTilesProps) => {
               className={tilePressClassName}
               style={tileStyle}
             >
-              <View pointerEvents="none" style={styles.cashbackGlowStage}>
-                <Image
-                  accessible={false}
-                  source={cashbackGlow}
-                  contentFit="fill"
-                  style={styles.cashbackGlow}
-                />
-              </View>
-              <View pointerEvents="none" style={styles.cashbackBeamStage}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.05)']}
-                  style={styles.cashbackBeam}
-                />
+              <View pointerEvents="none" style={artworkStyle}>
+                <View style={styles.cashbackGlowStage}>
+                  <Image
+                    accessible={false}
+                    source={cashbackGlow}
+                    contentFit="fill"
+                    style={styles.cashbackGlow}
+                  />
+                </View>
+                <View style={styles.cashbackBeamStage}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.05)']}
+                    style={styles.cashbackBeam}
+                  />
+                </View>
               </View>
               <View style={styles.cashbackChip}>
                 <Text
@@ -189,6 +200,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
     overflow: 'hidden',
     padding: 20,
+  },
+  artwork: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: TILE_ARTWORK_WIDTH,
+    height: 160,
+    transformOrigin: 'top left',
   },
   modeChip: {
     alignItems: 'center',

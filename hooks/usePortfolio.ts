@@ -25,6 +25,7 @@ import {
   savingsUsdValue,
   sumKnownValues,
   sumPortfolioValues,
+  vaultShareHoldings,
 } from '@/lib/portfolio';
 import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
 import { VaultType } from '@/lib/types';
@@ -132,6 +133,7 @@ export function usePortfolio() {
       return {
         vault,
         valueUsd,
+        ...vaultShareHoldings(wallet.tokens, collateral, vault.type),
         isComplete: parts.complete,
         underlyingAmount: valueUsd !== undefined && price > 0 ? valueUsd / price : undefined,
         backsCredit: heldCollateral.length > 0,
@@ -145,6 +147,11 @@ export function usePortfolio() {
     const walletUnavailable = !!wallet.error && wallet.tokens.length === 0;
     const cash = cashValue(cashAssets);
     const cashTotal = walletUnavailable ? undefined : cash.total;
+    // Wallet holdings outside the vaults, split for display: Stablecoins and Crypto.
+    const stableAssets = cashAssets.filter(asset => asset.stable);
+    const cryptoAssets = cashAssets.filter(asset => !asset.stable);
+    const stableTotal = walletUnavailable ? undefined : cashValue(stableAssets).total;
+    const cryptoTotal = walletUnavailable ? undefined : cashValue(cryptoAssets).total;
     const cashComplete =
       !walletUnavailable &&
       !wallet.error &&
@@ -171,16 +178,26 @@ export function usePortfolio() {
 
     // An estimate from APY, not a measured change since midnight, over the parts we know.
     // Locked FUSE is soFUSE in the lock, so it earns the FUSE vault rate.
-    const dailyRate = (apy: number | undefined) =>
-      apy === undefined ? 0 : Math.pow(1 + apy / 100, 1 / 365) - 1;
-    const dailyYield =
-      earnAssets.reduce((sum, asset) => sum + (asset.valueUsd ?? 0) * dailyRate(asset.apy), 0) +
-      (lockedTotal ?? 0) *
-        dailyRate(!fuseApy.isAPYsLoading && fuseApy.maxAPY > 0 ? fuseApy.maxAPY : undefined);
+    const periodYield = (periodsPerYear: number) => {
+      const rate = (apy: number | undefined) =>
+        apy === undefined ? 0 : Math.pow(1 + apy / 100, 1 / periodsPerYear) - 1;
+      return (
+        earnAssets.reduce((sum, asset) => sum + (asset.valueUsd ?? 0) * rate(asset.apy), 0) +
+        (lockedTotal ?? 0) *
+          rate(!fuseApy.isAPYsLoading && fuseApy.maxAPY > 0 ? fuseApy.maxAPY : undefined)
+      );
+    };
+    const dailyYield = periodYield(365);
+    // Shown instead of the daily figure when that rounds below a cent.
+    const monthlyYield = periodYield(12);
 
     return {
       cashAssets,
       cashTotal,
+      stableAssets,
+      stableTotal,
+      cryptoAssets,
+      cryptoTotal,
       unpricedCashCount: cash.unpricedCount,
       earnAssets,
       earnTotal: earn.total,
@@ -189,6 +206,7 @@ export function usePortfolio() {
       cardBalance,
       debt,
       dailyYield,
+      monthlyYield,
       ...totals,
     };
   }, [

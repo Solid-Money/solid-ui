@@ -3,7 +3,7 @@ module.exports = {
   // `immer` ships ESM only and the zustand stores build on it, so it has to be
   // transformed for any store to be importable from a test.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@shopify/flash-list|immer)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|@rn-primitives/.*|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@shopify/flash-list|immer)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',

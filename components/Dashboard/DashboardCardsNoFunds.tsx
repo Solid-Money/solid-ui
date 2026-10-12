@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 
+import { Text } from '@/components/ui/text';
 import { Underline } from '@/components/ui/underline';
 import { getAsset } from '@/lib/assets';
 

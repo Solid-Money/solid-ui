@@ -298,6 +298,13 @@ export const TRACKING_EVENTS = {
   PASSKEY_CREATION_FAILED: 'passkey_creation_failed',
   PASSKEY_REMOVED: 'passkey_removed',
   PASSKEY_RENAMED: 'passkey_renamed',
+  /** The "open Solid in your browser" screen; `reason` says why the browser was turned away. */
+  PASSKEY_NOT_SUPPORTED_VIEWED: 'passkey_not_supported_viewed',
+  /** Setup tips under the passkey step, after a failure; `error_kind` says which. */
+  PASSKEY_HELP_VIEWED: 'passkey_help_viewed',
+  /** `context`: `not_supported` (the screen above) or `passkey_help`. */
+  OPEN_IN_BROWSER_LINK_COPIED: 'open_in_browser_link_copied',
+  GET_APP_PRESSED: 'get_app_pressed',
 
   // Quest Wallet Events
   QUEST_WALLET_PAGE_VIEWED: 'quest_wallet_page_viewed',
@@ -497,6 +504,12 @@ export const TRACKING_EVENTS = {
   STORE_REVIEW_UNAVAILABLE: 'store_review_unavailable',
   STORE_REVIEW_ERROR: 'store_review_error',
 
+  // OTA updates: a newer JS bundle was downloaded and the user was asked to
+  // restart into it
+  OTA_UPDATE_PROMPT_SHOWN: 'ota_update_prompt_shown',
+  OTA_UPDATE_APPLIED: 'ota_update_applied',
+  OTA_UPDATE_FAILED: 'ota_update_failed',
+
   // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',
@@ -521,6 +534,16 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',
+
+  // Cross-chain send ("Withdraw to another network"): USDC/USDT bridged from
+  // Fuse to an exchange or the user's own wallet through the BridgePaymaster.
+  CROSS_CHAIN_SEND_DESTINATION_SELECTED: 'cross_chain_send_destination_selected',
+  CROSS_CHAIN_SEND_NETWORK_SELECTED: 'cross_chain_send_network_selected',
+  CROSS_CHAIN_SEND_QUOTED: 'cross_chain_send_quoted',
+  CROSS_CHAIN_SEND_AUTHORISED: 'cross_chain_send_authorised',
+  CROSS_CHAIN_SEND_SUBMITTED: 'cross_chain_send_submitted',
+  CROSS_CHAIN_SEND_FAILED: 'cross_chain_send_failed',
+  CROSS_CHAIN_SEND_STATUS_VIEWED: 'cross_chain_send_status_viewed',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

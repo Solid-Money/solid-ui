@@ -26,6 +26,7 @@ import {
   formatFuse,
   formatLockDuration,
   formatUsd,
+  isTierOnTrial,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
@@ -55,6 +56,8 @@ const UpgradeReviewContent = () => {
   const close = useTierUpgradeStore(state => state.close);
 
   const offer = tier ? findOffer(membership, tier) : undefined;
+  // A tier a trial is lending is being kept, not gained — see `isTierOnTrial`.
+  const keeping = tier ? isTierOnTrial(membership, tier) : false;
 
   if (isLoading) return <Loading />;
 
@@ -254,7 +257,13 @@ const UpgradeReviewContent = () => {
       >
         <KeyRound color="black" size={18} strokeWidth={2} />
         <Text className="text-base font-bold text-black">
-          {isPending ? 'Upgrading…' : 'Upgrade'}
+          {isPending
+            ? keeping
+              ? 'Confirming…'
+              : 'Upgrading…'
+            : keeping
+              ? `Keep ${getTierDisplayName(tier)}`
+              : 'Upgrade'}
         </Text>
       </Button>
     </View>

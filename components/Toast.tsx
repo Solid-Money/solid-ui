@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TokenIcon } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { redactSecrets, sanitizeDisplayText } from '@/lib/utils/userFacingError';
 
 import RenderTokenIcon from './RenderTokenIcon';
 
@@ -23,7 +24,14 @@ interface IBaseToast extends BaseToastProps {
   };
 }
 
-const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
+const BaseToast = ({ text1: rawText1, text2: rawText2, classNames, props }: IBaseToast) => {
+  // Dozens of call sites hand a caught `error.message` straight to a toast, and
+  // some of those errors are viem dumps that carry an RPC URL with our API key in
+  // it. Each call site should pick its own copy; this makes sure that one that
+  // doesn't still never paints a credential or a request body on screen (or into
+  // a session replay).
+  const text1 = rawText1 ? redactSecrets(rawText1) : rawText1;
+  const text2 = rawText2 ? sanitizeDisplayText(rawText2) : rawText2;
   // No badge unless a toast opts in. "Onchain" must be passed explicitly and
   // only for actual blockchain transactions — it used to be the default, which
   // mislabelled every non-chain toast (login, KYC, QR, validation errors…).

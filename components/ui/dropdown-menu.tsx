@@ -3,14 +3,13 @@ import {
   Platform,
   type StyleProp,
   StyleSheet,
-  Text,
   type TextProps,
   View,
   type ViewStyle,
 } from 'react-native';
 import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
 
-import { TextClassContext } from '@/components/ui/text';
+import { Text, TextClassContext } from '@/components/ui/text';
 import { Check } from '@/lib/icons/Check';
 import { ChevronDown } from '@/lib/icons/ChevronDown';
 import { ChevronRight } from '@/lib/icons/ChevronRight';

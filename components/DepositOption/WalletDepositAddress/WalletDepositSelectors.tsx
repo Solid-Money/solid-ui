@@ -5,6 +5,7 @@ import { Check, ChevronDown } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -12,6 +13,7 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
+  offersWalletDepositEurc,
 } from './constants';
 
 const PILL_ICON_STYLE = { width: 20, height: 20, borderRadius: 10 };
@@ -142,7 +144,12 @@ export const WalletDepositNetworkList = ({
   onSelect,
   onDismiss,
 }: WalletDepositNetworkListProps) => {
-  const networks = useMemo(() => getWalletDepositNetworksForToken(symbol), [symbol]);
+  const { provider } = useCardProvider();
+  const withEurc = offersWalletDepositEurc(provider);
+  const networks = useMemo(
+    () => getWalletDepositNetworksForToken(symbol, withEurc),
+    [symbol, withEurc],
+  );
 
   return (
     <>

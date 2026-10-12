@@ -12,6 +12,7 @@ import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
 import { isProduction } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 const SO_USD_LTV = 70n;
 
@@ -59,7 +60,7 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
       Toast.show({
         type: 'error',
         text1: 'Deposit failed',
-        text2: err instanceof Error ? err.message : 'Unknown error',
+        text2: userFacingErrorMessage(err),
         props: { badgeText: 'Onchain' },
       });
     }

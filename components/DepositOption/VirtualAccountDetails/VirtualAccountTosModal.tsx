@@ -10,7 +10,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
-import { RainApplicationStatus } from '@/lib/types';
+import { isVirtualAccountRainApproved } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const underlineProps = {
@@ -37,7 +37,7 @@ export const VirtualAccountTosModal = () => {
   const { data: cardStatus } = useCardStatus();
   const createMutation = useCreateOnrampAutomation();
   const [agreed, setAgreed] = useState(false);
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const isRainApproved = isVirtualAccountRainApproved(cardStatus);
 
   useEffect(() => {
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_TOS_VIEWED);

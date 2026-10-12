@@ -1,4 +1,4 @@
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
@@ -44,8 +44,8 @@ interface BalancePanelProps {
 export const SpendModeBalancePanel = ({ balance, onAddFunds }: BalancePanelProps) => (
   <View style={[styles.panel, styles.balancePanel]}>
     <View style={styles.balanceText}>
-      <Text className="text-[16px] font-normal leading-[16px] text-white/70">Your USD balance</Text>
-      <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
+      <Text className="text-[16px] font-normal leading-[20px] text-white/70">Your USD balance</Text>
+      <Text className="text-[24px] font-medium leading-[28px] text-white">{balance}</Text>
     </View>
     {onAddFunds ? (
       <Pressable
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     paddingLeft: 23,
     paddingRight: 24,
   },
-  balanceText: { flex: 1, gap: 10 },
+  balanceText: { flex: 1, gap: Platform.OS === 'ios' ? 8 : 10 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',

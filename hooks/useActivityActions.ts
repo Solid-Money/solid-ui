@@ -76,7 +76,7 @@ export function useActivityActions() {
 
     const upsertEvent = useActivityStore.getState().upsertEvent;
 
-    const clientTxId = params.userOpHash || generateId();
+    const clientTxId = params.clientTxId || params.userOpHash || generateId();
     const timestamp = Math.floor(Date.now() / 1000).toString();
 
     const activityEvent: ActivityEvent = {

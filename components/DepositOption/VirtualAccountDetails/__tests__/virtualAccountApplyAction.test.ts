@@ -16,7 +16,7 @@ describe('resolveVirtualAccountApplyAction', () => {
         resolveVirtualAccountApplyAction({
           provider: 'wirex',
           rainApplicationStatus: undefined,
-          kycApplicationEstablished: true,
+          rainKycApplicationEstablished: true,
         }),
       ).toEqual({ type: 'wirex-details' });
     });
@@ -29,7 +29,7 @@ describe('resolveVirtualAccountApplyAction', () => {
         resolveVirtualAccountApplyAction({
           provider: 'wirex',
           rainApplicationStatus: RainApplicationStatus.APPROVED,
-          kycApplicationEstablished: false,
+          rainKycApplicationEstablished: false,
         }),
       ).toEqual({ type: 'wirex-details' });
     });
@@ -41,7 +41,7 @@ describe('resolveVirtualAccountApplyAction', () => {
         resolveVirtualAccountApplyAction({
           provider: 'rain',
           rainApplicationStatus: RainApplicationStatus.APPROVED,
-          kycApplicationEstablished: true,
+          rainKycApplicationEstablished: true,
         }),
       ).toEqual({ type: 'rain-tos' });
     });
@@ -51,7 +51,7 @@ describe('resolveVirtualAccountApplyAction', () => {
         resolveVirtualAccountApplyAction({
           provider: 'rain',
           rainApplicationStatus: undefined,
-          kycApplicationEstablished: false,
+          rainKycApplicationEstablished: false,
         }),
       ).toEqual({ type: 'start-kyc' });
     });
@@ -63,7 +63,7 @@ describe('resolveVirtualAccountApplyAction', () => {
         resolveVirtualAccountApplyAction({
           provider: 'rain',
           rainApplicationStatus: undefined,
-          kycApplicationEstablished: true,
+          rainKycApplicationEstablished: true,
         }),
       ).toEqual({ type: 'rain-application' });
     });
@@ -77,7 +77,7 @@ describe('resolveVirtualAccountApplyAction', () => {
           resolveVirtualAccountApplyAction({
             provider: 'rain',
             rainApplicationStatus: status,
-            kycApplicationEstablished: true,
+            rainKycApplicationEstablished: true,
           }),
         ).toEqual({ type: 'rain-application' });
       }
@@ -93,8 +93,24 @@ describe('resolveVirtualAccountApplyAction', () => {
       resolveVirtualAccountApplyAction({
         provider: 'loading',
         rainApplicationStatus: undefined,
-        kycApplicationEstablished: true,
+        rainKycApplicationEstablished: true,
       }),
     ).toEqual({ type: 'rain-application' });
+  });
+
+  it('sends a WIREX CARDHOLDER with no Rain consumer to identity verification', () => {
+    // The regression this exists for. Their primary card-customer row is the
+    // Wirex card, whose providerCustomerId is a wallet address, so the card
+    // flow's `kycApplicationEstablished` reads true for them. Reading that here
+    // diverted them to the card-application page for a Rain virtual account the
+    // server would have let them open — `findRainByUserId` finds no Rain row,
+    // so the `va` session is allowed.
+    expect(
+      resolveVirtualAccountApplyAction({
+        provider: 'rain',
+        rainApplicationStatus: undefined,
+        rainKycApplicationEstablished: false,
+      }),
+    ).toEqual({ type: 'start-kyc' });
   });
 });

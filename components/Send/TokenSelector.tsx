@@ -1,16 +1,20 @@
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { formatUnits } from 'viem';
+import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
+import { isSameCoin } from '@/hooks/useCoinBreakdown';
+import { useCrossChainSendConfig } from '@/hooks/useCrossChainSendConfig';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { getCrossChainSendToken, isCrossChainSendToken } from '@/lib/utils/cross-chain-send';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -18,13 +22,34 @@ import ToInput from './ToInput';
 
 const TokenSelector: React.FC = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { selectedToken, setSelectedToken, setModal } = useSendStore(
+  const {
+    selectedToken,
+    isCrossChain,
+    destinationChainId,
+    setSelectedToken,
+    setModal,
+    setIsCrossChain,
+    setDestinationChainId,
+    setCrossChainQuote,
+    setCrossChainEntry,
+  } = useSendStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
+      isCrossChain: state.isCrossChain,
+      destinationChainId: state.destinationChainId,
       setSelectedToken: state.setSelectedToken,
       setModal: state.setModal,
+      setIsCrossChain: state.setIsCrossChain,
+      setDestinationChainId: state.setDestinationChainId,
+      setCrossChainQuote: state.setCrossChainQuote,
+      setCrossChainEntry: state.setCrossChainEntry,
     })),
   );
+  // Opened from the cross-chain amount step, only the two bridgeable Fuse
+  // stablecoins (and the same coin elsewhere) are listed. From the regular
+  // form every token is, and the config decides whether picking a bridgeable
+  // one enters the bridge flow.
+  const { config, getRoute } = useCrossChainSendConfig();
   const {
     ethereumTokens,
     fuseTokens,
@@ -45,7 +70,16 @@ const TokenSelector: React.FC = () => {
       ...arbitrumTokens,
       ...bscTokens,
     ];
-    return combined.sort((a, b) => {
+    // In the bridge flow: the bridgeable Fuse stablecoins, plus the coin being
+    // sent on its other chains, which leave the bridge for the regular send.
+    const eligible = isCrossChain
+      ? combined.filter(
+          t =>
+            isCrossChainSendToken(t) ||
+            (!!selectedToken && t.chainId !== fuse.id && isSameCoin(selectedToken, t)),
+        )
+      : combined;
+    return eligible.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
 
@@ -54,19 +88,65 @@ const TokenSelector: React.FC = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, bscTokens]);
+  }, [
+    ethereumTokens,
+    fuseTokens,
+    polygonTokens,
+    baseTokens,
+    arbitrumTokens,
+    bscTokens,
+    isCrossChain,
+    selectedToken,
+  ]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {
       setSelectedToken(token);
-      setModal(SEND_MODAL.OPEN_FORM);
+      if (!isCrossChain) {
+        // From the regular form: a bridgeable Fuse stablecoin goes on to the
+        // network step and the bridge; every other token back to the form.
+        if (isCrossChainSendToken(token) && config?.enabled) {
+          setIsCrossChain(true);
+          setCrossChainEntry('token');
+          setDestinationChainId(null);
+          setCrossChainQuote(null);
+          setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
+          return;
+        }
+        setModal(SEND_MODAL.OPEN_FORM);
+        return;
+      }
+      if (!isCrossChainSendToken(token)) {
+        // Not on Fuse, so no bridge: hand over to the regular send on the
+        // token's own chain, keeping the recipient address already entered.
+        setIsCrossChain(false);
+        setDestinationChainId(null);
+        setCrossChainQuote(null);
+        setModal(SEND_MODAL.OPEN_FORM);
+        return;
+      }
+      // The chosen network may not carry this token (USDT has no Base route):
+      // send the user back to pick one that does.
+      const hasRoute = !!getRoute(getCrossChainSendToken(token), destinationChainId);
+      setModal(hasRoute ? SEND_MODAL.OPEN_CROSS_CHAIN_FORM : SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
     },
-    [setSelectedToken, setModal],
+    [
+      setSelectedToken,
+      setModal,
+      isCrossChain,
+      getRoute,
+      destinationChainId,
+      setIsCrossChain,
+      setDestinationChainId,
+      setCrossChainQuote,
+      setCrossChainEntry,
+      config?.enabled,
+    ],
   );
 
   return (
     <View className="gap-8">
-      <ToInput />
+      {!isCrossChain ? <ToInput /> : null}
 
       <View className="gap-4">
         <Text className="text-base font-medium opacity-70">Select an asset</Text>
@@ -117,6 +197,7 @@ const TokenSelector: React.FC = () => {
                       <Text className="text-sm font-medium opacity-50">
                         {token.contractTickerSymbol} on{' '}
                         {getBridgeChain(token.chainId)?.name ?? getChain(token.chainId)?.name}
+                        {isCrossChain && !isCrossChainSendToken(token) ? ' · regular send' : ''}
                       </Text>
                     </View>
                   </View>

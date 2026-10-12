@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/text';
 import { useClaimYieldBoost, useYieldBoostSummary } from '@/hooks/useRewards';
 import { YieldBoostClaim, YieldBoostClaimStatus } from '@/lib/types';
 import { cn, formatBalanceUSD, formatNumber } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 /** "1,234.57 soFUSE", from the backend's decimal string. */
 const formatSoFuse = (amount: string) => `${formatNumber(Number(amount), 2)} soFUSE`;
@@ -76,7 +77,7 @@ const EarnYieldBoostCard = ({ className }: EarnYieldBoostCardProps) => {
       Toast.show({
         type: 'error',
         text1: "Couldn't claim yield boost",
-        text2: error instanceof Error ? error.message : undefined,
+        text2: userFacingErrorMessage(error),
         props: { badgeText: 'Onchain' },
       });
     }

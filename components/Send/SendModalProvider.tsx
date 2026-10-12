@@ -18,6 +18,7 @@ const SendModalProvider = () => {
   const {
     shouldOpen,
     showBackButton,
+    compactHeader,
     shouldAnimate,
     isForward,
     getContent,
@@ -52,6 +53,7 @@ const SendModalProvider = () => {
         contentClassName={getContentClassName()}
         containerClassName={getContainerClassName()}
         showBackButton={showBackButton}
+        compactHeader={compactHeader}
         onBackPress={handleBackPress}
         shouldAnimate={shouldAnimate}
         isForward={isForward}

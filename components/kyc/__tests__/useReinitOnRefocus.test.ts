@@ -8,8 +8,20 @@ import { shouldRestartKycSession } from '@/components/kyc/useReinitOnRefocus';
  */
 describe('shouldRestartKycSession', () => {
   describe('re-entering the screen', () => {
-    it.each(['completed', 'error', 'unavailable'])('restarts a spent %s session', phase => {
-      expect(shouldRestartKycSession(phase, true)).toBe(true);
+    it.each(['completed', 'error', 'unavailable', 'cancelled'])(
+      'restarts a spent %s session',
+      phase => {
+        expect(shouldRestartKycSession(phase, true)).toBe(true);
+      },
+    );
+
+    /**
+     * The user closed the Didit SDK and came back. The phase used to stay
+     * `started`, which is in flight, so the screen showed "Verification opened"
+     * over an SDK that was not open, and only killing the app got out of it.
+     */
+    it('restarts after the user closed the SDK, so verification reopens', () => {
+      expect(shouldRestartKycSession('cancelled', true)).toBe(true);
     });
 
     /**
@@ -33,7 +45,7 @@ describe('shouldRestartKycSession', () => {
      * there would tear down the session the user is in the middle of — including
      * the hand-off interstitial on its way out.
      */
-    it.each(['loading', 'ready', 'started', 'completed', 'error', 'unavailable'])(
+    it.each(['loading', 'ready', 'started', 'completed', 'error', 'unavailable', 'cancelled'])(
       'never restarts a %s session',
       phase => {
         expect(shouldRestartKycSession(phase, false)).toBe(false);

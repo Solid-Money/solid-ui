@@ -8,12 +8,9 @@ import {
   LoadingState,
   UnderReviewState,
 } from '@/components/Card/ActivateCard';
-import { OnboardingFeeSheet } from '@/components/DepositOption/VirtualAccountDetails/OnboardingFeeSheet';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useActivateCard } from '@/hooks/useActivateCard';
-import { useCardStatus } from '@/hooks/useCardStatus';
-import { OnboardingFeeProduct } from '@/lib/types';
 
 export default function ActivateMobile() {
   const {
@@ -31,11 +28,8 @@ export default function ActivateMobile() {
     toggleStep,
     canToggleStep,
     activatingCard,
-    isFeeSheetOpen,
-    closeFeeSheet,
     handleGoBack,
   } = useActivateCard();
-  const { refetch: refetchCardStatus } = useCardStatus();
 
   if (isCardStatusLoading || isCheckingCountry) {
     return (
@@ -76,19 +70,6 @@ export default function ActivateMobile() {
           />
         </View>
       </View>
-
-      {isFeeSheetOpen ? (
-        <OnboardingFeeSheet
-          product={OnboardingFeeProduct.RAIN_CARD}
-          onDismiss={closeFeeSheet}
-          onPaid={() => {
-            closeFeeSheet();
-            // The step list reads `onboardingFeePaid` off /cards/status, so the
-            // paid step only ticks once that is re-read.
-            void refetchCardStatus();
-          }}
-        />
-      ) : null}
     </PageLayout>
   );
 }

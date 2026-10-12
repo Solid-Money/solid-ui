@@ -49,26 +49,25 @@ describe('buildCardSteps - minimum-deposit step', () => {
     expect(steps.map(s => s.id)).toEqual([1, 2, 3]);
   });
 
-  it('places the setup-fee step FIRST, ahead of KYC and activation', () => {
+  it('places the deposit step FIRST, ahead of KYC and activation', () => {
     const steps = build({ options: { depositRequired: true } });
 
     expect(steps.map(s => s.key)).toEqual(['deposit', 'kyc', 'activate', 'spend']);
-    expect(steps[0].title).toBe('Pay the $10 setup fee');
+    expect(steps[0].title).toBe('Deposit at least $10');
     // Numbered by position so the indicator shows 1..4 sequentially.
     expect(steps.map(s => s.id)).toEqual([1, 2, 3, 4]);
   });
 
-  it('renders the fee the backend serves rather than the built-in default', () => {
-    // The charge is configured per country and can move without an app
-    // release, so the copy has to follow it.
+  it('renders the minimum the backend serves rather than the built-in default', () => {
+    // The bar can move without an app release, so the copy has to follow it.
     const steps = build({ options: { depositRequired: true, minimumDepositUsd: 25 } });
 
-    expect(steps[0].title).toBe('Pay the $25 setup fee');
+    expect(steps[0].title).toBe('Deposit at least $25');
     expect(steps[0].description).toContain('$25');
   });
 
-  it('gates KYC behind the fee: it precedes KYC and is incomplete when unpaid', () => {
-    const steps = build({ options: { depositRequired: true, onboardingFeePaid: false } });
+  it('gates KYC behind the deposit: deposit precedes KYC and is incomplete when unmet', () => {
+    const steps = build({ options: { depositRequired: true, savingsDepositMet: false } });
 
     const depositIndex = steps.findIndex(s => s.key === 'deposit');
     const kycIndex = steps.findIndex(s => s.key === 'kyc');
@@ -78,49 +77,49 @@ describe('buildCardSteps - minimum-deposit step', () => {
     expect(steps[depositIndex].completed).toBe(false);
   });
 
-  it('offers the fee sheet while the fee is unpaid', () => {
-    const openFeeSheet = jest.fn();
+  it('offers the savings-deposit action immediately (no card required) when unmet', () => {
+    const openSavingsDepositModal = jest.fn();
 
     const steps = build({
       cardActivated: false,
-      options: { depositRequired: true, onboardingFeePaid: false, openFeeSheet },
+      options: { depositRequired: true, savingsDepositMet: false, openSavingsDepositModal },
     });
     const deposit = steps[0];
 
     expect(deposit.completed).toBe(false);
-    expect(deposit.buttonText).toBe('Pay $10');
-    expect(deposit.onPress).toBe(openFeeSheet);
+    expect(deposit.buttonText).toBe('Deposit');
+    expect(deposit.onPress).toBe(openSavingsDepositModal);
   });
 
-  it('marks the step complete once the fee is settled', () => {
-    const openFeeSheet = jest.fn();
+  it('marks the deposit step complete once the savings minimum is met', () => {
+    const openSavingsDepositModal = jest.fn();
     const steps = build({
-      options: { depositRequired: true, onboardingFeePaid: true, openFeeSheet },
+      options: { depositRequired: true, savingsDepositMet: true, openSavingsDepositModal },
     });
     const deposit = steps[0];
 
     expect(deposit.completed).toBe(true);
     expect(deposit.status).toBe('completed');
-    // No further action needed once paid.
+    // No further action needed once funded.
     expect(deposit.buttonText).toBeUndefined();
     expect(deposit.onPress).toBeUndefined();
   });
 
-  it('keeps the step complete after the card is activated', () => {
-    // Once a card exists the user has cleared the gate, so the step must not
-    // reopen on a status response that has not caught up.
+  it('keeps the deposit step complete after the card is activated (funds moved to card)', () => {
+    // Once a card exists the user has cleared the gate; moving savings onto the
+    // card can drop the soUSD balance, but the step must not reopen.
     const steps = build({
       cardActivated: true,
-      options: { depositRequired: true, onboardingFeePaid: false },
+      options: { depositRequired: true, savingsDepositMet: false },
     });
 
     expect(steps[0].key).toBe('deposit');
     expect(steps[0].completed).toBe(true);
   });
 
-  it('treats legacy card-collateral funding as satisfying the fee', () => {
+  it('treats legacy card-collateral funding as satisfying the deposit', () => {
     const steps = build({
-      options: { depositRequired: true, onboardingFeePaid: false, cardCollateralDeposited: 1000 },
+      options: { depositRequired: true, savingsDepositMet: false, cardCollateralDeposited: 1000 },
     });
 
     expect(steps[0].completed).toBe(true);
@@ -174,36 +173,36 @@ describe('buildCardSteps - deposit-and-hold step', () => {
     expect(kyc.onPress).toBeUndefined();
   });
 
-  it('leaves the first fee step complete so both steps do not ask at once', () => {
+  it('leaves the first deposit step complete so both steps do not ask at once', () => {
     // Reaching the parked state proves the first step was cleared — nothing gets
     // a verification session without passing the gate server-side. A reopened
-    // first step would ask for the same fee twice AND disable this step's
+    // first step would ask for the same deposit twice AND disable this step's
     // button, since navigation requires every preceding step to be complete.
-    const steps = parked({ onboardingFeePaid: false });
+    const steps = parked({ savingsDepositMet: false });
 
     expect(steps[0].key).toBe('deposit');
     expect(steps[0].completed).toBe(true);
   });
 
-  it('asks for the fee while it is still outstanding', () => {
-    const openFeeSheet = jest.fn();
+  it('asks for a deposit while the applicant is still short', () => {
+    const openSavingsDepositModal = jest.fn();
     const submitPendingApplication = jest.fn();
 
     const hold = parked({
-      onboardingFeePaid: false,
-      openFeeSheet,
+      savingsDepositMet: false,
+      openSavingsDepositModal,
       submitPendingApplication,
     }).find(s => s.key === 'hold');
 
-    expect(hold?.buttonText).toBe('Pay $10');
-    expect(hold?.onPress).toBe(openFeeSheet);
+    expect(hold?.buttonText).toBe('Deposit');
+    expect(hold?.onPress).toBe(openSavingsDepositModal);
     expect(submitPendingApplication).not.toHaveBeenCalled();
   });
 
-  it('offers to submit the application once the fee is paid', () => {
+  it('offers to submit the application once the balance is back', () => {
     const submitPendingApplication = jest.fn();
 
-    const hold = parked({ onboardingFeePaid: true, submitPendingApplication }).find(
+    const hold = parked({ savingsDepositMet: true, submitPendingApplication }).find(
       s => s.key === 'hold',
     );
 
@@ -212,7 +211,7 @@ describe('buildCardSteps - deposit-and-hold step', () => {
   });
 
   it('never reads as complete, so activation cannot open behind an unsent application', () => {
-    const steps = parked({ onboardingFeePaid: true });
+    const steps = parked({ savingsDepositMet: true });
     const hold = steps.find(s => s.key === 'hold');
     const activate = steps.find(s => s.key === 'activate');
 
@@ -225,7 +224,7 @@ describe('buildCardSteps - deposit-and-hold step', () => {
 
   it('marks the action busy while the submission is in flight', () => {
     const hold = parked({
-      onboardingFeePaid: true,
+      savingsDepositMet: true,
       isSubmittingPendingApplication: true,
     }).find(s => s.key === 'hold');
 
@@ -239,7 +238,7 @@ describe('buildCardSteps - deposit-and-hold step', () => {
       options: {
         depositRequired: true,
         rainForwardPendingDeposit: false,
-        onboardingFeePaid: true,
+        savingsDepositMet: true,
       },
     });
 

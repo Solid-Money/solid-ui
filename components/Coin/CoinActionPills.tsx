@@ -7,6 +7,7 @@ import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TokenBalance } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { TokenVault } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -14,6 +15,8 @@ import { useSavingStore } from '@/store/useSavingStore';
 
 type CoinActionPillsProps = {
   tokenVault: TokenVault | undefined;
+  /** The page's token, so Send opens on it (and on the cross-chain flow when it bridges). */
+  token?: TokenBalance;
 };
 
 type PillProps = {
@@ -41,7 +44,7 @@ const Pill = ({ label, icon, variant = 'dark', onPress }: PillProps) => (
 );
 
 /** Deposit / Swap / Send row on the mobile coin page. */
-const CoinActionPills = ({ tokenVault }: CoinActionPillsProps) => {
+const CoinActionPills = ({ tokenVault, token }: CoinActionPillsProps) => {
   return (
     <View className="flex-row items-center justify-center gap-2">
       <DepositTrigger
@@ -67,6 +70,7 @@ const CoinActionPills = ({ tokenVault }: CoinActionPillsProps) => {
       />
 
       <SendModal
+        token={token}
         trigger={
           <Pill label="Send" icon={<HomeSend width={17} height={16.3} viewBox="0 0 25 24" />} />
         }

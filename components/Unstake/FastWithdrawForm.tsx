@@ -30,6 +30,7 @@ import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const FastWithdrawForm = () => {
@@ -193,7 +194,7 @@ const FastWithdrawForm = () => {
         Toast.show({
           type: 'error',
           text1: 'Bridge failed',
-          text2: error instanceof Error ? error.message : 'Unknown error occurred',
+          text2: userFacingErrorMessage(error),
           props: { badgeText: 'Onchain' },
         });
       }
