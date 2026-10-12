@@ -1,9 +1,13 @@
 import { useCallback } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useSupportChatEnabled } from '@/hooks/useSupportChat';
 import { useIntercom } from '@/lib/intercom';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
 import { closeSupportDrawer, useSupportDrawerStore } from '@/store/useSupportDrawerStore';
 
 const FAQ_URL = 'https://support.solid.xyz/en/collections/16780872-troubleshooting';
@@ -117,7 +121,10 @@ interface SupportDrawerContentProps {
 
 const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => {
   const intercom = useIntercom();
+  const router = useRouter();
+  const nativeChat = useSupportChatEnabled();
   const chatMessage = useSupportDrawerStore(state => state.chatMessage);
+  const context = useSupportDrawerStore(state => state.context);
 
   const runAfterDismiss = useCallback((action: () => void) => {
     closeSupportDrawer();
@@ -125,14 +132,22 @@ const SupportDrawerContent = ({ isSheet = true }: SupportDrawerContentProps) => 
   }, []);
 
   const handleChatPress = useCallback(() => {
+    // Read before the drawer closes, which clears them.
+    const draftContext = context;
     runAfterDismiss(() => {
+      if (nativeChat) {
+        // The in-house chat: what the user was looking at rides along as a card, not a pasted draft.
+        if (draftContext) useSupportChatStore.getState().setDraftContext(draftContext);
+        router.push(path.SUPPORT);
+        return;
+      }
       if (chatMessage) {
         intercom?.showNewMessage(chatMessage);
       } else {
         intercom?.show();
       }
     });
-  }, [chatMessage, intercom, runAfterDismiss]);
+  }, [chatMessage, context, intercom, nativeChat, router, runAfterDismiss]);
 
   const openLink = useCallback(
     (url: string) => {

@@ -17,6 +17,11 @@ import { getRealtimeEndpoint } from '@/lib/realtime/endpoint';
 import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
 import { refreshRewardsAfterSavings } from '@/lib/refreshRewardsAfterSavings';
 import {
+  handleSupportEvent,
+  resetSupportChat,
+  SUPPORT_SOCKET_EVENTS,
+} from '@/lib/support/realtimeEvents';
+import {
   ActivityEvent,
   CardTransaction,
   SSEActivityData,
@@ -26,6 +31,7 @@ import {
 import { refreshSessionTokens, withRefreshToken } from '@/lib/utils';
 import { useActivityStore } from '@/store/useActivityStore';
 import { RealtimeStatus, useRealtimeStore } from '@/store/useRealtimeStore';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
 import { useUserStore } from '@/store/useUserStore';
 
 /** What `RealtimeGateway` pushes for a card transaction Rain or Wirex reported. */
@@ -206,6 +212,7 @@ class RealtimeClient {
     this.fallbackTimer = null;
     this.closeSocket();
     this.resetUserState();
+    resetSupportChat();
     this.userId = null;
     this.setStatus('idle');
   }
@@ -219,6 +226,8 @@ class RealtimeClient {
     if (nextUserId !== this.userId) {
       this.closeSocket();
       this.resetUserState();
+      // The support thread belongs to the account that is leaving (none at first start).
+      if (this.userId !== null) resetSupportChat();
       this.userId = nextUserId;
     }
 
@@ -321,6 +330,14 @@ class RealtimeClient {
         if (owns()) this.handleCardTransactionEvent(data);
       }),
     );
+    // The support chat: new replies, the AI typing, case changes, reads on another device.
+    for (const event of SUPPORT_SOCKET_EVENTS) {
+      socket.on(event, (data: unknown) =>
+        safely(event, () => {
+          if (owns() && this.userId) handleSupportEvent(event, data);
+        }),
+      );
+    }
 
     socket.connect();
   }
@@ -391,6 +408,8 @@ class RealtimeClient {
     // The first session follows the app's own first reads; any later one may
     // have missed events while it was away.
     if (this.hasBeenLive) this.catchUp(this.droppedUnderUs);
+    // The support chat re-reads anything it missed (it is a no-op until the chat has loaded).
+    useSupportChatStore.getState().bumpSync();
     this.hasBeenLive = true;
     this.droppedUnderUs = false;
   }

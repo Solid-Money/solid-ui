@@ -54,6 +54,7 @@ describe('routeForLink', () => {
     ['/rewards', path.REWARDS],
     ['/rewards/benefits', path.REWARDS_BENEFITS],
     ['/savings/fuse', path.SAVINGS_FUSE],
+    ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {
     expect(routeForLink(link(p))).toEqual(expected);
   });
@@ -191,6 +192,16 @@ describe('getNotificationRoute', () => {
       ['rewards-tier-reached', path.REWARDS],
     ])('still routes %s on its type', (type, expected) => {
       expect(getNotificationRoute({ type })).toEqual(expected);
+    });
+
+    it('opens the support chat for a support reply, whatever its link', () => {
+      expect(getNotificationRoute({ type: 'support_message' })).toEqual(path.SUPPORT);
+      expect(getNotificationRoute({ type: 'support_message', link: 'solid://support' })).toEqual(
+        path.SUPPORT,
+      );
+      expect(getNotificationRoute({ type: 'support_message', link: link('/support') })).toEqual(
+        path.SUPPORT,
+      );
     });
 
     it('falls back to home for an unrecognised type', () => {
