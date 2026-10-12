@@ -1,6 +1,6 @@
 import React from 'react';
 
-import MessageRow, { buildRows } from '@/components/Support/MessageRow';
+import MessageRow, { agentDisplayName, buildRows } from '@/components/Support/MessageRow';
 import { message } from '@/lib/support/__tests__/fixtures';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -123,7 +123,7 @@ describe('MessageRow', () => {
       first: true,
       last: true,
     });
-    expect(texts(agent)).toContain('Dana');
+    expect(texts(agent)).toContain('Dana · Solid team');
 
     const user = render({
       type: 'message',
@@ -168,5 +168,12 @@ describe('MessageRow', () => {
     )[0];
     act(() => retry.props.onPress());
     expect(mockRetry).toHaveBeenCalledWith('p1');
+  });
+
+  it('signs agent replies with a capitalised first name', () => {
+    expect(agentDisplayName('eli smargon')).toBe('Eli');
+    expect(agentDisplayName('dana@fuse.io')).toBe('Dana');
+    expect(agentDisplayName('  ')).toBe('Solid Support');
+    expect(agentDisplayName(null)).toBe('Solid Support');
   });
 });
