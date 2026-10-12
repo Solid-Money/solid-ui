@@ -475,6 +475,7 @@ export const VirtualAccountApplyModal = ({
           onClose={() => setIsCountryDropdownOpen(false)}
           onSearchChange={setCountrySearch}
           onCountrySelect={handleSelectDocumentCountry}
+          inDialog
         />
       </PinnedActionModalLayout>
     );
