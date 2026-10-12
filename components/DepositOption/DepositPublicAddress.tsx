@@ -1,5 +1,5 @@
 import { ReactNode, useMemo } from 'react';
-import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
+import { openHelpLink } from '@/lib/help/links';
 import { eclipseAddress } from '@/lib/utils';
 
 const solidLogo = require('@/assets/images/solid-white.png');
@@ -128,7 +129,7 @@ const DepositPublicAddress = ({
               </Text>
 
               <Pressable
-                onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
+                onPress={() => openHelpLink(SUPPORTED_NETWORKS_URL)}
                 className="web:hover:opacity-50"
               >
                 <View className="flex-row flex-wrap items-center">

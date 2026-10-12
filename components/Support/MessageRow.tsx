@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import { Pressable, View } from 'react-native';
+import { type Href, router } from 'expo-router';
 import { format, isToday, isYesterday } from 'date-fns';
-import { Paperclip, Sparkles } from 'lucide-react-native';
+import { BookOpen, Paperclip, Sparkles } from 'lucide-react-native';
 
 import Markdown from '@/components/Markdown';
 import MessageAttachments from '@/components/Support/MessageAttachments';
@@ -93,6 +94,30 @@ const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean 
   </View>
 );
 
+/** The help articles a Solid AI answer was based on; each opens in the app. */
+const MessageSources = ({ message }: { message: SupportMessage }) => {
+  const sources = (message.sources ?? []).filter(source => source.slug && source.title);
+  if (!sources.length) return null;
+  return (
+    <View className="mt-0.5 gap-1.5 border-t border-white/10 pt-2">
+      <Text className="text-[11px] uppercase tracking-wide text-white/40">Sources</Text>
+      {sources.map(source => (
+        <Pressable
+          key={source.versionId}
+          accessibilityRole="link"
+          onPress={() => router.push(`/help/articles/${source.slug}` as Href)}
+          className="flex-row items-center gap-1.5 active:opacity-70"
+        >
+          <BookOpen size={13} color="#94F27F" />
+          <Text className="flex-1 text-[13px] text-brand" numberOfLines={1}>
+            {source.title}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+};
+
 const ReplyBubble = ({
   message,
   first,
@@ -111,6 +136,7 @@ const ReplyBubble = ({
       ) : message.body ? (
         <Markdown value={message.body} textColor="#FFFFFF" />
       ) : null}
+      {!message.redacted && <MessageSources message={message} />}
     </View>
     {last && (
       <Text className="mt-1 text-[11px] text-white/40">
