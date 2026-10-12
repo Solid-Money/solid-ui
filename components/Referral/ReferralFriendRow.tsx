@@ -243,9 +243,11 @@ export default function ReferralFriendRow({
           showProgress: false,
         };
       case ReferralFriendStage.REVERSED:
+        // "Not eligible" rather than the ledger's "Reversed": the reward was
+        // cancelled, or — for a withheld share — it went to the friend alone.
         return {
           detail: null,
-          lifecycle: { tone: 'neutral', label: 'Reversed' },
+          lifecycle: { tone: 'neutral', label: 'Not eligible' },
           showProgress: false,
         };
       case ReferralFriendStage.REGISTERED:
@@ -300,6 +302,12 @@ export default function ReferralFriendRow({
         ? `Needs one more ${formatUsdWhole(activityMinPurchaseUsd)}+ purchase to unlock`
         : 'Needs one more purchase to unlock'
       : null;
+
+  // The friend was paid and the referrer was not: say so, rather than leave
+  // a bare "Not eligible" next to a friend who clearly qualified.
+  const withheldNote = item.referrerRewardWithheld
+    ? "Your friend got their reward; this one doesn't earn you one"
+    : null;
 
   const detailChip = presentation.detail ? (
     <Chip tone={presentation.detail.tone}>{presentation.detail.label}</Chip>
@@ -356,6 +364,9 @@ export default function ReferralFriendRow({
             ) : null}
             {activityNote ? (
               <Text className="text-xs leading-[14px] text-rewards">{activityNote}</Text>
+            ) : null}
+            {withheldNote ? (
+              <Text className="text-xs leading-[14px] text-white/40">{withheldNote}</Text>
             ) : null}
             {paidLine ? (
               <Text className="text-xs leading-[14px] text-white/50">Paid {paidLine}</Text>

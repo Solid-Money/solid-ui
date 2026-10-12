@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<ReferralRewardStatus, string> = {
   [ReferralRewardStatus.QUALIFIED]: 'Qualified',
   [ReferralRewardStatus.PAID]: 'Rewarded',
   [ReferralRewardStatus.EXPIRED]: 'Expired',
-  [ReferralRewardStatus.REVERSED]: 'Reversed',
+  [ReferralRewardStatus.REVERSED]: 'Not eligible',
   [ReferralRewardStatus.UNDER_REVIEW]: 'In review',
 };
 
