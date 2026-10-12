@@ -1,10 +1,10 @@
-import { fuse, mainnet } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 
 import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { CARD_SPENDABLE_ASSETS, CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
-import { TokenBalance, TokenType } from '@/lib/types';
-import { sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
+import { cardSpendableAssetsFor, sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
 
 const SOUSD = ADDRESSES.fuse.vault;
 
@@ -162,5 +162,77 @@ describe('sumCardSpendableUSD', () => {
     const tokens = [token({}), token({ contractTickerSymbol: 'WFUSE', quoteRate: 1 })];
 
     expect(sumCardSpendableUSD(tokens, extended)).toBeCloseTo(2.08, 6);
+  });
+});
+
+/**
+ * Which assets count, by what the user has enabled.
+ *
+ * EURC on Base is spending power only once the Base instance is enabled — before that the card
+ * declines against it — so the list follows the backend's deployment record.
+ */
+describe('cardSpendableAssetsFor', () => {
+  const BASE_EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
+
+  const baseDeployment = (overrides: Partial<CardSpendDeployment> = {}): CardSpendDeployment => ({
+    chainId: base.id,
+    name: 'Base',
+    currency: 'USD',
+    moduleAddress: '0x47a5e832e1178726dd13add762774a704878ad98',
+    available: true,
+    enabled: true,
+    enabledAt: '2026-10-12T10:35:29.869Z',
+    enableTxHash: null,
+    safeAddress: '0x4987d26b6e5d767b8eec3ebd5056a5ae7bdce2aa',
+    spendTokens: [BASE_EURC.toLowerCase()],
+    ...overrides,
+  });
+
+  const eurc = (overrides: Partial<TokenBalance> = {}): TokenBalance =>
+    token({
+      contractTickerSymbol: 'EURC',
+      contractName: 'EURC',
+      contractAddress: BASE_EURC,
+      balance: '250960000',
+      quoteRate: 1.117427,
+      chainId: base.id,
+      ...overrides,
+    });
+
+  it('is the Fuse set before the deployment list has loaded', () => {
+    expect(cardSpendableAssetsFor(undefined)).toBe(CARD_SPENDABLE_ASSETS);
+  });
+
+  it('is the Fuse set when Base has not been enabled', () => {
+    expect(cardSpendableAssetsFor([baseDeployment({ enabled: false })])).toBe(
+      CARD_SPENDABLE_ASSETS,
+    );
+  });
+
+  it('is the Fuse set when the backend has switched Base off', () => {
+    // `available: false` is CASH_BASE_ENABLED=false: nothing is routed to Base, so EURC there
+    // would not pay for a purchase.
+    expect(cardSpendableAssetsFor([baseDeployment({ available: false })])).toBe(
+      CARD_SPENDABLE_ASSETS,
+    );
+  });
+
+  it('counts EURC on Base once euro spending is enabled', () => {
+    const assets = cardSpendableAssetsFor([baseDeployment()]);
+
+    expect(sumCardSpendableUSD([token({}), eurc()], assets)).toBeCloseTo(1.08 + 280.429, 2);
+  });
+
+  it('matches EURC by the address the backend allowlists, not the ticker', () => {
+    const assets = cardSpendableAssetsFor([baseDeployment()]);
+    const lookalike = eurc({ contractAddress: '0x0000000000000000000000000000000000000002' });
+
+    expect(sumCardSpendableUSD([lookalike], assets)).toBe(0);
+  });
+
+  it('does not count EURC held on another chain', () => {
+    const assets = cardSpendableAssetsFor([baseDeployment()]);
+
+    expect(sumCardSpendableUSD([eurc({ chainId: mainnet.id })], assets)).toBe(0);
   });
 });

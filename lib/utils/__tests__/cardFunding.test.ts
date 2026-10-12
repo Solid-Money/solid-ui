@@ -2,6 +2,7 @@ import { base, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import {
+  baseEurcSpendableAsset,
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
@@ -154,12 +155,26 @@ describe('describeCardSpendableAssets', () => {
     expect(described).toContain('Fuse');
   });
 
-  it('drops the network clause when the assets no longer share one chain', () => {
+  it('names each network when the assets span more than one', () => {
     expect(
       describeCardSpendableAssets([
         { symbol: 'USDC', chainIds: [122] },
         { symbol: 'USDT', chainIds: [1] },
       ]),
+    ).toBe('USDC on Fuse and USDT on Ethereum');
+  });
+
+  it('says EURC on Base pays euro purchases only, once it is spendable', () => {
+    // Without the qualifier the sentence would promise EURC covers a dollar purchase, which
+    // routing sends to Fuse instead.
+    expect(
+      describeCardSpendableAssets([...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(['0xeurc'])]),
+    ).toBe('USDC, USDT and soUSD on Fuse and EURC on Base for euro purchases');
+  });
+
+  it('drops the network clause for an asset not bound to one chain', () => {
+    expect(
+      describeCardSpendableAssets([{ symbol: 'USDC', chainIds: [122, 1] }, { symbol: 'USDT' }]),
     ).toBe('USDC and USDT');
   });
 
