@@ -51,6 +51,16 @@ export function buildRows(messages: SupportMessage[], pending: PendingMessage[])
   return rows;
 }
 
+/**
+ * How an agent signs a reply: their first name, capitalised ("eli smargon" → "Eli").
+ * Falls back to "Solid Support" when the service sends no name.
+ */
+export function agentDisplayName(name: string | null | undefined): string {
+  const first = (name ?? '').trim().split(/[\s@._]+/)[0] ?? '';
+  if (!first) return 'Solid Support';
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
 const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   if (message.author.type === 'ai') {
     return (
@@ -62,7 +72,7 @@ const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   }
   return (
     <Text className="mb-1 text-xs font-medium text-white/60">
-      {message.author.name ?? 'Solid Support'}
+      {agentDisplayName(message.author.name)} · Solid team
     </Text>
   );
 };

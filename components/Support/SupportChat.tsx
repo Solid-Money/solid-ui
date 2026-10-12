@@ -51,14 +51,22 @@ const useKeyboardVisible = () => {
   return visible;
 };
 
-const Welcome = ({ expectedReplyText }: { expectedReplyText: string | null }) => (
+const Welcome = ({
+  aiEnabled,
+  expectedReplyText,
+}: {
+  aiEnabled: boolean;
+  expectedReplyText: string | null;
+}) => (
   <View className="mb-4 mt-2 items-center gap-2 px-6">
     <View className="h-12 w-12 items-center justify-center rounded-full bg-card">
       <Sparkles size={22} color="#94F27F" />
     </View>
     <Text className="text-center text-base font-semibold text-white">How can we help?</Text>
     <Text className="text-center text-sm leading-5 text-white/60">
-      Solid AI answers right away and hands over to our team when you need a person.
+      {aiEnabled
+        ? 'Solid AI answers right away and hands over to our team when you need a person.'
+        : 'Send us a message and our team will reply here.'}
       {expectedReplyText ? ` ${expectedReplyText}` : ''}
     </Text>
   </View>
@@ -187,9 +195,13 @@ export default function SupportChat() {
                 <View className="py-3">
                   <ActivityIndicator color="#6B6B6B" />
                 </View>
-              ) : (
-                <Welcome expectedReplyText={ai?.expectedReplyText ?? null} />
-              )
+              ) : rows.length === 0 ? (
+                // Only on an empty thread: once there are messages it's just noise above them.
+                <Welcome
+                  aiEnabled={ai?.enabled ?? true}
+                  expectedReplyText={ai?.expectedReplyText ?? null}
+                />
+              ) : null
             }
             ListFooterComponent={
               <View>
