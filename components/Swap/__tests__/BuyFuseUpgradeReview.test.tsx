@@ -27,6 +27,7 @@ const mockDeposit = {
   resetDepositFlow: jest.fn(),
   setSrcChainId: jest.fn(),
   setPrincipalToken: jest.fn(),
+  setDepositSourceChosen: jest.fn(),
   setDepositFromSolid: jest.fn(),
   setModal: jest.fn(),
 };
@@ -72,6 +73,7 @@ it('opens Savings funding only when the chosen upgrade asset was soFUSE', () => 
   act(() => jest.advanceTimersByTime(200));
   expect(mockSelectVault).toHaveBeenCalledWith(1);
   expect(mockDeposit.setPrincipalToken).toHaveBeenCalledWith('FUSE');
+  expect(mockDeposit.setDepositSourceChosen).toHaveBeenCalledWith(true);
   expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_FORM);
   expect(mockUpgrade.open).not.toHaveBeenCalled();
   act(() => root.unmount());

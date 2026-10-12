@@ -21,6 +21,7 @@ const mockDeposit = {
   resetDepositFlow: jest.fn(),
   setSrcChainId: jest.fn(),
   setPrincipalToken: jest.fn(),
+  setDepositSourceChosen: jest.fn(),
   setDepositFromSolid: jest.fn(),
   setModal: jest.fn(),
 };
@@ -39,6 +40,7 @@ it('opens the existing confirmation form for native FUSE in the soFUSE vault', (
   expect(mockVault).toHaveBeenCalledWith(1);
   expect(mockDeposit.setSrcChainId).toHaveBeenCalledWith(122);
   expect(mockDeposit.setPrincipalToken).toHaveBeenCalledWith('FUSE');
+  expect(mockDeposit.setDepositSourceChosen).toHaveBeenCalledWith(true);
   expect(mockDeposit.setDepositFromSolid).toHaveBeenCalledWith(true);
   expect(mockDeposit.setModal).toHaveBeenCalledWith(DEPOSIT_MODAL.OPEN_FORM);
 });

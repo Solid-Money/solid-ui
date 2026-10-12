@@ -24,10 +24,11 @@ const VaultSelectorDropdown = () => {
       selectVaultForDeposit: state.selectVaultForDeposit,
     })),
   );
-  const { setSrcChainId, setPrincipalToken } = useDepositStore(
+  const { setSrcChainId, setPrincipalToken, setDepositSourceChosen } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
       setPrincipalToken: state.setPrincipalToken,
+      setDepositSourceChosen: state.setDepositSourceChosen,
     })),
   );
 
@@ -65,10 +66,13 @@ const VaultSelectorDropdown = () => {
 
     selectVaultForDeposit(index);
 
-    // Reset chain + token to the first available token for the newly selected vault
+    // Reset chain + token to the first available token for the newly selected
+    // vault, and let the form move them to where the wallet holds the most of
+    // what this vault takes. The default stands when it holds none.
     const { chainId, principalToken } = getDefaultDepositSelection(vault);
     if (chainId) setSrcChainId(chainId);
     setPrincipalToken(principalToken);
+    setDepositSourceChosen(false);
 
     closeDropdown();
   };
