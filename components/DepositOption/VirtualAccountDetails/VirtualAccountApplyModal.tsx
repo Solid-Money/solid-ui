@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
+import { CountryDropdown, CountrySelector, filterCountries } from '@/components/CountryPicker';
 import { OnboardingFeeSheet } from '@/components/DepositOption/VirtualAccountDetails/OnboardingFeeSheet';
 import PinnedActionModalLayout from '@/components/PinnedActionModalLayout';
 import { RegionUnavailableGeo, RegionUnavailableView } from '@/components/RegionUnavailable';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { COUNTRIES } from '@/constants/countries';
+import { COUNTRIES, Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -19,9 +21,11 @@ import { useOnboardingFeeQuote } from '@/hooks/useOnboardingFee';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { checkProductAccess, resolveCountryAccess } from '@/lib/countryAccess';
+import { checkProductAccess } from '@/lib/countryAccess';
+import { detectGeo } from '@/lib/geo';
 import { DepositModal, OnboardingFeeProduct } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { needsDocumentCountryCheck } from '@/lib/utils/virtualAccountDocumentCountry';
 import { getVirtualAccountRainStatus } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -32,6 +36,8 @@ const BENEFITS_HEIGHT = 328;
 const FIRST_ROW_HEIGHT = 177;
 const HAIRLINE = 'rgba(255,255,255,0.1)';
 const CTA_HEIGHT = 50;
+// Clears the pinned 50pt back button, plus the gap the pitch leaves under it.
+const DOCUMENT_STEP_TOP_GAP = 66;
 
 interface Benefit {
   icon?: ReturnType<typeof getAsset>;
@@ -166,6 +172,17 @@ export const VirtualAccountApplyModal = ({
   // "everything else is live" pop-up.
   const [unsupportedRegion, setUnsupportedRegion] = useState<RegionUnavailableGeo | null>(null);
 
+  // "Which country issued your ID?" — asked before the fee, because Rain gates
+  // the virtual account on the identity document, not on residence. The IP only
+  // preselects an answer; nothing is decided until the user confirms it.
+  const [isDocumentCountryStep, setIsDocumentCountryStep] = useState(false);
+  const [documentCountry, setDocumentCountry] = useState<Country | null>(null);
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  // Set once the user picks by hand, so a late IP lookup cannot overwrite it.
+  const pickedByHand = useRef(false);
+  const filteredCountries = useMemo(() => filterCountries(countrySearch), [countrySearch]);
+
   // Funnel entry for the virtual account: everything downstream is measured
   // against how many people saw this pitch.
   useEffect(() => {
@@ -237,84 +254,148 @@ export const VirtualAccountApplyModal = ({
   }, [cardStatus, requestDepositModal, router, setKycFlow, virtualAccountProvider]);
 
   /**
-   * Where the user is, for the virtual account gate.
-   *
-   * A completed KYC record is the authoritative residence country, so it wins
-   * over the IP; otherwise there is no country selection screen for virtual
-   * accounts, and the IP lookup is all we have.
+   * The verified KYC residence, when there is one — the document is checked
+   * first, and this second. Never the IP: an IP is only a guess at where someone
+   * is, so it may preselect the document country but must not send anyone to
+   * the unavailable screen on its own. Returns the blocked country, or null when
+   * there is nothing to block on (no KYC country, served, or the check failed —
+   * the confirmed document answer stands then).
    */
-  const resolveRegion = useCallback(async (): Promise<{
-    geo: RegionUnavailableGeo;
-    isAvailable: boolean;
-  } | null> => {
+  const findBlockedKycResidence = useCallback(async (): Promise<RegionUnavailableGeo | null> => {
     const kycCountry = cardStatus?.country?.toUpperCase();
+    if (!kycCountry) return null;
 
-    if (kycCountry) {
-      const hasAccess = await checkProductAccess('virtual_account', kycCountry);
-
-      if (hasAccess === null) return null;
-
-      return {
-        isAvailable: hasAccess,
-        geo: {
-          countryCode: kycCountry,
-          countryName: COUNTRIES.find(c => c.code === kycCountry)?.name,
-          detectionSource: 'kyc',
-        },
-      };
-    }
-
-    const access = await resolveCountryAccess('virtual_account', 'virtual_account_apply');
-
-    if (!access) return null;
+    const hasAccess = await checkProductAccess('virtual_account', kycCountry);
+    if (hasAccess !== false) return null;
 
     return {
-      isAvailable: access.isAvailable,
-      geo: {
-        countryCode: access.countryCode,
-        countryName: access.countryName,
-        state: access.state,
-        city: access.city,
-        detectionSource: access.source,
-      },
+      countryCode: kycCountry,
+      countryName: COUNTRIES.find(c => c.code === kycCountry)?.name,
+      detectionSource: 'kyc',
     };
   }, [cardStatus]);
 
-  const handleApply = useCallback(async () => {
+  const handleApply = useCallback(() => {
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED);
+
+    // Wirex issues this user's account, so there is no Rain onboarding to pay
+    // for and no Didit document check — their details screen owns activation,
+    // including availability, from Wirex's own per-rail capabilities.
+    if (virtualAccountProvider === 'wirex') {
+      proceed();
+      return;
+    }
+
+    // A document has already been through verification: nothing for the
+    // question to prevent. The sheet passes straight through when already paid.
+    if (!needsDocumentCountryCheck(cardStatus)) {
+      setIsFeeSheetOpen(true);
+      return;
+    }
+
+    setIsDocumentCountryStep(true);
+  }, [cardStatus, proceed, virtualAccountProvider]);
+
+  // Preselect the ID country from the IP. Only a suggestion: it is shown in the
+  // field for the user to confirm or change, and a manual pick always wins.
+  useEffect(() => {
+    if (!isDocumentCountryStep) return;
+
+    let cancelled = false;
+    const preselect = async () => {
+      const geo = await detectGeo();
+      const detected = geo ? COUNTRIES.find(c => c.code === geo.countryCode.toUpperCase()) : null;
+
+      track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_VIEWED, {
+        detected_country_code: detected?.code ?? null,
+      });
+
+      if (cancelled || !detected || pickedByHand.current) return;
+      setDocumentCountry(current => current ?? detected);
+    };
+    void preselect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDocumentCountryStep]);
+
+  const handleOpenCountryDropdown = useCallback(() => {
+    setCountrySearch('');
+    setIsCountryDropdownOpen(true);
+  }, []);
+
+  const handleSelectDocumentCountry = useCallback((country: Country) => {
+    pickedByHand.current = true;
+    setDocumentCountry(country);
+    setCountrySearch(country.name);
+    setIsCountryDropdownOpen(false);
+  }, []);
+
+  // The only place this flow decides availability: on the country the user
+  // confirmed, before any money moves.
+  const handleConfirmDocumentCountry = useCallback(async () => {
+    if (!documentCountry) return;
+
     setIsChecking(true);
     try {
-      const region = await resolveRegion();
+      const hasAccess = await checkProductAccess('virtual_account', documentCountry.code);
 
-      // Country undeterminable, or the access check itself failed — let the KYC
-      // flow surface the issue rather than blocking on our own uncertainty.
-      if (!region) {
-        proceed();
-        return;
-      }
+      track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_CONFIRMED, {
+        country_code: documentCountry.code,
+        is_available: hasAccess,
+        picked_by_hand: pickedByHand.current,
+      });
 
-      if (!region.isAvailable) {
-        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_REGION_BLOCKED, {
-          country_code: region.geo.countryCode,
-          detection_source: region.geo.detectionSource,
+      // A failed check is not a yes: charging on it is how users ended up
+      // paying for an account their document could never open.
+      if (hasAccess === null) {
+        Toast.show({
+          type: 'error',
+          text1: "Couldn't check your country",
+          text2: 'Please try again in a moment.',
+          props: { badgeText: '' },
         });
-        setUnsupportedRegion(region.geo);
         return;
       }
 
-      // Wirex issues this user's account, so there is no Rain onboarding to
-      // pay for — their details screen owns activation. Everyone else meets the
-      // fee before anything we are billed for is started.
-      if (virtualAccountProvider === 'wirex') {
-        proceed();
+      if (!hasAccess) {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_REGION_BLOCKED, {
+          country_code: documentCountry.code,
+          detection_source: 'document',
+        });
+        setUnsupportedRegion({
+          countryCode: documentCountry.code,
+          countryName: documentCountry.name,
+          detectionSource: 'manual',
+        });
         return;
       }
 
+      const blockedResidence = await findBlockedKycResidence();
+      if (blockedResidence) {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_REGION_BLOCKED, {
+          country_code: blockedResidence.countryCode,
+          detection_source: 'kyc',
+        });
+        setUnsupportedRegion(blockedResidence);
+        return;
+      }
+
+      setIsDocumentCountryStep(false);
       setIsFeeSheetOpen(true);
     } finally {
       setIsChecking(false);
     }
-  }, [proceed, resolveRegion, virtualAccountProvider]);
+  }, [documentCountry, findBlockedKycResidence]);
+
+  // "Change country" from the unavailable pop-up, back to the ID picker. Only
+  // offered when the document answer is what blocked them: a verified
+  // residence is not something they can pick their way past.
+  const handleChangeDocumentCountry = useCallback(() => {
+    setUnsupportedRegion(null);
+    setIsDocumentCountryStep(true);
+  }, []);
 
   const dismissFeeSheet = useCallback(() => {
     track(TRACKING_EVENTS.ONBOARDING_FEE_DISMISSED, {
@@ -339,10 +420,63 @@ export const VirtualAccountApplyModal = ({
         geo={unsupportedRegion}
         onBack={onClose}
         onContinue={() => requestDepositModal(DEPOSIT_MODAL.CLOSE)}
+        onChangeCountry={
+          unsupportedRegion.detectionSource === 'manual' ? handleChangeDocumentCountry : undefined
+        }
         // The dialog already sits inside the overlay's 8pt inset, so the
         // pop-up only needs the remaining 7pt to hit y=59 on the Figma frame.
         topOffset={7}
       />
+    );
+  }
+
+  if (isDocumentCountryStep) {
+    return (
+      <PinnedActionModalLayout
+        onBack={() => setIsDocumentCountryStep(false)}
+        backTopOffset={heroTop}
+        actionFadeExtent={60}
+        actionHorizontalPadding={isDesktop ? 40 : 18}
+        actionPaddingBottom={isDesktop ? 55 : 0}
+        action={
+          <Button
+            variant="brand"
+            className="w-full rounded-full border-0 active:opacity-90"
+            style={{ height: CTA_HEIGHT }}
+            onPress={handleConfirmDocumentCountry}
+            disabled={!documentCountry || isChecking}
+          >
+            {isChecking ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text className="text-[16px] font-semibold text-black">Continue</Text>
+            )}
+          </Button>
+        }
+      >
+        <View
+          style={{
+            paddingTop: heroTop + DOCUMENT_STEP_TOP_GAP,
+            marginHorizontal: isDesktop ? 40 : 18,
+          }}
+        >
+          <CountrySelector
+            selectedCountry={documentCountry}
+            onOpenDropdown={handleOpenCountryDropdown}
+            showConfirmButton={false}
+            title="Where is your ID from?"
+            description="Select the country that issued the passport or ID card you'll verify with. We'll check it's supported before you pay the setup fee."
+          />
+        </View>
+        <CountryDropdown
+          visible={isCountryDropdownOpen}
+          searchQuery={countrySearch}
+          filteredCountries={filteredCountries}
+          onClose={() => setIsCountryDropdownOpen(false)}
+          onSearchChange={setCountrySearch}
+          onCountrySelect={handleSelectDocumentCountry}
+        />
+      </PinnedActionModalLayout>
     );
   }
 

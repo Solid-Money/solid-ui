@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
-import CountryFlagImage from '@/components/CountryFlagImage';
+import { CountryDropdown, CountrySelector, filterCountries } from '@/components/CountryPicker';
 import PageLayout from '@/components/PageLayout';
 import { RegionUnavailableView } from '@/components/RegionUnavailable';
 import { BackButton } from '@/components/ui/back-button';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
@@ -108,12 +106,7 @@ export default function CountrySelection() {
     };
   }, [cardStatusLoading, clearedGate]);
 
-  const filteredCountries = useMemo(() => {
-    if (!searchQuery) return COUNTRIES;
-    return COUNTRIES.filter(country =>
-      country.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  }, [searchQuery]);
+  const filteredCountries = useMemo(() => filterCountries(searchQuery), [searchQuery]);
 
   // "Change country" on the pop-up — the traveller's way back to picking by
   // hand. Marks the screen as interacted so a late lookup can't bounce them
@@ -211,122 +204,5 @@ export default function CountrySelection() {
         />
       </View>
     </PageLayout>
-  );
-}
-
-// Country Dropdown Modal Component
-interface CountryDropdownProps {
-  visible: boolean;
-  searchQuery: string;
-  filteredCountries: Country[];
-  onClose: () => void;
-  onSearchChange: (text: string) => void;
-  onCountrySelect: (country: Country) => void;
-}
-
-function CountryDropdown({
-  visible,
-  searchQuery,
-  filteredCountries,
-  onClose,
-  onSearchChange,
-  onCountrySelect,
-}: CountryDropdownProps) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={onClose}>
-        <Pressable
-          className="w-[90%] max-w-md rounded-2xl bg-[#333331]"
-          onPress={e => e.stopPropagation()}
-        >
-          <View className="p-4">
-            <TextInput
-              className="mb-4 h-12 rounded-xl bg-[#1A1A1A] px-4 text-white"
-              placeholder="Search countries..."
-              placeholderTextColor="#666"
-              value={searchQuery}
-              onChangeText={onSearchChange}
-              autoFocus
-            />
-            <ScrollView
-              className="max-h-[320px]"
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-            >
-              {filteredCountries.map(country => (
-                <Pressable
-                  key={country.code}
-                  className="rounded-lg px-4 py-3 web:hover:bg-white/10"
-                  onPress={() => onCountrySelect(country)}
-                >
-                  <Text className="text-white">{country.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
-// Country Selector Component
-interface CountrySelectorProps {
-  selectedCountry: Country | null;
-  onOpenDropdown: () => void;
-  onOk: () => void;
-  processing?: boolean;
-}
-
-function CountrySelector({
-  selectedCountry,
-  onOpenDropdown,
-  onOk,
-  processing,
-}: CountrySelectorProps) {
-  return (
-    <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">
-          Country of residence
-        </Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
-          Please select your country of residence to see if the Solid card is available there
-        </Text>
-
-        {selectedCountry && (
-          <View className="mb-6 items-center">
-            <CountryFlagImage
-              isoCode={selectedCountry.code}
-              size={110}
-              className="mb-2"
-              countryName={selectedCountry.name}
-            />
-          </View>
-        )}
-
-        <Pressable onPress={onOpenDropdown}>
-          <View className="mb-6 mt-2 h-12 flex-row items-center justify-between rounded-xl border border-[#898989] bg-[#1A1A1A] px-4">
-            <Text className="text-white">
-              {selectedCountry ? selectedCountry.name : 'Select country'}
-            </Text>
-            <ChevronDown color="white" size={20} />
-          </View>
-        </Pressable>
-
-        <Button
-          variant="brand"
-          className="mb-4 w-full"
-          onPress={onOk}
-          disabled={!selectedCountry || processing}
-        >
-          {processing ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <Text className="text-base font-bold text-black">Ok</Text>
-          )}
-        </Button>
-      </View>
-    </View>
   );
 }
