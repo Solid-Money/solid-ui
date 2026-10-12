@@ -6,6 +6,9 @@ import { ACCEPTED_MIME } from '@/lib/support/sync';
 
 import type { AttachButtonProps } from '@/components/Support/AttachButton';
 
+/** Whether this platform shows the button (the composer pads around it). */
+export const attachAvailable = true;
+
 /** The web's attach button: a hidden file input behind a paperclip. */
 export default function AttachButton({ disabled, onPick }: AttachButtonProps) {
   const input = useRef<HTMLInputElement | null>(null);
@@ -17,9 +20,9 @@ export default function AttachButton({ disabled, onPick }: AttachButtonProps) {
         onPress={() => input.current?.click()}
         accessibilityRole="button"
         accessibilityLabel="Attach a photo or PDF"
-        className="h-10 w-10 items-center justify-center rounded-full disabled:opacity-40 web:hover:bg-white/10"
+        className="h-9 w-9 items-center justify-center rounded-full disabled:opacity-40 web:hover:bg-white/10"
       >
-        <Paperclip size={20} color="#FFFFFF" />
+        <Paperclip size={18} color="#A1A1A1" />
       </Pressable>
       {createElement('input', {
         ref: input,
