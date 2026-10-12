@@ -751,7 +751,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         </View>
 
         <DetailCard rows={merchantRows} />
-        {cashbackInfo && (
+        {/* No cashback card for an excluded purchase: it earns nothing, and the
+            receipt reads like any purchase with no cashback rather than
+            calling attention to it. The activity row hides its label too. */}
+        {cashbackInfo && !cashbackInfo.isIneligible && (
           <CashbackDetailsCard
             info={cashbackInfo}
             cashback={cashback}
