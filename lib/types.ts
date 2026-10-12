@@ -996,11 +996,33 @@ export interface WirexThreeDsDecisionResponse {
  * Features held back from the public. The server's whitelist decides who has
  * them — see useHasFeature.
  */
-export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout';
+export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'statements';
 
 /** `GET /accounts/v1/feature-access`. */
 export interface FeatureAccessResponse {
   features: Partial<Record<WhitelistedFeature, boolean>>;
+}
+
+/** One month a statement can be downloaded for. */
+export interface StatementMonth {
+  /** `YYYY-MM`, a UTC calendar month. */
+  month: string;
+  /** Settled card purchases less refunds, in dollars, e.g. `"1102.18"`. */
+  cardSpendUsd: string;
+  /** The current month, which runs to today. */
+  partial: boolean;
+}
+
+/** `GET /accounts/v1/statements/available`. */
+export interface AvailableStatementsResponse {
+  /** Newest first. The first is the current month. */
+  months: StatementMonth[];
+}
+
+/** A statement fetched from `GET /accounts/v1/statements`, ready to save. */
+export interface StatementDownload {
+  filename: string;
+  content: string;
 }
 
 export interface CardSpendModeAccessResponse {

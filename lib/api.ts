@@ -49,6 +49,7 @@ import {
   AgentSummary,
   AppOpenResponse,
   APYsByAsset,
+  AvailableStatementsResponse,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
@@ -137,6 +138,7 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
+  StatementDownload,
   StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
@@ -4295,6 +4297,57 @@ export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+/** The months the signed-in user can download a statement for, newest first. */
+export const getAvailableStatements = async (): Promise<AvailableStatementsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements/available`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+const STATEMENT_FILENAME = /filename="([^"]+)"/;
+
+/**
+ * One month's statement — card activity and wallet transactions together — as
+ * CSV text. The server names the file (it marks the current month `-partial`),
+ * so the name is read from Content-Disposition and only rebuilt here if that
+ * header is not exposed to the client.
+ */
+export const downloadStatement = async (month: string): Promise<StatementDownload> => {
+  const jwt = getJWTToken();
+  const params = new URLSearchParams({ month, format: 'csv' });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements?${params.toString()}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.csv`;
+
+  return { filename, content: await response.text() };
 };
 
 /**

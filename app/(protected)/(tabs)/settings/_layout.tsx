@@ -73,6 +73,14 @@ export default function SettingsLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="statements"
+        options={{
+          title: 'Statements',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

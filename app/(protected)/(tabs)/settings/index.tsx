@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleCheck,
   CreditCard,
+  FileDown,
   FileText,
   LifeBuoy,
   LogOut,
@@ -31,6 +32,7 @@ import { path } from '@/constants/path';
 import { getTierDisplayName } from '@/constants/rewards';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useTotp } from '@/hooks/useTotp';
@@ -107,7 +109,8 @@ const ProfileTile = ({
  *
  * Who you are at the top — avatar, name, tier and verification — then the two
  * things worth coming back for (rewards, referrals), and the account, security
- * and support rows below. Statements are not in this release.
+ * and support rows below. Statements sit with the account rows, for whitelisted
+ * users only until they open to everyone.
  */
 export default function Settings() {
   const { user, handleLogout } = useUser();
@@ -120,6 +123,7 @@ export default function Settings() {
   const { canChangeMode, mode } = useCardSpendRegistration();
   const { isVerified: isTotpOn, isLoading: isTotpLoading, refetch: refetchTotp } = useTotp();
   const { status: notificationStatus } = useNotificationPermissionStatus();
+  const hasStatements = useHasFeature('statements');
 
   // Setting up 2FA happens a screen away, so "Add 2FA" is re-checked on the way back.
   useFocusEffect(
@@ -234,6 +238,13 @@ export default function Settings() {
             value={userHasCard && canChangeMode ? `${SPEND_MODE_COPY[mode].label} mode` : undefined}
             onPress={() => router.push(cardHref)}
           />
+          {hasStatements ? (
+            <ProfileRow
+              icon={<FileDown size={ICON_SIZE} color={ICON_COLOR} />}
+              title="Statements"
+              onPress={() => router.push('/settings/statements' as Href)}
+            />
+          ) : null}
         </ProfileRowGroup>
 
         <ProfileSectionLabel>Security & alerts</ProfileSectionLabel>
