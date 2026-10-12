@@ -2,12 +2,16 @@ import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { zeroAddress } from 'viem';
+import { fuse } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
+import { findSwapAsset, useSwapAssets } from '@/hooks/swap/useSwapAssets';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import { useUSDCValue } from '@/hooks/useUSDCValue';
 import { getAsset } from '@/lib/assets';
+import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 
@@ -34,21 +38,26 @@ const SwapPair: React.FC = () => {
   const dependentField: SwapFieldType =
     independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT;
 
-  const { onSwitchTokens, onCurrencySelection, onUserInput } = useSwapActionHandlers();
+  const { onSwitchTokens, onAssetSelection, onUserInput } = useSwapActionHandlers();
 
+  // Picking a token on another chain switches the modal over to the LI.FI form.
   const handleInputSelect = useCallback(
-    (inputCurrency: Currency) => {
-      onCurrencySelection(SwapField.INPUT, inputCurrency);
+    (asset: SwapAsset) => {
+      onAssetSelection(SwapField.INPUT, asset);
     },
-    [onCurrencySelection],
+    [onAssetSelection],
   );
 
   const handleOutputSelect = useCallback(
-    (outputCurrency: Currency) => {
-      onCurrencySelection(SwapField.OUTPUT, outputCurrency);
+    (asset: SwapAsset) => {
+      onAssetSelection(SwapField.OUTPUT, asset);
     },
-    [onCurrencySelection],
+    [onAssetSelection],
   );
+
+  const { assets } = useSwapAssets();
+  const baseAsset = useMemo(() => toSwapAsset(assets, baseCurrency), [assets, baseCurrency]);
+  const quoteAsset = useMemo(() => toSwapAsset(assets, quoteCurrency), [assets, quoteCurrency]);
 
   const handleTypeInput = useCallback(
     (value: string) => {
@@ -163,8 +172,9 @@ const SwapPair: React.FC = () => {
     <View className="relative flex flex-col gap-4">
       <TokenCard
         value={formattedAmounts[SwapField.INPUT] || ''}
-        currency={baseCurrency}
-        otherCurrency={quoteCurrency}
+        asset={baseAsset}
+        otherAsset={quoteAsset}
+        balance={toBalance(currencyBalances[SwapField.INPUT], baseCurrency, baseAsset)}
         handleTokenSelection={handleInputSelect}
         handleValueChange={handleTypeInput}
         handleMaxValue={handleMaxInput}
@@ -183,8 +193,9 @@ const SwapPair: React.FC = () => {
 
       <TokenCard
         value={formattedAmounts[SwapField.OUTPUT] || ''}
-        currency={quoteCurrency}
-        otherCurrency={baseCurrency}
+        asset={quoteAsset}
+        otherAsset={baseAsset}
+        balance={toBalance(currencyBalances[SwapField.OUTPUT], quoteCurrency, quoteAsset)}
         handleTokenSelection={handleOutputSelect}
         handleValueChange={handleTypeOutput}
         fiatValue={fiatValueOutputFormatted ?? undefined}
@@ -195,5 +206,36 @@ const SwapPair: React.FC = () => {
     </View>
   );
 };
+
+/** A Fuse currency as the picker lists it, so the card shows the catalogue logo. */
+function toSwapAsset(assets: SwapAsset[], currency: Currency | undefined): SwapAsset | undefined {
+  if (!currency) return undefined;
+  const address = currency.isNative ? undefined : currency.address;
+  const listed = findSwapAsset(assets, fuse.id, address ?? zeroAddress);
+  return (
+    listed ?? {
+      chainId: fuse.id,
+      address: (address ?? zeroAddress) as SwapAsset['address'],
+      symbol: currency.symbol ?? '',
+      name: currency.name ?? currency.symbol ?? '',
+      decimals: currency.decimals,
+      isNative: currency.isNative,
+    }
+  );
+}
+
+/**
+ * The card's balance. The swap info only reads ERC-20 balances, so native FUSE
+ * takes the picker's live balance instead.
+ */
+function toBalance(
+  amount: CurrencyAmount<Currency> | undefined,
+  currency: Currency | undefined,
+  asset: SwapAsset | undefined,
+): number | undefined {
+  if (!currency) return undefined;
+  if (amount) return Number(amount.toExact());
+  return asset && 'balance' in asset ? (asset as SwapAssetWithBalance).balance : 0;
+}
 
 export default SwapPair;

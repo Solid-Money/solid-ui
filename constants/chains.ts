@@ -22,4 +22,6 @@ export const CHAIN_ICONS: Record<number, ReturnType<typeof getAsset>> = {
   [fuse.id]: getAsset('images/fuse-4x.png'),
   [base.id]: getAsset('images/base.png'),
   [bsc.id]: getAsset('images/bsc.png'),
+  [polygon.id]: getAsset('images/polygon.png'),
+  [arbitrum.id]: getAsset('images/arbitrum.png'),
 };

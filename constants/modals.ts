@@ -408,6 +408,11 @@ export const SWAP_MODAL = {
     name: 'open_transaction_status',
     number: 2,
   },
+  /** A cross-chain swap's progress, until the destination chain receives it. */
+  OPEN_LIFI_STATUS: {
+    name: 'open_lifi_status',
+    number: 2,
+  },
 };
 
 export const SPIN_WIN_MODAL = {

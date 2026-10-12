@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
-import { Currency } from '@cryptoalgebra/fuse-sdk';
 import { ChevronDown } from 'lucide-react-native';
 
-import CurrencyLogo from '@/components/CurrencyLogo';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { SwapAsset } from '@/lib/types/lifi-swap';
 import { cn } from '@/lib/utils';
 
 import SwapTokenSelector from './SwapTokenSelector';
@@ -14,9 +14,9 @@ import SwapTokenSelector from './SwapTokenSelector';
 interface SwapTokenSelectorModalProps {
   open?: boolean;
   setOpen?: (open: boolean) => void;
-  onSelect: (token: Currency) => void;
-  currentCurrency: Currency | null | undefined;
-  otherCurrency: Currency | null | undefined;
+  onSelect: (asset: SwapAsset) => void;
+  currentAsset: SwapAsset | undefined;
+  otherAsset: SwapAsset | undefined;
   showNativeToken?: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -27,8 +27,8 @@ const SwapTokenSelectorModal = ({
   open,
   setOpen,
   onSelect,
-  currentCurrency,
-  otherCurrency,
+  currentAsset,
+  otherAsset,
   showNativeToken = true,
   disabled = false,
   placeholder = 'Select token',
@@ -38,29 +38,29 @@ const SwapTokenSelectorModal = ({
   const previousModal: ModalState = { name: 'close', number: 0 };
   const isOpen = open ?? false;
   const handleTokenClick = useCallback(
-    (token: Currency) => {
-      onSelect(token);
+    (asset: SwapAsset) => {
+      onSelect(asset);
       setOpen?.(false);
     },
     [onSelect, setOpen],
   );
 
   const buttonText = useMemo(() => {
-    if (currentCurrency?.symbol) {
-      return currentCurrency.symbol;
+    if (currentAsset?.symbol) {
+      return currentAsset.symbol;
     }
     return placeholder;
-  }, [currentCurrency?.symbol, placeholder]);
+  }, [currentAsset?.symbol, placeholder]);
 
   const buttonContent = useMemo(
     () => (
       <View className="flex flex-row items-center gap-1">
-        <CurrencyLogo currency={currentCurrency} size={24} />
-        <Text className="text-lg font-semibold text-white">{buttonText}</Text>
+        <SwapAssetLogo asset={currentAsset} size={24} />
+        <Text className="ml-1 text-lg font-semibold text-white">{buttonText}</Text>
         <ChevronDown className="text-white" />
       </View>
     ),
-    [currentCurrency, buttonText],
+    [currentAsset, buttonText],
   );
 
   return (
@@ -90,7 +90,7 @@ const SwapTokenSelectorModal = ({
       <View className="gap-2 md:gap-4">
         <SwapTokenSelector
           onSelect={handleTokenClick}
-          otherCurrency={otherCurrency}
+          otherAsset={otherAsset}
           showNativeToken={showNativeToken}
         />
       </View>

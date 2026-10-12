@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
-import { arbitrum, base, bsc, fuse, mainnet } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import {
@@ -121,6 +121,7 @@ const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> =
   [base.id]: makeNativePriceFetcher(base.id),
   [arbitrum.id]: makeNativePriceFetcher(arbitrum.id),
   [bsc.id]: makeNativePriceFetcher(bsc.id),
+  [polygon.id]: makeNativePriceFetcher(polygon.id),
 };
 
 const isZeroRate = (r: number | null | undefined) =>
@@ -164,11 +165,13 @@ const fetchTokenBalances = async (safeAddress: string) => {
     baseBalance,
     arbitrumBalance,
     bscBalance,
+    polygonBalance,
     ethPrice,
     fusePrice,
     basePrice,
     arbitrumPrice,
     bscPrice,
+    polygonPrice,
     tokenList,
   ] = await Promise.allSettled([
     // Token balances via the data-source dispatcher (Alchemy primary,
@@ -213,11 +216,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
     getBalance(publicClient(bsc.id), {
       address: safeAddress as `0x${string}`,
     }),
+    getBalance(publicClient(polygon.id), {
+      address: safeAddress as `0x${string}`,
+    }),
     NATIVE_PRICE_FETCHERS[mainnet.id](),
     NATIVE_PRICE_FETCHERS[fuse.id](),
     NATIVE_PRICE_FETCHERS[base.id](),
     NATIVE_PRICE_FETCHERS[arbitrum.id](),
     NATIVE_PRICE_FETCHERS[bsc.id](),
+    NATIVE_PRICE_FETCHERS[polygon.id](),
     fetchTokenList({
       isActive: true,
     }),
@@ -504,6 +511,27 @@ const fetchTokenBalances = async (safeAddress: string) => {
       chainId: BSC_CHAIN_ID,
       commonId: bscBnbTokenFromList?.commonId,
       tokenId: bscBnbTokenFromList?.tokenId,
+    });
+  }
+
+  if (polygonBalance.status === PromiseStatus.FULFILLED && Number(polygonBalance.value)) {
+    const polygonPriceValue =
+      polygonPrice.status === PromiseStatus.FULFILLED ? Number(polygonPrice.value) : 0;
+    const polygonPolTokenFromList = tokenListData.find(
+      token => token.chainId === POLYGON_CHAIN_ID && token.symbol === 'POL',
+    );
+    polygonTokens.push({
+      contractTickerSymbol: 'POL',
+      contractName: 'POL',
+      contractAddress: zeroAddress,
+      balance: polygonBalance.value.toString(),
+      quoteRate: polygonPriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: POLYGON_CHAIN_ID,
+      commonId: polygonPolTokenFromList?.commonId,
+      tokenId: polygonPolTokenFromList?.tokenId,
     });
   }
 
