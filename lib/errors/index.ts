@@ -9,7 +9,7 @@ import {
   UserError,
 } from '@/lib/errors/classify';
 import { ErrorReport, reportUserError } from '@/lib/errors/report';
-import { buildSupportMessage } from '@/lib/errors/supportMessage';
+import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
 import { useFailureSheetStore } from '@/store/useFailureSheetStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
@@ -27,7 +27,7 @@ export { formatErrorRef } from '@/lib/errors/errorRef';
 export type { ErrorReport } from '@/lib/errors/report';
 export { activityFailureMetadata, eventIdForError } from '@/lib/errors/report';
 export { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
-export { buildSupportMessage } from '@/lib/errors/supportMessage';
+export { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
 
 /** What every `show*` helper resolves with, for callers that log or branch on it. */
 export interface ShownError {
@@ -73,16 +73,21 @@ export const showErrorToast = async (
   const { userError, report } = shown;
   if (userError.silent) return shown;
 
-  const supportMessage = report
-    ? buildSupportMessage(userError.action, report, context.details)
+  // Intercom gets the prefilled message, the in-house chat the context card;
+  // the support drawer picks whichever this user has.
+  const supportRequest = report
+    ? {
+        chatMessage: buildSupportMessage(userError.action, report, context.details),
+        context: buildSupportContext(userError.title, report),
+      }
     : undefined;
 
   Toast.show({
     type: 'error',
     text1: userError.title,
     text2: userError.body,
-    props: supportMessage
-      ? { action: { label: 'Get help', onPress: () => openSupportDrawer(supportMessage) } }
+    props: supportRequest
+      ? { action: { label: 'Get help', onPress: () => openSupportDrawer(supportRequest) } }
       : undefined,
   });
   return shown;

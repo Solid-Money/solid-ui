@@ -7,7 +7,7 @@ import { reportClientError } from '@/lib/api';
 import { describeError, normalizeError } from '@/lib/errors/classify';
 import { compactErrorRef, formatErrorRef } from '@/lib/errors/errorRef';
 import { activityFailureMetadata, reportUserError, shouldReport } from '@/lib/errors/report';
-import { buildSupportMessage } from '@/lib/errors/supportMessage';
+import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
 
 jest.mock('@sentry/react-native', () => ({ captureException: jest.fn() }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -162,5 +162,17 @@ describe('buildSupportMessage', () => {
         'My question: ',
       ].join('\n'),
     );
+  });
+});
+
+describe('buildSupportContext', () => {
+  it('gives the in-house chat the event ID to resolve, and the Ref on the card', () => {
+    expect(
+      buildSupportContext('Couldn’t move to your card', {
+        ref: '9C1B-4F2A',
+        eventId: RID,
+        occurredAt: new Date(),
+      }),
+    ).toEqual({ kind: 'error', id: RID, label: 'Couldn’t move to your card · Ref 9C1B-4F2A' });
   });
 });

@@ -4,6 +4,8 @@ import { ERROR_ACTIONS, ErrorAction } from '@/lib/errors/actions';
 import { ErrorDetails } from '@/lib/errors/classify';
 import { ErrorReport } from '@/lib/errors/report';
 
+import type { SupportDraftContext } from '@/store/useSupportChatStore';
+
 const DATE_FORMAT = "d MMM yyyy 'at' HH:mm";
 
 /**
@@ -35,3 +37,14 @@ export const buildSupportMessage = (
   ];
   return lines.filter(line => line !== undefined).join('\n');
 };
+
+/**
+ * The same failure for the in-house chat, which takes a reference the server
+ * resolves instead of a pasted message: the event ID, which Solid AI and the
+ * agent inbox look up. The label is shown on the card only, never sent.
+ */
+export const buildSupportContext = (title: string, report: ErrorReport): SupportDraftContext => ({
+  kind: 'error',
+  id: report.eventId,
+  label: `${title} · Ref ${report.ref}`,
+});

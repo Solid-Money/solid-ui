@@ -11,9 +11,10 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
+import { useSupportChatEnabled } from '@/hooks/useSupportChat';
 import { track } from '@/lib/analytics';
 import { clampText, ERROR_COPY_LIMITS } from '@/lib/errors/copyLimits';
-import { buildSupportMessage } from '@/lib/errors/supportMessage';
+import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
 import { useIntercom } from '@/lib/intercom';
 import { cn } from '@/lib/utils';
 import {
@@ -21,6 +22,7 @@ import {
   FailureSheetContent,
   useFailureSheetStore,
 } from '@/store/useFailureSheetStore';
+import { useSupportChatStore } from '@/store/useSupportChatStore';
 
 /** Same pause the support drawer leaves between closing and opening the chat. */
 const ACTION_DELAY_MS = 220;
@@ -34,6 +36,7 @@ interface FailureBodyProps {
 
 const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
   const intercom = useIntercom();
+  const nativeChat = useSupportChatEnabled();
   const { report } = content;
   // A transaction that may already be out must not be sent again from here.
   const mayHaveGoneOut = content.nothingSent === false;
@@ -59,6 +62,15 @@ const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
     const message = buildSupportMessage(content.action, report, content.details);
     closeFailureSheet();
     setTimeout(() => {
+      if (nativeChat) {
+        // The in-house chat takes the failure as a card the server resolves
+        // (Solid AI and the agent inbox read it by its event ID), not a draft.
+        useSupportChatStore
+          .getState()
+          .setDraftContext(report ? buildSupportContext(content.title, report) : null);
+        router.push(path.SUPPORT);
+        return;
+      }
       if (report) {
         // Also on the Intercom contact, for whoever picks up the conversation.
         intercom?.update({
@@ -73,7 +85,16 @@ const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
       }
       intercom?.showNewMessage(message);
     }, ACTION_DELAY_MS);
-  }, [analytics, content.action, content.code, content.details, intercom, report]);
+  }, [
+    analytics,
+    content.action,
+    content.code,
+    content.details,
+    content.title,
+    intercom,
+    nativeChat,
+    report,
+  ]);
 
   const primaryLabel = mayHaveGoneOut
     ? 'View activity'

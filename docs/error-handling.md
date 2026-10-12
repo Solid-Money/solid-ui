@@ -77,9 +77,10 @@ The Ref is the first 8 hex characters of the GlitchTip event ID, displayed as
 | --- | --- | --- |
 | GlitchTip | Event ID, plus tags `error_ref`, `error_code`, `error_action`, `request_id` | `error_ref:9C1B-4F2A`, or paste the full event ID for a direct hit |
 | Loki (Grafana) | Every backend log line has `rid=<request id>`. Each app report writes `Client error ref=9C1B-4F2A …` | `{namespace="solid-backend"} \|= "rid=9c1b4f2a"` or `\|= "ref=9C1B-4F2A"` |
-| MongoDB | `clientErrors` (one row per shown failure, 180-day TTL). Failed `activities` carry `metadata.errorRef` / `metadata.errorEventId` | Admin portal → Activity → **Error Lookup** |
+| MongoDB | `clientErrors` (one row per shown failure, 180-day TTL). Failed `activities` carry `metadata.errorRef` / `metadata.errorEventId` | Admin portal → Support → **Error Lookup** |
 | Amplitude | `Error Shown` event with `error_ref`, `error_code`, `error_kind`, `error_action`, `surface`, `request_id` | Filter on `error_ref` |
 | Intercom | Contact support prefills the chat (what failed, amount, network, time, Ref, event ID). It also sets contact attributes `last_error_ref`, `last_error_event_id`, `last_error_action`, `last_error_code`, `last_error_at` | Read the conversation, or filter contacts by `last_error_ref` |
+| In-house chat | For users with the `supportChat` feature, Contact support opens the native chat with an `error` context card (`{ kind: 'error', id: <event ID> }`). Solid AI reads it with `get_recent_errors` (the customer's own reports only) | The message's "from error" chip in the portal inbox links to Error Lookup |
 
 **Why not a MongoDB ObjectId?** An ObjectId is 24 characters, embeds its
 creation time and a guessable counter, and only exists once a row is written.

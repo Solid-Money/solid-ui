@@ -37,6 +37,8 @@ export const SUPPORT_CONTEXT_KINDS = [
   'card',
   'virtual_account',
   'rewards',
+  // A failure the app showed; the id is its event ID, the one behind the Ref.
+  'error',
 ] as const;
 
 export type SupportContextKind = (typeof SUPPORT_CONTEXT_KINDS)[number];
