@@ -191,7 +191,13 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
         setSecret(data.secret);
       } catch (err: any) {
         console.error('Failed to setup TOTP:', err);
-        setApiError('Failed to setup TOTP. Please try again.');
+        // 409: an authenticator is already on, and setup will not replace it —
+        // only a reset by support does.
+        setApiError(
+          err?.status === 409
+            ? 'Two-factor authentication is already on for this account.'
+            : 'Failed to setup TOTP. Please try again.',
+        );
       } finally {
         setIsLoadingSetup(false);
       }
