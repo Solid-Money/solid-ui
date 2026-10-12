@@ -13,6 +13,8 @@ import { CardProvider, DepositFeeQuote } from '@/lib/types';
  * | Flow           | Who             | Charged on                                        |
  * | -------------- | --------------- | ------------------------------------------------- |
  * | Fund your card | Rain            | Every chain but Base, where the card is funded    |
+ * | Fund your card | Either, EURC    | Every chain but Base, where EURC is delivered     |
+ * | Wallet         | Wirex, EURC     | Every chain but Base, where EURC is delivered     |
  * | Wallet         | Wirex           | Stablecoins, on every chain but Fuse, where the   |
  * |                |                 | Safe the card spends from lives                   |
  * | Wallet         | No card         | Nothing                                           |
@@ -83,6 +85,13 @@ export function getDepositFeeRatePpm({
 }): number {
   const isWirex = provider === CardProvider.WIREX;
 
+  // A EURC card deposit goes to the Safe on Base whoever issued the card, so it
+  // is charged only when it has to be bridged there.
+  const isEurc = symbol?.toUpperCase() === 'EURC';
+  if (isEurc && (product === 'card' || (product === 'wallet' && isWirex))) {
+    return chainId === base.id ? 0 : DEFAULT_DEPOSIT_FEE_RATE_PPM;
+  }
+
   if (product === 'savings') {
     if (isWirex) return 0;
 
@@ -113,7 +122,7 @@ export function getDepositFeeRatePpm({
  * The deposit address the backend prices a flow's deposit on. The card and
  * wallet flows both mint theirs as `RAIN_CARD`, which the backend delivers to
  * whichever card the user holds - the Rain card on Base, or a Wirex card's Safe
- * on Fuse - and prices on that card's route.
+ * on Fuse, or the Safe on Base for EURC - and prices on that route.
  */
 export const getDepositFeeDestinationType = (
   product: DepositFeeProduct,

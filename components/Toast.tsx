@@ -7,6 +7,7 @@ import { Check, CircleAlert, Info, X } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { clampText, ERROR_COPY_LIMITS } from '@/lib/errors/copyLimits';
+import { redactSecrets, sanitizeDisplayText } from '@/lib/utils/userFacingError';
 
 /**
  * The app toast (Figma: UI 4 › Toasts & error states › Toast, Success / Info /
@@ -89,8 +90,17 @@ const ToastView = ({ type, title, body, action, onPress, hide }: ToastViewProps)
   const { isDesktop } = useDimension();
   const Icon = ICONS[type];
   const tone = TONES[type];
-  const heading = clampText(title || body, ERROR_COPY_LIMITS.toastTitle);
-  const detail = title ? clampText(body, ERROR_COPY_LIMITS.toastBody) : undefined;
+  // The last line of defence for a call site that still hands over a caught
+  // `error.message`: never paint a credential, and on an error toast never a
+  // developer dump. Success and info bodies keep tx hashes and addresses.
+  const safeTitle = title ? redactSecrets(title) : title;
+  const safeBody = body
+    ? type === 'error'
+      ? sanitizeDisplayText(body)
+      : redactSecrets(body)
+    : body;
+  const heading = clampText(safeTitle || safeBody, ERROR_COPY_LIMITS.toastTitle);
+  const detail = safeTitle ? clampText(safeBody, ERROR_COPY_LIMITS.toastBody) : undefined;
   const actionLabel = action ? clampText(action.label, ERROR_COPY_LIMITS.toastAction) : undefined;
 
   // A plain View unless the toast itself is tappable, so it never swallows the

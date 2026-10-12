@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Check } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 
@@ -7,12 +8,20 @@ interface EnableRealTimeFundingCardProps {
   assetSymbols: string[];
   /** Human chain name — "Base", "Base Sepolia". */
   chainName: string;
-  /** How many networks still owe approvals, for the "+N more" hint. */
+  /** How many networks the row covers, for the "+N more" hint. */
   networkCount: number;
-  isApproving: boolean;
+  /**
+   * True once every offered chain is approved.
+   *
+   * Switches the row from a task to a receipt: the button becomes a disabled
+   * "Approved" pill and the subtitle reports what the card now draws on,
+   * rather than what still needs doing.
+   */
+  isApproved?: boolean;
+  isApproving?: boolean;
   /** Message from the last failed attempt, shown in place of the subtitle. */
   error?: string | null;
-  onApprove: () => void;
+  onApprove?: () => void;
 }
 
 /**
@@ -40,6 +49,17 @@ interface EnableRealTimeFundingCardProps {
  * one asset per chain today and adds more as the feature leaves beta, and a
  * row that could only name one would start quietly lying on the day they do.
  *
+ * ## Why it stays once it is done
+ *
+ * The row began as a task that disappeared when the allowances landed, and
+ * disappearing was the wrong ending. A cardholder who has just granted an
+ * unlimited allowance gets no confirmation it worked, and later no way to
+ * check — the only evidence lives on a chain they cannot read, and the
+ * question "does my card actually draw from my wallet" has no answer anywhere
+ * in the app. So the row settles into a receipt instead: the same two lines,
+ * naming the same assets and chains, with the button disabled and reading
+ * Approved.
+ *
  * Laid out as `EnableEuroSpendCard` and `SpendingModeCard` are: a 23px card,
  * 17px side inset, two lines of copy left and the action right — so it reads
  * as another row of the card pane rather than a promo banner.
@@ -48,7 +68,8 @@ const EnableRealTimeFundingCard = ({
   assetSymbols,
   chainName,
   networkCount,
-  isApproving,
+  isApproved = false,
+  isApproving = false,
   error,
   onApprove,
 }: EnableRealTimeFundingCardProps) => {
@@ -60,6 +81,13 @@ const EnableRealTimeFundingCard = ({
   // more there are, and the extra prompts would then arrive unannounced.
   const where = networkCount > 1 ? `${chainName} +${networkCount - 1} more` : chainName;
 
+  // Past tense once it is done, and still naming the assets and the chain: an
+  // allowance is per token per chain, so a bare "Approved" would not tell a
+  // cardholder holding the wrong asset why their card declines.
+  const subtitle = isApproved
+    ? `Approved — purchases draw ${assets} from your wallet on ${where}`
+    : `Spend ${assets} straight from your wallet on ${where}`;
+
   return (
     <View className="overflow-hidden rounded-[23px] bg-card" style={styles.row}>
       <View style={styles.label}>
@@ -69,28 +97,43 @@ const EnableRealTimeFundingCard = ({
             error ? 'text-red-400' : 'text-muted-foreground'
           }`}
         >
-          {error ?? `Spend ${assets} straight from your wallet on ${where}`}
+          {error ?? subtitle}
         </Text>
       </View>
-      <Pressable
-        accessibilityLabel="Approve Real-Time Funding"
-        accessibilityRole="button"
-        accessibilityState={{ disabled: isApproving, busy: isApproving }}
-        // Disabled while the user operation is in flight. A second press would
-        // build a second batch of approvals against a wallet the first one is
-        // already approving from — duplicate signature prompts, and a second
-        // transaction the cardholder pays for and gains nothing from.
-        disabled={isApproving}
-        className="bg-white transition-all active:scale-95 active:opacity-80 disabled:opacity-60"
-        onPress={onApprove}
-        style={styles.button}
-      >
-        {isApproving ? (
-          <ActivityIndicator color="black" size="small" />
-        ) : (
-          <Text className="text-[16px] font-semibold text-black">Approve</Text>
-        )}
-      </Pressable>
+      {isApproved ? (
+        // Not a Pressable. There is nothing to press — re-approving an
+        // existing allowance costs gas and changes nothing — and a disabled
+        // button that still looks like a button invites the tap anyway.
+        <View
+          accessibilityRole="text"
+          accessibilityLabel="Real-Time Funding approved"
+          className="flex-row items-center gap-1.5 bg-[#1C1C1C]"
+          style={styles.button}
+        >
+          <Check size={14} color="#94F27F" />
+          <Text className="text-[15px] font-semibold text-[#94F27F]">Approved</Text>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityLabel="Approve Real-Time Funding"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isApproving, busy: isApproving }}
+          // Disabled while the user operation is in flight. A second press
+          // would build a second batch of approvals against a wallet the first
+          // one is already approving from — duplicate signature prompts, and a
+          // second transaction the cardholder pays for and gains nothing from.
+          disabled={isApproving}
+          className="bg-white transition-all active:scale-95 active:opacity-80 disabled:opacity-60"
+          onPress={onApprove}
+          style={styles.button}
+        >
+          {isApproving ? (
+            <ActivityIndicator color="black" size="small" />
+          ) : (
+            <Text className="text-[16px] font-semibold text-black">Approve</Text>
+          )}
+        </Pressable>
+      )}
     </View>
   );
 };

@@ -46,12 +46,34 @@ describe('getDepositFeeRatePpm', () => {
         getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'card', chainId, symbol }),
       );
     });
+
+    // EURC is delivered to the Safe on Base whoever issued the card, so Base is
+    // its home chain for both - including a Wirex holder, whose dollars go to Fuse.
+    it.each([CardProvider.RAIN, CardProvider.WIREX, null])(
+      'charges a EURC card deposit everywhere but Base (issuer %s)',
+      provider => {
+        expectFreeOnlyOn([base.id], chainId =>
+          getDepositFeeRatePpm({ provider, product: 'card', chainId, symbol: 'EURC' }),
+        );
+      },
+    );
   });
 
   describe('wallet deposit', () => {
     it.each(STABLECOINS)('charges a Wirex cardholder %s everywhere but Fuse', symbol => {
       expectFreeOnlyOn([fuse.id], chainId =>
         getDepositFeeRatePpm({ provider: CardProvider.WIREX, product: 'wallet', chainId, symbol }),
+      );
+    });
+
+    it('charges a Wirex cardholder EURC everywhere but Base, where it is delivered', () => {
+      expectFreeOnlyOn([base.id], chainId =>
+        getDepositFeeRatePpm({
+          provider: CardProvider.WIREX,
+          product: 'wallet',
+          chainId,
+          symbol: 'EURC',
+        }),
       );
     });
 

@@ -18,25 +18,40 @@ import {
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
+import { useCrossChainSendConfig } from '@/hooks/useCrossChainSendConfig';
 import { fetchAddressBook } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
-import { useSendStore } from '@/store/useSendStore';
+import { getCrossChainSendToken } from '@/lib/utils/cross-chain-send';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 import AddAddress from './AddAddress';
 import { CashoutEntryRow } from './Cashout/CashoutEntryRow';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
-  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore(
+  const {
+    setAddress,
+    setModal,
+    setName,
+    setSearchQuery,
+    searchQuery,
+    isCrossChain,
+    selectedToken,
+    setDestinationChainId,
+  } = useSendStore(
     useShallow(state => ({
       setAddress: state.setAddress,
       setModal: state.setModal,
       setName: state.setName,
       setSearchQuery: state.setSearchQuery,
       searchQuery: state.searchQuery,
+      isCrossChain: state.isCrossChain,
+      selectedToken: state.selectedToken,
+      setDestinationChainId: state.setDestinationChainId,
     })),
   );
+  const { getNetwork } = useCrossChainSendConfig({ enabled: isCrossChain });
   const insets = useSafeAreaInsets();
   const { activities } = useActivity();
 
@@ -100,7 +115,28 @@ const SendSearch: React.FC = () => {
     setAddress(walletAddress);
     setName(name || '');
     setSearchQuery(name || walletAddress);
-    setModal(SEND_MODAL.OPEN_FORM);
+
+    // A contact saved from an earlier cross-chain send remembers its network:
+    // reuse it (when this token can reach it) and skip the network step.
+    if (isCrossChain) {
+      const entry = addressBook.find(
+        e => e.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+      );
+      const token = getCrossChainSendToken(selectedToken);
+      const savedNetwork = entry?.chainId ? getNetwork(entry.chainId) : undefined;
+      if (
+        savedNetwork &&
+        token &&
+        savedNetwork.status === 'live' &&
+        savedNetwork.tokens.includes(token)
+      ) {
+        setDestinationChainId(savedNetwork.chainId);
+        setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
+        return;
+      }
+    }
+
+    setModal(recipientNextModal());
   };
 
   const handleAddToAddressBook = (walletAddress: string) => {

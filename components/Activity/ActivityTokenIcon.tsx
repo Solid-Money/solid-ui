@@ -25,6 +25,7 @@ const INCOMING_BADGE_TYPES = new Set<TransactionType>([
 
 const OUTGOING_BADGE_TYPES = new Set<TransactionType>([
   TransactionType.SEND,
+  TransactionType.CROSS_CHAIN_SEND,
   TransactionType.UNSTAKE,
   TransactionType.WITHDRAW,
   TransactionType.FAST_WITHDRAW,

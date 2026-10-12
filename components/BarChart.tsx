@@ -3,7 +3,12 @@ import { View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
+import {
+  TOOLTIP_SURFACE_CLASS_NAME,
+  TOOLTIP_TEXT_CLASS_NAME,
+} from '@/components/ui/tooltip-styles';
 import { ChartPayload } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { formatChartTooltipDate } from '@/lib/utils/chartDate';
 
 interface BarChartProps {
@@ -13,8 +18,7 @@ interface BarChartProps {
   formatToolTip?: (value: number | null) => string;
 }
 
-const TOOLTIP_WIDTH = 112;
-const TOOLTIP_HEIGHT = 41;
+const TOOLTIP_WIDTH = 140;
 const TOOLTIP_GAP = 6;
 
 const CompactBars = ({
@@ -28,6 +32,7 @@ const CompactBars = ({
 }) => {
   const [width, setWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [tooltipHeight, setTooltipHeight] = useState(68);
   const maxValue = Math.max(...data.map(item => Math.max(item.value || 0, 0)), 0);
   const verticalPadding = 0;
   const availableHeight = Math.max(height - verticalPadding * 2, 1);
@@ -45,7 +50,7 @@ const CompactBars = ({
     0,
     Math.min(selectedBarCenter - TOOLTIP_WIDTH / 2, width - TOOLTIP_WIDTH),
   );
-  const tooltipTop = selectedBarTop - TOOLTIP_HEIGHT - TOOLTIP_GAP;
+  const tooltipTop = selectedBarTop - tooltipHeight - TOOLTIP_GAP;
 
   return (
     <View
@@ -99,15 +104,16 @@ const CompactBars = ({
       {selectedPoint && width > 0 && (
         <View
           pointerEvents="none"
-          className="absolute z-10 rounded-lg bg-white px-2 py-1.5 shadow-md"
+          className={cn('absolute z-10', TOOLTIP_SURFACE_CLASS_NAME)}
           style={{ left: tooltipLeft, top: tooltipTop, width: TOOLTIP_WIDTH }}
+          onLayout={event => setTooltipHeight(event.nativeEvent.layout.height)}
         >
-          <Text className="text-[13px] font-semibold leading-[15px] text-black">
+          <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'font-semibold')}>
             {formatToolTip
               ? formatToolTip(selectedPoint.value)
               : `${selectedPoint.value.toFixed(2)}%`}
           </Text>
-          <Text className="mt-0.5 text-[10px] leading-3 text-black/50">
+          <Text className={cn(TOOLTIP_TEXT_CLASS_NAME, 'mt-1 text-black/60')}>
             {formatChartTooltipDate(selectedPoint.time)}
           </Text>
         </View>

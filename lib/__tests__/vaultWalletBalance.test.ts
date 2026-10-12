@@ -1,8 +1,9 @@
-import { fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
-import { hasDepositableWalletBalance } from '@/lib/vaults';
+import { getEarningTokenVault, hasDepositableWalletBalance } from '@/lib/vaults';
 
 const vaultFor = (type: VaultType) => VAULTS.find(vault => vault.type === type)!;
 
@@ -18,6 +19,30 @@ const token = (
   contractDecimals: 6,
   type: TokenType.ERC20,
   chainId,
+});
+
+describe('earning token identity', () => {
+  it.each([
+    [PRODUCTION_VAULT_ADDRESSES.fuse.vault, fuse.id, VaultType.USDC],
+    [PRODUCTION_VAULT_ADDRESSES.ethereum.vault, mainnet.id, VaultType.USDC],
+    [PRODUCTION_VAULT_ADDRESSES.ethereum.vault, base.id, VaultType.USDC],
+    [PRODUCTION_VAULT_ADDRESSES.ethereum.vault, arbitrum.id, VaultType.USDC],
+    [PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault, fuse.id, VaultType.FUSE],
+    [PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault, mainnet.id, VaultType.ETH],
+    [PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault, fuse.id, VaultType.ETH],
+  ])('recognizes a production share on its supported network', (contractAddress, chainId, type) => {
+    expect(getEarningTokenVault({ contractAddress, chainId })?.vault.type).toBe(type);
+  });
+  it('does not assign vault APY to a copied ticker, an underlying coin, or the wrong chain', () => {
+    expect(getEarningTokenVault(token('soUSD', fuse.id))).toBeUndefined();
+    expect(getEarningTokenVault(token('USDC', fuse.id))).toBeUndefined();
+    expect(
+      getEarningTokenVault({
+        contractAddress: PRODUCTION_VAULT_ADDRESSES.fuse.vault,
+        chainId: polygon.id,
+      }),
+    ).toBeUndefined();
+  });
 });
 
 describe('hasDepositableWalletBalance', () => {

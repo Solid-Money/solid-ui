@@ -68,6 +68,11 @@ export default function KycNative() {
           }
           break;
         case 'cancelled':
+          // Release the launch guard. Didit can hand back the same unstarted
+          // session (and token) when the user comes back to try again, and a
+          // guard still holding it would skip the relaunch and strand them on
+          // the "Verification opened" spinner.
+          launchedTokenRef.current = null;
           onVerificationCancelled();
           break;
         case 'failed':
@@ -94,7 +99,7 @@ export default function KycNative() {
 
   return (
     <View className="flex-1 bg-background">
-      {session.phase === 'loading' && <KycLoading />}
+      {(session.phase === 'loading' || session.phase === 'cancelled') && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
       {session.phase === 'unavailable' && (
         <KycUnavailable message={session.message} onRetry={initSession} />

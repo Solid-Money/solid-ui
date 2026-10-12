@@ -68,7 +68,7 @@ function BuyFuseForAccount({ requestedTier, upgradeContext }: BuyFuseScreenProps
   const insets = useSafeAreaInsets();
   const { data: rewardsData, isError } = useRewardsUserData({ enabled: !upgradeContext });
   const confirmed = useRewardsUpgradeStore(state => state.confirmed);
-  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil && state.savingsConfirmed);
+  const pending = useRewardsUpgradeStore(state => !!state.pendingUntil);
   const [purchased, setPurchased] = useState(false);
 
   const { independentField, typedValue, selectCurrency, typeInput, resetForm } = useSwapState(

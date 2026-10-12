@@ -1,12 +1,16 @@
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { base, mainnet } from 'viem/chains';
+
+import { BRIDGE_TOKENS, EURC_TOKENS } from '@/constants/bridge';
 import {
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
 import { TokenBalance, TokenType } from '@/lib/types';
 import {
+  CARD_FUND_EURC_SYMBOL,
   CARD_FUND_MOVE_COPY,
   CARD_FUND_TOKEN_SYMBOLS,
+  getCardFundChains,
   getCardFundRoutes,
   getCardFundRoutesTooltip,
   getCardFundSupportedNetworkNames,
@@ -96,6 +100,47 @@ describe('getCardFundRoutesTooltip', () => {
     // The failure that costs a Wirex cardholder two days: money that arrives
     // safely in Wallet and cannot be spent.
     expect(getCardFundRoutesTooltip()).toContain('wallet address');
+  });
+
+  it('says nothing about EURC unless it is offered', () => {
+    expect(getCardFundRoutesTooltip()).not.toContain(CARD_FUND_EURC_SYMBOL);
+  });
+
+  it('gives EURC its own, narrower list of networks', () => {
+    const tooltip = getCardFundRoutesTooltip([...CARD_FUND_TOKEN_SYMBOLS, CARD_FUND_EURC_SYMBOL]);
+
+    expect(tooltip).toContain('USDC or USDT only, on ');
+    expect(tooltip).toContain('; EURC only on Base.');
+    expect(tooltip).toContain('wallet address');
+  });
+});
+
+describe('EURC', () => {
+  it('is offered on Base only, Ethereum being held back for now', () => {
+    expect(getCardFundChains(CARD_FUND_EURC_SYMBOL).map(chain => chain.chainId)).toEqual([base.id]);
+  });
+
+  it('stays out of BRIDGE_TOKENS, which every other deposit surface offers from', () => {
+    for (const chain of Object.values(BRIDGE_TOKENS)) {
+      expect(chain.tokens?.[CARD_FUND_EURC_SYMBOL]).toBeUndefined();
+    }
+  });
+
+  it('is not a dollar stablecoin the flow may deliver as another', () => {
+    expect(CARD_FUND_TOKEN_SYMBOLS).not.toContain(CARD_FUND_EURC_SYMBOL);
+  });
+
+  it('is never a move-from-wallet route', () => {
+    // Base EURC already sits in the Safe the euro balance is spent from.
+    expect(getCardFundRoutes().map(route => route.symbol)).not.toContain(CARD_FUND_EURC_SYMBOL);
+  });
+
+  it('carries the 6-decimal contract the backend accepts', () => {
+    expect(EURC_TOKENS[mainnet.id]).toBeUndefined();
+    expect(EURC_TOKENS[base.id]).toMatchObject({
+      address: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',
+      decimals: 6,
+    });
   });
 });
 

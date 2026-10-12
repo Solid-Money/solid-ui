@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +43,7 @@ import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/use
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
@@ -66,6 +68,7 @@ import {
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
   isDepositWithSteps,
@@ -79,7 +82,7 @@ import {
   getTransactionUsdAmount,
   SPENDING_CATEGORIES,
 } from '@/lib/utils/spendingInsights';
-import { openSupportDrawer } from '@/store/useSupportDrawerStore';
+import { openSupportDrawer, SupportDrawerRequest } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
   label: React.ReactNode;
@@ -109,7 +112,8 @@ type BackProps = {
 };
 
 type SupportSectionProps = {
-  transactionContext?: string;
+  /** A draft for Intercom plus a reference for the in-house chat. */
+  transactionContext?: SupportDrawerRequest;
 };
 
 const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
@@ -349,9 +353,16 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     return lines.length ? `\n${lines.join('\n')}` : '';
   }, [spend, sweepHash, refund, transaction.usd_amount]);
 
-  const transactionContext = useMemo(
-    () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+  const transactionContext = useMemo<SupportDrawerRequest>(
+    () => ({
+      chatMessage: `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}${spendContext}\n\nMy question: `,
+      // Display only: the server looks the purchase up by id.
+      context: {
+        kind: 'card_transaction',
+        id: transaction.id,
+        label: `${merchantName} · ${formatCardTransactionAmount(transaction.amount, isOutgoing, cardProvider, transaction.currency)}`,
+      },
+    }),
     [
       merchantName,
       transaction.amount,
@@ -779,9 +790,15 @@ const UnknownCardTransaction = memo(function UnknownCardTransaction({
 }: {
   clientTxId: string;
 }) {
-  const transactionContext = useMemo(
-    () =>
-      `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+  const transactionContext = useMemo<SupportDrawerRequest>(
+    () => ({
+      chatMessage: `Question about card transaction:\n\nTransaction ID: ${clientTxId}\nThe app cannot load its details.\n\nMy question: `,
+      context: {
+        kind: 'card_transaction',
+        id: clientTxId.replace(/^card-/, ''),
+        label: 'A card purchase the app could not load',
+      },
+    }),
     [clientTxId],
   );
 
@@ -964,6 +981,10 @@ export default function ActivityDetail() {
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
+  const isCrossChainSend = finalActivity?.type === TransactionType.CROSS_CHAIN_SEND;
+  const crossChainNetwork = isCrossChainSend
+    ? CROSS_CHAIN_NETWORKS[Number(finalActivity?.metadata?.dstChainId)]
+    : undefined;
 
   const statusTextColor = useMemo(() => {
     if (isFailed) return 'text-red-400';
@@ -1035,6 +1056,41 @@ export default function ActivityDetail() {
         label: <Label>Status</Label>,
         value: <Value>{toTitleCase(status)}</Value>,
       },
+      isCrossChainSend &&
+        crossChainNetwork && {
+          key: 'receive-on',
+          label: <Label>Receive on</Label>,
+          value: (
+            <View className="flex-row items-center gap-2">
+              <Image
+                source={getAsset(NETWORK_ICONS[crossChainNetwork.key])}
+                style={{ width: 18, height: 18, borderRadius: 9 }}
+              />
+              <Value>{crossChainNetwork.name}</Value>
+            </View>
+          ),
+        },
+      isCrossChainSend &&
+        metadata?.dstTxHash && {
+          key: 'destination-tx',
+          label: <Label>Destination transaction</Label>,
+          value: (
+            <Pressable
+              onPress={() => {
+                if (metadata.dstExplorerUrl) Linking.openURL(metadata.dstExplorerUrl as string);
+              }}
+              disabled={!metadata.dstExplorerUrl}
+              className="hover:opacity-70"
+            >
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(metadata.dstTxHash as string)}
+                </Underline>
+                {metadata.dstExplorerUrl ? <ArrowUpRight color="white" size={16} /> : null}
+              </View>
+            </Pressable>
+          ),
+        },
       isWirexBank &&
         metadata?.rail && {
           key: 'rail',
@@ -1115,6 +1171,8 @@ export default function ActivityDetail() {
     isDeposit,
     isFund,
     isBridgeDeposit,
+    isCrossChainSend,
+    crossChainNetwork,
     isWirexBank,
     isPending,
     isDetected,
@@ -1274,14 +1332,27 @@ export default function ActivityDetail() {
     handleExplorerPress,
   ]);
 
-  const transactionContext = useMemo(() => {
-    if (!finalActivity) return '';
-    return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
+  const transactionContext = useMemo<SupportDrawerRequest | undefined>(() => {
+    if (!finalActivity) return undefined;
+    const amount = `${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}`;
+    return {
+      chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
+      context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },
+    };
   }, [finalActivity, statusSign, clientTxId]);
 
-  const missingTransactionContext = useMemo(
+  const missingTransactionContext = useMemo<SupportDrawerRequest | undefined>(
     () =>
-      `Question about transaction:\n\nTransaction ID: ${clientTxId}\nI cannot open its details in the app.\n\nMy question: `,
+      clientTxId
+        ? {
+            chatMessage: `Question about transaction:\n\nTransaction ID: ${clientTxId}\nI cannot open its details in the app.\n\nMy question: `,
+            context: {
+              kind: 'activity',
+              id: clientTxId,
+              label: 'A transaction the app could not load',
+            },
+          }
+        : undefined,
     [clientTxId],
   );
 

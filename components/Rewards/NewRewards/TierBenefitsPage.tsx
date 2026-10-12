@@ -665,6 +665,10 @@ function CashbackPanel({
             ? CATEGORY_ARTWORK[category.key]
             : { label: category.label, brands: [], asset: null, assetWidth: 0 };
           const locked = category.rate <= 0;
+          const visibleBrandLimit =
+            category.key === 'music' ? 3 : category.key === 'streaming' ? 4 : art.brands.length;
+          const visibleBrands = art.brands.slice(0, visibleBrandLimit);
+          const additionalBrandCount = art.brands.length - visibleBrands.length;
 
           return (
             <View
@@ -689,15 +693,52 @@ function CashbackPanel({
                   />
                 ) : (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {art.brands.map((brand, i) => (
+                    {visibleBrands.map((brand, i) => (
                       <SubscriptionBrandBadge
                         key={brand.name}
                         brand={brand}
-                        size={22 * s}
-                        overlap={i ? -3 * s : undefined}
+                        size={26 * s}
+                        overlap={i ? -6 * s : undefined}
                         ring
                       />
                     ))}
+                    {additionalBrandCount > 0 && (
+                      <View
+                        accessible
+                        accessibilityLabel={`${additionalBrandCount} more ${art.label.toLowerCase()} services`}
+                        style={{
+                          width: 26 * s,
+                          height: 26 * s,
+                          marginLeft: -6 * s,
+                          borderRadius: 13 * s,
+                          backgroundColor: '#1C1C1C',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 22 * s,
+                            height: 22 * s,
+                            borderRadius: 11 * s,
+                            backgroundColor: '#333333',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontFamily: 'MonaSans_500Medium',
+                              fontSize: 12 * s,
+                              lineHeight: 14 * s,
+                              color: 'rgba(255,255,255,0.7)',
+                            }}
+                          >
+                            +{additionalBrandCount}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -888,19 +929,6 @@ export function TierBenefitsPage({
             </View>
           </View>
         </Panel>
-        <Text
-          style={[
-            regular(s),
-            {
-              marginHorizontal: 17 * s,
-              marginTop: 23 * s,
-              lineHeight: 15.4 * s,
-              color: 'rgba(255,255,255,0.5)',
-            },
-          ]}
-        >
-          * Some charges apply for select countries
-        </Text>
         {tier !== RewardsTier.CORE && offers.length > 0 && (
           <Panel title={`Get ${TIER_LABELS[tier]}`} s={s}>
             <View style={{ paddingHorizontal: 20 * s, paddingTop: 4 * s, paddingBottom: 8 * s }}>
@@ -924,6 +952,19 @@ export function TierBenefitsPage({
             </View>
           </Panel>
         )}
+        <Text
+          style={[
+            regular(s),
+            {
+              marginHorizontal: 17 * s,
+              marginTop: 23 * s,
+              lineHeight: 15.4 * s,
+              color: 'rgba(255,255,255,0.5)',
+            },
+          ]}
+        >
+          * Some charges apply for select countries
+        </Text>
       </Animated.View>
     </View>
   );

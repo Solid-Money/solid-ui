@@ -20,6 +20,7 @@ import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn, isPasskeyPromptError } from '@/lib/utils';
 import { getThisDeviceNoun } from '@/lib/utils/passkeyDevice';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
 
 // Lazy load heavy modal components - only loaded when user opens them
 const SecurityEmailModal = lazyWithRetry(() =>
@@ -165,8 +166,15 @@ export default function Security() {
         setTotpError('Your passkey took too long to answer. Try again.');
       } else if (!isPasskeyPromptError(error)) {
         setTotpError("Couldn't confirm it's you. Try again.");
+        const passkeyError = getPasskeyErrorDetails(error);
         Sentry.captureException(error, {
-          tags: { type: 'security_totp_confirm_error', source: 'security_settings' },
+          level: passkeyError.severity,
+          fingerprint: ['{{ default }}', passkeyError.kind],
+          tags: {
+            type: 'security_totp_confirm_error',
+            source: 'security_settings',
+            passkey_error_kind: passkeyError.kind,
+          },
         });
       }
       // A cancelled prompt needs no message.

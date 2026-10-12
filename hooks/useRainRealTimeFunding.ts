@@ -13,6 +13,9 @@ import { withRefreshToken } from '@/lib/utils';
 import {
   buildApprovalBatch,
   describeApprovalWork,
+  describeApprovedFunding,
+  type RtfSectionState,
+  rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
 } from '@/lib/utils/realTimeFunding';
@@ -41,6 +44,23 @@ interface RainRealTimeFunding {
    * approvals land, which is the point — the row is a task, not a setting.
    */
   shouldOffer: boolean;
+  /**
+   * What the card screen should render: nothing, the approval, or a settled
+   * row.
+   *
+   * Distinct from {@link shouldOffer}, which gates the approve button and the
+   * modal. The row outlives the task: once the allowances land the cardholder
+   * still needs to see that it worked, and be able to check later that their
+   * card really does draw from their wallet.
+   */
+  sectionState: RtfSectionState;
+  /**
+   * What the settled row names — the assets and chains already approved.
+   *
+   * Empty while nothing is approved. Separate from {@link work}, which
+   * describes outstanding work and empties out exactly when this fills up.
+   */
+  approved: { chainNames: string[]; assetSymbols: string[] };
   /** The full status, once the backend has answered. */
   status: RainRtfStatus | undefined;
   /**
@@ -177,6 +197,7 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
   // hook's import graph does not load under jest-expo.
   const { chain, pendingChains } = useMemo(() => selectRtfChains(status), [status]);
   const work = useMemo(() => describeApprovalWork(status), [status]);
+  const approved = useMemo(() => describeApprovedFunding(status), [status]);
 
   const approveMutation = useMutation({
     mutationFn: async (termsVersion: string) => {
@@ -327,6 +348,8 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
 
   return {
     shouldOffer: shouldOfferRtf({ isRainCard, status }),
+    sectionState: rtfSectionState({ isRainCard, status }),
+    approved,
     status,
     chain,
     work,

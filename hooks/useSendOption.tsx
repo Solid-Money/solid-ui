@@ -11,6 +11,10 @@ import { CashoutKycStep } from '@/components/Send/Cashout/CashoutKycStep';
 import { CashoutMethodSelector } from '@/components/Send/Cashout/CashoutMethodSelector';
 import { CashoutReview } from '@/components/Send/Cashout/CashoutReview';
 import { CashoutStatus } from '@/components/Send/Cashout/CashoutStatus';
+import CrossChainForm from '@/components/Send/CrossChain/CrossChainForm';
+import CrossChainNetworks from '@/components/Send/CrossChain/CrossChainNetworks';
+import CrossChainReview from '@/components/Send/CrossChain/CrossChainReview';
+import CrossChainStatus from '@/components/Send/CrossChain/CrossChainStatus';
 import SendForm from '@/components/Send/SendForm';
 import SendQRScanner from '@/components/Send/SendQRScanner';
 import SendReview from '@/components/Send/SendReview';
@@ -44,17 +48,25 @@ const useSendOption = ({
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, selectedToken, setModal, resetAll } =
-    useSendStore(
-      useShallow(state => ({
-        currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
-        previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
-        transaction: state.transaction,
-        selectedToken: state.selectedToken,
-        setModal: state.setModal,
-        resetAll: state.resetAll,
-      })),
-    );
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    selectedToken,
+    isCrossChain,
+    setModal,
+    resetAll,
+  } = useSendStore(
+    useShallow(state => ({
+      currentModal: state.currentModal ?? SEND_MODAL.CLOSE,
+      previousModal: state.previousModal ?? SEND_MODAL.CLOSE,
+      transaction: state.transaction,
+      selectedToken: state.selectedToken,
+      isCrossChain: state.isCrossChain,
+      setModal: state.setModal,
+      resetAll: state.resetAll,
+    })),
+  );
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 
@@ -65,6 +77,15 @@ const useSendOption = ({
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isAddressBook = currentModal.name === SEND_MODAL.OPEN_ADDRESS_BOOK.name;
   const isQRScanner = currentModal.name === SEND_MODAL.OPEN_QR_SCANNER.name;
+  const isCrossChainNetwork = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK.name;
+  const isCrossChainForm = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_FORM.name;
+  const isCrossChainReview = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_REVIEW.name;
+  const isCrossChainStatus = currentModal.name === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name;
+  const isCrossChainStep =
+    isCrossChainNetwork || isCrossChainForm || isCrossChainReview || isCrossChainStatus;
+  // The token selector is shared; in the cross-chain flow it returns to the
+  // cross-chain amount step.
+  const isCrossChainTokenSelector = isTokenSelector && isCrossChain;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const isCashoutKyc = currentModal.name === SEND_MODAL.OPEN_CASHOUT_KYC.name;
   const isCashoutCurrency = currentModal.name === SEND_MODAL.OPEN_CASHOUT_CURRENCY.name;
@@ -160,6 +181,10 @@ const useSendOption = ({
     if (isCashoutAmount) return <CashoutAmount />;
     if (isCashoutReview) return <CashoutReview />;
     if (isCashoutStatus) return <CashoutStatus />;
+    if (isCrossChainNetwork) return <CrossChainNetworks />;
+    if (isCrossChainForm) return <CrossChainForm />;
+    if (isCrossChainReview) return <CrossChainReview />;
+    if (isCrossChainStatus) return <CrossChainStatus />;
 
     if (isTransactionStatus) {
       return (
@@ -207,6 +232,10 @@ const useSendOption = ({
     if (isCashoutAmount) return 'cashout-amount';
     if (isCashoutReview) return 'cashout-review';
     if (isCashoutStatus) return 'cashout-status';
+    if (isCrossChainNetwork) return 'cross-chain-network';
+    if (isCrossChainForm) return 'cross-chain-form';
+    if (isCrossChainReview) return 'cross-chain-review';
+    if (isCrossChainStatus) return 'cross-chain-status';
     if (isTransactionStatus) return 'transaction-status';
     if (isReview) return 'review';
     if (isTokenSelector) return 'token-selector';
@@ -225,6 +254,10 @@ const useSendOption = ({
     if (isCashoutAmount) return 'Amount';
     if (isCashoutReview) return 'Review';
     if (isCashoutStatus) return undefined;
+    if (isCrossChainNetwork) return 'Receive on';
+    if (isCrossChainForm) return 'Send';
+    if (isCrossChainReview) return 'Review';
+    if (isCrossChainStatus) return undefined;
     if (isTransactionStatus) return undefined;
     if (isReview) return 'Review';
     if (isTokenSelector) return 'Select token';
@@ -245,6 +278,8 @@ const useSendOption = ({
     if (isSearch) return 'min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
     if (isCashout) return 'min-h-[30rem]';
+    if (isCrossChainForm) return 'min-h-[36rem]';
+    if (isCrossChainReview || isCrossChainStatus) return 'min-h-[30rem]';
     return '';
   };
 
@@ -262,6 +297,7 @@ const useSendOption = ({
         // Skip discard prompt if transaction has already been initiated
         if (
           currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name ||
+          currentModalName === SEND_MODAL.OPEN_CROSS_CHAIN_STATUS.name ||
           currentModalName === SEND_MODAL.OPEN_CASHOUT_STATUS.name
         ) {
           resetDrawer();
@@ -294,7 +330,22 @@ const useSendOption = ({
     if (isCashoutAmount) return setModal(SEND_MODAL.OPEN_CASHOUT_DETAILS);
     if (isCashoutReview) return setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
 
-    if (isReview) {
+    if (isCrossChainNetwork) {
+      if (useSendStore.getState().crossChainEntry === 'token') {
+        // Entered by picking the token on the regular form: back to the picker,
+        // out of the bridge flow, so any token can be chosen again.
+        useSendStore.getState().setIsCrossChain(false);
+        setModal(SEND_MODAL.OPEN_TOKEN_SELECTOR);
+      } else {
+        setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+      }
+    } else if (isCrossChainForm) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_NETWORK);
+    } else if (isCrossChainReview) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
+    } else if (isCrossChainTokenSelector) {
+      setModal(SEND_MODAL.OPEN_CROSS_CHAIN_FORM);
+    } else if (isReview) {
       setModal(SEND_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(SEND_MODAL.OPEN_FORM);
@@ -313,11 +364,21 @@ const useSendOption = ({
 
   // QR scanner has its own header with close button, so don't show modal back button
   const showBackButton =
-    isForm || isTokenSelector || isReview || isAddressBook || (isCashout && !isCashoutStatus);
+    isForm ||
+    isTokenSelector ||
+    isReview ||
+    isAddressBook ||
+    isCrossChainNetwork ||
+    isCrossChainForm ||
+    isCrossChainReview ||
+    (isCashout && !isCashoutStatus);
+  // The cross-chain screens use the compact 40px header controls.
+  const compactHeader = isCrossChainStep || isCrossChainTokenSelector;
 
   return {
     shouldOpen,
     showBackButton,
+    compactHeader,
     shouldAnimate,
     isForward,
     getTrigger,

@@ -23,8 +23,20 @@ export type SessionState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'unavailable'; message: string }
-  | { phase: 'ready'; verificationUrl: string; sessionToken: string }
-  | { phase: 'started' }
+  | {
+      phase: 'ready';
+      verificationUrl: string;
+      sessionToken: string;
+      /** Which Didit session this is, so the poll can tell it from an older one. */
+      sessionId?: string;
+    }
+  | { phase: 'started'; sessionId?: string }
+  /**
+   * The user closed the SDK without submitting. Terminal, so re-entering the
+   * screen starts a fresh session (see `useReinitOnRefocus`) instead of showing
+   * "Verification opened" over an SDK that is no longer open.
+   */
+  | { phase: 'cancelled' }
   /**
    * Hand-off: the user is being routed off /kyc. `destination` is retained so a
    * navigation that does not land can be retried, and so the interstitial can
@@ -210,6 +222,7 @@ export function useDiditSession() {
         phase: 'ready',
         verificationUrl,
         sessionToken: res.session_token,
+        sessionId: res.session_id,
       });
     } catch (e: any) {
       // KYC_ALREADY_EXISTS (409): the user already has an established KYC
@@ -307,7 +320,11 @@ export function useDiditSession() {
     // a while, and only the former should be nudged to finish.
     const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
     if (userId) useKycStore.getState().markKycStarted(userId);
-    setSession({ phase: 'started' });
+    setSession(previous =>
+      previous.phase === 'ready'
+        ? { phase: 'started', sessionId: previous.sessionId }
+        : { phase: 'started' },
+    );
   }, []);
 
   const onVerificationComplete = useCallback(() => {
@@ -355,6 +372,10 @@ export function useDiditSession() {
    * SDK and trap them in a loop, so send them back to the screen that started KYC.
    */
   const onVerificationCancelled = useCallback(() => {
+    // Mark the session spent before leaving. The screen is frozen, not
+    // unmounted, so whatever phase it holds now is what the next visit finds —
+    // and `started` read as "still in flight", so the SDK was never relaunched.
+    setSession({ phase: 'cancelled' });
     if (router.canGoBack()) {
       router.back();
       return;
@@ -380,6 +401,8 @@ export function useDiditSession() {
     });
   }, []);
 
+  const startedSessionId = session.phase === 'started' ? session.sessionId : undefined;
+
   // Poll for verification status while SDK is active
   useEffect(() => {
     if (session.phase !== 'started') return;
@@ -388,6 +411,17 @@ export function useDiditSession() {
       try {
         const status = await withRefreshToken(() => getDiditVerificationStatus());
         if (!status) return;
+
+        // Only this session's own outcome may end it. The endpoint answers from
+        // the user's Didit record, which can already hold a finished
+        // verification that is not this one — and a finished one is exactly
+        // what this poll treats as "done". That is how a Wirex cardholder
+        // opening a Rain virtual account was congratulated on a check they had
+        // not started and sent off the widget about five seconds after it
+        // opened: their approved card KYC was sitting in that answer.
+        if (startedSessionId && status.sessionId && status.sessionId !== startedSessionId) {
+          return;
+        }
 
         // Backend kycStatus is the canonical source — it reflects the full
         // pipeline (Didit + Rain) so check it before the Didit-only
@@ -411,6 +445,7 @@ export function useDiditSession() {
     return () => clearInterval(interval);
   }, [
     session.phase,
+    startedSessionId,
     onVerificationComplete,
     onVerificationDeclined,
     onVerificationError,

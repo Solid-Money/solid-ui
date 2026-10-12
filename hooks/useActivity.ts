@@ -16,6 +16,12 @@ import { useUserTransactions } from './useAnalytics';
 
 export interface CreateActivityParams {
   type: TransactionType;
+  /**
+   * Use this id instead of generating one. For activities the backend has
+   * already created under its own id (a cross-chain send's `sendId`), so the
+   * client row and the server row are the same record.
+   */
+  clientTxId?: string;
   title: string;
   shortTitle?: string;
   amount: string;

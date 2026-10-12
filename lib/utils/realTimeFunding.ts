@@ -152,21 +152,72 @@ export const selectRtfChains = (
 };
 
 /**
- * Whether the card screen should render the Real-Time Funding row.
+ * What the card screen shows for Real-Time Funding.
  *
- * Every condition has to hold: the card is a Rain card (RTF is a Rain feature
- * and there is no collateral contract to pull into otherwise), Rain has
- * enabled the tenant, this cardholder is eligible, and a chain is still
- * waiting on an approval. The last one is what makes the row a task rather
- * than a setting — it disappears the moment the allowances land.
+ * Three states, not two, and the third is the point. The row began as a task
+ * that vanished the moment the allowances landed, which left a cardholder who
+ * had just approved with no confirmation it worked and no way to check later
+ * — the only evidence was an allowance on a chain they cannot read. Keeping a
+ * settled row says both: it worked, and this card draws from your wallet.
+ *
+ * - `hidden` — not a Rain card, tenant not enabled, cardholder not eligible,
+ *   or there is simply nothing to show: no chain pending and none approved.
+ *   The last case covers a chain with no spenders, where Rain has provisioned
+ *   no collateral contract and the operator is off, so there is nothing to
+ *   approve and nothing to report.
+ * - `pending` — at least one chain still owes approvals. Takes precedence over
+ *   `approved`: part-way through a multi-chain approval some chains are done
+ *   and some are not, and the unfinished work is what the cardholder needs to
+ *   see.
+ * - `approved` — every offered chain is approved.
+ */
+export type RtfSectionState = 'hidden' | 'pending' | 'approved';
+
+export const rtfSectionState = (params: {
+  isRainCard: boolean;
+  status: RainRtfStatus | undefined;
+}): RtfSectionState => {
+  const { isRainCard, status } = params;
+  if (!isRainCard || !status?.tenantEnabled || !status.eligible) return 'hidden';
+
+  const { chain, approvedChains } = selectRtfChains(status);
+  if (chain !== undefined) return 'pending';
+  return approvedChains.length > 0 ? 'approved' : 'hidden';
+};
+
+/**
+ * Whether the card screen should offer the approval.
+ *
+ * Narrower than {@link rtfSectionState}: this one gates the modal and the
+ * approve button, which only make sense while something is still owed.
  */
 export const shouldOfferRtf = (params: {
   isRainCard: boolean;
   status: RainRtfStatus | undefined;
-}): boolean => {
-  const { isRainCard, status } = params;
-  if (!isRainCard || !status?.tenantEnabled || !status.eligible) return false;
-  return selectRtfChains(status).chain !== undefined;
+}): boolean => rtfSectionState(params) === 'pending';
+
+/**
+ * What a settled Real-Time Funding row reports.
+ *
+ * Drawn from the approved chains rather than from `describeApprovalWork`,
+ * which describes pending work and is empty once everything has landed. Named
+ * concretely — "USDC on Base" — for the same reason the pending row is: an
+ * allowance is per token per chain, so "approved" on its own does not tell a
+ * cardholder holding USDT0 on Plasma whether their card will work.
+ */
+export const describeApprovedFunding = (
+  status: RainRtfStatus | undefined,
+): { chainNames: string[]; assetSymbols: string[] } => {
+  const { approvedChains } = selectRtfChains(status);
+
+  return {
+    chainNames: approvedChains.map(entry => entry.name),
+    // Deduplicated by symbol: the same asset on two chains is two allowances
+    // but one thing to name.
+    assetSymbols: [
+      ...new Set(approvedChains.flatMap(entry => entry.assets.map(asset => asset.symbol))),
+    ],
+  };
 };
 
 /**

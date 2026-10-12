@@ -58,7 +58,7 @@ jest.mock('@/store/swapStore', () => ({
 }));
 jest.mock('@/store/useRewardsUpgradeStore', () => ({
   useRewardsUpgradeStore: (selector: (state: any) => unknown) =>
-    selector({ confirmed: undefined, pendingUntil: undefined, savingsConfirmed: false }),
+    selector({ confirmed: undefined, pendingUntil: undefined }),
 }));
 jest.mock('@/store/useSupportDrawerStore', () => ({ openSupportDrawer: jest.fn() }));
 jest.mock('@/store/useUserStore', () => ({

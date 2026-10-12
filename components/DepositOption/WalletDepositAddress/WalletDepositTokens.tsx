@@ -6,9 +6,14 @@ import { Check } from 'lucide-react-native';
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositStore } from '@/store/useDepositStore';
 
-import { getAllWalletDepositTokens, resolveWalletDepositChain } from './constants';
+import {
+  getAllWalletDepositTokens,
+  offersWalletDepositEurc,
+  resolveWalletDepositChain,
+} from './constants';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -30,12 +35,14 @@ const WalletDepositTokens = () => {
   // picked reads as a decision already made for them.
   const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
-  const tokens = useMemo(() => getAllWalletDepositTokens(), []);
+  const { provider } = useCardProvider();
+  const withEurc = offersWalletDepositEurc(provider);
+  const tokens = useMemo(() => getAllWalletDepositTokens(withEurc), [withEurc]);
 
   const handleSelect = (symbol: string) => {
     setWalletDeposit({
       symbol,
-      chainId: resolveWalletDepositChain(symbol, walletDeposit.chainId),
+      chainId: resolveWalletDepositChain(symbol, walletDeposit.chainId, withEurc),
       isChangingToken: false,
     });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);

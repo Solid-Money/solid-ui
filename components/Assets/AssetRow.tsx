@@ -17,6 +17,8 @@ export default function AssetRow({
   subtitle,
   icon,
   value,
+  isEarning = false,
+  apy,
   hidden = false,
   detail,
   trailing,
@@ -26,6 +28,8 @@ export default function AssetRow({
   subtitle?: ReactNode;
   icon: ReactNode;
   value: number | undefined;
+  isEarning?: boolean;
+  apy?: number;
   hidden?: boolean;
   detail?: string;
   /** Replaces the amount column, e.g. the new user's "Start" on Earn. */
@@ -36,9 +40,18 @@ export default function AssetRow({
     <>
       {icon}
       <View className="min-w-0 flex-1 gap-[3px]">
-        <Text className="text-[16px] font-semibold text-white" numberOfLines={1}>
-          {title}
-        </Text>
+        <View className="flex-row flex-wrap items-center gap-x-[6px] gap-y-[2px]">
+          <Text className="text-[16px] font-semibold text-white" numberOfLines={1}>
+            {title}
+          </Text>
+          {isEarning && (
+            <Text className="text-[12px] font-medium text-[#94F27F]">
+              {apy !== undefined && Number.isFinite(apy) && apy >= 0
+                ? `${apy.toFixed(1)}% APY`
+                : 'APY —'}
+            </Text>
+          )}
+        </View>
         {subtitle && <Text className="text-[14px] font-normal text-white/60">{subtitle}</Text>}
       </View>
       {trailing ?? (

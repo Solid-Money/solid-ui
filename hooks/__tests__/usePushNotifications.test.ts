@@ -3,7 +3,10 @@ import { path } from '@/constants/path';
 // The hook pulls in expo-notifications, firebase messaging and the API client
 // at import time. None of that is involved in routing or attribution, which is
 // what these tests are about.
-jest.mock('expo-notifications', () => ({ addNotificationResponseReceivedListener: jest.fn() }));
+jest.mock('expo-notifications', () => ({
+  addNotificationResponseReceivedListener: jest.fn(),
+  getLastNotificationResponse: jest.fn(),
+}));
 jest.mock('@react-native-firebase/messaging', () => () => ({ onTokenRefresh: jest.fn() }));
 jest.mock('@/lib/api', () => ({ registerPushToken: jest.fn() }));
 jest.mock('@/lib/registerForPushNotifications', () => ({
@@ -34,7 +37,8 @@ jest.mock('@/lib/mmvkStorage', () => ({
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { __testing } = require('@/hooks/usePushNotifications');
-const { getNotificationRoute, routeForLink } = __testing;
+const { getNotificationRoute, routeForLink, handleNotificationResponse, resetHandledResponses } =
+  __testing;
 
 const BASE = 'https://app.solid.xyz';
 const link = (p: string) => `${BASE}${p}`;
@@ -50,6 +54,7 @@ describe('routeForLink', () => {
     ['/rewards', path.REWARDS],
     ['/rewards/benefits', path.REWARDS_BENEFITS],
     ['/savings/fuse', path.SAVINGS_FUSE],
+    ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {
     expect(routeForLink(link(p))).toEqual(expected);
   });
@@ -189,6 +194,16 @@ describe('getNotificationRoute', () => {
       expect(getNotificationRoute({ type })).toEqual(expected);
     });
 
+    it('opens the support chat for a support reply, whatever its link', () => {
+      expect(getNotificationRoute({ type: 'support_message' })).toEqual(path.SUPPORT);
+      expect(getNotificationRoute({ type: 'support_message', link: 'solid://support' })).toEqual(
+        path.SUPPORT,
+      );
+      expect(getNotificationRoute({ type: 'support_message', link: link('/support') })).toEqual(
+        path.SUPPORT,
+      );
+    });
+
     it('falls back to home for an unrecognised type', () => {
       expect(getNotificationRoute({ type: 'something-new' })).toEqual(path.HOME);
       expect(getNotificationRoute(undefined)).toEqual(path.HOME);
@@ -209,5 +224,83 @@ describe('getNotificationRoute', () => {
         getNotificationRoute({ type: 'kyc-approved', link: 'https://malicious.com/card' }),
       ).toEqual(path.HOME);
     });
+  });
+});
+
+/** The shape expo-notifications hands a tap handler, reduced to what we read. */
+const responseFor = (identifier: string, data: Record<string, string>) => ({
+  notification: { request: { identifier, content: { data } } },
+});
+
+describe('handleNotificationResponse', () => {
+  beforeEach(() => resetHandledResponses());
+
+  const spend = { type: 'card-transaction', status: 'approved', transactionId: 'tx_1' };
+
+  it('routes a tap to the screen its payload names', () => {
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('n1', spend), navigate);
+
+    expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+  });
+
+  it('acts on one tap once, however many times it is delivered', () => {
+    // The live listener and the replayed launch response both see a tap that
+    // arrives while the app is running. Routing twice is a flicker at best.
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('n1', spend), navigate);
+    handleNotificationResponse(responseFor('n1', spend), navigate);
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('still routes a different tap on the same kind of push', () => {
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('n1', spend), navigate);
+    handleNotificationResponse(responseFor('n2', { ...spend, transactionId: 'tx_2' }), navigate);
+
+    expect(navigate).toHaveBeenNthCalledWith(1, '/activity/card-tx_1');
+    expect(navigate).toHaveBeenNthCalledWith(2, '/activity/card-tx_2');
+  });
+
+  it('routes a response with no id rather than dropping the tap', () => {
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('', spend), navigate);
+
+    expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+  });
+
+  it('lets a tap be retried when the navigation it asked for threw', () => {
+    // Marking it handled on the way in is what stops a double route; keeping it
+    // marked after a failed one would turn a recoverable miss into a lost tap.
+    const failing = jest.fn(() => {
+      throw new Error('Attempted to navigate before mounting the Root Layout component.');
+    });
+    const navigate = jest.fn();
+
+    handleNotificationResponse(responseFor('n1', spend), failing);
+    handleNotificationResponse(responseFor('n1', spend), navigate);
+
+    expect(navigate).toHaveBeenCalledWith('/activity/card-tx_1');
+  });
+
+  it('forgets the oldest ids rather than growing without bound', () => {
+    const navigate = jest.fn();
+
+    // 50 is the cap; the 51st entry evicts the first, which can then route
+    // again. Nothing can replay a tap that old, so that is the cheap trade.
+    for (let i = 0; i < 51; i++) {
+      handleNotificationResponse(responseFor(`n${i}`, spend), navigate);
+    }
+    navigate.mockClear();
+
+    handleNotificationResponse(responseFor('n0', spend), navigate);
+    handleNotificationResponse(responseFor('n50', spend), navigate);
+
+    expect(navigate).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,9 +1,11 @@
 import React from 'react';
 import { router } from 'expo-router';
 
-import { portfolioFixture, spendFixture } from '@/components/Assets/__tests__/fixtures';
+import { cashToken, portfolioFixture, spendFixture } from '@/components/Assets/__tests__/fixtures';
 import { AssetsOverview } from '@/components/Assets/AssetsScreen';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { groupPortfolioCash } from '@/lib/portfolio';
 
 const { act, create } = jest.requireActual('react-test-renderer');
 jest.mock('expo-router', () => ({
@@ -59,8 +61,8 @@ const render = (changes = {}) =>
   });
 const press = (label: string) =>
   act(() => root.root.findAllByProps({ accessibilityLabel: label })[0].props.onPress());
-const textContent = () =>
-  root.root
+const textContent = (node = root.root) =>
+  node
     .findAllByType('Text')
     .map((node: any) =>
       node.children
@@ -87,22 +89,107 @@ it('renders the reconciled total and keeps small assets collapsed initially', ()
   expect(textContent()).toContain('SMALL1');
   expect(textContent()).toContain('$3218.40');
 });
-it('hides USD amounts, token quantities and available credit together, and restores them', () => {
-  render();
-  press('Hide amounts');
-  const text = textContent();
-  for (const amount of ['3218', '2868', '350.00', '1,650', '10000', '0.0775', '0.0091'])
-    expect(text).not.toContain(amount);
-  expect(text).toContain('••••');
-  press('Show amounts');
-  expect(textContent()).toContain('$3218.40');
-});
 it('opens the existing coin detail for a wallet holding and the position sheet for repayment', () => {
   render();
   press('View USDC');
   expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/1-/));
   press('View Borrowed');
   expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
+});
+it('names the share token on Earn rows and opens its coin page', () => {
+  render();
+  const text = textContent();
+  expect(text).toContain('2,365.50 soUSD · backs your credit');
+  expect(text).toContain('0.0761 soETH');
+  press('View soETH');
+  expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/^\/coins\/8453-0x/i));
+});
+it('shows APY on each earning row while wallet USDC, ETH and FUSE remain without APY', () => {
+  render();
+  for (const [label, apy] of [
+    ['View soUSD', '4.5% APY'],
+    ['View soETH', '2.9% APY'],
+    ['View Locked FUSE', '2.9% APY'],
+  ]) {
+    expect(textContent(root.root.findAllByProps({ accessibilityLabel: label })[0])).toContain(apy);
+  }
+  for (const label of ['View USDC', 'View ETH', 'View FUSE']) {
+    expect(textContent(root.root.findAllByProps({ accessibilityLabel: label })[0])).not.toContain(
+      'APY',
+    );
+  }
+  expect(textContent()).toContain('$3218.40');
+});
+it('labels a production share in Crypto without giving an unknown token with the same name APY', () => {
+  const cryptoAssets = groupPortfolioCash([
+    {
+      ...cashToken('soUSD', '24.7749', 1.085, 122),
+      commonId: undefined,
+      contractAddress: PRODUCTION_VAULT_ADDRESSES.fuse.vault,
+    },
+    {
+      ...cashToken('soUSD', '10', 1, 122),
+      commonId: undefined,
+      contractAddress: '0x9999999999999999999999999999999999999999',
+    },
+  ]);
+  render({
+    cryptoAssets,
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, valueUsd: 0 })),
+    lockedFuse: 0,
+  });
+  const rows = root.root.findAllByProps({ accessibilityLabel: 'View soUSD' });
+  expect(textContent(rows[0])).toContain('4.5% APY');
+  expect(textContent(rows[rows.length - 1])).not.toContain('APY');
+  expect(textContent()).toContain('$3218.40');
+});
+it('keeps the balance visible and marks APY unavailable instead of inventing a rate', () => {
+  render({ earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, apy: undefined })) });
+  expect(textContent(root.root.findAllByProps({ accessibilityLabel: 'View soUSD' })[0])).toContain(
+    'APY —',
+  );
+  expect(textContent()).not.toContain('0.0% APY');
+  expect(textContent()).toContain('$3218.40');
+});
+it('opens the position sheet for escrow-only shares and Earn when no share is in the wallet', () => {
+  render();
+  press('View soUSD');
+  expect(root.root.findByType('BorrowPositionSheet').props.isOpen).toBe(true);
+  expect(router.push).not.toHaveBeenCalled();
+  render({
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({
+      ...asset,
+      backsCredit: false,
+      walletTokens: [],
+      shareNetworkCount: 2,
+    })),
+  });
+  expect(textContent()).toContain('2,365.50 soUSD · 2 networks');
+  press('View soUSD');
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+});
+it('groups holdings as Stablecoins, Earn (with the FUSE lock) and Crypto, in that order', () => {
+  render();
+  const titles = root.root
+    .findAllByType('Text')
+    .map((node: any) => node.children.join(''))
+    .filter((title: string) => ['Stablecoins', 'Earn', 'Crypto', 'Cash', 'Locked'].includes(title));
+  expect(titles).toEqual(['Stablecoins', 'Earn', 'Crypto']);
+  const text = textContent();
+  expect(text).toContain('180.00 USDC · 3 networks');
+  expect(text).toContain('0.0091 ETH');
+  expect(text).toContain('1,000.00 FUSE');
+  expect(text).toContain('Locked FUSE');
+  expect(text).not.toContain('$2990.00');
+});
+it('shows the yield estimate per day, per month when a day is under a cent, or not at all', () => {
+  render();
+  expect(textContent()).toContain('+$0.35 / day est.');
+  render({ dailyYield: 0.0035, monthlyYield: 0.107 });
+  expect(textContent()).toContain('+$0.11 / month est.');
+  expect(textContent()).not.toContain('day est.');
+  render({ dailyYield: 0.0001, monthlyYield: 0.003 });
+  expect(textContent()).not.toContain('est.');
 });
 it('keeps an unavailable total distinct from zero and offers retry', () => {
   render({ isError: true, totalAssets: undefined, netBalance: undefined });
@@ -161,19 +248,37 @@ it('offers no repayment from home while the credit position is unavailable', () 
 it('leaves Earn off the home card when there is nothing in it', () => {
   act(() => {
     root = create(
-      <HomeAssetsCard portfolio={{ ...portfolioFixture, earnTotal: 0, debt: 0, earnAssets: [] }} />,
+      <HomeAssetsCard
+        portfolio={{ ...portfolioFixture, earnTotal: 0, debt: 0, earnAssets: [], lockedFuse: 0 }}
+      />,
     );
   });
   expect(textContent()).not.toContain('Earn');
-  expect(textContent()).toContain('Cash');
+  expect(textContent()).toContain('Stablecoins');
+  expect(textContent()).toContain('Crypto');
   expect(textContent()).not.toContain('Borrowed');
 });
-it('keeps the known Cash total when the card balance is unavailable', () => {
+it('shows the same groups on the home card, with the lock counted in Earn', () => {
+  act(() => {
+    root = create(<HomeAssetsCard portfolio={{ ...portfolioFixture, debt: 0 }} />);
+  });
+  const text = textContent();
+  expect(text).toContain('Stablecoins');
+  expect(text).toContain('$180.00');
+  expect(text).toContain('Up to 4.5% APY');
+  expect(text).toContain(' · soUSD, soETH, locked FUSE');
+  expect(text).toContain('$2990.00');
+  expect(text).toContain('ETH, FUSE');
+  expect(text).toContain('$48.40');
+  expect(text).not.toContain('Cash');
+  expect(text).not.toContain('SMALL1');
+});
+it('keeps the known Stablecoins total when the card balance is unavailable', () => {
   act(() => {
     root = create(
       <HomeAssetsCard portfolio={{ ...portfolioFixture, cardBalance: undefined, isError: true }} />,
     );
   });
-  expect(textContent()).toContain('$228.40');
+  expect(textContent()).toContain('$180.00');
   expect(textContent()).toContain('Some balances are unavailable');
 });

@@ -36,11 +36,11 @@ it('initial load does not celebrate; an actual later promotion does exactly once
 });
 it('keeps the backend tier while waiting past its 60-second cache and resolves only on promotion', () => {
   observe(RewardsTier.CORE);
-  store.getState().savingsChanged('a');
+  store.getState().tierPurchased('a');
   const deadline = store.getState().pendingUntil;
   jest.advanceTimersByTime(65_000);
   observe(RewardsTier.CORE);
-  store.getState().savingsChanged('a');
+  store.getState().tierPurchased('a');
   expect(store.getState().pendingUntil).toBe(deadline);
   expect(store.getState().confirmed?.currentTier).toBe(RewardsTier.CORE);
   expect(store.getState().success).toBeUndefined();
@@ -48,22 +48,22 @@ it('keeps the backend tier while waiting past its 60-second cache and resolves o
   expect(store.getState().pendingUntil).toBeUndefined();
   expect(store.getState().success?.currentTier).toBe(RewardsTier.PRIME);
 });
-it('times out without inventing a tier, and a later fresh promotion may confirm it', () => {
+it('times out quietly without inventing a tier, and a later fresh promotion may confirm it', () => {
   observe(RewardsTier.CORE);
-  store.getState().savingsChanged('a');
+  store.getState().tierPurchased('a');
   expect(store.getState().pendingUntil).toBe(Date.now() + REWARDS_RECONCILIATION_MS);
   store.getState().finishWaiting();
+  expect(store.getState().pendingUntil).toBeUndefined();
   expect(store.getState().success).toBeUndefined();
-  expect(store.getState().timedOut).toBe(true);
   observe(RewardsTier.PRIME);
-  expect(store.getState().timedOut).toBe(false);
+  expect(store.getState().success?.currentTier).toBe(RewardsTier.PRIME);
 });
 it('ignores old account responses, including switch-away-and-back races', () => {
   observe(RewardsTier.CORE);
-  store.getState().savingsChanged('a');
+  store.getState().tierPurchased('a');
   store.getState().selectAccount('b');
   store.getState().observe('a', 0, data(RewardsTier.ULTRA));
-  store.getState().savingsChanged('a');
+  store.getState().tierPurchased('a');
   expect(store.getState().success).toBeUndefined();
   expect(store.getState().pendingUntil).toBeUndefined();
   store.getState().observe('b', 1, data(RewardsTier.ULTRA));
@@ -109,11 +109,19 @@ it('still celebrates a real upgrade taken after such a dip', () => {
   expect(store.getState().success?.currentTier).toBe(RewardsTier.ULTRA);
 });
 
-it('polls an ambiguous balance event quietly without blocking a wallet-funded upgrade', () => {
-  store.setState({ savingsConfirmed: false });
-  store.getState().savingsChanged('a', false);
-  expect(store.getState().pendingUntil).toBeDefined();
-  expect(store.getState().savingsConfirmed).toBe(false);
+/**
+ * The "Keep Ultra" lock: a trial already lends the tier, so the purchase makes
+ * it the user's own without the tier ever rising. The window runs out with
+ * nothing to celebrate, and must leave nothing behind.
+ */
+it('ends a window on a tier the user already had without leaving any state behind', () => {
+  observe(RewardsTier.ULTRA);
+  store.getState().tierPurchased('a');
+  observe(RewardsTier.ULTRA);
   store.getState().finishWaiting();
-  expect(store.getState().timedOut).toBe(false);
+  expect(store.getState()).toMatchObject({
+    pendingUntil: undefined,
+    success: undefined,
+    peak: RewardsTier.ULTRA,
+  });
 });
