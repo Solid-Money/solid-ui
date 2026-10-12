@@ -39,6 +39,8 @@ export const SUPPORT_CONTEXT_KINDS = [
   'rewards',
   // A help center article (id: its slug), after "Did this help? No".
   'help_article',
+  // A failure the app showed; the id is its event ID, the one behind the Ref.
+  'error',
 ] as const;
 
 export type SupportContextKind = (typeof SUPPORT_CONTEXT_KINDS)[number];

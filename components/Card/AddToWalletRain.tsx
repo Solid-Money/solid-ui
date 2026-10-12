@@ -9,6 +9,7 @@ import { DigitalWalletType } from '@/constants/digital-wallet';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useWalletEligibility } from '@/hooks/useWalletEligibility';
 import { getMppCredentials } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { withRefreshToken } from '@/lib/utils';
 
 import type { CardDetailsResponseDto } from '@/lib/types';
@@ -115,9 +116,13 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
       });
       onOpenChange(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not add to Apple Wallet';
+      const message = err instanceof Error ? err.message : '';
+      // A build without the native module is a packaging gap, not the user's problem.
       if (!message.includes('native module') && !message.includes('not linked')) {
-        Toast.show({ type: 'error', text1: 'Could not add to Apple Wallet', text2: message });
+        void showErrorToast(err, {
+          action: 'add_to_wallet',
+          title: 'Couldn’t add your card to Apple Wallet',
+        });
       }
     } finally {
       setIsAddingApple(false);
@@ -149,9 +154,13 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
       });
       onOpenChange(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not add to Google Wallet';
+      const message = err instanceof Error ? err.message : '';
+      // A build without the native module is a packaging gap, not the user's problem.
       if (!message.includes('native module') && !message.includes('not linked')) {
-        Toast.show({ type: 'error', text1: 'Could not add to Google Wallet', text2: message });
+        void showErrorToast(err, {
+          action: 'add_to_wallet',
+          title: 'Couldn’t add your card to Google Wallet',
+        });
       }
     } finally {
       setIsAddingGoogle(false);

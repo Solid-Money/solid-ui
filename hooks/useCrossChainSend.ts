@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Toast from 'react-native-toast-message';
-import * as Sentry from '@sentry/react-native';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -11,6 +10,7 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import { track } from '@/lib/analytics';
 import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { authoriseCrossChainSend } from '@/lib/api/cross-chain-send';
+import { getUserErrorMessage, sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionType } from '@/lib/types';
 import {
@@ -224,23 +224,15 @@ const useCrossChainSend = () => {
 
       track(TRACKING_EVENTS.CROSS_CHAIN_SEND_FAILED, {
         ...analyticsContext,
-        error_message: message,
+        // Sanitized: a failed user operation's message carries the bundler URL,
+        // API key included.
+        error_message: sanitizeTechnicalMessage(err),
         user_cancelled: isCancelled,
         quote_expired: isQuoteExpired,
       });
 
-      Sentry.captureException(err, {
-        tags: {
-          type: 'cross_chain_send_error',
-          chainId: String(params.dstChainId),
-          userId: user?.userId,
-        },
-        extra: { ...params, quote: params.quote },
-        user: { id: user?.userId, address: user?.safeAddress },
-      });
-
       setSendStatus(Status.ERROR);
-      setError(message);
+      setError(isCancelled ? null : getUserErrorMessage(err, { action: 'send' }) || null);
 
       if (isQuoteExpired) {
         Toast.show({
@@ -251,12 +243,13 @@ const useCrossChainSend = () => {
         throw new CrossChainSendQuoteExpiredError();
       }
 
+      // A failed send gets the failure sheet, which also reports it once under
+      // the Ref it shows. A dismissed passkey prompt shows nothing.
       if (!isCancelled) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error while sending',
-          text2: message.length < 80 ? message : undefined,
-          props: { badgeText: 'Onchain' },
+        void showFailureSheet(err, {
+          action: 'send',
+          details: { amount: params.amount, token: params.token, network: params.networkName },
+          tags: { type: 'cross_chain_send_error', chainId: String(params.dstChainId) },
         });
       }
       throw err;

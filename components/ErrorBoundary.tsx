@@ -1,23 +1,25 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { Platform, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, usePathname } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
-import { AlertTriangle, RefreshCw } from 'lucide-react-native';
+import { CircleAlert, RefreshCw } from 'lucide-react-native';
 
+import ErrorRefChip from '@/components/FailureSheet/ErrorRefChip';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { buildSupportMessage, ErrorReport, reportError } from '@/lib/errors';
+import { openIntercomWithMessage } from '@/lib/intercom';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
 const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   const pathname = usePathname();
   const trackedKeyRef = useRef<string | null>(null);
+  const [report, setReport] = useState<ErrorReport>();
   // A chunk this tab asked for is gone from the host, so "Try again" re-renders
   // straight back into the same failed import. Only a fresh document recovers it.
   const isStaleBundle = isStaleBundleError(error);
@@ -40,10 +42,11 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
         // is excluded: it is a deploy artifact, not a defect, and it recovers on
         // reload.
         if (!isStaleBundle) {
-          Sentry.captureException(error, {
-            tags: { source: 'error_boundary', platform: Platform.OS },
-            extra: { pathname },
-          });
+          // Reported through the shared path so the screen can show a Ref.
+          void reportError(error, { action: 'generic' }, 'screen', {
+            source: 'error_boundary',
+            platform: Platform.OS,
+          }).then(shown => setReport(shown.report));
         }
       }
     } catch {}
@@ -59,6 +62,12 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
     });
     retry();
   }, [error, pathname, retry]);
+
+  // The layout's providers are gone when this renders, so the chat is opened
+  // directly rather than through the support drawer.
+  const handleSupport = useCallback(() => {
+    openIntercomWithMessage(buildSupportMessage('generic', report));
+  }, [report]);
 
   const handleReload = useCallback(() => {
     track(TRACKING_EVENTS.RETRY_ATTEMPTED, {
@@ -99,15 +108,14 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 items-center justify-center p-6">
         <View className="w-full max-w-screen-sm items-center">
-          <View className="mb-5 h-16 w-16 items-center justify-center">
-            <AlertTriangle size={48} color="red" />
+          <View className="mb-5 h-16 w-16 items-center justify-center rounded-full bg-[rgba(255,101,102,0.14)]">
+            <CircleAlert size={30} color="#FF6566" />
           </View>
-          <Text className="mb-2 text-center text-2xl font-semibold">
-            Oops, something went wrong
-          </Text>
-          <Text className="mb-4 text-center text-muted-foreground" numberOfLines={3}>
-            {/* Never the raw message: an uncaught viem error carries the RPC URL, Pimlico key included. */}
-            {userFacingErrorMessage(error, 'An unexpected error occurred.')}
+          <Text className="mb-2 text-center text-2xl font-semibold">Something went wrong</Text>
+          {/* Never the raw message: it is meaningless to users and can carry
+              internals. The Ref below is what support needs. */}
+          <Text className="mb-4 text-center text-muted-foreground">
+            This screen couldn’t load. Try again, or go home and come back.
           </Text>
           <View className="mt-2 flex-row gap-3">
             <Button
@@ -125,6 +133,18 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
               <Text className="text-base font-bold">Try again</Text>
             </Button>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSupport}
+            className="mt-5 py-1 active:opacity-70 web:hover:opacity-80"
+          >
+            <Text className="text-base font-medium text-white">Contact support</Text>
+          </Pressable>
+          {report ? (
+            <View className="mt-3">
+              <ErrorRefChip errorRef={report.ref} />
+            </View>
+          ) : null}
         </View>
       </View>
     </SafeAreaView>

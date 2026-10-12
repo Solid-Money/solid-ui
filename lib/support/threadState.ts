@@ -115,6 +115,7 @@ const CONTEXT_LABELS: Record<string, string> = {
   virtual_account: 'Bank account',
   rewards: 'Rewards',
   help_article: 'Help article',
+  error: 'Something that failed',
 };
 
 /** What a message was sent from, in words. */

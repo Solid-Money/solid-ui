@@ -1,3 +1,4 @@
+import { getUserErrorMessage } from '@/lib/errors/classify';
 export const ERRORS = {
   USERNAME_ALREADY_EXISTS: 'Username already exists',
   INVALID_INVITE_CODE: 'Invalid referral code',
@@ -83,5 +84,7 @@ export const loginErrorMessage = (error: unknown): string => {
     return typeof err?.code === 'string' && message ? message : PASSKEY_UNLINKED_MESSAGE;
   }
 
-  return message || 'Something went wrong. Please try again.';
+  // Anything else gets user copy: a raw message here has been a bare backend
+  // 404 or an SDK stack, never something to show.
+  return getUserErrorMessage(error, { action: 'sign_in' }) || 'Something went wrong. Try again.';
 };

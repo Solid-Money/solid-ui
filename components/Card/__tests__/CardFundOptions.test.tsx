@@ -62,6 +62,7 @@ jest.mock('@/hooks/useFeatureAccess', () => ({}));
 jest.mock('@/hooks/useOrchestra', () => ({}));
 jest.mock('@/hooks/useVirtualAccountEntry', () => ({}));
 jest.mock('@/lib/analytics', () => ({}));
+jest.mock('@/lib/errors', () => ({}));
 jest.mock('@/store/useDepositStore', () => ({}));
 jest.mock('@/store/useOrchestraStore', () => ({}));
 

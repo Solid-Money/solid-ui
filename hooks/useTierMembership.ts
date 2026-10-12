@@ -16,6 +16,7 @@ import {
   resumeTierSubscription,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
@@ -345,9 +346,10 @@ export const useLockFuseForTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to lock your FUSE';
-      setError(message);
-      track(TRACKING_EVENTS.TIER_LOCK_FAILED, { error: message });
+      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      track(TRACKING_EVENTS.TIER_LOCK_FAILED, {
+        error: sanitizeTechnicalMessage(mutationError) || 'Failed to lock your FUSE',
+      });
     },
   });
 
@@ -455,9 +457,10 @@ export const useSubscribeToTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to start your membership';
-      setError(message);
-      track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, { error: message });
+      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, {
+        error: sanitizeTechnicalMessage(mutationError) || 'Failed to start your membership',
+      });
     },
   });
 
@@ -483,6 +486,8 @@ export const useCancelTierSubscription = () => {
 
   return useMutation({
     mutationFn: (reason?: string) => cancelTierSubscription({ reason }),
+    // Its only caller fires and forgets; the global handler shows the failure.
+    meta: { errorAction: 'subscription', errorTitle: 'Couldn’t cancel your plan' },
     onSuccess: subscription => {
       invalidate({ purchased: false });
       track(TRACKING_EVENTS.TIER_SUBSCRIPTION_CANCEL_COMPLETED, {
@@ -499,6 +504,7 @@ export const useResumeTierSubscription = () => {
 
   return useMutation({
     mutationFn: () => resumeTierSubscription(),
+    meta: { errorAction: 'subscription', errorTitle: 'Couldn’t resume your plan' },
     onSuccess: subscription => {
       invalidate({ purchased: false });
       track(TRACKING_EVENTS.TIER_SUBSCRIPTION_RESUME_COMPLETED, { tier: subscription.tier });

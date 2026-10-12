@@ -6,6 +6,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { confirmRainRtf, getRainRtfStatus } from '@/lib/api';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, RainRtfChain, RainRtfStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -311,8 +312,10 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to approve Real-Time Funding';
-      setError(message);
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message =
+        sanitizeTechnicalMessage(mutationError) || 'Failed to approve Real-Time Funding';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       // Whatever landed before the failure is real and recorded, so the
       // status is refetched either way — otherwise the retry would rebuild a
       // batch for approvals that already succeeded.

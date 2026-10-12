@@ -25,6 +25,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { getPasskeyErrorDetails, PasskeyFailureKind } from '@/lib/utils/passkeyErrors';
 import {
   buildOpenInBrowserUrl,
@@ -175,7 +176,8 @@ export default function SignupPasskey() {
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: redactSecrets(err?.message || message),
+        // Sanitized: raw messages here carried RPC URLs with API keys.
+        error: sanitizeTechnicalMessage(err) || message,
         step: 'passkey',
         error_kind: details.kind,
         error_code: details.code,

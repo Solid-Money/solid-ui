@@ -4,7 +4,6 @@ import { ActivityIndicator, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { Info, Minus, Wallet } from 'lucide-react-native';
 import { z } from 'zod';
@@ -19,10 +18,11 @@ import useUser from '@/hooks/useUser';
 import { useEthereumVaultBalance } from '@/hooks/useVault';
 import useWithdraw from '@/hooks/useWithdraw';
 import { getAsset } from '@/lib/assets';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
-import { describeWithdrawError } from '@/lib/utils/withdrawErrors';
+import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 
 const Withdraw = () => {
@@ -105,28 +105,13 @@ const Withdraw = () => {
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
         },
       });
-    } catch (_error) {
-      console.error('Withdraw transaction failed:', _error);
-      Sentry.captureException(_error, {
-        tags: {
-          type: 'withdraw_modal_error',
-          userId: user?.userId,
-        },
-        extra: {
-          amount: data.amount,
-          ethereumBalance,
-          userAddress: user?.safeAddress,
-        },
-        user: {
-          id: user?.userId,
-          address: user?.safeAddress,
-        },
-      });
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing',
-        text2: describeWithdrawError(_error),
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      console.error('Withdraw transaction failed:', error);
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soUSD' },
+        tags: { type: 'withdraw_modal_error' },
       });
     }
   };

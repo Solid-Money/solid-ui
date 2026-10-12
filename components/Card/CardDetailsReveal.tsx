@@ -66,7 +66,7 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
     <View className="p-6">
       {error && (
         <View className="mb-5 rounded-lg bg-red-50 p-3">
-          <Text className="text-sm text-red-600">Error: {error}</Text>
+          <Text className="text-sm text-red-600">{error}</Text>
         </View>
       )}
 

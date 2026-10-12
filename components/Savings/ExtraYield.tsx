@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { Href, Link } from 'expo-router';
-import * as Sentry from '@sentry/react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Plus } from 'lucide-react-native';
 import { formatUnits } from 'viem';
@@ -16,6 +14,7 @@ import { useActivity } from '@/hooks/useActivity';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { showFailureSheet } from '@/lib/errors';
 import { calculateUnclaimedMerklRewards, claimMerklRewards, getMerklRewards } from '@/lib/merkl';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, compactNumberFormat, formatTimeRemaining } from '@/lib/utils';
@@ -56,21 +55,11 @@ const ExtraYield = () => {
       queryClient.invalidateQueries({ queryKey: ['merkl', user?.safeAddress] });
     },
     onError: error => {
-      const errorMessage = 'Error claiming Merkl rewards';
-      console.error(errorMessage, error);
-      Sentry.captureException(error, {
-        tags: {
-          type: errorMessage.toLowerCase().replaceAll(' ', '_'),
-          userId: user?.userId,
-        },
-      });
-      Toast.show({
-        type: 'error',
-        text1: errorMessage,
-        text2: 'Inspect console log for more details and try again.',
-        props: {
-          badgeText: '',
-        },
+      console.error('Error claiming Merkl rewards', error);
+      void showFailureSheet(error, {
+        action: 'claim',
+        title: 'Couldn’t claim your rewards',
+        tags: { type: 'error_claiming_merkl_rewards' },
       });
     },
   });

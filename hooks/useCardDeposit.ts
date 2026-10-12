@@ -10,6 +10,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
+import { getUserErrorMessage, showFailureSheet } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
@@ -17,7 +18,6 @@ import {
   getCardDepositTokenSymbol,
   getCardFundingAddress,
 } from '@/lib/utils';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { getChain } from '@/lib/wagmi';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
@@ -81,22 +81,24 @@ const useCardDeposit = (): CardDepositResult => {
         });
         return;
       }
+      // Configuration gaps are our bug, not the user's: reported, with a Ref.
       if (!fundingChain) {
-        setError('Funding chain not supported');
-        Toast.show({
-          type: 'error',
-          text1: 'Unsupported chain',
-          text2: `Chain ${fundingChainId} is not configured`,
+        setError('Card deposits aren’t available right now.');
+        void showFailureSheet(new Error(`Card funding chain ${fundingChainId} is not configured`), {
+          action: 'card_deposit',
+          body: 'Card deposits aren’t available right now. Nothing was sent.',
         });
         return;
       }
       if (!depositTokenAddress) {
-        setError('Deposit token not configured');
-        Toast.show({
-          type: 'error',
-          text1: 'Configuration error',
-          text2: `${depositTokenSymbol} address not found`,
-        });
+        setError('Card deposits aren’t available right now.');
+        void showFailureSheet(
+          new Error(`${depositTokenSymbol} address not configured on chain ${fundingChainId}`),
+          {
+            action: 'card_deposit',
+            body: 'Card deposits aren’t available right now. Nothing was sent.',
+          },
+        );
         return;
       }
 
@@ -156,12 +158,10 @@ const useCardDeposit = (): CardDepositResult => {
         setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       } catch (err) {
         setDepositStatus(Status.ERROR);
-        setError(err instanceof Error ? err.message : 'Deposit failed');
-        Toast.show({
-          type: 'error',
-          text1: 'Deposit failed',
-          text2: userFacingErrorMessage(err),
-          props: { badgeText: 'Onchain' },
+        setError(getUserErrorMessage(err, { action: 'card_deposit' }) || null);
+        void showFailureSheet(err, {
+          action: 'card_deposit',
+          details: { amount, token: depositTokenSymbol },
         });
         throw err;
       }

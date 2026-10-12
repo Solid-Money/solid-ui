@@ -7,6 +7,7 @@ import CreditLineModalProvider from '@/components/Card/CreditLine/CreditLineModa
 import ManagePinModalProvider from '@/components/Card/ManagePinModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
+import FailureSheetProvider from '@/components/FailureSheet/FailureSheetProvider';
 import TierModalProvider from '@/components/Rewards/TierModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
 import SpinWinModalProvider from '@/components/SpinAndWin/SpinWinModalProvider';
@@ -63,6 +64,8 @@ const DeferredModalProviders = () => {
       <ManagePinModalProvider />
       <TierModalProvider />
       <SupportDrawerProvider />
+      {/* After the money-action modals, so a failure sheet opens above the form that failed. */}
+      <FailureSheetProvider />
     </>
   );
 };

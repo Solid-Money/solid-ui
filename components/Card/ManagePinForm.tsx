@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getCardPin, updateCardPin } from '@/lib/api';
 import { EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM } from '@/lib/config';
+import { showErrorToast } from '@/lib/errors';
 import { decryptPin, encryptPin, generateSessionId } from '@/lib/utils/rainCardSecrets';
 import { withRefreshToken } from '@/lib/utils/utils';
 
@@ -105,13 +106,8 @@ export default function ManagePinForm() {
       setShowPin(false);
       queryClient.invalidateQueries({ queryKey: [CARD_PIN_QUERY_KEY] });
     },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to update PIN',
-        text2: 'Please try again.',
-        props: { badgeText: '' },
-      });
+    onError: error => {
+      void showErrorToast(error, { action: 'card_settings', title: 'Couldn’t update your PIN' });
     },
   });
 

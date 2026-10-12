@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { AddressBookRequest } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
@@ -117,14 +118,8 @@ export const useAddressBook = (options?: {
         setModal(recipientNextModal());
       }
     },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to add to contacts',
-        props: {
-          badgeText: 'Error',
-        },
-      });
+    onError: error => {
+      void showErrorToast(error, { action: 'account', title: 'Couldn’t add to your contacts' });
       if (options?.onError) {
         options.onError();
       }

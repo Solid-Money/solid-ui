@@ -15,6 +15,7 @@ import {
   provisionAgentWalletAccount,
   revokeAgentApiKey,
 } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import {
   AgentApiKeySummary,
   AgentSummary,
@@ -173,18 +174,8 @@ export const useProvisionAgent = () => {
       });
     },
     onError: (err: unknown) => {
-      const message =
-        err && typeof err === 'object' && 'message' in err && typeof err.message === 'string'
-          ? err.message
-          : undefined;
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to provision agent',
-        text2: message?.toLowerCase().includes('cancel')
-          ? 'Passkey prompt was cancelled'
-          : undefined,
-        props: { badgeText: 'Error' },
-      });
+      // A dismissed passkey prompt shows nothing; anything else gets a Ref.
+      void showErrorToast(err, { action: 'account', title: 'Couldn’t set up your agent' });
     },
   });
 };
@@ -247,12 +238,8 @@ export const useRevokeAgentApiKey = () => {
         props: { badgeText: 'Success' },
       });
     },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to revoke API key',
-        props: { badgeText: 'Error' },
-      });
+    onError: error => {
+      void showErrorToast(error, { action: 'account', title: 'Couldn’t revoke the API key' });
     },
   });
 };
