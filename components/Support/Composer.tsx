@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,
   Platform,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { ArrowUp, FileText, ShieldAlert, X } from 'lucide-react-native';
 
-import AttachButton from '@/components/Support/AttachButton';
+import AttachButton, { attachAvailable } from '@/components/Support/AttachButton';
 import { Text } from '@/components/ui/text';
 import {
   ACCEPTED_MIME,
@@ -39,7 +39,14 @@ export const fileProblem = (file: SupportFile): string | null => {
   return null;
 };
 
+/** The input grows with the text up to this height, then scrolls. */
+const MAX_INPUT_HEIGHT = 128;
+// The web's textarea defaults to two rows; one row, then it grows (below).
+const webRows = Platform.OS === 'web' ? ({ rows: 1 } as object) : {};
+
 const Composer = ({ onSend, bottomInset }: ComposerProps) => {
+  const inputRef = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(false);
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<SupportFile[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
@@ -67,6 +74,15 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
     [files.length],
   );
 
+  // Native inputs grow on their own; on the web, fit the textarea to its text.
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const node = inputRef.current as unknown as HTMLTextAreaElement | null;
+    if (!node?.style) return;
+    node.style.height = 'auto';
+    node.style.height = `${Math.min(node.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+  }, [body]);
+
   // The web sends on Enter and keeps Shift+Enter for a new line.
   const handleKeyPress = useCallback(
     (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
@@ -84,10 +100,7 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
   );
 
   return (
-    <View
-      className="border-t border-white/10 bg-background px-3 pt-2"
-      style={{ paddingBottom: bottomInset + 8 }}
-    >
+    <View className="bg-background px-3 pt-2" style={{ paddingBottom: bottomInset + 10 }}>
       {cardWarning && (
         <View className="mb-2 flex-row items-start gap-2 rounded-xl bg-warning/15 px-3 py-2">
           <ShieldAlert size={16} color="#FFC852" />
@@ -121,18 +134,30 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
           ))}
         </View>
       )}
-      <View className="flex-row items-end gap-1">
+      <View
+        className={cn(
+          'flex-row items-end rounded-[22px] border bg-card p-1',
+          focused ? 'border-white/25' : 'border-white/10',
+        )}
+      >
         <AttachButton disabled={files.length >= MAX_ATTACHMENTS} onPick={pick} />
         <TextInput
+          ref={inputRef}
           value={body}
           onChangeText={setBody}
           onKeyPress={handleKeyPress}
-          placeholder="Message"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Write a message"
           placeholderTextColor="#6B6B6B"
           multiline
+          {...webRows}
           maxLength={MAX_BODY_LENGTH}
           accessibilityLabel="Message"
-          className="max-h-32 min-h-10 flex-1 rounded-2xl bg-card px-4 py-2.5 text-[15px] text-white web:outline-none"
+          className={cn(
+            'max-h-32 min-h-9 flex-1 bg-transparent py-2 text-[15px] leading-5 text-white web:resize-none web:outline-none',
+            attachAvailable ? 'px-1.5' : 'px-3',
+          )}
           textAlignVertical="center"
         />
         <Pressable
@@ -141,11 +166,11 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
           accessibilityRole="button"
           accessibilityLabel="Send"
           className={cn(
-            'h-10 w-10 items-center justify-center rounded-full',
-            canSend ? 'bg-brand active:opacity-80 web:hover:bg-brand-hover' : 'bg-white/10',
+            'h-9 w-9 items-center justify-center rounded-full',
+            canSend ? 'bg-brand active:opacity-80 web:hover:bg-brand-hover' : 'bg-white/5',
           )}
         >
-          <ArrowUp size={20} color={canSend ? '#196B07' : '#6B6B6B'} />
+          <ArrowUp size={18} strokeWidth={2.5} color={canSend ? '#196B07' : '#5A5A5A'} />
         </Pressable>
       </View>
     </View>
