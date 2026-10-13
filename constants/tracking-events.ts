@@ -512,6 +512,9 @@ export const TRACKING_EVENTS = {
   OTA_UPDATE_APPLIED: 'ota_update_applied',
   OTA_UPDATE_FAILED: 'ota_update_failed',
 
+  // One per launch: how long until the home screen showed real balances, by phase
+  APP_STARTUP_TIMING: 'app_startup_timing',
+
   // Trustpilot Review Collector (web/desktop; the native apps use the OS sheet)
   TRUSTPILOT_WIDGET_SHOWN: 'trustpilot_widget_shown',
   TRUSTPILOT_WIDGET_UNAVAILABLE: 'trustpilot_widget_unavailable',

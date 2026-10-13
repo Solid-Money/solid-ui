@@ -62,6 +62,7 @@ import {
   isProduction,
 } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import { markStartup } from '@/lib/startupTiming';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
@@ -329,8 +330,10 @@ function RootLayout() {
       // loading its initial state and rendering its first pixels. So instead,
       // we hide the splash screen once we know the root view has already
       // performed layout.
+      markStartup('firstLayout');
       try {
         await SplashScreen.hideAsync();
+        markStartup('splashHidden');
         setSplashScreenHidden(true);
       } catch (error) {
         console.warn('Error hiding splash screen:', error);

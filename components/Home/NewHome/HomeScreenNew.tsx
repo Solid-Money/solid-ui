@@ -37,6 +37,7 @@ import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
+import { markStartup, reportHomeContentReady } from '@/lib/startupTiming';
 import { CardProvider } from '@/lib/types';
 import { formatBalanceUSD, hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
@@ -197,18 +198,25 @@ export default function HomeScreenNew() {
     portfolio.isLoading;
 
   useEffect(() => {
+    markStartup('homeMounted');
+  }, []);
+
+  useEffect(() => {
     if (isBalanceSectionLoading) {
       setHomeReady(false);
       return;
     }
 
     // Let the loaded balance and card commit a frame before starting the delay.
-    const frame = requestAnimationFrame(() => setHomeReady(true));
+    const frame = requestAnimationFrame(() => {
+      reportHomeContentReady(queryClient);
+      setHomeReady(true);
+    });
     return () => {
       cancelAnimationFrame(frame);
       setHomeReady(false);
     };
-  }, [isBalanceSectionLoading, setHomeReady]);
+  }, [isBalanceSectionLoading, setHomeReady, queryClient]);
   const walletBalance = totalUSDExcludingVaultTokens;
   const savingsBalance = totalSavingsUSD ?? 0;
   // Headline = everything the user holds. Combined for display only; the breakdown

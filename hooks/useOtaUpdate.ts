@@ -4,6 +4,7 @@ import * as Updates from 'expo-updates';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { markOtaReloadRequested } from '@/lib/startupTiming';
 
 // A check is one small request to the EAS Update server, but a user flipping
 // between apps would otherwise fire one per switch.
@@ -73,6 +74,7 @@ export function useOtaUpdate() {
     setIsApplying(true);
     setApplyFailed(false);
     track(TRACKING_EVENTS.OTA_UPDATE_APPLIED, { fromUpdateId, toUpdateId });
+    markOtaReloadRequested();
     try {
       // Resolves only if the reload fails; on success the JS context is replaced.
       await Updates.reloadAsync();
