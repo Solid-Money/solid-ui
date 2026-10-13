@@ -17,7 +17,7 @@ import { VaultType } from '@/lib/types';
 import { getEarningTokenVault } from '@/lib/vaults';
 
 import { isVaultType } from './vaultDeepLink';
-import { hasSelectedVaultFunds } from './vaultFunding';
+import { hasSelectedVaultFunds, productBalanceUsd } from './vaultFunding';
 import YieldHowItWorksSheet from './YieldHowItWorksSheet';
 import YieldProductView from './YieldProductView';
 
@@ -60,9 +60,12 @@ export default function SavingsScreenNew() {
 
   // The product's balance counts its shares wherever they are: on any network, or backing
   // the card.
-  const balanceUsd =
-    Math.max(asset?.valueUsd ?? 0, valuesByVault?.[vaultType] ?? 0, walletVault?.balanceUSD ?? 0) +
-    unreadUsd;
+  const balanceUsd = productBalanceUsd({
+    portfolioUsd: asset?.valueUsd,
+    unreadUsd,
+    vaultReadUsd: valuesByVault?.[vaultType],
+    walletUsd: walletVault?.balanceUSD,
+  });
   const isLoading =
     isSavingsLoading || isWalletVaultsLoading || valuesByVault === undefined || portfolio.isLoading;
   const isFunded =
