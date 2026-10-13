@@ -1,15 +1,23 @@
 import { Fragment, ReactNode } from 'react';
-import { Platform, Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { Pressable, View } from 'react-native';
+import { Href, router } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 
 import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
+import YieldIcon from '@/components/Earn/YieldIcon';
+import { openYieldProduct, yieldProductName } from '@/components/Earn/yieldProducts';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { cashGroupTotal, splitSmallBalances, sumKnownValues } from '@/lib/portfolio';
+import { coinAssetPath, formatTokenAmount, PortfolioAsset } from '@/lib/portfolio';
+import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+
+/** Figma 28441:4773: the three largest holdings, then "Show more" for the rest. */
+export const HOME_ASSET_LIMIT = 3;
 
 export const lockedFuseDescription = (amount: number | undefined, unlockAt?: string | null) => {
   const date = unlockAt ? new Date(unlockAt) : undefined;
@@ -20,140 +28,132 @@ export const lockedFuseDescription = (amount: number | undefined, unlockAt?: str
   return `${amount === undefined ? '—' : formatNumber(amount, 0)} FUSE${unlockLabel}`;
 };
 
-const tickerList = (symbols: string[]) => {
-  const unique = [...new Set(symbols)];
-  return `${unique.slice(0, 3).join(', ')}${unique.length > 3 ? ` +${unique.length - 3}` : ''}`;
+const apyLabel = (apy: number | undefined) =>
+  apy !== undefined && Number.isFinite(apy) && apy > 0 ? (
+    <Text className="text-[14px] font-normal text-[#94F27F]">{apy.toFixed(1)}% APY</Text>
+  ) : undefined;
+
+type HomeAsset = {
+  key: string;
+  value: number | undefined;
+  row: (onPress: () => void) => ReactNode;
+  onPress: () => void;
 };
 
+/** "Show more ›": the footer row the Assets and Recent activity cards share. */
+export const ShowMoreRow = ({
+  onPress,
+  accessibilityLabel,
+}: {
+  onPress: () => void;
+  accessibilityLabel: string;
+}) => (
+  <Pressable
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+    onPress={onPress}
+    className="flex-row items-center justify-center gap-1 py-[14px] active:bg-white/5"
+  >
+    <Text className="text-[14px] leading-5 text-white/50">Show more</Text>
+    <ChevronRight size={14} strokeWidth={1.75} color="rgba(255,255,255,0.5)" />
+  </Pressable>
+);
+
+/**
+ * Home "Assets" (Figma 28441:4773): one row per holding, largest first, capped at three.
+ * Earnings show as their product (USD Yield, ETH Yield), not the share token behind it,
+ * and every row opens its own page. Borrowing lives on the card, not in this list.
+ */
 export default function HomeAssetsCard({
   portfolio,
-  borrowApy,
-  onRepay,
 }: {
   portfolio: ReturnType<typeof usePortfolio>;
-  /** Display string from the spend-mode figures, e.g. "5.57%". */
-  borrowApy?: string;
-  onRepay?: () => void;
 }) {
+  const usdApy = useMaxAPY(VaultType.USDC);
   const openAssets = () => router.push(path.ASSETS);
-  const hasDebt = (portfolio.debt ?? 0) > 0;
-  // Same groups as the Assets screen: Stablecoins, Earn (vault shares and the FUSE lock),
-  // Crypto. Each row takes the logo of its largest holding.
-  const showLocked = (portfolio.lockedFuse ?? 0) > 0;
-  const fundedEarn = portfolio.earnAssets
-    .filter(asset => (asset.valueUsd ?? 0) > 0)
-    .sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
-  // Earn still shows when its value is unknown ("—").
-  const showEarn = portfolio.earnTotal !== 0 || showLocked;
-  const earnValue = sumKnownValues([
-    portfolio.earnTotal,
-    showLocked ? portfolio.lockedTotal : 0,
-  ]).total;
-  const maxApy = Math.max(0, ...fundedEarn.map(asset => asset.apy ?? 0));
-  const earnSymbols = tickerList([
-    ...fundedEarn.map(asset => asset.vault.vaultToken),
-    ...(showLocked ? ['locked FUSE'] : []),
-  ]);
-  const stableTickers = tickerList(
-    splitSmallBalances(portfolio.stableAssets).visible.map(asset => asset.symbol),
-  );
-  const cryptoTickers = tickerList(
-    splitSmallBalances(portfolio.cryptoAssets).visible.map(asset => asset.symbol),
-  );
-  const showCrypto = portfolio.cryptoAssets.length > 0;
-  // Stablecoins is the fallback row, so a new user's card is never empty.
-  const showStable =
-    portfolio.stableAssets.length > 0 || portfolio.hasCardBalance || (!showEarn && !showCrypto);
-  const topEarn = fundedEarn[0];
-  const rows: { key: string; row: ReactNode }[] = [];
-  if (showStable)
-    rows.push({
-      key: 'stable',
-      row: (
+  const openCash = (asset: PortfolioAsset) =>
+    asset.heldInWallet && asset.tokens[0]
+      ? router.push(coinAssetPath(asset.tokens[0]) as Href)
+      : openAssets();
+
+  const assets: HomeAsset[] = [
+    ...portfolio.earnAssets
+      .filter(asset => (asset.valueUsd ?? 0) > 0)
+      .map(asset => {
+        const title = yieldProductName(asset.vault.type);
+        return {
+          key: `earn:${asset.vault.type}`,
+          value: asset.valueUsd,
+          onPress: () => router.push(openYieldProduct(asset.vault.type) as Href),
+          row: (onPress: () => void) => (
+            <AssetRow
+              title={title}
+              value={asset.valueUsd}
+              icon={<YieldIcon vaultType={asset.vault.type} />}
+              subtitle={apyLabel(asset.apy)}
+              onPress={onPress}
+            />
+          ),
+        };
+      }),
+    ...((portfolio.lockedFuse ?? 0) > 0
+      ? [
+          {
+            key: 'locked',
+            value: portfolio.lockedTotal,
+            onPress: () => router.push(path.REWARDS),
+            row: (onPress: () => void) => (
+              <AssetRow
+                title="Locked FUSE"
+                value={portfolio.lockedTotal}
+                icon={<YieldIcon vaultType={VaultType.FUSE} badge="lock" />}
+                subtitle={lockedFuseDescription(portfolio.lockedFuse, portfolio.nextUnlockAt)}
+                onPress={onPress}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...[...portfolio.stableAssets, ...portfolio.cryptoAssets].map(asset => ({
+      key: `cash:${asset.id}`,
+      value: asset.valueUsd,
+      onPress: () => openCash(asset),
+      row: (onPress: () => void) => (
         <AssetRow
-          title="Stablecoins"
-          value={cashGroupTotal(portfolio.stableTotal, portfolio.cardBalance)}
-          icon={<PortfolioIcon token={portfolio.stableAssets[0]?.tokens[0]} symbol="USDC" />}
-          subtitle={
-            stableTickers ||
-            (portfolio.hasCardBalance
-              ? 'Card balance'
-              : portfolio.stableAssets.length
-                ? 'Small balances'
-                : 'No stablecoins yet')
-          }
+          title={asset.symbol}
+          value={asset.valueUsd}
+          icon={<PortfolioIcon token={asset.tokens[0]} />}
+          subtitle={`${formatTokenAmount(asset.balance, asset.stable)} ${asset.symbol}`}
+          onPress={onPress}
         />
       ),
-    });
-  if (showEarn)
-    rows.push({
-      key: 'earn',
-      row: (
-        <AssetRow
-          title="Earn"
-          value={earnValue}
-          icon={
-            topEarn ? (
-              <PortfolioIcon token={topEarn.walletTokens[0]} symbol={topEarn.vault.vaultToken} />
-            ) : (
-              <PortfolioIcon symbol="FUSE" locked={showLocked} />
-            )
-          }
-          subtitle={
-            maxApy > 0 ? (
-              <>
-                <Text className="text-[#94F27F]">Up to {maxApy.toFixed(1)}% APY</Text>
-                {earnSymbols ? ` · ${earnSymbols}` : ''}
-              </>
-            ) : (
-              earnSymbols || 'Start earning'
-            )
-          }
-        />
-      ),
-    });
-  if (showCrypto)
-    rows.push({
-      key: 'crypto',
-      row: (
-        <AssetRow
-          title="Crypto"
-          value={portfolio.cryptoTotal}
-          icon={<PortfolioIcon token={portfolio.cryptoAssets[0]?.tokens[0]} />}
-          subtitle={cryptoTickers || 'Small balances'}
-        />
-      ),
-    });
-  if (hasDebt)
-    rows.push({
-      key: 'debt',
-      row: (
-        <AssetRow
-          title="Borrowed"
-          value={-portfolio.debt!}
-          icon={<PortfolioIcon kind="card" />}
-          subtitle={
-            portfolio.creditDetailsAvailable && borrowApy
-              ? `${borrowApy} APY · tap to repay`
-              : 'Credit details unavailable'
-          }
-          onPress={portfolio.creditDetailsAvailable ? onRepay : undefined}
-        />
-      ),
-    });
+    })),
+    ...(portfolio.hasCardBalance
+      ? [
+          {
+            key: 'card',
+            value: portfolio.cardBalance,
+            onPress: () => router.push(path.CARD_INFO),
+            row: (onPress: () => void) => (
+              <AssetRow
+                title="Card balance"
+                value={portfolio.cardBalance}
+                icon={<PortfolioIcon kind="card" />}
+                subtitle="Available on your card"
+                onPress={onPress}
+              />
+            ),
+          },
+        ]
+      : []),
+  ].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+
+  const shown = assets.slice(0, HOME_ASSET_LIMIT);
+  const hasMore = assets.length > HOME_ASSET_LIMIT;
+
   return (
     <View className="mt-5 gap-[14px] px-4">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[16px] font-normal text-white/50">Assets</Text>
-        <Pressable
-          onPress={openAssets}
-          accessibilityRole="button"
-          accessibilityLabel="See all assets"
-          className="rounded-full bg-card px-[13px] pb-[3px] pt-[4px]"
-        >
-          <Text className="text-[14px] font-medium text-white/70">See all</Text>
-        </Pressable>
-      </View>
+      <Text className="text-[16px] font-normal text-white/50">Assets</Text>
       {portfolio.isLoading ? (
         <View
           accessibilityLabel="Loading assets"
@@ -161,8 +161,8 @@ export default function HomeAssetsCard({
           accessibilityState={{ busy: true }}
           className="overflow-hidden rounded-[20px] bg-card"
         >
-          {rows.map(({ key }, index) => (
-            <Fragment key={key}>
+          {[0, 1, 2].map(index => (
+            <Fragment key={index}>
               {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
               <View className="flex-row items-center gap-[12px] px-[16px] py-[14px]">
                 <Skeleton className="h-10 w-10 rounded-full" />
@@ -176,31 +176,45 @@ export default function HomeAssetsCard({
           ))}
         </View>
       ) : (
-        <Pressable
-          onPress={openAssets}
-          accessibilityRole="button"
-          accessibilityLabel="Open assets overview"
-          android_ripple={
-            Platform.OS === 'android'
-              ? { color: 'rgba(255, 255, 255, 0.08)', foreground: true }
-              : undefined
-          }
-          className="ios:active:bg-[#2A2A2A] native:transition-transform native:duration-200 native:ease-out native:active:scale-[0.98] native:active:opacity-90 overflow-hidden rounded-[20px] bg-card"
-        >
-          {rows.map(({ key, row }, index) => (
-            <Fragment key={key}>
-              {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
-              {row}
-            </Fragment>
-          ))}
-        </Pressable>
+        <View className="overflow-hidden rounded-[20px] bg-card">
+          {shown.length ? (
+            shown.map(({ key, row, onPress }, index) => (
+              <Fragment key={key}>
+                {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+                {row(onPress)}
+              </Fragment>
+            ))
+          ) : (
+            // A new account: the way in to earning, so the card is never empty.
+            <AssetRow
+              title={yieldProductName(VaultType.USDC)}
+              value={0}
+              icon={<YieldIcon vaultType={VaultType.USDC} />}
+              subtitle={apyLabel(usdApy.isAPYsLoading ? undefined : usdApy.maxAPY)}
+              trailing={
+                <View className="rounded-full bg-white px-4 py-[7px]">
+                  <Text className="text-[14px] font-semibold text-black">Start</Text>
+                </View>
+              }
+              onPress={() => router.push(openYieldProduct(VaultType.USDC) as Href)}
+            />
+          )}
+          {hasMore && (
+            <>
+              <View className="h-px bg-[#2A2A2A]" />
+              <ShowMoreRow onPress={openAssets} accessibilityLabel="Show all assets" />
+            </>
+          )}
+        </View>
       )}
       {portfolio.isError && (
-        <Text className="text-[13px] text-white/50">
-          {portfolio.unpricedCashCount > 0
-            ? 'Some balances are unavailable or have no price. Open Assets for details.'
-            : 'Some balances are unavailable. Open Assets to retry.'}
-        </Text>
+        <Pressable accessibilityRole="button" onPress={openAssets}>
+          <Text className="text-[13px] text-white/50">
+            {portfolio.unpricedCashCount > 0
+              ? 'Some balances are unavailable or have no price. Open Assets for details.'
+              : 'Some balances are unavailable. Open Assets to retry.'}
+          </Text>
+        </Pressable>
       )}
     </View>
   );

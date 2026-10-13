@@ -12,6 +12,9 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), canGoBack: () => false, replace: jest.fn() },
 }));
 jest.mock('@/hooks/usePortfolio', () => ({ usePortfolio: jest.fn() }));
+jest.mock('@/hooks/useAnalytics', () => ({
+  useMaxAPY: () => ({ maxAPY: 4.5, isAPYsLoading: false }),
+}));
 jest.mock('@/hooks/useActivityRefresh', () => ({ useActivityRefresh: jest.fn() }));
 jest.mock('@/hooks/useWirexBankAccounts', () => ({ useWirexUnifiedBalances: jest.fn() }));
 jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
@@ -210,75 +213,60 @@ it('returns home when the overview is opened without a navigation history', () =
   press('Back');
   expect(router.replace).toHaveBeenCalledWith('/');
 });
-it('opens the new overview from both the home card and See all', () => {
+const renderHome = (changes = {}) =>
   act(() => {
-    root = create(<HomeAssetsCard portfolio={portfolioFixture} />);
+    root = create(<HomeAssetsCard portfolio={{ ...portfolioFixture, ...changes }} />);
   });
-  press('Open assets overview');
-  press('See all assets');
-  expect(router.push).toHaveBeenCalledTimes(2);
+it('shows the three largest holdings on home, products first by value, then Show more', () => {
+  renderHome();
+  const titles = [
+    ...new Set(
+      root.root
+        .findAll((node: any) => node.props.accessibilityLabel?.startsWith('View '))
+        .map((node: any) => node.props.accessibilityLabel),
+    ),
+  ];
+  expect(titles).toEqual(['View USD Yield', 'View ETH Yield', 'View USDC']);
+  expect(textContent()).toContain('4.5% APY');
+  expect(textContent()).not.toContain('soUSD');
+  press('Show all assets');
   expect(router.push).toHaveBeenLastCalledWith('/all-assets');
-  expect(textContent()).not.toContain('SMALL1');
 });
-it('shows Borrowed on the home card for a borrower and opens repayment from it', () => {
-  const onRepay = jest.fn();
-  act(() => {
-    root = create(
-      <HomeAssetsCard portfolio={portfolioFixture} borrowApy="5.57%" onRepay={onRepay} />,
-    );
-  });
-  expect(textContent()).toContain('5.57% APY · tap to repay');
-  expect(textContent()).toContain('−$350.00');
-  press('View Borrowed');
-  expect(onRepay).toHaveBeenCalledTimes(1);
+it('opens each home row on its own page', () => {
+  renderHome();
+  press('View USD Yield');
+  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+  press('View USDC');
+  expect(router.push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/coins\//));
 });
-it('offers no repayment from home while the credit position is unavailable', () => {
-  act(() => {
-    root = create(
-      <HomeAssetsCard
-        portfolio={{ ...portfolioFixture, creditDetailsAvailable: false }}
-        borrowApy="5.57%"
-        onRepay={jest.fn()}
-      />,
-    );
-  });
-  expect(textContent()).toContain('Credit details unavailable');
-  expect(root.root.findAllByProps({ accessibilityLabel: 'View Borrowed' })).toHaveLength(0);
-});
-it('leaves Earn off the home card when there is nothing in it', () => {
-  act(() => {
-    root = create(
-      <HomeAssetsCard
-        portfolio={{ ...portfolioFixture, earnTotal: 0, debt: 0, earnAssets: [], lockedFuse: 0 }}
-      />,
-    );
-  });
-  expect(textContent()).not.toContain('Earn');
-  expect(textContent()).toContain('Stablecoins');
-  expect(textContent()).toContain('Crypto');
+it('keeps borrowing off the home card', () => {
+  renderHome();
   expect(textContent()).not.toContain('Borrowed');
+  expect(textContent()).not.toContain('−$350.00');
 });
-it('shows the same groups on the home card, with the lock counted in Earn', () => {
-  act(() => {
-    root = create(<HomeAssetsCard portfolio={{ ...portfolioFixture, debt: 0 }} />);
+it('drops Show more when there are three holdings or fewer', () => {
+  renderHome({
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, valueUsd: 0 })),
+    lockedFuse: 0,
+    stableAssets: portfolioFixture.stableAssets,
+    cryptoAssets: [],
   });
-  const text = textContent();
-  expect(text).toContain('Stablecoins');
-  expect(text).toContain('$180.00');
-  expect(text).toContain('Up to 4.5% APY');
-  expect(text).toContain(' · soUSD, soETH, locked FUSE');
-  expect(text).toContain('$2990.00');
-  expect(text).toContain('ETH, FUSE');
-  expect(text).toContain('$48.40');
-  expect(text).not.toContain('Cash');
-  expect(text).not.toContain('SMALL1');
+  expect(root.root.findAllByProps({ accessibilityLabel: 'Show all assets' })).toHaveLength(0);
+  expect(textContent()).toContain('USDC');
 });
-it('keeps the known Stablecoins total when the card balance is unavailable', () => {
-  act(() => {
-    root = create(
-      <HomeAssetsCard portfolio={{ ...portfolioFixture, cardBalance: undefined, isError: true }} />,
-    );
+it('offers USD Yield to a new account with nothing in it', () => {
+  renderHome({
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, valueUsd: 0 })),
+    lockedFuse: 0,
+    stableAssets: [],
+    cryptoAssets: [],
   });
-  expect(textContent()).toContain('$180.00');
+  expect(textContent()).toContain('USD Yield');
+  expect(textContent()).toContain('Start');
+  press('View USD Yield');
+  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+});
+it('says when balances are unavailable and opens Assets from there', () => {
+  renderHome({ isError: true });
   expect(textContent()).toContain('Some balances are unavailable');
 });
