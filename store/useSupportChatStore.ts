@@ -29,6 +29,8 @@ interface SupportChatState {
   lastReadSeq: number;
   unread: number;
   aiTyping: boolean;
+  /** What Solid AI is looking up right now (`deposits`, `balances`, …), if the server said. */
+  aiActivity: string | null;
   ai: SupportThread['ai'] | null;
   incidents: SupportThread['incidents'];
   loaded: boolean;
@@ -45,7 +47,7 @@ interface SupportChatState {
   dropPending: (clientMessageId: string) => void;
   setCase: (supportCase: SupportCase | null) => void;
   setRead: (lastReadSeq: number, unread?: number) => void;
-  setTyping: (typing: boolean) => void;
+  setTyping: (typing: boolean, activity?: string | null) => void;
   bumpSync: () => void;
   setDraftContext: (context: SupportDraftContext | null) => void;
   reset: () => void;
@@ -60,6 +62,7 @@ const initial = {
   lastReadSeq: 0,
   unread: 0,
   aiTyping: false,
+  aiActivity: null as string | null,
   ai: null,
   incidents: [] as SupportThread['incidents'],
   loaded: false,
@@ -114,6 +117,7 @@ export const useSupportChatStore = create<SupportChatState>()(set => ({
           : state.unread + fresh.filter(message => message.author.type !== 'user').length,
         // An AI message ends the AI's turn, whatever the typing event said.
         aiTyping: replied ? false : state.aiTyping,
+        aiActivity: replied ? null : state.aiActivity,
       };
     }),
 
@@ -151,7 +155,12 @@ export const useSupportChatStore = create<SupportChatState>()(set => ({
       return { lastReadSeq: read, unread: unread ?? countUnread(state.messages, read) };
     }),
 
-  setTyping: aiTyping => set({ aiTyping }),
+  setTyping: (aiTyping, activity) =>
+    set(state => ({
+      aiTyping,
+      // A plain "still typing" keeps the last activity; stopping clears it.
+      aiActivity: aiTyping ? (activity ?? state.aiActivity) : null,
+    })),
 
   bumpSync: () => set(state => ({ syncEpoch: state.syncEpoch + 1 })),
 
