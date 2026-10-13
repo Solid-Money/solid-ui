@@ -6,6 +6,7 @@ import { X } from 'lucide-react-native';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { yieldProductName, yieldVault } from '@/components/Earn/yieldProducts';
 import { Text } from '@/components/ui/text';
+import { CHAIN_NAMES } from '@/constants/chains';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultType } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -26,7 +27,6 @@ type Detail = { label: string; value: string; copy?: string };
 const productDetails = (type: VaultType): Detail[] => {
   const vault = yieldVault(type);
   const minimum = Number(vault.minimumAmount);
-  const address = vault.vaults[0]?.address;
   const minimumLabel = !Number.isFinite(minimum)
     ? undefined
     : type === VaultType.USDC
@@ -38,9 +38,13 @@ const productDetails = (type: VaultType): Detail[] => {
     ...(type === VaultType.USDC ? [{ label: 'Withdrawals', value: 'Usually within minutes' }] : []),
     ...(minimumLabel ? [{ label: 'Minimum deposit', value: minimumLabel }] : []),
     ...(type === VaultType.USDC ? [{ label: 'Built with', value: 'Veda' }] : []),
-    ...(address
-      ? [{ label: 'Contract address', value: eclipseAddress(address), copy: address }]
-      : []),
+    // The share token has its own contract on each network it lives on, so each gets a row
+    // that says which network it is ("soUSD on Ethereum", "soUSD on Fuse").
+    ...vault.vaults.map(network => ({
+      label: `${vault.vaultToken} on ${CHAIN_NAMES[network.chainId] ?? `chain ${network.chainId}`}`,
+      value: eclipseAddress(network.address),
+      copy: network.address,
+    })),
   ];
 };
 
