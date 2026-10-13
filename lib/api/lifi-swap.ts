@@ -95,7 +95,6 @@ export const fetchLifiSwapStatus = async (params: {
 export const recordLifiSwapFee = async (body: {
   chainId: number;
   transactionHash: string;
-  fromAmount: string;
 }): Promise<{ recorded: boolean; feeAmountUsd: string }> => {
   const response = await fetch(`${BASE}/fees`, {
     method: 'POST',

@@ -142,7 +142,7 @@ export function useLifiSwapCallback() {
           throw new Error('Swap has not been confirmed');
 
         if (quote.solidFee.percentage > 0) {
-          void bookFee(quote.fromChainId, transactionHash, quote.fromAmount);
+          void bookFee(quote.fromChainId, transactionHash);
         }
 
         queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -213,10 +213,10 @@ const approve = (token: Address, spender: Address, amount: bigint) => ({
  * fee is already on-chain in LI.FI's FeeCollector, and the call is idempotent,
  * so a lost call only delays the ledger row.
  */
-async function bookFee(chainId: number, transactionHash: string, fromAmount: string) {
+async function bookFee(chainId: number, transactionHash: string) {
   for (let attempt = 1; attempt <= FEE_RECORD_ATTEMPTS; attempt++) {
     try {
-      await withRefreshToken(() => recordLifiSwapFee({ chainId, transactionHash, fromAmount }));
+      await withRefreshToken(() => recordLifiSwapFee({ chainId, transactionHash }));
       return;
     } catch (error) {
       if (attempt === FEE_RECORD_ATTEMPTS) {
