@@ -158,6 +158,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     arbitrumResponse,
     bscResponse,
     soUSDRate,
+    soUSDBaseRate,
     soFUSERate,
     soETHRate,
     ethBalance,
@@ -189,6 +190,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
+    // soUSD on Base redeems through the Base queue, which prices shares off the
+    // Base accountant, not Ethereum's.
+    ADDRESSES.base.accountant !== zeroAddress
+      ? readContract(publicClient(base.id), {
+          address: ADDRESSES.base.accountant,
+          abi: ACCOUNTANT_ABI,
+          functionName: 'getRate',
+        })
+      : Promise.reject(new Error('No soUSD accountant on Base in this build')),
     readContract(publicClient(fuse.id), {
       address: ADDRESSES.fuse.fuseAccountant,
       abi: ACCOUNTANT_ABI,
@@ -237,6 +247,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let arbitrumTokens: TokenBalance[] = [];
   let bscTokens: TokenBalance[] = [];
   let soUSDRateNum = 0;
+  let soUSDBaseRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
   let soETHQuoteRateUSD = 0;
 
@@ -245,6 +256,11 @@ const fetchTokenBalances = async (safeAddress: string) => {
     soUSDRateNum = Number(soUSDRate.value) / Math.pow(10, 6);
   } else {
     console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
+  }
+  if (soUSDBaseRate.status === PromiseStatus.FULFILLED) {
+    soUSDBaseRateNum = Number(soUSDBaseRate.value) / Math.pow(10, 6);
+  } else {
+    console.warn('Failed to fetch Base soUSD rate:', soUSDBaseRate.reason);
   }
 
   // Process soFUSE rate: soFUSE→FUSE (18 decimals) × FUSE price = USD quote rate (align with savings)
@@ -295,7 +311,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
     // Vault shares are priced off their accountant rate, not off a market quote
     // for the share (Blockscout has none) or for the underlying asset.
     const quoteRate = isSoUSD
-      ? soUSDRateNum
+      ? chainId === BASE_CHAIN_ID
+        ? soUSDBaseRateNum
+        : soUSDRateNum
       : isSoFUSE
         ? soFUSEQuoteRateUSD
         : isSoETH
