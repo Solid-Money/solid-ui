@@ -1,5 +1,10 @@
-import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
-import { TokenBalance } from '@/lib/types';
+import {
+  baseEurcSpendableAsset,
+  CARD_SPENDABLE_ASSETS,
+  CardSpendableAsset,
+} from '@/constants/cardSpendableAssets';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
+import { CardSpendDeployment, TokenBalance } from '@/lib/types';
 
 /** USD value of one holding: balance scaled out of its decimals × its USD rate. */
 const tokenValueUSD = (token: TokenBalance): number => {
@@ -55,3 +60,32 @@ export const sumCardSpendableUSD = (
  */
 export const isCardSpendable = (token: TokenBalance, assets: CardSpendableAsset[]): boolean =>
   assets.some(asset => matchesAsset(token, asset));
+
+/**
+ * The assets this cardholder's card can spend, given which instances they have enabled.
+ *
+ * The Fuse set always, plus EURC on Base once the backend records the user enabling the Base
+ * instance and still routes to it (`available`). The backend's record rather than a chain read,
+ * for the reason `useEuroSpendEnablement` gives: a slow Base RPC must not make the figure jump.
+ * The chain is still what decides a purchase.
+ *
+ * The EURC address is the instance's own allowlist as the backend serves it. An empty list is an
+ * answer, not a gap: that backend's Base instance spends nothing (QA ships with no EURC address),
+ * and filling it from this build would count EURC the card cannot spend. The build's address is
+ * only a fallback for a response with no `spendTokens` at all.
+ */
+export const cardSpendableAssetsFor = (
+  deployments: CardSpendDeployment[] | undefined,
+): CardSpendableAsset[] => {
+  const baseDeployment = deployments?.find(
+    deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
+  );
+  if (!baseDeployment?.enabled || !baseDeployment.available) return CARD_SPENDABLE_ASSETS;
+
+  const addresses =
+    baseDeployment.spendTokens ??
+    (BASE_SPEND_DEPLOYMENT.spendTokenAddress ? [BASE_SPEND_DEPLOYMENT.spendTokenAddress] : []);
+  if (!addresses.length) return CARD_SPENDABLE_ASSETS;
+
+  return [...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(addresses)];
+};

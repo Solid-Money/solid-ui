@@ -8,6 +8,11 @@ import GeoRestrictionNotice from '@/components/Compliance/GeoRestrictionNotice';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import BuyFuseScreen from '@/components/Swap/BuyFuseScreen';
+import LifiSwapButton from '@/components/Swap/lifi/LifiSwapButton';
+import LifiSwapPair from '@/components/Swap/lifi/LifiSwapPair';
+import LifiSwapParams from '@/components/Swap/lifi/LifiSwapParams';
+import LifiSwapStatusView from '@/components/Swap/lifi/LifiSwapStatusView';
+import LifiSwapStatusWatcher from '@/components/Swap/lifi/LifiSwapStatusWatcher';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
@@ -15,10 +20,11 @@ import TransactionStatus from '@/components/TransactionStatus';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { LifiSwapInfoProvider } from '@/hooks/swap/useLifiSwapInfo';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { DerivedSwapInfoProvider, useSwapState } from '@/store/swapStore';
+import { DerivedSwapInfoProvider, useIsLifiSwap, useSwapState } from '@/store/swapStore';
 import { useComplianceStore } from '@/store/useComplianceStore';
 
 /**
@@ -52,7 +58,9 @@ const SwapModalProvider = () => {
       })),
     );
 
+  const isLifiSwap = useIsLifiSwap();
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isLifiStatus = currentModal.name === SWAP_MODAL.OPEN_LIFI_STATUS.name;
   const isBuyFuse = currentModal.name === SWAP_MODAL.OPEN_BUY_FUSE.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
   const isBuyFuseContent = isBuyFuse && isSwapAvailable && hasAcceptedSwapDisclaimer;
@@ -81,14 +89,16 @@ const SwapModalProvider = () => {
   }, [router, setModal]);
 
   const title = useMemo(() => {
-    if (isTransactionStatus) return undefined;
+    if (isTransactionStatus || isLifiStatus) return undefined;
     return isBuyFuse ? 'Buy FUSE' : 'Swap';
-  }, [isBuyFuse, isTransactionStatus]);
+  }, [isBuyFuse, isTransactionStatus, isLifiStatus]);
 
   const contentKey = useMemo(() => {
     if (isTransactionStatus) return 'transaction-status';
-    return isBuyFuse ? 'buy-fuse' : 'swap-form';
-  }, [isBuyFuse, isTransactionStatus]);
+    if (isLifiStatus) return 'lifi-status';
+    if (isBuyFuse) return 'buy-fuse';
+    return isLifiSwap ? 'swap-form-lifi' : 'swap-form';
+  }, [isBuyFuse, isTransactionStatus, isLifiStatus, isLifiSwap]);
 
   const handleAcceptSwapDisclaimer = useCallback(() => {
     acceptDisclaimer('swap');
@@ -129,6 +139,29 @@ const SwapModalProvider = () => {
       );
     }
 
+    if (isLifiStatus) {
+      return <LifiSwapStatusView onDone={handleTransactionStatusPress} />;
+    }
+
+    // Fuse to Fuse is quoted and routed on Algebra; a pair that touches any
+    // other chain goes through LI.FI.
+    if (isLifiSwap) {
+      return (
+        <LifiSwapInfoProvider>
+          <View className="flex flex-col gap-4 md:gap-6">
+            <LifiSwapPair />
+            <LifiSwapParams />
+            <View className="mt-2">
+              <LifiSwapButton />
+            </View>
+            <View className="items-center pt-2">
+              <NeedHelp />
+            </View>
+          </View>
+        </LifiSwapInfoProvider>
+      );
+    }
+
     return (
       <DerivedSwapInfoProvider>
         <View className="flex flex-col gap-4 md:gap-6">
@@ -144,6 +177,8 @@ const SwapModalProvider = () => {
       </DerivedSwapInfoProvider>
     );
   }, [
+    isLifiStatus,
+    isLifiSwap,
     isSwapAvailable,
     hasAcceptedSwapDisclaimer,
     handleAcceptSwapDisclaimer,
@@ -156,22 +191,25 @@ const SwapModalProvider = () => {
   ]);
 
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={!isClose}
-      onOpenChange={handleOpenChange}
-      trigger={null}
-      title={title}
-      titleClassName="items-center w-full"
-      containerClassName="w-full max-w-md"
-      showBackButton={isBuyFuse}
-      onBackPress={isBuyFuse ? () => handleOpenChange(false) : undefined}
-      contentKey={contentKey}
-      disableScroll={isBuyFuseContent}
-    >
-      {content}
-    </ResponsiveModal>
+    <>
+      <LifiSwapStatusWatcher />
+      <ResponsiveModal
+        currentModal={currentModal}
+        previousModal={previousModal}
+        isOpen={!isClose}
+        onOpenChange={handleOpenChange}
+        trigger={null}
+        title={title}
+        titleClassName="items-center w-full"
+        containerClassName="w-full max-w-md"
+        showBackButton={isBuyFuse}
+        onBackPress={isBuyFuse ? () => handleOpenChange(false) : undefined}
+        contentKey={contentKey}
+        disableScroll={isBuyFuseContent}
+      >
+        {content}
+      </ResponsiveModal>
+    </>
   );
 };
 

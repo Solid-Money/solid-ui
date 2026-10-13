@@ -156,6 +156,8 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_PITCH_VIEWED: 'virtual_account_pitch_viewed',
   VIRTUAL_ACCOUNT_APPLY_PRESSED: 'virtual_account_apply_pressed',
   VIRTUAL_ACCOUNT_REGION_BLOCKED: 'virtual_account_region_blocked',
+  VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_VIEWED: 'virtual_account_document_country_viewed',
+  VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_CONFIRMED: 'virtual_account_document_country_confirmed',
   VIRTUAL_ACCOUNT_KYC_REQUIRED: 'virtual_account_kyc_required',
   VIRTUAL_ACCOUNT_TOS_VIEWED: 'virtual_account_tos_viewed',
   VIRTUAL_ACCOUNT_TOS_ACCEPTED: 'virtual_account_tos_accepted',

@@ -1,13 +1,27 @@
 import { useMemo } from 'react';
 
-import { CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
+import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
-import { sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
+import { cardSpendableAssetsFor, sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+
+/**
+ * The assets this cardholder's card can spend: the Fuse set, plus EURC on Base once they
+ * have enabled euro spending. See `cardSpendableAssetsFor`.
+ *
+ * Until the deployment list answers this is the Fuse set alone, so the figure can rise
+ * when it lands but never shows EURC to someone who has not enabled it.
+ */
+export const useCardSpendableAssets = (): CardSpendableAsset[] => {
+  const { data } = useCardSpendDeployments();
+
+  return useMemo(() => cardSpendableAssetsFor(data?.deployments), [data?.deployments]);
+};
 
 /**
  * USD of the user's own holdings that a card with no balance of its own can
  * spend — the "Spendable" figure in the home balance breakdown. What counts is
- * `CARD_SPENDABLE_ASSETS`.
+ * {@link useCardSpendableAssets}.
  *
  * Reads the token balances the screen has already loaded (same query key as
  * `useWalletTokens`), so it costs no extra network work.
@@ -21,8 +35,9 @@ import { sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
  */
 export const useCardSpendableBalanceUSD = (): { data: number; isLoading: boolean } => {
   const { tokens, isLoading } = useBalances();
+  const assets = useCardSpendableAssets();
 
-  const data = useMemo(() => sumCardSpendableUSD(tokens, CARD_SPENDABLE_ASSETS), [tokens]);
+  const data = useMemo(() => sumCardSpendableUSD(tokens, assets), [tokens, assets]);
 
   return { data, isLoading };
 };
