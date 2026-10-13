@@ -69,7 +69,7 @@ export default function Coin() {
 
   const headerContent = useMemo(
     () => (
-      <View className="gap-6 py-6">
+      <View className="gap-6 pt-6">
         <CoinSummary token={token} breakdown={breakdown} shareVault={shareVault} />
 
         <CoinActionPills tokenVault={tokenVault} token={sendToken} />
@@ -98,6 +98,7 @@ export default function Coin() {
             symbol={token?.contractTickerSymbol}
             showTimestamp={false}
             listHeaderComponent={headerContent}
+            compactFirstHeader
           />
         </View>
       )}

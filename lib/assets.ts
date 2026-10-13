@@ -1311,7 +1311,7 @@ export const ASSETS = {
     module: require('@/assets/images/solid_logo_with_glare.png'),
     hash: '13207041',
   },
-  'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: 'bf43c3e5' },
+  'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: '7b63e869' },
   'images/spend-mode-credit-notice-badge.svg': {
     module: require('@/assets/images/spend-mode-credit-notice-badge.svg'),
     hash: '04ab236e',
@@ -1585,6 +1585,10 @@ export const ASSETS = {
   'images/usd-fiat-currency.tsx': {
     module: require('@/assets/images/usd-fiat-currency.tsx'),
     hash: '1f4c9b1b',
+  },
+  'images/usd-yield-4x.png': {
+    module: require('@/assets/images/usd-yield-4x.png'),
+    hash: 'b2b237e7',
   },
   'images/usdc-4x.png': { module: require('@/assets/images/usdc-4x.png'), hash: '9fdc47e1' },
   'images/usdc-cryptocurrency.tsx': {

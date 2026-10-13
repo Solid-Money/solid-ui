@@ -1627,6 +1627,11 @@ export type TokenIcon = {
   type: 'image' | 'component';
   source?: any;
   component?: React.ReactNode;
+  /**
+   * The image draws its own shape, with see-through edges (the soUSD mark and its dot),
+   * so it gets no placeholder fill and no round clip.
+   */
+  bare?: boolean;
 };
 
 export type Explorers = {

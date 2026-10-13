@@ -11,12 +11,14 @@ type GetTokenIconProps = {
 };
 
 const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
-  // soUSD has a canonical in-app mark. External token metadata can return an
-  // older logo, so resolve it before the generic logoUrl override.
+  // soUSD has a canonical in-app mark: USD Yield's "$" with the green live dot (Figma
+  // 28445:4885). External token metadata can return an older logo, so resolve it before
+  // the generic logoUrl override.
   if (tokenSymbol?.toUpperCase() === 'SOUSD') {
     return {
       type: 'image',
       source: getAsset('images/sousd-4x.png'),
+      bare: true,
     };
   }
 

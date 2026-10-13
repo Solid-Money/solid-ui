@@ -14,8 +14,9 @@ import { getDefaultDepositSelection } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
+// The product, not its token: USD Yield's mark without soUSD's live dot, as on Home.
 const getVaultIcon = (vault: Vault) =>
-  vault.name === 'USDC' ? getAsset('images/sousd-4x.png') : getAsset(vault.icon);
+  vault.name === 'USDC' ? getAsset('images/usd-yield-4x.png') : getAsset(vault.icon);
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();
