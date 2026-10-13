@@ -37,6 +37,8 @@ describe('buildStartupTimingPayload', () => {
       launchKind: 'cold',
       backgrounded: false,
       jsHeapMb: 180,
+      restoredQueries: 9,
+      isWeb: false,
     });
 
     expect(payload).toMatchObject({
@@ -53,6 +55,7 @@ describe('buildStartupTimingPayload', () => {
       queries_settled: 3,
       queries_failed: 1,
       js_heap_mb: 180,
+      cache_restored_queries: 9,
     });
   });
 
@@ -63,6 +66,7 @@ describe('buildStartupTimingPayload', () => {
       queries: [],
       launchKind: 'page_load',
       backgrounded: false,
+      isWeb: true,
     });
 
     expect(payload.total_to_home_ready_ms).toBe(4_000);
@@ -78,11 +82,35 @@ describe('buildStartupTimingPayload', () => {
       queries: [],
       launchKind: 'cold',
       backgrounded: true,
+      isWeb: false,
     });
 
     expect(payload.total_to_home_ready_ms).toBeUndefined();
     expect(payload.splash_to_home_ready_ms).toBe(1_000);
     expect(payload.backgrounded_during_startup).toBe(true);
+  });
+});
+
+describe('buildStartupTimingPayload with a restored cache', () => {
+  it('ignores data that was fetched before this launch began', () => {
+    const payload = buildStartupTimingPayload({
+      marks: { firstLayout: 3_400, splashHidden: 3_450, homeContentReady: 3_480 },
+      native: NATIVE,
+      queries: [
+        // Restored from the persisted cache: fetched yesterday.
+        { key: 'tokenBalances', resolvedAt: -86_400_000, isError: false },
+        { key: 'cardStatus', resolvedAt: 50, isError: false },
+      ],
+      launchKind: 'cold',
+      backgrounded: false,
+      restoredQueries: 12,
+      isWeb: false,
+    });
+
+    expect(payload.gating_query).toBeUndefined();
+    expect(payload.queries_settled).toBe(0);
+    expect(payload.splash_to_home_ready_ms).toBe(30);
+    expect(payload.cache_restored_queries).toBe(12);
   });
 });
 

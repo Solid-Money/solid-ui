@@ -62,7 +62,13 @@ import {
   isProduction,
 } from '@/lib/config';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import {
+  clearPersistedQueryCacheOnFatalError,
+  persistQueryCache,
+  restoreQueryCache,
+} from '@/lib/queryPersistence';
 import { markStartup } from '@/lib/startupTiming';
+import { ensureFreshAccessToken } from '@/lib/utils';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
@@ -215,6 +221,16 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Before the first render, so a returning user's home draws their last balances
+// instead of skeletons, then refreshes them in place. See lib/queryPersistence.
+restoreQueryCache(queryClient);
+persistQueryCache(queryClient);
+clearPersistedQueryCacheOnFatalError();
+
+// Start renewing an expired session now, while the bundle finishes loading, so
+// the first requests go out with a valid token instead of failing with 401.
+void ensureFreshAccessToken();
 
 function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);

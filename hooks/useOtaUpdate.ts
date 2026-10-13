@@ -11,6 +11,28 @@ import { markOtaReloadRequested } from '@/lib/startupTiming';
 const FOREGROUND_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
+ * Whether a downloaded update fixes something the running bundle must not keep
+ * running with: it carries an `otaCriticalSince` time (app.config.ts puts it in
+ * `extra`, which every update's manifest carries) later than when the running
+ * bundle was published. Every update published after a critical one carries
+ * the same time, so a later routine update still prompts devices that missed it.
+ */
+export const isCriticalUpdate = (
+  update: Updates.UpdateInfo | undefined,
+  runningCreatedAt: Date | undefined | null,
+): boolean => {
+  const manifest = update?.manifest as
+    | { extra?: { expoClient?: { extra?: { otaCriticalSince?: unknown } } } }
+    | undefined;
+  const criticalSince = manifest?.extra?.expoClient?.extra?.otaCriticalSince;
+  if (typeof criticalSince !== 'string') return false;
+  const criticalAt = Date.parse(criticalSince);
+  if (Number.isNaN(criticalAt)) return false;
+  // A bundle with no publish time is the one built into the binary: older than any update.
+  return criticalAt > (runningCreatedAt?.getTime() ?? 0);
+};
+
+/**
  * Finds a newer OTA bundle and lets the user switch to it without killing the app.
  *
  * Out of the box, expo-updates checks only on a cold start, downloads in the
@@ -19,9 +41,9 @@ const FOREGROUND_CHECK_INTERVAL_MS = 5 * 60 * 1000;
  * an old bundle for weeks after a fix shipped.
  *
  * This hook adds a check each time the app returns to the foreground and
- * downloads whatever it finds. Once a bundle is downloaded (by this check or by
- * the native launch check), `isUpdateReady` turns true and `applyUpdate`
- * reloads the JS into it.
+ * downloads whatever it finds, so the next cold start runs it. When the
+ * downloaded bundle is critical for this device (see `isCriticalUpdate`),
+ * `isUpdateReady` turns true and `applyUpdate` reloads the JS into it straight away.
  *
  * Native only: callers must not mount it on web, which has no expo-updates.
  */
@@ -61,7 +83,15 @@ export function useOtaUpdate() {
     return () => subscription.remove();
   }, []);
 
-  const isUpdateReady = Updates.isEnabled && isUpdatePending;
+  // Only an update published as critical interrupts the user. Reloading throws
+  // the running app away and starts it cold, and with updates going out several
+  // times a day that put a second launch in front of most users. A routine one
+  // stays downloaded and starts on the next cold launch, which is what
+  // expo-updates does on its own.
+  const isUpdateReady =
+    Updates.isEnabled &&
+    isUpdatePending &&
+    isCriticalUpdate(downloadedUpdate, currentlyRunning.createdAt);
   const fromUpdateId = currentlyRunning.updateId;
   const toUpdateId = downloadedUpdate?.updateId;
 

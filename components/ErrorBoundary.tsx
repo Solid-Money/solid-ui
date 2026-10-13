@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { clearPersistedQueryCache } from '@/lib/queryPersistence';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
 import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
@@ -44,6 +45,9 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             tags: { source: 'error_boundary', platform: Platform.OS },
             extra: { pathname },
           });
+          // If cached data from an older app version is what broke the render,
+          // the next launch must not restore it again.
+          clearPersistedQueryCache();
         }
       }
     } catch {}

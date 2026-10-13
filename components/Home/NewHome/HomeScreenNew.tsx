@@ -137,7 +137,10 @@ export default function HomeScreenNew() {
       // refresh when that cached data is missing or stale.
       const state = queryClient.getQueryState(['tokenBalances', user?.safeAddress]);
       const isFresh = !!state?.data && Date.now() - state.dataUpdatedAt < 15_000;
-      if (!isFresh) {
+      // A fetch already under way is the refresh. Forcing another would cancel it
+      // and start the whole fan-out again: with a restored cache the balance is
+      // here on the first render, while the mount fetch has only just started.
+      if (!isFresh && state?.fetchStatus !== 'fetching') {
         refreshTokens();
       }
     }

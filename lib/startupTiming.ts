@@ -3,6 +3,8 @@ import { AppState, Platform } from 'react-native';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import mmkvStorage from '@/lib/mmvkStorage';
+import { getRestoredQueryCount } from '@/lib/queryPersistence';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { QueryClient } from '@tanstack/react-query';
 
@@ -33,6 +35,10 @@ export type NativeStartupTiming = {
 export type ResolvedQuery = { key: string; resolvedAt: number; isError: boolean };
 
 const marks: Partial<Record<StartupPhase, number>> = {};
+
+// Whether someone was already signed in when the app started. If not, home is
+// reached through sign-in, and the time spent there is not launch time.
+const signedInAtLaunch = useUserStore.getState().users.some(user => user.selected);
 let reported = false;
 let backgroundedDuringStartup = false;
 
@@ -136,13 +142,17 @@ export const buildStartupTimingPayload = ({
   launchKind,
   backgrounded,
   jsHeapMb,
+  restoredQueries = 0,
+  isWeb,
 }: {
   marks: Partial<Record<StartupPhase, number>>;
   native: NativeStartupTiming | null;
   queries: ResolvedQuery[];
-  launchKind: 'cold' | 'ota_reload' | 'page_load';
+  launchKind: 'cold' | 'ota_reload' | 'page_load' | 'after_login';
   backgrounded: boolean;
   jsHeapMb?: number;
+  restoredQueries?: number;
+  isWeb: boolean;
 }) => {
   const ready = phaseMarks.homeContentReady;
   const bundleStart = native?.executeJavaScriptBundleEntryPointStart;
@@ -150,9 +160,17 @@ export const buildStartupTimingPayload = ({
   // origin. On native it's the process start when the platform reports one; iOS
   // can pre-warm a process long before the tap, so `js_to_first_layout_ms` and
   // the phases after it are the figures that never include time the user didn't wait.
-  const appStart = launchKind === 'page_load' ? 0 : (native?.startTime ?? bundleStart ?? undefined);
+  const appStart = isWeb ? 0 : (native?.startTime ?? bundleStart ?? undefined);
 
-  const beforeReady = ready === undefined ? [] : queries.filter(q => q.resolvedAt <= ready);
+  // Only what settled in this runtime: data restored from the persisted cache
+  // carries the time it was first fetched, before this launch began. Native
+  // `performance.now()` can count from device boot, so compare against the
+  // bundle start rather than 0.
+  const runtimeStart = isWeb ? 0 : (bundleStart ?? appStart ?? 0);
+  const beforeReady =
+    ready === undefined
+      ? []
+      : queries.filter(q => q.resolvedAt >= runtimeStart && q.resolvedAt <= ready);
   const gating = beforeReady.reduce<ResolvedQuery | undefined>(
     (latest, query) => (!latest || query.resolvedAt > latest.resolvedAt ? query : latest),
     undefined,
@@ -175,6 +193,9 @@ export const buildStartupTimingPayload = ({
     gating_query_failed: gating?.isError,
     queries_settled: beforeReady.length,
     queries_failed: beforeReady.filter(q => q.isError).length,
+    // Queries put back from the persisted cache before the first render. Above 0,
+    // home drew the last known balances instead of skeletons.
+    cache_restored_queries: restoredQueries,
     js_heap_mb: jsHeapMb,
   };
 };
@@ -189,8 +210,14 @@ export const reportHomeContentReady = (queryClient: QueryClient) => {
   reported = true;
   appStateSubscription?.remove();
 
-  const launchKind =
-    Platform.OS === 'web' ? 'page_load' : consumeOtaReloadFlag() ? 'ota_reload' : 'cold';
+  const reloadedIntoUpdate = Platform.OS !== 'web' && consumeOtaReloadFlag();
+  const launchKind = !signedInAtLaunch
+    ? 'after_login'
+    : Platform.OS === 'web'
+      ? 'page_load'
+      : reloadedIntoUpdate
+        ? 'ota_reload'
+        : 'cold';
 
   track(
     TRACKING_EVENTS.APP_STARTUP_TIMING,
@@ -201,6 +228,8 @@ export const reportHomeContentReady = (queryClient: QueryClient) => {
       launchKind,
       backgrounded: backgroundedDuringStartup,
       jsHeapMb: readJsHeapMb(),
+      restoredQueries: getRestoredQueryCount(),
+      isWeb: Platform.OS === 'web',
     }),
   );
 };

@@ -323,6 +323,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     router: {},
+    // When an update must not wait for the next cold launch, set
+    // OTA_CRITICAL_SINCE to the time it is published (ISO 8601, e.g.
+    // 2026-10-13T12:00:00Z) and keep it set, as an EAS environment variable, for
+    // the updates published after it. A device running a bundle older than that
+    // time shows the full-screen "Update now" prompt (components/OtaUpdateGate)
+    // once it has downloaded any of them, so a routine update published later
+    // can't hide the critical one. Every other update applies on the next cold
+    // launch without interrupting anyone.
+    otaCriticalSince: process.env.OTA_CRITICAL_SINCE || null,
     eas: {
       projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
       build: {
