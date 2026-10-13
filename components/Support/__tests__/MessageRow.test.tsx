@@ -1,6 +1,11 @@
 import React from 'react';
 
-import MessageRow, { agentDisplayName, buildRows } from '@/components/Support/MessageRow';
+import MessageRow, {
+  agentDisplayName,
+  buildRows,
+  markChatClosed,
+  markChatOpened,
+} from '@/components/Support/MessageRow';
 import { message } from '@/lib/support/__tests__/fixtures';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -21,6 +26,17 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
 jest.mock('expo-image', () => ({ Image: 'Image' }));
+jest.mock('@/components/Support/SolidAiAvatar', () => 'SolidAiAvatar');
+jest.mock('@/components/Support/TeammateAvatar', () => 'TeammateAvatar');
+jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require('react-native');
+  const chain: Record<string, unknown> = {};
+  chain.duration = () => chain;
+  chain.springify = () => chain;
+  chain.damping = () => chain;
+  return { __esModule: true, default: { View }, FadeInDown: chain };
+});
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (href: string) => mockPush(href) } }));
 
@@ -113,6 +129,59 @@ describe('MessageRow', () => {
     );
     act(() => links[0].props.onPress());
     expect(mockPush).toHaveBeenCalledWith('/help/articles/apple-pay');
+  });
+
+  it('puts Solid AI or the teammate beside the last bubble of their run only', () => {
+    const last = render({ type: 'message', key: 'x', message: message(), first: true, last: true });
+    expect(last.root.findAllByType('SolidAiAvatar')).toHaveLength(1);
+    const middle = render({
+      type: 'message',
+      key: 'y',
+      message: message(),
+      first: true,
+      last: false,
+    });
+    expect(middle.root.findAllByType('SolidAiAvatar')).toHaveLength(0);
+    const agent = render({
+      type: 'message',
+      key: 'z',
+      message: message({ author: { type: 'agent', name: 'dana smith' } }),
+      first: true,
+      last: true,
+    });
+    expect(agent.root.findByType('TeammateAvatar').props.name).toBe('Dana');
+  });
+
+  it('animates only messages that arrive after the chat opened, once', () => {
+    const entering = (tree: any) =>
+      tree.root.findAll((node: any) => 'entering' in node.props)[0]?.props.entering;
+    markChatOpened(['old'], Date.parse('2026-10-13T10:00:00.000Z'));
+    const old = render({
+      type: 'message',
+      key: 'old',
+      message: message({ id: 'old', createdAt: '2026-10-13T10:00:30.000Z' }),
+      first: true,
+      last: true,
+    });
+    expect(entering(old)).toBeUndefined();
+    const fresh = render({
+      type: 'message',
+      key: 'new',
+      message: message({ id: 'new', createdAt: '2026-10-13T10:00:30.000Z' }),
+      first: true,
+      last: true,
+    });
+    expect(entering(fresh)).toBeDefined();
+    // Rendered again (scrolled back into view): no second animation.
+    const again = render({
+      type: 'message',
+      key: 'new',
+      message: message({ id: 'new', createdAt: '2026-10-13T10:00:30.000Z' }),
+      first: true,
+      last: true,
+    });
+    expect(entering(again)).toBeUndefined();
+    markChatClosed();
   });
 
   it('names an agent and never renders a user message as markdown', () => {

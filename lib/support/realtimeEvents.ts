@@ -58,10 +58,10 @@ const malformed = (event: SupportSocketEvent) =>
     tags: { type: 'realtime_malformed_support_event', event },
   });
 
-const setTyping = (typing: boolean) => {
+const setTyping = (typing: boolean, activity: string | null = null) => {
   if (typingTimer) clearTimeout(typingTimer);
   typingTimer = null;
-  useSupportChatStore.getState().setTyping(typing);
+  useSupportChatStore.getState().setTyping(typing, activity);
   if (typing) {
     typingTimer = setTimeout(() => {
       typingTimer = null;
@@ -94,7 +94,7 @@ export function handleSupportEvent(event: SupportSocketEvent, data: unknown): vo
         return;
       }
       if (otherThread(data)) return;
-      setTyping(data.typing);
+      setTyping(data.typing, typeof data.activity === 'string' ? data.activity : null);
       return;
     }
     case 'support_case_updated': {

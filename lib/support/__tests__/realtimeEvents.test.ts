@@ -55,6 +55,17 @@ describe('support realtime events', () => {
     expect(state().aiTyping).toBe(false);
   });
 
+  it('says what Solid AI is looking up, and forgets it when it stops', () => {
+    handleSupportEvent('support_typing', {
+      conversationId: 'conv1',
+      typing: true,
+      activity: 'deposits',
+    });
+    expect(state().aiActivity).toBe('deposits');
+    handleSupportEvent('support_typing', { conversationId: 'conv1', typing: false });
+    expect(state().aiActivity).toBeNull();
+  });
+
   it('ignores events for a thread other than the one loaded', () => {
     state().setThread(thread({ conversationId: 'conv1' }));
     handleSupportEvent('support_typing', { conversationId: 'other', typing: true });
