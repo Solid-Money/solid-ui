@@ -110,40 +110,45 @@ const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   );
 };
 
+/**
+ * On web, NativeWind classes on a Reanimated `Animated.View` with `entering`
+ * are dropped, so each animated row sits inside a plain View that owns the
+ * layout, and the Animated.View only carries the animation (plus `style`).
+ */
+const ROW_BOTTOM = { flexDirection: 'row', alignItems: 'flex-end' } as const;
+
 /** The customer's own messages: light gray with dark text, so Solid's replies stay the focus. */
 const USER_BUBBLE = 'rounded-2xl rounded-br-md bg-[#E5E5E5] px-3.5 py-2.5';
 
 const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean }) => {
   const entering = useEntering([message.id, message.clientMessageId], message.createdAt);
   return (
-    <Animated.View
-      key={message.id}
-      entering={entering}
-      className={cn('max-w-[85%] self-end', last ? 'mb-3' : 'mb-1')}
-    >
-      {message.context && (
-        <Text className="mb-1 self-end text-xs text-white/50">
-          About: {contextLabel(message.context.kind)}
-        </Text>
-      )}
-      <View className={cn('gap-2', USER_BUBBLE)}>
-        <MessageAttachments message={message} />
-        {message.redacted ? (
-          <Text className="text-[15px] italic text-primary-foreground/60">
-            This message was removed
+    <View className={cn('max-w-[85%] self-end', last ? 'mb-3' : 'mb-1')}>
+      <Animated.View entering={entering}>
+        {message.context && (
+          <Text className="mb-1 self-end text-xs text-white/50">
+            About: {contextLabel(message.context.kind)}
           </Text>
-        ) : message.body ? (
-          <Text selectable className="text-[15px] leading-5 text-primary-foreground">
-            {message.body}
+        )}
+        <View className={cn('gap-2', USER_BUBBLE)}>
+          <MessageAttachments message={message} />
+          {message.redacted ? (
+            <Text className="text-[15px] italic text-primary-foreground/60">
+              This message was removed
+            </Text>
+          ) : message.body ? (
+            <Text selectable className="text-[15px] leading-5 text-primary-foreground">
+              {message.body}
+            </Text>
+          ) : null}
+        </View>
+        {last && (
+          <Text className="mt-1 self-end text-[11px] text-white/40">
+            {format(new Date(message.createdAt), 'h:mm a')}
           </Text>
-        ) : null}
-      </View>
-      {last && (
-        <Text className="mt-1 self-end text-[11px] text-white/40">
-          {format(new Date(message.createdAt), 'h:mm a')}
-        </Text>
-      )}
-    </Animated.View>
+        )}
+      </Animated.View>
+    </View>
   );
 };
 
@@ -192,37 +197,35 @@ const ReplyBubble = ({
 }) => {
   const entering = useEntering([message.id], message.createdAt);
   return (
-    <Animated.View
-      key={message.id}
-      entering={entering}
-      className={cn('w-full flex-row items-end', last ? 'mb-3' : 'mb-1')}
-    >
-      <View style={{ width: AVATAR_COLUMN }}>
-        {last && (
-          // Sits level with the bubble's bottom edge, above the timestamp.
-          <View style={{ marginBottom: 20 }}>
-            <ReplyAvatar message={message} />
-          </View>
-        )}
-      </View>
-      <View className="max-w-[82%] shrink items-start">
-        {first && <AuthorLabel message={message} />}
-        <View className="gap-2 rounded-2xl rounded-bl-md bg-card px-3.5 py-2.5">
-          <MessageAttachments message={message} />
-          {message.redacted ? (
-            <Text className="text-[15px] italic text-white/60">This message was removed</Text>
-          ) : message.body ? (
-            <Markdown value={message.body} textColor="#FFFFFF" />
-          ) : null}
-          {!message.redacted && <MessageSources message={message} />}
+    <View className={cn('w-full', last ? 'mb-3' : 'mb-1')}>
+      <Animated.View entering={entering} style={ROW_BOTTOM}>
+        <View style={{ width: AVATAR_COLUMN }}>
+          {last && (
+            // Sits level with the bubble's bottom edge, above the timestamp.
+            <View style={{ marginBottom: 20 }}>
+              <ReplyAvatar message={message} />
+            </View>
+          )}
         </View>
-        {last && (
-          <Text className="mt-1 h-4 text-[11px] leading-4 text-white/40">
-            {format(new Date(message.createdAt), 'h:mm a')}
-          </Text>
-        )}
-      </View>
-    </Animated.View>
+        <View className="max-w-[82%] shrink items-start">
+          {first && <AuthorLabel message={message} />}
+          <View className="gap-2 rounded-2xl rounded-bl-md bg-card px-3.5 py-2.5">
+            <MessageAttachments message={message} />
+            {message.redacted ? (
+              <Text className="text-[15px] italic text-white/60">This message was removed</Text>
+            ) : message.body ? (
+              <Markdown value={message.body} textColor="#FFFFFF" />
+            ) : null}
+            {!message.redacted && <MessageSources message={message} />}
+          </View>
+          {last && (
+            <Text className="mt-1 h-4 text-[11px] leading-4 text-white/40">
+              {format(new Date(message.createdAt), 'h:mm a')}
+            </Text>
+          )}
+        </View>
+      </Animated.View>
+    </View>
   );
 };
 
@@ -236,49 +239,50 @@ const PendingBubble = ({ entry }: { entry: PendingMessage }) => {
   const failed = entry.status === 'failed';
   const entering = useEntering([entry.clientMessageId]);
   return (
-    <Animated.View
-      key={entry.clientMessageId}
-      entering={entering}
-      className="mb-3 max-w-[85%] self-end"
-    >
-      <Pressable
-        disabled={!failed}
-        onPress={() => retryMessage(entry.clientMessageId)}
-        accessibilityRole={failed ? 'button' : undefined}
-        accessibilityLabel={failed ? 'Retry sending' : undefined}
-        className={cn('gap-1', USER_BUBBLE, failed ? 'opacity-60' : 'opacity-70')}
-      >
-        {entry.attachmentNames.map((name, index) => (
-          <View key={`${index}-${name}`} className="flex-row items-center gap-1.5">
-            <Paperclip size={12} color="#3F3F46" />
-            <Text numberOfLines={1} className="shrink text-sm text-primary-foreground/80">
-              {name}
+    <View className="mb-3 max-w-[85%] self-end">
+      <Animated.View entering={entering}>
+        <Pressable
+          disabled={!failed}
+          onPress={() => retryMessage(entry.clientMessageId)}
+          accessibilityRole={failed ? 'button' : undefined}
+          accessibilityLabel={failed ? 'Retry sending' : undefined}
+          className={cn('gap-1', USER_BUBBLE, failed ? 'opacity-60' : 'opacity-70')}
+        >
+          {entry.attachmentNames.map((name, index) => (
+            <View key={`${index}-${name}`} className="flex-row items-center gap-1.5">
+              <Paperclip size={12} color="#3F3F46" />
+              <Text numberOfLines={1} className="shrink text-sm text-primary-foreground/80">
+                {name}
+              </Text>
+            </View>
+          ))}
+          {!!entry.body && (
+            <Text className="text-[15px] leading-5 text-primary-foreground">{entry.body}</Text>
+          )}
+        </Pressable>
+        {failed ? (
+          <View className="mt-1 flex-row items-center justify-end gap-3">
+            <Text className="shrink text-right text-[11px] text-destructive">
+              {entry.error ?? 'Not sent'}
             </Text>
+            <Pressable
+              onPress={() => retryMessage(entry.clientMessageId)}
+              accessibilityRole="button"
+            >
+              <Text className="text-[11px] font-semibold text-white">Retry</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => discardMessage(entry.clientMessageId)}
+              accessibilityRole="button"
+            >
+              <Text className="text-[11px] text-white/60">Delete</Text>
+            </Pressable>
           </View>
-        ))}
-        {!!entry.body && (
-          <Text className="text-[15px] leading-5 text-primary-foreground">{entry.body}</Text>
+        ) : (
+          <Text className="mt-1 self-end text-[11px] text-white/40">Sending…</Text>
         )}
-      </Pressable>
-      {failed ? (
-        <View className="mt-1 flex-row items-center justify-end gap-3">
-          <Text className="shrink text-right text-[11px] text-destructive">
-            {entry.error ?? 'Not sent'}
-          </Text>
-          <Pressable onPress={() => retryMessage(entry.clientMessageId)} accessibilityRole="button">
-            <Text className="text-[11px] font-semibold text-white">Retry</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => discardMessage(entry.clientMessageId)}
-            accessibilityRole="button"
-          >
-            <Text className="text-[11px] text-white/60">Delete</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Text className="mt-1 self-end text-[11px] text-white/40">Sending…</Text>
-      )}
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 };
 
