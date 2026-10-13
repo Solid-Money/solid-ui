@@ -8,6 +8,7 @@ import { describeError, normalizeError } from '@/lib/errors/classify';
 import { compactErrorRef, formatErrorRef } from '@/lib/errors/errorRef';
 import { activityFailureMetadata, reportUserError, shouldReport } from '@/lib/errors/report';
 import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
+import { setShownErrorSink } from '@/lib/telemetry/shownErrors';
 
 jest.mock('@sentry/react-native', () => ({ captureException: jest.fn() }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
@@ -174,5 +175,38 @@ describe('buildSupportContext', () => {
         occurredAt: new Date(),
       }),
     ).toEqual({ kind: 'error', id: RID, label: 'Couldn’t move to your card · Ref 9C1B-4F2A' });
+  });
+});
+
+describe('reportUserError → admin Errors page', () => {
+  const sink = jest.fn();
+  beforeAll(() => setShownErrorSink(sink));
+  afterAll(() => setShownErrorSink(undefined));
+  beforeEach(() => sink.mockReset());
+
+  it('sends a failure it gives no Ref straight to the Errors page', () => {
+    const error = Object.assign(new Error('Too many requests'), { status: 429, requestId: RID });
+    const normalized = normalizeError(error);
+    const userError = describeError(normalized, { action: 'send' });
+    expect(shouldReport(userError.kind, 'toast')).toBe(false);
+
+    reportUserError(normalized, userError, 'toast');
+
+    expect(reportClientError).not.toHaveBeenCalled();
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'toast',
+        flow: 'send',
+        step: 'send',
+        code: userError.code,
+        refs: { requestId: RID },
+      }),
+    );
+  });
+
+  it('leaves a reported failure to clientErrors, which feeds the Errors page itself', () => {
+    report(Object.assign(new Error('Internal server error'), { status: 500, requestId: RID }));
+    expect(reportClientError).toHaveBeenCalledTimes(1);
+    expect(sink).not.toHaveBeenCalled();
   });
 });
