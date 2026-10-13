@@ -551,6 +551,10 @@ export const TRACKING_EVENTS = {
   CROSS_CHAIN_SEND_SUBMITTED: 'cross_chain_send_submitted',
   CROSS_CHAIN_SEND_FAILED: 'cross_chain_send_failed',
   CROSS_CHAIN_SEND_STATUS_VIEWED: 'cross_chain_send_status_viewed',
+
+  // Statements
+  STATEMENT_DOWNLOAD_TAPPED: 'statement_download_tapped',
+  STATEMENT_DOWNLOAD_FAILED: 'statement_download_failed',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
