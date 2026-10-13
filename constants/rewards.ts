@@ -72,7 +72,7 @@ export const MOCK_TIER_BENEFITS: TierBenefits[] = [
       title: 'Up to 20$\nmonthly',
     },
     subscriptionDiscountCap: {
-      title: 'Up to $50 per service\nper month',
+      title: 'Up to $100\nmonthly',
     },
     cardFees: {
       title: 'No fees',
@@ -104,7 +104,7 @@ export const MOCK_TIER_BENEFITS: TierBenefits[] = [
       title: 'Unlimited',
     },
     subscriptionDiscountCap: {
-      title: 'Up to $50 per service\nper month',
+      title: 'Up to $200\nmonthly',
     },
     cardFees: {
       title: 'No fees',
