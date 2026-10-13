@@ -60,9 +60,18 @@ describe('useSupportChatStore', () => {
   });
 
   it('stops the typing dots when Solid AI answers', () => {
-    state().setTyping(true);
+    state().setTyping(true, 'balances');
     state().receive([message({ author: { type: 'ai', name: 'Solid AI' } })]);
     expect(state().aiTyping).toBe(false);
+    expect(state().aiActivity).toBeNull();
+  });
+
+  it('keeps the last activity while Solid AI is still working', () => {
+    state().setTyping(true, 'deposits');
+    state().setTyping(true);
+    expect(state().aiActivity).toBe('deposits');
+    state().setTyping(false);
+    expect(state().aiActivity).toBeNull();
   });
 
   it('never moves the read marker backwards', () => {
