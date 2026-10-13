@@ -188,15 +188,18 @@ export const refreshSessionTokens = async (): Promise<void> => {
   // Use existing refresh token promise if one is in progress
   const isNewRefresh = !refreshTokenPromise;
   if (isNewRefresh) {
+    // On web the browser keeps the cookies the response sets.
+    const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
+    // Read in the same tick as refreshToken() reads the token it sends.
+    const sender = isNative ? refreshingAccount() : null;
     refreshTokenPromise = refreshToken()
       .then(async response => {
         const data: { tokens: AuthTokens } = await response.json();
         // Save before the in-flight promise is cleared. A refresh that starts in
         // between would otherwise send the refresh token the server has just
         // retired, which it treats as reuse and answers by revoking the session.
-        // On web the browser keeps the cookies the response sets.
-        if ((Platform.OS === 'ios' || Platform.OS === 'android') && data.tokens) {
-          saveNewTokens(data.tokens);
+        if (isNative && data.tokens) {
+          saveNewTokens(data.tokens, sender);
           learnClockSkew(data.tokens.accessToken);
         }
         return data.tokens;
@@ -355,21 +358,34 @@ export const withRefreshToken = async <T>(
   }
 };
 
-function saveNewTokens(tokens: AuthTokens) {
+type RefreshingAccount = { userId: string; refreshToken: string | null };
+
+/** The selected account and the refresh token a refresh started now sends for it. */
+const refreshingAccount = (): RefreshingAccount | null => {
+  const user = useUserStore.getState().users.find((user: User) => user.selected);
+  return user ? { userId: user.userId, refreshToken: user.tokens?.refreshToken ?? null } : null;
+};
+
+/**
+ * Saves a refresh's tokens to the account that sent it, which is no longer the
+ * selected one if the user switched accounts while it was in flight. Drops them
+ * when that account has since signed out or signed in again: it no longer holds
+ * the refresh token this one replaced.
+ */
+function saveNewTokens(tokens: AuthTokens, sender: RefreshingAccount | null) {
+  if (!sender || !tokens.accessToken) return;
+
   const { users, updateUser } = useUserStore.getState();
-  const currentUser = users.find((user: User) => user.selected);
+  const account = users.find((user: User) => user.userId === sender.userId);
+  if (!account || (account.tokens?.refreshToken ?? null) !== sender.refreshToken) return;
 
-  if (!currentUser) throw new Error('No current user found');
-
-  if (tokens.accessToken) {
-    updateUser({
-      ...currentUser,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
-    });
-  }
+  updateUser({
+    ...account,
+    tokens: {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    },
+  });
 }
 
 export const getNonce = async ({ appId }: { appId: string }): Promise<bigint> => {

@@ -48,11 +48,20 @@ const signIn = (userId: string | null) =>
 
 const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+// Each persister listens to the user store; stop them so one test's sign-ins
+// don't reach another's.
+const running: (() => void)[] = [];
+const persist = (client: QueryClient) => {
+  const stop = persistQueryCache(client);
+  running.push(stop);
+  return stop;
+};
+
 /** Fill a client the way a session would, then let the throttled write land. */
 const writeSession = (userId = 'u1') => {
   signIn(userId);
   const client = newClient();
-  const stop = persistQueryCache(client);
+  const stop = persist(client);
   client.setQueryData(['tokenBalances', SAFE], BALANCES);
   client.setQueryData(['vault', 'balance', SAFE, 'USDC'], 100);
   client.setQueryData(['cardDetails', userId], CARD_DETAILS);
@@ -70,6 +79,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  running.splice(0).forEach(stop => stop());
   jest.useRealTimers();
 });
 
@@ -214,7 +224,7 @@ describe('persist then restore', () => {
   it('never persists a query that has no data', () => {
     signIn('u1');
     const client = newClient();
-    persistQueryCache(client);
+    persist(client);
     client
       .getQueryCache()
       .build(client, { queryKey: ['tierMembership', 'u1'] })
@@ -233,6 +243,24 @@ describe('sign-out', () => {
 
     client.clear();
     expect(mockDisk.has(DISK_KEY)).toBe(false);
+  });
+
+  it('never writes one account’s data under the next, even before the cache is cleared', () => {
+    const { client } = writeSession('u1');
+
+    // The welcome screen selects the next account before it clears the cache.
+    signIn('u2');
+    expect(mockDisk.has(DISK_KEY)).toBe(false);
+
+    jest.advanceTimersByTime(1);
+    client.setQueryData(['cardStatus', 'u2'], { status: 'active' });
+    jest.advanceTimersByTime(2_000);
+
+    const stored = JSON.parse(mockDisk.get(DISK_KEY)!);
+    expect(stored.userId).toBe('u2');
+    expect(stored.state.queries.map((query: any) => query.queryKey)).toEqual([
+      ['cardStatus', 'u2'],
+    ]);
   });
 
   it('does not write data fetched after the user was signed out', () => {
@@ -258,7 +286,7 @@ describe('after a render error', () => {
         users: [{ userId: 'u1', username: 'mark', selected: true } as never],
       });
       const client = newClient();
-      fresh.persistQueryCache(client);
+      running.push(fresh.persistQueryCache(client));
       client.setQueryData(['tokenBalances', SAFE], BALANCES);
       jest.advanceTimersByTime(2_000);
       expect(mockDisk.has(DISK_KEY)).toBe(true);

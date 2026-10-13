@@ -23,8 +23,8 @@ import type {
  * stale so it is fetched again as soon as something reads it. The cache is
  * thrown away when it was written for another user, by another app version or
  * {@link QUERY_CACHE_VERSION}, or is older than {@link MAX_AGE_MS}, and is wiped
- * as soon as the in-memory cache is cleared (every sign-out and account switch
- * calls `queryClient.clear()`).
+ * as soon as the selected account changes or the in-memory cache is cleared
+ * (every sign-out and account switch calls `queryClient.clear()`).
  */
 
 /**
@@ -254,7 +254,9 @@ export const persistQueryCache = (queryClient: QueryClient): (() => void) => {
       // last good data is what the next launch should show.
       const state = dehydrate(queryClient, {
         shouldDehydrateQuery: (query: Query) =>
-          query.state.data !== undefined && isPersistedQueryKey(query.queryKey),
+          query.state.data !== undefined &&
+          query.state.dataUpdatedAt > ownerSince &&
+          isPersistedQueryKey(query.queryKey),
       });
       if (!userId || state.queries.length === 0) {
         removePersisted();
@@ -298,6 +300,22 @@ export const persistQueryCache = (queryClient: QueryClient): (() => void) => {
     if (!timer) timer = setTimeout(write, WRITE_THROTTLE_MS);
   };
 
+  // When the selected account changes, what is already in memory was fetched
+  // for the previous one. Drop the copy on disk and keep only data fetched
+  // afterwards: every switch clears the cache too, but the welcome screen
+  // selects the account first and clears it only when the passkey prompt starts.
+  let ownerId = selectedUserId();
+  let ownerSince = 0;
+  const unsubscribeUser = useUserStore.subscribe(state => {
+    const userId = state.users.find(user => user.selected)?.userId;
+    if (userId === ownerId) return;
+    ownerId = userId;
+    ownerSince = Date.now();
+    cancelPending();
+    writtenData.clear();
+    removePersisted();
+  });
+
   const unsubscribeCache = queryCache.subscribe((event: QueryCacheNotifyEvent) => {
     if (event.type === 'removed') {
       // `queryClient.clear()` (sign-out, account switch) empties the cache:
@@ -330,6 +348,7 @@ export const persistQueryCache = (queryClient: QueryClient): (() => void) => {
   return () => {
     cancelPending();
     unsubscribeCache();
+    unsubscribeUser();
     appStateSubscription.remove();
   };
 };

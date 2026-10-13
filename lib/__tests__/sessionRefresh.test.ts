@@ -157,6 +157,51 @@ describe('withRefreshToken', () => {
   });
 });
 
+describe('a refresh still in flight when the account changes', () => {
+  const startRefresh = () => {
+    let respond!: (response: Response) => void;
+    mockRefreshToken.mockImplementation(
+      () => new Promise<Response>(resolve => (respond = resolve)),
+    );
+    const pending = refreshSessionTokens();
+    return { pending, respond: (response: Response) => respond(response) };
+  };
+
+  it('saves the tokens to the account that sent it, not the one now selected', async () => {
+    signIn(jwt(nowSeconds() - 10), 'refresh-1');
+    const { pending, respond } = startRefresh();
+
+    const [mark] = useUserStore.getState().users;
+    const adaTokens = { accessToken: 'ada-access', refreshToken: 'ada-refresh' };
+    useUserStore.setState({
+      users: [
+        { ...mark, selected: false },
+        { userId: 'u2', username: 'ada', selected: true, tokens: adaTokens } as never,
+      ],
+    });
+
+    respond(refreshResponse('mark-access-2', 'refresh-2'));
+    await pending;
+
+    const [markAfter, adaAfter] = useUserStore.getState().users;
+    expect(markAfter.tokens).toEqual({ accessToken: 'mark-access-2', refreshToken: 'refresh-2' });
+    expect(adaAfter.tokens).toEqual(adaTokens);
+  });
+
+  it('drops the tokens when that account signed out meanwhile', async () => {
+    signIn(jwt(nowSeconds() - 10), 'refresh-1');
+    const { pending, respond } = startRefresh();
+
+    const [mark] = useUserStore.getState().users;
+    useUserStore.setState({ users: [{ ...mark, selected: false, tokens: undefined }] });
+
+    respond(refreshResponse('mark-access-2', 'refresh-2'));
+    await pending;
+
+    expect(storedTokens()).toBeUndefined();
+  });
+});
+
 describe('a device clock that is off', () => {
   it('judges expiry on the server clock once a refresh has shown the offset', async () => {
     const serverNow = () => nowSeconds() - 2 * 3600; // the phone runs two hours fast
