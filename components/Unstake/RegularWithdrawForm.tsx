@@ -233,14 +233,20 @@ const RegularWithdrawForm = () => {
 
   const watchedAmount = watch('amount');
 
-  // Where soUSD is withdrawn. Shares already sitting on Base or Ethereum are
-  // queued where they are. Shares on Fuse bridge to the current hub (Base once
-  // it is switched on), unless a resumed withdraw already bridged them: a
-  // session from before the move has no chain and went to Ethereum.
+  // Where soUSD is withdrawn. A resumed withdraw goes where step 1 bridged its
+  // shares, whatever token is selected now; a session from before the move has
+  // no chain and went to Ethereum. Otherwise shares already on Base or Ethereum
+  // are queued where they are, and shares on Fuse bridge to the current hub
+  // (Base once it is switched on).
   const tokenWithdrawChainId = getSoUsdWithdrawChain(selectedToken?.chainId);
+  const sessionChainId = session?.vault === 'USD' ? (session.chainId ?? 1) : undefined;
   const sessionWithdrawChainId: SoUsdWithdrawChainId | undefined =
-    session?.vault === 'USD' ? (getSoUsdWithdrawChain(session.chainId) ?? 1) : undefined;
-  const withdrawChainId = tokenWithdrawChainId ?? sessionWithdrawChainId ?? SOUSD_WITHDRAW_CHAIN_ID;
+    getSoUsdWithdrawChain(sessionChainId);
+  // A session on a chain this build cannot withdraw on is never redirected to
+  // another chain, where the bridged shares are not: it stays unsubmittable.
+  const isSessionChainUnavailable =
+    sessionChainId !== undefined && sessionWithdrawChainId === undefined;
+  const withdrawChainId = sessionWithdrawChainId ?? tokenWithdrawChainId ?? SOUSD_WITHDRAW_CHAIN_ID;
   const withdrawChain = SOUSD_WITHDRAW_CHAINS[withdrawChainId];
 
   const { bridge, bridgeStatus } = useBridgeForWithdraw(withdrawChainId);
@@ -323,6 +329,7 @@ const RegularWithdrawForm = () => {
   };
 
   const onSwapSubmit = async (data: WithdrawFormData) => {
+    if (isSessionChainUnavailable) return;
     try {
       const transaction = await withdraw(data.amount.toString());
       setTransaction({
@@ -692,6 +699,7 @@ const RegularWithdrawForm = () => {
                     activeStep !== 2 ||
                     !watchedAmount ||
                     isWithdrawLoading ||
+                    isSessionChainUnavailable ||
                     // Submitting before the approval check settles is what
                     // skipped the approve leg and reverted the withdrawal.
                     isAllowanceLoading ||
