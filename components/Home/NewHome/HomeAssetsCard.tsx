@@ -6,15 +6,20 @@ import { ChevronRight } from 'lucide-react-native';
 import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { openYieldProduct, yieldProductName } from '@/components/Earn/yieldProducts';
+import {
+  openYieldProduct,
+  YIELD_PRODUCT_ORDER,
+  yieldProductName,
+} from '@/components/Earn/yieldProducts';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { coinAssetPath, formatTokenAmount, PortfolioAsset } from '@/lib/portfolio';
+import { coinAssetPath, formatTokenAmount, PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { getEarningTokenVault } from '@/lib/vaults';
 
 /** Figma 28441:4773: the three largest holdings, then "Show more" for the rest. */
 export const HOME_ASSET_LIMIT = 3;
@@ -54,8 +59,8 @@ export const ShowMoreRow = ({
     onPress={onPress}
     className="flex-row items-center justify-center gap-1 py-[14px] active:bg-white/5"
   >
-    <Text className="text-[14px] leading-5 text-white/50">Show more</Text>
-    <ChevronRight size={14} strokeWidth={1.75} color="rgba(255,255,255,0.5)" />
+    <Text className="text-[14px] leading-5 text-white/70">Show more</Text>
+    <ChevronRight size={14} strokeWidth={1.75} color="rgba(255,255,255,0.7)" />
   </Pressable>
 );
 
@@ -76,26 +81,39 @@ export default function HomeAssetsCard({
       ? router.push(coinAssetPath(asset.tokens[0]) as Href)
       : openAssets();
 
+  // A share token is its product: soUSD is USD Yield. That includes shares the savings reads
+  // don't cover — a production soUSD seen from a development build lands in the wallet's
+  // tokens, and would otherwise show up here as a plain "soUSD" row.
+  const cashAssets = [...portfolio.stableAssets, ...portfolio.cryptoAssets];
+  const shareType = (asset: PortfolioAsset) => getEarningTokenVault(asset.tokens[0])?.vault.type;
+  const products = YIELD_PRODUCT_ORDER.map(type => {
+    const earn = portfolio.earnAssets.find(asset => asset.vault.type === type);
+    const shares = cashAssets.filter(asset => shareType(asset) === type);
+    const value = sumKnownValues([
+      (earn?.valueUsd ?? 0) > 0 ? earn?.valueUsd : 0,
+      ...shares.map(asset => asset.valueUsd),
+    ]).total;
+    return { type, value, apy: earn?.apy };
+  }).filter(product => (product.value ?? 0) > 0);
+
   const assets: HomeAsset[] = [
-    ...portfolio.earnAssets
-      .filter(asset => (asset.valueUsd ?? 0) > 0)
-      .map(asset => {
-        const title = yieldProductName(asset.vault.type);
-        return {
-          key: `earn:${asset.vault.type}`,
-          value: asset.valueUsd,
-          onPress: () => router.push(openYieldProduct(asset.vault.type) as Href),
-          row: (onPress: () => void) => (
-            <AssetRow
-              title={title}
-              value={asset.valueUsd}
-              icon={<YieldIcon vaultType={asset.vault.type} />}
-              subtitle={apyLabel(asset.apy)}
-              onPress={onPress}
-            />
-          ),
-        };
-      }),
+    ...products.map(({ type, value, apy }) => {
+      const title = yieldProductName(type);
+      return {
+        key: `earn:${type}`,
+        value,
+        onPress: () => router.push(openYieldProduct(type) as Href),
+        row: (onPress: () => void) => (
+          <AssetRow
+            title={title}
+            value={value}
+            icon={<YieldIcon vaultType={type} />}
+            subtitle={apyLabel(apy)}
+            onPress={onPress}
+          />
+        ),
+      };
+    }),
     ...((portfolio.lockedFuse ?? 0) > 0
       ? [
           {
@@ -114,20 +132,22 @@ export default function HomeAssetsCard({
           },
         ]
       : []),
-    ...[...portfolio.stableAssets, ...portfolio.cryptoAssets].map(asset => ({
-      key: `cash:${asset.id}`,
-      value: asset.valueUsd,
-      onPress: () => openCash(asset),
-      row: (onPress: () => void) => (
-        <AssetRow
-          title={asset.symbol}
-          value={asset.valueUsd}
-          icon={<PortfolioIcon token={asset.tokens[0]} />}
-          subtitle={`${formatTokenAmount(asset.balance, asset.stable)} ${asset.symbol}`}
-          onPress={onPress}
-        />
-      ),
-    })),
+    ...cashAssets
+      .filter(asset => !shareType(asset))
+      .map(asset => ({
+        key: `cash:${asset.id}`,
+        value: asset.valueUsd,
+        onPress: () => openCash(asset),
+        row: (onPress: () => void) => (
+          <AssetRow
+            title={asset.symbol}
+            value={asset.valueUsd}
+            icon={<PortfolioIcon token={asset.tokens[0]} />}
+            subtitle={`${formatTokenAmount(asset.balance, asset.stable)} ${asset.symbol}`}
+            onPress={onPress}
+          />
+        ),
+      })),
     ...(portfolio.hasCardBalance
       ? [
           {

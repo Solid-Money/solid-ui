@@ -266,6 +266,25 @@ it('offers USD Yield to a new account with nothing in it', () => {
   press('View USD Yield');
   expect(router.push).toHaveBeenLastCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
 });
+it('shows a share token the savings reads miss as its product, not as soUSD', () => {
+  // A development build sees a production soUSD as a wallet token.
+  const cryptoAssets = groupPortfolioCash([
+    {
+      ...cashToken('soUSD', '2000', 1.083, 122),
+      commonId: undefined,
+      contractAddress: PRODUCTION_VAULT_ADDRESSES.fuse.vault,
+    },
+  ]);
+  renderHome({
+    earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, valueUsd: 0 })),
+    lockedFuse: 0,
+    cryptoAssets,
+  });
+  expect(textContent()).toContain('USD Yield');
+  expect(textContent()).toContain('$2166.00');
+  expect(textContent()).toContain('4.5% APY');
+  expect(root.root.findAllByProps({ accessibilityLabel: 'View soUSD' })).toHaveLength(0);
+});
 it('says when balances are unavailable and opens Assets from there', () => {
   renderHome({ isError: true });
   expect(textContent()).toContain('Some balances are unavailable');
