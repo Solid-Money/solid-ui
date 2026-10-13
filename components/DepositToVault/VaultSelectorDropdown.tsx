@@ -8,15 +8,20 @@ import { useShallow } from 'zustand/react/shallow';
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
-import { getAsset } from '@/lib/assets';
-import { Vault } from '@/lib/types';
+import { AssetPath, getAsset } from '@/lib/assets';
+import { Vault, VaultType } from '@/lib/types';
 import { getDefaultDepositSelection } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
-// The product, not its token: USD Yield's mark without soUSD's live dot, as on Home.
-const getVaultIcon = (vault: Vault) =>
-  vault.name === 'USDC' ? getAsset('images/usd-yield-4x.png') : getAsset(vault.icon);
+// The product, not its token: USD / ETH / FUSE Yield's mark without the share's live dot,
+// as on Home.
+const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
+  [VaultType.USDC]: 'images/usd-yield-4x.png',
+  [VaultType.ETH]: 'images/eth-yield-4x.png',
+  [VaultType.FUSE]: 'images/fuse-yield-4x.png',
+};
+const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();

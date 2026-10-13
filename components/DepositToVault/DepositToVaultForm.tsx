@@ -42,6 +42,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { showTextInputFromStart } from '@/lib/utils/textInput';
@@ -138,8 +139,8 @@ function DepositToVaultForm() {
   const isBalanceUnknown = isLoadingWalletTokens && !hasDepositableBalance;
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
-  const vaultTokenIcon =
-    vault.name === 'USDC' ? getAsset('images/sousd-4x.png') : getAsset(vault.icon);
+  // What the deposit becomes: the share token's mark (soUSD / soETH / soFUSE).
+  const vaultTokenIcon = getTokenIcon({ tokenSymbol: vaultToken }).source ?? getAsset(vault.icon);
 
   const normalizedSelection = useMemo(() => {
     const defaultSelection = getDefaultDepositSelection(vault);
