@@ -1,7 +1,7 @@
-import { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Href, router } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 
 import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
@@ -14,14 +14,13 @@ import {
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { coinAssetPath, formatTokenAmount, PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { getEarningTokenVault } from '@/lib/vaults';
 
-/** Figma 28441:4773: the three largest holdings, then "Show more" for the rest. */
+/** Figma 28441:4773: the three largest holdings, then "Show more" opens the rest. */
 export const HOME_ASSET_LIMIT = 3;
 
 export const lockedFuseDescription = (amount: number | undefined, unlockAt?: string | null) => {
@@ -49,23 +48,35 @@ type HomeAsset = {
 export const ShowMoreRow = ({
   onPress,
   accessibilityLabel,
+  label = 'Show more',
+  direction = 'right',
+  expanded,
 }: {
   onPress: () => void;
   accessibilityLabel: string;
-}) => (
-  <Pressable
-    accessibilityRole="button"
-    accessibilityLabel={accessibilityLabel}
-    onPress={onPress}
-    className="flex-row items-center justify-center gap-1 py-[14px] active:bg-white/5"
-  >
-    <Text className="text-[14px] leading-5 text-white/70">Show more</Text>
-    <ChevronRight size={14} strokeWidth={1.75} color="rgba(255,255,255,0.7)" />
-  </Pressable>
-);
+  label?: string;
+  /** `right` goes to another screen; `down` / `up` opens or closes the list in place. */
+  direction?: 'right' | 'down' | 'up';
+  expanded?: boolean;
+}) => {
+  const Icon = direction === 'down' ? ChevronDown : direction === 'up' ? ChevronUp : ChevronRight;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={expanded === undefined ? undefined : { expanded }}
+      onPress={onPress}
+      className="flex-row items-center justify-center gap-1 py-[14px] active:bg-white/5"
+    >
+      <Text className="text-[14px] leading-5 text-white/70">{label}</Text>
+      <Icon size={14} strokeWidth={1.75} color="rgba(255,255,255,0.7)" />
+    </Pressable>
+  );
+};
 
 /**
- * Home "Assets" (Figma 28441:4773): one row per holding, largest first, capped at three.
+ * Home "Assets" (Figma 28441:4773): one row per holding, largest first, three until
+ * "Show more" opens the rest in place.
  * Earnings show as their product (USD Yield, ETH Yield), not the share token behind it,
  * and every row opens its own page. Borrowing lives on the card, not in this list.
  */
@@ -74,7 +85,7 @@ export default function HomeAssetsCard({
 }: {
   portfolio: ReturnType<typeof usePortfolio>;
 }) {
-  const usdApy = useMaxAPY(VaultType.USDC);
+  const [expanded, setExpanded] = useState(false);
   const openAssets = () => router.push(path.ASSETS);
   const openCash = (asset: PortfolioAsset) =>
     asset.heldInWallet && asset.tokens[0]
@@ -168,8 +179,12 @@ export default function HomeAssetsCard({
       : []),
   ].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
 
-  const shown = assets.slice(0, HOME_ASSET_LIMIT);
+  // "Show more" opens the rest in place for now; All assets keeps its own way in.
+  const shown = expanded ? assets : assets.slice(0, HOME_ASSET_LIMIT);
   const hasMore = assets.length > HOME_ASSET_LIMIT;
+
+  // A new account has nothing to list, so the section stays out of the way entirely.
+  if (!portfolio.isLoading && !shown.length && !portfolio.isError) return null;
 
   return (
     <View className="mt-5 gap-[14px] px-4">
@@ -195,38 +210,28 @@ export default function HomeAssetsCard({
             </Fragment>
           ))}
         </View>
-      ) : (
+      ) : shown.length ? (
         <View className="overflow-hidden rounded-[20px] bg-card">
-          {shown.length ? (
-            shown.map(({ key, row, onPress }, index) => (
-              <Fragment key={key}>
-                {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
-                {row(onPress)}
-              </Fragment>
-            ))
-          ) : (
-            // A new account: the way in to earning, so the card is never empty.
-            <AssetRow
-              title={yieldProductName(VaultType.USDC)}
-              value={0}
-              icon={<YieldIcon vaultType={VaultType.USDC} />}
-              subtitle={apyLabel(usdApy.isAPYsLoading ? undefined : usdApy.maxAPY)}
-              trailing={
-                <View className="rounded-full bg-white px-4 py-[7px]">
-                  <Text className="text-[14px] font-semibold text-black">Start</Text>
-                </View>
-              }
-              onPress={() => router.push(openYieldProduct(VaultType.USDC) as Href)}
-            />
-          )}
+          {shown.map(({ key, row, onPress }, index) => (
+            <Fragment key={key}>
+              {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+              {row(onPress)}
+            </Fragment>
+          ))}
           {hasMore && (
             <>
               <View className="h-px bg-[#2A2A2A]" />
-              <ShowMoreRow onPress={openAssets} accessibilityLabel="Show all assets" />
+              <ShowMoreRow
+                onPress={() => setExpanded(value => !value)}
+                label={expanded ? 'Show less' : 'Show more'}
+                direction={expanded ? 'up' : 'down'}
+                expanded={expanded}
+                accessibilityLabel={expanded ? 'Show fewer assets' : 'Show all assets'}
+              />
             </>
           )}
         </View>
-      )}
+      ) : null}
       {portfolio.isError && (
         <Pressable accessibilityRole="button" onPress={openAssets}>
           <Text className="text-[13px] text-white/50">

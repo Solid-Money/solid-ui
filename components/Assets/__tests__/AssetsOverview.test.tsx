@@ -12,9 +12,6 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), canGoBack: () => false, replace: jest.fn() },
 }));
 jest.mock('@/hooks/usePortfolio', () => ({ usePortfolio: jest.fn() }));
-jest.mock('@/hooks/useAnalytics', () => ({
-  useMaxAPY: () => ({ maxAPY: 4.5, isAPYsLoading: false }),
-}));
 jest.mock('@/hooks/useActivityRefresh', () => ({ useActivityRefresh: jest.fn() }));
 jest.mock('@/hooks/useWirexBankAccounts', () => ({ useWirexUnifiedBalances: jest.fn() }));
 jest.mock('@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures', () => ({
@@ -217,7 +214,7 @@ const renderHome = (changes = {}) =>
   act(() => {
     root = create(<HomeAssetsCard portfolio={{ ...portfolioFixture, ...changes }} />);
   });
-it('shows the three largest holdings on home, products first by value, then Show more', () => {
+it('shows the three largest holdings on home, and Show more opens the rest in place', () => {
   renderHome();
   const titles = [
     ...new Set(
@@ -230,7 +227,20 @@ it('shows the three largest holdings on home, products first by value, then Show
   expect(textContent()).toContain('4.5% APY');
   expect(textContent()).not.toContain('soUSD');
   press('Show all assets');
-  expect(router.push).toHaveBeenLastCalledWith('/all-assets');
+  expect(router.push).not.toHaveBeenCalled();
+  const expandedTitles = [
+    ...new Set(
+      root.root
+        .findAll((node: any) => node.props.accessibilityLabel?.startsWith('View '))
+        .map((node: any) => node.props.accessibilityLabel),
+    ),
+  ];
+  expect(expandedTitles).toEqual(
+    expect.arrayContaining(['View Locked FUSE', 'View ETH', 'View FUSE']),
+  );
+  expect(textContent()).toContain('Show less');
+  press('Show fewer assets');
+  expect(textContent()).toContain('Show more');
 });
 it('opens each home row on its own page', () => {
   renderHome();
@@ -254,17 +264,14 @@ it('drops Show more when there are three holdings or fewer', () => {
   expect(root.root.findAllByProps({ accessibilityLabel: 'Show all assets' })).toHaveLength(0);
   expect(textContent()).toContain('USDC');
 });
-it('offers USD Yield to a new account with nothing in it', () => {
+it('shows no Assets section at all for a new account', () => {
   renderHome({
     earnAssets: portfolioFixture.earnAssets.map(asset => ({ ...asset, valueUsd: 0 })),
     lockedFuse: 0,
     stableAssets: [],
     cryptoAssets: [],
   });
-  expect(textContent()).toContain('USD Yield');
-  expect(textContent()).toContain('Start');
-  press('View USD Yield');
-  expect(router.push).toHaveBeenLastCalledWith({ pathname: '/savings', params: { vault: 'usdc' } });
+  expect(root.toJSON()).toBeNull();
 });
 it('shows a share token the savings reads miss as its product, not as soUSD', () => {
   // A development build sees a production soUSD as a wallet token.
