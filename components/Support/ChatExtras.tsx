@@ -34,6 +34,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
  * it is doing ("Checking your deposits…") when the server tells us, else that
  * it is typing.
  */
+const TYPING_ROW = { flexDirection: 'row', alignItems: 'center', gap: 10 } as const;
+
 export const TypingIndicator = memo(function TypingIndicator({
   activity,
 }: {
@@ -46,22 +48,21 @@ export const TypingIndicator = memo(function TypingIndicator({
   }, []);
   const label = (activity && ACTIVITY_LABELS[activity]) || 'Solid AI is typing';
   return (
-    <Animated.View
-      entering={FadeInDown.duration(250)}
-      className="mb-3 flex-row items-center gap-2.5 self-start"
-      accessibilityLiveRegion="polite"
-    >
-      <SolidAiAvatar size={28} ripple="fast" />
-      <View className="rounded-full bg-card px-3.5 py-2.5">
-        <Animated.View key={label} entering={FadeIn.duration(220)}>
-          <Text className="text-sm font-medium text-white/70" accessibilityLabel={label}>
-            {label}
-            <Text className="text-sm font-medium text-white/70">{'.'.repeat(dots)}</Text>
-            <Text className="text-sm font-medium text-transparent">{'.'.repeat(3 - dots)}</Text>
-          </Text>
-        </Animated.View>
-      </View>
-    </Animated.View>
+    // Layout on a plain View: on web, classes on an Animated.View with `entering` are dropped.
+    <View className="mb-3 self-start" accessibilityLiveRegion="polite">
+      <Animated.View entering={FadeInDown.duration(250)} style={TYPING_ROW}>
+        <SolidAiAvatar size={28} ripple="fast" />
+        <View className="rounded-full bg-card px-3.5 py-2.5">
+          <Animated.View key={label} entering={FadeIn.duration(220)}>
+            <Text className="text-sm font-medium text-white/70" accessibilityLabel={label}>
+              {label}
+              <Text className="text-sm font-medium text-white/70">{'.'.repeat(dots)}</Text>
+              <Text className="text-sm font-medium text-transparent">{'.'.repeat(3 - dots)}</Text>
+            </Text>
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </View>
   );
 });
 
