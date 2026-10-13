@@ -5,6 +5,7 @@ import { FileText, ImageOff } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { attachmentUrl, isLinkFresh, refreshMessage } from '@/lib/support/sync';
+import { cn } from '@/lib/utils';
 
 import type { SupportAttachment, SupportMessage } from '@/lib/types/support';
 
@@ -33,10 +34,18 @@ const openFile = async (message: SupportMessage, file: SupportAttachment) => {
   if (url) await Linking.openURL(url);
 };
 
-const Unavailable = ({ label }: { label: string }) => (
-  <View className="flex-row items-center gap-2 rounded-xl bg-black/20 px-3 py-2">
-    <ImageOff size={16} color="#A1A1A1" />
-    <Text className="text-sm text-white/60">{label}</Text>
+/** Customer messages sit on a light bubble, so their file rows use dark text. */
+const onLightBubble = (message: SupportMessage) => message.author.type === 'user';
+
+const Unavailable = ({ label, light }: { label: string; light: boolean }) => (
+  <View
+    className={cn(
+      'flex-row items-center gap-2 rounded-xl px-3 py-2',
+      light ? 'bg-black/10' : 'bg-black/20',
+    )}
+  >
+    <ImageOff size={16} color={light ? '#52525B' : '#A1A1A1'} />
+    <Text className={cn('text-sm', light ? 'text-black/60' : 'text-white/60')}>{label}</Text>
   </View>
 );
 
@@ -59,7 +68,10 @@ const ImageAttachment = memo(function ImageAttachment({
 
   if (!file.url)
     return (
-      <Unavailable label={file.status === 'pending' ? 'Checking image…' : 'Image unavailable'} />
+      <Unavailable
+        label={file.status === 'pending' ? 'Checking image…' : 'Image unavailable'}
+        light={onLightBubble(message)}
+      />
     );
 
   return (
@@ -90,23 +102,35 @@ const FileAttachment = memo(function FileAttachment({
   message: SupportMessage;
   file: SupportAttachment;
 }) {
+  const light = onLightBubble(message);
   if (!file.url)
     return (
-      <Unavailable label={file.status === 'pending' ? 'Checking file…' : 'File unavailable'} />
+      <Unavailable
+        label={file.status === 'pending' ? 'Checking file…' : 'File unavailable'}
+        light={light}
+      />
     );
   return (
     <Pressable
       onPress={() => void openFile(message, file)}
       accessibilityRole="button"
       accessibilityLabel={`Open ${file.fileName ?? 'file'}`}
-      className="flex-row items-center gap-3 rounded-xl bg-black/20 px-3 py-2 active:opacity-70 web:hover:opacity-80"
+      className={cn(
+        'flex-row items-center gap-3 rounded-xl px-3 py-2 active:opacity-70 web:hover:opacity-80',
+        light ? 'bg-black/10' : 'bg-black/20',
+      )}
     >
-      <FileText size={20} color="#FFFFFF" />
+      <FileText size={20} color={light ? '#18181B' : '#FFFFFF'} />
       <View className="shrink">
-        <Text numberOfLines={1} className="text-sm font-medium text-white">
+        <Text
+          numberOfLines={1}
+          className={cn('text-sm font-medium', light ? 'text-black' : 'text-white')}
+        >
           {file.fileName ?? 'Document'}
         </Text>
-        <Text className="text-xs text-white/60">PDF · {formatSize(file.size)}</Text>
+        <Text className={cn('text-xs', light ? 'text-black/60' : 'text-white/60')}>
+          PDF · {formatSize(file.size)}
+        </Text>
       </View>
     </Pressable>
   );

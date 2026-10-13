@@ -77,6 +77,9 @@ const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   );
 };
 
+/** The customer's own messages: light gray with dark text, so Solid's replies stay the focus. */
+const USER_BUBBLE = 'rounded-2xl rounded-br-md bg-[#E5E5E5] px-3.5 py-2.5';
+
 const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean }) => (
   <View className={cn('max-w-[85%] self-end', last ? 'mb-3' : 'mb-1')}>
     {message.context && (
@@ -84,14 +87,14 @@ const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean 
         About: {contextLabel(message.context.kind)}
       </Text>
     )}
-    <View className="gap-2 rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5">
+    <View className={cn('gap-2', USER_BUBBLE)}>
       <MessageAttachments message={message} />
       {message.redacted ? (
-        <Text className="text-[15px] italic text-brand-foreground/70">
+        <Text className="text-[15px] italic text-primary-foreground/60">
           This message was removed
         </Text>
       ) : message.body ? (
-        <Text selectable className="text-[15px] leading-5 text-brand-foreground">
+        <Text selectable className="text-[15px] leading-5 text-primary-foreground">
           {message.body}
         </Text>
       ) : null}
@@ -171,21 +174,18 @@ const PendingBubble = ({ entry }: { entry: PendingMessage }) => {
         onPress={() => retryMessage(entry.clientMessageId)}
         accessibilityRole={failed ? 'button' : undefined}
         accessibilityLabel={failed ? 'Retry sending' : undefined}
-        className={cn(
-          'gap-1 rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5',
-          failed ? 'opacity-60' : 'opacity-70',
-        )}
+        className={cn('gap-1', USER_BUBBLE, failed ? 'opacity-60' : 'opacity-70')}
       >
         {entry.attachmentNames.map((name, index) => (
           <View key={`${index}-${name}`} className="flex-row items-center gap-1.5">
-            <Paperclip size={12} color="#196B07" />
-            <Text numberOfLines={1} className="shrink text-sm text-brand-foreground/80">
+            <Paperclip size={12} color="#3F3F46" />
+            <Text numberOfLines={1} className="shrink text-sm text-primary-foreground/80">
               {name}
             </Text>
           </View>
         ))}
         {!!entry.body && (
-          <Text className="text-[15px] leading-5 text-brand-foreground">{entry.body}</Text>
+          <Text className="text-[15px] leading-5 text-primary-foreground">{entry.body}</Text>
         )}
       </Pressable>
       {failed ? (

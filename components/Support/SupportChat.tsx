@@ -3,7 +3,10 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   View,
@@ -28,6 +31,9 @@ import { loadOlder, sendMessage } from '@/lib/support/sync';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
 
 import type { SupportFile } from '@/lib/types/support';
+
+/** How close to the end (px) still counts as "at the bottom" for following new content. */
+const AT_BOTTOM_SLACK = 120;
 
 export const SUPPORT_EMAIL = 'hello@solid.xyz';
 
@@ -142,6 +148,25 @@ export default function SupportChat() {
     [setDraftContext],
   );
 
+  // The list follows new messages on its own, but not the footer: the typing indicator, the
+  // rating card and the quick replies. Follow those too while the customer is at the bottom,
+  // so "Solid AI is typing" shows up without scrolling. Someone reading older messages stays put.
+  const atBottomRef = useRef(true);
+  const footerHeightRef = useRef(0);
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    atBottomRef.current =
+      contentOffset.y + layoutMeasurement.height >= contentSize.height - AT_BOTTOM_SLACK;
+  }, []);
+  const handleFooterLayout = useCallback((event: LayoutChangeEvent) => {
+    const height = event.nativeEvent.layout.height;
+    const grew = height > footerHeightRef.current;
+    footerHeightRef.current = height;
+    if (grew && atBottomRef.current) {
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, []);
+
   const handleOlder = useCallback(() => {
     if (hasOlder) loadOlder().catch(() => undefined);
   }, [hasOlder]);
@@ -185,6 +210,8 @@ export default function SupportChat() {
               startRenderingFromBottom: true,
               autoscrollToBottomThreshold: 0.2,
             }}
+            onScroll={handleScroll}
+            scrollEventThrottle={64}
             onStartReached={handleOlder}
             onStartReachedThreshold={0.5}
             keyboardDismissMode="interactive"
@@ -204,7 +231,7 @@ export default function SupportChat() {
               ) : null
             }
             ListFooterComponent={
-              <View>
+              <View onLayout={handleFooterLayout}>
                 {aiTyping && <TypingIndicator />}
                 {currentCase?.awaitingRating && (
                   <CsatPrompt key={currentCase.id} supportCase={currentCase} />
