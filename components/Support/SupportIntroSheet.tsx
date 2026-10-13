@@ -24,6 +24,9 @@ interface SupportIntroSheetProps {
 /**
  * "Meet Solid AI": shown once, the first time someone opens the support chat.
  * A bottom sheet on phones (native and web), a centred card on wider screens.
+ *
+ * Layout classes live on plain Views: on web, NativeWind classes on a
+ * Reanimated `Animated.View` with `entering` are dropped.
  * Figma: Support intro — A2 · Meet Solid AI (app style, animated).
  */
 export default function SupportIntroSheet({ open, onClose }: SupportIntroSheetProps) {
@@ -35,28 +38,30 @@ export default function SupportIntroSheet({ open, onClose }: SupportIntroSheetPr
         showCloseButton={false}
         className="w-full max-w-md overflow-hidden rounded-b-none rounded-t-[32px] border border-brand/20 bg-[#1C1C1C] p-0 md:rounded-b-[32px]"
       >
-        <View className="items-center px-6 pb-10 pt-3">
-          <View className="h-[5px] w-[73px] rounded-full bg-white/20" />
+        <View className="items-center px-6 pb-10 pt-3 md:pb-8 md:pt-7">
+          {/* Drag handle: only where it is a bottom sheet (phones). */}
+          <View className="h-[5px] w-[73px] rounded-full bg-white/20 md:hidden" />
 
           {open && (
             <>
-              <Animated.View
-                entering={ZoomIn.delay(150).springify().damping(14)}
-                className="h-[128px] w-[180px] items-center justify-center"
-              >
-                <SolidAiAvatar size={88} ripple="slow" />
-              </Animated.View>
+              <View className="mt-1 h-[148px] w-[180px] items-center justify-center md:mt-0">
+                <Animated.View entering={ZoomIn.delay(150).springify().damping(14)}>
+                  <SolidAiAvatar size={84} ripple="slow" />
+                </Animated.View>
+              </View>
 
               <Animated.View entering={rise(300)}>
                 <Text className="text-center text-[30px] font-semibold leading-[34px] text-white">
                   Meet <Text className="text-[30px] font-semibold text-brand">Solid AI</Text>
                 </Text>
               </Animated.View>
-              <Animated.View entering={rise(380)} className="mt-2">
-                <Text className="text-center text-base leading-[22px] text-white/70">
-                  {'Instant answers, day or night.\nThe team is one message away.'}
-                </Text>
-              </Animated.View>
+              <View className="mt-2">
+                <Animated.View entering={rise(380)}>
+                  <Text className="text-center text-base leading-[22px] text-white/70">
+                    {'Instant answers, day or night.\nThe team is one message away.'}
+                  </Text>
+                </Animated.View>
+              </View>
 
               <View className="mt-6 w-full overflow-hidden rounded-[20px] bg-[#2B2B2B]">
                 {POINTS.map(({ Icon, label }, index) => (
@@ -70,16 +75,18 @@ export default function SupportIntroSheet({ open, onClose }: SupportIntroSheetPr
                 ))}
               </View>
 
-              <Animated.View entering={rise(760)} className="mt-6 w-full">
-                <Button
-                  variant="brand"
-                  className="h-12 w-full rounded-full"
-                  onPress={onClose}
-                  accessibilityLabel="Start chatting"
-                >
-                  <Text className="text-base font-bold text-black">Start chatting</Text>
-                </Button>
-              </Animated.View>
+              <View className="mt-6 w-full">
+                <Animated.View entering={rise(760)}>
+                  <Button
+                    variant="brand"
+                    className="h-12 w-full rounded-full"
+                    onPress={onClose}
+                    accessibilityLabel="Start chatting"
+                  >
+                    <Text className="text-base font-bold text-black">Start chatting</Text>
+                  </Button>
+                </Animated.View>
+              </View>
             </>
           )}
         </View>
