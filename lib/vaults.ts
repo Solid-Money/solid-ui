@@ -1,3 +1,4 @@
+import { formatUnits } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -132,6 +133,45 @@ export const hasDepositableWalletBalance = (tokens: DepositableToken[], vault?: 
       accepted.has(token.contractTickerSymbol?.toUpperCase()) &&
       BigInt(token.balance || '0') > 0n,
   );
+};
+
+/** The wallet-token fields `getLargestDepositSelection` reads. */
+type RankableToken = DepositableToken & Pick<TokenBalance, 'contractDecimals'>;
+
+/**
+ * The chain and token the deposit form should open on: of those `vault` accepts,
+ * the one the wallet holds the most of. Undefined when it holds none of them.
+ *
+ * Ranked by token amount rather than USD value. Each vault takes one asset in its
+ * different forms (USDC/USDT, FUSE/WFUSE, ETH/WETH), so amounts already compare
+ * like for like, and the pick does not hinge on a price that may be missing.
+ * Ties go to the token listed first.
+ */
+export const getLargestDepositSelection = (
+  tokens: RankableToken[],
+  vault?: Vault,
+): { chainId: number; principalToken: string } | undefined => {
+  const { supportedChains } = getVaultDepositConfig(vault);
+  let largest: { chainId: number; principalToken: string; amount: number } | undefined;
+
+  for (const token of tokens) {
+    if (!supportedChains.includes(token.chainId)) continue;
+
+    // The form selects by BRIDGE_TOKENS key, so a token without one on this
+    // chain is not something it could open on.
+    const symbol = token.contractTickerSymbol?.toUpperCase();
+    const principalToken = getAllowedTokensForChain(token.chainId, vault).find(
+      key => key.toUpperCase() === symbol,
+    );
+    if (!principalToken) continue;
+
+    const amount = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
+    if (amount > (largest?.amount ?? 0)) {
+      largest = { chainId: token.chainId, principalToken, amount };
+    }
+  }
+
+  return largest && { chainId: largest.chainId, principalToken: largest.principalToken };
 };
 
 export const getDefaultDepositSelection = (vault?: Vault) => {

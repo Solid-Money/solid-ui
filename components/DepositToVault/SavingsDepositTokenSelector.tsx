@@ -14,10 +14,11 @@ import { useDepositStore } from '@/store/useDepositStore';
  * vault's supported chains/symbols and navigates back to the deposit form.
  */
 const SavingsDepositTokenSelector: React.FC = () => {
-  const { setSrcChainId, setPrincipalToken, setModal } = useDepositStore(
+  const { setSrcChainId, setPrincipalToken, setDepositSourceChosen, setModal } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
       setPrincipalToken: state.setPrincipalToken,
+      setDepositSourceChosen: state.setDepositSourceChosen,
       setModal: state.setModal,
     })),
   );
@@ -44,9 +45,11 @@ const SavingsDepositTokenSelector: React.FC = () => {
 
       setSrcChainId(chainId);
       setPrincipalToken(tokenKey || symbol || '');
+      // Keep the form from replacing the pick with the largest holding.
+      setDepositSourceChosen(true);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
-    [setSrcChainId, setPrincipalToken, setModal],
+    [setSrcChainId, setPrincipalToken, setDepositSourceChosen, setModal],
   );
 
   return (

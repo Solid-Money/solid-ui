@@ -45,7 +45,11 @@ import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { showTextInputFromStart } from '@/lib/utils/textInput';
-import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
+import {
+  getAllowedTokensForChain,
+  getDefaultDepositSelection,
+  getLargestDepositSelection,
+} from '@/lib/vaults';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
@@ -69,8 +73,10 @@ function DepositToVaultForm() {
     srcChainId,
     principalToken,
     depositFromSolid,
+    depositSourceChosen,
     setPrincipalToken,
     setSrcChainId,
+    setDepositSourceChosen,
   } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
@@ -78,8 +84,10 @@ function DepositToVaultForm() {
       srcChainId: state.srcChainId,
       principalToken: state.principalToken,
       depositFromSolid: state.depositFromSolid,
+      depositSourceChosen: state.depositSourceChosen,
       setPrincipalToken: state.setPrincipalToken,
       setSrcChainId: state.setSrcChainId,
+      setDepositSourceChosen: state.setDepositSourceChosen,
     })),
   );
   const { isScreenMedium } = useDimension();
@@ -164,6 +172,46 @@ function DepositToVaultForm() {
     setPrincipalToken,
     setSrcChainId,
     srcChainId,
+  ]);
+
+  // Open on the chain and token the Solid wallet holds the most of, rather than
+  // whichever chain was used last. Once per open of the flow: a token picked in
+  // the selector afterwards stays put. The balances here are the Solid wallet's,
+  // so a deposit from a connected wallet keeps its own selection.
+  useEffect(() => {
+    if (!depositFromSolid || depositSourceChosen) return;
+
+    const largest = getLargestDepositSelection(
+      [
+        ...ethereumTokens,
+        ...fuseTokens,
+        ...polygonTokens,
+        ...baseTokens,
+        ...arbitrumTokens,
+        ...bscTokens,
+      ],
+      vault,
+    );
+    // Nothing yet: balances are still loading, or there is nothing to deposit
+    // and the empty state shows instead.
+    if (!largest) return;
+
+    setSrcChainId(largest.chainId);
+    setPrincipalToken(largest.principalToken);
+    setDepositSourceChosen(true);
+  }, [
+    depositFromSolid,
+    depositSourceChosen,
+    ethereumTokens,
+    fuseTokens,
+    polygonTokens,
+    baseTokens,
+    arbitrumTokens,
+    bscTokens,
+    vault,
+    setSrcChainId,
+    setPrincipalToken,
+    setDepositSourceChosen,
   ]);
 
   const selectedTokenInfo = useMemo(() => {
