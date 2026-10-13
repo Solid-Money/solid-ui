@@ -735,6 +735,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
           [BASE_CHAIN_ID, baseBalance],
           [ARBITRUM_CHAIN_ID, arbitrumBalance],
           [BSC_CHAIN_ID, bscBalance],
+          [POLYGON_CHAIN_ID, polygonBalance],
         ]
           .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
           .map(([chainId]) => chainId as number),

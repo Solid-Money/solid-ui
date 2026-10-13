@@ -50,7 +50,8 @@ export interface LifiSwapInfo {
   setRouteOrder: (order: LifiRouteOrder) => void;
   /**
    * Fetches a fresh quote just before signing. Resolves to it, or to undefined
-   * when it now pays out less than the one on screen guaranteed.
+   * when it now pays out less than the one on screen guaranteed. Rejects when
+   * the quote can't be refreshed at all.
    */
   refreshQuote: () => Promise<LifiSwapQuote | undefined>;
 }
@@ -196,7 +197,14 @@ function useLifiSwapInfoState(): LifiSwapInfo {
 
   const refreshQuote = useCallback(async () => {
     const previous = quote;
-    const { data: fresh } = await refetch();
+    // A failed refetch still hands back the last quote as `data`. Signing that
+    // would send calldata LI.FI may no longer honour, so fail instead.
+    const { data: fresh, isError, error: refetchError } = await refetch();
+    if (isError) {
+      throw refetchError instanceof Error
+        ? refetchError
+        : new Error('Could not refresh the quote. Try again.');
+    }
     if (!fresh) return undefined;
     // The route moved against the user past what they agreed to on screen.
     if (previous && BigInt(fresh.toAmount) < BigInt(previous.toAmountMin)) return undefined;
