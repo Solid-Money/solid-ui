@@ -85,8 +85,8 @@ afterEach(() => act(() => root?.unmount()));
 it('shows the tier boost and everything it has earned', () => {
   render();
 
-  expect(texts()).toContain('+2% Boost');
-  expect(texts()).toContain('$13.46');
+  expect(texts()).toContain('+2%');
+  expect(texts()).toContain('$13.46 earned · ready to claim');
 });
 
 it('claims, and says what was paid', async () => {
@@ -155,6 +155,7 @@ it('disables the claim while an earlier one is still being paid', () => {
 
   expect(claimButton().props.disabled).toBe(true);
   expect(claimButton().props.accessibilityState).toEqual({ disabled: true, busy: true });
+  expect(texts()).toContain('earned · on its way');
 });
 
 it('explains a paused claim instead of offering it', () => {
@@ -189,6 +190,7 @@ it('still lets a user who lost the boost collect what they earned', () => {
   mockSummaryQuery = { isLoading: false, data: summary({ apyPercentage: 0 }) };
   render();
 
-  expect(texts()).not.toContain('% Boost');
+  expect(texts()).not.toContain('+0%');
+  expect(texts()).not.toMatch(/\+\d+%/);
   expect(claimButton().props.disabled).toBe(false);
 });

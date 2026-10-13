@@ -5,20 +5,16 @@ import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 
 import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
+import { isYieldShare, yieldHoldings } from '@/components/Earn/earnPortfolio';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import {
-  openYieldProduct,
-  YIELD_PRODUCT_ORDER,
-  yieldProductName,
-} from '@/components/Earn/yieldProducts';
+import { openYieldProduct, yieldProductName } from '@/components/Earn/yieldProducts';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { usePortfolio } from '@/hooks/usePortfolio';
-import { coinAssetPath, formatTokenAmount, PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
+import { coinAssetPath, formatTokenAmount, PortfolioAsset } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { getEarningTokenVault } from '@/lib/vaults';
 
 /** Figma 28441:4773: the three largest holdings, then "Show more" opens the rest. */
 export const HOME_ASSET_LIMIT = 3;
@@ -96,16 +92,9 @@ export default function HomeAssetsCard({
   // don't cover — a production soUSD seen from a development build lands in the wallet's
   // tokens, and would otherwise show up here as a plain "soUSD" row.
   const cashAssets = [...portfolio.stableAssets, ...portfolio.cryptoAssets];
-  const shareType = (asset: PortfolioAsset) => getEarningTokenVault(asset.tokens[0])?.vault.type;
-  const products = YIELD_PRODUCT_ORDER.map(type => {
-    const earn = portfolio.earnAssets.find(asset => asset.vault.type === type);
-    const shares = cashAssets.filter(asset => shareType(asset) === type);
-    const value = sumKnownValues([
-      (earn?.valueUsd ?? 0) > 0 ? earn?.valueUsd : 0,
-      ...shares.map(asset => asset.valueUsd),
-    ]).total;
-    return { type, value, apy: earn?.apy };
-  }).filter(product => (product.value ?? 0) > 0);
+  const products = yieldHoldings(portfolio.earnAssets, cashAssets)
+    .filter(product => (product.valueUsd ?? 0) > 0)
+    .map(({ type, valueUsd, apy }) => ({ type, value: valueUsd, apy }));
 
   const assets: HomeAsset[] = [
     ...products.map(({ type, value, apy }) => {
@@ -144,7 +133,7 @@ export default function HomeAssetsCard({
         ]
       : []),
     ...cashAssets
-      .filter(asset => !shareType(asset))
+      .filter(asset => !isYieldShare(asset))
       .map(asset => ({
         key: `cash:${asset.id}`,
         value: asset.valueUsd,

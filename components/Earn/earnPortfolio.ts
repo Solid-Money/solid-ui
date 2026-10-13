@@ -1,4 +1,8 @@
+import { type PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
+import { getEarningTokenVault } from '@/lib/vaults';
+
+import { YIELD_PRODUCT_ORDER } from './yieldProducts';
 
 export type VaultAmounts = Record<VaultType, number>;
 
@@ -64,4 +68,59 @@ export const interestOverPastDays = (
   return earnedSinceStart === undefined
     ? interest
     : Math.min(interest, Math.max(earnedSinceStart, 0));
+};
+
+/** What the portfolio holds of one product (USD / ETH / FUSE Yield), wherever its shares are. */
+export type YieldHolding = {
+  type: VaultType;
+  /** Undefined when none of it can be valued. */
+  valueUsd: number | undefined;
+  /** soUSD / soETH / soFUSE on every network, including shares backing the card. */
+  shareAmount: number;
+  /**
+   * The part held as shares the savings reads don't cover: a production share seen from a
+   * development build lands among the wallet's coins instead.
+   */
+  unreadUsd: number;
+  apy: number | undefined;
+};
+
+type EarnPart = {
+  vault: { type: VaultType };
+  valueUsd: number | undefined;
+  shareAmount?: number;
+  apy?: number;
+};
+type CashPart = Pick<PortfolioAsset, 'valueUsd' | 'balance' | 'tokens'>;
+
+/** A coin that is really a product's share (soUSD is USD Yield), so it isn't listed as a coin. */
+export const isYieldShare = (asset: Pick<PortfolioAsset, 'tokens'>) =>
+  !!getEarningTokenVault(asset.tokens[0]);
+
+/** Each product's holding, in Earn's order, counting every share once. */
+export const yieldHoldings = (earnAssets: EarnPart[], cashAssets: CashPart[]): YieldHolding[] =>
+  YIELD_PRODUCT_ORDER.map(type => {
+    const earn = earnAssets.find(asset => asset.vault.type === type);
+    const shares = cashAssets.filter(
+      asset => getEarningTokenVault(asset.tokens[0])?.vault.type === type,
+    );
+    return {
+      type,
+      valueUsd: sumKnownValues([
+        (earn?.valueUsd ?? 0) > 0 ? earn?.valueUsd : 0,
+        ...shares.map(asset => asset.valueUsd),
+      ]).total,
+      shareAmount: (earn?.shareAmount ?? 0) + shares.reduce((sum, asset) => sum + asset.balance, 0),
+      unreadUsd: sumKnownValues(shares.map(asset => asset.valueUsd)).total ?? 0,
+      apy: earn?.apy,
+    };
+  });
+
+/** The rate across holdings, each weighted by what it is worth. */
+export const weightedApy = (holdings: { valueUsd: number | undefined; apy: number }[]) => {
+  const valued = holdings.filter(item => (item.valueUsd ?? 0) > 0);
+  const total = valued.reduce((sum, item) => sum + (item.valueUsd ?? 0), 0);
+  return total > 0
+    ? valued.reduce((sum, item) => sum + (item.valueUsd ?? 0) * item.apy, 0) / total
+    : 0;
 };

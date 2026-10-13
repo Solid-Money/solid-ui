@@ -1,11 +1,17 @@
+import { fuse } from 'viem/chains';
+
 import {
   calculateEstimatedDailyEarnings,
   FALLBACK_VAULT_APY,
   formatVaultApyLabel,
   interestOverPastDays,
+  isYieldShare,
   resolveVaultApy,
   type VaultAmounts,
+  weightedApy,
+  yieldHoldings,
 } from '@/components/Earn/earnPortfolio';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { VaultType } from '@/lib/types';
 
 describe('calculateEstimatedDailyEarnings', () => {
@@ -84,5 +90,61 @@ describe('interestOverPastDays', () => {
     expect(interestOverPastDays(2560, undefined)).toBe(0);
     expect(interestOverPastDays(2560, 0)).toBe(0);
     expect(interestOverPastDays(2560, Number.NaN)).toBe(0);
+  });
+});
+
+describe('yieldHoldings', () => {
+  const earnAssets = [
+    { vault: { type: VaultType.USDC }, valueUsd: 2560, shareAmount: 2363.8, apy: 4.5 },
+    { vault: { type: VaultType.ETH }, valueUsd: 310, shareAmount: 0.0752, apy: 2.9 },
+    { vault: { type: VaultType.FUSE }, valueUsd: 0, shareAmount: 0 },
+  ];
+
+  it('lists every product in Earn order, with what it holds', () => {
+    expect(yieldHoldings(earnAssets, [])).toEqual([
+      { type: VaultType.USDC, valueUsd: 2560, shareAmount: 2363.8, unreadUsd: 0, apy: 4.5 },
+      { type: VaultType.ETH, valueUsd: 310, shareAmount: 0.0752, unreadUsd: 0, apy: 2.9 },
+      { type: VaultType.FUSE, valueUsd: 0, shareAmount: 0, unreadUsd: 0, apy: undefined },
+    ]);
+  });
+
+  it('counts a production soUSD seen from a development build as USD Yield, once', () => {
+    const productionSoUsd = {
+      valueUsd: 27,
+      balance: 24.7749,
+      tokens: [{ contractAddress: PRODUCTION_VAULT_ADDRESSES.fuse.vault, chainId: fuse.id }],
+    } as any;
+    const usdc = { valueUsd: 80, balance: 80, tokens: [{ contractAddress: '0x1', chainId: 1 }] };
+    const [usd] = yieldHoldings(
+      [{ vault: { type: VaultType.USDC }, valueUsd: 0, shareAmount: 0 }],
+      [productionSoUsd, usdc as any],
+    );
+    expect(usd).toEqual(
+      expect.objectContaining({ valueUsd: 27, shareAmount: 24.7749, unreadUsd: 27 }),
+    );
+    expect(isYieldShare(productionSoUsd)).toBe(true);
+    expect(isYieldShare(usdc as any)).toBe(false);
+  });
+});
+
+describe('weightedApy', () => {
+  it('weights each rate by what is held at it', () => {
+    // $2,560 at 4.5%, $310 at 2.9%, $120 at 7.5%.
+    expect(
+      weightedApy([
+        { valueUsd: 2560, apy: 4.5 },
+        { valueUsd: 310, apy: 2.9 },
+        { valueUsd: 120, apy: 7.5 },
+      ]),
+    ).toBeCloseTo(4.45, 2);
+  });
+
+  it('is zero with nothing held', () => {
+    expect(
+      weightedApy([
+        { valueUsd: 0, apy: 4.5 },
+        { valueUsd: undefined, apy: 2.9 },
+      ]),
+    ).toBe(0);
   });
 });
