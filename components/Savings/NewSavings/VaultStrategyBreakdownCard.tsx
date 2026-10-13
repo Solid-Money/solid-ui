@@ -176,10 +176,12 @@ const StrategyRowsSkeleton = () => (
 
 interface VaultStrategyBreakdownCardProps {
   vaultType: VaultType;
+  /** Overrides the card's inset and surface, e.g. inside the How it works sheet. */
+  className?: string;
 }
 
 /** Figma 24766:5183 — current APY and the strategies composing the selected vault. */
-const VaultStrategyBreakdownCard = ({ vaultType }: VaultStrategyBreakdownCardProps) => {
+const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreakdownCardProps) => {
   const [selectedStrategyIndex, setSelectedStrategyIndex] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const vault = VAULTS.find(item => item.type === vaultType) ?? VAULTS[0];
@@ -213,7 +215,10 @@ const VaultStrategyBreakdownCard = ({ vaultType }: VaultStrategyBreakdownCardPro
   return (
     <View
       testID="vault-strategy-breakdown-card"
-      className="mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-5 pb-[21px] pt-[38px]"
+      className={cn(
+        'mx-4 overflow-hidden rounded-[20px] bg-[#1C1C1C] px-5 pb-[21px] pt-[38px]',
+        className,
+      )}
     >
       <View className="items-center">
         <View className="relative size-[189px] items-center justify-center">

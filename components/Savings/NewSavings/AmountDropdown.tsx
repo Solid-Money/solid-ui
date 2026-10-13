@@ -41,6 +41,8 @@ AmountPill.displayName = 'AmountPill';
 interface AmountDropdownProps {
   amount: number;
   onSelect: (amount: number) => void;
+  /** Defaults to the presets; the funded page adds the user's own balance. */
+  amounts?: readonly number[];
   className?: string;
 }
 
@@ -48,13 +50,18 @@ interface AmountDropdownProps {
  * "$10,000 ⌄" dropdown for the simulation card. Opens a sheet with the preset
  * amounts (100 / 1,000 / 10,000) as buttons in a single row.
  */
-const AmountDropdown = ({ amount, onSelect, className }: AmountDropdownProps) => {
+const AmountDropdown = ({
+  amount,
+  onSelect,
+  amounts = SIMULATE_AMOUNTS,
+  className,
+}: AmountDropdownProps) => {
   return (
     <View className={cn('items-end', className)}>
       <SelectSheet trigger={<AmountPill amount={amount} />} title="Simulate amount">
         {dismiss => (
           <View className="flex-row gap-2 px-5 py-2">
-            {SIMULATE_AMOUNTS.map(preset => {
+            {amounts.map(preset => {
               const active = preset === amount;
               return (
                 <Pressable

@@ -20,10 +20,10 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Where does the yield come from?',
       answer:
-        'Your deposit is deployed across diversified, blue-chip DeFi lending and fixed-yield strategies (Morpho, Pendle and others), managed under vault-level risk controls. Allocation is adjusted over time to balance yield and safety.',
+        'Your deposit is deployed across diversified, blue-chip DeFi lending and fixed-yield strategies (Morpho, Pendle and others), managed under strict risk controls. Allocation is adjusted over time to balance yield and safety.',
     },
     {
-      question: 'Can I spend from this vault?',
+      question: 'Can I spend from USD Yield?',
       answer:
         'Yes. soUSD backs your Solid card balance. Your dollars keep earning until the moment you spend them, and you can spend against soUSD without withdrawing it.',
     },
@@ -52,7 +52,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Do I still have exposure to the ETH price?',
       answer:
-        'Yes. soETH tracks ETH. If ETH goes up or down, so does the dollar value of your position. The vault adds yield on top of that exposure.',
+        'Yes. soETH tracks ETH. If ETH goes up or down, so does the dollar value of your position. ETH Yield adds yield on top of that exposure.',
     },
     {
       question: 'Can I use soETH with the card?',
@@ -69,22 +69,22 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'Where does the yield come from?',
       answer:
-        'Your FUSE is staked to secure the Fuse Network, the chain Solid runs on, earning native staking rewards. Solid adds a boost on top from the Fuse treasury, which is why this vault pays more than staking FUSE anywhere else.',
+        'Your FUSE is staked to secure the Fuse Network, the chain Solid runs on, earning native staking rewards. Solid adds a boost on top from the Fuse treasury, which is why FUSE Yield pays more than staking FUSE anywhere else.',
     },
     {
       question: 'Do I still have exposure to the FUSE price?',
       answer:
-        'Yes. soFUSE tracks FUSE. The vault adds yield in FUSE terms, the dollar value still moves with the market.',
+        'Yes. soFUSE tracks FUSE. FUSE Yield adds yield in FUSE terms; the dollar value still moves with the market.',
     },
     {
       question: 'Is this the same as Skip the Line staking?',
       answer:
-        'Yes. Your FUSE Vault deposit is what counts for Skip the Line. Hold 50,000 FUSE in the vault to unlock Prime, or 400,000 to unlock Ultra. You earn yield and unlock your tier with the same deposit.',
+        'Yes. Your FUSE Yield deposit is what counts for Skip the Line. Hold 50,000 FUSE in FUSE Yield to unlock Prime, or 400,000 to unlock Ultra. You earn yield and unlock your tier with the same deposit.',
     },
     {
-      question: 'Why hold FUSE in the vault rather than just holding FUSE?',
+      question: 'Why put FUSE in FUSE Yield rather than just holding it?',
       answer:
-        'Idle FUSE earns nothing. The same FUSE in the vault earns network rewards plus the treasury boost, keeps earning Solid Rewards points, and counts toward Prime or Ultra through Skip the Line. One deposit, three benefits.',
+        'Idle FUSE earns nothing. The same FUSE in FUSE Yield earns network rewards plus the treasury boost, keeps earning Solid Rewards points, and counts toward Prime or Ultra through Skip the Line. One deposit, three benefits.',
     },
   ],
 };
