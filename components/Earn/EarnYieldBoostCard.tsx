@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useClaimYieldBoost, useYieldBoostSummary } from '@/hooks/useRewards';
+import { showFailureSheet } from '@/lib/errors';
 import { YieldBoostClaim, YieldBoostClaimStatus } from '@/lib/types';
 import { cn, formatBalanceUSD, formatNumber } from '@/lib/utils';
 
@@ -73,12 +74,7 @@ const EarnYieldBoostCard = ({ className }: EarnYieldBoostCardProps) => {
       const { claim: result } = await claim();
       Toast.show({ ...claimToast(result), props: { badgeText: 'Onchain' } });
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: "Couldn't claim yield boost",
-        text2: error instanceof Error ? error.message : undefined,
-        props: { badgeText: 'Onchain' },
-      });
+      void showFailureSheet(error, { action: 'claim', title: 'Couldn’t claim your yield boost' });
     }
   };
 

@@ -1,5 +1,17 @@
 import { View } from 'react-native';
-import { Car, Ellipsis, Repeat, ShoppingBag, ShoppingCart, Utensils } from 'lucide-react-native';
+import {
+  ArrowLeftRight,
+  Briefcase,
+  Car,
+  Ellipsis,
+  HeartPulse,
+  Receipt,
+  Repeat,
+  ShoppingBag,
+  ShoppingCart,
+  Ticket,
+  Utensils,
+} from 'lucide-react-native';
 
 import { SPENDING_CATEGORIES, SpendingCategoryKey } from '@/lib/utils/spendingInsights';
 
@@ -9,8 +21,13 @@ const ICONS = {
   transport: Car,
   groceries: ShoppingCart,
   subscriptions: Repeat,
+  entertainment: Ticket,
+  health: HeartPulse,
+  bills: Receipt,
+  transfers: ArrowLeftRight,
+  business: Briefcase,
   other: Ellipsis,
-} as const;
+} satisfies Record<SpendingCategoryKey, unknown>;
 
 /** A category's glyph in its own colour, on a tint of that colour. */
 export default function CategoryIcon({

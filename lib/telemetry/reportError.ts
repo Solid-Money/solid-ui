@@ -12,8 +12,8 @@ import type { ClientErrorEvent, ClientErrorKind, ErrorFlow, Severity } from '@/l
 /**
  * Report an app error to the admin Errors page.
  *
- * The single entry point for error toasts, failed API calls, crashes and failed
- * flows (see the installers next to this file). It fills in the device context,
+ * The single entry point for failures shown without a Ref, other error toasts
+ * and stale-bundle reloads (see the installers next to this file). It fills in the device context,
  * strips credentials from free text, trims every field to what the ingest
  * endpoint accepts and queues the event; it never throws and never sends from a
  * dev build.

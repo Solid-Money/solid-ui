@@ -24,6 +24,13 @@ import { getCashbackUsdValue } from '@/lib/utils/spendingInsights';
 
 const DAY_MS = 86_400_000;
 
+/**
+ * Categories a charge is billed under that are not subscriptions. A ride or a
+ * flight is paid on the category rate exactly like Netflix is, but "Rides
+ * subscription" on a Grab receipt describes something the user never bought.
+ */
+const NON_SUBSCRIPTION_CATEGORIES: ReadonlySet<string> = new Set(['rides', 'airlines']);
+
 /** The tier a purchase is compared against in the upsell line. */
 const NEXT_TIER: Record<RewardsTier, RewardsTier | null> = {
   [RewardsTier.CORE]: RewardsTier.PRIME,
@@ -226,13 +233,28 @@ export const buildCashbackBreakdown = ({
   let tierLabel: string | undefined;
 
   if (isSubscription) {
-    const category = subscriptionCategoryLabel(info.subscriptionCategory);
-    typeLabel = category ? `${category} subscription` : 'Subscription';
-    // Subscription rows carry no rate of their own. The tier's perk rate is the
-    // one that paid — as long as the user still holds a tier with the perk; a
-    // downgraded user's tier today says nothing about this charge.
-    if (currentTier && subscriptionRate > 0) {
-      rateLabel = formatCashbackRate(subscriptionRate);
+    const categoryKey = info.subscriptionCategory;
+    const category = subscriptionCategoryLabel(categoryKey);
+    typeLabel = !category
+      ? 'Subscription'
+      : categoryKey && NON_SUBSCRIPTION_CATEGORIES.has(categoryKey)
+        ? category
+        : `${category} subscription`;
+    // Category rows carry no rate of their own. What the user's tier pays on
+    // THIS category is the one that paid — Ultra's 10% on Rides, not the 20%
+    // it pays on subscriptions — as long as they still hold a tier with the
+    // perk; a downgraded user's tier today says nothing about this charge.
+    // A row from before categories were recorded falls back to the flat rate.
+    const perkRate =
+      currentTier && categoryKey
+        ? categoryCashbackPresentation(
+            currentTier,
+            subscriptionRate,
+            rewardsData?.subscriptionCategoryRates,
+          ).rateFor(categoryKey)
+        : subscriptionRate;
+    if (currentTier && perkRate > 0) {
+      rateLabel = formatCashbackRate(perkRate);
       tierLabel = `${TIER_LABELS[currentTier]} perk`;
     }
   } else {

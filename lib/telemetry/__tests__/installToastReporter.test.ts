@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { isErrorIngestEnabled } from '@/lib/telemetry/errorIngestQueue';
 import { installToastReporter, isCancellationText } from '@/lib/telemetry/installToastReporter';
 import { reportError } from '@/lib/telemetry/reportError';
+import { markSharedPathToast } from '@/lib/telemetry/shownErrors';
 
 jest.mock('@/lib/telemetry/errorIngestQueue', () => ({
   isErrorIngestEnabled: jest.fn(() => true),
@@ -28,6 +29,13 @@ describe('installToastReporter', () => {
 
   afterAll(() => {
     Toast.show = librarysShow;
+  });
+
+  it('leaves toasts the shared error path showed to its own report', () => {
+    const params = markSharedPathToast({ type: 'error', text1: 'Couldn’t send' });
+    Toast.show(params);
+    expect(shown).toHaveBeenCalledWith(params);
+    expect(mockReportError).not.toHaveBeenCalled();
   });
 
   it('still shows every toast, and wraps only once', () => {

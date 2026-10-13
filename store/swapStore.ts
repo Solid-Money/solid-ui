@@ -27,6 +27,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 
 import { SWAP_MODAL } from '@/constants/modals';
+import { isLifiRoute } from '@/constants/swapChains';
 import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
 import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
 import { BestTrade, useBestTrade } from '@/hooks/swap/useBestTrade';
@@ -37,6 +38,7 @@ import { useSwapFeeRate } from '@/hooks/useProductFees';
 import useUser from '@/hooks/useUser';
 import { getSwapFundingError } from '@/lib/swapFunding';
 import { RewardsTier, SwapModal, TransactionStatusModal } from '@/lib/types';
+import { LifiRouteOrder, SwapAsset } from '@/lib/types/lifi-swap';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { computeSwapFee, noSwapFee, SwapFee, SwapFeeBasis } from '@/lib/utils/swapFee';
@@ -44,13 +46,11 @@ import { computeSwapFee, noSwapFee, SwapFee, SwapFeeBasis } from '@/lib/utils/sw
 interface SwapState {
   readonly independentField: SwapFieldType;
   readonly typedValue: string;
-  readonly [SwapField.INPUT]: {
-    readonly currencyId: Address | undefined;
-  };
-  readonly [SwapField.OUTPUT]: {
-    readonly currencyId: Address | undefined;
-  };
+  readonly [SwapField.INPUT]: SwapFieldSelection;
+  readonly [SwapField.OUTPUT]: SwapFieldSelection;
   readonly wasInverted: boolean;
+  /** Route preference for a swap that leaves Fuse. Kept for the session. */
+  readonly lifiRouteOrder: LifiRouteOrder;
   readonly lastFocusedField: SwapFieldType;
   readonly currentModal: SwapModal;
   readonly previousModal: SwapModal;
@@ -63,15 +63,32 @@ interface SwapState {
     chainId?: number;
   };
   actions: {
-    selectCurrency: (field: SwapFieldType, currencyId: string | undefined) => void;
+    /** `chainId` defaults to Fuse, where every caller outside the picker selects. */
+    selectCurrency: (
+      field: SwapFieldType,
+      currencyId: string | undefined,
+      chainId?: number,
+    ) => void;
     switchCurrencies: () => void;
     typeInput: (field: SwapFieldType, typedValue: string) => void;
     resetForm: () => void;
     setModal: (modal: SwapModal) => void;
     openBuyFuse: (tier?: RewardsTier, upgrade?: { depositToSavings: boolean }) => void;
     setTransaction: (transaction: SwapState['transaction']) => void;
+    setLifiRouteOrder: (order: LifiRouteOrder) => void;
   };
 }
+
+/** A token on a chain. Fuse on both sides is an Algebra swap; anything else goes through LI.FI. */
+interface SwapFieldSelection {
+  readonly currencyId: Address | undefined;
+  readonly chainId: number;
+}
+
+const sameSelection = (a: SwapFieldSelection, b: SwapFieldSelection) =>
+  a.chainId === b.chainId &&
+  !!a.currencyId &&
+  a.currencyId.toLowerCase() === b.currencyId?.toLowerCase();
 
 export interface BuyFuseUpgradeContext {
   tier: RewardsTier;
@@ -83,11 +100,14 @@ export const useSwapState = create<SwapState>((set, get) => ({
   typedValue: '',
   [SwapField.INPUT]: {
     currencyId: USDC_STARGATE_TOKEN.address as Address, // TOOD: DEFAULT TOKEN, change it to load from localStorage
+    chainId: fuse.id,
   },
   [SwapField.OUTPUT]: {
     currencyId: soUSDC_TOKEN.address as Address,
+    chainId: fuse.id,
   },
   wasInverted: false,
+  lifiRouteOrder: 'CHEAPEST',
   lastFocusedField: SwapField.INPUT,
   currentModal: SWAP_MODAL.CLOSE,
   previousModal: SWAP_MODAL.CLOSE,
@@ -95,37 +115,25 @@ export const useSwapState = create<SwapState>((set, get) => ({
   buyFuseUpgrade: undefined,
   transaction: {},
   actions: {
-    selectCurrency: (field, currencyId) => {
+    selectCurrency: (field, currencyId, chainId = fuse.id) => {
       const otherField = field === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT;
+      const selection = { currencyId: currencyId as Address | undefined, chainId };
 
-      if (currencyId && currencyId === get()[otherField].currencyId) {
-        set({
-          independentField:
-            get().independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT,
-          lastFocusedField:
-            get().independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT,
-          [field]: { currencyId },
-          [otherField]: { currencyId: get()[field].currencyId },
-        });
+      if (sameSelection(selection, get()[otherField])) {
+        const pair = { [field]: selection, [otherField]: get()[field] } as SwapPair;
+        set({ ...pair, ...entryField(pair, flip(get().independentField)) });
       } else {
-        set({
-          [field]: { currencyId },
-        });
+        const pair = { ...pickPair(get()), [field]: selection } as SwapPair;
+        set({ [field]: selection, ...entryField(pair, get().independentField) });
       }
     },
-    switchCurrencies: () =>
-      set({
-        independentField:
-          get().independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT,
-        lastFocusedField:
-          get().independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT,
-        [SwapField.INPUT]: {
-          currencyId: get()[SwapField.OUTPUT].currencyId,
-        },
-        [SwapField.OUTPUT]: {
-          currencyId: get()[SwapField.INPUT].currencyId,
-        },
-      }),
+    switchCurrencies: () => {
+      const pair = {
+        [SwapField.INPUT]: get()[SwapField.OUTPUT],
+        [SwapField.OUTPUT]: get()[SwapField.INPUT],
+      } as SwapPair;
+      set({ ...pair, ...entryField(pair, flip(get().independentField)) });
+    },
     typeInput: (field, typedValue) =>
       set({
         independentField: field,
@@ -152,11 +160,51 @@ export const useSwapState = create<SwapState>((set, get) => ({
         buyFuseUpgrade: tier && upgrade ? { tier, ...upgrade } : undefined,
       }),
     setTransaction: transaction => set({ transaction }),
+    setLifiRouteOrder: lifiRouteOrder => set({ lifiRouteOrder }),
   },
 }));
 
+type SwapPair = Pick<SwapState, typeof SwapField.INPUT | typeof SwapField.OUTPUT>;
+
+const flip = (field: SwapFieldType): SwapFieldType =>
+  field === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT;
+
+const pickPair = (state: SwapState): SwapPair => ({
+  [SwapField.INPUT]: state[SwapField.INPUT],
+  [SwapField.OUTPUT]: state[SwapField.OUTPUT],
+});
+
+/**
+ * Which field the amount is typed into once `pair` is selected.
+ *
+ * A Fuse pair keeps the field the Algebra form would have used. A pair that
+ * leaves Fuse is exact-in only, so it always types into the input, and an
+ * amount that was typed as an output is cleared rather than reread as an input.
+ */
+function entryField(
+  pair: SwapPair,
+  preferred: SwapFieldType,
+): Pick<SwapState, 'independentField' | 'lastFocusedField'> & { typedValue?: string } {
+  if (!isLifiRoute(pair[SwapField.INPUT].chainId, pair[SwapField.OUTPUT].chainId)) {
+    return { independentField: preferred, lastFocusedField: preferred };
+  }
+  return {
+    independentField: SwapField.INPUT,
+    lastFocusedField: SwapField.INPUT,
+    ...(preferred === SwapField.OUTPUT ? { typedValue: '' } : {}),
+  };
+}
+
+/** True when the pair leaves Fuse and the LI.FI form should render. */
+export function useIsLifiSwap(): boolean {
+  return useSwapState(state =>
+    isLifiRoute(state[SwapField.INPUT].chainId, state[SwapField.OUTPUT].chainId),
+  );
+}
+
 export function useSwapActionHandlers(): {
   onCurrencySelection: (field: SwapFieldType, currency: Currency) => void;
+  onAssetSelection: (field: SwapFieldType, asset: SwapAsset) => void;
   onSwitchTokens: () => void;
   onUserInput: (field: SwapFieldType, typedValue: string) => void;
 } {
@@ -177,6 +225,12 @@ export function useSwapActionHandlers(): {
     [selectCurrency],
   );
 
+  const onAssetSelection = useCallback(
+    (field: SwapFieldType, asset: SwapAsset) =>
+      selectCurrency(field, asset.isNative ? ADDRESS_ZERO : asset.address, asset.chainId),
+    [selectCurrency],
+  );
+
   const onSwitchTokens = useCallback(() => {
     switchCurrencies();
   }, [switchCurrencies]);
@@ -191,6 +245,7 @@ export function useSwapActionHandlers(): {
   return {
     onSwitchTokens,
     onCurrencySelection,
+    onAssetSelection,
     onUserInput,
   };
 }

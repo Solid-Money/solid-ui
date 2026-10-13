@@ -80,6 +80,8 @@ jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('react-native-toast-message', () => ({ show: jest.fn() }));
+// The shared failure UI reports to GlitchTip; not what this file is about.
+jest.mock('@/lib/errors', () => ({ showFailureSheet: jest.fn() }));
 
 /** A backend response with one readable USDT asset holding `balanceUsd`. */
 const collateral = (overrides: Record<string, unknown> = {}) => ({

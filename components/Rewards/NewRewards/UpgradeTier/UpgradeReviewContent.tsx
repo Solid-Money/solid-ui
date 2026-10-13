@@ -13,6 +13,7 @@ import {
   useTierUpgradeChainState,
 } from '@/hooks/useTierMembership';
 import { track } from '@/lib/analytics';
+import { getUserErrorMessage } from '@/lib/errors';
 import {
   canPayLockWith,
   LOCK_PAYMENT_LABEL,
@@ -26,11 +27,15 @@ import {
   formatFuse,
   formatLockDuration,
   formatUsd,
+  isTierOnTrial,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
 import TierDetailRow from './TierDetailRow';
+
+/** A check on this screen refused the upgrade; its message is already user copy. */
+class UpgradeBlockedError extends Error {}
 
 /**
  * The last step before the signature: exactly what is being committed, and for
@@ -55,6 +60,8 @@ const UpgradeReviewContent = () => {
   const close = useTierUpgradeStore(state => state.close);
 
   const offer = tier ? findOffer(membership, tier) : undefined;
+  // A tier a trial is lending is being kept, not gained — see `isTierOnTrial`.
+  const keeping = tier ? isTierOnTrial(membership, tier) : false;
 
   if (isLoading) return <Loading />;
 
@@ -130,7 +137,7 @@ const UpgradeReviewContent = () => {
     try {
       if (route === 'lock') {
         if (!membership.contracts.lockAddress || !membership.contracts.shareTokenAddress) {
-          throw new Error('Locking is not available right now.');
+          throw new UpgradeBlockedError('Locking is not available right now.');
         }
         track(TRACKING_EVENTS.TIER_LOCK_PRESSED, { tier, fuse_amount: remainingFuse });
 
@@ -138,7 +145,7 @@ const UpgradeReviewContent = () => {
         // under it on a poll — and the only thing downstream of a stale yes is
         // a revert the user pays gas for.
         if (!balances || !canPayLockWith(paymentAsset, remainingFuse, balances)) {
-          throw new Error(
+          throw new UpgradeBlockedError(
             `Your ${LOCK_PAYMENT_LABEL[paymentAsset]} balance no longer covers this upgrade.`,
           );
         }
@@ -163,13 +170,15 @@ const UpgradeReviewContent = () => {
       }
 
       if (!membership.contracts.subscriptionModuleAddress) {
-        throw new Error('Memberships are not available right now.');
+        throw new UpgradeBlockedError('Memberships are not available right now.');
       }
       // A tier with no price is not sold for cash. The route switch should
       // never have offered this, so reaching it means the offer changed under
       // the user between steps — say so rather than charging them nothing.
       if (offer.annualFeeUsd === null) {
-        throw new Error('This tier cannot be bought with an annual fee. Lock FUSE to hold it.');
+        throw new UpgradeBlockedError(
+          'This tier cannot be bought with an annual fee. Lock FUSE to hold it.',
+        );
       }
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_PRESSED, { tier, price_usd: offer.annualFeeUsd });
 
@@ -182,7 +191,13 @@ const UpgradeReviewContent = () => {
 
       if (result) close();
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : 'Something went wrong. Try again.');
+      // Our own checks above speak for themselves; anything from the chain or
+      // the SDK is translated, never shown raw.
+      setFailure(
+        error instanceof UpgradeBlockedError
+          ? error.message
+          : getUserErrorMessage(error, { action: 'subscription' }) || null,
+      );
     }
   };
 
@@ -254,7 +269,13 @@ const UpgradeReviewContent = () => {
       >
         <KeyRound color="black" size={18} strokeWidth={2} />
         <Text className="text-base font-bold text-black">
-          {isPending ? 'Upgrading…' : 'Upgrade'}
+          {isPending
+            ? keeping
+              ? 'Confirming…'
+              : 'Upgrading…'
+            : keeping
+              ? `Keep ${getTierDisplayName(tier)}`
+              : 'Upgrade'}
         </Text>
       </Button>
     </View>

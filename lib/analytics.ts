@@ -35,7 +35,8 @@ import {
   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
 } from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
-import { isErrorEvent, reportFlowError } from '@/lib/telemetry/errorEvents';
+import { isErrorEvent } from '@/lib/telemetry/errorEvents';
+import { isErrorIngestEnabled } from '@/lib/telemetry/errorIngestQueue';
 import { sanitize, toTitleCase } from '@/lib/utils/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 
@@ -261,7 +262,14 @@ export const track = (
 
     // Enrich with attribution + device context, then sanitize once
     // (remove undefined/null values and ensure serializable).
-    const sanitizedParams = sanitize(enrichEventParams(params));
+    // This build reports what users see to the admin Errors page itself, so the
+    // page's Amplitude import skips its failure events rather than count them
+    // twice. Older builds, without the flag, are still imported.
+    const reportedLive = isErrorEvent(event) && isErrorIngestEnabled();
+    const sanitizedParams = sanitize({
+      ...enrichEventParams(params),
+      ...(reportedLive ? { errors_reported_live: true } : {}),
+    });
 
     // Track to all providers in parallel. Amplitude can be opted out per-call
     // for events now emitted server-side; Firebase + GTM always fire.
@@ -270,12 +278,6 @@ export const track = (
       trackFirebaseEvent(event, sanitizedParams),
       Promise.resolve(trackGTMEvent(event, sanitizedParams)),
     ]);
-
-    // Failures also go to the admin Errors page, whatever `amplitude` says:
-    // that option is about double-counting in Amplitude, not about errors.
-    if (isErrorEvent(event)) {
-      reportFlowError(event, formatAmplitudeEvent(event), params);
-    }
   } catch (error) {
     console.error('Error tracking event:', error);
   }

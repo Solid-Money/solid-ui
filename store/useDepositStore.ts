@@ -114,6 +114,15 @@ interface DepositState {
   sessionStartTime?: number;
   depositFromSolid: boolean;
   /**
+   * Whether the deposit form's chain and token are settled for this open of the
+   * flow: picked in the token selector, set by the screen that opened the form,
+   * or already defaulted to where the Solid wallet holds the most. Until then the
+   * form makes that default pick once balances load. Not persisted, and cleared
+   * whenever the modal closes, so each open starts from the current balances
+   * rather than whatever chain was last used.
+   */
+  depositSourceChosen: boolean;
+  /**
    * Why the savings direct-deposit flow was open. Deliberately kept out of
    * `directDepositSession` (which is persisted) so a stale intent can never leak
    * into a later open from the Savings tab; like `depositFromSolid` it lives for
@@ -136,6 +145,7 @@ interface DepositState {
   externalWallet: ExternalWalletState;
   setExternalWallet: (data: ExternalWalletState) => void;
   setDepositFromSolid: (v: boolean) => void;
+  setDepositSourceChosen: (v: boolean) => void;
   setSavingsFundIntent: (intent: SavingsFundIntent) => void;
   setUpgradeTopUp: (context: DepositState['upgradeTopUp']) => void;
   setModal: (modal: DepositModal) => void;
@@ -167,6 +177,7 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
       sessionStartTime: undefined,
       depositFromSolid: false,
+      depositSourceChosen: false,
       savingsFundIntent: 'savings',
       upgradeTopUp: undefined,
       walletDeposit: {},
@@ -179,6 +190,7 @@ export const useDepositStore = create<DepositState>()(
       },
       setExternalWallet: data => set({ externalWallet: data }),
       setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
+      setDepositSourceChosen: (v: boolean) => set({ depositSourceChosen: v }),
       setSavingsFundIntent: (intent: SavingsFundIntent) => set({ savingsFundIntent: intent }),
       setUpgradeTopUp: context => set({ upgradeTopUp: context }),
 
@@ -187,6 +199,9 @@ export const useDepositStore = create<DepositState>()(
         set({
           previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
+          // Several screens close the modal without resetting the whole flow;
+          // the next open should still pick the chain afresh.
+          ...(isClose && { depositSourceChosen: false }),
         });
       },
       setTransaction: transaction => set({ transaction }),
@@ -214,6 +229,7 @@ export const useDepositStore = create<DepositState>()(
           directDepositSession: {},
           sessionStartTime: undefined,
           depositFromSolid: false,
+          depositSourceChosen: false,
           savingsFundIntent: 'savings',
           upgradeTopUp: undefined,
           walletDeposit: {},

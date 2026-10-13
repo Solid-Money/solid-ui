@@ -206,7 +206,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
               templateId: options.templateId,
               inquiryId: options.inquiryId,
             });
-            setError(e?.message || 'Persona initialization error');
+            setError('Verification didn’t start. Try again, or contact support.');
             setLoading(false);
           },
         });
@@ -224,7 +224,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
           error: e?.message || 'Invalid URL format',
           stage: 'parsing',
         });
-        setError(e?.message || 'Invalid URL format');
+        setError('This verification link isn’t valid. Go back and start again.');
         setLoading(false);
       }
     };

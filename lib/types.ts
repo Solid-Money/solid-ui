@@ -629,8 +629,45 @@ export interface CardStatusResponse {
    * to go through `applicationExternalVerificationLink` instead.
    */
   kycApplicationEstablished?: boolean;
+  /**
+   * Whether a RAIN consumer exists, as opposed to any card customer at all.
+   *
+   * The virtual-account flow's version of {@link kycApplicationEstablished}:
+   * that one reads the primary card-customer row, which for a Wirex cardholder
+   * is their Wirex card, so it reports an "application" for someone with no
+   * Rain anything. This asks the Rain row — the same one the server checks
+   * before opening a `va` verification session.
+   */
+  rainKycApplicationEstablished?: boolean;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
+  /**
+   * The Rain row's application state, always, however the two fields above
+   * were resolved.
+   *
+   * Those come from the primary card-customer row, and for a Wirex cardholder
+   * that is their Wirex card — a row with no Rain fields on it. So a Wirex
+   * cardholder opening a Rain virtual account reported no Rain application and
+   * no verification link, and the pending page, which renders its "continue
+   * verification" CTA off exactly those, left them on the passive screen with
+   * nothing to press.
+   *
+   * Separate from the flat fields because `useCardSteps` reads their presence
+   * as "this user is a Rain cardholder" — filling them in for a Wirex
+   * cardholder would send their card journey to Didit instead of Sumsub.
+   */
+  rainApplication?: {
+    status?: RainApplicationStatus | string;
+    externalVerificationLink?: { url: string; params: Record<string, string> };
+    /**
+     * The Rain row's own KYC status. For a Wirex cardholder the flat
+     * `kycStatus` is their Wirex card's, so a Didit decline on their
+     * virtual-account verification is only visible here.
+     */
+    kycStatus?: KycStatus | string;
+    /** Didit approved, but the hand-off to Rain is held on the savings deposit. */
+    forwardPendingDeposit?: boolean;
+  };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
    * Didit decision, which runs proof of address, so it is evidenced rather than
@@ -651,27 +688,14 @@ export interface CardStatusResponse {
    * a client that decides for itself is a client a VPN can talk out of it.
    */
   depositRequired?: boolean;
-  /**
-   * The one-time setup fee, in USD.
-   *
-   * Keeps the name it had when it was the savings minimum this fee replaced —
-   * the server keeps it too, so builds already installed carry on rendering the
-   * amount. {@link onboardingFeeUsd} is the same number under a name that says
-   * what it is; prefer that one in new code.
-   */
+  /** The savings (soUSD) minimum the deposit step asks for, in USD. */
   minimumDepositUsd?: number;
-  /** {@link minimumDepositUsd}, named for what it actually is. */
-  onboardingFeeUsd?: number;
-  /**
-   * True when there is nothing left to pay — the fee is settled, or none is
-   * owed (the line is off, or this country is exempt).
-   */
-  onboardingFeePaid?: boolean;
   /**
    * Identity verification passed, but the application has NOT been sent to the
-   * issuer because the setup fee is unpaid — typically a verification started
-   * before the fee existed. Renders the outstanding-payment step, which submits
-   * the application via `resumeRainKycForward` once the fee is settled.
+   * issuer because the applicant is no longer holding the minimum — typically
+   * they deposited to clear the first step and then moved the funds straight
+   * out. Renders the "deposit and hold" step, which submits the application via
+   * `resumeRainKycForward` once the money is back.
    */
   rainForwardPendingDeposit?: boolean;
 }
@@ -680,13 +704,8 @@ export interface CardStatusResponse {
 export interface ResumeRainForwardResponse {
   status: 'forwarded' | 'already_forwarded' | 'deposit_required' | 'not_ready' | 'failed';
   reason?: string;
-  /**
-   * The outstanding setup fee, in USD.
-   *
-   * Keeps the name it had when it was the savings minimum this fee replaced,
-   * because the server keeps it too — see the backend DTO. `deposit_required`
-   * now means "the fee is unpaid".
-   */
+  /** The soUSD position the server read, in USD. Present on `deposit_required`. */
+  balanceUsd?: number;
   minimumUsd: number;
   providerCustomerId?: string;
   kycStatus?: KycStatus;
@@ -971,11 +990,33 @@ export interface WirexThreeDsDecisionResponse {
  * Features held back from the public. The server's whitelist decides who has
  * them — see useHasFeature.
  */
-export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout';
+export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'supportChat' | 'statements';
 
 /** `GET /accounts/v1/feature-access`. */
 export interface FeatureAccessResponse {
   features: Partial<Record<WhitelistedFeature, boolean>>;
+}
+
+/** One month a statement can be downloaded for. */
+export interface StatementMonth {
+  /** `YYYY-MM`, a UTC calendar month. */
+  month: string;
+  /** Settled card purchases less refunds, in dollars, e.g. `"1102.18"`. */
+  cardSpendUsd: string;
+  /** The current month, which runs to today. */
+  partial: boolean;
+}
+
+/** `GET /accounts/v1/statements/available`. */
+export interface AvailableStatementsResponse {
+  /** Newest first. The first is the current month. */
+  months: StatementMonth[];
+}
+
+/** A statement fetched from `GET /accounts/v1/statements`, ready to save. */
+export interface StatementDownload {
+  filename: string;
+  content: string;
 }
 
 export interface CardSpendModeAccessResponse {
@@ -1416,6 +1457,12 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   WITHDRAW = 'withdraw',
   SEND = 'send',
+  /**
+   * A stablecoin bridged from Fuse to another network through the
+   * BridgePaymaster. The Fuse receipt only means it left; the backend tracker
+   * marks it SUCCESS once LayerZero delivers on the destination.
+   */
+  CROSS_CHAIN_SEND = 'cross_chain_send',
   RECEIVE = 'receive', // Incoming token/native transfers from external sources
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
@@ -1788,6 +1835,16 @@ export interface Cashback {
   fiatAmount?: string;
   fiatCurrency?: string;
   payoutAt?: string;
+  /**
+   * The on-chain transfer that paid this row out, which is also the hash of the
+   * wallet activity the payout lands as — see `isCashbackPayoutActivity`, which
+   * uses it to keep that duplicate row out of the feed.
+   *
+   * Absent until the row is paid. A row settled against cashback debt rather
+   * than paid on-chain carries the sentinel `'DEDUCTED_FROM_DEBT'` instead of a
+   * hash, so never assume this parses as one.
+   */
+  payoutTxHash?: string;
   /**
    * USD this row is projected to pay out when its escrow matures.
    *
@@ -2301,6 +2358,12 @@ export interface TierSubscriptionDiscountConfig {
   serviceLimit: number;
   /** Number of subscription categories this tier can earn a discount on per month. */
   categoryLimit: number;
+  /**
+   * Most subscription cashback this tier can earn in a calendar month, in USD,
+   * across all its categories together (Core $50, Prime $100, Ultra $200).
+   * Optional because a backend from before the per-tier caps does not send it.
+   */
+  monthlyCap?: number;
 }
 
 export interface SubscriptionDiscountCategory {
@@ -2323,9 +2386,10 @@ export interface SubscriptionDiscountConfig {
   eligibleServices: string[];
   categories: SubscriptionDiscountCategory[];
   /**
-   * Most subscription cashback one eligible service can earn in a month, in USD
-   * (Rewards Terms §5). Caps the cashback, not the charge it is earned on; the
-   * name is left from an earlier reading and is what the API still sends.
+   * Most cashback one payment on a grandfathered subscription can earn at the
+   * old flat rate, in USD (Rewards Terms §6: capped at $50 per payment).
+   * Category-rate charges are not capped per payment, only by each tier's
+   * `monthlyCap`. The name is left from an earlier reading.
    */
   eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
@@ -3031,12 +3095,21 @@ export interface AddressBookRequest {
   name?: string;
   walletAddress: string;
   skip2fa?: boolean;
+  /** Cross-chain send destination the contact was saved with (exchange id). */
+  exchange?: string;
+  /** Network the contact receives on, as a chain id. */
+  chainId?: number;
+  /** Token symbol the contact receives, e.g. "USDC". */
+  token?: string;
 }
 
 export interface AddressBookResponse {
   name?: string;
   walletAddress: string;
   skipped2faAt?: Date;
+  exchange?: string;
+  chainId?: number;
+  token?: string;
 }
 
 export type AgentSummary = {
@@ -3526,7 +3599,21 @@ export interface ReferralRewardListItem {
   payoutEtaAt?: string;
   paidAt?: string;
   spendUsd: number;
+  /** Merchants that count toward the target: those with the per-merchant minimum spent there. */
   merchantCount: number;
+  /**
+   * Spend the referral rules left out — excluded merchants (cash, transfers,
+   * top-ups, game credit…) and purchases under the minimum. Absent on backends
+   * that predate the rules.
+   */
+  excludedSpendUsd?: number;
+  /** Merchants the friend spent at that have not reached the per-merchant minimum yet. */
+  merchantsBelowMinimum?: number;
+  /**
+   * Qualified, but the friend has not yet made the one more purchase the payout
+   * needs — the referrer's cue to nudge them before the reward unlocks.
+   */
+  awaitingActivity?: boolean;
   /**
    * The bar this row is measured against. For a friend who has qualified it is
    * the bar they cleared, which can be lower than today's — the target moved
@@ -3579,6 +3666,15 @@ export interface ReferralSummary {
     windowDays: number;
     /** Days between qualifying and the payout — the dispute/chargeback cover. */
     payoutDelayDays: number;
+    /** Purchases under this (USD) count for nothing. Absent on older backends. */
+    minPurchaseUsd?: number;
+    /** A merchant counts toward the target once this much (USD) is spent there. */
+    minMerchantSpendUsd?: number;
+    /**
+     * The purchase (USD) the friend must make between qualifying and the
+     * payout; null when none is required, absent on older backends.
+     */
+    activityMinPurchaseUsd?: number | null;
   };
   totalRewardedUsd: number;
   friendsInvited: number;

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { openHelpLink } from '@/lib/help/links';
 import { RewardsTier } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 
@@ -107,13 +108,16 @@ const SubscriptionCashbackContent = ({
   const presentation = categoryCashbackPresentation(
     currentTier,
     subscriptionDiscountRate,
-    subscriptionCategoryRates,
+    subscriptionCategoryRates?.map(category =>
+      category.key === 'ai' ? { ...category, label: 'AI' } : category,
+    ),
   );
-  // The tabs are whatever the API reports, in the order it reports them. The
-  // selection is held by key rather than index, so a category paused while the
-  // sheet is open falls back to the first one left instead of pointing at a row
-  // that is no longer there.
-  const { categories } = presentation;
+  // Keep AI first with its short label in the subtitle and tabs; the other categories retain the
+  // API's order. Selection is held by key, so a category paused while the sheet
+  // is open falls back to the first one left.
+  const categories = [...presentation.categories].sort(
+    (left, right) => Number(right.key === 'ai') - Number(left.key === 'ai'),
+  );
   const activeCategory = categories.find(category => category.key === selectedKey) ?? categories[0];
 
   return (
@@ -196,11 +200,11 @@ const SubscriptionCashbackContent = ({
           accessibilityRole="link"
           className="text-white/70"
           style={{
-            fontFamily: 'MonaSans_700Bold',
+            fontFamily: 'SolidLink_700Bold',
             lineHeight: 16,
             textDecorationLine: 'underline',
           }}
-          onPress={() => void Linking.openURL(REWARDS_TERMS_URL)}
+          onPress={() => openHelpLink(REWARDS_TERMS_URL)}
         >
           Learn more
         </Text>

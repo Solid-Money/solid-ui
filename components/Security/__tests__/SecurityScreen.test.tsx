@@ -18,6 +18,7 @@ const mockUser: { email?: string; hasPasskey?: boolean } = {};
 const mockTotpStatus = jest.fn();
 const mockStamp = jest.fn();
 const mockPush = jest.fn();
+const mockOpenSupportDrawer = jest.fn();
 const mockModals: Record<string, Record<string, unknown> | undefined> = {};
 
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
@@ -37,6 +38,9 @@ jest.mock('@/hooks/usePasskeyManager', () => ({
 }));
 jest.mock('@/hooks/useDimension', () => ({ useDimension: () => ({ isDesktop: false }) }));
 jest.mock('@/lib/api', () => ({ getTotpStatus: () => mockTotpStatus() }));
+jest.mock('@/store/useSupportDrawerStore', () => ({
+  openSupportDrawer: (message?: string) => mockOpenSupportDrawer(message),
+}));
 jest.mock('@/lib/config', () => ({ EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID: 'parent-org' }));
 jest.mock('@/lib/utils/passkeyDevice', () => ({ getThisDeviceNoun: () => 'this iPhone' }));
 // The barrel reaches AsyncStorage and the API client at load; the screen needs two helpers.
@@ -168,6 +172,22 @@ describe('Security screen', () => {
     expect(texts).not.toContain('Set up 2FA');
     expect(texts).toContain('On');
     expect(() => byLabel(renderer, 'Set up two-factor authentication')).toThrow();
+  });
+
+  it('sends someone who lost their authenticator to support, never to setup', async () => {
+    // The app cannot turn 2FA off without a code, so a lost authenticator is
+    // only ever fixed by support's reset.
+    mockTotpStatus.mockResolvedValue({ verified: true });
+    const renderer = await render();
+
+    expect(textsOf(renderer)).toContain('Lost it? Contact support');
+    act(() => byLabel(renderer, 'Lost your authenticator app? Contact support').props.onPress());
+
+    expect(mockOpenSupportDrawer).toHaveBeenCalledWith(
+      expect.stringContaining('lost access to my authenticator app'),
+    );
+    expect(mockStamp).not.toHaveBeenCalled();
+    expect(mockModals.totp).toBeUndefined();
   });
 
   it('opens Passkeys from its row', async () => {

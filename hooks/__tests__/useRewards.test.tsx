@@ -114,7 +114,7 @@ it('polls past 60 seconds and celebrates once after the actual API promotion', a
   fetchData.mockResolvedValue(data(RewardsTier.CORE));
   await mount(true);
   await act(async () => {
-    useRewardsUpgradeStore.getState().savingsChanged('a');
+    useRewardsUpgradeStore.getState().tierPurchased('a');
   });
   for (let i = 0; i < 12; i++)
     await act(async () => {
@@ -138,13 +138,13 @@ it('ends reconciliation after 90 seconds without submitting anything again', asy
   fetchData.mockResolvedValue(data(RewardsTier.CORE));
   await mount(true);
   await act(async () => {
-    useRewardsUpgradeStore.getState().savingsChanged('a');
+    useRewardsUpgradeStore.getState().tierPurchased('a');
   });
   for (let i = 0; i < 18; i++)
     await act(async () => {
       await jest.advanceTimersByTimeAsync(5000);
     });
-  expect(useRewardsUpgradeStore.getState().timedOut).toBe(true);
+  expect(useRewardsUpgradeStore.getState().pendingUntil).toBeUndefined();
   expect(useRewardsUpgradeStore.getState().success).toBeUndefined();
   const calls = fetchData.mock.calls.length;
   await act(async () => {

@@ -5,6 +5,7 @@ import {
   Stack,
   useGlobalSearchParams,
   useLocalSearchParams,
+  usePathname,
   useRouter,
 } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,7 +27,9 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
-import { detectPasskeySupported } from '@/hooks/usePasskey';
+import { useSyncNativeHelp } from '@/hooks/useHelp';
+import { useNotificationPermissionReminder } from '@/hooks/useNotificationPermissionReminder';
+import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import { useRealtime } from '@/hooks/useRealtime';
 import useUser from '@/hooks/useUser';
@@ -36,9 +39,11 @@ import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { config } from '@/lib/wagmi';
+import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useWhatsNewStore } from '@/store/useWhatsNewStore';
 
 // Lazy load Loading component - only used during hydration
 const Loading = lazyWithRetry(() => import('@/components/Loading'));
@@ -50,6 +55,7 @@ export default function ProtectedLayout() {
   );
   const searchParams = useLocalSearchParams();
   const globalSearchParams = useGlobalSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
   const hasSeenNotificationOnboarding = useOnboardingStore(
@@ -59,12 +65,29 @@ export default function ProtectedLayout() {
     state => state.setHasSeenNotificationOnboarding,
   );
   const notificationPermissionRequested = globalSearchParams.notificationPermission === 'open';
+  const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
+  const isWhatsNewVisible = useWhatsNewStore(state => state.isVisible);
+  const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
+  const depositModal = useDepositStore(state => state.currentModal);
+  const { visible: isNotificationReminderVisible, dismiss: dismissNotificationReminder } =
+    useNotificationPermissionReminder(
+      !!user &&
+        _hasHydrated &&
+        pathname === path.HOME &&
+        isHomeReady &&
+        !isWhatsNewVisible &&
+        !isCardPaneOpen &&
+        depositModal.name === DEPOSIT_MODAL.CLOSE.name &&
+        !notificationPermissionRequested,
+    );
   const showNotificationPermissionSheet =
-    notificationPermissionRequested && !hasSeenNotificationOnboarding;
+    (notificationPermissionRequested && !hasSeenNotificationOnboarding) ||
+    isNotificationReminderVisible;
 
   const handleNotificationPermissionDismiss = useCallback(() => {
     setHasSeenNotificationOnboarding(true);
-  }, [setHasSeenNotificationOnboarding]);
+    dismissNotificationReminder();
+  }, [dismissNotificationReminder, setHasSeenNotificationOnboarding]);
 
   useEffect(() => {
     if (notificationPermissionRequested && hasSeenNotificationOnboarding) {
@@ -121,6 +144,8 @@ export default function ProtectedLayout() {
   // Live activity, balance and card transaction updates for the signed-in user,
   // over one Socket.IO connection (see lib/realtime/realtimeClient).
   useRealtime(!!user);
+  // Help center links open natively for users who have the in-house help center.
+  useSyncNativeHelp();
 
   // MeaWallet MPP: initialize once on native (required before any MPP API use).
   // Deferred off the first-paint critical path — MPP isn't needed at startup.
@@ -183,10 +208,10 @@ export default function ProtectedLayout() {
     }
   }, [resumeParams, handleResumeBankTransferParams]);
 
-  if (Platform.OS === 'web') {
-    // Since we wait for passkey check in root layout, this should never be null
-    if (Boolean(detectPasskeySupported())) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
-  }
+  // A browser that cannot create a passkey (another app's built-in browser,
+  // or no WebAuthn at all) can neither sign up nor sign in, so say so before
+  // anything else. Always null on native.
+  if (detectPasskeyBlock()) return <Redirect href={passkeyNotSupportedHref()} />;
 
   // Wait for Zustand store to hydrate before making redirect decisions
   // This prevents incorrect redirects when users array is empty during hydration
@@ -294,6 +319,34 @@ export default function ProtectedLayout() {
             name="gooddollar/index"
             options={{
               headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="support/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/articles/[slug]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/collections/[slug]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
             }}
           />
         </Stack>

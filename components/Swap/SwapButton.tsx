@@ -17,6 +17,7 @@ import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors/classify';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
@@ -309,9 +310,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         selectedRewardsUserId() === user?.userId &&
         operationSession.current === useRewardsUpgradeStore.getState().session
       ) {
-        setSubmissionError(
-          error?.shortMessage || error?.message || 'Unable to complete the swap. Please try again.',
-        );
+        // viem's shortMessage is still SDK text ("Execution reverted for an
+        // unknown reason"); the screen gets user copy.
+        setSubmissionError(getUserErrorMessage(error, { action: 'swap' }));
       }
     } finally {
       executing.current = false;

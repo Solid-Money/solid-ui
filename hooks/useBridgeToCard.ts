@@ -15,6 +15,7 @@ import {
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY,
 } from '@/lib/config';
+import { getUserErrorMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
 import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
@@ -311,7 +312,7 @@ const useBridgeToCard = (): BridgeResult => {
         });
 
         setBridgeStatus(Status.ERROR);
-        setError(error instanceof Error ? error.message : 'Unknown error');
+        setError(getUserErrorMessage(error, { action: 'card_deposit' }) || null);
         throw error;
       }
     },

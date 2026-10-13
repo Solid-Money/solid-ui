@@ -132,7 +132,8 @@ const TierMembershipSheetContent = ({
         <Pressable
           accessibilityRole="button"
           onPress={() => {
-            if (isConfirmingCancel) void cancelSubscription(undefined);
+            // A failure is shown by the global mutation handler (meta.errorAction).
+            if (isConfirmingCancel) cancelSubscription(undefined).catch(() => undefined);
             else setIsConfirmingCancel(true);
           }}
           disabled={isCancelling}

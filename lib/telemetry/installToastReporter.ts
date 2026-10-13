@@ -2,13 +2,15 @@ import Toast, { type ToastShowParams } from 'react-native-toast-message';
 
 import { isErrorIngestEnabled } from '@/lib/telemetry/errorIngestQueue';
 import { reportError } from '@/lib/telemetry/reportError';
+import { isSharedPathToast } from '@/lib/telemetry/shownErrors';
 import { USER_CANCELLED_MESSAGE, userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 /**
- * Every error toast, reported to the admin Errors page.
+ * Every error toast the shared error path (`lib/errors`) did not show,
+ * reported to the admin Errors page.
  *
- * An error toast is the one failure the user is certain to have seen, and there
- * are well over a hundred call sites showing them. Rather than touch each one,
+ * An error toast is the one failure the user is certain to have seen, and many
+ * call sites still show their own. Rather than touch each one,
  * `Toast.show` (a plain static on the library's component) is wrapped once at
  * startup, so a toast is reported with exactly the text it was shown with.
  */
@@ -27,6 +29,8 @@ export const isCancellationText = (text: string): boolean =>
 
 export const reportErrorToast = (params: ToastShowParams | undefined) => {
   if (params?.type !== 'error') return;
+  // Shown by lib/errors, which reported it already.
+  if (isSharedPathToast(params)) return;
   const text1 = typeof params.text1 === 'string' ? params.text1.trim() : '';
   const text2 = typeof params.text2 === 'string' ? params.text2.trim() : '';
   const text = [text1, text2].filter(Boolean).join(' — ');

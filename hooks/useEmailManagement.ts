@@ -1,18 +1,18 @@
-import { withRefreshToken } from '@/lib/utils';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Platform } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
+import { sanitizeTechnicalMessage, showErrorToast } from '@/lib/errors';
+import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import { useShallow } from 'zustand/react/shallow';
 
 const emailSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -169,7 +169,7 @@ export const useEmailManagement = (
       }
     } catch (error: any) {
       const errorTitle = 'Failed to send OTP';
-      let errorMessage = error?.message || error?.toString() || '';
+      const errorMessage = error?.message || error?.toString() || '';
       console.error(errorTitle, error);
       setIsSkip(true);
 
@@ -178,7 +178,7 @@ export const useEmailManagement = (
         user_id: user?.userId,
         safe_address: user?.safeAddress,
         email: data.email,
-        error: errorMessage,
+        error: sanitizeTechnicalMessage(errorMessage),
         error_type: 'otp_send_failed',
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
@@ -193,19 +193,12 @@ export const useEmailManagement = (
           'Too many verification codes requested. Please wait a few minutes before trying again.',
         );
       } else {
-        errorMessage = 'Inspect console log for more details and try again';
-        if (Platform.OS === 'web') {
-          Toast.show({
-            type: 'error',
-            text1: errorTitle,
-            text2: errorMessage,
-            props: {
-              badgeText: '',
-            },
-          });
-        } else {
-          Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
-        }
+        // Was "Inspect console log for more details", which no user can do.
+        void showErrorToast(error, {
+          action: 'account',
+          title: 'Couldn’t send the code',
+          body: 'Check the email address and try again.',
+        });
       }
     } finally {
       setIsLoading(false);
@@ -243,9 +236,7 @@ export const useEmailManagement = (
       // (modals that use this hook expect immediate callback, not delayed)
       onSuccess?.();
     } catch (error: any) {
-      let errorTitle = 'Failed to verify OTP';
-      let errorMessage = 'Inspect console log for more details and try again';
-      console.error(errorTitle, error);
+      console.error('Failed to verify OTP', error);
       setIsSkip(true);
 
       // Track email OTP verification failure
@@ -253,28 +244,19 @@ export const useEmailManagement = (
         user_id: user?.userId,
         safe_address: user?.safeAddress,
         email: emailValue,
-        error: error?.toString(),
+        error: sanitizeTechnicalMessage(error),
         error_type: 'otp_verification_failed',
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
 
-      if (error?.toString().includes('SIGNATURE_INVALID')) {
-        errorTitle = 'Incorrect passkey used';
-        errorMessage = 'Passkey must match with the registered account';
-      }
-
-      if (Platform.OS === 'web') {
-        Toast.show({
-          type: 'error',
-          text1: errorTitle,
-          text2: errorMessage,
-          props: {
-            badgeText: '',
-          },
-        });
-      } else {
-        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
-      }
+      const wrongPasskey = error?.toString().includes('SIGNATURE_INVALID');
+      void showErrorToast(error, {
+        action: 'account',
+        title: wrongPasskey ? 'Wrong passkey' : 'Couldn’t verify the code',
+        body: wrongPasskey
+          ? 'Use the passkey for this account, then try again.'
+          : 'Check the code and try again, or request a new one.',
+      });
     } finally {
       setIsLoading(false);
     }

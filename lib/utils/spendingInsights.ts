@@ -5,7 +5,14 @@ import {
   CashbackStatus,
   CashbackType,
 } from '@/lib/types';
-import { getMerchantCategory } from '@/lib/utils/merchantCategory';
+import {
+  getSpendingCategory,
+  matchSubscriptionBrand,
+  merchantOf,
+  SPENDING_CATEGORIES,
+  type SpendingCategoryKey,
+  type SpendingCategoryMeta,
+} from '@/lib/utils/spendingCategories';
 import { getCardTransactionTimestamp } from '@/lib/utils/unifiedActivity';
 
 /**
@@ -18,151 +25,15 @@ import { getCardTransactionTimestamp } from '@/lib/utils/unifiedActivity';
  * means by "September".
  */
 
-export type SpendingCategoryKey =
-  | 'food'
-  | 'groceries'
-  | 'shopping'
-  | 'transport'
-  | 'subscriptions'
-  | 'other';
-
-export interface SpendingCategoryMeta {
-  key: SpendingCategoryKey;
-  label: string;
-  /**
-   * Fixed per category, never by rank, so a category keeps its colour from one
-   * month to the next. Pastels in the same family as the brand green and red,
-   * ordered so neighbours stay apart for colour-blind readers. Green itself is
-   * left out: in this app it means cashback.
-   */
-  color: string;
-}
-
-export const SPENDING_CATEGORIES: Record<SpendingCategoryKey, SpendingCategoryMeta> = {
-  food: { key: 'food', label: 'Food & Drink', color: '#F2C77F' },
-  shopping: { key: 'shopping', label: 'Shopping', color: '#7FB5F2' },
-  transport: { key: 'transport', label: 'Transport & Travel', color: '#F2A07F' },
-  groceries: { key: 'groceries', label: 'Groceries', color: '#7FE3F2' },
-  subscriptions: { key: 'subscriptions', label: 'Subscriptions', color: '#B59CF2' },
-  other: { key: 'other', label: 'Other', color: '#6E6E6E' },
-};
-
-/** Labels from `getMerchantCategory` (MCC-based, Rain and Bridge) → bucket. */
-const MCC_LABEL_BUCKETS: Record<string, SpendingCategoryKey> = {
-  Restaurant: 'food',
-  'Fast Food': 'food',
-  'Bars & Nightlife': 'food',
-  Bakery: 'food',
-  Alcohol: 'food',
-  Groceries: 'groceries',
-  Retail: 'shopping',
-  Clothing: 'shopping',
-  'Home & Furniture': 'shopping',
-  Books: 'shopping',
-  Sports: 'shopping',
-  Wholesale: 'shopping',
-  Transport: 'transport',
-  'Taxi & Rideshare': 'transport',
-  Fuel: 'transport',
-  Tolls: 'transport',
-  Automotive: 'transport',
-  'Car Rental': 'transport',
-  Airlines: 'transport',
-  Hotels: 'transport',
-  Travel: 'transport',
-  Streaming: 'subscriptions',
-  Subscriptions: 'subscriptions',
-  'Digital Services': 'subscriptions',
-  Software: 'subscriptions',
-};
-
-/**
- * Wirex names the category instead of sending an MCC ("Online Shopping"), in
- * its own vocabulary. Matched by keyword, first rule wins.
- */
-const LABEL_KEYWORD_BUCKETS: [RegExp, SpendingCategoryKey][] = [
-  [/grocer|supermarket/i, 'groceries'],
-  [/restaurant|food|dining|cafe|coffee|bar\b|bars|fast food|bakery|pub/i, 'food'],
-  [/subscription|streaming|digital|software|app store|media/i, 'subscriptions'],
-  [
-    /taxi|ride|transport|transit|fuel|petrol|gas station|parking|toll|travel|airline|flight|hotel|car rental/i,
-    'transport',
-  ],
-  [/shop|retail|cloth|fashion|electronic|department|store|marketplace/i, 'shopping'],
-];
-
-/**
- * Subscription services recognised by merchant name. Names match
- * `subscriptionBrands.ts`, which holds the logos; categories match the keys the
- * backend bills subscription cashback under.
- *
- * Used to put a charge under Subscriptions and give it a logo — never to
- * promise cashback, which only an actual cashback row shows.
- */
-const SUBSCRIPTION_BRANDS: { name: string; category: string; aliases: string[] }[] = [
-  { name: 'OpenAI', category: 'ai', aliases: ['openai', 'chatgpt'] },
-  { name: 'Claude', category: 'ai', aliases: ['anthropic', 'claude.ai', 'claude'] },
-  { name: 'Gemini', category: 'ai', aliases: ['gemini'] },
-  { name: 'Netflix', category: 'streaming', aliases: ['netflix'] },
-  { name: 'Disney', category: 'streaming', aliases: ['disney'] },
-  { name: 'HBO Max', category: 'streaming', aliases: ['hbo max', 'hbomax', 'max.com'] },
-  {
-    name: 'Amazon Prime',
-    category: 'streaming',
-    aliases: ['prime video', 'primevideo', 'amazon prime', 'amzn prime'],
-  },
-  { name: 'Apple TV', category: 'streaming', aliases: ['apple tv', 'appletv'] },
-  { name: 'Spotify', category: 'music', aliases: ['spotify'] },
-  { name: 'Apple Music', category: 'music', aliases: ['apple music'] },
-  {
-    name: 'Youtube Music',
-    category: 'music',
-    aliases: ['youtube music', 'youtube premium', 'youtubepremium'],
-  },
-];
-
-export type MatchedSubscriptionBrand = { name: string; category: string };
-
-export const matchSubscriptionBrand = (
-  merchant: string | undefined | null,
-): MatchedSubscriptionBrand | undefined => {
-  const haystack = merchant?.toLowerCase();
-  if (!haystack) return undefined;
-  const brand = SUBSCRIPTION_BRANDS.find(candidate =>
-    candidate.aliases.some(alias => haystack.includes(alias)),
-  );
-  return brand ? { name: brand.name, category: brand.category } : undefined;
-};
-
-const merchantOf = (transaction: Pick<CardTransaction, 'merchant_name' | 'description'>) =>
-  transaction.merchant_name?.trim() || transaction.description?.trim() || '';
-
-/**
- * Which bucket a purchase belongs to. A charge the backend paid subscription
- * cashback on, or one from a known subscription service, is a subscription
- * whatever its MCC says — merchants bill those under all sorts of codes.
- */
-export const getSpendingCategory = (
-  transaction: Pick<
-    CardTransaction,
-    'id' | 'merchant_category_code' | 'merchant_category_label' | 'merchant_name' | 'description'
-  >,
-  subscriptionTransactionIds?: ReadonlySet<string>,
-): SpendingCategoryKey => {
-  if (subscriptionTransactionIds?.has(transaction.id)) return 'subscriptions';
-  if (matchSubscriptionBrand(merchantOf(transaction))) return 'subscriptions';
-
-  const mccLabel = getMerchantCategory(transaction.merchant_category_code);
-  if (mccLabel && MCC_LABEL_BUCKETS[mccLabel]) return MCC_LABEL_BUCKETS[mccLabel];
-  if (mccLabel) return 'other';
-
-  const label = transaction.merchant_category_label?.trim();
-  if (label) {
-    const match = LABEL_KEYWORD_BUCKETS.find(([pattern]) => pattern.test(label));
-    if (match) return match[1];
-  }
-  return 'other';
-};
+export {
+  getMccCategory,
+  getSpendingCategory,
+  type MatchedSubscriptionBrand,
+  matchSubscriptionBrand,
+  SPENDING_CATEGORIES,
+  type SpendingCategoryKey,
+  type SpendingCategoryMeta,
+} from '@/lib/utils/spendingCategories';
 
 /** Statuses that are money spent (or about to be). Declined and reversed are not. */
 const COUNTED_STATUSES = new Set(['approved', 'settled', 'pending', 'completed']);

@@ -186,6 +186,78 @@ describe('buildCashbackBreakdown', () => {
     expect(breakdown.footer).toBeUndefined();
   });
 
+  // A Grab ride billed under Rides used to read "Rides subscription · 20%" for
+  // an Ultra member: the flat subscription rate, on a category that pays 10%.
+  describe('a category charge', () => {
+    const ULTRA_RATES = [
+      { key: 'ai', label: 'AI', rate: 20 },
+      { key: 'streaming', label: 'Streaming', rate: 20 },
+      { key: 'rides', label: 'Rides', rate: 10 },
+      { key: 'airlines', label: 'Airlines', rate: 10 },
+    ];
+
+    const ride = (rewardsData: RewardsUserData) =>
+      buildCashbackBreakdown({
+        info: info({
+          amount: '+$1.05',
+          isSubscriptionDiscount: true,
+          subscriptionCategory: 'rides',
+        }),
+        cashback: row({
+          type: CashbackType.SubscriptionDiscount,
+          subscriptionCategory: 'rides',
+        }),
+        purchaseUsd: 10.52,
+        rewardsData,
+      });
+
+    it("quotes the category's own rate, not the flat subscription rate", () => {
+      const breakdown = ride({
+        ...rewards(RewardsTier.ULTRA, 20),
+        subscriptionCategoryRates: ULTRA_RATES,
+      });
+
+      expect(breakdown).toMatchObject({
+        isSubscription: true,
+        typeLabel: 'Rides',
+        rateLabel: '10%',
+        tierLabel: 'Ultra perk',
+      });
+    });
+
+    it('falls back to the design rate on a backend that sends no category list', () => {
+      expect(ride(rewards(RewardsTier.ULTRA, 20)).rateLabel).toBe('10%');
+    });
+
+    it('still calls a subscription a subscription', () => {
+      const breakdown = buildCashbackBreakdown({
+        info: info({ isSubscriptionDiscount: true, subscriptionCategory: 'ai' }),
+        cashback: row({ type: CashbackType.SubscriptionDiscount }),
+        purchaseUsd: 20,
+        rewardsData: {
+          ...rewards(RewardsTier.ULTRA, 20),
+          subscriptionCategoryRates: ULTRA_RATES,
+        },
+      });
+
+      expect(breakdown.typeLabel).toBe('AI subscription');
+      expect(breakdown.rateLabel).toBe('20%');
+    });
+
+    it('names no rate for a category the tier no longer earns on', () => {
+      const breakdown = ride({
+        ...rewards(RewardsTier.PRIME, 10),
+        subscriptionCategoryRates: [
+          { key: 'ai', label: 'AI', rate: 10 },
+          { key: 'rides', label: 'Rides', rate: 0 },
+        ],
+      });
+
+      expect(breakdown.rateLabel).toBeUndefined();
+      expect(breakdown.tierLabel).toBeUndefined();
+    });
+  });
+
   it('names the status when there is no figure yet, and skips the hold length without dates', () => {
     const breakdown = buildCashbackBreakdown({
       info: info({ amount: null }),

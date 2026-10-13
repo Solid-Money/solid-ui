@@ -7,13 +7,15 @@ import {
   isSpendDeploymentConfigured,
 } from '@/constants/spendModuleDeployments';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { track } from '@/lib/analytics';
 import { confirmCardSpendDeployment, getCardSpendDeployments } from '@/lib/api';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { CardSpendDeployment } from '@/lib/types';
+import { CardProvider, CardSpendDeployment } from '@/lib/types';
 import { publicClient } from '@/lib/wagmi';
 
 export const CARD_SPEND_DEPLOYMENTS_QUERY_KEY = 'cardSpendDeployments';
@@ -83,9 +85,9 @@ interface EuroSpendEnablement {
   /**
    * Whether to render the enable card.
    *
-   * True only when every one of these holds: the user is in the rollout cohort, the backend has a
-   * working Base deployment configured, this build has the addresses to execute against, and the
-   * backend has no record of this user already enabling it.
+   * True only when every one of these holds: the card on screen is a Wirex card, this build has
+   * the addresses to execute against, the backend has not switched the Base deployment off, and
+   * the backend has no record of this user already enabling it.
    */
   shouldOffer: boolean;
   /** The Base deployment as the backend describes it, once it has answered. */
@@ -98,6 +100,26 @@ interface EuroSpendEnablement {
   clearError: () => void;
   enable: () => void;
 }
+
+/**
+ * The user's spend-module deployments as the backend records them.
+ *
+ * Shared by the enable flow and the "Spendable" figure, so both read one cached answer to "has
+ * this user enabled Base" and cannot disagree about it.
+ */
+export const useCardSpendDeployments = () => {
+  const { user } = useUser();
+
+  return useQuery({
+    queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, user?.userId],
+    queryFn: getCardSpendDeployments,
+    enabled: !!user?.userId,
+    staleTime: STALE_MS,
+    // A gate that retries forever keeps the card hidden for the same length of time either way;
+    // one retry covers a transient blip without holding the query pending.
+    retry: 1,
+  });
+};
 
 /**
  * The "enable euro spending on Base" flow, end to end.
@@ -114,9 +136,23 @@ interface EuroSpendEnablement {
  * (`registerSafe` reverts `AlreadyRegistered` and there is no deregister), and a revert fails the
  * whole batch — so a user retrying after a partial success would be permanently stuck without this.
  *
- * ## Why the gate is the backend's record and not a chain read
+ * ## Who is offered it: decided here, from the card on screen
  *
- * `shouldOffer` comes from `spend-deployments`, which the backend serves from Mongo. A chain read
+ * Every Wirex cardholder, by the provider the card pane itself resolved — not by the backend's
+ * `cohortEnabled`. That flag asks whether *any* Wirex card row exists, which is a different
+ * question from what this screen is showing: an account on the backend's shared Rain test-card
+ * allowlist that also holds a Wirex card got "Enable euro spending" under a Rain card, beside the
+ * Rain-only Real-Time Funding row. Gating on the same provider the pane renders keeps the two
+ * consistent. The Base module serves Wirex authorizations only, so a Rain card is never offered it.
+ *
+ * `deployment.available` is still honoured, but only an explicit `false` hides the card: that is
+ * the backend's kill switch (`CASH_BASE_ENABLED=false`), and enabling against a deployment the
+ * backend has switched off would end in a confirm it refuses.
+ *
+ * ## Why "already enabled" is the backend's record and not a chain read
+ *
+ * Whether it is already enabled comes from `spend-deployments`, which the backend serves from
+ * Mongo. A chain read
  * here would mean a slow or failing Base RPC shows the enable card to someone who already enabled
  * it, and hands them a transaction that reverts. The chain is still authoritative for what the
  * transaction does — it is read below, immediately before the batch is built, and again by the
@@ -125,24 +161,16 @@ interface EuroSpendEnablement {
  * ## Note on the name
  *
  * The Base instance is **dollar-denominated**; EURC is a spendable asset within it and is
- * explicitly not collateral at launch, so nothing here lends against euros. The copy this powers
- * says "euro", which is what the user experiences — spending a euro balance — and is fine as long
- * as nobody reads the code and concludes there is a euro credit line.
+ * not collateral, so nothing here lends against euros — and lending is not planned. The copy this
+ * powers says "euro spending", which is exactly what the user gets: spending a euro balance.
  */
 export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const { user, safeAA } = useUser();
+  const { provider } = useCardProvider();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
 
-  const { data, isLoading } = useQuery({
-    queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, user?.userId],
-    queryFn: getCardSpendDeployments,
-    enabled: !!user?.userId,
-    staleTime: STALE_MS,
-    // A gate that retries forever keeps the card hidden for the same length of time either way;
-    // one retry covers a transient blip without holding the query pending.
-    retry: 1,
-  });
+  const { data, isLoading } = useCardSpendDeployments();
 
   const deployment = data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
 
@@ -276,8 +304,9 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to enable euro spending';
-      setError(message);
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to enable euro spending';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_FAILED, { error: message });
     },
   });
@@ -292,8 +321,9 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
 
   return {
     shouldOffer: Boolean(
-      data?.cohortEnabled &&
-      deployment?.available &&
+      provider === CardProvider.WIREX &&
+      data &&
+      deployment?.available !== false &&
       !deployment?.enabled &&
       isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT),
     ),

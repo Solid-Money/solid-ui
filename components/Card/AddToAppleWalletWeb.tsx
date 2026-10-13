@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getWebProvisioningToken } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { withRefreshToken } from '@/lib/utils';
 
 const SCRIPT_URL = process.env.EXPO_PUBLIC_APPLE_WEB_PROVISIONING_SCRIPT_URL ?? '';
@@ -48,7 +49,10 @@ export default function AddToAppleWalletWeb() {
         text2: 'Your card is now in Apple Wallet.',
       });
     } else if (r?.error) {
-      Toast.show({ type: 'error', text1: 'Could not add to Apple Wallet', text2: String(r.error) });
+      void showErrorToast(new Error(String(r.error)), {
+        action: 'add_to_wallet',
+        title: 'Couldn’t add your card to Apple Wallet',
+      });
     }
   }, []);
 

@@ -59,6 +59,7 @@ import {
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
   isProduction,
 } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import {
   CardProvider,
   DepositCategory,
@@ -805,11 +806,9 @@ export default function CardDepositInternalForm() {
         reset();
       } catch (error) {
         console.error('Bridge error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Bridge failed',
-          text2: error instanceof Error ? error.message : 'Unknown error occurred',
-          props: { badgeText: 'Onchain' },
+        void showFailureSheet(error, {
+          action: 'card_deposit',
+          details: { amount: String(data.amount) },
         });
       }
     },

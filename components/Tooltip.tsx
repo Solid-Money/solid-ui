@@ -10,6 +10,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 
 type TooltipClassNames = {
+  root?: string;
   content?: string;
   trigger?: string;
 };
@@ -69,9 +70,8 @@ const TooltipPopover = ({
   const getContent = () => {
     return (
       <Text
-        className="text-sm leading-5"
         style={{
-          maxWidth: 280,
+          maxWidth: 260,
           textAlign: 'left',
         }}
       >
@@ -81,7 +81,7 @@ const TooltipPopover = ({
   };
 
   return (
-    <Tooltip delayDuration={150}>
+    <Tooltip delayDuration={0} className={classNames?.root}>
       <TooltipTrigger asChild className={classNames?.trigger}>
         {trigger ? <View>{trigger}</View> : getTrigger()}
       </TooltipTrigger>

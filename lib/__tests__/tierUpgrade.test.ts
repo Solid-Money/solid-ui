@@ -11,6 +11,7 @@ import {
   formatUsdHeld,
   fuseForShares,
   fuseSharesForAmount,
+  isTierOnTrial,
   membershipDateLabel,
   nextPurchasableTier,
   remainingFuseForTier,
@@ -249,6 +250,41 @@ describe('nextPurchasableTier', () => {
         }),
       ),
     ).toBe(RewardsTier.ULTRA);
+  });
+});
+
+describe('isTierOnTrial', () => {
+  /** `currentTier` folds the trial in; `held` does not. */
+  it('is true for a tier the trial reaches and the user does not own', () => {
+    const onUltraTrial = membership({ currentTier: RewardsTier.ULTRA });
+
+    expect(isTierOnTrial(onUltraTrial, RewardsTier.ULTRA)).toBe(true);
+    expect(isTierOnTrial(onUltraTrial, RewardsTier.PRIME)).toBe(true);
+  });
+
+  it('is false for a tier the user owns', () => {
+    const ownsPrime = membership({
+      currentTier: RewardsTier.ULTRA,
+      offers: [
+        offer({ held: true }),
+        offer({ tier: RewardsTier.ULTRA, lockFuse: 400_000, annualFeeUsd: null }),
+      ],
+    });
+
+    expect(isTierOnTrial(ownsPrime, RewardsTier.PRIME)).toBe(false);
+    expect(isTierOnTrial(ownsPrime, RewardsTier.ULTRA)).toBe(true);
+  });
+
+  it('is false for a tier above the current one — that is an upgrade', () => {
+    expect(isTierOnTrial(membership({ currentTier: RewardsTier.PRIME }), RewardsTier.ULTRA)).toBe(
+      false,
+    );
+    expect(isTierOnTrial(membership(), RewardsTier.PRIME)).toBe(false);
+  });
+
+  it('is false with nothing to read', () => {
+    expect(isTierOnTrial(undefined, RewardsTier.PRIME)).toBe(false);
+    expect(isTierOnTrial(membership({ offers: [] }), RewardsTier.CORE)).toBe(false);
   });
 });
 

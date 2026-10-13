@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { EASE_OUT_EXPO } from '@/components/Card/NewCardDetails/heroMotion';
@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
 /**
- * Panel geometry, measured off the Figma control (25961:3490, 385 × 73 on the
+ * Panel geometry, measured off the Figma control (26974:12808, 385 × 73 on the
  * 419pt artboard). The pill sits 3pt inside the track on every edge, which is
  * what gives it its 67pt height.
  */
@@ -193,9 +193,14 @@ const styles = StyleSheet.create({
     top: CONTROL_INSET,
   },
   segment: { flex: 1, justifyContent: 'center' },
-  // 25pt name over a 14pt figure with 5 between, which is Figma's 13 / 43 pair
-  // once the block is centred in the 67pt pill.
-  labels: { alignItems: 'center', flex: 1, gap: 5, justifyContent: 'center' },
+  // Keep the name 10pt inside the pill and tighten the iOS spacer without
+  // reducing the text boxes that protect the glyphs from clipping.
+  labels: {
+    alignItems: 'center',
+    flex: 1,
+    gap: Platform.OS === 'ios' ? 3 : 5,
+    paddingTop: 10,
+  },
 });
 
 export default SpendModeSegmentedControl;

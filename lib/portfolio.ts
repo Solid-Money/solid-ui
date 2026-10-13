@@ -1,5 +1,6 @@
 import { formatUnits, zeroAddress } from 'viem';
 
+import { isDisplayStablecoin } from '@/constants/stablecoins';
 import { VAULTS } from '@/constants/vaults';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
 
@@ -13,6 +14,8 @@ export type PortfolioAsset = {
   networkCount: number;
   backsCredit: boolean;
   heldInWallet: boolean;
+  /** Grouped under Stablecoins; everything else that is not a vault share is Crypto. */
+  stable: boolean;
 };
 
 export const savingsUsdValue = (
@@ -64,6 +67,52 @@ export const bridgedShareValues = (tokens: TokenBalance[]) => {
   return values;
 };
 
+/**
+ * A vault's share token as the user holds it: wallet shares on every network (savings and
+ * bridged alike) plus shares escrowed as credit collateral. The wallet shares, largest first,
+ * are what the Earn row opens; escrowed shares have no coin page of their own.
+ */
+export const vaultShareHoldings = (
+  tokens: TokenBalance[],
+  collateral: TokenBalance[],
+  type: VaultType,
+) => {
+  const held = (list: TokenBalance[]) =>
+    list
+      .filter(
+        token =>
+          portfolioShareVaultType(token.contractAddress) === type &&
+          BigInt(token.balance || '0') > 0n,
+      )
+      .map(token => ({
+        token,
+        amount: Number(formatUnits(BigInt(token.balance), token.contractDecimals)),
+      }));
+  const wallet = held(tokens).sort((a, b) => b.amount - a.amount);
+  const escrowed = held(collateral);
+  const all = [...wallet, ...escrowed];
+  return {
+    walletTokens: wallet.map(item => item.token),
+    shareAmount: all.length ? all.reduce((sum, item) => sum + item.amount, 0) : undefined,
+    shareNetworkCount: new Set(all.map(item => item.token.chainId)).size,
+  };
+};
+
+/**
+ * The yield pill: per day once that reaches a cent, else per month, else nothing. A small
+ * balance would otherwise read "+<$0.01 / day".
+ */
+export const yieldEstimate = (
+  daily: number | undefined,
+  monthly: number | undefined,
+): { amount: number; period: 'day' | 'month' } | undefined => {
+  if (daily !== undefined && Number.isFinite(daily) && daily >= 0.01)
+    return { amount: daily, period: 'day' };
+  if (monthly !== undefined && Number.isFinite(monthly) && monthly >= 0.01)
+    return { amount: monthly, period: 'month' };
+  return undefined;
+};
+
 /** Only a curated commonId can merge ERC20s across networks, never a ticker alone. */
 export const portfolioAssetId = (token: TokenBalance): string =>
   token.commonId
@@ -113,6 +162,7 @@ export function groupPortfolioCash(
           networkCount: 1,
           backsCredit,
           heldInWallet: !backsCredit,
+          stable: isDisplayStablecoin(token.contractTickerSymbol),
         });
       }
     }
@@ -179,6 +229,24 @@ export const portfolioTotals = ({
     netBalance: assets.total === undefined ? undefined : assets.total - (debt ?? 0),
     isComplete: complete && assets.complete && debt !== undefined,
   };
+};
+
+const formatDecimals = (amount: number, max: number, min: number) =>
+  new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: max,
+    minimumFractionDigits: Math.min(min, max),
+  }).format(amount);
+
+/**
+ * Token quantities kept short: stablecoins to the cent; other tokens to 4 decimals, 2 above
+ * 1,000, and about 4 significant digits below 1 (0.0091 ETH).
+ */
+export const formatTokenAmount = (amount: number, stable = false): string => {
+  if (!Number.isFinite(amount) || amount <= 0) return '0';
+  if (stable || amount >= 1000) return amount < 0.01 ? '<0.01' : formatDecimals(amount, 2, 2);
+  if (amount >= 1) return formatDecimals(amount, 4, 2);
+  const decimals = Math.min(8, Math.ceil(-Math.log10(amount)) + 3);
+  return formatDecimals(amount, decimals, 0);
 };
 
 /** The Cash group's figure: wallet cash plus a card that holds its own balance. */

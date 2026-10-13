@@ -25,12 +25,20 @@ interface RewardsUpgradeState {
    */
   peak?: RewardsTier;
   success?: RewardsUserData;
+  /**
+   * While set, a tier purchase — a lock or an annual fee — has landed and the
+   * rewards payload is polled until the new tier shows up or this passes.
+   *
+   * Only a purchase arms it. Savings deposits, yield-boost claims and balance
+   * events used to as well, back when FUSE held in savings could move a tier;
+   * none of them can now, so the window they opened always ran out — and
+   * ended on a "no higher tier has been confirmed" notice over a screen where
+   * the user had only claimed a payout.
+   */
   pendingUntil?: number;
-  savingsConfirmed: boolean;
-  timedOut: boolean;
   selectAccount: (userId?: string) => void;
   observe: (userId: string, session: number, data: RewardsUserData) => void;
-  savingsChanged: (userId: string, confirmedSavings?: boolean) => void;
+  tierPurchased: (userId: string) => void;
   finishWaiting: () => void;
   dismiss: () => void;
 }
@@ -47,8 +55,6 @@ export const REWARDS_UPGRADE_CLEARED_STATE = {
   peak: undefined,
   success: undefined,
   pendingUntil: undefined,
-  timedOut: false,
-  savingsConfirmed: false,
 } as const;
 
 // Transient and global: one popup per observed promotion, even when several
@@ -56,8 +62,6 @@ export const REWARDS_UPGRADE_CLEARED_STATE = {
 export const useRewardsUpgradeStore = create<RewardsUpgradeState>((set, get) => ({
   userId: selectedRewardsUserId(),
   session: 0,
-  timedOut: false,
-  savingsConfirmed: false,
   selectAccount: userId => {
     if (userId === get().userId) return;
     set({ userId, session: get().session + 1, ...REWARDS_UPGRADE_CLEARED_STATE });
@@ -74,20 +78,18 @@ export const useRewardsUpgradeStore = create<RewardsUpgradeState>((set, get) => 
         : state.success?.currentTier === data.currentTier
           ? state.success
           : undefined,
-      ...(promoted ? { pendingUntil: undefined, timedOut: false, savingsConfirmed: false } : {}),
+      ...(promoted ? { pendingUntil: undefined } : {}),
     });
   },
-  savingsChanged: (userId, confirmedSavings = true) => {
+  tierPurchased: userId => {
     if (get().userId !== userId) return;
-    set({
-      pendingUntil: get().pendingUntil ?? Date.now() + REWARDS_RECONCILIATION_MS,
-      savingsConfirmed: get().savingsConfirmed || confirmedSavings,
-      timedOut: false,
-    });
+    set({ pendingUntil: get().pendingUntil ?? Date.now() + REWARDS_RECONCILIATION_MS });
   },
-  finishWaiting: () =>
-    set({ pendingUntil: undefined, timedOut: get().savingsConfirmed, savingsConfirmed: false }),
-  dismiss: () => set({ success: undefined, timedOut: false }),
+  // Ends quietly. A purchase is confirmed on chain before this opens, so a
+  // window that runs out means the tier is slow to show, not that it failed —
+  // and the tier it bought may be one the user already had (keeping a trial).
+  finishWaiting: () => set({ pendingUntil: undefined }),
+  dismiss: () => set({ success: undefined }),
 }));
 
 useUserStore.subscribe(() => {

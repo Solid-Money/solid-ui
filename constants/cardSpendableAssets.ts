@@ -1,4 +1,4 @@
-import { fuse } from 'viem/chains';
+import { base, fuse } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -49,6 +49,14 @@ export interface CardSpendableAsset {
    * build from counting the production vault or vice versa.
    */
   addresses?: string[];
+  /**
+   * A limit on which purchases this asset pays for, for the tooltip — "for euro purchases".
+   *
+   * Only for an asset the card draws on conditionally. EURC on Base pays euro purchases only:
+   * anything else is routed to Fuse, so without this the sentence would promise the user their
+   * EURC covers a purchase in dollars.
+   */
+  qualifier?: string;
 }
 
 /**
@@ -59,7 +67,9 @@ export interface CardSpendableAsset {
  * A Wirex purchase is paid by Wirex out of its own Master Account and reimbursed by
  * debiting the user's Safe on Fuse through `SolidCashModule` at settlement, so any of
  * these held on another chain is not reachable and is deliberately left out —
- * counting it would show the user spending power they do not have.
+ * counting it would show the user spending power they do not have. The one
+ * exception is EURC on Base once euro spending is enabled — see
+ * {@link baseEurcSpendableAsset}.
  *
  * This list must stay in step with the module's on-chain allowlist, which is admin
  * configuration rather than a deploy. An asset allowlisted on-chain but missing here
@@ -75,6 +85,28 @@ export const CARD_SPENDABLE_ASSETS: CardSpendableAsset[] = [
 ];
 
 /**
+ * EURC on Base, for a cardholder who has enabled euro spending.
+ *
+ * Not in {@link CARD_SPENDABLE_ASSETS}, because it is not spendable for everyone: the Base
+ * instance has to be enabled first, and until it is, counting EURC would quote spending power
+ * the card declines. `cardSpendableAssetsFor` adds it once the backend records the enablement.
+ *
+ * The address is passed in rather than read from config, so the backend's allowlist for the
+ * instance decides it — the same reason every entry above is matched on address.
+ */
+export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset => ({
+  symbol: 'EURC',
+  chainIds: [base.id],
+  addresses: addresses.map(address => address.toLowerCase()),
+  qualifier: 'for euro purchases',
+});
+
+const joinWithAnd = (items: string[]): string =>
+  items.length <= 1
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
+/**
  * The spendable set in words, for the "Spendable" tooltip — "USDC, USDT and soUSD
  * on Fuse".
  *
@@ -84,25 +116,37 @@ export const CARD_SPENDABLE_ASSETS: CardSpendableAsset[] = [
  * over-reporting failure the list's own doc warns about, just in prose: the user
  * is told they can spend something, and the terminal disagrees.
  *
- * Chain-name resolution is deliberately narrow. Every entry is Fuse-only today and
- * the settlement mechanism is chain-bound, so a multi-chain entry would be a change
- * worth writing copy for rather than one to interpolate blindly — an entry with no
- * `chainIds`, or with more than one, contributes its symbol and no network clause.
+ * Grouped by network, so a list spanning two chains still says where each asset is
+ * spent from — "USDC, USDT and soUSD on Fuse and EURC on Base for euro purchases".
+ * An entry with no `chainIds`, or with more than one, contributes its symbol and no
+ * network clause: the settlement mechanism is chain-bound, so such an entry would be
+ * a change worth writing copy for rather than one to interpolate blindly.
  */
 export const describeCardSpendableAssets = (
   assets: CardSpendableAsset[] = CARD_SPENDABLE_ASSETS,
 ): string => {
-  const symbols = assets.map(asset => asset.symbol).filter((symbol): symbol is string => !!symbol);
-  if (!symbols.length) return '';
+  const groups = new Map<string, { symbols: string[]; chainName?: string; qualifier?: string }>();
 
-  const list =
-    symbols.length === 1
-      ? symbols[0]
-      : `${symbols.slice(0, -1).join(', ')} and ${symbols[symbols.length - 1]}`;
+  for (const asset of assets) {
+    if (!asset.symbol) continue;
 
-  const chainIds = new Set(assets.flatMap(asset => asset.chainIds ?? []));
-  const isSingleChain = chainIds.size === 1 && assets.every(asset => asset.chainIds?.length === 1);
-  const chainName = isSingleChain ? BRIDGE_TOKENS[[...chainIds][0]]?.name : undefined;
+    const chainId = asset.chainIds?.length === 1 ? asset.chainIds[0] : undefined;
+    const key = `${chainId ?? ''}|${asset.qualifier ?? ''}`;
+    const group = groups.get(key) ?? {
+      symbols: [],
+      chainName: chainId !== undefined ? BRIDGE_TOKENS[chainId]?.name : undefined,
+      qualifier: asset.qualifier,
+    };
 
-  return chainName ? `${list} on ${chainName}` : list;
+    group.symbols.push(asset.symbol);
+    groups.set(key, group);
+  }
+
+  return joinWithAnd(
+    [...groups.values()].map(group =>
+      [joinWithAnd(group.symbols), group.chainName && `on ${group.chainName}`, group.qualifier]
+        .filter(Boolean)
+        .join(' '),
+    ),
+  );
 };

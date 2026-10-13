@@ -9,6 +9,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
+import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { resolveRoutingCountry } from '@/lib/kycProviderRouting';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
@@ -22,8 +23,20 @@ export type SessionState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'unavailable'; message: string }
-  | { phase: 'ready'; verificationUrl: string; sessionToken: string }
-  | { phase: 'started' }
+  | {
+      phase: 'ready';
+      verificationUrl: string;
+      sessionToken: string;
+      /** Which Didit session this is, so the poll can tell it from an older one. */
+      sessionId?: string;
+    }
+  | { phase: 'started'; sessionId?: string }
+  /**
+   * The user closed the SDK without submitting. Terminal, so re-entering the
+   * screen starts a fresh session (see `useReinitOnRefocus`) instead of showing
+   * "Verification opened" over an SDK that is no longer open.
+   */
+  | { phase: 'cancelled' }
   /**
    * Hand-off: the user is being routed off /kyc. `destination` is retained so a
    * navigation that does not land can be retried, and so the interstitial can
@@ -209,6 +222,7 @@ export function useDiditSession() {
         phase: 'ready',
         verificationUrl,
         sessionToken: res.session_token,
+        sessionId: res.session_id,
       });
     } catch (e: any) {
       // KYC_ALREADY_EXISTS (409): the user already has an established KYC
@@ -267,7 +281,9 @@ export function useDiditSession() {
         Toast.show({
           type: 'error',
           text1: 'Deposit required first',
-          text2: e?.message || 'Add funds to your savings to start verification.',
+          text2: isSafeServerMessage(e?.message)
+            ? e.message
+            : 'Add funds to your savings to start verification.',
           props: { badgeText: '' },
         });
         router.replace(String(path.CARD_ACTIVATE) as any);
@@ -287,15 +303,14 @@ export function useDiditSession() {
       if (isUnavailable) {
         setSession({
           phase: 'unavailable',
-          message:
-            e?.message ||
-            'Identity verification is temporarily unavailable. Please try again shortly.',
+          message: isSafeServerMessage(e?.message)
+            ? e.message
+            : 'Identity verification is unavailable right now. Try again shortly.',
         });
         return;
       }
-      const message = e?.message || 'Failed to create verification session';
-      setSession({ phase: 'error', message });
-      Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
+      setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
+      void showErrorToast(e, { action: 'kyc' });
     }
   }, [debugState, kycFlow, redirectBasedOnKycStatus, router]);
 
@@ -305,7 +320,11 @@ export function useDiditSession() {
     // a while, and only the former should be nudged to finish.
     const userId = useUserStore.getState().users.find(user => user.selected)?.userId;
     if (userId) useKycStore.getState().markKycStarted(userId);
-    setSession({ phase: 'started' });
+    setSession(previous =>
+      previous.phase === 'ready'
+        ? { phase: 'started', sessionId: previous.sessionId }
+        : { phase: 'started' },
+    );
   }, []);
 
   const onVerificationComplete = useCallback(() => {
@@ -353,6 +372,10 @@ export function useDiditSession() {
    * SDK and trap them in a loop, so send them back to the screen that started KYC.
    */
   const onVerificationCancelled = useCallback(() => {
+    // Mark the session spent before leaving. The screen is frozen, not
+    // unmounted, so whatever phase it holds now is what the next visit finds —
+    // and `started` read as "still in flight", so the SDK was never relaunched.
+    setSession({ phase: 'cancelled' });
     if (router.canGoBack()) {
       router.back();
       return;
@@ -365,15 +388,20 @@ export function useDiditSession() {
    * /kyc and shows the error UI with a Try-again button — distinct from Declined, which is a
    * KYC outcome we want surfaced on /card/activate alongside the warnings.
    */
+  // `message` is the SDK's own text: reported, never shown.
   const onVerificationError = useCallback((message: string) => {
-    Toast.show({
-      type: 'error',
-      text1: 'Verification failed',
-      text2: message,
-      props: { badgeText: '' },
+    void showErrorToast(new Error(message), {
+      action: 'kyc',
+      title: 'Verification didn’t finish',
+      tags: { kyc_provider: 'didit' },
     });
-    setSession({ phase: 'error', message });
+    setSession({
+      phase: 'error',
+      message: 'Verification didn’t finish. Try again, or contact support if it keeps happening.',
+    });
   }, []);
+
+  const startedSessionId = session.phase === 'started' ? session.sessionId : undefined;
 
   // Poll for verification status while SDK is active
   useEffect(() => {
@@ -383,6 +411,17 @@ export function useDiditSession() {
       try {
         const status = await withRefreshToken(() => getDiditVerificationStatus());
         if (!status) return;
+
+        // Only this session's own outcome may end it. The endpoint answers from
+        // the user's Didit record, which can already hold a finished
+        // verification that is not this one — and a finished one is exactly
+        // what this poll treats as "done". That is how a Wirex cardholder
+        // opening a Rain virtual account was congratulated on a check they had
+        // not started and sent off the widget about five seconds after it
+        // opened: their approved card KYC was sitting in that answer.
+        if (startedSessionId && status.sessionId && status.sessionId !== startedSessionId) {
+          return;
+        }
 
         // Backend kycStatus is the canonical source — it reflects the full
         // pipeline (Didit + Rain) so check it before the Didit-only
@@ -406,6 +445,7 @@ export function useDiditSession() {
     return () => clearInterval(interval);
   }, [
     session.phase,
+    startedSessionId,
     onVerificationComplete,
     onVerificationDeclined,
     onVerificationError,

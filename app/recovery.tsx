@@ -1,6 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -11,6 +18,7 @@ import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopHero } from '@/components/Onboarding';
+import PasskeySupportGate from '@/components/PasskeySupportGate';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
@@ -20,7 +28,9 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors';
 import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
 import { selectLastKnownIdentity, useUserStore } from '@/store/useUserStore';
 
 // Validation schemas
@@ -71,7 +81,18 @@ const SESSION_MARGIN_MS = 60 * 1000;
 
 const SESSION_EXPIRED_MESSAGE = 'Your recovery session expired. Request a new code to continue.';
 
-export default function RecoveryPasskey() {
+// Recovery ends by adding a passkey, so a browser that cannot create one is
+// stopped before the person asks for a code. Recovery links arrive by email,
+// and mail apps open them in their own browser.
+export default function Recovery() {
+  return (
+    <PasskeySupportGate>
+      <RecoveryPasskey />
+    </PasskeySupportGate>
+  );
+}
+
+function RecoveryPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const { createApiKeyPair, addPasskey, storeSession, httpClient, session } = useTurnkey();
@@ -120,7 +141,10 @@ export default function RecoveryPasskey() {
       setStep(STEPS.OTP_VERIFY);
     } catch (err: any) {
       console.error('Failed to send OTP:', err);
-      setApiError(err?.message || 'Failed to send verification code. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to send verification code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -157,10 +181,16 @@ export default function RecoveryPasskey() {
 
         // Store recovery data for passkey creation
         setRecoveryData(verifyResponse);
+        // The add-passkey step has no field to type in, so the code's keyboard
+        // has nothing left to do but sit over the "Create passkey" button.
+        Keyboard.dismiss();
         setStep(STEPS.ADD_PASSKEY);
       } catch (err: any) {
         console.error('Failed to verify OTP:', err);
-        setApiError(err?.message || 'Invalid verification code. Please try again.');
+        setApiError(
+          getUserErrorMessage(err, { action: 'account' }) ||
+            'Invalid verification code. Please try again.',
+        );
       } finally {
         setLoading(false);
       }
@@ -264,8 +294,20 @@ export default function RecoveryPasskey() {
       // exists on `cause`. Report it, or this step stays undiagnosable: the
       // signup passkey flow is instrumented and this one was not, so none of
       // these failures reached Sentry at all.
+      //
+      // A dismissed prompt is `info`. A phone that cannot hold the passkey is a
+      // warning, and so is an expired recovery session, which sends the
+      // person back for a new code below.
+      const passkeyError = getPasskeyErrorDetails(err);
+      const sessionExpired = isTurnkeySessionError(err);
       Sentry.captureException(err, {
-        tags: { type: 'recovery_passkey_creation_error', turnkey_error_code: err?.code },
+        level: sessionExpired ? 'warning' : passkeyError.severity,
+        fingerprint: ['{{ default }}', sessionExpired ? 'session_expired' : passkeyError.kind],
+        tags: {
+          type: 'recovery_passkey_creation_error',
+          turnkey_error_code: err?.code,
+          passkey_error_kind: passkeyError.kind,
+        },
         extra: {
           identifier,
           turnkeyUserId: recoveryData.userId,
@@ -275,12 +317,15 @@ export default function RecoveryPasskey() {
         },
       });
 
-      if (isTurnkeySessionError(err)) {
+      if (sessionExpired) {
         sendBackForNewCode();
         return;
       }
 
-      setApiError(err?.message || 'Failed to create passkey. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to create passkey. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -311,7 +356,10 @@ export default function RecoveryPasskey() {
       setOtpId(response.otpId);
     } catch (err: any) {
       console.error('Failed to resend OTP:', err);
-      setApiError(err?.message || 'Failed to resend code. Please try again.');
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to resend code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -352,15 +400,30 @@ export default function RecoveryPasskey() {
   if (!isDesktop) {
     return (
       <SafeAreaView className="flex-1 bg-background text-foreground">
-        <View className="flex-1">
+        {/* Every step but the last opens the keyboard, and the form sits
+            centred - right where the keyboard lands. Android draws edge-to-edge
+            now, so it no longer resizes the window for the keyboard either. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          enabled={Platform.OS !== 'web'}
+          className="flex-1"
+        >
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
             <BackButton onPress={handleBack} />
           </View>
 
-          {/* Content - centered vertically */}
-          <View className="flex-1 items-center justify-center px-6 pb-8">{stepContent}</View>
-        </View>
+          {/* Content - centered vertically, scrollable once the keyboard leaves
+              too little room for the whole form */}
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="flex-grow items-center justify-center px-6 pb-8"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {stepContent}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }

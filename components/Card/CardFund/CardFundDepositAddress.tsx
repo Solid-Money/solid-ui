@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ImageSourcePropType, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, ImageSourcePropType, Pressable, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -18,6 +18,7 @@ import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
+import { openHelpLink } from '@/lib/help/links';
 import { CardProvider, DetectedDirectDepositResponse } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
 
@@ -137,7 +138,7 @@ const CardFundDepositAddress = ({
 
       <Pressable
         className="flex-row items-center justify-center gap-x-1 web:hover:opacity-70"
-        onPress={() => Linking.openURL(CARD_FUND_LEARN_URL)}
+        onPress={() => openHelpLink(CARD_FUND_LEARN_URL)}
       >
         <Text className="text-sm text-white">Learn about deposits</Text>
         <ChevronRight color="white" size={16} />

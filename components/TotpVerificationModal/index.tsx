@@ -8,7 +8,9 @@ import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
+import { LOST_AUTHENTICATOR_SUPPORT_MESSAGE } from '@/constants/support';
 import { cn } from '@/lib/utils';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 const totpSchema = z.object({
   otpCode: z.string().regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
@@ -143,7 +145,8 @@ const TotpInput: React.FC<{
 const TotpVerificationModalContent: React.FC<{
   onVerify: (code: string) => Promise<void>;
   onCancel?: () => void;
-}> = ({ onVerify, onCancel }) => {
+  onLostAuthenticator: () => void;
+}> = ({ onVerify, onCancel, onLostAuthenticator }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string>('');
 
@@ -236,6 +239,19 @@ const TotpVerificationModalContent: React.FC<{
             <Text className="text-base font-bold text-white">Cancel</Text>
           </Button>
         )}
+        {/* The only way out for someone without their authenticator: the app
+            cannot turn 2FA off without a code, so support resets it. */}
+        <Pressable
+          onPress={onLostAuthenticator}
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Lost access to your authenticator app? Contact support"
+          className="items-center py-1 active:opacity-70 web:hover:opacity-80"
+        >
+          <Text className="text-center text-sm font-medium text-[#ACACAC] underline">
+            Lost access to your authenticator app?
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -247,6 +263,15 @@ export const TotpVerificationModal: React.FC<TotpVerificationModalProps> = ({
   onVerify,
   onCancel,
 }) => {
+  // Abandon what this code was for before opening the chat: a support
+  // conversation can take a while, and the transaction waiting behind this
+  // prompt should not be left hanging on it.
+  const handleLostAuthenticator = useCallback(() => {
+    if (onCancel) onCancel();
+    else onOpenChange(false);
+    openSupportDrawer(LOST_AUTHENTICATOR_SUPPORT_MESSAGE);
+  }, [onCancel, onOpenChange]);
+
   if (Platform.OS === 'web') {
     return (
       <Dialog open={open} onOpenChange={onCancel}>
@@ -255,7 +280,11 @@ export const TotpVerificationModal: React.FC<TotpVerificationModalProps> = ({
             <DialogTitle className="sr-only">Verify Two-Factor Authentication</DialogTitle>
           </DialogHeader>
           <View className="p-6">
-            <TotpVerificationModalContent onVerify={onVerify} onCancel={onCancel} />
+            <TotpVerificationModalContent
+              onVerify={onVerify}
+              onCancel={onCancel}
+              onLostAuthenticator={handleLostAuthenticator}
+            />
           </View>
         </DialogContent>
       </Dialog>
@@ -282,7 +311,11 @@ export const TotpVerificationModal: React.FC<TotpVerificationModalProps> = ({
       contentKey="totp-verification-modal"
     >
       <View className="p-6">
-        <TotpVerificationModalContent onVerify={onVerify} onCancel={onCancel} />
+        <TotpVerificationModalContent
+          onVerify={onVerify}
+          onCancel={onCancel}
+          onLostAuthenticator={handleLostAuthenticator}
+        />
       </View>
     </ResponsiveModal>
   );

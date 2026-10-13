@@ -12,6 +12,7 @@ import {
   CARD_FUND_MOVE_COPY,
   getCardFundTokenIcon,
   WIREX_CARD_FUND_SECTIONS,
+  WIREX_CARD_FUND_TOKENS,
 } from '@/components/Card/CardFund/constants';
 import {
   useMovableHoldings,
@@ -76,6 +77,11 @@ export interface WirexCardFundModalProps {
  * and the backend resolves which one the cardholder has to decide where the
  * funds go (the Rain card on Base, or this cardholder's Safe on Fuse, where the
  * card spends from).
+ *
+ * EURC is offered beside the dollar stablecoins, to Wirex cardholders only - a
+ * Rain card cannot spend from the Safe. The same address takes it, but
+ * the backend delivers it as EURC to the cardholder's Safe on Base, which is
+ * where the Base spend-module instance sells it for euro purchases.
  *
  * The local-currency rows are offered too, and for the same reason: TransFi has
  * no USDC-on-Fuse entry, so the backend delivers the bought USDC to that same
@@ -297,6 +303,7 @@ export default function WirexCardFundModal({
       return (
         <CardFundOptions
           onTokenPress={handleTokenPress}
+          tokens={WIREX_CARD_FUND_TOKENS}
           onLocalCurrencyPress={handleLocalCurrencyPress}
           onMoveFromSavingsPress={handleMoveFromWalletPress}
           sections={WIREX_CARD_FUND_SECTIONS}

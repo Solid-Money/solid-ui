@@ -1,7 +1,9 @@
 /// <reference types="jest" />
 
+import { track as amplitudeTrack } from '@amplitude/analytics-react-native';
+
 import { track } from '@/lib/analytics';
-import { reportError } from '@/lib/telemetry/reportError';
+import { isErrorIngestEnabled } from '@/lib/telemetry/errorIngestQueue';
 
 jest.mock('@amplitude/analytics-react-native', () => ({
   add: jest.fn(),
@@ -34,56 +36,50 @@ jest.mock('@/lib/utils/utils', () => ({
   sanitize: (value: unknown) => value,
   toTitleCase: (word: string) => word.charAt(0).toUpperCase() + word.slice(1),
 }));
-jest.mock('@/lib/telemetry/reportError', () => ({ reportError: jest.fn() }));
+jest.mock('@/lib/telemetry/errorIngestQueue', () => ({
+  isErrorIngestEnabled: jest.fn(() => true),
+}));
 
-const mockReportError = reportError as jest.MockedFunction<typeof reportError>;
+const mockAmplitudeTrack = amplitudeTrack as jest.MockedFunction<typeof amplitudeTrack>;
+const mockIngestEnabled = isErrorIngestEnabled as jest.MockedFunction<typeof isErrorIngestEnabled>;
 
-describe('track() → Errors page', () => {
+const sentProps = () => mockAmplitudeTrack.mock.calls[0]?.[1] as Record<string, unknown>;
+
+describe('track() → Errors page flag', () => {
   const dev = (global as any).__DEV__;
 
   beforeEach(() => {
     (global as any).__DEV__ = false;
-    mockReportError.mockClear();
+    mockAmplitudeTrack.mockClear();
+    mockIngestEnabled.mockReturnValue(true);
   });
 
   afterEach(() => {
     (global as any).__DEV__ = dev;
   });
 
-  it('mirrors an error event with its Amplitude name and the call-site params', () => {
-    track('deposit_error', { error: 'boom', clientTxId: 'tx-1' });
-    expect(mockReportError).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'flow',
-        flow: 'deposit',
-        amplitudeEvent: 'Deposit Error',
-        message: 'boom',
-        refs: { clientTxId: 'tx-1' },
-      }),
-    );
-  });
-
-  it('still mirrors it when Amplitude is opted out for that event', () => {
-    track('card_activation_failed', { error: 'boom' }, { amplitude: false });
-    expect(mockReportError).toHaveBeenCalledWith(
-      expect.objectContaining({ amplitudeEvent: 'Card Activation Failed', flow: 'card' }),
-    );
-  });
-
-  it('leaves error_boundary to the boundary, so a crash is reported once', () => {
-    track('error_boundary', { message: 'boom' });
-    expect(mockReportError).not.toHaveBeenCalled();
-  });
-
-  it('ignores events that are not failures', () => {
-    track('deposit_completed', {});
-    track('deposit_cancelled', {});
-    expect(mockReportError).not.toHaveBeenCalled();
-  });
-
-  it('sends nothing from a dev build', () => {
-    (global as any).__DEV__ = true;
+  it('flags a failure event so the Errors page does not import it twice', () => {
     track('deposit_error', { error: 'boom' });
-    expect(mockReportError).not.toHaveBeenCalled();
+    expect(mockAmplitudeTrack).toHaveBeenCalledWith(
+      'Deposit Error',
+      expect.objectContaining({ error: 'boom', errors_reported_live: true }),
+    );
+  });
+
+  it('leaves other events alone', () => {
+    track('deposit_completed', {});
+    expect(sentProps()).not.toHaveProperty('errors_reported_live');
+  });
+
+  it('does not flag when this build is not reporting', () => {
+    mockIngestEnabled.mockReturnValue(false);
+    track('swap_failed', {});
+    expect(sentProps()).not.toHaveProperty('errors_reported_live');
+  });
+
+  it('never changes the caller’s params', () => {
+    const params = { error: 'boom' };
+    track('send_failed', params);
+    expect(params).toEqual({ error: 'boom' });
   });
 });

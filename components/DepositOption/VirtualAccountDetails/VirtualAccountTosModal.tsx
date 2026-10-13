@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { BadgeCheck, Check } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCreateOnrampAutomation, useOnrampAutomation } from '@/hooks/useOnrampAutomation';
 import { track } from '@/lib/analytics';
-import { RainApplicationStatus } from '@/lib/types';
+import { openHelpLink } from '@/lib/help/links';
+import { isVirtualAccountRainApproved } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const underlineProps = {
@@ -37,7 +38,7 @@ export const VirtualAccountTosModal = () => {
   const { data: cardStatus } = useCardStatus();
   const createMutation = useCreateOnrampAutomation();
   const [agreed, setAgreed] = useState(false);
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const isRainApproved = isVirtualAccountRainApproved(cardStatus);
 
   useEffect(() => {
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_TOS_VIEWED);
@@ -118,7 +119,7 @@ export const VirtualAccountTosModal = () => {
             inline
             {...underlineProps}
             onPress={() =>
-              Linking.openURL(
+              openHelpLink(
                 'https://support.solid.xyz/en/articles/15324239-solid-virtual-account-user-terms-of-service',
               )
             }

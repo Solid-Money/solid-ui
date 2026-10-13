@@ -1,28 +1,27 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
-import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
 import { Wallet } from 'lucide-react-native';
-import { formatUnits } from 'viem';
-import { fuse } from 'viem/chains';
-import { useBalance } from 'wagmi';
 
 import Max from '@/components/Max';
 import SwapTokenSelectorModal from '@/components/TokenSelector/SwapTokenSelectorModal';
 import { Text } from '@/components/ui/text';
+import { CHAIN_NAMES } from '@/constants/chains';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { SwapAsset } from '@/lib/types/lifi-swap';
 import { formatNumber } from '@/lib/utils';
 
 interface TokenCardProps {
-  handleTokenSelection: (token: Currency) => void;
+  handleTokenSelection: (asset: SwapAsset) => void;
   handleValueChange?: (value: string) => void;
   handleMaxValue?: () => void;
   value: string;
-  currency: Currency | null | undefined;
-  otherCurrency: Currency | null | undefined;
+  asset: SwapAsset | undefined;
+  otherAsset: SwapAsset | undefined;
+  /** In human units. Undefined while it loads. */
+  balance: number | undefined;
   fiatValue?: number;
-  priceImpact?: Percent;
   showMaxButton?: boolean;
   showBalance?: boolean;
   showNativeToken?: boolean;
@@ -36,8 +35,9 @@ const TokenCard: React.FC<TokenCardProps> = ({
   handleValueChange,
   handleMaxValue,
   value,
-  currency,
-  otherCurrency,
+  asset,
+  otherAsset,
+  balance,
   fiatValue,
   showMaxButton,
   showBalance = true,
@@ -58,42 +58,29 @@ const TokenCard: React.FC<TokenCardProps> = ({
       hasTrackedAmountEntry.current = true;
       track(TRACKING_EVENTS.SWAP_AMOUNT_ENTRY_STARTED, {
         field: title || 'unknown',
-        currency_symbol: currency?.symbol,
+        currency_symbol: asset?.symbol,
       });
     }
-  }, [value, disabled, title, currency?.symbol]);
+  }, [value, disabled, title, asset?.symbol]);
 
   // Track token selector opened
   useEffect(() => {
     if (open) {
       track(TRACKING_EVENTS.SWAP_TOKEN_SELECTOR_OPENED, {
         field: title || 'unknown',
-        current_currency: currency?.symbol,
+        current_currency: asset?.symbol,
+        current_chain_id: asset?.chainId,
       });
     }
-  }, [open, title, currency?.symbol]);
+  }, [open, title, asset?.symbol, asset?.chainId]);
 
-  const { data: balance, isLoading: isBalanceLoading } = useBalance({
-    address: account,
-    token: currency?.isNative ? undefined : (currency?.wrapped.address as `0x${string}`),
-    query: {
-      enabled: true,
-    },
-    chainId: fuse.id,
-  });
-
-  const balanceValue = useMemo(() => {
-    if (isBalanceLoading || !balance) return 0;
-    const value = Number(formatUnits(balance.value, currency?.decimals || 18));
-    return isNaN(value) ? 0 : value;
-  }, [balance, isBalanceLoading, currency?.decimals]);
+  const isBalanceLoading = balance === undefined;
+  const balanceValue = balance && !isNaN(balance) ? balance : 0;
 
   const balanceString = useMemo(() => {
     if (isBalanceLoading) return '...';
-    if (!balance) return '0.00';
-    const formattedValue = formatNumber(balanceValue);
-    return `${formattedValue} ${currency?.symbol}`;
-  }, [balance, isBalanceLoading, balanceValue, currency?.symbol]);
+    return `${formatNumber(balanceValue)} ${asset?.symbol ?? ''}`;
+  }, [isBalanceLoading, balanceValue, asset?.symbol]);
 
   const handleInput = useCallback(
     (inputValue: string) => {
@@ -116,8 +103,15 @@ const TokenCard: React.FC<TokenCardProps> = ({
     <View className="flex w-full flex-col gap-3">
       {title && (
         <View className="flex-row items-center justify-between gap-2 px-1">
-          <Text className="text-base font-medium tracking-wide text-white/70">{title}</Text>
-          {currency && account && (
+          <View className="flex-row items-center gap-2">
+            <Text className="text-base font-medium tracking-wide text-white/70">{title}</Text>
+            {asset && (
+              <Text className="text-sm font-medium text-white/40">
+                {CHAIN_NAMES[asset.chainId] ?? ''}
+              </Text>
+            )}
+          </View>
+          {asset && account && (
             <View className="flex-row items-center gap-2">
               {showBalance && (
                 <View className="flex-row items-center gap-1.5">
@@ -176,8 +170,8 @@ const TokenCard: React.FC<TokenCardProps> = ({
           open={open}
           setOpen={setOpen}
           onSelect={handleTokenSelection}
-          currentCurrency={currency}
-          otherCurrency={otherCurrency}
+          currentAsset={asset}
+          otherAsset={otherAsset}
           showNativeToken={showNativeToken}
         />
       </View>

@@ -19,6 +19,7 @@ import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { sanitizeTechnicalMessage, showFailureSheet } from '@/lib/errors';
 import {
   CardDepositProcessingStatus,
   CardProvider,
@@ -187,14 +188,12 @@ const DepositToCard = () => {
         amount: Number(amount),
         token_symbol: selectedToken?.contractTickerSymbol,
         chain_id: selectedToken?.chainId,
-        error_message: error instanceof Error ? error.message : String(error),
+        error_message: sanitizeTechnicalMessage(error),
       });
 
-      Toast.show({
-        type: 'error',
-        text1: 'Deposit failed',
-        text2: 'Please try again',
-        props: { badgeText: 'Onchain' },
+      void showFailureSheet(error, {
+        action: 'card_deposit',
+        details: { amount, token: selectedToken?.contractTickerSymbol },
       });
     }
   };

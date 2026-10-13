@@ -1,3 +1,8 @@
+import {
+  getUserErrorMessage,
+  isSafeServerMessage,
+  normalizeErrorAsync,
+} from '@/lib/errors/classify';
 import { OnboardingFeeProduct } from '@/lib/types';
 
 /**
@@ -69,16 +74,15 @@ const GENERIC = 'Something went wrong paying the setup fee. Please try again.';
  */
 export async function describePaymentError(caught: unknown): Promise<string> {
   if (typeof Response !== 'undefined' && caught instanceof Response) {
-    try {
-      const body = (await caught.json()) as { message?: string };
-      return body?.message || GENERIC;
-    } catch {
-      return GENERIC;
-    }
+    const { serverMessage } = await normalizeErrorAsync(caught);
+    return isSafeServerMessage(serverMessage) ? serverMessage : GENERIC;
   }
 
   if (caught instanceof Error) {
-    return caught.message.includes('cancel') ? '' : caught.message || GENERIC;
+    // A cancelled prompt says nothing; anything else gets user copy, never the
+    // raw SDK or RPC message.
+    if (caught.message.includes('cancel')) return '';
+    return getUserErrorMessage(caught, { action: 'card_settings' }) || GENERIC;
   }
 
   return GENERIC;

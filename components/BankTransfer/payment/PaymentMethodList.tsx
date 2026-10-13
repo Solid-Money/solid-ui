@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -25,6 +24,7 @@ import {
   getCustomerEndorsements,
   getKycLinkForExistingCustomer,
 } from '@/lib/api';
+import { isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -231,13 +231,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         error: errorCode,
       });
 
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errorMessage,
-        props: {
-          badgeText: '',
-        },
+      // The backend's own copy when it reads like copy; never a relayed provider error.
+      void showErrorToast(err, {
+        action: 'deposit',
+        title: 'Couldn’t start your bank transfer',
+        body: isSafeServerMessage(errorMessage) ? errorMessage : undefined,
       });
     } finally {
       setLoadingMethod(null);

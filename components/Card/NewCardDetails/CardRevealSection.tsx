@@ -23,6 +23,7 @@ import { EASE_OUT_EXPO, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardD
 import NewCardArt from '@/components/Card/NewCardDetails/NewCardArt';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import { showErrorToast } from '@/lib/errors';
 import { CardHolderName, CardProvider } from '@/lib/types';
 import { canRevealCardDetails } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -64,7 +65,7 @@ const CardRevealSection = ({
   issuingCountryCode,
   onRequireSpendSetup,
 }: CardRevealSectionProps) => {
-  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } =
+  const { cardDetails, isLoading, error, failure, revealDetails, clearCardDetails } =
     useCardDetailsReveal(provider);
   const { isRegistered: canCardSpend, isLoading: isSpendStateLoading } = useCardSpendRegistration();
   // A card whose Safe cannot be debited declines every payment, so its numbers are not
@@ -109,13 +110,8 @@ const CardRevealSection = ({
   useEffect(() => {
     if (!hasRequested || isLoading || !error || cardDetails) return;
     setHasRequested(false);
-    Toast.show({
-      type: 'error',
-      text1: 'Could not show card details',
-      text2: error,
-      props: { badgeText: '' },
-    });
-  }, [hasRequested, isLoading, error, cardDetails]);
+    void showErrorToast(failure ?? error, { action: 'card_reveal' });
+  }, [hasRequested, isLoading, error, failure, cardDetails]);
 
   // Build the revealed face while the pane sits idle, so the first tap doesn't pay
   // for three pieces of pill artwork decoding and the copy icons rasterising. Runs

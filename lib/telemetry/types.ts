@@ -48,7 +48,13 @@ export interface ClientErrorEvent {
   glitchtipEventId?: string; // id returned by Sentry.captureException
   deviceId?: string; // Amplitude device id (lets us group anonymous errors)
   claimedUsername?: string; // username typed on login (NOT trusted, display only), ≤ 64
-  refs?: { clientTxId?: string; activityId?: string; workflowId?: string };
+  refs?: {
+    clientTxId?: string;
+    activityId?: string;
+    workflowId?: string;
+    requestId?: string; // X-Request-Id of the failed call (32 hex)
+    errorRef?: string; // the Ref shown to the user, e.g. 9C1B-4F2A
+  };
 }
 
 export type ClientErrorKind = ClientErrorEvent['kind'];

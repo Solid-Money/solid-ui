@@ -10,13 +10,14 @@ import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { isDevFeatureEnabled } from '@/lib/config';
-import { DepositMethod, RainApplicationStatus } from '@/lib/types';
+import { DepositMethod } from '@/lib/types';
+import { isVirtualAccountRainApproved } from '@/lib/utils/virtualAccountRainStatus';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
   const { data: cardStatus } = useCardStatus();
-  const isRainApproved = cardStatus?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const isRainApproved = isVirtualAccountRainApproved(cardStatus);
   const { data: existingAutomation } = useOnrampAutomation(isRainApproved);
   const { provider } = useVirtualAccountProvider();
 

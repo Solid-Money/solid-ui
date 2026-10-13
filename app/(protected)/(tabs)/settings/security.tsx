@@ -12,6 +12,7 @@ import ProtectionsCard from '@/components/Security/ProtectionsCard';
 import SecurityRow from '@/components/Security/SecurityRow';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
+import { LOST_AUTHENTICATOR_SUPPORT_MESSAGE } from '@/constants/support';
 import { useDimension } from '@/hooks/useDimension';
 import { usePasskeyManager } from '@/hooks/usePasskeyManager';
 import useUser from '@/hooks/useUser';
@@ -20,6 +21,8 @@ import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { cn, isPasskeyPromptError } from '@/lib/utils';
 import { getThisDeviceNoun } from '@/lib/utils/passkeyDevice';
+import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
+import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
 // Lazy load heavy modal components - only loaded when user opens them
 const SecurityEmailModal = lazyWithRetry(() =>
@@ -165,8 +168,15 @@ export default function Security() {
         setTotpError('Your passkey took too long to answer. Try again.');
       } else if (!isPasskeyPromptError(error)) {
         setTotpError("Couldn't confirm it's you. Try again.");
+        const passkeyError = getPasskeyErrorDetails(error);
         Sentry.captureException(error, {
-          tags: { type: 'security_totp_confirm_error', source: 'security_settings' },
+          level: passkeyError.severity,
+          fingerprint: ['{{ default }}', passkeyError.kind],
+          tags: {
+            type: 'security_totp_confirm_error',
+            source: 'security_settings',
+            passkey_error_kind: passkeyError.kind,
+          },
         });
       }
       // A cancelled prompt needs no message.
@@ -175,6 +185,13 @@ export default function Security() {
       setIsConfirmingTotp(false);
     }
   }, [createHttpClient]);
+
+  // Once 2FA is on the app cannot turn it off — that would take a code, which
+  // is exactly what someone who lost their authenticator lacks. Support resets
+  // it from the admin portal, so the row leads there instead.
+  const handleLostAuthenticator = useCallback(() => {
+    openSupportDrawer(LOST_AUTHENTICATOR_SUPPORT_MESSAGE);
+  }, []);
 
   const handleTotpSuccess = useCallback(() => {
     setShowTotpModal(false);
@@ -245,7 +262,7 @@ export default function Security() {
             <SecurityRow
               icon={<Lock size={20} color="#FFFFFF" />}
               title="Authenticator app"
-              subtitle="Two-factor authentication"
+              subtitle={isTotpVerified ? 'Lost it? Contact support' : 'Two-factor authentication'}
               badge={
                 isLoadingTotpStatus
                   ? undefined
@@ -254,9 +271,12 @@ export default function Security() {
                     : { label: 'Off', tone: 'warning' }
               }
               isBusy={isLoadingTotpStatus || isConfirmingTotp}
-              // There is nothing to manage once it is on: no way to turn it off yet.
-              onPress={isTotpVerified ? undefined : handleSetUpTotp}
-              accessibilityLabel="Set up two-factor authentication"
+              onPress={isTotpVerified ? handleLostAuthenticator : handleSetUpTotp}
+              accessibilityLabel={
+                isTotpVerified
+                  ? 'Lost your authenticator app? Contact support'
+                  : 'Set up two-factor authentication'
+              }
             />
           </View>
           {totpError ? <Text className="mt-2 px-1 text-sm text-red-400">{totpError}</Text> : null}

@@ -4,13 +4,17 @@ import { useMutation } from '@tanstack/react-query';
 import { DUMMY_CARD_REVEAL, isDummyUserId } from '@/constants/dummyCard';
 import { useWalletMessageSigner } from '@/hooks/useWalletMessageSigner';
 import { revealCardDetailsComplete } from '@/lib/api';
+import { getUserErrorMessage } from '@/lib/errors';
 import { CardDetailsRevealResponse, CardProvider } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
 export interface UseCardDetailsRevealReturn {
   cardDetails: CardDetailsRevealResponse | null;
   isLoading: boolean;
+  /** User copy for the failure; never the raw message. */
   error: string | null;
+  /** The thrown value behind `error`, for reporting. */
+  failure: unknown;
   revealDetails: () => Promise<void>;
   clearCardDetails: () => void;
 }
@@ -67,17 +71,16 @@ export const useCardDetailsReveal = (
     reset(); // Clear mutation error state as well
   }, [reset]);
 
-  // Convert error to string format for backwards compatibility
+  // User copy, never the raw message; `failure` keeps the thrown value for reporting.
   const error = mutationError
-    ? mutationError instanceof Error
-      ? mutationError.message
-      : 'Failed to reveal card details'
+    ? getUserErrorMessage(mutationError, { action: 'card_reveal' }) || null
     : null;
 
   return {
     cardDetails,
     isLoading: isDummyUser ? false : isMutationLoading,
     error: isDummyUser ? null : error,
+    failure: isDummyUser ? null : mutationError,
     revealDetails,
     clearCardDetails,
   };

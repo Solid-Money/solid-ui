@@ -4,26 +4,24 @@ import {
   Animated,
   FlatList,
   Pressable,
+  ScrollView,
   StyleProp,
   TextInput,
   View,
   ViewStyle,
 } from 'react-native';
-import { ADDRESS_ZERO, Currency } from '@cryptoalgebra/fuse-sdk';
-import { Address, erc20Abi } from 'viem';
-import { fuse } from 'viem/chains';
-import { useBalance } from 'wagmi';
+import { Image } from 'expo-image';
+import { Address } from 'viem';
 
-import CurrencyLogo from '@/components/CurrencyLogo';
+import SwapAssetLogo from '@/components/Swap/SwapAssetLogo';
 import { Text } from '@/components/ui/text';
-import { useAllTokens } from '@/hooks/tokens/useAllTokens';
-import { useCurrency } from '@/hooks/tokens/useCurrency';
+import { CHAIN_ICONS, CHAIN_NAMES } from '@/constants/chains';
+import { SWAP_CHAIN_IDS, swapAssetKey } from '@/constants/swapChains';
+import { useSwapAssets } from '@/hooks/swap/useSwapAssets';
 import { useFuse } from '@/hooks/useFuse';
-import { useUSDCPrice } from '@/hooks/useUSDCValue';
 import useUser from '@/hooks/useUser';
-import { TokenListItem } from '@/lib/types/tokens';
+import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 import { formatNumber } from '@/lib/utils';
-import { multicall3 } from '@/lib/utils/multicall';
 
 const TokenSelectorView = {
   DEFAULT_LIST: 'DEFAULT_LIST',
@@ -38,8 +36,8 @@ const Search = ({
   isLoading,
   onQueryChange,
 }: {
-  data: (TokenListItem & { balance: number })[];
-  onSearch: (matchedTokens: (TokenListItem & { balance: number })[]) => void;
+  data: SwapAssetWithBalance[];
+  onSearch: (matchedTokens: SwapAssetWithBalance[]) => void;
   isLoading: boolean;
   onQueryChange?: (query: string | undefined) => void;
 }) => {
@@ -49,13 +47,13 @@ const Search = ({
 
   const fuseOptions = useMemo(
     () => ({
-      keys: ['id', 'symbol', 'name'],
+      keys: ['address', 'symbol', 'name'],
       threshold: 0,
     }),
     [],
   );
 
-  const { result, pattern, search } = useFuse<TokenListItem & { balance: number }>({
+  const { result, pattern, search } = useFuse<SwapAssetWithBalance>({
     data,
     options: fuseOptions,
   });
@@ -124,7 +122,7 @@ const Search = ({
         className="bg-card"
       >
         <TextInput
-          placeholder={isFocused ? "Try 'USDC' or 'VOLT'..." : 'Search tokens...'}
+          placeholder={isFocused ? "Try 'USDC' or 'ETH'..." : 'Search tokens...'}
           className="w-full px-4 py-3 text-foreground focus:outline-none"
           onChangeText={handleInput}
           onFocus={handleFocus}
@@ -174,39 +172,33 @@ const Search = ({
 };
 
 const TokenRow = ({
-  balance,
-  token,
+  asset,
   onSelect,
-  otherCurrency,
+  locked,
   style,
   index = 0,
 }: {
-  token: TokenListItem;
-  balance: number;
-  onSelect: (currency: Currency) => void;
-  otherCurrency: Currency | null | undefined;
+  asset: SwapAssetWithBalance;
+  onSelect: (asset: SwapAsset) => void;
+  locked: boolean;
   style: StyleProp<ViewStyle>;
   index?: number;
 }) => {
   const { user } = useUser();
   const account = user?.safeAddress;
-  const currency = useCurrency(token.address as Address);
   const [pressAnimation] = useState(new Animated.Value(1));
   const [slideAnimation] = useState(new Animated.Value(0));
 
-  const { formatted } = useUSDCPrice(currency);
+  const balance = asset.balance;
+  const lock = locked;
 
   const balanceString = useMemo(() => {
     return formatNumber(balance || 0);
   }, [balance]);
 
   const balanceUsdString = useMemo(() => {
-    return formatNumber((balance || 0) * formatted);
-  }, [formatted, balance]);
-
-  const lock = otherCurrency?.isNative
-    ? token.address === ADDRESS_ZERO
-    : token.address.toLowerCase() === otherCurrency?.wrapped.address.toLowerCase();
+    return formatNumber(asset.balanceUsd || 0);
+  }, [asset.balanceUsd]);
 
   const isPopular = useMemo(() => {
     return balance > 0;
@@ -214,7 +206,7 @@ const TokenRow = ({
 
   // Staggered entrance animation
   useEffect(() => {
-    const delay = index * 50; // 50ms delay between each item
+    const delay = Math.min(index, 10) * 50; // 50ms delay between each item
     const timer = setTimeout(() => {
       Animated.spring(slideAnimation, {
         toValue: 1,
@@ -250,7 +242,7 @@ const TokenRow = ({
   }, [pressAnimation, lock]);
 
   const handlePress = useCallback(() => {
-    if (currency && !lock) {
+    if (!lock) {
       // Enhanced haptic feedback with delightful animation sequence
       Animated.sequence([
         Animated.timing(pressAnimation, {
@@ -272,9 +264,9 @@ const TokenRow = ({
         }),
       ]).start();
 
-      setTimeout(() => onSelect(currency), 120);
+      setTimeout(() => onSelect(asset), 120);
     }
-  }, [currency, lock, onSelect, pressAnimation]);
+  }, [asset, lock, onSelect, pressAnimation]);
 
   const translateY = slideAnimation.interpolate({
     inputRange: [0, 1],
@@ -305,14 +297,14 @@ const TokenRow = ({
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           style={typeof style === 'object' ? { ...style, height: 82 } : { height: 82 }}
-          accessibilityLabel={`${token.symbol} token with balance ${balanceString}`}
+          accessibilityLabel={`${asset.symbol} on ${CHAIN_NAMES[asset.chainId] ?? 'unknown network'} with balance ${balanceString}`}
           accessibilityHint={lock ? 'This token cannot be selected' : 'Tap to select this token'}
           accessibilityRole="button"
           accessibilityState={{ disabled: lock }}
         >
           <View className="flex flex-1 flex-row items-center gap-4">
             <View className="relative">
-              <CurrencyLogo currency={currency} size={44} />
+              <SwapAssetLogo asset={asset} size={44} />
               {hasBalance && (
                 <View className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
               )}
@@ -324,20 +316,21 @@ const TokenRow = ({
                     isPopular ? 'text-primary' : 'text-foreground'
                   }`}
                 >
-                  {token.symbol}
+                  {asset.symbol}
                 </Text>
-                {token.address === ADDRESS_ZERO && (
+                {asset.isNative && (
                   <View className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5">
                     <Text className="text-xs font-medium text-primary">Native</Text>
                   </View>
                 )}
               </View>
               <Text
+                numberOfLines={1}
                 className={`text-sm leading-tight opacity-80 ${
                   isPopular ? 'font-medium text-muted-foreground' : 'text-muted-foreground'
                 }`}
               >
-                {token.name}
+                {CHAIN_NAMES[asset.chainId] ?? asset.name}
               </Text>
             </View>
           </View>
@@ -372,6 +365,46 @@ const TokenRow = ({
     </Animated.View>
   );
 };
+
+/** "All" plus one pill per swap network. */
+const ChainFilter = ({
+  selected,
+  onChange,
+}: {
+  selected: number | null;
+  onChange: (chainId: number | null) => void;
+}) => (
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+    {[null, ...SWAP_CHAIN_IDS].map(chainId => {
+      const isSelected = selected === chainId;
+      const icon = chainId ? CHAIN_ICONS[chainId] : undefined;
+      return (
+        <Pressable
+          key={chainId ?? 'all'}
+          onPress={() => onChange(chainId)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+          className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
+            isSelected ? 'border-primary/60 bg-primary/15' : 'border-accent/40 bg-accent/50'
+          }`}
+        >
+          {icon && (
+            <Image
+              source={icon}
+              style={{ width: 16, height: 16, borderRadius: 8 }}
+              contentFit="contain"
+            />
+          )}
+          <Text
+            className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}
+          >
+            {chainId ? CHAIN_NAMES[chainId] : 'All networks'}
+          </Text>
+        </Pressable>
+      );
+    })}
+  </ScrollView>
+);
 
 const EmptyState = ({ message, isSearching }: { message: string; isSearching?: boolean }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -487,36 +520,43 @@ const LoadingState = () => {
 
 const SwapTokenSelector = ({
   onSelect,
-  otherCurrency,
+  otherAsset,
   showNativeToken = true,
 }: {
-  onSelect: (currency: Currency) => void;
-  otherCurrency: Currency | null | undefined;
+  onSelect: (asset: SwapAsset) => void;
+  otherAsset: SwapAsset | undefined;
   showNativeToken?: boolean;
 }) => {
-  const { user } = useUser();
-  const account = user?.safeAddress;
-  const { data: nativeTokenBalance } = useBalance({ address: account, chainId: fuse.id });
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tokens, setTokens] = useState<(TokenListItem & { balance: number })[]>([]);
+  const { assets, isLoading } = useSwapAssets();
+  const [chainFilter, setChainFilter] = useState<number | null>(null);
   const [selectorView, setSelectorView] = useState<TokenSelectorViewType>(
     TokenSelectorView.DEFAULT_LIST,
   );
 
-  const { tokens: allTokens, isLoading: allTokensLoading } = useAllTokens(showNativeToken);
+  // Held tokens first, largest first; the rest keep the catalogue's order.
+  const tokens = useMemo(() => {
+    const visible = assets.filter(
+      asset =>
+        (showNativeToken || !asset.isNative) &&
+        (chainFilter === null || asset.chainId === chainFilter),
+    );
+    const held = visible
+      .filter(asset => asset.balance > 0)
+      .sort((a, b) => b.balanceUsd - a.balanceUsd || b.balance - a.balance);
+    const rest = visible.filter(asset => !(asset.balance > 0));
+    return [...held, ...rest];
+  }, [assets, chainFilter, showNativeToken]);
 
-  const [matchedTokens, setMatchedTokens] = useState<(TokenListItem & { balance: number })[]>([]);
+  const [matchedTokens, setMatchedTokens] = useState<SwapAssetWithBalance[]>([]);
   const [currentQuery, setCurrentQuery] = useState<string | undefined>();
 
   const filteredTokens = useMemo(
-    () => (matchedTokens.length ? matchedTokens : tokens),
-    [tokens, matchedTokens],
+    () => (currentQuery && matchedTokens.length ? matchedTokens : tokens),
+    [tokens, matchedTokens, currentQuery],
   );
 
   const handleSearch = useCallback(
-    (matchedTokens: (TokenListItem & { balance: number })[]) => {
+    (matchedTokens: SwapAssetWithBalance[]) => {
       if (matchedTokens.length) {
         setMatchedTokens(matchedTokens);
         setSelectorView(TokenSelectorView.DEFAULT_LIST);
@@ -527,107 +567,36 @@ const SwapTokenSelector = ({
     [isLoading],
   );
 
+  const otherKey = otherAsset ? swapAssetKey(otherAsset) : undefined;
+
   const renderTokenRow = useCallback(
-    ({ item, index }: { item: TokenListItem & { balance: number }; index: number }) => (
-      <View key={item.address} className="mb-2">
+    ({ item, index }: { item: SwapAssetWithBalance; index: number }) => (
+      <View key={swapAssetKey(item)} className="mb-2">
         <TokenRow
-          balance={item.balance}
+          asset={item}
           onSelect={onSelect}
-          token={item}
-          otherCurrency={otherCurrency}
+          locked={swapAssetKey(item) === otherKey}
           style={{}}
           index={index}
         />
       </View>
     ),
-    [onSelect, otherCurrency],
+    [onSelect, otherKey],
   );
 
-  const keyExtractor = useCallback((item: TokenListItem & { balance: number }) => item.address, []);
-
-  useEffect(() => {
-    const fetchBalances = async () => {
-      if (!allTokens || !account) return;
-
-      try {
-        setError(null);
-        const tokenAddresses = allTokens.map(token => token.address);
-        const balancesAndDecimals = await multicall3(
-          {
-            contracts: tokenAddresses.flatMap(address => [
-              {
-                address,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [account],
-              },
-              {
-                address,
-                abi: erc20Abi,
-                functionName: 'decimals',
-              },
-            ]),
-          },
-          fuse.id,
-        );
-
-        const balances = balancesAndDecimals.filter((_, index) => index % 2 === 0);
-        const decimals = balancesAndDecimals.filter((_, index) => index % 2 !== 0);
-
-        const tokensWithBalances = allTokens.map((token, index) => {
-          const isNativeToken = token.address === ADDRESS_ZERO;
-          const balance = isNativeToken ? nativeTokenBalance?.value : balances[index]?.result;
-          const decimal = isNativeToken ? nativeTokenBalance?.decimals : decimals[index]?.result;
-
-          const formattedBalance = balance ? Number(balance) / 10 ** Number(decimal) : 0;
-
-          return {
-            ...token,
-            balance: formattedBalance,
-          };
-        });
-
-        const fuseToken = tokensWithBalances.find(token => token.address === ADDRESS_ZERO);
-        const otherTokens = tokensWithBalances.filter(token => token.address !== ADDRESS_ZERO);
-
-        const sortedTokens = [
-          ...(fuseToken ? [fuseToken] : []),
-          ...otherTokens.sort((a, b) => (b.balance || 0) - (a.balance || 0)),
-        ] as (TokenListItem & { balance: number })[];
-
-        setTokens(sortedTokens);
-      } catch (err) {
-        setError('Failed to load token balances');
-        console.error('Error fetching balances:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (allTokens) {
-      fetchBalances();
-    }
-  }, [allTokens, allTokensLoading, account, nativeTokenBalance]);
-
-  if (error) {
-    return <EmptyState message={error} />;
-  }
+  const keyExtractor = useCallback((item: SwapAssetWithBalance) => swapAssetKey(item), []);
 
   return (
-    <View className="flex flex-col gap-6 pt-2">
+    <View className="flex flex-col gap-4 pt-2">
       <Search
         data={tokens}
         onSearch={handleSearch}
         isLoading={false}
         onQueryChange={setCurrentQuery}
       />
-      <View className="rounded-2xl border border-accent/40 bg-accent/50 p-4">
-        <Text className="text-center text-sm font-semibold text-foreground">
-          Only tokens on the Fuse network are supported for swapping
-        </Text>
-      </View>
+      <ChainFilter selected={chainFilter} onChange={setChainFilter} />
       {selectorView === TokenSelectorView.DEFAULT_LIST ? (
-        isLoading ? (
+        isLoading && tokens.length === 0 ? (
           <LoadingState />
         ) : filteredTokens.length === 0 ? (
           <EmptyState
@@ -646,8 +615,8 @@ const SwapTokenSelector = ({
             windowSize={8}
             initialNumToRender={10}
             getItemLayout={(data, index) => ({
-              length: 82,
-              offset: 82 * index,
+              length: 90,
+              offset: 90 * index,
               index,
             })}
             contentContainerStyle={{
@@ -657,7 +626,7 @@ const SwapTokenSelector = ({
           />
         )
       ) : (
-        <EmptyState message="Token not found" />
+        <EmptyState message="Token not found" isSearching />
       )}
     </View>
   );

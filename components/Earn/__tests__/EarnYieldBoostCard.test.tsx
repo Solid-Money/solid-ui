@@ -6,6 +6,7 @@ import { YieldBoostClaimStatus } from '@/lib/types';
 const { act, create } = require('react-test-renderer');
 
 jest.mock('react-native-toast-message', () => ({ __esModule: true, default: { show: jest.fn() } }));
+jest.mock('@/lib/errors', () => ({ showFailureSheet: jest.fn() }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/skeleton', () => ({ __esModule: true, default: 'Skeleton' }));
 // A non-production build, where the rewards screen previews locked perks at
@@ -30,6 +31,7 @@ jest.mock('@/hooks/useRewards', () => ({
 }));
 
 const Toast = jest.requireMock('react-native-toast-message').default as { show: jest.Mock };
+const { showFailureSheet } = jest.requireMock('@/lib/errors') as { showFailureSheet: jest.Mock };
 
 let mockSummaryQuery: { data?: Record<string, unknown>; isLoading: boolean } = {
   isLoading: false,
@@ -121,18 +123,20 @@ it('says a claim that is still being sent is on its way', async () => {
   );
 });
 
-it('shows the reason the backend gave when a claim is refused', async () => {
-  mockClaim.mockRejectedValue(new Error("You've reached today's limit."));
+it('hands a refused claim to the failure sheet, which keeps the backend’s reason', async () => {
+  // What `claimYieldBoost` throws: an ApiError carrying the server's message.
+  // The sheet shows that message when it reads like copy (see lib/errors tests).
+  const refusal = Object.assign(new Error("You've reached today's limit."), { status: 429 });
+  mockClaim.mockRejectedValue(refusal);
   render();
 
   await act(async () => claimButton().props.onPress());
 
-  expect(Toast.show).toHaveBeenCalledWith(
-    expect.objectContaining({
-      type: 'error',
-      text2: "You've reached today's limit.",
-    }),
+  expect(showFailureSheet).toHaveBeenCalledWith(
+    refusal,
+    expect.objectContaining({ action: 'claim' }),
   );
+  expect(Toast.show).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 });
 
 it('disables the claim when nothing is claimable yet', () => {

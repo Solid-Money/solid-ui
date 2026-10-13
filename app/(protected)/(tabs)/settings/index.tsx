@@ -1,5 +1,5 @@
 import React, { ReactNode, useCallback, useState } from 'react';
-import { Linking, Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Href, router, useFocusEffect } from 'expo-router';
 import {
@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleCheck,
   CreditCard,
+  FileDown,
   FileText,
   LifeBuoy,
   LogOut,
@@ -31,10 +32,12 @@ import { path } from '@/constants/path';
 import { getTierDisplayName } from '@/constants/rewards';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useHasFeature } from '@/hooks/useFeatureAccess';
 import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import { useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useTotp } from '@/hooks/useTotp';
 import useUser from '@/hooks/useUser';
+import { openHelpLink } from '@/lib/help/links';
 import { KycStatus, RewardsTier } from '@/lib/types';
 import {
   formatWholeDollars,
@@ -63,13 +66,8 @@ const mobileHeader = (
   </View>
 );
 
-const openLegal = () => {
-  if (Platform.OS === 'web') {
-    window.open(LEGAL_URL, '_blank');
-  } else {
-    void Linking.openURL(LEGAL_URL);
-  }
-};
+// In the app's help center when it can; the website otherwise.
+const openLegal = () => openHelpLink(LEGAL_URL);
 
 /** One of the two tiles under the profile: Rewards and Refer & earn. */
 const ProfileTile = ({
@@ -107,7 +105,8 @@ const ProfileTile = ({
  *
  * Who you are at the top — avatar, name, tier and verification — then the two
  * things worth coming back for (rewards, referrals), and the account, security
- * and support rows below. Statements are not in this release.
+ * and support rows below. Statements sit with the account rows, for whitelisted
+ * users only until they open to everyone.
  */
 export default function Settings() {
   const { user, handleLogout } = useUser();
@@ -120,6 +119,7 @@ export default function Settings() {
   const { canChangeMode, mode } = useCardSpendRegistration();
   const { isVerified: isTotpOn, isLoading: isTotpLoading, refetch: refetchTotp } = useTotp();
   const { status: notificationStatus } = useNotificationPermissionStatus();
+  const hasStatements = useHasFeature('statements');
 
   // Setting up 2FA happens a screen away, so "Add 2FA" is re-checked on the way back.
   useFocusEffect(
@@ -234,6 +234,13 @@ export default function Settings() {
             value={userHasCard && canChangeMode ? `${SPEND_MODE_COPY[mode].label} mode` : undefined}
             onPress={() => router.push(cardHref)}
           />
+          {hasStatements ? (
+            <ProfileRow
+              icon={<FileDown size={ICON_SIZE} color={ICON_COLOR} />}
+              title="Statements"
+              onPress={() => router.push('/settings/statements' as Href)}
+            />
+          ) : null}
         </ProfileRowGroup>
 
         <ProfileSectionLabel>Security & alerts</ProfileSectionLabel>

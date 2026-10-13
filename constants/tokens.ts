@@ -1,7 +1,11 @@
-import { Token } from '@cryptoalgebra/fuse-sdk';
-
 import { ImageSourcePropType } from 'react-native';
-import { arbitrum, base, bsc, fuse, mainnet } from 'viem/chains';
+import { Token } from '@cryptoalgebra/fuse-sdk';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+
+import { getAsset } from '@/lib/assets';
+import { ADDRESSES } from '@/lib/config';
+import { TokenBalance, TokenMap, TokenType } from '@/lib/types';
+
 import {
   BUSD,
   FUSD_V2,
@@ -20,10 +24,6 @@ import {
   WRAPPED_FUSE,
 } from './addresses';
 import { ChainsId } from './chains';
-
-import { getAsset } from '@/lib/assets';
-import { ADDRESSES } from '@/lib/config';
-import { TokenBalance, TokenMap, TokenType } from '@/lib/types';
 
 export const TOKEN_MAP: TokenMap = {
   [mainnet.id]: [
@@ -44,6 +44,7 @@ export const NATIVE_TOKENS: Record<number, string> = {
   [base.id]: 'ETH',
   [arbitrum.id]: 'ETH',
   [bsc.id]: 'BNB',
+  [polygon.id]: 'POL',
 };
 
 /** CoinGecko API coin ids */
@@ -53,6 +54,7 @@ export const NATIVE_COINGECKO_TOKENS: Record<number, string> = {
   [base.id]: 'ethereum',
   [arbitrum.id]: 'ethereum',
   [bsc.id]: 'binancecoin',
+  [polygon.id]: 'polygon-ecosystem-token',
 };
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {

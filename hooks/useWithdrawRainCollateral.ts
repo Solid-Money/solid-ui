@@ -1,14 +1,16 @@
 import { useCallback, useState } from 'react';
-import { Address, encodeFunctionData, Hex, TransactionReceipt, toHex } from 'viem';
-import { readContract } from 'viem/actions';
 import * as Sentry from '@sentry/react-native';
+import { Address, encodeFunctionData, Hex, toHex, TransactionReceipt } from 'viem';
+import { readContract } from 'viem/actions';
 
-import { withdrawCardCollateral } from '@/lib/api';
-import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { publicClient, getChain } from '@/lib/wagmi';
-import useUser from './useUser';
 import { useActivityActions } from '@/hooks/useActivityActions';
+import { withdrawCardCollateral } from '@/lib/api';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { toErc1271Signature, waitForSmartAccountDeployment } from '@/lib/smartAccountSigning';
+import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
+import { getChain, publicClient } from '@/lib/wagmi';
+
+import useUser from './useUser';
 
 const RAIN_COORDINATOR_V2_ABI = [
   {
@@ -114,13 +116,24 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
         }
 
+        // Step 3b: Don't sign or send until this account instance sees the Safe
+        // as deployed. Right after the deploy above, our RPC can still answer
+        // getCode with "0x"; the account then wraps the admin signature in
+        // ERC-6492 and re-adds the factory to the user operation. That is how a
+        // cardholder's first withdrawal failed with InvalidSignature().
+        const { account } = smartAccountClient;
+        if (!account) {
+          throw new Error('User wallet not configured');
+        }
+        await waitForSmartAccountDeployment(account);
+
         // Step 4: Generate admin EIP-712 signature via Safe smart account
         // The Safe address is the admin on Rain's collateral contract.
         // Rain's coordinator verifies admin signatures using SignatureChecker (ERC-1271),
         // so the Safe's wrapped signature is verified by calling isValidSignature on the Safe.
         const adminSalt = toHex(crypto.getRandomValues(new Uint8Array(32)));
 
-        const adminSignature = await smartAccountClient.account.signTypedData({
+        const signedAdminTypedData = await account.signTypedData({
           domain: {
             name: 'Collateral',
             version: '2',
@@ -146,6 +159,9 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
             nonce: nonce,
           },
         });
+        // SignatureChecker has no ERC-6492 support, so the coordinator must get
+        // the Safe's plain ERC-1271 signature even if viem wrapped it anyway.
+        const adminSignature = toErc1271Signature(signedAdminTypedData);
 
         // Step 5: Build the withdrawAsset call and execute via Safe smart account
         const withdrawCalldata = encodeFunctionData({

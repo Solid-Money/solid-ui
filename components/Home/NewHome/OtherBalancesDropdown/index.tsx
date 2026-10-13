@@ -7,10 +7,13 @@ import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { describeCardSpendableAssets } from '@/constants/cardSpendableAssets';
+import { CardSpendableAsset, describeCardSpendableAssets } from '@/constants/cardSpendableAssets';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendableBalanceUSD } from '@/hooks/useCardSpendableBalance';
+import {
+  useCardSpendableAssets,
+  useCardSpendableBalanceUSD,
+} from '@/hooks/useCardSpendableBalance';
 import { formatBalanceUSD } from '@/lib/utils';
 import { canDepositToCard, cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -50,8 +53,8 @@ const BANK_COLOR = '#F2B94F'; // amber — the one pot held outside Solid
  * the home "Add Funds" pill, which is where `WalletActions` sends a Wirex
  * cardholder — not the Card screen, which has no funding entry for them.
  */
-const SPENDABLE_TOOLTIP =
-  `Your card spends ${describeCardSpendableAssets()}. ` +
+const spendableTooltip = (assets: CardSpendableAsset[]): string =>
+  `Your card spends ${describeCardSpendableAssets(assets)}. ` +
   'Anything on another network stays in Wallet until you move it — Add Funds › Move from wallet.';
 
 /**
@@ -266,17 +269,23 @@ export const SpendableBalanceRow = ({
 }: {
   spendableBalance: number;
   isLoading?: boolean;
-}) => (
-  <BalanceRow
-    color={CARD_COLOR}
-    label="Spendable"
-    value={spendableBalance}
-    labelAccessory={
-      <TooltipPopover text={SPENDABLE_TOOLTIP} analyticsContext="home_spendable_balance" />
-    }
-    isLoading={isLoading}
-  />
-);
+}) => {
+  // The same list the figure is summed over, so a cardholder with euro spending enabled is told
+  // their EURC on Base counts — and one without it is not.
+  const assets = useCardSpendableAssets();
+
+  return (
+    <BalanceRow
+      color={CARD_COLOR}
+      label="Spendable"
+      value={spendableBalance}
+      labelAccessory={
+        <TooltipPopover text={spendableTooltip(assets)} analyticsContext="home_spendable_balance" />
+      }
+      isLoading={isLoading}
+    />
+  );
+};
 
 /**
  * Bank balance rows (amber) — money sitting in the user's Wirex account after a

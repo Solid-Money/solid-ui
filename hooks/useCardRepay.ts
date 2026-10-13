@@ -10,6 +10,7 @@ import useUser from '@/hooks/useUser';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import {
   buildRepayCalls,
@@ -298,8 +299,9 @@ export function useCardRepay({ enabled = true }: { enabled?: boolean } = {}) {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to repay your loan';
-      setError(message);
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to repay your loan';
+      setError(getUserErrorMessage(mutationError, { action: 'card_repay' }) || null);
       track(TRACKING_EVENTS.CARD_CREDIT_REPAY_FAILED, { error: message });
     },
   });

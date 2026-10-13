@@ -1,6 +1,10 @@
+import { formatUnits } from 'viem';
+import { arbitrum, base, fuse, mainnet } from 'viem/chains';
+
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
-import { DepositMethod, TokenBalance, Vault, VaultDepositConfig } from '@/lib/types';
+import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
 
 const DEFAULT_METHODS: DepositMethod[] = [
   'wallet',
@@ -21,6 +25,39 @@ export type TokenVault = {
   vault: Vault;
   /** Index into VAULTS — what useSavingStore.selectVaultForDeposit expects. */
   index: number;
+};
+
+const productionShares = [
+  { type: VaultType.USDC, chainId: mainnet.id, address: PRODUCTION_VAULT_ADDRESSES.ethereum.vault },
+  { type: VaultType.USDC, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.vault },
+  { type: VaultType.FUSE, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.fuseVault },
+  {
+    type: VaultType.ETH,
+    chainId: mainnet.id,
+    address: PRODUCTION_VAULT_ADDRESSES.ethereum.soEthVault,
+  },
+  { type: VaultType.ETH, chainId: fuse.id, address: PRODUCTION_VAULT_ADDRESSES.fuse.soEthVault },
+];
+
+/** Display APY only for known share contracts, including production shares in a dev wallet.
+ * This does not change the environment-specific savings reads or portfolio accounting. */
+export const getEarningTokenVault = (
+  token?: Pick<TokenBalance, 'contractAddress' | 'chainId'>,
+): TokenVault | undefined => {
+  const address = token?.contractAddress?.toLowerCase();
+  if (!token || !address) return undefined;
+  const matches = (type: VaultType, network: { address: string; chainId: number }) =>
+    network.address.toLowerCase() === address &&
+    (network.chainId === token.chainId ||
+      (type === VaultType.USDC &&
+        network.chainId === mainnet.id &&
+        (token.chainId === base.id || token.chainId === arbitrum.id)));
+  const configured = LIVE_VAULTS.find(vault =>
+    vault.vaults.some(network => matches(vault.type, network)),
+  );
+  const type = configured?.type ?? productionShares.find(share => matches(share.type, share))?.type;
+  const vault = LIVE_VAULTS.find(vault => vault.type === type);
+  return vault ? { vault, index: VAULTS.indexOf(vault) } : undefined;
 };
 
 /** True when the address is a vault share token (soUSD / soFUSE / soETH), i.e. a savings position. */
@@ -96,6 +133,45 @@ export const hasDepositableWalletBalance = (tokens: DepositableToken[], vault?: 
       accepted.has(token.contractTickerSymbol?.toUpperCase()) &&
       BigInt(token.balance || '0') > 0n,
   );
+};
+
+/** The wallet-token fields `getLargestDepositSelection` reads. */
+type RankableToken = DepositableToken & Pick<TokenBalance, 'contractDecimals'>;
+
+/**
+ * The chain and token the deposit form should open on: of those `vault` accepts,
+ * the one the wallet holds the most of. Undefined when it holds none of them.
+ *
+ * Ranked by token amount rather than USD value. Each vault takes one asset in its
+ * different forms (USDC/USDT, FUSE/WFUSE, ETH/WETH), so amounts already compare
+ * like for like, and the pick does not hinge on a price that may be missing.
+ * Ties go to the token listed first.
+ */
+export const getLargestDepositSelection = (
+  tokens: RankableToken[],
+  vault?: Vault,
+): { chainId: number; principalToken: string } | undefined => {
+  const { supportedChains } = getVaultDepositConfig(vault);
+  let largest: { chainId: number; principalToken: string; amount: number } | undefined;
+
+  for (const token of tokens) {
+    if (!supportedChains.includes(token.chainId)) continue;
+
+    // The form selects by BRIDGE_TOKENS key, so a token without one on this
+    // chain is not something it could open on.
+    const symbol = token.contractTickerSymbol?.toUpperCase();
+    const principalToken = getAllowedTokensForChain(token.chainId, vault).find(
+      key => key.toUpperCase() === symbol,
+    );
+    if (!principalToken) continue;
+
+    const amount = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
+    if (amount > (largest?.amount ?? 0)) {
+      largest = { chainId: token.chainId, principalToken, amount };
+    }
+  }
+
+  return largest && { chainId: largest.chainId, principalToken: largest.principalToken };
 };
 
 export const getDefaultDepositSelection = (vault?: Vault) => {

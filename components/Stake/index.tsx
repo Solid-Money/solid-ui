@@ -18,6 +18,7 @@ import useBridgeToFuse from '@/hooks/useBridgeToFuse';
 import useUser from '@/hooks/useUser';
 import { useEthereumVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -102,11 +103,10 @@ const Stake = () => {
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
         },
       });
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing',
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'savings_deposit',
+        details: { amount: String(data.amount), token: 'soUSD' },
       });
     }
   };

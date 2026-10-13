@@ -6,12 +6,16 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { confirmRainRtf, getRainRtfStatus } from '@/lib/api';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider, RainRtfChain, RainRtfStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import {
   buildApprovalBatch,
   describeApprovalWork,
+  describeApprovedFunding,
+  type RtfSectionState,
+  rtfSectionState,
   selectRtfChains,
   shouldOfferRtf,
 } from '@/lib/utils/realTimeFunding';
@@ -40,6 +44,23 @@ interface RainRealTimeFunding {
    * approvals land, which is the point — the row is a task, not a setting.
    */
   shouldOffer: boolean;
+  /**
+   * What the card screen should render: nothing, the approval, or a settled
+   * row.
+   *
+   * Distinct from {@link shouldOffer}, which gates the approve button and the
+   * modal. The row outlives the task: once the allowances land the cardholder
+   * still needs to see that it worked, and be able to check later that their
+   * card really does draw from their wallet.
+   */
+  sectionState: RtfSectionState;
+  /**
+   * What the settled row names — the assets and chains already approved.
+   *
+   * Empty while nothing is approved. Separate from {@link work}, which
+   * describes outstanding work and empties out exactly when this fills up.
+   */
+  approved: { chainNames: string[]; assetSymbols: string[] };
   /** The full status, once the backend has answered. */
   status: RainRtfStatus | undefined;
   /**
@@ -176,6 +197,7 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
   // hook's import graph does not load under jest-expo.
   const { chain, pendingChains } = useMemo(() => selectRtfChains(status), [status]);
   const work = useMemo(() => describeApprovalWork(status), [status]);
+  const approved = useMemo(() => describeApprovedFunding(status), [status]);
 
   const approveMutation = useMutation({
     mutationFn: async (termsVersion: string) => {
@@ -290,8 +312,10 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
       });
     },
     onError: (mutationError: Error) => {
-      const message = mutationError?.message || 'Failed to approve Real-Time Funding';
-      setError(message);
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message =
+        sanitizeTechnicalMessage(mutationError) || 'Failed to approve Real-Time Funding';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || undefined);
       // Whatever landed before the failure is real and recorded, so the
       // status is refetched either way — otherwise the retry would rebuild a
       // batch for approvals that already succeeded.
@@ -324,6 +348,8 @@ export const useRainRealTimeFunding = (): RainRealTimeFunding => {
 
   return {
     shouldOffer: shouldOfferRtf({ isRainCard, status }),
+    sectionState: rtfSectionState({ isRainCard, status }),
+    approved,
     status,
     chain,
     work,

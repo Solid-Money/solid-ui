@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Appearance, AppState, Platform, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import * as Font from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { Stack, useGlobalSearchParams, usePathname } from 'expo-router';
@@ -28,7 +27,9 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import {
   focusManager,
+  MutationCache,
   onlineManager,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
@@ -40,10 +41,11 @@ import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
+import OtaUpdateGate from '@/components/OtaUpdateGate';
 import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
-import { toastProps } from '@/components/Toast';
+import { AppToast } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
@@ -60,11 +62,19 @@ import {
   EXPO_PUBLIC_SENTRY_RELEASE,
   isProduction,
 } from '@/lib/config';
+import {
+  handleMutationError,
+  handleQueryError,
+  handleQuerySuccess,
+} from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
-import { installFetchReporter } from '@/lib/telemetry/installFetchReporter';
+import { isSupportChatFocused, SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
+import { installShownErrorReporter } from '@/lib/telemetry/installShownErrorReporter';
 import { installToastReporter } from '@/lib/telemetry/installToastReporter';
 import { setCurrentScreen } from '@/lib/telemetry/reportError';
 import { getSentryUser, installSentryUserSync } from '@/lib/telemetry/sentryUser';
+import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
+import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
@@ -110,14 +120,18 @@ Sentry.init({
 
   // Breadcrumbs
   maxBreadcrumbs: 100,
+  // viem error messages embed the failing RPC URL, and our bundler URLs carry the
+  // Pimlico API key in the query string — so a logged or captured user-operation
+  // failure would ship the key to Sentry verbatim. Scrub credentials from every
+  // breadcrumb and event before it leaves the device.
   beforeBreadcrumb(breadcrumb) {
     if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
       return null;
     }
-    return breadcrumb;
+    return redactSecretsDeep(breadcrumb);
   },
 
-  beforeSend(event) {
+  beforeSend(event, hint) {
     // Deliberately no environment gate here. Staging and production report to
     // the same GlitchTip project and are told apart by `environment`; dropping
     // non-production events is what made staging unverifiable before.
@@ -131,7 +145,13 @@ Sentry.init({
     if (signedInUser) {
       event.user = { ...event.user, ...signedInUser };
     }
-    return event;
+    // A dismissed passkey prompt is the person's choice, not a failure, but
+    // several places still capture it as an error, the transaction hooks
+    // among them, which rethrow it as `User cancelled transaction`.
+    if (event.level === 'error' && isCancelledByUser(hint?.originalException)) {
+      event.level = 'info';
+    }
+    return redactSecretsDeep(event);
   },
 
   // Default integrations only. Anything added here must be something GlitchTip
@@ -143,10 +163,11 @@ Sentry.init({
 // launch, so configure dispatching before the app renders.
 configureObserve();
 
-// Admin Errors page: failed calls to our backend and every error toast are
-// reported from here on (both inert in dev builds), and GlitchTip follows the
-// signed-in user. Installed before the app renders.
-installFetchReporter();
+// Admin Errors page: failures the shared error path (lib/errors) shows without
+// a Ref, and error toasts it did not show, are reported from here on (inert in
+// dev builds), and GlitchTip follows the signed-in user. Installed before the
+// app renders.
+installShownErrorReporter();
 installToastReporter();
 installSentryUserSync();
 
@@ -156,13 +177,18 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async notification => {
+      // A support reply the user is already reading in the chat gets no banner.
+      const quiet =
+        notification.request.content.data?.type === SUPPORT_PUSH_TYPE && isSupportChatFocused();
+      return {
+        shouldShowAlert: !quiet,
+        shouldPlaySound: !quiet,
+        shouldSetBadge: true,
+        shouldShowBanner: !quiet,
+        shouldShowList: !quiet,
+      };
+    },
   });
 }
 
@@ -211,6 +237,10 @@ if (Platform.OS !== 'web') {
 }
 
 export const queryClient = new QueryClient({
+  // Global error handling (lib/errors/queryErrors.ts): a toast when a background
+  // refresh fails, and the shared failure UI for mutations that opt in via meta.
+  queryCache: new QueryCache({ onError: handleQueryError, onSuccess: handleQuerySuccess }),
+  mutationCache: new MutationCache({ onError: handleMutationError }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
@@ -287,6 +317,9 @@ function RootLayout() {
         MonaSans_300Light,
         MonaSans_500Medium,
         MonaSans_700Bold,
+        // The bundled font's underline thickness is 320/1000 em (6.4pt at 20pt).
+        // This identical-glyph variant uses 50/1000 em for the cashback links.
+        SolidLink_700Bold: require('@/assets/fonts/SolidLink-Bold.ttf'),
         MonaSans_800ExtraBold,
         MonaSans_900Black,
       }).catch(e => console.warn('Error loading secondary fonts:', e));
@@ -480,13 +513,14 @@ function RootLayout() {
                         </>
                       )}
                     </BottomSheetModalProvider>
+                    {Platform.OS !== 'web' && <OtaUpdateGate />}
                   </GestureHandlerRootView>
                 </Intercom>
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
         </LazyThirdwebProvider>
-        <Toast {...toastProps} />
+        <AppToast />
       </TurnkeyProvider>
     </SafeAreaProvider>
   );

@@ -18,6 +18,14 @@ jest.mock('@/components/Swap/BuyFuseScreen', () => 'BuyFuseScreen');
 jest.mock('@/components/Swap/SwapButton', () => 'SwapButton');
 jest.mock('@/components/Swap/SwapPair', () => 'SwapPair');
 jest.mock('@/components/Swap/SwapParams', () => 'SwapParams');
+jest.mock('@/components/Swap/lifi/LifiSwapButton', () => 'LifiSwapButton');
+jest.mock('@/components/Swap/lifi/LifiSwapPair', () => 'LifiSwapPair');
+jest.mock('@/components/Swap/lifi/LifiSwapParams', () => 'LifiSwapParams');
+jest.mock('@/components/Swap/lifi/LifiSwapStatusView', () => 'LifiSwapStatusView');
+jest.mock('@/components/Swap/lifi/LifiSwapStatusWatcher', () => 'LifiSwapStatusWatcher');
+jest.mock('@/hooks/swap/useLifiSwapInfo', () => ({
+  LifiSwapInfoProvider: ({ children }: { children: unknown }) => children,
+}));
 jest.mock('@/components/TransactionStatus', () => 'TransactionStatus');
 jest.mock('@/hooks/useGeoCompliance', () => ({
   __esModule: true,
@@ -31,6 +39,7 @@ jest.mock('@/store/useComplianceStore', () => ({
 }));
 jest.mock('@/store/swapStore', () => ({
   DerivedSwapInfoProvider: ({ children }: { children: unknown }) => children,
+  useIsLifiSwap: () => mockIsLifiSwap,
   useSwapState: (selector: (state: any) => unknown) =>
     selector({
       currentModal: mockCurrentModal,
@@ -45,6 +54,7 @@ jest.mock('@/store/swapStore', () => ({
 let mockCurrentModal = SWAP_MODAL.CLOSE;
 let mockSwapAvailable = true;
 let mockBuyFuseUpgrade: { tier: RewardsTier; depositToSavings: boolean } | undefined;
+let mockIsLifiSwap = false;
 const originalPlatform = Platform.OS;
 
 const render = () => {
@@ -61,6 +71,7 @@ beforeEach(() => {
   mockSwapAvailable = true;
   mockCurrentModal = SWAP_MODAL.CLOSE;
   mockBuyFuseUpgrade = undefined;
+  mockIsLifiSwap = false;
 });
 
 afterEach(() => {
@@ -90,5 +101,29 @@ it('shows the restriction notice when Buy FUSE is unavailable in the current cou
   const root = render();
   expect(root.root.findAllByType('GeoRestrictionNotice')).toHaveLength(1);
   expect(root.root.findAllByType('BuyFuseScreen')).toHaveLength(0);
+  act(() => root.unmount());
+});
+
+it('renders the LI.FI form when the pair leaves Fuse', () => {
+  mockCurrentModal = SWAP_MODAL.OPEN_FORM;
+  mockIsLifiSwap = true;
+  const root = render();
+  expect(root.root.findAllByType('LifiSwapPair')).toHaveLength(1);
+  expect(root.root.findAllByType('SwapPair')).toHaveLength(0);
+  act(() => root.unmount());
+});
+
+it('renders the cross-chain status screen after a bridging swap', () => {
+  mockCurrentModal = SWAP_MODAL.OPEN_LIFI_STATUS;
+  const root = render();
+  expect(root.root.findAllByType('LifiSwapStatusView')).toHaveLength(1);
+  act(() => root.unmount());
+});
+
+/** Mounted beside the modal, not inside it, so it keeps polling after the modal closes. */
+it('keeps the cross-chain status watcher mounted while the modal is closed', () => {
+  mockCurrentModal = SWAP_MODAL.CLOSE;
+  const root = render();
+  expect(root.root.findAllByType('LifiSwapStatusWatcher')).toHaveLength(1);
   act(() => root.unmount());
 });
