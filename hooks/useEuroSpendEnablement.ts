@@ -101,6 +101,26 @@ interface EuroSpendEnablement {
 }
 
 /**
+ * The user's spend-module deployments as the backend records them.
+ *
+ * Shared by the enable flow and the "Spendable" figure, so both read one cached answer to "has
+ * this user enabled Base" and cannot disagree about it.
+ */
+export const useCardSpendDeployments = () => {
+  const { user } = useUser();
+
+  return useQuery({
+    queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, user?.userId],
+    queryFn: getCardSpendDeployments,
+    enabled: !!user?.userId,
+    staleTime: STALE_MS,
+    // A gate that retries forever keeps the card hidden for the same length of time either way;
+    // one retry covers a transient blip without holding the query pending.
+    retry: 1,
+  });
+};
+
+/**
  * The "enable euro spending on Base" flow, end to end.
  *
  * ## What enabling actually is
@@ -149,15 +169,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
 
-  const { data, isLoading } = useQuery({
-    queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, user?.userId],
-    queryFn: getCardSpendDeployments,
-    enabled: !!user?.userId,
-    staleTime: STALE_MS,
-    // A gate that retries forever keeps the card hidden for the same length of time either way;
-    // one retry covers a transient blip without holding the query pending.
-    retry: 1,
-  });
+  const { data, isLoading } = useCardSpendDeployments();
 
   const deployment = data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
 
