@@ -355,6 +355,7 @@ export const USER = {
   referralStorageKey: 'flash_referral',
   attributionStorageKey: 'flash_attribution',
   activityStorageKey: 'flash_activity',
+  lifiSwapsStorageKey: 'flash_lifi_swaps',
   balanceStorageKey: 'flash_balance',
   poolsStorageKey: 'pools-storage',
   swapTokensStorageKey: 'swap-tokens',
