@@ -2336,6 +2336,12 @@ export interface TierSubscriptionDiscountConfig {
   serviceLimit: number;
   /** Number of subscription categories this tier can earn a discount on per month. */
   categoryLimit: number;
+  /**
+   * Most subscription cashback this tier can earn in a calendar month, in USD,
+   * across all its categories together (Core $50, Prime $100, Ultra $200).
+   * Optional because a backend from before the per-tier caps does not send it.
+   */
+  monthlyCap?: number;
 }
 
 export interface SubscriptionDiscountCategory {
@@ -2358,9 +2364,10 @@ export interface SubscriptionDiscountConfig {
   eligibleServices: string[];
   categories: SubscriptionDiscountCategory[];
   /**
-   * Most subscription cashback one eligible service can earn in a month, in USD
-   * (Rewards Terms §5). Caps the cashback, not the charge it is earned on; the
-   * name is left from an earlier reading and is what the API still sends.
+   * Most cashback one payment on a grandfathered subscription can earn at the
+   * old flat rate, in USD (Rewards Terms §6: capped at $50 per payment).
+   * Category-rate charges are not capped per payment, only by each tier's
+   * `monthlyCap`. The name is left from an earlier reading.
    */
   eligibleAmountCap: number;
   tier1: TierSubscriptionDiscountConfig;
@@ -3585,6 +3592,12 @@ export interface ReferralRewardListItem {
    * needs — the referrer's cue to nudge them before the reward unlocks.
    */
   awaitingActivity?: boolean;
+  /**
+   * The friend was paid their reward but the referrer's share was withheld —
+   * by a referrer block or a support decision. The row reads as not eligible,
+   * at $0. Set on the referrer's own row only.
+   */
+  referrerRewardWithheld?: boolean;
   /**
    * The bar this row is measured against. For a friend who has qualified it is
    * the bar they cleared, which can be lower than today's — the target moved
