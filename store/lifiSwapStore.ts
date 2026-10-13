@@ -27,7 +27,18 @@ export interface TrackedLifiSwap {
 }
 
 /** After this long a swap is no longer polled; its activity row stays as it was. */
-export const LIFI_SWAP_TRACK_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How long a settled swap stays in the list for the status screen. */
+export const LIFI_SWAP_SETTLED_RETENTION_MS = DAY_MS;
+
+/**
+ * When an unsettled swap is given up on. A bridge can sit unsettled for well
+ * over a day (a slow refund, a stuck relayer), and polling has to continue
+ * until LI.FI resolves it so the activity row settles. LI.FI settles or
+ * refunds within days; this only bounds a hash it will never resolve.
+ */
+export const LIFI_SWAP_MAX_TRACK_MS = 30 * DAY_MS;
 
 export const isLifiSwapSettled = (swap: Pick<TrackedLifiSwap, 'status'>) =>
   swap.status === 'DONE' || swap.status === 'FAILED' || swap.status === 'INVALID';
@@ -62,9 +73,13 @@ export const useLifiSwapStore = create<LifiSwapState>()(
         },
         setActive: clientTxId => set({ activeClientTxId: clientTxId }),
         prune: () => {
-          const cutoff = Date.now() - LIFI_SWAP_TRACK_WINDOW_MS;
+          const age = (swap: TrackedLifiSwap) => Date.now() - swap.submittedAt;
           const swaps = Object.fromEntries(
-            Object.entries(get().swaps).filter(([, swap]) => swap.submittedAt >= cutoff),
+            Object.entries(get().swaps).filter(([, swap]) =>
+              isLifiSwapSettled(swap)
+                ? age(swap) < LIFI_SWAP_SETTLED_RETENTION_MS
+                : age(swap) < LIFI_SWAP_MAX_TRACK_MS,
+            ),
           );
           set({ swaps });
         },

@@ -8,12 +8,7 @@ import { fetchLifiSwapStatus } from '@/lib/api/lifi-swap';
 import { TransactionStatus } from '@/lib/types';
 import { LifiSwapStatus } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
-import {
-  isLifiSwapSettled,
-  LIFI_SWAP_TRACK_WINDOW_MS,
-  TrackedLifiSwap,
-  useLifiSwapStore,
-} from '@/store/lifiSwapStore';
+import { isLifiSwapSettled, TrackedLifiSwap, useLifiSwapStore } from '@/store/lifiSwapStore';
 
 const POLL_MS = 15_000;
 
@@ -49,11 +44,10 @@ const LifiSwapStatusWatcher = () => {
     prune();
   }, [prune]);
 
+  // Age alone never stops polling: an unsettled swap is followed until LI.FI
+  // resolves it (prune drops one LI.FI never resolves).
   const pending = Object.values(swaps).filter(
-    swap =>
-      swap.userId === userId &&
-      !isLifiSwapSettled(swap) &&
-      Date.now() - swap.submittedAt < LIFI_SWAP_TRACK_WINDOW_MS,
+    swap => swap.userId === userId && !isLifiSwapSettled(swap),
   );
   const pendingKey = pending.map(swap => swap.clientTxId).join(',');
 
