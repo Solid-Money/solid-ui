@@ -17,7 +17,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { eclipseAddress } from '@/lib/utils';
 import { isCrossChainSendToken } from '@/lib/utils/cross-chain-send';
-import { getTokenVault } from '@/lib/vaults';
+import { getEarningTokenVault, getTokenVault } from '@/lib/vaults';
 
 function normalizeCoinAddress(contractAddress: string): string {
   const lower = contractAddress?.toLowerCase() ?? '';
@@ -53,6 +53,9 @@ export default function Coin() {
   }, [tokens, chainId, contractAddress]);
 
   const tokenVault = useMemo(() => getTokenVault(token), [token]);
+  // soUSD / soETH / soFUSE get the product's header and link. Matched by contract, production
+  // shares included, so a development build still shows a real soUSD as a share.
+  const shareVault = useMemo(() => getEarningTokenVault(token), [token]);
   const breakdown = useCoinBreakdown(token);
   // A coin page covers the coin on every chain, but only its Fuse USDC.e / USDT
   // balance can be bridged. When the coin has one, Send starts there (the
@@ -66,21 +69,21 @@ export default function Coin() {
 
   const headerContent = useMemo(
     () => (
-      <View className="gap-8 py-6">
-        <CoinSummary token={token} breakdown={breakdown} tokenVault={tokenVault} />
+      <View className="gap-6 py-6">
+        <CoinSummary token={token} breakdown={breakdown} shareVault={shareVault} />
 
         <CoinActionPills tokenVault={tokenVault} token={sendToken} />
 
-        <CoinEarnLink token={token} tokenVault={tokenVault} />
+        <CoinEarnLink shareVault={shareVault} />
 
-        <CoinBalanceBreakdown breakdown={breakdown} />
+        <CoinBalanceBreakdown breakdown={breakdown} isShare={!!shareVault} />
 
         {token?.contractTickerSymbol && (
-          <Text className="text-base font-semibold text-muted-foreground">Recent activity</Text>
+          <Text className="text-[16px] leading-5 text-white/50">Recent activity</Text>
         )}
       </View>
     ),
-    [token, breakdown, tokenVault, sendToken],
+    [token, breakdown, tokenVault, shareVault, sendToken],
   );
 
   return (

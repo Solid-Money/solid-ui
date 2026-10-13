@@ -1,62 +1,66 @@
+import { Fragment } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { CHAIN_ICONS } from '@/constants/chains';
 import { CoinBreakdown } from '@/hooks/useCoinBreakdown';
+import { formatTokenAmount } from '@/lib/portfolio';
 import { cn, formatNumber } from '@/lib/utils';
 
 type CoinBalanceBreakdownProps = {
   breakdown: CoinBreakdown | undefined;
   className?: string;
+  /** Share tokens read like the header above them: "1,449.83 soUSD". */
+  isShare?: boolean;
 };
 
-const ICON_SIZE = 37;
+const ICON_SIZE = 40;
 
-/** Per-chain balance rows for a coin, as shown on the mobile coin page. */
-const CoinBalanceBreakdown = ({ breakdown, className }: CoinBalanceBreakdownProps) => {
+/** Per-chain balance rows for a coin (Figma 28445:4885): the amount, and what it is worth. */
+const CoinBalanceBreakdown = ({ breakdown, className, isShare }: CoinBalanceBreakdownProps) => {
   if (!breakdown || breakdown.items.length === 0) return null;
 
   return (
-    <View className={cn('gap-4', className)}>
-      <Text className="text-base font-semibold text-muted-foreground">Balance breakdown</Text>
+    <View className={cn('gap-3', className)}>
+      <Text className="text-[16px] leading-5 text-white/50">Balance breakdown</Text>
 
-      <View className="gap-6 rounded-twice bg-card p-5">
-        {breakdown.items.map(item => {
+      <View className="overflow-hidden rounded-[20px] bg-card">
+        {breakdown.items.map((item, index) => {
           const chainIcon = CHAIN_ICONS[item.chainId];
 
           return (
-            <View key={item.chainId} className="gap-3">
-              <View className="flex-row items-center justify-between gap-3">
-                <View className="flex-1 flex-row items-center gap-3">
-                  {chainIcon && (
-                    <Image
-                      source={chainIcon}
-                      style={{ width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2 }}
-                      contentFit="contain"
-                    />
-                  )}
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold">{item.chainName}</Text>
-                  </View>
-                </View>
-                <View className="items-end gap-1">
-                  <Text className="text-base font-semibold">
-                    {formatNumber(item.balance, 3, 0)} {breakdown.symbol}
+            <Fragment key={item.chainId}>
+              {index > 0 && <View className="h-px bg-[#2A2A2A]" />}
+              <View className="flex-row items-center gap-3 px-4 py-[14px]">
+                {chainIcon ? (
+                  <Image
+                    source={chainIcon}
+                    style={{ width: ICON_SIZE, height: ICON_SIZE, borderRadius: ICON_SIZE / 2 }}
+                    contentFit="contain"
+                  />
+                ) : (
+                  <View className="h-10 w-10 rounded-full bg-white/10" />
+                )}
+                <Text
+                  className="min-w-0 flex-1 text-[16px] font-semibold leading-5"
+                  numberOfLines={1}
+                >
+                  {item.chainName}
+                </Text>
+                <View className="shrink-0 items-end gap-[3px]">
+                  <Text className="text-[16px] font-semibold leading-5">
+                    {isShare ? formatTokenAmount(item.balance) : formatNumber(item.balance, 3, 0)}{' '}
+                    {breakdown.symbol}
                   </Text>
-                  <Text className="text-base font-medium opacity-50">
-                    {formatNumber(item.percentage, 0, 0)}%
+                  <Text className="text-[14px] leading-5 text-white/50">
+                    {item.balanceUSD > 0
+                      ? `$${formatNumber(item.balanceUSD, 2, 2)}`
+                      : `${formatNumber(item.percentage, 0, 0)}%`}
                   </Text>
                 </View>
               </View>
-
-              <View className="h-[5px] overflow-hidden rounded-full bg-foreground/20">
-                <View
-                  className="h-full rounded-full bg-foreground/30"
-                  style={{ width: `${item.percentage}%` }}
-                />
-              </View>
-            </View>
+            </Fragment>
           );
         })}
       </View>
