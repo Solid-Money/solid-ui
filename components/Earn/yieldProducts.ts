@@ -35,3 +35,18 @@ export const formatShareRate = (type: VaultType, rate: number | undefined) => {
     ? `1 ${token} = $${rate.toFixed(4)}`
     : `1 ${token} = ${rate.toFixed(4)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
 };
+
+/**
+ * Dollars always to the cent ("$0.10", never "$0.1"), "<$0.01" for dust, "—" when unknown.
+ * The shared balance formatter drops trailing zeros under a dollar, which reads wrong next to
+ * interest figures that are routinely a few cents.
+ */
+export const formatYieldUsd = (value: number | undefined) => {
+  if (value === undefined || !Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  if (abs > 0 && abs < 0.01) return `${value < 0 ? '−' : ''}<$0.01`;
+  return `${value < 0 ? '−' : ''}$${abs.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};

@@ -3,9 +3,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Href, router, useLocalSearchParams } from 'expo-router';
 
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
 import { VaultKey } from '@/constants/withdraw';
-import { useMaxAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
@@ -44,6 +45,7 @@ export default function SavingsScreenNew() {
   const { valuesByVault, isLoading: isSavingsLoading } = useTotalSavingsUSD();
   const { vaults: walletVaults, isLoading: isWalletVaultsLoading } = useSavingsVaults();
   const { maxAPY, isAPYsLoading } = useMaxAPY(vaultType);
+  const { data: apys } = useAPYs(vaultType);
   const interest = useVaultInterestEarned(vaultType);
   const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[vaultType]);
   const asset = portfolio.earnAssets.find(item => item.vault.type === vaultType);
@@ -74,6 +76,19 @@ export default function SavingsScreenNew() {
   const escrowedShares = asset?.escrowedShareAmount ?? 0;
   const walletToken = asset?.walletTokens[0] ?? unreadShares[0]?.tokens[0];
 
+  // Read from the 30-day APY (see interestOverPastDays). Capped at the interest earned since
+  // the first deposit, except for shares that calculation can't see (a production soUSD on
+  // a development build), where the cap would wrongly be zero.
+  const past30Usd =
+    isAPYsLoading || (interest.isLoading && unreadUsd === 0)
+      ? undefined
+      : interestOverPastDays(
+          balanceUsd,
+          apys?.thirtyDay || maxAPY,
+          30,
+          unreadUsd > 0 ? undefined : interest.interestUsd,
+        );
+
   return (
     <PageLayout
       showNavbar={false}
@@ -98,6 +113,7 @@ export default function SavingsScreenNew() {
         apy={isAPYsLoading || !maxAPY ? undefined : maxAPY}
         interestUsd={interest.interestUsd}
         isInterestLoading={interest.isLoading}
+        past30Usd={past30Usd}
         walletShares={walletShareAmount + unreadAmount}
         walletUsd={
           usdPerShare === undefined && walletShareAmount > 0

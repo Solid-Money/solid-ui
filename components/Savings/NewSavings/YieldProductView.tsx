@@ -1,15 +1,15 @@
 import { Pressable, View } from 'react-native';
 import { ChevronRight, Info } from 'lucide-react-native';
 
-import { assetAmountLabel } from '@/components/Assets/AssetRow';
 import CountUp from '@/components/CountUp';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { yieldProductName } from '@/components/Earn/yieldProducts';
+import { formatYieldUsd, yieldProductName } from '@/components/Earn/yieldProducts';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 
 import SavingsFundedActions from './SavingsFundedActions';
@@ -65,6 +65,8 @@ export interface YieldProductViewProps {
   apy: number | undefined;
   interestUsd: number;
   isInterestLoading: boolean;
+  /** Interest added over the last 30 days; undefined while it can't be worked out. */
+  past30Usd: number | undefined;
   walletShares: number;
   walletUsd: number | undefined;
   escrowedShares: number;
@@ -90,6 +92,7 @@ export default function YieldProductView({
   apy,
   interestUsd,
   isInterestLoading,
+  past30Usd,
   walletShares,
   walletUsd,
   escrowedShares,
@@ -102,7 +105,10 @@ export default function YieldProductView({
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
   const apyLabel = apy ? `${apy.toFixed(1)}%` : undefined;
-  const todayUsd = (balanceUsd * Math.max(apy ?? 0, 0)) / 100 / 365;
+  // Per day once that reaches a cent, else per month, as on Assets: a small balance would
+  // otherwise read "+$0.00 today".
+  const rate = Math.max(apy ?? 0, 0) / 100;
+  const estimate = yieldEstimate((balanceUsd * rate) / 365, (balanceUsd * rate) / 12);
 
   const footer = (
     <Text className="mx-4 text-center text-[13px] leading-[18px] text-white/40">
@@ -145,10 +151,11 @@ export default function YieldProductView({
                 decimalSeparator: BALANCE_STYLE,
               }}
             />
-            {todayUsd >= 0.01 ? (
+            {estimate ? (
               <View className="rounded-full bg-[#1C1C1C] px-[14px] py-[7px]">
                 <Text className="text-[16px] leading-5 text-[#94F27F]">
-                  +{assetAmountLabel(todayUsd)} today
+                  +{formatYieldUsd(estimate.amount)}{' '}
+                  {estimate.period === 'day' ? 'today' : 'a month'}
                 </Text>
               </View>
             ) : null}
@@ -156,17 +163,32 @@ export default function YieldProductView({
 
           <SavingsFundedActions vaultType={vaultType} />
 
-          <View className="mx-4 rounded-[20px] bg-[#1C1C1C] px-5 py-[18px]">
-            <Text className="text-[15px] leading-5 text-white/60">Interest earned</Text>
-            {isInterestLoading ? (
-              <Skeleton className="mt-2 h-7 w-28 rounded-md bg-white/10" />
-            ) : (
-              <Text className="mt-1 text-[24px] font-semibold leading-8 text-white">
-                {assetAmountLabel(interestUsd)}
+          <View className="mx-4 flex-row rounded-[20px] bg-[#1C1C1C] py-[18px]">
+            <View className="flex-1 px-5">
+              <Text className="text-[15px] leading-5 text-white/60">Interest earned</Text>
+              {isInterestLoading ? (
+                <Skeleton className="mt-2 h-7 w-24 rounded-md bg-white/10" />
+              ) : (
+                <Text className="mt-1 text-[24px] font-semibold leading-8 text-white">
+                  {formatYieldUsd(interestUsd)}
+                </Text>
+              )}
+              <Text className="mt-1 text-[14px] leading-5 text-white/50">Since you started</Text>
+            </View>
+            <View className="w-px bg-white/10" />
+            <View className="flex-1 px-5">
+              <Text className="text-[15px] leading-5 text-white/60">Past 30 days</Text>
+              {past30Usd === undefined ? (
+                <Skeleton className="mt-2 h-7 w-20 rounded-md bg-white/10" />
+              ) : (
+                <Text className="mt-1 text-[24px] font-semibold leading-8 text-[#94F27F]">
+                  +{formatYieldUsd(past30Usd)}
+                </Text>
+              )}
+              <Text className="mt-1 text-[14px] leading-5 text-white/50">
+                Added to your balance
               </Text>
-            )}
-            {/* "Past 30 days" joins this card once the savings history endpoint ships. */}
-            <Text className="mt-1 text-[14px] leading-5 text-white/50">Since you started</Text>
+            </View>
           </View>
 
           <VaultApyHistoryCard vaultType={vaultType} />

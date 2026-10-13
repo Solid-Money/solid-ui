@@ -1,5 +1,6 @@
 import {
   formatShareRate,
+  formatYieldUsd,
   openYieldProduct,
   YIELD_PRODUCT_ORDER,
   yieldProductName,
@@ -32,5 +33,14 @@ describe('yield products', () => {
       pathname: '/savings',
       params: { vault: 'eth' },
     });
+  });
+
+  it('writes dollars to the cent, even under a dollar', () => {
+    expect(formatYieldUsd(0.1)).toBe('$0.10');
+    expect(formatYieldUsd(9.244)).toBe('$9.24');
+    expect(formatYieldUsd(2560)).toBe('$2,560.00');
+    expect(formatYieldUsd(0.004)).toBe('<$0.01');
+    expect(formatYieldUsd(0)).toBe('$0.00');
+    expect(formatYieldUsd(undefined)).toBe('—');
   });
 });

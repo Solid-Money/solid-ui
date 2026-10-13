@@ -2,9 +2,13 @@ import { Fragment, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronRight, CreditCard } from 'lucide-react-native';
 
-import { assetAmountLabel } from '@/components/Assets/AssetRow';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { formatShareRate, yieldProductName, yieldVault } from '@/components/Earn/yieldProducts';
+import {
+  formatShareRate,
+  formatYieldUsd,
+  yieldProductName,
+  yieldVault,
+} from '@/components/Earn/yieldProducts';
 import { Text } from '@/components/ui/text';
 import { formatTokenAmount } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
@@ -98,7 +102,7 @@ const YieldShareCard = ({
           icon={<YieldIcon vaultType={vaultType} badge="live" />}
           title={token}
           subtitle={`${formatTokenAmount(walletShares)} ${token}`}
-          value={assetAmountLabel(walletUsd)}
+          value={formatYieldUsd(walletUsd)}
           detail="In your wallet"
           accessibilityLabel={`Open ${token}`}
           onPress={onOpenWallet}
@@ -117,10 +121,10 @@ const YieldShareCard = ({
           }
           title="Backing your card"
           subtitle={`${formatTokenAmount(escrowedShares)} ${token}`}
-          value={assetAmountLabel(escrowedUsd)}
+          value={formatYieldUsd(escrowedUsd)}
           detail={
             debtUsd !== undefined && debtUsd > 0
-              ? `${assetAmountLabel(debtUsd).replace(/\.00$/, '')} borrowed`
+              ? `${formatYieldUsd(debtUsd).replace(/\.00$/, '')} borrowed`
               : 'Credit collateral'
           }
           accessibilityLabel="Open your credit position"
@@ -132,12 +136,7 @@ const YieldShareCard = ({
 
   return (
     <View className="gap-3">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[16px] leading-5 text-white/50">Your {token}</Text>
-        <Text className="text-[16px] leading-5 text-white/50">
-          {formatTokenAmount(walletShares + escrowedShares)} {token}
-        </Text>
-      </View>
+      <Text className="text-[16px] leading-5 text-white/50">Your {token}</Text>
       <View className="overflow-hidden rounded-[20px] bg-[#1C1C1C]">
         {rows.map(({ key, row }, index) => (
           <Fragment key={key}>
