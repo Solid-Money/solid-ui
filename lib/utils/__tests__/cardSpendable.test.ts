@@ -230,6 +230,15 @@ describe('cardSpendableAssetsFor', () => {
     expect(sumCardSpendableUSD([lookalike], assets)).toBe(0);
   });
 
+  it('counts no EURC when the backend allowlists none on Base', () => {
+    // An empty list is the backend saying its Base instance spends nothing — QA has no EURC
+    // address configured. Filling it from the build would count EURC the card cannot spend.
+    const assets = cardSpendableAssetsFor([baseDeployment({ spendTokens: [] })]);
+
+    expect(assets).toBe(CARD_SPENDABLE_ASSETS);
+    expect(sumCardSpendableUSD([eurc()], assets)).toBe(0);
+  });
+
   it('does not count EURC held on another chain', () => {
     const assets = cardSpendableAssetsFor([baseDeployment()]);
 

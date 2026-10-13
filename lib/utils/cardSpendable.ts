@@ -69,8 +69,10 @@ export const isCardSpendable = (token: TokenBalance, assets: CardSpendableAsset[
  * for the reason `useEuroSpendEnablement` gives: a slow Base RPC must not make the figure jump.
  * The chain is still what decides a purchase.
  *
- * The EURC address is the instance's own allowlist as the backend serves it, falling back to this
- * build's when the backend sends none — an older backend predates `spendTokens`.
+ * The EURC address is the instance's own allowlist as the backend serves it. An empty list is an
+ * answer, not a gap: that backend's Base instance spends nothing (QA ships with no EURC address),
+ * and filling it from this build would count EURC the card cannot spend. The build's address is
+ * only a fallback for a response with no `spendTokens` at all.
  */
 export const cardSpendableAssetsFor = (
   deployments: CardSpendDeployment[] | undefined,
@@ -80,11 +82,9 @@ export const cardSpendableAssetsFor = (
   );
   if (!baseDeployment?.enabled || !baseDeployment.available) return CARD_SPENDABLE_ASSETS;
 
-  const addresses = baseDeployment.spendTokens?.length
-    ? baseDeployment.spendTokens
-    : BASE_SPEND_DEPLOYMENT.spendTokenAddress
-      ? [BASE_SPEND_DEPLOYMENT.spendTokenAddress]
-      : [];
+  const addresses =
+    baseDeployment.spendTokens ??
+    (BASE_SPEND_DEPLOYMENT.spendTokenAddress ? [BASE_SPEND_DEPLOYMENT.spendTokenAddress] : []);
   if (!addresses.length) return CARD_SPENDABLE_ASSETS;
 
   return [...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(addresses)];
