@@ -7,7 +7,15 @@ import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance, VaultType } from '@/lib/types';
-import { cn, formatNumber, isSoFUSEToken, isWalletCardExcludedToken } from '@/lib/utils';
+import {
+  cn,
+  formatNumber,
+  isSoETHToken,
+  isSoEURCToken,
+  isSoFUSEToken,
+  isSoUSDToken,
+  isWalletCardExcludedToken,
+} from '@/lib/utils';
 
 interface EarningYieldProps {
   token: TokenBalance | undefined;
@@ -19,8 +27,12 @@ const EarningYield = ({ token, className }: EarningYieldProps) => {
 
   const vault = useMemo(() => {
     if (!token?.contractAddress) return undefined;
+    // Each share earns its own vault's rate. Anything else that is excluded from
+    // the wallet total used to fall through to soUSD's APY.
     if (isSoFUSEToken(token.contractAddress)) return VaultType.FUSE;
-    if (isWalletCardExcludedToken(token.contractAddress)) return VaultType.USDC; // soUSD
+    if (isSoETHToken(token.contractAddress)) return VaultType.ETH;
+    if (isSoEURCToken(token.contractAddress)) return VaultType.EUR;
+    if (isSoUSDToken(token.contractAddress)) return VaultType.USDC;
     return undefined;
   }, [token?.contractAddress]);
 
