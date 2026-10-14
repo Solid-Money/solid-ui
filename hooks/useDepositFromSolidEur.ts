@@ -193,12 +193,17 @@ const useDepositFromSolidEur = (
         url: `${BASE_EXPLORER_URL}/tx/${txHash}`,
       });
       setHash(txHash);
-      // An old account's receipt must never update the newly selected account.
+      // An old account's receipt must never update the newly selected account: no
+      // rewards refresh, no user update, and no success handed back to the form.
+      // The deposit did complete for the account that made it, though, so this
+      // hook's own status ends there instead of staying pending.
       if (
         selectedRewardsUserId() !== user!.userId ||
         useRewardsUpgradeStore.getState().session !== accountSession
-      )
+      ) {
+        setDepositStatus({ status: Status.SUCCESS });
         return undefined;
+      }
       refreshRewardsAfterSavings(queryClient, user!.userId, safeAddress);
       updateUser({ ...user!, isDeposited: true });
       setDepositStatus({ status: Status.SUCCESS });
