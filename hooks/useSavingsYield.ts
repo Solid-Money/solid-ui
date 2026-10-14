@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import useUser from '@/hooks/useUser';
@@ -73,6 +73,17 @@ export function useSavingsYield({
   const [animation, setAnimation] = useState(0);
   const [anchor, setAnchor] = useState<{ value: number; time: number } | null>(null);
   const { user } = useUser();
+
+  // A card that switches vault in place must not carry the old vault's interest
+  // over: the summary-based vaults keep their last value until the backend
+  // answers, and soEURC's summary may not answer at all yet.
+  const previousVault = useRef(vault);
+  useEffect(() => {
+    if (previousVault.current === vault) return;
+    previousVault.current = vault;
+    setLiveYield(0);
+    setAnchor(null);
+  }, [vault]);
 
   useEffect(() => {
     const id = setInterval(() => setAnimation(a => a + 1), 1000);
