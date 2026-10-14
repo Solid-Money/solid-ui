@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import * as Sentry from '@sentry/react-native';
 import { decodeFunctionData, erc20Abi } from 'viem';
 import { base } from 'viem/chains';
 
@@ -6,6 +7,7 @@ import useWithdrawSoEurc from '@/hooks/useWithdrawSoEurc';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { Status } from '@/lib/types';
 // react-test-renderer is supplied by jest-expo without bundled declarations.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -95,4 +97,18 @@ it('surfaces a cancelled signature as an error', async () => {
   await act(async () => {
     await expect(hook.withdrawSoEurc('1')).rejects.toThrow('cancelled');
   });
+});
+
+it('reports an amount that does not parse like any other failure', async () => {
+  await act(async () => {
+    await expect(hook.withdrawSoEurc('not-a-number')).rejects.toThrow();
+  });
+
+  expect(execute).not.toHaveBeenCalled();
+  expect(hook.withdrawSoEurcStatus).toBe(Status.ERROR);
+  expect(hook.error).toBeTruthy();
+  expect(Sentry.captureException).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ tags: { type: 'withdraw_soeurc_error' } }),
+  );
 });
