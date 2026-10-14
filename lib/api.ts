@@ -220,8 +220,29 @@ const getRefreshToken = (): string | null => {
   return null;
 };
 
+// Renews an expired session before a request to the Solid APIs is sent, so it
+// isn't answered with a 401 first. Registered by lib/utils (ensureFreshAccessToken),
+// which imports this module and so can't be imported from here.
+let authPreflight: (() => Promise<void>) | null = null;
+export const setAuthPreflight = (preflight: () => Promise<void>) => {
+  authPreflight = preflight;
+};
+
+const SOLID_API_BASE_URLS = [
+  EXPO_PUBLIC_FLASH_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
+].filter(Boolean);
+
+const isSolidApiUrl = (url: string | undefined) =>
+  !!url && SOLID_API_BASE_URLS.some(base => url.startsWith(base));
+
 // Set up axios interceptor to add headers to all axios requests
-axios.interceptors.request.use(config => {
+axios.interceptors.request.use(async config => {
+  // Before reading the token below, so the request carries the renewed one.
+  if (authPreflight && isSolidApiUrl(config.url)) await authPreflight();
+
   const platformHeaders = getPlatformHeaders();
 
   config.headers = {
