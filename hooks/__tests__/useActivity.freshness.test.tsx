@@ -10,8 +10,9 @@ const { act, create } = require('react-test-renderer');
 
 const mockUser = { userId: 'account', safeAddress: '0xABC' };
 let mockWithdraws: { requestTxHash: string; requestStatus: string }[] | undefined;
+let mockEurWithdraws: { requestTxHash: string; requestStatus: string }[] | undefined;
 jest.mock('@/hooks/useUser', () => ({ __esModule: true, default: () => ({ user: mockUser }) }));
-jest.mock('@/lib/config', () => ({ USER: 'user' }));
+jest.mock('@/lib/config', () => ({ USER: 'user', isDevFeatureEnabled: true }));
 jest.mock('@/lib/mmvkStorage', () => ({
   __esModule: true,
   default: () => ({ getItem: () => null, setItem: jest.fn() }),
@@ -21,7 +22,10 @@ jest.mock('@/lib/api', () => ({
   fetchActivityEvents: jest.fn(async () => ({ docs: [], hasNextPage: false })),
 }));
 jest.mock('@/hooks/useAnalytics', () => ({
-  useUserTransactions: () => ({ data: { withdraws: mockWithdraws } }),
+  // The USD subgraph by default; the EUR one when asked for the 'eur' vault.
+  useUserTransactions: (_address: string, vault?: string) => ({
+    data: { withdraws: vault === 'eur' ? mockEurWithdraws : mockWithdraws },
+  }),
 }));
 jest.mock('@/hooks/useSyncActivities', () => ({
   useSyncActivities: () => ({ isSyncing: false, isStale: false, canSync: true }),
@@ -35,14 +39,17 @@ jest.mock('@/hooks/useListedTokens', () => ({ useListedTokens: () => mockListedT
 // Base withdraw requests, keyed by request tx hash, as the queue read reports them.
 let mockBaseRequests: Record<string, { requestId: string; status: 'pending' | 'finished' }> = {};
 jest.mock('@/hooks/useBaseWithdrawRequests', () => ({
+  // As the real one: soUSD only, since soEURC withdraws on Base through its own queue.
   isBaseWithdrawRequest: (activity: {
     type: string;
     chainId?: number;
     status: string;
     hash?: string;
+    symbol?: string;
   }) =>
     activity.type === 'withdraw' &&
     activity.chainId === 8453 &&
+    !['soeurc', 'soeur'].includes(activity.symbol?.toLowerCase() ?? '') &&
     activity.status === 'success' &&
     !!activity.hash,
   useBaseWithdrawRequests: () => mockBaseRequests,
@@ -72,6 +79,7 @@ describe('Activity withdrawal status freshness', () => {
     mockWithdraws = undefined;
     mockListedTokens = null;
     mockBaseRequests = {};
+    mockEurWithdraws = undefined;
   });
   afterEach(() => {
     act(() => renderer.unmount());
@@ -194,5 +202,43 @@ describe('Activity withdrawal status freshness', () => {
       });
       expect(statusOf()).toBe(TransactionStatus.CANCELLED);
     });
+  });
+
+  // A soEURC request sits on the soEURC queue: only the EUR subgraph can say it
+  // was solved, never a USD row that happens to share its hash.
+  it('resolves a soEURC withdrawal from the EUR subgraph only', async () => {
+    useActivityStore.setState({
+      events: { account: [{ ...withdrawal, symbol: 'soEURC', hash: '0xeur' }] },
+    });
+    mockWithdraws = [{ requestTxHash: '0xeur', requestStatus: 'SOLVED' }];
+    await act(async () => {
+      renderer = create(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.PROCESSING);
+
+    mockEurWithdraws = [{ requestTxHash: '0xeur', requestStatus: 'SOLVED' }];
+    await act(async () => {
+      renderer.update(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.SUCCESS);
+  });
+
+  // soEURC withdraws on Base too, but not through soUSD's Base queue: a Base soEURC
+  // request is never read from that queue, and resolves from the EUR subgraph.
+  it('resolves a soEURC withdrawal on Base from the EUR subgraph, not the soUSD queue', async () => {
+    useActivityStore.setState({
+      events: { account: [{ ...withdrawal, symbol: 'soEURC', hash: '0xeur', chainId: 8453 }] },
+    });
+    mockBaseRequests = { '0xeur': { requestId: '0xreq', status: 'finished' } };
+    await act(async () => {
+      renderer = create(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.PROCESSING);
+
+    mockEurWithdraws = [{ requestTxHash: '0xeur', requestStatus: 'SOLVED' }];
+    await act(async () => {
+      renderer.update(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.SUCCESS);
   });
 });

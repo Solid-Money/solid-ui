@@ -23,10 +23,11 @@ describe('vault FAQs', () => {
     expect(VAULT_FAQS[VaultType.USDC][0].question).toContain('soUSD');
     expect(VAULT_FAQS[VaultType.ETH][0].question).toContain('soETH');
     expect(VAULT_FAQS[VaultType.FUSE][0].question).toContain('soFUSE');
+    expect(VAULT_FAQS[VaultType.EUR][0].question).toContain('soEURC');
   });
 
-  it('never explains soUSD on the ETH or FUSE vault', () => {
-    for (const vaultType of [VaultType.ETH, VaultType.FUSE]) {
+  it('never explains soUSD on the ETH, FUSE or EUR vault', () => {
+    for (const vaultType of [VaultType.ETH, VaultType.FUSE, VaultType.EUR]) {
       const copy = getVaultFaqs(vaultType)
         .map(faq => `${faq.question} ${faq.answer}`)
         .join(' ');
@@ -52,6 +53,19 @@ describe('vault FAQs', () => {
         expect(`${faq.question} ${faq.answer}`).not.toMatch(/\bvaults?\b/i);
       }
     }
+  });
+
+  // No yield yet and a queued withdrawal: the copy must not promise either away.
+  it('tells EUR savers what they deposit, that yield is coming, and how long withdrawals take', () => {
+    const copy = getVaultFaqs(VaultType.EUR)
+      .map(faq => `${faq.question} ${faq.answer}`)
+      .join(' ');
+
+    expect(copy).toContain('EURC');
+    expect(copy).toContain('Base');
+    expect(copy).toMatch(/coming soon/i);
+    expect(copy).toMatch(/3 days/);
+    expect(copy).not.toMatch(/\d+(\.\d+)?%/);
   });
 
   it('falls back to the USDC vault for a type that is not a vault', () => {

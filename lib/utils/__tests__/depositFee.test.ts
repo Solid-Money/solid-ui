@@ -100,7 +100,7 @@ describe('getDepositFeeRatePpm', () => {
 
   describe('savings deposit', () => {
     it('never charges a Wirex cardholder, on any chain or vault', () => {
-      for (const vaultToken of ['soUSD', 'soETH', 'soFUSE']) {
+      for (const vaultToken of ['soUSD', 'soETH', 'soFUSE', 'soEURC']) {
         expectFreeOnlyOn(CHAIN_IDS, chainId =>
           getDepositFeeRatePpm({
             provider: CardProvider.WIREX,
@@ -119,6 +119,7 @@ describe('getDepositFeeRatePpm', () => {
           ['soUSD', base.id],
           ['soETH', mainnet.id],
           ['soFUSE', fuse.id],
+          ['soEURC', base.id],
         ])('charges %s deposits everywhere but its vault chain', (vaultToken, vaultChainId) => {
           expectFreeOnlyOn([vaultChainId], chainId =>
             getDepositFeeRatePpm({ provider, product: 'savings', chainId, vaultToken }),
