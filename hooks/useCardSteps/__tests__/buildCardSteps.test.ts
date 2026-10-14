@@ -311,3 +311,35 @@ describe('buildCardSteps - a retired Bridge endorsement', () => {
     expect(kyc?.completed).toBe(true);
   });
 });
+
+/**
+ * A cardholder whose card was closed orders the next one from the same step a
+ * first-timer activates from — but they are told what happened, and the button
+ * says what it does.
+ */
+describe('buildCardSteps - replacing a closed card', () => {
+  it('re-words the activate step and keeps it actionable', () => {
+    const steps = build({
+      options: {
+        cardIssuer: CardProvider.WIREX,
+        rainApplicationStatus: undefined,
+        kycStatus: KycStatus.APPROVED,
+        replacingClosedCard: true,
+      },
+    });
+    const activate = steps.find(step => step.key === 'activate')!;
+
+    expect(activate.title).toBe('Get a new card');
+    expect(activate.description).toMatch(/previous card was closed/);
+    expect(activate.buttonText).toBe('Get new card');
+    expect(activate.completed).toBe(false);
+    expect(activate.onPress).toBeDefined();
+  });
+
+  it('leaves the first-card wording alone otherwise', () => {
+    const activate = build().find(step => step.key === 'activate')!;
+
+    expect(activate.title).toBe('Activate your card');
+    expect(activate.buttonText).toBe('Activate card');
+  });
+});

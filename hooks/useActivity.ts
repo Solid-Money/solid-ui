@@ -3,12 +3,14 @@ import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import { getVaultKey } from '@/constants/withdraw';
+import { useListedTokens } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
 import { constructActivity } from '@/lib/activityEvents';
 import { fetchActivityEvents } from '@/lib/api';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { ActivityEvent, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { isUnlistedTokenReceive } from '@/lib/utils/tokenAllowlist';
 import { useAccountRefreshStore } from '@/store/useAccountRefreshStore';
 import { useActivityStore } from '@/store/useActivityStore';
 
@@ -93,6 +95,7 @@ export function useActivity() {
     isDevFeatureEnabled ? user?.safeAddress : undefined,
     VaultType.EUR,
   );
+  const listedTokens = useListedTokens();
 
   const withdraws = userTransactions?.withdraws;
   const eurWithdraws = eurTransactions?.withdraws;
@@ -266,10 +269,12 @@ export function useActivity() {
         ) {
           return false;
         }
+        // Airdropped spam tokens: hidden on the same list the balances use.
+        if (isUnlistedTokenReceive(activity, listedTokens)) return false;
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [userEventsFromStore, user?.userId, withdraws, eurWithdraws]);
+  }, [userEventsFromStore, user?.userId, withdraws, eurWithdraws, listedTokens]);
 
   useEffect(() => {
     if (!activities?.length) return;

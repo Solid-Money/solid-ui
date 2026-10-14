@@ -576,6 +576,7 @@ export function getCardFundingAddress(
 // testable (this file's import graph does not load under jest-expo). Re-exported
 // here so `@/lib/utils` stays the single import path for consumers.
 export {
+  canReplaceClosedCard,
   getActiveCardRoute,
   hasCard,
   hasCardStatusWithRainApplication,
