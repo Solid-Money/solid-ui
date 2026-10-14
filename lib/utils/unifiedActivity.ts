@@ -5,7 +5,11 @@ import {
   CardTransactionCategory,
   TransactionType,
 } from '@/lib/types';
-import { getCardMerchantLocation, getCardMerchantName } from '@/lib/utils/cardHelpers';
+import {
+  getCardMerchantLocation,
+  getCardMerchantName,
+  getCardRefundLabel,
+} from '@/lib/utils/cardHelpers';
 
 /** The chips the Activity screen filters by. `PROGRESS` is not one of them. */
 export type ActivityFilter = ActivityTab.ALL | ActivityTab.WALLET | ActivityTab.CARD;
@@ -108,6 +112,8 @@ export const getUnifiedActivitySearchText = (item: UnifiedActivityItem): string 
       getCardMerchantName(item.transaction),
       getCardMerchantLocation(item.transaction),
       item.transaction.merchant_category_label,
+      // The row says "Refund", so a search for it should find the row.
+      getCardRefundLabel(item.transaction),
     ]
       .filter(Boolean)
       .join(' ')

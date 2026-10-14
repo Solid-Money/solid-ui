@@ -9,6 +9,7 @@ import {
   CardSpendDetails,
   CardStatus,
   CardTransaction,
+  CardTransactionCategory,
   CardTransactionFee,
   Cashback,
   CashbackInfo,
@@ -594,6 +595,51 @@ export const formatCardAmount = (
  */
 export const isOutgoingCardTransaction = (transaction: Pick<CardTransaction, 'amount'>): boolean =>
   !(parseFloat(transaction.amount) < 0);
+
+type RefundLink = Pick<CardTransaction, 'category' | 'related_transaction_ids'>;
+
+/**
+ * The purchase a refund row gave money back for, when the issuer says which.
+ *
+ * Wirex puts a refund on the purchase's own activity rather than sending one of
+ * its own. The backend splits it into a refund row and links the two through
+ * `related_transaction_ids` (see `toWirexCardHistoryRows` there).
+ */
+export const getRefundedPurchaseId = (transaction: RefundLink): string | undefined =>
+  transaction.category === CardTransactionCategory.REFUND
+    ? transaction.related_transaction_ids?.[0] || undefined
+    : undefined;
+
+/** The refund row that gave money back for this purchase, when there is one. */
+export const getPurchaseRefundId = (
+  transaction: RefundLink & Pick<CardTransaction, 'refunded_amount'>,
+): string | undefined =>
+  transaction.category === CardTransactionCategory.PURCHASE && transaction.refunded_amount
+    ? transaction.related_transaction_ids?.[0] || undefined
+    : undefined;
+
+/**
+ * The chip that says money came back: "Refund" on a refund row, "Refunded" or
+ * "Partially refunded" on the purchase it was for. Undefined for anything else.
+ *
+ * A purchase linked to its refund row carries the full charge in `amount`. One
+ * that is not (a backend from before the split) carries what was left after the
+ * refund, so the charge is that plus the refund.
+ */
+export const getCardRefundLabel = (
+  transaction: RefundLink & Pick<CardTransaction, 'amount' | 'refunded_amount'>,
+): string | undefined => {
+  if (transaction.category === CardTransactionCategory.REFUND) return 'Refund';
+
+  const refunded = Math.abs(parseFloat(transaction.refunded_amount ?? ''));
+  if (!refunded) return undefined;
+
+  const amount = Math.abs(parseFloat(transaction.amount)) || 0;
+  const charged = getPurchaseRefundId(transaction) ? amount : amount + refunded;
+
+  // Half a cent of slack, for figures that were rounded on their way here.
+  return refunded >= charged - 0.005 ? 'Refunded' : 'Partially refunded';
+};
 
 /**
  * A figure belonging to a card transaction, signed the way the cardholder reads
