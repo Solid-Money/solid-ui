@@ -7,10 +7,10 @@ import { useListedTokens } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
 import { constructActivity } from '@/lib/activityEvents';
 import { fetchActivityEvents } from '@/lib/api';
+import { isDevFeatureEnabled } from '@/lib/config';
 import { ActivityEvent, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { isUnlistedTokenReceive } from '@/lib/utils/tokenAllowlist';
-import { findVault } from '@/lib/vaults';
 import { useAccountRefreshStore } from '@/store/useAccountRefreshStore';
 import { useActivityStore } from '@/store/useActivityStore';
 
@@ -90,9 +90,10 @@ export function useActivity() {
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
   // soEURC requests sit on their own queue, indexed (when at all) by the EUR
-  // subgraph — never by the USD one. Read only where the EUR vault is listed.
+  // subgraph — never by the USD one. Read only where the EUR vault is listed,
+  // which is the same `isDevFeatureEnabled` gate as its VAULTS entry.
   const { data: eurTransactions } = useUserTransactions(
-    findVault(VaultType.EUR) ? user?.safeAddress : undefined,
+    isDevFeatureEnabled ? user?.safeAddress : undefined,
     VaultType.EUR,
   );
   const listedTokens = useListedTokens();
