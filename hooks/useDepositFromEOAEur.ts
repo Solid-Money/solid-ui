@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { type Address, erc20Abi, parseUnits } from 'viem';
+import { type Address, erc20Abi, isAddress, parseUnits, zeroAddress } from 'viem';
 import { base } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
@@ -34,6 +34,28 @@ type DepositResult = {
   depositStatus: StatusInfo;
   error: string | null;
   hash: Address | undefined;
+};
+
+/** Why the deposit refused: reported to Sentry and recorded on the failure. */
+export const EOA_DEPOSIT_NOT_CONFIGURED =
+  'EURC deposits from an external wallet are not configured: EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS is not a valid address';
+/** What the deposit button says instead, short enough for it. */
+export const EOA_DEPOSIT_UNAVAILABLE = 'Wallet deposits unavailable';
+
+/**
+ * The backend deposit wallet the EURC is approved to.
+ *
+ * It comes from EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, which defaults to ''. An
+ * approval to that, or to the zero address, can only fail — and only after the
+ * wallet has been asked to switch network and sign — so a build without a valid
+ * one refuses before any wallet prompt.
+ */
+const getDepositSpender = (): Address => {
+  const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS;
+  if (!isAddress(spender) || spender.toLowerCase() === zeroAddress) {
+    throw new Error(EOA_DEPOSIT_NOT_CONFIGURED);
+  }
+  return spender;
 };
 
 /**
@@ -130,7 +152,8 @@ const useDepositFromEOAEur = (
         throw new Error(`Minimum deposit amount is ${minimumAmount} EURC`);
       }
 
-      const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
+      // Before the pending state, the network switch and the approval prompt.
+      const spender = getDepositSpender();
       const amountWei = parseUnits(amount, SOEURC_DECIMALS);
       if (amountWei <= 0n || balance === undefined || amountWei > balance)
         throw new Error('Insufficient EURC balance');
@@ -206,7 +229,12 @@ const useDepositFromEOAEur = (
       return trackingId;
     } catch (error: any) {
       console.error(error);
-      const errMsg = captureDepositError(error, { ...ctx, depositStatus });
+      const isNotConfigured = error?.message === EOA_DEPOSIT_NOT_CONFIGURED;
+      const errMsg = captureDepositError(error, {
+        ...ctx,
+        depositStatus,
+        ...(isNotConfigured && { step: 'validation' }),
+      });
 
       if (trackingId) {
         updateActivity(trackingId, {
@@ -219,7 +247,7 @@ const useDepositFromEOAEur = (
       }
 
       setDepositStatus({ status: Status.ERROR });
-      setError(errMsg);
+      setError(isNotConfigured ? EOA_DEPOSIT_UNAVAILABLE : errMsg);
       throw error;
     }
   };
