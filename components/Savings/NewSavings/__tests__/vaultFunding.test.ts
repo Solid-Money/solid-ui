@@ -24,4 +24,11 @@ describe('hasSelectedVaultFunds', () => {
     expect(hasSelectedVaultFunds(undefined, VaultType.USDC, true)).toBe(true);
     expect(hasSelectedVaultFunds({ [VaultType.USDC]: 0 }, VaultType.USDC, true)).toBe(true);
   });
+
+  // The EUR vault's balance is in euros, kept apart from the USD values.
+  it('reads the EUR vault from its own euro value', () => {
+    const withEur = { ...values, [VaultType.EUR]: 40 };
+    expect(hasSelectedVaultFunds(withEur, VaultType.EUR)).toBe(true);
+    expect(hasSelectedVaultFunds(values, VaultType.EUR)).toBe(false);
+  });
 });

@@ -7,6 +7,7 @@ import {
   coinAssetPath,
   formatTokenAmount,
   groupPortfolioCash,
+  portfolioShareVaultType,
   portfolioTotals,
   savingsUsdValue,
   splitSmallBalances,
@@ -154,6 +155,21 @@ describe('asset grouping and navigation', () => {
     const fuseSoUsd = token({ chainId: 122, contractAddress: ADDRESSES.fuse.vault });
     expect(groupPortfolioCash([ethereumSoUsd, fuseSoUsd])).toHaveLength(0);
     expect(bridgedShareValues([ethereumSoUsd, fuseSoUsd])).toEqual({});
+  });
+  // soEURC is held in EUR: it is a vault share, never wallet cash, and never valued in USD.
+  it('keeps soEURC out of Cash and out of every USD share value', () => {
+    const soEurc = token({
+      chainId: 8453,
+      contractAddress: ADDRESSES.base.soEurcVault,
+      contractTickerSymbol: 'soEURC',
+      quoteRate: 0,
+      commonId: undefined,
+    });
+    expect(portfolioShareVaultType(soEurc.contractAddress)).toBe(VaultType.EUR);
+    expect(groupPortfolioCash([soEurc, token()])).toHaveLength(1);
+    expect(bridgedShareValues([soEurc])).toEqual({});
+    // Even off its own chain, where another vault's share would be valued as bridged.
+    expect(bridgedShareValues([{ ...soEurc, chainId: 1, quoteRate: 1.08 }])).toEqual({});
   });
   it('marks a bridged share unavailable rather than zero when it has no rate', () => {
     const unpriced = token({
