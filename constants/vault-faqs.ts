@@ -98,7 +98,7 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
     {
       question: 'How do I deposit?',
       answer:
-        'Move EURC on Base from your Solid wallet, or send it from a connected external wallet. Other tokens and networks are not supported for this vault yet.',
+        'Send EURC on Base to your EUR savings deposit address, or move EURC you already hold in your Solid wallet. Only EURC on Base is supported for this vault.',
     },
     {
       question: 'Does this vault earn yield?',

@@ -139,8 +139,9 @@ const VaultBalanceCard = ({ vaultType, balance: vaultBalance }: VaultBalanceCard
     apys?.allTime != null && Number.isFinite(Number(apys.allTime)) ? Number(apys.allTime) : 0;
 
   // `keepPreviousData` can hand this card the previous vault's summary while this
-  // one loads — or for good, while soEURC's request fails until the backend
-  // accepts `?vault=EUR`. Only this vault's own summary may stand for its rewards.
+  // one loads — or for good, if this vault's request fails (soEURC against a
+  // backend that predates `?vault=EUR`). Only this vault's own summary may stand
+  // for its rewards.
   const vaultSummary =
     savingsSummary?.vault?.toUpperCase() === vault.name.toUpperCase() ? savingsSummary : undefined;
 

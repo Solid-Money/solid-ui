@@ -1,9 +1,10 @@
 import {
+  getSavingsFundNetworks,
   getSavingsFundTokenGroups,
   offersExternalWalletFunding,
   SAVINGS_FUND_CRYPTO,
+  SAVINGS_FUND_EURC,
   SAVINGS_FUND_STABLECOINS,
-  SAVINGS_FUND_TOKENS,
 } from '@/components/Savings/SavingsFund/constants';
 import { VAULTS } from '@/constants/vaults';
 
@@ -37,33 +38,31 @@ describe('getSavingsFundTokenGroups', () => {
 
   // A vault whose share token nothing here mints would render the screen with
   // no tokens at all — only the "Other" group — and no way to deposit into it.
-  // The one deliberate exception is a vault whose every token is mapped but held
-  // back from direct deposit (soEURC: v1 funds it from the Solid wallet or an
-  // external wallet only), which the next test pins down.
-  it('maps a token to every live vault, and offers one wherever direct deposit is open', () => {
+  it('offers at least one token for every live vault', () => {
     for (const vault of VAULTS.filter(v => !v.isComingSoon)) {
-      const mapped = SAVINGS_FUND_TOKENS.filter(token => token.vaultToken === vault.vaultToken);
-      expect(mapped.length).toBeGreaterThan(0);
-      if (mapped.every(token => token.directDeposit === false)) continue;
-
       const { stablecoins, crypto } = getSavingsFundTokenGroups('savings', vault.vaultToken);
 
       expect([...stablecoins, ...crypto].length).toBeGreaterThan(0);
     }
   });
 
-  // The backend's savings deposit route does not map EURC, so a deposit address
-  // handed out for it would only refund what the user sent.
-  it('maps EURC to soEURC on Base without offering it as a direct deposit', () => {
-    const eurc = SAVINGS_FUND_TOKENS.find(token => token.symbol === 'EURC');
-    expect(eurc).toMatchObject({ vaultToken: 'soEURC', chainIds: [8453], directDeposit: false });
-
+  // The backend deposits EURC that lands on Base into soEURC and refunds it from
+  // anywhere else, so the EUR vault offers EURC on Base and nothing more.
+  it('offers EURC on Base for the EUR vault, and only there', () => {
     const eur = getSavingsFundTokenGroups('savings', 'soEURC');
-    expect(eur.stablecoins).toEqual([]);
+    expect(eur.stablecoins).toEqual([SAVINGS_FUND_EURC]);
     expect(eur.crypto).toEqual([]);
-    // Nor anywhere else: not in the vault-less list, not in the card gate.
-    for (const intent of ['savings', 'card_deposit'] as const) {
-      const { stablecoins, crypto } = getSavingsFundTokenGroups(intent);
+    expect(SAVINGS_FUND_EURC).toMatchObject({ vaultToken: 'soEURC', chainIds: [8453] });
+    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([8453]);
+
+    // Not in the vault-less list, not at the card's soUSD gate, not on another vault.
+    for (const [intent, vaultToken] of [
+      ['savings', undefined],
+      ['card_deposit', undefined],
+      ['card_deposit', 'soEURC'],
+      ['savings', 'soUSD'],
+    ] as const) {
+      const { stablecoins, crypto } = getSavingsFundTokenGroups(intent, vaultToken);
       expect([...stablecoins, ...crypto].map(token => token.symbol)).not.toContain('EURC');
     }
   });

@@ -4592,8 +4592,8 @@ export const fetchHistoricalAPY = async (
 ): Promise<HistoricalAPYPoint[]> => {
   const params = new URLSearchParams({ days });
   // Every vault but the USD default names itself. soEURC used to fall to the
-  // default and would have charted the USD vault's history as its own; until the
-  // analytics API knows `eur` the request fails and the card shows no history.
+  // default and would have charted the USD vault's history as its own; the
+  // analytics API takes `vault=eur` and has no history for it until it earns.
   switch (vault) {
     case VaultType.FUSE:
       params.set('vault', VaultType.FUSE);

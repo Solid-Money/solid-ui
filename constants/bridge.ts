@@ -214,7 +214,8 @@ export const BRIDGE_TOKENS: BridgeTokens = {
  * The one savings use is the soEURC vault (QA/preview builds only, see
  * `EUR_VAULT`): its deposit form reads EURC from here through
  * `getVaultDepositToken`, so listing EURC for that vault still leaves it out of
- * every `BRIDGE_TOKENS` surface, and nothing else mints soEURC from EURC.
+ * every `BRIDGE_TOKENS` surface. Its other way in is the vault's savings deposit
+ * address (`SAVINGS_FUND_EURC`), which takes EURC on Base only.
  *
  * Base only for now. The backend also accepts EURC sent from Ethereum
  * (0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c) and bridges it to Base, but that

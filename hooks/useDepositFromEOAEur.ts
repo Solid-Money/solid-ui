@@ -44,9 +44,9 @@ type DepositResult = {
  * rather than the user's Safe. So it follows the other connected-wallet vault
  * deposits (WETH, WFUSE): approve the backend's deposit wallet for the EURC, then
  * ask `/accounts/v1/deposit` with `vault: 'eur'` to pull it and deposit it for the
- * Safe. Until the backend accepts `eur` that request fails and the deposit is
- * marked failed with the EURC still in the external wallet — only the approval
- * has happened.
+ * Safe (the backend's EUR vault handler). Against a backend without that handler
+ * the request fails and the deposit is marked failed with the EURC still in the
+ * external wallet — only the approval has happened.
  */
 const useDepositFromEOAEur = (
   tokenAddress: Address,
