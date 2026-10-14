@@ -15,6 +15,7 @@ import {
 } from '@/lib/errors/classify';
 import { compactErrorRef, formatErrorRef, isHex32, newEventId } from '@/lib/errors/errorRef';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
+import { reportShownError } from '@/lib/telemetry/shownErrors';
 
 /** A reported failure: what support needs to find it again. */
 export interface ErrorReport {
@@ -145,6 +146,19 @@ export const reportUserError = (
   if (existing) return existing;
   if (!shouldReport(userError.kind, surface)) {
     track(TRACKING_EVENTS.ERROR_SHOWN, analytics);
+    // No Ref, but still something the user ran into: the admin Errors page
+    // gets it directly. Reported ones reach it through `clientErrors`.
+    reportShownError({
+      action: userError.action,
+      code: userError.code,
+      kind: userError.kind,
+      surface,
+      title: userError.title,
+      body: userError.body,
+      technical: userError.technical || undefined,
+      status: userError.status,
+      requestId: userError.requestId,
+    });
     return undefined;
   }
 

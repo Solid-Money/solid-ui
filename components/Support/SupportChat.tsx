@@ -3,7 +3,10 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   View,
@@ -20,14 +23,25 @@ import {
   TypingIndicator,
 } from '@/components/Support/ChatExtras';
 import Composer from '@/components/Support/Composer';
-import MessageRow, { buildRows, ChatRow } from '@/components/Support/MessageRow';
+import MessageRow, {
+  buildRows,
+  ChatRow,
+  markChatClosed,
+  markChatOpened,
+} from '@/components/Support/MessageRow';
 import ReplayMask from '@/components/Support/ReplayMask';
+import SupportIntroSheet from '@/components/Support/SupportIntroSheet';
 import { Text } from '@/components/ui/text';
 import { useSupportChatScreen } from '@/hooks/useSupportChat';
 import { loadOlder, sendMessage } from '@/lib/support/sync';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
+import { useSupportIntroStore } from '@/store/useSupportIntroStore';
+import { useUserStore } from '@/store/useUserStore';
 
 import type { SupportFile } from '@/lib/types/support';
+
+/** How close to the end (px) still counts as "at the bottom" for following new content. */
+const AT_BOTTOM_SLACK = 120;
 
 export const SUPPORT_EMAIL = 'hello@solid.xyz';
 
@@ -118,6 +132,7 @@ export default function SupportChat() {
   const pending = useSupportChatStore(state => state.pending);
   const currentCase = useSupportChatStore(state => state.currentCase);
   const aiTyping = useSupportChatStore(state => state.aiTyping);
+  const aiActivity = useSupportChatStore(state => state.aiActivity);
   const incidents = useSupportChatStore(state => state.incidents);
   const ai = useSupportChatStore(state => state.ai);
   const hasOlder = useSupportChatStore(state => state.hasOlder);
@@ -125,6 +140,24 @@ export default function SupportChat() {
   const setDraftContext = useSupportChatStore(state => state.setDraftContext);
 
   const rows = useMemo(() => buildRows(messages, pending), [messages, pending]);
+
+  // What's already in the thread when it loads counts as seen; later messages rise in.
+  const openedRef = useRef(false);
+  useEffect(() => {
+    if (!loaded || openedRef.current) return;
+    openedRef.current = true;
+    markChatOpened(useSupportChatStore.getState().messages.map(message => message.id));
+  }, [loaded]);
+  useEffect(() => markChatClosed, []);
+
+  // "Meet Solid AI", once per account, the first time the chat opens.
+  const userId = useUserStore(state => state.users.find(user => user.selected)?.userId);
+  const introSeen = useSupportIntroStore(state => !userId || Boolean(state.seenByUserId[userId]));
+  const markIntroSeen = useSupportIntroStore(state => state.markSeen);
+  const showIntro = loaded && !introSeen && (ai?.enabled ?? true);
+  const closeIntro = useCallback(() => {
+    if (userId) markIntroSeen(userId);
+  }, [markIntroSeen, userId]);
   const caseClosed = !currentCase || currentCase.status === 'resolved';
   const showQuickReplies = loaded && pending.length === 0 && caseClosed && !aiTyping;
 
@@ -141,6 +174,25 @@ export default function SupportChat() {
     },
     [setDraftContext],
   );
+
+  // The list follows new messages on its own, but not the footer: the typing indicator, the
+  // rating card and the quick replies. Follow those too while the customer is at the bottom,
+  // so "Solid AI is typing" shows up without scrolling. Someone reading older messages stays put.
+  const atBottomRef = useRef(true);
+  const footerHeightRef = useRef(0);
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    atBottomRef.current =
+      contentOffset.y + layoutMeasurement.height >= contentSize.height - AT_BOTTOM_SLACK;
+  }, []);
+  const handleFooterLayout = useCallback((event: LayoutChangeEvent) => {
+    const height = event.nativeEvent.layout.height;
+    const grew = height > footerHeightRef.current;
+    footerHeightRef.current = height;
+    if (grew && atBottomRef.current) {
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, []);
 
   const handleOlder = useCallback(() => {
     if (hasOlder) loadOlder().catch(() => undefined);
@@ -185,6 +237,8 @@ export default function SupportChat() {
               startRenderingFromBottom: true,
               autoscrollToBottomThreshold: 0.2,
             }}
+            onScroll={handleScroll}
+            scrollEventThrottle={64}
             onStartReached={handleOlder}
             onStartReachedThreshold={0.5}
             keyboardDismissMode="interactive"
@@ -204,8 +258,8 @@ export default function SupportChat() {
               ) : null
             }
             ListFooterComponent={
-              <View>
-                {aiTyping && <TypingIndicator />}
+              <View onLayout={handleFooterLayout}>
+                {aiTyping && <TypingIndicator activity={aiActivity} />}
                 {currentCase?.awaitingRating && (
                   <CsatPrompt key={currentCase.id} supportCase={currentCase} />
                 )}
@@ -218,6 +272,7 @@ export default function SupportChat() {
           )}
           <Composer onSend={send} bottomInset={keyboardVisible ? 0 : insets.bottom} />
         </ReplayMask>
+        <SupportIntroSheet open={showIntro} onClose={closeIntro} />
       </KeyboardAvoidingView>
     </View>
   );

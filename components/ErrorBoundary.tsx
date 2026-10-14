@@ -13,6 +13,7 @@ import { track } from '@/lib/analytics';
 import { buildSupportMessage, ErrorReport, reportError } from '@/lib/errors';
 import { openIntercomWithMessage } from '@/lib/intercom';
 import { isStaleBundleError, reloadForNewBundle } from '@/lib/staleBundle';
+import { reportError as reportToErrorsPage } from '@/lib/telemetry/reportError';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -47,6 +48,17 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             source: 'error_boundary',
             platform: Platform.OS,
           }).then(shown => setReport(shown.report));
+        } else {
+          // Counted on the Errors page as the app updating under an open
+          // tab, not as a crash: it recovers on reload.
+          reportToErrorsPage({
+            kind: 'crash',
+            flow: 'app',
+            severity: 'info',
+            code: 'STALE_BUNDLE',
+            message: `${error?.name ?? 'Error'}: ${String(error?.message ?? '')}`,
+            screen: pathname,
+          });
         }
       }
     } catch {}

@@ -1,11 +1,14 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { Pressable, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { type Href, router } from 'expo-router';
 import { format, isToday, isYesterday } from 'date-fns';
-import { BookOpen, Paperclip, Sparkles } from 'lucide-react-native';
+import { BookOpen, Paperclip } from 'lucide-react-native';
 
 import Markdown from '@/components/Markdown';
 import MessageAttachments from '@/components/Support/MessageAttachments';
+import SolidAiAvatar from '@/components/Support/SolidAiAvatar';
+import TeammateAvatar from '@/components/Support/TeammateAvatar';
 import { Text } from '@/components/ui/text';
 import { discardMessage, retryMessage } from '@/lib/support/sync';
 import { contextLabel, PendingMessage } from '@/lib/support/threadState';
@@ -61,14 +64,44 @@ export function agentDisplayName(name: string | null | undefined): string {
   return first.charAt(0).toUpperCase() + first.slice(1);
 }
 
+/** When the chat screen opened, and which messages it has already shown. */
+let chatOpenedAt = Number.POSITIVE_INFINITY;
+const shown = new Set<string>();
+
+/**
+ * The chat screen calls this as it opens: what is already in the thread counts
+ * as seen, and only messages that arrive from now on rise in.
+ */
+export function markChatOpened(existingIds: string[], at = Date.now()) {
+  chatOpenedAt = at;
+  existingIds.forEach(id => shown.add(id));
+}
+
+/** The chat screen closed: nothing animates until it opens again. */
+export function markChatClosed() {
+  chatOpenedAt = Number.POSITIVE_INFINITY;
+}
+
+/**
+ * New messages rise 12px and fade in, once. Not older history, not a row
+ * scrolled back into view, and not a sent message replacing its "Sending…"
+ * bubble (they share the clientMessageId).
+ */
+function useEntering(ids: (string | null | undefined)[], createdAt?: string) {
+  const known = ids.filter((id): id is string => Boolean(id));
+  const key = known.join('|');
+  const fresh =
+    !known.some(id => shown.has(id)) &&
+    (createdAt === undefined || Date.parse(createdAt) >= chatOpenedAt - 60_000);
+  useEffect(() => {
+    key.split('|').forEach(id => id && shown.add(id));
+  }, [key]);
+  return fresh ? FadeInDown.duration(320).springify().damping(18) : undefined;
+}
+
 const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   if (message.author.type === 'ai') {
-    return (
-      <View className="mb-1 flex-row items-center gap-1 self-start rounded-full bg-white/10 px-2 py-0.5">
-        <Sparkles size={12} color="#FFFFFF" />
-        <Text className="text-xs font-medium text-white">Solid AI</Text>
-      </View>
-    );
+    return <Text className="mb-1 text-xs font-medium text-white/50">Solid AI</Text>;
   }
   return (
     <Text className="mb-1 text-xs font-medium text-white/60">
@@ -77,32 +110,47 @@ const AuthorLabel = ({ message }: { message: SupportMessage }) => {
   );
 };
 
-const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean }) => (
-  <View className={cn('max-w-[85%] self-end', last ? 'mb-3' : 'mb-1')}>
-    {message.context && (
-      <Text className="mb-1 self-end text-xs text-white/50">
-        About: {contextLabel(message.context.kind)}
-      </Text>
-    )}
-    <View className="gap-2 rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5">
-      <MessageAttachments message={message} />
-      {message.redacted ? (
-        <Text className="text-[15px] italic text-brand-foreground/70">
-          This message was removed
-        </Text>
-      ) : message.body ? (
-        <Text selectable className="text-[15px] leading-5 text-brand-foreground">
-          {message.body}
-        </Text>
-      ) : null}
+/**
+ * On web, NativeWind classes on a Reanimated `Animated.View` with `entering`
+ * are dropped, so each animated row sits inside a plain View that owns the
+ * layout, and the Animated.View only carries the animation (plus `style`).
+ */
+const ROW_BOTTOM = { flexDirection: 'row', alignItems: 'flex-end' } as const;
+
+/** The customer's own messages: light gray with dark text, so Solid's replies stay the focus. */
+const USER_BUBBLE = 'rounded-2xl rounded-br-md bg-[#E5E5E5] px-3.5 py-2.5';
+
+const UserBubble = ({ message, last }: { message: SupportMessage; last: boolean }) => {
+  const entering = useEntering([message.id, message.clientMessageId], message.createdAt);
+  return (
+    <View className={cn('max-w-[85%] self-end', last ? 'mb-3' : 'mb-1')}>
+      <Animated.View entering={entering}>
+        {message.context && (
+          <Text className="mb-1 self-end text-xs text-white/50">
+            About: {contextLabel(message.context.kind)}
+          </Text>
+        )}
+        <View className={cn('gap-2', USER_BUBBLE)}>
+          <MessageAttachments message={message} />
+          {message.redacted ? (
+            <Text className="text-[15px] italic text-primary-foreground/60">
+              This message was removed
+            </Text>
+          ) : message.body ? (
+            <Text selectable className="text-[15px] leading-5 text-primary-foreground">
+              {message.body}
+            </Text>
+          ) : null}
+        </View>
+        {last && (
+          <Text className="mt-1 self-end text-[11px] text-white/40">
+            {format(new Date(message.createdAt), 'h:mm a')}
+          </Text>
+        )}
+      </Animated.View>
     </View>
-    {last && (
-      <Text className="mt-1 self-end text-[11px] text-white/40">
-        {format(new Date(message.createdAt), 'h:mm a')}
-      </Text>
-    )}
-  </View>
-);
+  );
+};
 
 /** The help articles a Solid AI answer was based on; each opens in the app. */
 const MessageSources = ({ message }: { message: SupportMessage }) => {
@@ -128,6 +176,16 @@ const MessageSources = ({ message }: { message: SupportMessage }) => {
   );
 };
 
+/** Solid AI's or the teammate's face beside the last bubble of their run. */
+const ReplyAvatar = ({ message }: { message: SupportMessage }) =>
+  message.author.type === 'ai' ? (
+    <SolidAiAvatar size={28} glow={false} />
+  ) : (
+    <TeammateAvatar name={agentDisplayName(message.author.name)} size={28} />
+  );
+
+const AVATAR_COLUMN = 38; // 28px avatar + 10px gap
+
 const ReplyBubble = ({
   message,
   first,
@@ -136,25 +194,40 @@ const ReplyBubble = ({
   message: SupportMessage;
   first: boolean;
   last: boolean;
-}) => (
-  <View className={cn('max-w-[85%] self-start', last ? 'mb-3' : 'mb-1')}>
-    {first && <AuthorLabel message={message} />}
-    <View className="gap-2 rounded-2xl rounded-bl-md bg-card px-3.5 py-2.5">
-      <MessageAttachments message={message} />
-      {message.redacted ? (
-        <Text className="text-[15px] italic text-white/60">This message was removed</Text>
-      ) : message.body ? (
-        <Markdown value={message.body} textColor="#FFFFFF" />
-      ) : null}
-      {!message.redacted && <MessageSources message={message} />}
+}) => {
+  const entering = useEntering([message.id], message.createdAt);
+  return (
+    <View className={cn('w-full', last ? 'mb-3' : 'mb-1')}>
+      <Animated.View entering={entering} style={ROW_BOTTOM}>
+        <View style={{ width: AVATAR_COLUMN }}>
+          {last && (
+            // Sits level with the bubble's bottom edge, above the timestamp.
+            <View style={{ marginBottom: 20 }}>
+              <ReplyAvatar message={message} />
+            </View>
+          )}
+        </View>
+        <View className="max-w-[82%] shrink items-start">
+          {first && <AuthorLabel message={message} />}
+          <View className="gap-2 rounded-2xl rounded-bl-md bg-card px-3.5 py-2.5">
+            <MessageAttachments message={message} />
+            {message.redacted ? (
+              <Text className="text-[15px] italic text-white/60">This message was removed</Text>
+            ) : message.body ? (
+              <Markdown value={message.body} textColor="#FFFFFF" />
+            ) : null}
+            {!message.redacted && <MessageSources message={message} />}
+          </View>
+          {last && (
+            <Text className="mt-1 h-4 text-[11px] leading-4 text-white/40">
+              {format(new Date(message.createdAt), 'h:mm a')}
+            </Text>
+          )}
+        </View>
+      </Animated.View>
     </View>
-    {last && (
-      <Text className="mt-1 text-[11px] text-white/40">
-        {format(new Date(message.createdAt), 'h:mm a')}
-      </Text>
-    )}
-  </View>
-);
+  );
+};
 
 const SystemLine = ({ message }: { message: SupportMessage }) => (
   <View className="my-2 items-center px-6">
@@ -164,48 +237,51 @@ const SystemLine = ({ message }: { message: SupportMessage }) => (
 
 const PendingBubble = ({ entry }: { entry: PendingMessage }) => {
   const failed = entry.status === 'failed';
+  const entering = useEntering([entry.clientMessageId]);
   return (
     <View className="mb-3 max-w-[85%] self-end">
-      <Pressable
-        disabled={!failed}
-        onPress={() => retryMessage(entry.clientMessageId)}
-        accessibilityRole={failed ? 'button' : undefined}
-        accessibilityLabel={failed ? 'Retry sending' : undefined}
-        className={cn(
-          'gap-1 rounded-2xl rounded-br-md bg-brand px-3.5 py-2.5',
-          failed ? 'opacity-60' : 'opacity-70',
-        )}
-      >
-        {entry.attachmentNames.map((name, index) => (
-          <View key={`${index}-${name}`} className="flex-row items-center gap-1.5">
-            <Paperclip size={12} color="#196B07" />
-            <Text numberOfLines={1} className="shrink text-sm text-brand-foreground/80">
-              {name}
+      <Animated.View entering={entering}>
+        <Pressable
+          disabled={!failed}
+          onPress={() => retryMessage(entry.clientMessageId)}
+          accessibilityRole={failed ? 'button' : undefined}
+          accessibilityLabel={failed ? 'Retry sending' : undefined}
+          className={cn('gap-1', USER_BUBBLE, failed ? 'opacity-60' : 'opacity-70')}
+        >
+          {entry.attachmentNames.map((name, index) => (
+            <View key={`${index}-${name}`} className="flex-row items-center gap-1.5">
+              <Paperclip size={12} color="#3F3F46" />
+              <Text numberOfLines={1} className="shrink text-sm text-primary-foreground/80">
+                {name}
+              </Text>
+            </View>
+          ))}
+          {!!entry.body && (
+            <Text className="text-[15px] leading-5 text-primary-foreground">{entry.body}</Text>
+          )}
+        </Pressable>
+        {failed ? (
+          <View className="mt-1 flex-row items-center justify-end gap-3">
+            <Text className="shrink text-right text-[11px] text-destructive">
+              {entry.error ?? 'Not sent'}
             </Text>
+            <Pressable
+              onPress={() => retryMessage(entry.clientMessageId)}
+              accessibilityRole="button"
+            >
+              <Text className="text-[11px] font-semibold text-white">Retry</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => discardMessage(entry.clientMessageId)}
+              accessibilityRole="button"
+            >
+              <Text className="text-[11px] text-white/60">Delete</Text>
+            </Pressable>
           </View>
-        ))}
-        {!!entry.body && (
-          <Text className="text-[15px] leading-5 text-brand-foreground">{entry.body}</Text>
+        ) : (
+          <Text className="mt-1 self-end text-[11px] text-white/40">Sending…</Text>
         )}
-      </Pressable>
-      {failed ? (
-        <View className="mt-1 flex-row items-center justify-end gap-3">
-          <Text className="shrink text-right text-[11px] text-destructive">
-            {entry.error ?? 'Not sent'}
-          </Text>
-          <Pressable onPress={() => retryMessage(entry.clientMessageId)} accessibilityRole="button">
-            <Text className="text-[11px] font-semibold text-white">Retry</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => discardMessage(entry.clientMessageId)}
-            accessibilityRole="button"
-          >
-            <Text className="text-[11px] text-white/60">Delete</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Text className="mt-1 self-end text-[11px] text-white/40">Sending…</Text>
-      )}
+      </Animated.View>
     </View>
   );
 };

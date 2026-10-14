@@ -1,7 +1,9 @@
 import { memo, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Sparkles, Star, TriangleAlert, X } from 'lucide-react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Star, TriangleAlert, X } from 'lucide-react-native';
 
+import SolidAiAvatar from '@/components/Support/SolidAiAvatar';
 import { Text } from '@/components/ui/text';
 import { rateCase } from '@/lib/support/sync';
 import { contextLabel, QUICK_REPLIES } from '@/lib/support/threadState';
@@ -10,22 +12,56 @@ import { cn } from '@/lib/utils';
 import type { SupportCase, SupportThread } from '@/lib/types/support';
 import type { SupportDraftContext } from '@/store/useSupportChatStore';
 
-/** Solid AI is working on a reply. */
-export const TypingIndicator = memo(function TypingIndicator() {
+/** What the pill says while Solid AI looks something up (the server's `activity`). */
+export const ACTIVITY_LABELS: Record<string, string> = {
+  help_center: 'Searching the help center',
+  incidents: 'Checking for known issues',
+  verification: 'Checking your verification',
+  balances: 'Checking your balances',
+  card: 'Checking your card',
+  card_payments: 'Looking at your card payments',
+  deposits: 'Checking your deposits',
+  withdrawals: 'Checking your withdrawals',
+  rewards: 'Checking your rewards',
+  virtual_account: 'Checking your virtual account',
+  spend_mode: 'Checking your card settings',
+  app: 'Checking your app version',
+  errors: 'Looking at recent errors',
+};
+
+/**
+ * Solid AI is working on a reply: its avatar ripples, and the pill says what
+ * it is doing ("Checking your deposits…") when the server tells us, else that
+ * it is typing.
+ */
+const TYPING_ROW = { flexDirection: 'row', alignItems: 'center', gap: 10 } as const;
+
+export const TypingIndicator = memo(function TypingIndicator({
+  activity,
+}: {
+  activity?: string | null;
+}) {
   const [dots, setDots] = useState(1);
   useEffect(() => {
     const timer = setInterval(() => setDots(count => (count % 3) + 1), 450);
     return () => clearInterval(timer);
   }, []);
+  const label = (activity && ACTIVITY_LABELS[activity]) || 'Solid AI is typing';
   return (
-    <View
-      className="mb-3 flex-row items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-card px-3.5 py-2.5"
-      accessibilityLiveRegion="polite"
-    >
-      <Sparkles size={12} color="#A1A1A1" />
-      <Text className="text-sm text-white/60" accessibilityLabel="Solid AI is typing">
-        Solid AI is typing{'.'.repeat(dots)}
-      </Text>
+    // Layout on a plain View: on web, classes on an Animated.View with `entering` are dropped.
+    <View className="mb-3 self-start" accessibilityLiveRegion="polite">
+      <Animated.View entering={FadeInDown.duration(250)} style={TYPING_ROW}>
+        <SolidAiAvatar size={28} ripple="fast" />
+        <View className="rounded-full bg-card px-3.5 py-2.5">
+          <Animated.View key={label} entering={FadeIn.duration(220)}>
+            <Text className="text-sm font-medium text-white/70" accessibilityLabel={label}>
+              {label}
+              <Text className="text-sm font-medium text-white/70">{'.'.repeat(dots)}</Text>
+              <Text className="text-sm font-medium text-transparent">{'.'.repeat(3 - dots)}</Text>
+            </Text>
+          </Animated.View>
+        </View>
+      </Animated.View>
     </View>
   );
 });

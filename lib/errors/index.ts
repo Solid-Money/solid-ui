@@ -10,6 +10,7 @@ import {
 } from '@/lib/errors/classify';
 import { ErrorReport, reportUserError } from '@/lib/errors/report';
 import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
+import { markSharedPathToast } from '@/lib/telemetry/shownErrors';
 import { useFailureSheetStore } from '@/store/useFailureSheetStore';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
 
@@ -82,14 +83,17 @@ export const showErrorToast = async (
       }
     : undefined;
 
-  Toast.show({
-    type: 'error',
-    text1: userError.title,
-    text2: userError.body,
-    props: supportRequest
-      ? { action: { label: 'Get help', onPress: () => openSupportDrawer(supportRequest) } }
-      : undefined,
-  });
+  // Marked so the Errors page's toast reporter leaves it to the report above.
+  Toast.show(
+    markSharedPathToast({
+      type: 'error',
+      text1: userError.title,
+      text2: userError.body,
+      props: supportRequest
+        ? { action: { label: 'Get help', onPress: () => openSupportDrawer(supportRequest) } }
+        : undefined,
+    }),
+  );
   return shown;
 };
 
