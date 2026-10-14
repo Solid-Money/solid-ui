@@ -12,6 +12,7 @@ import UnstakeTokenSelector from '@/components/Unstake/UnstakeTokenSelector';
 import UnstakeVaultSelector from '@/components/Unstake/UnstakeVaultSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { getVaultKey } from '@/constants/withdraw';
 import { useDimension } from '@/hooks/useDimension';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -120,6 +121,8 @@ const useWithdrawOption = ({
   const getContent = () => {
     if (isTransactionStatus) {
       const tokenSymbol = transaction.symbol ?? 'SoUSD';
+      // soEURC requests sit in a queue that keeps them open for at least three days.
+      const duration = getVaultKey(tokenSymbol) === 'EUR' ? 'up to 3 days' : 'up to 24H';
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
@@ -127,7 +130,7 @@ const useWithdrawOption = ({
           token={tokenSymbol}
           icon={getTokenIcon({ tokenSymbol })}
           title="Withdraw started"
-          description="This may take up to 24H. We'll keep processing this in the background. You can safely leave this page."
+          description={`This may take ${duration}. We'll keep processing this in the background. You can safely leave this page.`}
         />
       );
     }
