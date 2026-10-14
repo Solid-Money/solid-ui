@@ -6,10 +6,10 @@ import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 import useDebounce from '@/hooks/useDebounce';
 import { VaultType } from '@/lib/types';
-import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
+import { getVaultCurrencySymbol } from '@/lib/vaultCurrency';
 
 import AmountDropdown from './AmountDropdown';
-import { buildProjectionSeries, formatHorizonLabel } from './savingsProjection';
+import { buildProjectionSeries, formatHorizonLabel, simulationApy } from './savingsProjection';
 import SimulateChart from './SimulateChart';
 
 const FUTURE_STYLE: TextStyle = {
@@ -25,8 +25,6 @@ const EARNED_STYLE: TextStyle = {
 };
 
 const DEFAULT_PRINCIPAL = 10000;
-/** Illustrative rate for a USD-valued vault whose APY has not loaded or is reported as 0. */
-const FALLBACK_SIMULATION_APY = 5;
 // Default handle position: 9 years out (series is sampled monthly, so index = months).
 const DEFAULT_INDEX = 9 * 12;
 // How long the handle must settle before the readouts roll — stops the CountUps
@@ -53,16 +51,6 @@ interface SimulateSavingsCardProps {
   /** Selected vault's headline APY (percent); undefined when it has none (soEURC). */
   apy: number | undefined;
 }
-
-/**
- * The rate the projection runs at. A USD-valued vault with no reported APY keeps
- * the illustrative 5%; soEURC does not earn yet, so it projects at 0% rather than
- * at a rate it has never paid.
- */
-export const simulationApy = (vaultType: VaultType, apy: number | undefined) => {
-  if (apy !== undefined && Number.isFinite(apy) && apy > 0) return apy;
-  return isEurVault(vaultType) ? 0 : FALLBACK_SIMULATION_APY;
-};
 
 /**
  * "Simulate your savings" card: pick a principal (100 / 1,000 / 10,000), then
