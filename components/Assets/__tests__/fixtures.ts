@@ -76,6 +76,8 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
         : [],
     shareAmount:
       vault.type === VaultType.USDC ? 2365.5 : vault.type === VaultType.ETH ? 0.0761 : undefined,
+    walletShareAmount: vault.type === VaultType.ETH ? 0.0761 : 0,
+    escrowedShareAmount: vault.type === VaultType.USDC ? 2365.5 : 0,
     shareNetworkCount: vault.type === VaultType.FUSE ? 0 : 1,
   })),
 };

@@ -1,16 +1,16 @@
 import { Pressable, StyleProp, ViewStyle } from 'react-native';
 import { ChevronLeft, X } from 'lucide-react-native';
 
-/** The desktop modal's back and close buttons: one size, so they read as a pair in one row. */
-export const MODAL_CONTROL_SIZE = 36;
+import { CIRCULAR_CONTROL_SIZE, CIRCULAR_CONTROL_STYLE } from '@/components/ui/circular-control';
+
+/** Sheet and modal controls share the app's header-button diameter. */
+export const MODAL_CONTROL_SIZE = CIRCULAR_CONTROL_SIZE;
 
 interface SheetIconButtonProps {
   icon: 'back' | 'close';
   onPress: () => void;
   accessibilityLabel: string;
   disabled?: boolean;
-  /** Diameter. The bottom sheet's back button is 40; the modal's controls are 36. */
-  size?: number;
   /** Placement, which is the caller's — usually absolute within a header row. */
   style?: StyleProp<ViewStyle>;
 }
@@ -24,12 +24,9 @@ const SheetIconButton = ({
   onPress,
   accessibilityLabel,
   disabled,
-  size = MODAL_CONTROL_SIZE,
   style,
 }: SheetIconButtonProps) => {
-  // 22 in the 40pt back button is what the bottom sheet has always drawn; the rest scale
-  // with it. The cross is drawn smaller than the chevron because it fills more of its box.
-  const glyph = Math.round(size * (icon === 'back' ? 0.55 : 0.45));
+  const glyph = icon === 'back' ? 22 : 18;
 
   return (
     <Pressable
@@ -43,12 +40,10 @@ const SheetIconButton = ({
         {
           alignItems: 'center',
           backgroundColor: '#2B2B2B',
-          borderRadius: size / 2,
-          height: size,
           justifyContent: 'center',
-          width: size,
         },
         style,
+        CIRCULAR_CONTROL_STYLE,
       ]}
     >
       {icon === 'back' ? (

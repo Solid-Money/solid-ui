@@ -10,9 +10,15 @@ import {
 import { Text } from '@/components/ui/text';
 import { getVaultFaqs } from '@/constants/vault-faqs';
 import { VaultType } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 type VaultFaqCardProps = {
   vaultType: VaultType;
+  /** Defaults to "Frequently asked questions"; the How it works sheet says "Questions". */
+  title?: string;
+  /** Overrides the inset (outer) and the card surface (inner). */
+  className?: string;
+  cardClassName?: string;
 };
 
 /**
@@ -21,16 +27,24 @@ type VaultFaqCardProps = {
  * The questions are vault-specific: the ETH and FUSE vaults answer for soETH
  * and soFUSE rather than reusing the soUSD list.
  */
-const VaultFaqCard = ({ vaultType }: VaultFaqCardProps) => {
+const VaultFaqCard = ({
+  vaultType,
+  title = 'Frequently asked questions',
+  className,
+  cardClassName,
+}: VaultFaqCardProps) => {
   const faqs = getVaultFaqs(vaultType);
 
   return (
-    <View className="mx-4">
-      <Text className="text-[16px] font-normal leading-[16px] text-white/50">
-        Frequently asked questions
-      </Text>
+    <View className={cn('mx-4', className)}>
+      <Text className="text-[16px] font-normal leading-[16px] text-white/50">{title}</Text>
 
-      <View className="mt-[13px] overflow-hidden rounded-[20px] bg-[#1C1C1C] py-[5px]">
+      <View
+        className={cn(
+          'mt-[13px] overflow-hidden rounded-[20px] bg-[#1C1C1C] py-[5px]',
+          cardClassName,
+        )}
+      >
         <Accordion type="multiple" collapsible className="w-full">
           {faqs.map((faq, index) => (
             // Scoped to the vault so switching vaults on the same mounted

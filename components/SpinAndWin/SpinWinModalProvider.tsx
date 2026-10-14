@@ -32,6 +32,7 @@ import ConfettiOverlay from '@/components/SpinAndWin/ConfettiOverlay';
 import PrizePoolCard from '@/components/SpinAndWin/PrizePoolCard';
 import PrizeWheel from '@/components/SpinAndWin/PrizeWheel';
 import StreakTracker from '@/components/SpinAndWin/StreakTracker';
+import { CIRCULAR_CONTROL_STYLE } from '@/components/ui/circular-control';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
@@ -104,9 +105,7 @@ function SpinWinHeader({ title = 'Spin & Win', onClose, onBack, showTitle = true
         <TouchableOpacity
           onPress={onBack}
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
+            ...CIRCULAR_CONTROL_STYLE,
             backgroundColor: 'rgba(255,255,255,0.1)',
             alignItems: 'center',
             justifyContent: 'center',
@@ -115,7 +114,7 @@ function SpinWinHeader({ title = 'Spin & Win', onClose, onBack, showTitle = true
           <Ionicons name="chevron-back" size={22} color={SPIN_WIN.colors.textPrimary} />
         </TouchableOpacity>
       ) : (
-        <View style={{ width: 40, height: 40 }} />
+        <View style={CIRCULAR_CONTROL_STYLE} />
       )}
 
       <View style={{ flex: 1, alignItems: 'center' }}>
@@ -135,9 +134,7 @@ function SpinWinHeader({ title = 'Spin & Win', onClose, onBack, showTitle = true
       <TouchableOpacity
         onPress={onClose}
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
+          ...CIRCULAR_CONTROL_STYLE,
           backgroundColor: 'rgba(255,255,255,0.1)',
           alignItems: 'center',
           justifyContent: 'center',

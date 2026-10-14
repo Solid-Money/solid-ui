@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
-import ActivityStatusPill from '@/components/Activity/ActivityStatusPill';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
@@ -28,8 +27,8 @@ type CardActivityRowProps = {
   showTimestamp?: boolean;
 };
 
-/** Card statuses worth a chip on the row. Anything settled gets none. */
-const STATUS_PILLS: Record<string, { label: string; tone: 'neutral' | 'danger' }> = {
+/** Secondary labels for unsettled card transactions. */
+const STATUS_LABELS: Record<string, { label: string; tone: 'neutral' | 'danger' }> = {
   pending: { label: 'Pending', tone: 'neutral' },
   declined: { label: 'Declined', tone: 'danger' },
   reversed: { label: 'Reversed', tone: 'neutral' },
@@ -53,21 +52,12 @@ const CardActivityRow = ({
 }: CardActivityRowProps) => {
   const { isScreenMedium } = useDimension();
   const merchantName = getCardMerchantName(transaction);
-  const statusPill = STATUS_PILLS[transaction.status?.toLowerCase() ?? ''];
+  const statusLabel = STATUS_LABELS[transaction.status?.toLowerCase() ?? ''];
   const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
   // A purchase takes money, so it reads with a minus — the stored sign is the
   // ledger's and says the opposite. See `isOutgoingCardTransaction`.
   const isOutgoing = isOutgoingCardTransaction(transaction);
-
-  // Dollar equivalent of a foreign charge, so a row reads without mental
-  // arithmetic. Nothing to add when the card was charged in dollars. Signed to
-  // follow the charge rather than itself: it is stored unsigned.
-  const currencyCode = transaction.currency?.trim().toUpperCase();
-  const usdEquivalent =
-    transaction.usd_amount && currencyCode && currencyCode !== 'USD'
-      ? formatCardTransactionAmount(transaction.usd_amount, isOutgoing, provider)
-      : undefined;
 
   const formattedTimestamp = formatActivityTimestamp(getCardTransactionTimestamp(transaction));
 
@@ -102,13 +92,16 @@ const CardActivityRow = ({
               <Text className="text-sm font-medium text-brand">{cashbackLabel}</Text>
             </View>
           )}
-          {/* Neither fee nor location here: how a charge was priced and where it
-              happened are details of that one purchase, and the receipt carries
-              both in full. A row is what the user scans, and a line for each of
-              them crowded out the two things they are scanning for. The chip is
-              for status alone — something still in flight, which is the one
-              thing about a purchase a feed has to say before it is opened. */}
-          {statusPill && <ActivityStatusPill label={statusPill.label} tone={statusPill.tone} />}
+          {statusLabel && (
+            <Text
+              className={cn(
+                'text-sm font-medium',
+                statusLabel.tone === 'danger' ? 'text-[#F27F81]' : 'text-white/70',
+              )}
+            >
+              {statusLabel.label}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -129,7 +122,6 @@ const CardActivityRow = ({
             transaction.currency,
           )}
         </Text>
-        {usdEquivalent && <Text className="text-sm text-white/70">{usdEquivalent}</Text>}
         {/* Green whether or not the payout has landed: it is money coming back
             either way. The receipt shows when escrowed cashback releases. */}
         {cashbackInfo?.amount && (

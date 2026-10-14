@@ -1,116 +1,106 @@
 import { useState } from 'react';
-import { View } from 'react-native';
 import { Href, router } from 'expo-router';
 
-import { BalanceHeadline, BalancePillRow } from '@/components/BalanceHeadline';
 import EarnYieldBoostCard from '@/components/Earn/EarnYieldBoostCard';
-import LockedFuseTile from '@/components/Earn/LockedFuseTile';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
-import Skeleton from '@/components/ui/skeleton';
-import { Text } from '@/components/ui/text';
-import { useMaxAPY } from '@/hooks/useAnalytics';
-import { useTierMembership } from '@/hooks/useTierMembership';
-import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
-import { type AssetPath } from '@/lib/assets';
+import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
+import { sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
-import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
-import {
-  calculateEstimatedDailyEarnings,
-  resolveVaultApy,
-  type VaultAmounts,
-} from './earnPortfolio';
-import { EarnVaultTile } from './EarnVaultTile';
+import { interestOverPastDays, resolveVaultApy, weightedApy, yieldHoldings } from './earnPortfolio';
+import EarnView, { type EarnProduct } from './EarnView';
 import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
+import { openYieldProduct } from './yieldProducts';
 
-const VAULT_TILES = [
-  {
-    type: VaultType.USDC,
-    assetName: 'USD',
-    background: 'images/earn-usd-tile-background.png',
-    icon: 'images/earn-usd-icon.png',
-  },
-  {
-    type: VaultType.ETH,
-    assetName: 'ETH',
-    background: 'images/earn-eth-tile-background.png',
-    icon: 'images/earn-eth-icon.png',
-  },
-  {
-    type: VaultType.FUSE,
-    assetName: 'FUSE',
-    background: 'images/earn-fuse-tile-background.png',
-    icon: 'images/earn-fuse-icon.png',
-  },
-] as const satisfies readonly {
-  type: VaultType;
-  assetName: string;
-  background: AssetPath;
-  icon: AssetPath;
-}[];
-
-const openVault = (vaultType: VaultType) =>
-  router.push({ pathname: '/savings', params: { vault: vaultType } } as Href);
-
-const formatDailyEarnings = (value: number) =>
-  value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-/** Splits the tiles into rows so a half-width tile keeps its width when it is alone. */
-const chunkIntoRows = <T,>(items: T[], perRow = 2): T[][] =>
-  items.reduce<T[][]>((rows, item, index) => {
-    if (index % perRow === 0) rows.push([]);
-    rows[rows.length - 1].push(item);
-    return rows;
-  }, []);
-
-/** Figma 24766:2010 — the portfolio-level entry page for every savings vault. */
+/**
+ * The Earn tab: Figma 28551:5563 (funded) and 28551:5695 (nothing deposited). This
+ * container reads the data; `EarnView` lays it out.
+ */
 export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   useVaultDetailPrefetch();
-  const { data: portfolioTotal, valuesByVault, isLoading } = useTotalSavingsUSD();
-  // Deliberately outside the portfolio total: a locked position cannot be
-  // withdrawn, and adding it to a headline the withdraw flow then refuses is
-  // worse than showing it as its own line.
-  const { data: membership } = useTierMembership();
-  const openTierUpgrade = useTierUpgradeStore(state => state.open);
-  const usdcApy = useMaxAPY(VaultType.USDC);
-  const ethApy = useMaxAPY(VaultType.ETH);
-  const fuseApy = useMaxAPY(VaultType.FUSE);
+  const portfolio = usePortfolio();
 
-  const apyByVault: VaultAmounts = {
-    [VaultType.USDC]: resolveVaultApy(VaultType.USDC, usdcApy.maxAPY),
-    [VaultType.ETH]: resolveVaultApy(VaultType.ETH, ethApy.maxAPY),
-    [VaultType.FUSE]: resolveVaultApy(VaultType.FUSE, fuseApy.maxAPY),
+  const rates = {
+    [VaultType.USDC]: useMaxAPY(VaultType.USDC),
+    [VaultType.ETH]: useMaxAPY(VaultType.ETH),
+    [VaultType.FUSE]: useMaxAPY(VaultType.FUSE),
   };
-  const apyLoadingByVault = {
-    [VaultType.USDC]: usdcApy.isAPYsLoading,
-    [VaultType.ETH]: ethApy.isAPYsLoading,
-    [VaultType.FUSE]: fuseApy.isAPYsLoading,
+  const thirtyDay = {
+    [VaultType.USDC]: useAPYs(VaultType.USDC).data?.thirtyDay,
+    [VaultType.ETH]: useAPYs(VaultType.ETH).data?.thirtyDay,
+    [VaultType.FUSE]: useAPYs(VaultType.FUSE).data?.thirtyDay,
   };
-  const areApysLoading = Object.values(apyLoadingByVault).some(Boolean);
-  const estimatedToday = valuesByVault
-    ? calculateEstimatedDailyEarnings(valuesByVault, apyByVault)
-    : 0;
+  const interest = {
+    [VaultType.USDC]: useVaultInterestEarned(VaultType.USDC),
+    [VaultType.ETH]: useVaultInterestEarned(VaultType.ETH),
+    [VaultType.FUSE]: useVaultInterestEarned(VaultType.FUSE),
+  };
 
-  // Every vault gets a tile regardless of its rate — a vault at 0% is still
-  // somewhere to deposit, and a grid that changes shape with the rates is
-  // harder to build muscle memory for than one that doesn't.
-  const tiles = VAULT_TILES.map(vault => (
-    <EarnVaultTile
-      key={vault.type}
-      assetName={vault.assetName}
-      apy={apyByVault[vault.type]}
-      isApyLoading={apyLoadingByVault[vault.type]}
-      background={vault.background}
-      icon={vault.icon}
-      onPress={() => openVault(vault.type)}
-    />
-  ));
+  const isLoading = portfolio.isLoading;
+  const areRatesLoading = Object.values(rates).some(rate => rate.isAPYsLoading);
+  // The reported rate, or the product's indicative one while analytics has none.
+  const apyOf = (type: VaultType) => resolveVaultApy(type, rates[type].maxAPY);
+
+  // Shares count wherever they are, a production share on a development build included.
+  const holdings = yieldHoldings(portfolio.earnAssets, portfolio.cashAssets);
+  // Locked FUSE is soFUSE in the tier lock, still earning FUSE Yield's rate, so it is part
+  // of FUSE Yield and of the total (Figma: "10,000 FUSE locked" on the FUSE Yield row).
+  const lockedFuse = (portfolio.lockedFuse ?? 0) > 0 ? portfolio.lockedFuse : undefined;
+  const products: EarnProduct[] = holdings.map(holding => {
+    const isLocked = holding.type === VaultType.FUSE && lockedFuse !== undefined;
+    return {
+      type: holding.type,
+      valueUsd: isLocked
+        ? sumKnownValues([holding.valueUsd, portfolio.lockedTotal]).total
+        : holding.valueUsd,
+      shareAmount: holding.shareAmount,
+      lockedFuse: isLocked ? lockedFuse : undefined,
+      apy: apyOf(holding.type),
+      isApyLoading: rates[holding.type].isAPYsLoading,
+    };
+  });
+
+  const total = isLoading ? undefined : sumKnownValues(products.map(item => item.valueUsd)).total;
+  const isFunded = (total ?? 0) > 0;
+  const apyLabel = areRatesLoading
+    ? undefined
+    : isFunded
+      ? `${weightedApy(products.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
+      : `Up to ${Math.max(...products.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
+
+  // Interest is read per product; a product with nothing in it has nothing to wait for.
+  const funded = holdings.filter(holding => (holding.valueUsd ?? 0) > 0);
+  const totalEarned = funded.some(holding => interest[holding.type].isLoading)
+    ? undefined
+    : funded.reduce((sum, holding) => sum + interest[holding.type].interestUsd, 0);
+
+  // Read from each product's 30-day APY (see interestOverPastDays), capped at what it has
+  // earned since the first deposit, except for shares that calculation can't see. The lock
+  // has no deposit history here, so it isn't capped.
+  const past30 =
+    areRatesLoading ||
+    funded.some(holding => holding.unreadUsd === 0 && interest[holding.type].isLoading)
+      ? undefined
+      : funded.reduce(
+          (sum, holding) =>
+            sum +
+            interestOverPastDays(
+              holding.valueUsd ?? 0,
+              thirtyDay[holding.type] || rates[holding.type].maxAPY,
+              30,
+              holding.unreadUsd > 0 ? undefined : interest[holding.type].interestUsd,
+            ),
+          0,
+        ) +
+        interestOverPastDays(
+          lockedFuse === undefined ? 0 : (portfolio.lockedTotal ?? 0),
+          thirtyDay[VaultType.FUSE] || rates[VaultType.FUSE].maxAPY,
+        );
 
   return (
     <PageLayout
@@ -118,68 +108,22 @@ export default function EarnScreen() {
       mobileHeaderRightAction="help"
       onMobileHeaderHelpPress={() => setIsHelpOpen(true)}
       desktopHeaderRightAction={
-        <HeaderHelpButton
-          accessibilityLabel="How savings works"
-          onPress={() => setIsHelpOpen(true)}
-        />
+        <HeaderHelpButton accessibilityLabel="How Earn works" onPress={() => setIsHelpOpen(true)} />
       }
       additionalContent={
         <SavingsHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       }
     >
-      <View className="mx-auto w-full max-w-[414px] px-4 pb-[140px] web:md:max-w-[40rem]">
-        <View className="gap-5">
-          {isLoading || portfolioTotal === undefined ? (
-            <View className="items-center gap-1 pt-2">
-              <Text className="text-base font-medium text-muted-foreground">Portfolio total</Text>
-              <Skeleton className="h-[54px] w-[215px] rounded-xl bg-white/10" />
-            </View>
-          ) : (
-            <BalanceHeadline
-              balance={portfolioTotal}
-              label="Portfolio total"
-              mutedDecimals={false}
-            />
-          )}
-
-          <BalancePillRow>
-            {isLoading || areApysLoading ? (
-              <Skeleton className="h-6 w-[120px] rounded-full bg-white/10" />
-            ) : (
-              <Text className="text-[16px] leading-5 text-[#94F27F]">
-                +${formatDailyEarnings(estimatedToday)} today
-              </Text>
-            )}
-          </BalancePillRow>
-        </View>
-
-        {/* Earned on the portfolio as a whole, so it sits with the portfolio
-            total rather than on any one vault. */}
-        <EarnYieldBoostCard className="mt-[27px]" />
-
-        <Text className="mb-[14px] mt-[27px] text-[16px] leading-5 text-white/50">
-          Earn interest, Withdraw anytime
-        </Text>
-
-        <View className="gap-4">
-          {chunkIntoRows(tiles).map((row, index) => (
-            <View key={index} className="flex-row gap-4">
-              {row}
-              {row.length === 1 && <View className="flex-1" />}
-            </View>
-          ))}
-
-          {membership?.lock ? (
-            <LockedFuseTile
-              lock={membership.lock}
-              // No tier named: this screen knows the user wants to top up a
-              // lock and not which tier that buys. The flow resolves it to the
-              // cheapest one they do not already hold.
-              onPress={() => openTierUpgrade()}
-            />
-          ) : null}
-        </View>
-      </View>
+      <EarnView
+        isLoading={isLoading}
+        total={total}
+        apyLabel={apyLabel}
+        totalEarned={totalEarned}
+        past30={past30}
+        products={products}
+        onOpenProduct={type => router.push(openYieldProduct(type) as Href)}
+        boost={<EarnYieldBoostCard />}
+      />
     </PageLayout>
   );
 }

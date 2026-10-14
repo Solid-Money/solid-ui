@@ -180,12 +180,12 @@ export function AssetsOverview({
       additionalContent={<BorrowPositionSheet isOpen={borrowOpen} onOpenChange={setBorrowOpen} />}
     >
       <View className="mx-auto w-full max-w-[419px] gap-[24px] px-[16px] pb-[140px] pt-[24px] web:md:max-w-[40rem]">
-        <View className="h-[44px] flex-row items-center justify-between px-[2px]">
+        <View className="h-[50px] flex-row items-center justify-between px-[2px]">
           <Pressable
             onPress={goBack}
             accessibilityRole="button"
             accessibilityLabel="Back"
-            className="h-[44px] w-[44px] items-center justify-center rounded-full bg-[#2A2A2A]"
+            className="h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#2A2A2A]"
           >
             <Image
               source={PORTFOLIO_ICONS.back}
@@ -194,7 +194,7 @@ export function AssetsOverview({
             />
           </Pressable>
           <Text className="text-[18px] font-semibold text-white">Assets</Text>
-          <View className="h-[44px] w-[44px]" />
+          <View className="h-[50px] w-[50px] shrink-0" />
         </View>
 
         <View className="items-center py-[8px]">

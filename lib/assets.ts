@@ -472,6 +472,10 @@ export const ASSETS = {
     module: require('@/assets/images/eth-fuse-usdc-4x.png'),
     hash: '395f58b5',
   },
+  'images/eth-yield-4x.png': {
+    module: require('@/assets/images/eth-yield-4x.png'),
+    hash: '108203e3',
+  },
   'images/eth.png': { module: require('@/assets/images/eth.png'), hash: '546f916e' },
   'images/ethereum-square-4x.png': {
     module: require('@/assets/images/ethereum-square-4x.png'),
@@ -566,6 +570,10 @@ export const ASSETS = {
   'images/fuse-logo-skeleton.tsx': {
     module: require('@/assets/images/fuse-logo-skeleton.tsx'),
     hash: '256f9f5c',
+  },
+  'images/fuse-yield-4x.png': {
+    module: require('@/assets/images/fuse-yield-4x.png'),
+    hash: '6ba0af48',
   },
   'images/fuse.png': { module: require('@/assets/images/fuse.png'), hash: '573a1a32' },
   'images/gbp-fiat-currency.tsx': {
@@ -1248,6 +1256,8 @@ export const ASSETS = {
     hash: 'd25eb3c2',
   },
   'images/sign-out.tsx': { module: require('@/assets/images/sign-out.tsx'), hash: 'deb2a605' },
+  'images/soeth-4x.png': { module: require('@/assets/images/soeth-4x.png'), hash: 'cbcdc20f' },
+  'images/sofuse-4x.png': { module: require('@/assets/images/sofuse-4x.png'), hash: '1f01974a' },
   'images/solid-4x.png': { module: require('@/assets/images/solid-4x.png'), hash: 'f6579942' },
   'images/solid-black-large.png': {
     module: require('@/assets/images/solid-black-large.png'),
@@ -1311,7 +1321,7 @@ export const ASSETS = {
     module: require('@/assets/images/solid_logo_with_glare.png'),
     hash: '13207041',
   },
-  'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: 'bf43c3e5' },
+  'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: '7b63e869' },
   'images/spend-mode-credit-notice-badge.svg': {
     module: require('@/assets/images/spend-mode-credit-notice-badge.svg'),
     hash: '04ab236e',
@@ -1585,6 +1595,10 @@ export const ASSETS = {
   'images/usd-fiat-currency.tsx': {
     module: require('@/assets/images/usd-fiat-currency.tsx'),
     hash: '1f4c9b1b',
+  },
+  'images/usd-yield-4x.png': {
+    module: require('@/assets/images/usd-yield-4x.png'),
+    hash: 'b2b237e7',
   },
   'images/usdc-4x.png': { module: require('@/assets/images/usdc-4x.png'), hash: '9fdc47e1' },
   'images/usdc-cryptocurrency.tsx': {

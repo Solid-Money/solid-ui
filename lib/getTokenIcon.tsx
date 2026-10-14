@@ -1,7 +1,7 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
 import { G_DOLLAR_LOGO_URI } from '@/constants/gooddollar';
 
-import { getAsset } from './assets';
+import { AssetPath, getAsset } from './assets';
 import { TokenIcon } from './types';
 
 type GetTokenIconProps = {
@@ -10,15 +10,22 @@ type GetTokenIconProps = {
   size?: number;
 };
 
+/**
+ * Share tokens draw their own shape with see-through edges (the dot sits on the circle's
+ * edge), hence `bare`: no placeholder fill or round clip in RenderTokenIcon.
+ */
+const SHARE_ICONS: Record<string, AssetPath> = {
+  SOUSD: 'images/sousd-4x.png',
+  SOETH: 'images/soeth-4x.png',
+  SOFUSE: 'images/sofuse-4x.png',
+};
+
 const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
-  // soUSD has a canonical in-app mark. External token metadata can return an
-  // older logo, so resolve it before the generic logoUrl override.
-  if (tokenSymbol?.toUpperCase() === 'SOUSD') {
-    return {
-      type: 'image',
-      source: getAsset('images/sousd-4x.png'),
-    };
-  }
+  // soUSD, soETH and soFUSE have canonical in-app marks: their product's mark with the
+  // green live dot (Figma 28445:4885). External token metadata can return older logos, so
+  // resolve them before the generic logoUrl override.
+  const shareIcon = SHARE_ICONS[tokenSymbol?.toUpperCase() ?? ''];
+  if (shareIcon) return { type: 'image', source: getAsset(shareIcon), bare: true };
 
   if (logoUrl) {
     return { type: 'image', source: { uri: logoUrl } };
@@ -56,16 +63,6 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return {
         type: 'image',
         source: getAsset('images/wfuse.png'),
-      };
-    case 'SOFUSE':
-      return {
-        type: 'image',
-        source: getAsset('images/fuse-4x.png'),
-      };
-    case 'SOETH':
-      return {
-        type: 'image',
-        source: getAsset('images/eth.png'),
       };
     case 'G$':
       return {

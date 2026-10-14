@@ -50,6 +50,8 @@ type ActivityTransactionsProps = {
   /** Content rendered above the list via FlashList's ListHeaderComponent.
    * Use this instead of nesting FlashList inside a ScrollView. */
   listHeaderComponent?: React.ReactElement;
+  /** Tighter space above the first date heading, for a list under its own heading. */
+  compactFirstHeader?: boolean;
 };
 
 type RenderItemProps = {
@@ -62,6 +64,7 @@ export default function ActivityTransactions({
   symbol,
   showTimestamp = true,
   listHeaderComponent,
+  compactFirstHeader = false,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -231,6 +234,11 @@ export default function ActivityTransactions({
     [tab, setDirectDepositSession, setModal, setBankTransferData],
   );
 
+  const firstHeaderIndex = useMemo(
+    () => filteredTransactions.findIndex(item => item.type === ActivityGroup.HEADER),
+    [filteredTransactions],
+  );
+
   const renderItem = useCallback(
     ({ item, index }: RenderItemProps) => {
       if (item.type === ActivityGroup.HEADER) {
@@ -239,6 +247,7 @@ export default function ActivityTransactions({
         return (
           <TimeGroupHeader
             index={index}
+            compact={compactFirstHeader && index === firstHeaderIndex}
             title={headerData.title}
             isPending={headerData.status === TransactionStatus.PENDING}
             showStuck={showStuckTransactions}
@@ -266,6 +275,8 @@ export default function ActivityTransactions({
       );
     },
     [
+      compactFirstHeader,
+      firstHeaderIndex,
       showStuckTransactions,
       showTimestamp,
       getTransactionPosition,

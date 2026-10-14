@@ -33,9 +33,7 @@ import type { CardRepayRequest, CardRepayState } from '@/hooks/useCardRepay';
  * and card language as the borrow position this step slides in from.
  */
 const HEADER_TO_SUMMARY = 35;
-const HEADER_HEIGHT = 40;
-/** The bottom sheet's back button, as it has always been drawn there. */
-const SHEET_BACK_SIZE = 40;
+const HEADER_HEIGHT = MODAL_CONTROL_SIZE;
 const CARD_GAP = 12;
 const INPUT_TO_NOTE = 16;
 /** The note's `leading-[18px]`. */
@@ -176,7 +174,7 @@ const RepaySheetContent = ({
     ? repayTokenEstimate({ source, quote, debtUsd, amountUsd, isMax })
     : null;
   const isModal = presentation === 'modal';
-  const controlSize = isModal ? MODAL_CONTROL_SIZE : SHEET_BACK_SIZE;
+  const controlSize = MODAL_CONTROL_SIZE;
 
   return (
     <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
@@ -186,7 +184,6 @@ const RepaySheetContent = ({
           accessibilityLabel="Back to borrow position"
           disabled={isRepaying}
           onPress={onBack}
-          size={controlSize}
           style={[styles.headerControl, { left: 0, top: (HEADER_HEIGHT - controlSize) / 2 }]}
         />
         <Text className="text-center text-[30px] font-medium leading-[36px] text-white">Repay</Text>
@@ -196,7 +193,6 @@ const RepaySheetContent = ({
             accessibilityLabel="Close"
             disabled={isRepaying}
             onPress={onDismiss}
-            size={controlSize}
             style={[styles.headerControl, { right: 0, top: (HEADER_HEIGHT - controlSize) / 2 }]}
           />
         ) : null}

@@ -46,6 +46,14 @@ describe('vault FAQs', () => {
     expect(copy).toContain('400,000');
   });
 
+  it('never calls a product a vault in what the user reads', () => {
+    for (const vaultType of Object.values(VaultType)) {
+      for (const faq of getVaultFaqs(vaultType)) {
+        expect(`${faq.question} ${faq.answer}`).not.toMatch(/\bvaults?\b/i);
+      }
+    }
+  });
+
   it('falls back to the USDC vault for a type that is not a vault', () => {
     expect(getVaultFaqs('doge' as VaultType)).toBe(VAULT_FAQS[VaultType.USDC]);
   });

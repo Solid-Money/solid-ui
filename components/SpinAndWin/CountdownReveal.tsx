@@ -10,6 +10,7 @@ import Animated, {
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+import { CIRCULAR_CONTROL_STYLE } from '@/components/ui/circular-control';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
@@ -98,9 +99,7 @@ export default function CountdownReveal({ onComplete, onClose }: CountdownReveal
             <TouchableOpacity
               onPress={onClose ?? resetSpinWinModal}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                ...CIRCULAR_CONTROL_STYLE,
                 backgroundColor: 'rgba(255,255,255,0.1)',
                 alignItems: 'center',
                 justifyContent: 'center',
