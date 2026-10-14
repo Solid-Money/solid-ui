@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
+import { format, isValid, minutesToSeconds } from 'date-fns';
 import {
   ArrowUpRight,
   ChevronRight,
@@ -65,7 +65,10 @@ import {
   formatCardTransactionAmount,
   getCardMerchantMapsUrl,
   getCardMerchantPlace,
+  getCardRefundLabel,
   getCashbackAmount,
+  getPurchaseRefundId,
+  getRefundedPurchaseId,
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
@@ -313,7 +316,22 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const sweepUrl = cardSweepExplorerUrl(spend);
   // Money coming back, and what was taken out of it on the way. See `CardRefundDetails`.
   const refund = spend?.refund;
-  const refundUrl = cardRefundExplorerUrl(refund);
+  // A refund Wirex reported on the purchase itself is listed as two rows, the
+  // purchase and the refund, and each links to the other. See `getRefundedPurchaseId`.
+  const isRefund = transaction.category === CardTransactionCategory.REFUND;
+  const refundedPurchaseId = getRefundedPurchaseId(transaction);
+  const refundRowId = getPurchaseRefundId(transaction);
+  const refundLabel = getCardRefundLabel(transaction);
+  const { transaction: refundedPurchase } = useCardTransactionFromList(refundedPurchaseId);
+  const refundedPurchaseDate = useMemo(() => {
+    const dateStr = refundedPurchase?.authorized_at || refundedPurchase?.posted_at;
+    const date = dateStr ? new Date(dateStr) : undefined;
+    return date && isValid(date) ? date : undefined;
+  }, [refundedPurchase?.authorized_at, refundedPurchase?.posted_at]);
+  // Once the refund has a row of its own, its payout figures are shown there and
+  // not repeated on the purchase. Support still gets them from either screen.
+  const refundLeg = refundRowId ? undefined : refund;
+  const refundUrl = cardRefundExplorerUrl(refundLeg);
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -388,6 +406,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     if (refundUrl) Linking.openURL(refundUrl);
   }, [refundUrl]);
 
+  // To the other half of a refund: the purchase from its refund, and back.
+  const openLinkedTransaction = useCallback(
+    (id: string | undefined) => {
+      if (id) router.push(`/activity/card-${id}`);
+    },
+    [router],
+  );
+
   const handleLocationPress = useCallback(() => {
     if (!merchantPlace) return;
     Linking.openURL(getCardMerchantMapsUrl(merchantPlace, transaction.merchant_name));
@@ -446,6 +472,10 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     // above the chip means.
     if (isDeclined) return { label: 'Declined', tone: 'danger' };
     if (isReversed) return { label: 'Reversed', tone: 'danger' };
+    // Terminal too. A refund has landed by the time it has a row, and a purchase
+    // that was refunded has nothing left in flight that matters more: without
+    // this a refund read as one more purchase, and a refunded one as unrefunded.
+    if (refundLabel) return { label: refundLabel, tone: 'neutral' };
 
     // `approved` is authorized but not yet posted. Cashback is settled once it
     // has actually paid; a transaction that earned none has nothing to wait for.
@@ -455,14 +485,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     const isCashbackSettled = !cashbackInfo || cashbackInfo.isPaid || cashbackInfo.isIneligible;
 
     return isSpendSettled && isCashbackSettled ? null : { label: 'Pending', tone: 'neutral' };
-  }, [cashbackInfo, isApproved, isDeclined, isReversed]);
+  }, [cashbackInfo, isApproved, isDeclined, isReversed, refundLabel]);
 
   const merchantRows = useMemo(
     () =>
       [
         {
           key: 'from',
-          label: <Label>Sent from</Label>,
+          label: <Label>{isRefund ? 'Refunded to' : 'Sent from'}</Label>,
           value: (
             <View className="flex-row items-center gap-2">
               <CreditCard size={20} color="#FFFFFF" />
@@ -522,6 +552,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         },
       ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[],
     [
+      isRefund,
       last4,
       localDetails,
       merchantPlace,
@@ -547,13 +578,61 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           // on the card is already the 16px that step was reaching for.
           value: <Value className="max-w-[60%] text-right">{declineReason}</Value>,
         },
+      // The purchase this refund gave money back for, one tap away. Its amount
+      // and date when the list already has it, which it usually does: the two
+      // rows come from the same issuer record and arrive on the same page.
+      isRefund &&
+        refundedPurchaseId && {
+          key: 'refund-for',
+          label: <Label>Refund for</Label>,
+          value: (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Open the purchase this refund was for"
+              onPress={() => openLinkedTransaction(refundedPurchaseId)}
+              className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
+            >
+              <Value>
+                {refundedPurchase
+                  ? [
+                      formatCardTransactionAmount(
+                        refundedPurchase.amount,
+                        isOutgoingCardTransaction(refundedPurchase),
+                        cardProvider,
+                        refundedPurchase.currency,
+                      ),
+                      // The amount alone when the date is missing or malformed:
+                      // `format` throws on an invalid date.
+                      refundedPurchaseDate && format(refundedPurchaseDate, 'MMM d'),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Original purchase'}
+              </Value>
+              <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
+            </Pressable>
+          ),
+        },
       // A refund the issuer folded into this transaction rather than sending as
-      // its own (Wirex). The amount above is already net of it, so without this
-      // row the figure silently disagrees with the receipt in the user's hand.
+      // its own (Wirex). Once the refund has a row of its own this opens it;
+      // before, the amount above was net of it, and this row is what explained
+      // why the figure disagreed with the receipt in the user's hand.
       transaction.refunded_amount && {
         key: 'refunded',
         label: <Label>Refunded</Label>,
-        value: (
+        value: refundRowId ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open the refund"
+            onPress={() => openLinkedTransaction(refundRowId)}
+            className="flex-row items-center gap-1 active:opacity-70 web:hover:opacity-80"
+          >
+            <Value className="text-brand">
+              {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
+            </Value>
+            <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
+          </Pressable>
+        ) : (
           <Value className="text-brand">
             {formatCardAmount(transaction.refunded_amount, cardProvider, transaction.currency)}
           </Value>
@@ -565,7 +644,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       // full needs no arithmetic — the amount above already is the amount — and
       // printing "Cashback returned: $0.00" on it would invent a concern the
       // cardholder did not have.
-      refund?.cashback_deducted_usd
+      refundLeg?.cashback_deducted_usd
         ? {
             key: 'refund-cashback',
             // Not green. Every other cashback figure on this screen is money
@@ -580,25 +659,25 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             ),
             value: (
               <Value>
-                -{formatCardAmount(String(refund.cashback_deducted_usd), cardProvider, 'USD')}
+                -{formatCardAmount(String(refundLeg.cashback_deducted_usd), cardProvider, 'USD')}
               </Value>
             ),
             caption: (
               <Text className="mt-2 text-[13px] leading-4 text-white/50">
-                {refund.note ?? 'The cashback this purchase earned was returned with the refund'}
+                {refundLeg.note ?? 'The cashback this purchase earned was returned with the refund'}
               </Text>
             ),
           }
         : null,
-      refund?.cashback_deducted_usd
+      refundLeg?.cashback_deducted_usd
         ? {
             key: 'refund-paid',
             label: (
-              <Label>{refund.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
+              <Label>{refundLeg.status === 'paid' ? 'Refunded to you' : 'Refund on its way'}</Label>
             ),
             value: (
               <Value className="text-brand">
-                {formatCardAmount(String(refund.paid_usd), cardProvider, 'USD')}
+                {formatCardAmount(String(refundLeg.paid_usd), cardProvider, 'USD')}
               </Value>
             ),
           }
@@ -630,7 +709,13 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     transaction.currency,
     declineReason,
     transaction.refunded_amount,
-    refund,
+    refundLeg,
+    isRefund,
+    refundedPurchaseId,
+    refundedPurchase,
+    refundedPurchaseDate,
+    refundRowId,
+    openLinkedTransaction,
   ]);
 
   const onChainRows = useMemo(
@@ -678,7 +763,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           },
         // Refunds return money to the wallet and have a separate transaction.
         refundUrl &&
-          refund?.tx_hash && {
+          refundLeg?.tx_hash && {
             key: 'refund-tx',
             label: <Label>Refund transaction</Label>,
             value: (
@@ -690,7 +775,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
               >
                 <View className="flex-row items-center gap-1">
                   <Underline textClassName={ROW_VALUE_TEXT} borderColor="rgba(255, 255, 255, 1)">
-                    {eclipseAddress(refund.tx_hash)}
+                    {eclipseAddress(refundLeg.tx_hash)}
                   </Underline>
                   <ArrowUpRight color="white" size={16} />
                 </View>
@@ -705,7 +790,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       sweepUrl,
       sweepHash,
       handleSweepPress,
-      refund,
+      refundLeg,
       refundUrl,
       handleRefundPress,
     ],
@@ -727,7 +812,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           <CardActivityIcon transaction={transaction} size={75} />
 
           <View className="items-center gap-1">
-            <Text className="text-2xl font-bold text-white">
+            <Text className={cn('text-2xl font-bold', isRefund ? 'text-brand' : 'text-white')}>
               {formatCardTransactionAmount(
                 transaction.amount,
                 isOutgoing,

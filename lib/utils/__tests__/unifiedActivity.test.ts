@@ -187,4 +187,20 @@ describe('getUnifiedActivitySearchText', () => {
 
     expect(getUnifiedActivitySearchText(item)).toContain('atm fee');
   });
+
+  it('finds a refund row by the word on it', () => {
+    const [item] = mergeActivityFeeds(
+      [],
+      [
+        cardTransaction({
+          id: 'card-1-refund',
+          category: CardTransactionCategory.REFUND,
+          amount: '-31.46',
+          related_transaction_ids: ['card-1'],
+        }),
+      ],
+    );
+
+    expect(getUnifiedActivitySearchText(item)).toContain('refund');
+  });
 });

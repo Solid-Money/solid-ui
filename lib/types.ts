@@ -2787,6 +2787,11 @@ export interface CardTransaction {
   posted_at: string;
   authorized_at: string;
   crypto_transaction_details?: CryptoTransactionDetails;
+  /**
+   * The other side of a refund. On a `refund` row, the purchase it gave money
+   * back for; on a purchase, the refund row that gave money back for it. See
+   * `getRefundedPurchaseId` and `getPurchaseRefundId`.
+   */
   related_transaction_ids: string[];
   billing_amount?: string;
   merchant_category_code?: string;
@@ -2811,8 +2816,12 @@ export interface CardTransaction {
   /**
    * How much of this transaction has been refunded, when the issuer models a
    * refund as a credit on the original transaction rather than a separate one
-   * (Wirex does). `amount` is already net of it — this exists to explain why the
-   * figure is lower than what the merchant charged.
+   * (Wirex does).
+   *
+   * When the purchase is linked to a refund row (`related_transaction_ids`),
+   * `amount` is the full charge and the refund row shows the money coming back.
+   * Without a link `amount` is net of the refund, which is how the backend sent
+   * it before it split refunds out.
    */
   refunded_amount?: string;
   /** Fees applied to this transaction. Absent when none were evaluated. */
