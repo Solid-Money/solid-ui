@@ -10,10 +10,16 @@ import {
   fetchTokenPricesByAddress,
   fetchTokenPricesBySymbol,
 } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
+import { ADDRESSES, isDevFeatureEnabled } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
-import { isSoETHToken, isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
+import {
+  isSoETHToken,
+  isSoEURCToken,
+  isSoFUSEToken,
+  isSoUSDToken,
+  isWalletCardExcludedToken,
+} from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 
 import { makeNativePriceFetcher } from './useNativePriceUsd';
@@ -144,9 +150,32 @@ const parsePrice = (v: unknown): number | undefined => {
  * holding by the whole accrued yield. Their rate comes from the accountant or
  * not at all. soUSD is excluded from this rule: its price id names the share
  * itself, so a fallback price for it is the right number.
+ *
+ * soEURC is on this list too, for a stronger reason: it is held and shown in EUR
+ * and has no USD quote at all (see `soEURCQuoteRate`), so no fallback may give it
+ * one — a dollar price here would carry it into every USD sum built on quoteRate.
  */
 const isUnderlyingPricedShare = (contractAddress: string): boolean =>
-  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress);
+  isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress) || isSoEURCToken(contractAddress);
+
+/**
+ * soEURC's `quoteRate`, which is a USD quote everywhere it is read: always 0.
+ *
+ * The EUR vault is never converted into a USD figure (see `lib/vaultCurrency.ts`),
+ * and every consumer of `quoteRate` multiplies and sums it as dollars. Its EUR
+ * value comes from the soEURC accountant instead (`useVaultExchangeRate('EUR')`).
+ * TODO(soEURC): wallet and coin rows that print `balance × quoteRate` show $0 for
+ * soEURC until they learn to show a EUR line.
+ */
+const soEURCQuoteRate = 0;
+
+/**
+ * Whether a Base token is kept although the curated token list does not name it.
+ * soEURC is kept where its vault is listed (QA/preview), so the withdraw flow can
+ * find the position before the backend adds the share to its list.
+ */
+const isKeptUnlisted = (chainId: number, address: string) =>
+  isDevFeatureEnabled && chainId === BASE_CHAIN_ID && isSoEURCToken(address);
 
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
@@ -288,17 +317,21 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const isSoUSD = isSoUSDToken(address);
     const isSoFUSE = isSoFUSEToken(address);
     const isSoETH = isSoETHToken(address);
+    const isSoEURC = isSoEURCToken(address);
     // Vault shares are priced off their accountant rate, not off a market quote
-    // for the share (Blockscout has none) or for the underlying asset.
+    // for the share (Blockscout has none) or for the underlying asset. soEURC
+    // gets no USD quote at all — it is a EUR position.
     const quoteRate = isSoUSD
       ? soUSDRateNum
       : isSoFUSE
         ? soFUSEQuoteRateUSD
         : isSoETH
           ? soETHQuoteRateUSD
-          : item.token.exchange_rate
-            ? parseFloat(item.token.exchange_rate)
-            : 0;
+          : isSoEURC
+            ? soEURCQuoteRate
+            : item.token.exchange_rate
+              ? parseFloat(item.token.exchange_rate)
+              : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
@@ -325,6 +358,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
 
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
     if (list.length === 0) return true;
+    if (isKeptUnlisted(chainId, address)) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
