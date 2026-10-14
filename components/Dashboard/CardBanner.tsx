@@ -29,7 +29,7 @@ const CardBanner = () => {
 
   const bannerContent: BannerContent = useMemo(() => {
     // Rain-first: no Rain card (incl. Bridge-only) → show promotional content
-    if (!hasCard(cardStatus)) {
+    if (!cardStatus || !hasCard(cardStatus)) {
       return {
         title: 'Solid Card is live!',
         description: 'Get your card today.',

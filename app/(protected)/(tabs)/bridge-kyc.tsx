@@ -142,6 +142,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
           templateId: options.templateId ?? null,
           templateVersionId: (options as any).templateVersionId ?? null,
           host: (options as any).host ?? null,
+          eventsAllowlist: null,
           onLoad: null,
           onEvent: (name: string, meta: any) => {
             if (name === 'start') {

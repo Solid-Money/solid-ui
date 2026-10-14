@@ -19,6 +19,7 @@ import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
+import { generateId } from '@/lib/utils/generate-id';
 import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
 import { useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -127,9 +128,10 @@ const useBridgeToMainnet = (): BridgeResult => {
 
         const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-        let bridgeClientTxId: string | null = null;
+        const bridgeClientTxId = generateId();
         const result = await trackTransaction(
           {
+            clientTxId: bridgeClientTxId,
             type: TransactionType.BRIDGE_DEPOSIT,
             title: `Withdraw ${amount} soUSD`,
             shortTitle: `Withdraw ${amount}`,
@@ -145,7 +147,6 @@ const useBridgeToMainnet = (): BridgeResult => {
             },
           },
           onUserOpHash => {
-            bridgeClientTxId = onUserOpHash;
             return executeTransactions(
               smartAccountClient,
               transactions,

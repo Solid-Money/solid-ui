@@ -349,7 +349,11 @@ export const useLockFuseForTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      setError(
+        mutationError instanceof UserCopyError
+          ? mutationError.message
+          : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
+      );
       track(TRACKING_EVENTS.TIER_LOCK_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to lock your FUSE',
       });
@@ -460,7 +464,11 @@ export const useSubscribeToTier = () => {
       });
     },
     onError: (mutationError: Error) => {
-      setError(getUserErrorMessage(mutationError, { action: 'subscription' }) || null);
+      setError(
+        mutationError instanceof UserCopyError
+          ? mutationError.message
+          : getUserErrorMessage(mutationError, { action: 'subscription' }) || null,
+      );
       track(TRACKING_EVENTS.TIER_SUBSCRIBE_FAILED, {
         error: sanitizeTechnicalMessage(mutationError) || 'Failed to start your membership',
       });
