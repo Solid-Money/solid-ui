@@ -2,6 +2,7 @@ import { formatUnits, zeroAddress } from 'viem';
 
 import { isDisplayStablecoin } from '@/constants/stablecoins';
 import { VAULTS } from '@/constants/vaults';
+import { ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
 
 export type PortfolioAsset = {
@@ -43,19 +44,27 @@ export const portfolioVaultType = (address: string, chainId: number): VaultType 
 /**
  * A vault share matched by address on any chain. soUSD is bridged to Base and Arbitrum under
  * the same address as the Ethereum vault, but VAULTS only lists the chains we read savings on.
+ *
+ * soEURC is recognised whether or not this build lists its vault, so a soEURC balance is
+ * never mistaken for wallet cash (and priced in dollars) in a build that hides the vault.
  */
 export const portfolioShareVaultType = (address: string): VaultType | undefined => {
   const lower = address?.toLowerCase();
+  if (lower && lower === ADDRESSES.base.soEurcVault.toLowerCase()) return VaultType.EUR;
   return VAULTS.find(vault => vault.vaults.some(network => network.address.toLowerCase() === lower))
     ?.type;
 };
 
-/** Wallet shares on chains the savings read skips, valued at their accountant rate. */
+/**
+ * Wallet shares on chains the savings read skips, valued at their accountant rate, in USD.
+ * soEURC is never valued here: it is held in EUR and does not enter a USD total.
+ */
 export const bridgedShareValues = (tokens: TokenBalance[]) => {
   const values: Partial<Record<VaultType, number | undefined>> = {};
   for (const token of tokens) {
     const type = portfolioShareVaultType(token.contractAddress);
-    if (!type || portfolioVaultType(token.contractAddress, token.chainId)) continue;
+    if (!type || type === VaultType.EUR) continue;
+    if (portfolioVaultType(token.contractAddress, token.chainId)) continue;
     if (BigInt(token.balance || '0') <= 0n) continue;
     const value = savingsUsdValue(
       Number(formatUnits(BigInt(token.balance), token.contractDecimals)),
