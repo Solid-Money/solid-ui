@@ -4,7 +4,12 @@ import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { explorerUrls, layerzero } from '@/constants/explorers';
-import { getInfoClient, getInfoClientEth, getInfoClientFuse } from '@/graphql/clients';
+import {
+  getInfoClient,
+  getInfoClientEth,
+  getInfoClientEur,
+  getInfoClientFuse,
+} from '@/graphql/clients';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
@@ -49,14 +54,12 @@ const ApyToDays = {
   thirtyDay: 30,
 };
 
-const getAnalyticsVaultKey = (
-  vault?: VaultType,
-): VaultType.USDC | VaultType.FUSE | VaultType.ETH =>
-  vault === VaultType.FUSE
-    ? VaultType.FUSE
-    : vault === VaultType.ETH
-      ? VaultType.ETH
-      : VaultType.USDC;
+/**
+ * The analytics key for a vault: the vault itself, or the USD vault when none is
+ * given. Every vault answers for its own rate — soEURC used to fall through to
+ * soUSD's here and would have shown the USD vault's APY as its own.
+ */
+const getAnalyticsVaultKey = (vault?: VaultType): VaultType => vault ?? VaultType.USDC;
 
 const safeFormatUnits = (
   value: string | number | bigint | null | undefined,
@@ -97,7 +100,8 @@ export const useTotalAPY = (vault?: VaultType) => {
   return useQuery({
     queryKey: [ANALYTICS, 'totalAPY'],
     queryFn: fetchTotalAPY,
-    select: data => data[vaultKey],
+    // `eur` may be absent or null until the API reports the EUR vault: no APY.
+    select: data => data[vaultKey] ?? undefined,
   });
 };
 
@@ -137,6 +141,12 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
   });
 };
 
+const EMPTY_USER_TRANSACTIONS: GetUserTransactionsQuery = {
+  deposits: [],
+  withdraws: [],
+  bridges: [],
+};
+
 export const userTransactionsQueryOptions = (
   safeAddress: string | undefined,
   vault?: VaultType,
@@ -149,7 +159,11 @@ export const userTransactionsQueryOptions = (
         ? getInfoClientEth()
         : vault === VaultType.FUSE
           ? getInfoClientFuse()
-          : getInfoClient();
+          : vault === VaultType.EUR
+            ? getInfoClientEur()
+            : getInfoClient();
+    // No soEURC subgraph in this build: an empty history, rather than the USD vault's.
+    if (!client) return EMPTY_USER_TRANSACTIONS;
     const { data } = await client.query<GetUserTransactionsQuery>({
       query: GetUserTransactionsDocument,
       variables: {
@@ -589,7 +603,8 @@ export const useAPYs = (vault?: VaultType) => {
   const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
     ...apysQueryOptions(),
-    select: (data): APYs | undefined => data[vaultKey],
+    // `eur` may be absent or null until the API reports the EUR vault: no APY.
+    select: (data): APYs | undefined => data[vaultKey] ?? undefined,
   });
 };
 

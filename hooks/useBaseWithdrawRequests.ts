@@ -3,6 +3,7 @@ import { QueryObserverResult, useQueries } from '@tanstack/react-query';
 import { Hex } from 'viem';
 import { base } from 'viem/chains';
 
+import { getVaultKey } from '@/constants/withdraw';
 import { isSoUsdBaseConfigured } from '@/lib/soUsdWithdraw';
 import { BaseWithdrawRequest, readBaseWithdrawRequest } from '@/lib/soUsdWithdrawStatus';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
@@ -17,6 +18,10 @@ const PENDING_STALE_MS = 30_000;
 /**
  * A soUSD withdraw request made on the Base queue: its transaction confirmed,
  * so it is in the queue or has left it.
+ *
+ * soUSD only: soEURC withdraws on Base too, but through its own queue, and its
+ * status comes from the EUR subgraph (see useActivity). An activity naming no
+ * vault is soUSD, as every withdraw was before vaults diverged.
  */
 export const isBaseWithdrawRequest = (
   activity: ActivityEvent,
@@ -25,6 +30,7 @@ export const isBaseWithdrawRequest = (
 } =>
   activity.type === TransactionType.WITHDRAW &&
   activity.chainId === base.id &&
+  (getVaultKey(activity.symbol) ?? 'USD') === 'USD' &&
   activity.status === TransactionStatus.SUCCESS &&
   !!activity.hash;
 
