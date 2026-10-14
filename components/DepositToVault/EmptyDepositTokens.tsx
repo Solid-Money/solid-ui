@@ -5,10 +5,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
+import { getVaultDepositToken } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 type SupportedToken = {
@@ -22,7 +22,8 @@ const FALLBACK_ICON_BY_SYMBOL: Record<string, ImageSourcePropType> = {
 
 /**
  * Collect unique icons for the vault's supported tokens across any chain that supports them.
- * Prefers an explicit `icon` from BRIDGE_TOKENS; falls back to the known per-symbol asset.
+ * Prefers an explicit `icon` from the deposit token table (BRIDGE_TOKENS, or EURC_TOKENS
+ * for soEURC); falls back to the known per-symbol asset.
  */
 const getSupportedTokens = (vault: Vault): SupportedToken[] => {
   const config = vault.depositConfig;
@@ -35,7 +36,7 @@ const getSupportedTokens = (vault: Vault): SupportedToken[] => {
     let icon: ImageSourcePropType | undefined;
 
     for (const chainId of config.supportedChains) {
-      const tokenData = BRIDGE_TOKENS[chainId]?.tokens?.[symbol];
+      const tokenData = getVaultDepositToken(chainId, symbol);
       if (tokenData?.icon) {
         icon = tokenData.icon;
         break;
