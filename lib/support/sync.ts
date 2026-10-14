@@ -22,7 +22,10 @@ import type { SupportContextRef, SupportFile, SupportMessage } from '@/lib/types
 
 /** Gap-fill page size (the server allows up to 200). */
 const SYNC_PAGE = 100;
-/** A reconnect never pages through more than this; the rest arrives on scroll. */
+/**
+ * A catch-up never pages through more than this at once. What is left stays
+ * in `gap` and is filled by the next catch-up, or first by scrolling up.
+ */
 const SYNC_MAX_PAGES = 5;
 
 export const MAX_BODY_LENGTH = 10_000;
@@ -44,6 +47,12 @@ let loading: Promise<void> | null = null;
 let syncing: Promise<void> | null = null;
 let loadingOlder: Promise<void> | null = null;
 let reading: Promise<void> | null = null;
+/**
+ * Messages missing between what was held and the newest page: everything
+ * after `after` and before `until`. Filled from the bottom by `syncThread`
+ * and from the top by `loadOlder`, so it closes whichever way the user goes.
+ */
+let gap: { after: number; until: number } | null = null;
 
 /** Files waiting to upload, kept for a retry (Blobs do not belong in the store). */
 const pendingFiles = new Map<string, SupportFile[]>();
@@ -60,13 +69,32 @@ const ifCurrent =
 /** Load the thread once; later calls share the request. */
 export function loadThread(): Promise<void> {
   if (!loading) {
-    loading = getSupportThread()
+    // A request from before an account switch must not clear the new account's slot.
+    const run: Promise<void> = getSupportThread()
       .then(ifCurrent(generation, thread => store().setThread(thread)))
       .finally(() => {
-        loading = null;
+        if (loading === run) loading = null;
       });
+    loading = run;
   }
   return loading;
+}
+
+/** Fill `gap` upwards from its bottom, a few pages at a time. */
+async function fillGap(started: number): Promise<void> {
+  for (let page = 0; gap && page < SYNC_MAX_PAGES; page++) {
+    const { after, until } = gap;
+    const { messages } = await getSupportMessages({ afterSeq: after, limit: SYNC_PAGE });
+    if (started !== generation) return;
+    store().receive(messages);
+    const top = highestSeq(messages);
+    // Closed: a short page, the newest page reached, or no progress (never loop on it).
+    if (messages.length < SYNC_PAGE || top >= until - 1 || top <= after) {
+      gap = null;
+      return;
+    }
+    gap = { after: top, until };
+  }
 }
 
 /**
@@ -77,7 +105,7 @@ export function loadThread(): Promise<void> {
 export function syncThread(): Promise<void> {
   if (!store().loaded) return loadThread();
   if (!syncing) {
-    syncing = (async () => {
+    const run: Promise<void> = (async () => {
       const started = generation;
       const heldTop = highestSeq(store().messages);
       const thread = await getSupportThread();
@@ -85,36 +113,50 @@ export function syncThread(): Promise<void> {
       store().setThread(thread);
       const freshBottom = thread.messages.length ? thread.messages[0].seq : null;
       // Internal notes leave holes in seq, so this can ask once for nothing; it never misses.
-      if (heldTop === 0 || freshBottom === null || freshBottom <= heldTop + 1) return;
-      let after = heldTop;
-      for (let page = 0; page < SYNC_MAX_PAGES; page++) {
-        const { messages } = await getSupportMessages({ afterSeq: after, limit: SYNC_PAGE });
-        if (started !== generation) return;
-        store().receive(messages);
-        if (messages.length < SYNC_PAGE) return;
-        after = highestSeq(messages);
-        if (after >= freshBottom) return;
+      if (heldTop > 0 && freshBottom !== null && freshBottom > heldTop + 1) {
+        // A gap still open from an earlier catch-up is folded in: fill from the lower bottom
+        // up to the new page (messages already held in between are merged, not duplicated).
+        gap = { after: gap ? Math.min(gap.after, heldTop) : heldTop, until: freshBottom };
       }
+      if (gap) await fillGap(started);
     })().finally(() => {
-      syncing = null;
+      if (syncing === run) syncing = null;
     });
+    syncing = run;
   }
   return syncing;
 }
 
 /** The page of history before the oldest message held. */
 export function loadOlder(): Promise<void> {
-  const { hasOlder, messages } = store();
-  const before = lowestSeq(messages);
-  if (!hasOlder || before === null) return Promise.resolve();
-  if (!loadingOlder) {
-    loadingOlder = getSupportMessages({ beforeSeq: before })
-      .then(ifCurrent(generation, page => store().prependOlder(page.messages, page.hasOlder)))
-      .finally(() => {
-        loadingOlder = null;
-      });
+  if (loadingOlder) return loadingOlder;
+  const started = generation;
+  let run: Promise<void>;
+  if (gap) {
+    // Scrolling up reaches the gap before anything older: fill it from its top.
+    const { after, until } = gap;
+    run = getSupportMessages({ beforeSeq: until, limit: SYNC_PAGE }).then(page => {
+      if (started !== generation) return;
+      store().receive(page.messages);
+      const bottom = lowestSeq(page.messages);
+      gap =
+        bottom === null || bottom <= after + 1 || !page.hasOlder || bottom >= until
+          ? null
+          : { after, until: bottom };
+    });
+  } else {
+    const { hasOlder, messages } = store();
+    const before = lowestSeq(messages);
+    if (!hasOlder || before === null) return Promise.resolve();
+    run = getSupportMessages({ beforeSeq: before }).then(
+      ifCurrent(started, page => store().prependOlder(page.messages, page.hasOlder)),
+    );
   }
-  return loadingOlder;
+  const owned: Promise<void> = run.finally(() => {
+    if (loadingOlder === owned) loadingOlder = null;
+  });
+  loadingOlder = owned;
+  return owned;
 }
 
 /** Tell the server the user has seen everything held. Only asks when something is unread. */
@@ -123,12 +165,13 @@ export function markRead(): Promise<void> {
   const top = highestSeq(messages);
   if (top <= lastReadSeq && unread === 0) return Promise.resolve();
   if (!reading) {
-    reading = markSupportRead(top)
+    const run: Promise<void> = markSupportRead(top)
       .then(ifCurrent(generation, result => store().setRead(result.lastReadSeq, result.unread)))
       .catch(() => undefined) // The next read or focus tries again.
       .finally(() => {
-        reading = null;
+        if (reading === run) reading = null;
       });
+    reading = run;
   }
   return reading;
 }
@@ -247,13 +290,19 @@ export function refreshMessage(
   const inFlight = linkRefreshes.get(message.id);
   if (inFlight) return inFlight;
   const started = generation;
-  const run = getSupportMessages({ afterSeq: message.seq - 1, limit: 1 })
+  const run: Promise<SupportMessage | null> = getSupportMessages({
+    afterSeq: message.seq - 1,
+    limit: 1,
+  })
     .then(({ messages }) => {
       const fresh = messages.find(candidate => candidate.id === message.id) ?? null;
       if (fresh && started === generation) store().receive([fresh]);
       return fresh;
     })
-    .finally(() => linkRefreshes.delete(message.id));
+    .finally(() => {
+      // Only this request's own entry: an account switch may have started another.
+      if (linkRefreshes.get(message.id) === run) linkRefreshes.delete(message.id);
+    });
   linkRefreshes.set(message.id, run);
   return run;
 }
@@ -283,6 +332,7 @@ export function resetSyncState(): void {
   syncing = null;
   loadingOlder = null;
   reading = null;
+  gap = null;
   pendingFiles.clear();
   linkRefreshes.clear();
 }

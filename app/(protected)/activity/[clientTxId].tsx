@@ -45,6 +45,7 @@ import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolli
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import {
   CardProvider,
   CardTransaction,
@@ -1337,7 +1338,8 @@ export default function ActivityDetail() {
 
   const transactionContext = useMemo<SupportDrawerRequest | undefined>(() => {
     if (!finalActivity) return undefined;
-    const amount = `${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}`;
+    // From the decimal string, not a float, so the card shows the exact digits.
+    const amount = `${statusSign}${formatDecimalAmount(finalActivity.amount)} ${formatSymbol(finalActivity.symbol)}`;
     return {
       chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
       context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },

@@ -110,11 +110,11 @@ export const useSupportChatStore = create<SupportChatState>()(set => ({
       return {
         messages,
         pending: settlePending(state.pending, incoming),
-        // Before the thread has loaded only a few messages are held, so the
-        // server's count is carried forward instead of recounted.
-        unread: state.loaded
-          ? countUnread(messages, state.lastReadSeq)
-          : state.unread + fresh.filter(message => message.author.type !== 'user').length,
+        // The held history can be incomplete (the server counts past the first
+        // page), so the count is carried forward: only replies new to this copy
+        // and after the read marker add to it. An update to a held message
+        // (fresh file links, a redaction) changes nothing.
+        unread: state.unread + countUnread(fresh, state.lastReadSeq),
         // An AI message ends the AI's turn, whatever the typing event said.
         aiTyping: replied ? false : state.aiTyping,
         aiActivity: replied ? null : state.aiActivity,
