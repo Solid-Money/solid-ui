@@ -8,7 +8,8 @@ import mmkvStorage from '@/lib/mmvkStorage';
 
 /**
  * Two-step vaults (soUSD, soETH) bridge Fuse -> Ethereum in step 1 and withdraw
- * on Ethereum in step 2. If the user closes the flow after step 1, the bridged
+ * on Ethereum in step 2. Single-step vaults (soFUSE on Fuse, soEURC on Base)
+ * never store a session. If the user closes the flow after step 1, the bridged
  * funds are sitting on Ethereum waiting to be withdrawn. We persist that
  * unfinished withdraw so the flow can resume directly on step 2 (prefilled,
  * step 1 disabled) instead of the user having to rediscover that they must
@@ -17,7 +18,7 @@ import mmkvStorage from '@/lib/mmvkStorage';
 export interface WithdrawSession {
   /** Safe address the bridged funds belong to. */
   address: string;
-  /** Vault being withdrawn (only bridging vaults: USD, ETH). */
+  /** Vault being withdrawn (only bridging vaults: USD, ETH — never FUSE or EUR). */
   vault: VaultKey;
   /** Amount bridged in step 1 — prefilled and withdrawn in step 2. */
   amount: string;

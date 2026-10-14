@@ -10,7 +10,7 @@ import { SavingsVault, useSavingsVaults } from '@/hooks/useSavingsVaults';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { formatCurrencyAmount } from '@/lib/vaultCurrency';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -26,7 +26,8 @@ const bestToken = (vault: SavingsVault): TokenBalance | undefined =>
 
 /**
  * First step of the withdraw flow when the user holds more than one savings
- * vault. Lists the vaults (soUSD / soFUSE / soETH) without any network detail.
+ * vault. Lists the vaults (soUSD / soFUSE / soETH / soEURC) without any network
+ * detail, each valued in its own currency (soEURC in EUR).
  * When the user holds a single vault the screen auto-advances straight to the
  * form so it never flashes.
  */
@@ -103,7 +104,9 @@ const UnstakeVaultSelector: React.FC = () => {
                     )}
                   </View>
                 </View>
-                <Text className="text-lg font-semibold">${formatNumber(vault.balanceUSD, 2)}</Text>
+                <Text className="text-lg font-semibold">
+                  {formatCurrencyAmount(vault.balance, vault.currency)}
+                </Text>
               </Pressable>
             );
           })}
