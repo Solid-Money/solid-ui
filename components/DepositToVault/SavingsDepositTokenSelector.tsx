@@ -2,10 +2,10 @@ import React, { useCallback, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { WalletTokenSelectorScreen } from '@/components/WalletTokenSelector';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { TokenBalance } from '@/lib/types';
+import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 /**
@@ -36,17 +36,17 @@ const SavingsDepositTokenSelector: React.FC = () => {
       const symbol = token.contractTickerSymbol?.toUpperCase();
       const chainId = token.chainId;
 
-      // Look up the token key in BRIDGE_TOKENS for this chain
-      const bridgeTokens = BRIDGE_TOKENS[chainId]?.tokens;
-      const tokenKey = bridgeTokens
-        ? Object.keys(bridgeTokens).find(k => k.toUpperCase() === symbol)
-        : undefined;
+      // The vault's own key for this token on this chain — BRIDGE_TOKENS' casing,
+      // or EURC for the soEURC vault, whose EURC is not in BRIDGE_TOKENS.
+      const tokenKey = getAllowedTokensForChain(chainId, vault).find(
+        k => k.toUpperCase() === symbol,
+      );
 
       setSrcChainId(chainId);
       setPrincipalToken(tokenKey || symbol || '');
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
-    [setSrcChainId, setPrincipalToken, setModal],
+    [setSrcChainId, setPrincipalToken, setModal, vault],
   );
 
   return (
