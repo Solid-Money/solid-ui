@@ -179,8 +179,8 @@ export const getLargestDepositSelection = (
   for (const token of tokens) {
     if (!supportedChains.includes(token.chainId)) continue;
 
-    // The form selects by BRIDGE_TOKENS key, so a token without one on this
-    // chain is not something it could open on.
+    // The form selects by deposit-token key (BRIDGE_TOKENS, or EURC for soEURC),
+    // so a token without one on this chain is not something it could open on.
     const symbol = token.contractTickerSymbol?.toUpperCase();
     const principalToken = getAllowedTokensForChain(token.chainId, vault).find(
       key => key.toUpperCase() === symbol,

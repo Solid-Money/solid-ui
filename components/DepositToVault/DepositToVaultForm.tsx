@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
 import { Address, formatUnits } from 'viem';
-import { fuse } from 'viem/chains';
+import { base, fuse } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
@@ -29,8 +28,10 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
+import useDepositFromEOAEur from '@/hooks/useDepositFromEOAEur';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
+import useDepositFromSolidEur from '@/hooks/useDepositFromSolidEur';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
@@ -43,13 +44,15 @@ import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { Status, TokenBalance, TokenType } from '@/lib/types';
+import { Status, TokenBalance, TokenType, VaultType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { showTextInputFromStart } from '@/lib/utils/textInput';
+import { formatVaultAmount, getVaultCurrencySymbol } from '@/lib/vaultCurrency';
 import {
   getAllowedTokensForChain,
   getDefaultDepositSelection,
   getLargestDepositSelection,
+  getVaultDepositToken,
 } from '@/lib/vaults';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -61,9 +64,13 @@ function getGaslessText(
   isSponsor: boolean,
 ): string {
   if (isSponsor) return 'Gasless deposit';
-  const amountLabel = isStablecoinSymbol(tokenSymbol)
-    ? `$${minAmount}`
-    : `${minAmount} ${tokenSymbol ?? 'token'}`;
+  // EURC is a euro stablecoin: its minimum reads in euros, never dollars.
+  const amountLabel =
+    tokenSymbol?.toUpperCase() === 'EURC'
+      ? formatVaultAmount(Number(minAmount), VaultType.EUR, 2, 0)
+      : isStablecoinSymbol(tokenSymbol)
+        ? `$${minAmount}`
+        : `${minAmount} ${tokenSymbol ?? 'token'}`;
   return `Gasless deposit - Please deposit above ${amountLabel} so we can cover your fees`;
 }
 
@@ -216,10 +223,11 @@ function DepositToVaultForm() {
   ]);
 
   const selectedTokenInfo = useMemo(() => {
-    const tokens = BRIDGE_TOKENS[normalizedSelection.chainId]?.tokens;
-    const tokenData = tokens
-      ? tokens[normalizedSelection.principalToken as keyof typeof tokens]
-      : undefined;
+    // BRIDGE_TOKENS, or EURC_TOKENS for the soEURC vault's EURC.
+    const tokenData = getVaultDepositToken(
+      normalizedSelection.chainId,
+      normalizedSelection.principalToken,
+    );
 
     return {
       address: tokenData?.address,
@@ -298,15 +306,44 @@ function DepositToVaultForm() {
     vault.minimumAmount,
   );
 
-  const isFuseVault = vault.name === 'FUSE';
-  const isEthVault = vault.name === 'ETH';
+  const {
+    balance: balanceEur,
+    deposit: depositEur,
+    depositStatus: depositStatusEur,
+    hash: hashEur,
+    error: errorEur,
+  } = useDepositFromEOAEur(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
+    balance: balanceSolidEur,
+    deposit: depositSolidEur,
+    depositStatus: depositStatusSolidEur,
+    hash: hashSolidEur,
+    error: errorSolidEur,
+  } = useDepositFromSolidEur(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const isFuseVault = vault.type === VaultType.FUSE;
+  const isEthVault = vault.type === VaultType.ETH;
+  const isEurVault = vault.type === VaultType.EUR;
   const isNativeFuse = isFuseVault && normalizedSelection.principalToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
-  const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
-  // Exactly one of the three holds whenever the deposit comes from the Solid
+  const useSolidForEur = isEurVault && depositFromSolid;
+  // The USD vault is the explicit case now rather than "anything else": an
+  // unrecognised vault used to be deposited as USDC.
+  const isUsdVault = vault.type === VaultType.USDC;
+  const useSolidForUsdc = isUsdVault && depositFromSolid;
+  // Exactly one of these holds whenever the deposit comes from the Solid
   // balance, which is also when the form has no external wallet to name.
-  const isDepositFromSolid = useSolidForFuse || useSolidForEth || useSolidForUsdc;
+  const isDepositFromSolid = useSolidForFuse || useSolidForEth || useSolidForEur || useSolidForUsdc;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
@@ -331,65 +368,85 @@ function DepositToVaultForm() {
     }
   }, [isNativeFuse, useSolidForFuse, setPrincipalToken]);
 
-  const balanceForVault = isEthVault
-    ? useSolidForEth
-      ? balanceSolidEth
-      : balanceEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? balanceSolidFuse
-        : balanceFuse
-      : useSolidForUsdc
-        ? balanceSolidUsdc
-        : balance;
+  const balanceForVault = isEurVault
+    ? useSolidForEur
+      ? balanceSolidEur
+      : balanceEur
+    : isEthVault
+      ? useSolidForEth
+        ? balanceSolidEth
+        : balanceEth
+      : isFuseVault
+        ? useSolidForFuse
+          ? balanceSolidFuse
+          : balanceFuse
+        : useSolidForUsdc
+          ? balanceSolidUsdc
+          : balance;
   const balanceDecimals = selectedTokenInfo.decimals ?? (isFuseVault || isEthVault ? 18 : 6);
-  const depositFn = isEthVault
-    ? useSolidForEth
-      ? depositSolidEth
-      : depositEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? depositSolidFuse
-        : depositFuse
-      : useSolidForUsdc
-        ? depositSolidUsdc
-        : deposit;
-  const depositStatusForVault = isEthVault
-    ? useSolidForEth
-      ? depositStatusSolidEth
-      : depositStatusEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? depositStatusSolidFuse
-        : depositStatusFuse
-      : useSolidForUsdc
-        ? depositStatusSolidUsdc
-        : depositStatus;
-  const hashForVault = isEthVault
-    ? useSolidForEth
-      ? hashSolidEth
-      : hashEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? hashSolidFuse
-        : hashFuse
-      : useSolidForUsdc
-        ? hashSolidUsdc
-        : hash;
-  const errorForVault = isEthVault
-    ? useSolidForEth
-      ? errorSolidEth
-      : errorEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? errorSolidFuse
-        : errorFuse
-      : useSolidForUsdc
-        ? errorSolidUsdc
-        : error;
+  const depositFn = isEurVault
+    ? useSolidForEur
+      ? depositSolidEur
+      : depositEur
+    : isEthVault
+      ? useSolidForEth
+        ? depositSolidEth
+        : depositEth
+      : isFuseVault
+        ? useSolidForFuse
+          ? depositSolidFuse
+          : depositFuse
+        : useSolidForUsdc
+          ? depositSolidUsdc
+          : deposit;
+  const depositStatusForVault = isEurVault
+    ? useSolidForEur
+      ? depositStatusSolidEur
+      : depositStatusEur
+    : isEthVault
+      ? useSolidForEth
+        ? depositStatusSolidEth
+        : depositStatusEth
+      : isFuseVault
+        ? useSolidForFuse
+          ? depositStatusSolidFuse
+          : depositStatusFuse
+        : useSolidForUsdc
+          ? depositStatusSolidUsdc
+          : depositStatus;
+  const hashForVault = isEurVault
+    ? useSolidForEur
+      ? hashSolidEur
+      : hashEur
+    : isEthVault
+      ? useSolidForEth
+        ? hashSolidEth
+        : hashEth
+      : isFuseVault
+        ? useSolidForFuse
+          ? hashSolidFuse
+          : hashFuse
+        : useSolidForUsdc
+          ? hashSolidUsdc
+          : hash;
+  const errorForVault = isEurVault
+    ? useSolidForEur
+      ? errorSolidEur
+      : errorEur
+    : isEthVault
+      ? useSolidForEth
+        ? errorSolidEth
+        : errorEth
+      : isFuseVault
+        ? useSolidForFuse
+          ? errorSolidFuse
+          : errorFuse
+        : useSolidForUsdc
+          ? errorSolidUsdc
+          : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
-  const { maxAPY } = useMaxAPY(vault.type);
+  const { maxAPY, isAPYsLoading } = useMaxAPY(vault.type);
 
   const formattedBalance = balanceForVault ? formatUnits(balanceForVault, balanceDecimals) : '0';
 
@@ -402,7 +459,9 @@ function DepositToVaultForm() {
       ? (selectedTokenInfo?.name ?? 'WFUSE')
       : isEthVault
         ? (selectedTokenInfo?.name ?? 'WETH')
-        : 'USDC';
+        : isEurVault
+          ? 'EURC'
+          : 'USDC';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -427,6 +486,7 @@ function DepositToVaultForm() {
     balanceDecimals,
     isFuseVault,
     isEthVault,
+    isEurVault,
     isNativeFuse,
     selectedTokenInfo?.name,
     vault.minimumAmount,
@@ -508,7 +568,9 @@ function DepositToVaultForm() {
     isLoading: isPreviewDepositLoading,
     routingFee,
   } = usePreviewDeposit(
-    watchedAmount || '0',
+    // The preview quotes a route into USDC, which a EURC deposit never takes:
+    // a zero amount keeps it from asking LI.FI for one.
+    isEurVault ? '0' : watchedAmount || '0',
     selectedTokenInfo?.address,
     normalizedSelection.chainId,
   );
@@ -542,14 +604,18 @@ function DepositToVaultForm() {
 
     const explorerUrl = isFuseVault
       ? explorerUrls[fuse.id]?.blockscout
-      : explorerUrls[layerzero.id]?.layerzeroscan;
+      : isEurVault
+        ? base.blockExplorers.default.url
+        : explorerUrls[layerzero.id]?.layerzeroscan;
 
-    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : 'USDC';
+    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : isEurVault ? 'EURC' : 'USDC';
     const toastIcon = isFuseVault
       ? 'images/fuse-4x.png'
       : isEthVault
         ? 'images/eth.png'
-        : 'images/usdc.png';
+        : isEurVault
+          ? 'images/eurc.png'
+          : 'images/usdc.png';
 
     Toast.show({
       type: 'success',
@@ -585,7 +651,7 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: !isFuseVault && isEthereum,
+        is_ethereum: !isFuseVault && !isEurVault && isEthereum,
         is_sponsor: isSponsor,
         exchange_rate: vaultExchangeRate,
         ...attributionData,
@@ -608,7 +674,7 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_FAILED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: !isFuseVault && isEthereum,
+        is_ethereum: !isFuseVault && !isEurVault && isEthereum,
         error: String(error),
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -757,7 +823,9 @@ function DepositToVaultForm() {
                       <Skeleton className="h-7 w-20 bg-white/20" />
                     ) : (
                       <Text className="text-lg font-semibold">
-                        {vault.name === 'USDC' ? `$${formatNumber(routingFee)}` : '$0'}
+                        {vault.name === 'USDC'
+                          ? `$${formatNumber(routingFee)}`
+                          : `${getVaultCurrencySymbol(vault.type)}0`}
                       </Text>
                     )}
                   </View>
@@ -768,6 +836,9 @@ function DepositToVaultForm() {
                     <Text className="text-lg font-semibold text-[#94F27F]">
                       {maxAPY ? (
                         `${maxAPY.toFixed(2)}%`
+                      ) : isEurVault && !isAPYsLoading ? (
+                        // soEURC does not earn yet: "—", not a skeleton that never resolves.
+                        '—'
                       ) : (
                         <Skeleton className="h-7 w-20 bg-white/20" />
                       )}

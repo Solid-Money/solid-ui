@@ -19,7 +19,7 @@ import { CardProvider, DepositFeeQuote } from '@/lib/types';
  * |                |                 | Safe the card spends from lives                   |
  * | Wallet         | No card         | Nothing                                           |
  * | Savings        | Rain or no card | Every chain but the vault's: Ethereum for soUSD   |
- * |                |                 | and soETH, Fuse for soFUSE                        |
+ * |                |                 | and soETH, Fuse for soFUSE, Base for soEURC       |
  * | Savings        | Wirex           | Nothing, for Phase 1                              |
  *
  * The client collects nothing here. This only decides whether a deposit address
@@ -56,6 +56,7 @@ const VAULT_CHAIN_IDS: Record<string, number> = {
   soUSD: mainnet.id,
   soETH: mainnet.id,
   soFUSE: fuse.id,
+  soEURC: base.id,
 };
 
 /**
@@ -80,7 +81,7 @@ export function getDepositFeeRatePpm({
   chainId: number;
   /** Currency being sent. Only a Wirex cardholder's fee depends on it. */
   symbol?: string;
-  /** Share token a savings deposit mints (soUSD, soETH, soFUSE). Unused otherwise. */
+  /** Share token a savings deposit mints (soUSD, soETH, soFUSE, soEURC). Unused otherwise. */
   vaultToken?: string;
 }): number {
   const isWirex = provider === CardProvider.WIREX;

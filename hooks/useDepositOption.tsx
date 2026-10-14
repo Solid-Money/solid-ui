@@ -279,6 +279,11 @@ const useDepositOption = ({
       if (depositFromSolid) {
         return <DepositToVaultForm />;
       }
+      // A connected external wallet funds the Solid wallet here, for every vault;
+      // the vault form's external-wallet branches (useDepositFromEOA*) are not
+      // reached. TODO(soEURC): route an external-wallet EURC deposit for the EUR
+      // vault to DepositToVaultForm (useDepositFromEOAEur) once the backend's
+      // `/deposit` accepts `vault: 'eur'` — Add Funds does not offer EURC.
       return <AddFundsToWalletForm />;
     }
 

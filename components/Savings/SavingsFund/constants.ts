@@ -18,6 +18,11 @@ export type SavingsFundToken = {
    * own chains because they are only bridgeable from where they exist.
    */
   chainIds?: number[];
+  /**
+   * False for a token whose vault takes no direct deposit yet: it is mapped (and
+   * its icon resolves), but no deposit address is handed out for it.
+   */
+  directDeposit?: boolean;
 };
 
 export type SavingsFundNetwork = {
@@ -66,9 +71,27 @@ export const SAVINGS_FUND_CRYPTO: SavingsFundToken[] = [
   },
 ];
 
+/**
+ * EURC mints soEURC (the EUR vault, on Base). It is not offered as a direct
+ * deposit: v1 funds soEURC only from EURC already in the Solid wallet or from a
+ * connected external wallet, and the backend's savings deposit route does not map
+ * EURC, so EURC sent to a savings address would be refunded rather than deposited.
+ * The EUR vault's deposit screen therefore lists no tokens, only "Move from wallet"
+ * and the external-wallet routes.
+ * TODO(soEURC): drop `directDeposit: false` once the backend routes EURC → soEURC.
+ */
+export const SAVINGS_FUND_EURC: SavingsFundToken = {
+  symbol: 'EURC',
+  vaultToken: 'soEURC',
+  icon: getAsset('images/eurc.png'),
+  chainIds: [base.id],
+  directDeposit: false,
+};
+
 export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
   ...SAVINGS_FUND_STABLECOINS,
   ...SAVINGS_FUND_CRYPTO,
+  SAVINGS_FUND_EURC,
 ];
 
 /**
@@ -92,7 +115,10 @@ export const getSavingsFundTokenGroups = (
 ): { stablecoins: SavingsFundToken[]; crypto: SavingsFundToken[] } => {
   const targetVaultToken = intent === 'card_deposit' ? 'soUSD' : vaultToken;
   const forVault = (tokens: SavingsFundToken[]) =>
-    targetVaultToken ? tokens.filter(token => token.vaultToken === targetVaultToken) : tokens;
+    (targetVaultToken
+      ? tokens.filter(token => token.vaultToken === targetVaultToken)
+      : tokens
+    ).filter(token => token.directDeposit !== false);
 
   return {
     stablecoins: forVault(SAVINGS_FUND_STABLECOINS),
