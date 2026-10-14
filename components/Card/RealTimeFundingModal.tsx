@@ -218,7 +218,7 @@ const RealTimeFundingModal = ({
               accessibilityLabel="Close"
               accessibilityRole="button"
               onPress={onClose}
-              className="h-[44px] w-[44px] items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+              className="h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#2A2A2A] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
             >
               <X color="#ffffff" size={20} />
             </Pressable>

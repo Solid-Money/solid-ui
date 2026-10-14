@@ -136,7 +136,7 @@ const FailureBody = ({ content, isDialog }: FailureBodyProps) => {
           hitSlop={10}
           // 21px from the dialog's right edge and 19px from its top, measured
           // from inside its 28/36px padding.
-          className="absolute -right-[7px] -top-[17px] h-5 w-5 items-center justify-center rounded-full web:hover:bg-white/10"
+          className="absolute -right-[7px] -top-[17px] h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full web:hover:bg-white/10"
         >
           <X size={20} color="rgba(255, 255, 255, 0.6)" />
         </Pressable>

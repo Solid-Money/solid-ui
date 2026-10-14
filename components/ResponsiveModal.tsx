@@ -253,16 +253,13 @@ const ResponsiveModal = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn(
-                      'h-[50px] w-[50px] rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted',
-                      compactHeader && 'h-10 w-10',
-                    )}
+                    className="h-[50px] w-[50px] shrink-0 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 ) : (
-                  <View className={cn('w-[50px]', compactHeader && 'w-10')} />
+                  <View className="w-[50px] shrink-0" />
                 )}
                 {title ? (
                   // `flex-1` so the title takes the space between the two 50px
@@ -302,7 +299,7 @@ const ResponsiveModal = ({
                 )}
                 <View className="flex-row items-center gap-2">
                   {hasActionButton && actionButton}
-                  <DialogCloseButton className={compactHeader ? 'h-10 w-10' : undefined} />
+                  <DialogCloseButton />
                 </View>
               </DialogHeader>
             ) : (

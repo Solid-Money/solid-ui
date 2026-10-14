@@ -38,29 +38,27 @@ export interface SpendingCategoryMeta {
   label: string;
   /**
    * Fixed per category, never by rank, so a category keeps its colour from one
-   * month to the next. The ring orders slices by amount, so any two of them can
-   * end up side by side: the ten hues are chosen so that every pair, not just
-   * neighbours, stays apart, for full colour vision (OKLab ΔE ≥ 15) and for
-   * protan/deutan colour blindness (ΔE ≥ 8), each at 3:1 or better on the
-   * #1C1C1C card. Green is left out: in this app it means cashback. Other is a
-   * neutral grey so it recedes. The list beside the chart still names every
-   * category and gives it an icon.
+   * month to the next. The Solid palette uses richer category colours at
+   * balanced lightness on the dark card. Bright green stays reserved for
+   * cashback, and Other is a neutral grey so it recedes. Category labels and
+   * icons accompany the chart so identifying a category does not rely on
+   * colour alone.
    */
   color: string;
 }
 
 export const SPENDING_CATEGORIES: Record<SpendingCategoryKey, SpendingCategoryMeta> = {
-  food: { key: 'food', label: 'Food & Drink', color: '#DE3E2D' },
-  groceries: { key: 'groceries', label: 'Groceries', color: '#06AAC7' },
-  shopping: { key: 'shopping', label: 'Shopping', color: '#5471F5' },
-  transport: { key: 'transport', label: 'Transport & Travel', color: '#FBC031' },
-  subscriptions: { key: 'subscriptions', label: 'Subscriptions', color: '#ACB8FE' },
-  entertainment: { key: 'entertainment', label: 'Entertainment', color: '#FF64AD' },
-  health: { key: 'health', label: 'Health & Beauty', color: '#FFA9AB' },
-  bills: { key: 'bills', label: 'Bills & Services', color: '#A04EA8' },
-  transfers: { key: 'transfers', label: 'Cash & Transfers', color: '#39F3F9' },
-  business: { key: 'business', label: 'Business', color: '#A6A442' },
-  other: { key: 'other', label: 'Other', color: '#6E6E6E' },
+  food: { key: 'food', label: 'Food & Drink', color: '#C3D9FF' },
+  groceries: { key: 'groceries', label: 'Groceries', color: '#5BC0C8' },
+  shopping: { key: 'shopping', label: 'Shopping', color: '#A7A1F5' },
+  transport: { key: 'transport', label: 'Transport & Travel', color: '#DFB75B' },
+  subscriptions: { key: 'subscriptions', label: 'Subscriptions', color: '#85A6E6' },
+  entertainment: { key: 'entertainment', label: 'Entertainment', color: '#D08CCF' },
+  health: { key: 'health', label: 'Health & Beauty', color: '#FEA195' },
+  bills: { key: 'bills', label: 'Bills & Services', color: '#8A7FD7' },
+  transfers: { key: 'transfers', label: 'Cash & Transfers', color: '#6FD3EC' },
+  business: { key: 'business', label: 'Business', color: '#BFAC55' },
+  other: { key: 'other', label: 'Other', color: '#777B80' },
 };
 
 // ---------------------------------------------------------------------------

@@ -108,7 +108,7 @@ const YieldHowItWorksSheet = ({ vaultType, isOpen, onClose }: YieldHowItWorksShe
               accessibilityLabel="Close"
               accessibilityRole="button"
               onPress={onClose}
-              className="h-9 w-9 items-center justify-center rounded-full bg-[#2A2A2A] active:opacity-80"
+              className="h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#2A2A2A] active:opacity-80"
             >
               <X size={18} color="#ffffff" />
             </Pressable>
