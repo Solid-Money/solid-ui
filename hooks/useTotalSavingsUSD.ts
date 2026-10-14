@@ -10,23 +10,38 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { savingsUsdValue } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 
-const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
-const usdcVault = ACTIVE_VAULTS[0];
-const fuseVault = ACTIVE_VAULTS[1];
-const ethVault = ACTIVE_VAULTS[2];
+import type { UsdVaultType } from '@/lib/vaultCurrency';
+
+// Looked up by type, never by position: VAULTS gains entries per build (soEURC is
+// listed on QA/preview only), so an index would silently point at another vault.
+const liveVault = (type: VaultType) =>
+  VAULTS.find(vault => vault.type === type && !vault.isComingSoon);
+const usdcVault = liveVault(VaultType.USDC) ?? VAULTS[0];
+const fuseVault = liveVault(VaultType.FUSE);
+const ethVault = liveVault(VaultType.ETH);
+const eurVault = liveVault(VaultType.EUR);
 
 /**
- * Total redeemable savings in USD across ALL vaults: soUSD + soFUSE + soETH.
- * USDC uses its soUSD→USD rate directly; FUSE and ETH multiply their
+ * Total redeemable savings in USD across the USD-valued vaults: soUSD + soFUSE +
+ * soETH. USDC uses its soUSD→USD rate directly; FUSE and ETH multiply their
  * soToken→native rate by the native token's USD price.
+ *
+ * soEURC is deliberately NOT in any of the USD figures — it is held and shown in
+ * EUR, and converting it would need a live rate that can fail or go stale (see
+ * `lib/vaultCurrency.ts`). It is reported on its own, in EUR, as `eurValue`, with
+ * its own loading and error flags so a slow Base read never holds the USD totals.
  */
-type SavingsValuesByVault = Record<VaultType, number>;
-export type ExactSavingsValuesByVault = Record<VaultType, number | undefined>;
+type SavingsValuesByVault = Record<UsdVaultType, number>;
+export type ExactSavingsValuesByVault = Record<UsdVaultType, number | undefined>;
 
 export const useTotalSavingsUSD = (): {
   data: number | undefined;
   valuesByVault: SavingsValuesByVault | undefined;
   exactValuesByVault: ExactSavingsValuesByVault | undefined;
+  /** soEURC redeemable value in EUR; 0 when this build lists no EUR vault. */
+  eurValue: number | undefined;
+  isEurLoading: boolean;
+  isEurError: boolean;
   isLoading: boolean;
   isError: boolean;
 } => {
@@ -48,6 +63,11 @@ export const useTotalSavingsUSD = (): {
     isLoading: isLoadingBalanceEth,
     isError: isErrorBalanceEth,
   } = useVaultBalance(address, ethVault ?? usdcVault);
+  const {
+    data: balanceEur,
+    isLoading: isLoadingBalanceEur,
+    isError: isErrorBalanceEur,
+  } = useVaultBalance(address, eurVault ?? usdcVault);
 
   const {
     data: exchangeRateUsdc,
@@ -64,9 +84,15 @@ export const useTotalSavingsUSD = (): {
     isLoading: isLoadingRateEth,
     isError: isErrorRateEth,
   } = useVaultExchangeRate(ethVault?.name ?? usdcVault.name);
+  const {
+    data: exchangeRateEur,
+    isLoading: isLoadingRateEur,
+    isError: isErrorRateEur,
+  } = useVaultExchangeRate(eurVault?.name ?? usdcVault.name);
 
   const hasFuseBalance = !!fuseVault && (balanceFuse ?? 0) > 0;
   const hasEthBalance = !!ethVault && (balanceEth ?? 0) > 0;
+  const hasEurBalance = !!eurVault && (balanceEur ?? 0) > 0;
 
   const {
     data: fusePriceUsd,
@@ -145,6 +171,16 @@ export const useTotalSavingsUSD = (): {
     ethPriceUsd,
   ]);
 
+  // soEURC in EUR: shares × the soEURC→EURC rate, EURC read at par with the euro.
+  // Same leniency as `valuesByVault` — a missing rate reads as 1:1.
+  const isEurLoading = !!eurVault && (isLoadingBalanceEur || (hasEurBalance && isLoadingRateEur));
+  const eurValue = !eurVault
+    ? 0
+    : isEurLoading
+      ? undefined
+      : (balanceEur ?? 0) * (exchangeRateEur ?? 1);
+
+  // USD vaults only: soEURC is never summed into a dollar figure.
   const data = valuesByVault
     ? Object.values(valuesByVault).reduce((total, value) => total + value, 0)
     : undefined;
@@ -153,6 +189,9 @@ export const useTotalSavingsUSD = (): {
     data,
     valuesByVault,
     exactValuesByVault,
+    eurValue,
+    isEurLoading,
+    isEurError: !!eurVault && (isErrorBalanceEur || (hasEurBalance && isErrorRateEur)),
     isLoading,
     isError:
       isErrorBalanceUsdc ||

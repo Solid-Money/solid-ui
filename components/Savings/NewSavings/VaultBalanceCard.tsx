@@ -16,8 +16,9 @@ import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode, VaultType } from '@/lib/types';
+import { getVaultCurrency, type VaultCurrency } from '@/lib/vaultCurrency';
 
-import { formatCompactVaultUsd, formatExactVaultUsd } from './vaultBalanceFormat';
+import { formatCompactVaultAmount, formatExactVaultAmount } from './vaultBalanceFormat';
 
 /**
  * Native keeps the value on one line and shrinks it to fit the half-width
@@ -33,11 +34,13 @@ const VaultStat = ({
   label,
   tooltip,
   value,
+  currency,
   isLoading = false,
 }: {
   label: string;
   tooltip: string;
   value: number;
+  currency: VaultCurrency;
   isLoading?: boolean;
 }) => (
   <View className="flex-1 px-5 pb-5 pt-[18px]">
@@ -62,10 +65,10 @@ const VaultStat = ({
           className="mt-[3px] text-[26px] font-semibold leading-8 text-white"
           {...singleLineFit}
         >
-          {formatCompactVaultUsd(value)}
+          {formatCompactVaultAmount(value, currency)}
         </Text>
         <Text className="mt-[3px] text-[16px] leading-5 text-white/70">
-          {formatExactVaultUsd(value)}
+          {formatExactVaultAmount(value, currency)}
         </Text>
       </>
     )}
@@ -74,23 +77,40 @@ const VaultStat = ({
 
 interface VaultBalanceCardProps {
   vaultType: VaultType;
-  balanceUsd: number;
+  /** In the vault's own currency: USD, or EUR for soEURC. */
+  balance: number;
 }
 
+/**
+ * The vault's activity address on Fuse, for the latest-transfer read. soEURC has
+ * no Fuse leg, so it has none, and must not fall through to another vault's.
+ */
+const fuseActivityAddress = (vaultType: VaultType): string | undefined => {
+  switch (vaultType) {
+    case VaultType.USDC:
+      return ADDRESSES.fuse.vault;
+    case VaultType.ETH:
+      return ADDRESSES.fuse.soEthVault;
+    case VaultType.FUSE:
+      return ADDRESSES.fuse.fuseVault;
+    default:
+      return undefined;
+  }
+};
+
 /** Figma 24766:5317 — selected-vault balance and lifetime rewards. */
-const VaultBalanceCard = ({ vaultType, balanceUsd }: VaultBalanceCardProps) => {
+const VaultBalanceCard = ({ vaultType, balance: vaultBalance }: VaultBalanceCardProps) => {
   const { user } = useUser();
   const vault = VAULTS.find(item => item.type === vaultType) ?? VAULTS[0];
+  const currency = getVaultCurrency(vault.type);
+  const activityAddress = fuseActivityAddress(vault.type);
   const { data: balance } = useVaultBalance(user?.safeAddress as Address, vault);
   const { data: exchangeRate } = useVaultExchangeRate(vault.name);
   const { data: apys, isLoading: isApyLoading } = useAPYs(vault.type);
+  // An empty address disables the read (see useLatestTokenTransfer).
   const { data: lastTimestamp, isLoading: isTimestampLoading } = useLatestTokenTransfer(
-    user?.safeAddress ?? '',
-    vault.name === 'USDC'
-      ? ADDRESSES.fuse.vault
-      : vault.name === 'ETH'
-        ? ADDRESSES.fuse.soEthVault
-        : ADDRESSES.fuse.fuseVault,
+    activityAddress ? (user?.safeAddress ?? '') : '',
+    activityAddress ?? '',
   );
   const { data: transactions, isLoading: isTransactionsLoading } = useUserTransactions(
     user?.safeAddress,
@@ -102,14 +122,19 @@ const VaultBalanceCard = ({ vaultType, balanceUsd }: VaultBalanceCardProps) => {
     lastTimestamp,
     vault.decimals,
   );
+  // soFUSE and soEURC have no subgraph, so their rewards come from the backend summary.
+  const usesSummary = vault.type === VaultType.FUSE || vault.type === VaultType.EUR;
   const { data: savingsSummary, isLoading: isSummaryLoading } = useSavingsSummary(
     vault.name,
-    vault.name === 'FUSE',
+    usesSummary,
   );
 
-  const fusePriceUsd = useNativePriceUsd(fuse.id, 'fusePriceUsd', vault.name === 'FUSE');
-  const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.name === 'ETH');
-  const priceUsd = vault.name === 'USDC' ? 1 : vault.name === 'FUSE' ? fusePriceUsd : ethPriceUsd;
+  const fusePriceUsd = useNativePriceUsd(fuse.id, 'fusePriceUsd', vault.type === VaultType.FUSE);
+  const ethPriceUsd = useNativePriceUsd(mainnet.id, 'ethPriceUsd', vault.type === VaultType.ETH);
+  // Price of one unit of the vault's asset in the currency the card shows: 1 for
+  // soUSD (USD) and soEURC (EUR, which stays EUR), the live USD price for FUSE/ETH.
+  const price =
+    vault.type === VaultType.FUSE ? fusePriceUsd : vault.type === VaultType.ETH ? ethPriceUsd : 1;
   const vaultApy =
     apys?.allTime != null && Number.isFinite(Number(apys.allTime)) ? Number(apys.allTime) : 0;
 
@@ -127,25 +152,29 @@ const VaultBalanceCard = ({ vaultType, balanceUsd }: VaultBalanceCardProps) => {
     vault: vault.name,
   });
 
-  const isNativePriceLoading = vault.name !== 'USDC' && priceUsd <= 0;
+  const isNativePriceLoading = price <= 0;
   const isRewardsLoading =
     isApyLoading ||
     isNativePriceLoading ||
-    (vault.name === 'FUSE' ? isSummaryLoading : isTimestampLoading || isTransactionsLoading);
-  const rewardsUsd = Math.max(rewardsInVaultCurrency * priceUsd, 0);
+    (usesSummary
+      ? isSummaryLoading
+      : (!!activityAddress && isTimestampLoading) || isTransactionsLoading);
+  const rewards = Math.max(rewardsInVaultCurrency * price, 0);
 
   return (
     <View className="mx-4 min-h-[118px] flex-row overflow-hidden rounded-[20px] bg-[#1C1C1C]">
       <VaultStat
         label="Your Balance"
         tooltip="The amount currently available in this vault."
-        value={balanceUsd}
+        value={vaultBalance}
+        currency={currency}
       />
       <View className="h-full w-px bg-white/10" />
       <VaultStat
         label="Total Rewards"
         tooltip="The interest this vault has earned for you so far."
-        value={rewardsUsd}
+        value={rewards}
+        currency={currency}
         isLoading={isRewardsLoading}
       />
     </View>

@@ -3,11 +3,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchExchangeRate,
   fetchExchangeRateSoEth,
+  fetchExchangeRateSoEurc,
   fetchExchangeRatesoFuse,
 } from '@/hooks/usePreviewDeposit';
 
-/** Returns soUSD→USD for USDC, soFUSE→FUSE for FUSE (display units on savings page). */
-export const useVaultExchangeRate = (tokenName: string) => {
+/**
+ * The share → underlying rate for a vault, by vault name, in display units:
+ * soUSD→USD for USDC, soFUSE→FUSE for FUSE, soETH→ETH for ETH and soEURC→EURC
+ * for EUR (shown in euros, never converted to dollars).
+ *
+ * An unknown name is an error rather than a 1:1 rate: a guessed 1 would value
+ * another vault's shares at par without anyone noticing.
+ */
+export const useVaultExchangeRate = (tokenName: string, enabled = true) => {
   const queryClient = useQueryClient();
 
   return useQuery({
@@ -28,8 +36,14 @@ export const useVaultExchangeRate = (tokenName: string) => {
         return Number(rate) / 10 ** 18; // soETH → ETH (18 decimals)
       }
 
-      return 1;
+      if (tokenName === 'EUR') {
+        const rate = await fetchExchangeRateSoEurc(queryClient);
+        return Number(rate) / 10 ** 6; // soEURC → EURC (6 decimals), shown in EUR
+      }
+
+      throw new Error(`No exchange rate source for vault "${tokenName}"`);
     },
+    enabled,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });

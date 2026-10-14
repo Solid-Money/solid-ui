@@ -13,6 +13,7 @@ import { Minus } from '@/lib/icons/Minus';
 import { Plus } from '@/lib/icons/Plus';
 import { VaultBreakdown, VaultType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { isEurVault } from '@/lib/vaultCurrency';
 
 const CHART_SIZE = 189;
 const CHART_STROKE_WIDTH = 9.5;
@@ -188,6 +189,9 @@ const VaultStrategyBreakdownCard = ({ vaultType }: VaultStrategyBreakdownCardPro
     vault.name.toLowerCase(),
   );
   const sevenDayApy = Math.max(apys?.sevenDay ?? 0, 0);
+  // soEURC does not earn yet: "—" rather than a measured-looking 0%.
+  const sevenDayApyLabel =
+    isEurVault(vaultType) && !(sevenDayApy > 0) ? '—' : formatNumber(sevenDayApy, 1) + '%';
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;
@@ -232,9 +236,7 @@ const VaultStrategyBreakdownCard = ({ vaultType }: VaultStrategyBreakdownCardPro
             ) : (
               <>
                 <Text className="mt-0.5 text-[32px] font-semibold leading-[35px] text-white">
-                  {selectedStrategy
-                    ? formatPercent(selectedStrategy.allocation)
-                    : formatNumber(sevenDayApy, 1) + '%'}
+                  {selectedStrategy ? formatPercent(selectedStrategy.allocation) : sevenDayApyLabel}
                 </Text>
                 {selectedStrategy && (
                   <>

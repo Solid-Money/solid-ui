@@ -36,11 +36,18 @@ const VAULT_HERO_CONTENT: Record<
     background: 'images/savings-fuse-hero-background.jpg',
     desktopContentPosition: { left: '50%', top: '58%' },
   },
+  [VaultType.EUR]: {
+    title: 'EUR Yield',
+    // TODO(soEURC): placeholder — the USD banknote until design supplies a EUR hero.
+    background: 'images/savings-usd-hero-background.jpg',
+    desktopContentPosition: 'center',
+  },
 };
 
 interface SavingsVaultHeroProps {
   vaultType: VaultType;
-  apy: number;
+  /** Undefined for a vault with no rate yet (soEURC), which reads "— APY". */
+  apy: number | undefined;
   isApyLoading: boolean;
   onHelpPress: () => void;
 }

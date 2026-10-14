@@ -5,6 +5,8 @@ import Svg, { Path } from 'react-native-svg';
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 import useDebounce from '@/hooks/useDebounce';
+import { VaultType } from '@/lib/types';
+import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
 
 import AmountDropdown from './AmountDropdown';
 import { buildProjectionSeries, formatHorizonLabel } from './savingsProjection';
@@ -23,6 +25,8 @@ const EARNED_STYLE: TextStyle = {
 };
 
 const DEFAULT_PRINCIPAL = 10000;
+/** Illustrative rate for a USD-valued vault whose APY has not loaded or is reported as 0. */
+const FALLBACK_SIMULATION_APY = 5;
 // Default handle position: 9 years out (series is sampled monthly, so index = months).
 const DEFAULT_INDEX = 9 * 12;
 // How long the handle must settle before the readouts roll — stops the CountUps
@@ -44,20 +48,33 @@ const SimulationIcon = () => (
 );
 
 interface SimulateSavingsCardProps {
-  /** Selected vault's headline APY (percent). */
-  apy: number;
+  /** Selected vault — sets the currency and whether a fallback rate may be shown. */
+  vaultType: VaultType;
+  /** Selected vault's headline APY (percent); undefined when it has none (soEURC). */
+  apy: number | undefined;
 }
+
+/**
+ * The rate the projection runs at. A USD-valued vault with no reported APY keeps
+ * the illustrative 5%; soEURC does not earn yet, so it projects at 0% rather than
+ * at a rate it has never paid.
+ */
+export const simulationApy = (vaultType: VaultType, apy: number | undefined) => {
+  if (apy !== undefined && Number.isFinite(apy) && apy > 0) return apy;
+  return isEurVault(vaultType) ? 0 : FALLBACK_SIMULATION_APY;
+};
 
 /**
  * "Simulate your savings" card: pick a principal (100 / 1,000 / 10,000), then
  * drag the chart handle to scrub the projection horizon. Future balance and
  * earned amounts animate (CountUp) as the handle moves.
  */
-const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
+const SimulateSavingsCard = ({ vaultType, apy }: SimulateSavingsCardProps) => {
   const [principal, setPrincipal] = useState<number>(DEFAULT_PRINCIPAL);
   const [activeIndex, setActiveIndex] = useState<number>(DEFAULT_INDEX);
+  const currencySymbol = getVaultCurrencySymbol(vaultType);
 
-  const safeApy = Number.isFinite(apy) && apy > 0 ? apy : 5;
+  const safeApy = simulationApy(vaultType, apy);
   const series = useMemo(() => buildProjectionSeries(principal, safeApy), [principal, safeApy]);
 
   const clampedIndex = Math.min(Math.max(activeIndex, 0), series.length - 1);
@@ -83,7 +100,11 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
             Simulate your savings
           </Text>
         </View>
-        <AmountDropdown amount={principal} onSelect={setPrincipal} />
+        <AmountDropdown
+          amount={principal}
+          onSelect={setPrincipal}
+          currencySymbol={currencySymbol}
+        />
       </View>
 
       {/* Light divider separating the title/dropdown from the future-balance section. */}
@@ -104,7 +125,7 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0 }}>
           <Text className="text-sm font-medium text-muted-foreground">Future Balance</Text>
           <CountUp
-            prefix="$"
+            prefix={currencySymbol}
             count={futureBalance}
             decimalPlaces={0}
             isTrailingZero={false}
@@ -113,7 +134,7 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
           />
           <View className="flex-row items-baseline gap-1">
             <CountUp
-              prefix="$"
+              prefix={currencySymbol}
               count={earned}
               decimalPlaces={0}
               isTrailingZero={false}

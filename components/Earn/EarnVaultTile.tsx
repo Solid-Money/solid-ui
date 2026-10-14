@@ -9,7 +9,8 @@ import { formatVaultApyLabel } from './earnPortfolio';
 
 interface EarnVaultTileProps {
   assetName: string;
-  apy: number;
+  /** Undefined for a vault with no rate yet, which reads "— APY". */
+  apy: number | undefined;
   isApyLoading: boolean;
   background: AssetPath;
   icon: AssetPath;

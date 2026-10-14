@@ -15,41 +15,50 @@ import { useTierMembership } from '@/hooks/useTierMembership';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { type AssetPath } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
+import { LIVE_VAULTS } from '@/lib/vaults';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
-import {
-  calculateEstimatedDailyEarnings,
-  resolveVaultApy,
-  type VaultAmounts,
-} from './earnPortfolio';
+import { calculateEstimatedDailyEarnings, resolveVaultApy, type VaultApys } from './earnPortfolio';
 import { EarnVaultTile } from './EarnVaultTile';
 import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 
-const VAULT_TILES = [
-  {
-    type: VaultType.USDC,
+const VAULT_TILE_CONTENT = {
+  [VaultType.USDC]: {
     assetName: 'USD',
     background: 'images/earn-usd-tile-background.png',
     icon: 'images/earn-usd-icon.png',
   },
-  {
-    type: VaultType.ETH,
+  [VaultType.ETH]: {
     assetName: 'ETH',
     background: 'images/earn-eth-tile-background.png',
     icon: 'images/earn-eth-icon.png',
   },
-  {
-    type: VaultType.FUSE,
+  [VaultType.FUSE]: {
     assetName: 'FUSE',
     background: 'images/earn-fuse-tile-background.png',
     icon: 'images/earn-fuse-icon.png',
   },
-] as const satisfies readonly {
-  type: VaultType;
-  assetName: string;
-  background: AssetPath;
-  icon: AssetPath;
-}[];
+  [VaultType.EUR]: {
+    assetName: 'EUR',
+    // TODO(soEURC): placeholder art — the USD tile background and the EURC token
+    // icon until design supplies a EUR tile.
+    background: 'images/earn-usd-tile-background.png',
+    icon: 'images/eurc.png',
+  },
+} as const satisfies Record<
+  VaultType,
+  {
+    assetName: string;
+    background: AssetPath;
+    icon: AssetPath;
+  }
+>;
+
+/** USD, ETH, FUSE, then any newer vault — and only the vaults a user can deposit into. */
+const TILE_ORDER = [VaultType.USDC, VaultType.ETH, VaultType.FUSE, VaultType.EUR];
+const VAULT_TILES = TILE_ORDER.filter(type => LIVE_VAULTS.some(vault => vault.type === type)).map(
+  type => ({ type, ...VAULT_TILE_CONTENT[type] }),
+);
 
 const openVault = (vaultType: VaultType) =>
   router.push({ pathname: '/savings', params: { vault: vaultType } } as Href);
@@ -81,18 +90,25 @@ export default function EarnScreen() {
   const usdcApy = useMaxAPY(VaultType.USDC);
   const ethApy = useMaxAPY(VaultType.ETH);
   const fuseApy = useMaxAPY(VaultType.FUSE);
+  const eurApy = useMaxAPY(VaultType.EUR);
 
-  const apyByVault: VaultAmounts = {
+  // soEURC resolves to undefined until it reports a rate, so its tile reads "—".
+  const apyByVault: VaultApys = {
     [VaultType.USDC]: resolveVaultApy(VaultType.USDC, usdcApy.maxAPY),
     [VaultType.ETH]: resolveVaultApy(VaultType.ETH, ethApy.maxAPY),
     [VaultType.FUSE]: resolveVaultApy(VaultType.FUSE, fuseApy.maxAPY),
+    [VaultType.EUR]: resolveVaultApy(VaultType.EUR, eurApy.maxAPY),
   };
-  const apyLoadingByVault = {
+  const apyLoadingByVault: Record<VaultType, boolean> = {
     [VaultType.USDC]: usdcApy.isAPYsLoading,
     [VaultType.ETH]: ethApy.isAPYsLoading,
     [VaultType.FUSE]: fuseApy.isAPYsLoading,
+    [VaultType.EUR]: eurApy.isAPYsLoading,
   };
-  const areApysLoading = Object.values(apyLoadingByVault).some(Boolean);
+  const areApysLoading = VAULT_TILES.some(vault => apyLoadingByVault[vault.type]);
+  // Dollar figures only: the headline and "+$… today" cover the USD-valued vaults,
+  // and soEURC (held in EUR) is never converted into them.
+  // TODO(soEURC): decide whether Earn shows the EUR balance as its own € line.
   const estimatedToday = valuesByVault
     ? calculateEstimatedDailyEarnings(valuesByVault, apyByVault)
     : 0;

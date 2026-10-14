@@ -538,7 +538,7 @@ export const cardRefundExplorerUrl = (
  * written anyway, and is honest rather than wrong — Rain cards are USD, but a
  * Wirex card settles in whatever the merchant charged.
  */
-const CURRENCY_SYMBOLS: Record<string, string> = {
+export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',
   EUR: '€',
   GBP: '£',

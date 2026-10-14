@@ -3009,12 +3009,16 @@ export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
   eth: number;
+  /** soEURC. Absent, null or 0 until the vault earns — read all three as "no APY". */
+  eur?: number | null;
 }
 
 export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
   eth: APYs;
+  /** soEURC. Absent or null until the analytics API reports the EUR vault. */
+  eur?: APYs | null;
 }
 
 export interface HistoricalAPYPoint {
@@ -3505,6 +3509,8 @@ export enum VaultType {
   FUSE = 'fuse',
   USDC = 'usdc',
   ETH = 'eth',
+  /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
+  EUR = 'eur',
 }
 
 export interface SavingsDataQuality {

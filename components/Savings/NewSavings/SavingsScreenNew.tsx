@@ -11,6 +11,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { VaultType } from '@/lib/types';
+import { isEurVault } from '@/lib/vaultCurrency';
 
 import SavingsFundedActions from './SavingsFundedActions';
 import SavingsHelpModal from './SavingsHelpModal';
@@ -28,6 +29,7 @@ const VAULT_KEY_BY_TYPE: Record<VaultType, VaultKey> = {
   [VaultType.USDC]: 'USD',
   [VaultType.FUSE]: 'FUSE',
   [VaultType.ETH]: 'ETH',
+  [VaultType.EUR]: 'EUR',
 };
 
 /**
@@ -42,17 +44,33 @@ export default function SavingsScreenNew() {
   const selectedVaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-  const { valuesByVault, isLoading: isSavingsLoading } = useTotalSavingsUSD();
+  const {
+    valuesByVault,
+    eurValue,
+    isLoading: isSavingsLoading,
+    isEurLoading,
+  } = useTotalSavingsUSD();
   const { vaults: walletVaults, isLoading: isWalletVaultsLoading } = useSavingsVaults();
   const { maxAPY: selectedApy, isAPYsLoading } = useMaxAPY(selectedVaultType);
+  const isEur = isEurVault(selectedVaultType);
+  // No yield yet for soEURC: "—" in the hero, and no invented rate in the simulation.
+  const vaultApy = isEur && !(selectedApy > 0) ? undefined : selectedApy;
   const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[selectedVaultType]);
-  const selectedBalanceUsd = Math.max(
-    valuesByVault?.[selectedVaultType] ?? 0,
-    walletVault?.balanceUSD ?? 0,
+  // Each vault in its own currency: dollars for the USD-valued vaults, euros for
+  // soEURC, which `useTotalSavingsUSD` reports apart from its USD figures.
+  const balancesByVault = valuesByVault && {
+    ...valuesByVault,
+    [VaultType.EUR]: eurValue ?? 0,
+  };
+  const selectedBalance = Math.max(
+    balancesByVault?.[selectedVaultType] ?? 0,
+    walletVault?.balance ?? 0,
   );
-  const isBalanceLoading = isSavingsLoading || isWalletVaultsLoading || valuesByVault === undefined;
+  const isBalanceLoading = isEur
+    ? isEurLoading || isWalletVaultsLoading || eurValue === undefined
+    : isSavingsLoading || isWalletVaultsLoading || valuesByVault === undefined;
   const isFunded = hasSelectedVaultFunds(
-    valuesByVault,
+    balancesByVault,
     selectedVaultType,
     Boolean(walletVault?.tokens.length),
   );
@@ -68,7 +86,7 @@ export default function SavingsScreenNew() {
       <View className="mx-auto mb-5 w-full max-w-[419px] pb-[140px] web:md:max-w-[40rem]">
         <SavingsVaultHero
           vaultType={selectedVaultType}
-          apy={selectedApy}
+          apy={vaultApy}
           isApyLoading={isAPYsLoading}
           onHelpPress={() => setIsHelpOpen(true)}
         />
@@ -79,13 +97,13 @@ export default function SavingsScreenNew() {
           ) : isFunded ? (
             <>
               <SavingsFundedActions vaultType={selectedVaultType} />
-              <VaultBalanceCard vaultType={selectedVaultType} balanceUsd={selectedBalanceUsd} />
+              <VaultBalanceCard vaultType={selectedVaultType} balance={selectedBalance} />
             </>
           ) : (
             <StartEarningButton vaultType={selectedVaultType} />
           )}
 
-          <SimulateSavingsCard apy={selectedApy} />
+          <SimulateSavingsCard vaultType={selectedVaultType} apy={vaultApy} />
 
           <VaultApyHistoryCard vaultType={selectedVaultType} />
 

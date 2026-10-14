@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
-import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -28,9 +27,22 @@ import {
   vaultShareHoldings,
 } from '@/lib/portfolio';
 import { refreshAccountQueries } from '@/lib/refreshAccountQueries';
-import { VaultType } from '@/lib/types';
+import { Vault, VaultType } from '@/lib/types';
 import { hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
+import { isEurVault, type UsdVaultType } from '@/lib/vaultCurrency';
+import { LIVE_VAULTS } from '@/lib/vaults';
+
+/**
+ * The vaults this model values: every live vault valued in USD. soEURC is held in
+ * EUR and is never converted into the USD totals built here (Earn, total assets,
+ * net balance), so it is left out rather than entered as an unknown — an unknown
+ * part would mark every portfolio that holds soEURC as incomplete.
+ * TODO(soEURC): give Assets its own € row for the EUR vault.
+ */
+const PORTFOLIO_VAULTS = LIVE_VAULTS.filter(
+  (vault): vault is Vault & { type: UsdVaultType } => !isEurVault(vault.type),
+);
 
 const CREDIT_MODULES = [
   ...new Set(
@@ -99,11 +111,15 @@ export function usePortfolio() {
       };
     });
     const bridged = bridgedShareValues(wallet.tokens);
-    const apys = { [VaultType.USDC]: usdApy, [VaultType.FUSE]: fuseApy, [VaultType.ETH]: ethApy };
+    const apys: Record<UsdVaultType, typeof usdApy> = {
+      [VaultType.USDC]: usdApy,
+      [VaultType.FUSE]: fuseApy,
+      [VaultType.ETH]: ethApy,
+    };
 
     // Each vault: savings on its own networks + shares bridged elsewhere + shares escrowed as
     // credit collateral. An unknown part leaves the vault showing what is known, flagged.
-    const earnAssets = VAULTS.map(vault => {
+    const earnAssets = PORTFOLIO_VAULTS.map(vault => {
       const heldCollateral = collateral.filter(
         token => portfolioVaultType(token.contractAddress, token.chainId) === vault.type,
       );
