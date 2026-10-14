@@ -125,6 +125,22 @@ it('deposits from the Safe on Base: EURC approved to the vault, then the teller'
   expect(refreshRewardsAfterSavings).toHaveBeenCalledTimes(1);
 });
 
+// The receipt belongs to the account that signed: nothing of it reaches the newly selected
+// one, but the form that started it must not wait on it forever.
+it('ends a deposit confirmed after an account switch without touching the new account', async () => {
+  execute.mockImplementation(async () => {
+    useUserStore.setState({ users: [{ userId: 'b', selected: true } as any] });
+    return receipt;
+  });
+  await act(async () => {
+    expect(await hook.deposit('100')).toBeUndefined();
+  });
+
+  expect(refreshRewardsAfterSavings).not.toHaveBeenCalled();
+  expect(useUserStore.getState().updateUser).not.toHaveBeenCalled();
+  expect(hook.depositStatus.status).toBe(Status.SUCCESS);
+});
+
 it('refuses a deposit under the minimum before signing anything', async () => {
   await act(async () => {
     await expect(hook.deposit('5')).rejects.toThrow('Minimum deposit amount is 10 EURC');
