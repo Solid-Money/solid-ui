@@ -30,6 +30,8 @@ jest.mock('@/hooks/useActivityRefresh', () => ({
   useActivityRefresh: () => ({ refetchAll: jest.fn(), isRefreshing: false }),
 }));
 jest.mock('@/hooks/useActivityActions', () => ({ useActivityActions: () => ({}) }));
+let mockListedTokens: ReadonlySet<string> | null = null;
+jest.mock('@/hooks/useListedTokens', () => ({ useListedTokens: () => mockListedTokens }));
 
 const withdrawal: ActivityEvent = {
   clientTxId: 'withdrawal',
@@ -53,6 +55,7 @@ describe('Activity withdrawal status freshness', () => {
     useActivityStore.setState({ events: { account: [withdrawal] } });
     useAccountRefreshStore.setState({ refreshingByUser: {}, latestPageByUser: {} });
     mockWithdraws = undefined;
+    mockListedTokens = null;
   });
   afterEach(() => {
     act(() => renderer.unmount());
@@ -86,5 +89,38 @@ describe('Activity withdrawal status freshness', () => {
       renderer.update(<Probe />);
     });
     expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.SUCCESS);
+  });
+
+  it('hides a cached receive of a token that is not on the list, and only that', async () => {
+    const receive = (clientTxId: string, tokenAddress: string, symbol: string): ActivityEvent => ({
+      clientTxId,
+      type: TransactionType.RECEIVE,
+      status: TransactionStatus.SUCCESS,
+      amount: '10',
+      title: `Receive ${symbol}`,
+      timestamp: '200',
+      symbol,
+      chainId: 8453,
+      metadata: { source: 'blockscout', tokenAddress },
+    });
+    useActivityStore.setState({
+      events: {
+        account: [
+          withdrawal,
+          receive('spam', '0xba42a3f0b0dbadeeaa974c1d30dd46abc7845468', 'ZORRA'),
+          receive('usdc', '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 'USDC'),
+        ],
+      },
+    });
+    mockListedTokens = new Set(['8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913']);
+
+    await act(async () => {
+      renderer = create(<Probe />);
+    });
+
+    expect(results.at(-1)?.activities.map(activity => activity.clientTxId)).toEqual([
+      'usdc',
+      'withdrawal',
+    ]);
   });
 });
