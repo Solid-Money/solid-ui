@@ -16,7 +16,11 @@ import { cn, formatUSD } from '@/lib/utils';
 
 /** "In progress · $1,284.50 so far" for the current month, "$1,102.18 spent" for the rest. */
 const spendLine = ({ cardSpendUsd, partial }: StatementMonth) => {
-  const spend = formatUSD(Number(cardSpendUsd) || 0);
+  const amount =
+    typeof cardSpendUsd === 'string' && cardSpendUsd.trim() ? Number(cardSpendUsd) : NaN;
+  // A missing amount is not a $0 month: say nothing about spend rather than a wrong figure.
+  if (!Number.isFinite(amount)) return partial ? 'In progress' : 'Card spend unavailable';
+  const spend = formatUSD(amount);
   return partial ? `In progress · ${spend} so far` : `${spend} spent`;
 };
 

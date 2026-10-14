@@ -26,8 +26,13 @@ describe('getAvatarInitial', () => {
     expect(getAvatarInitial('  eli@fuse.io')).toBe('E');
   });
 
+  it('keeps a leading emoji whole', () => {
+    expect(getAvatarInitial('🚀rocket')).toBe('🚀');
+  });
+
   it('shows a placeholder when there is no name', () => {
     expect(getAvatarInitial('')).toBe('?');
+    expect(getAvatarInitial('   ')).toBe('?');
     expect(getAvatarInitial(undefined)).toBe('?');
   });
 });

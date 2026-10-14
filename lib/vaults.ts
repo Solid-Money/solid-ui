@@ -1,10 +1,17 @@
-import { formatUnits } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
-import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
+import {
+  DepositMethod,
+  TokenBalance,
+  TokenType,
+  Vault,
+  VaultDepositConfig,
+  VaultType,
+} from '@/lib/types';
+import { NATIVE_TOKEN_ADDRESSES } from '@/lib/utils/tokenAllowlist';
 
 const DEFAULT_METHODS: DepositMethod[] = [
   'wallet',
@@ -136,7 +143,8 @@ export const hasDepositableWalletBalance = (tokens: DepositableToken[], vault?: 
 };
 
 /** The wallet-token fields `getLargestDepositSelection` reads. */
-type RankableToken = DepositableToken & Pick<TokenBalance, 'contractDecimals'>;
+type RankableToken = DepositableToken &
+  Pick<TokenBalance, 'contractAddress' | 'contractDecimals' | 'type'>;
 
 /**
  * The chain and token the deposit form should open on: of those `vault` accepts,
@@ -152,7 +160,9 @@ export const getLargestDepositSelection = (
   vault?: Vault,
 ): { chainId: number; principalToken: string } | undefined => {
   const { supportedChains } = getVaultDepositConfig(vault);
-  let largest: { chainId: number; principalToken: string; amount: number } | undefined;
+  let largest:
+    | { chainId: number; principalToken: string; balance: bigint; decimals: number }
+    | undefined;
 
   for (const token of tokens) {
     if (!supportedChains.includes(token.chainId)) continue;
@@ -165,9 +175,30 @@ export const getLargestDepositSelection = (
     );
     if (!principalToken) continue;
 
-    const amount = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
-    if (amount > (largest?.amount ?? 0)) {
-      largest = { chainId: token.chainId, principalToken, amount };
+    // The form deposits the configured token, so another token sharing its
+    // symbol is not a balance it could use.
+    const configured = BRIDGE_TOKENS[token.chainId]?.tokens?.[principalToken];
+    if (!configured) continue;
+    const isConfiguredToken = configured.isNative
+      ? token.type === TokenType.NATIVE ||
+        NATIVE_TOKEN_ADDRESSES.has(token.contractAddress?.toLowerCase())
+      : token.contractAddress?.toLowerCase() === configured.address.toLowerCase();
+    if (!isConfiguredToken) continue;
+
+    // Compared as integers at a common scale: tokens differ in decimals, and a
+    // float loses the last digits of an 18-decimal balance.
+    const balance = BigInt(token.balance || '0');
+    const isLarger = largest
+      ? balance * 10n ** BigInt(largest.decimals) >
+        largest.balance * 10n ** BigInt(token.contractDecimals)
+      : balance > 0n;
+    if (isLarger) {
+      largest = {
+        chainId: token.chainId,
+        principalToken,
+        balance,
+        decimals: token.contractDecimals,
+      };
     }
   }
 

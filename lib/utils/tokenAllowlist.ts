@@ -19,7 +19,7 @@ import { ActivityEvent, SwapTokenResponse, TransactionType } from '@/lib/types';
  */
 
 /** Placeholder addresses native currency (ETH, FUSE, BNB, POL) is reported with. */
-const NATIVE_TOKEN_ADDRESSES = new Set([
+export const NATIVE_TOKEN_ADDRESSES: ReadonlySet<string> = new Set([
   '0x0000000000000000000000000000000000000000',
   '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
 ]);

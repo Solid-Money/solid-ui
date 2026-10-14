@@ -5157,6 +5157,30 @@ export interface NotificationPreferences {
   productNews: boolean;
 }
 
+const NOTIFICATION_PREFERENCE_KEYS = [
+  'cardPayments',
+  'depositsTransfers',
+  'earn',
+  'cashbackRewards',
+  'productNews',
+] as const satisfies readonly (keyof NotificationPreferences)[];
+
+/**
+ * A preferences response as `NotificationPreferences`. Throws when a switch is
+ * missing or not a boolean, so the screen shows its error rather than an "off"
+ * that was never saved.
+ */
+const parseNotificationPreferences = (body: unknown): NotificationPreferences => {
+  const record = (body ?? {}) as Record<string, unknown>;
+  const invalid = NOTIFICATION_PREFERENCE_KEYS.filter(key => typeof record[key] !== 'boolean');
+  if (invalid.length) {
+    throw new Error(`Invalid notification preferences response: ${invalid.join(', ')}`);
+  }
+  return Object.fromEntries(
+    NOTIFICATION_PREFERENCE_KEYS.map(key => [key, record[key]]),
+  ) as unknown as NotificationPreferences;
+};
+
 /**
  * The account's push preferences, or null when this backend does not offer
  * them yet (404) — the screen then leaves the categories out rather than
@@ -5181,7 +5205,7 @@ export const getNotificationPreferences = async (): Promise<NotificationPreferen
   if (response.status === 404) return null;
   if (!response.ok) throw response;
 
-  return response.json();
+  return parseNotificationPreferences(await response.json());
 };
 
 /** Change some push preferences. Returns the full set as saved. */
@@ -5206,5 +5230,5 @@ export const updateNotificationPreferences = async (
 
   if (!response.ok) throw response;
 
-  return response.json();
+  return parseNotificationPreferences(await response.json());
 };

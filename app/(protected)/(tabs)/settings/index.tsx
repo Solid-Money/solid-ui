@@ -118,7 +118,8 @@ export default function Settings() {
   const { data: cardStatus } = useCardStatus();
   const { canChangeMode, mode } = useCardSpendRegistration();
   const { isVerified: isTotpOn, isLoading: isTotpLoading, refetch: refetchTotp } = useTotp();
-  const { status: notificationStatus } = useNotificationPermissionStatus();
+  const { status: notificationStatus, loading: isNotificationStatusLoading } =
+    useNotificationPermissionStatus();
   const hasStatements = useHasFeature('statements');
 
   // Setting up 2FA happens a screen away, so "Add 2FA" is re-checked on the way back.
@@ -257,7 +258,14 @@ export default function Settings() {
             <ProfileRow
               icon={<Bell size={ICON_SIZE} color={ICON_COLOR} />}
               title="Notifications"
-              value={notificationStatus === 'Authorized' ? 'On' : 'Off'}
+              // Nothing until the OS answers, so a granted permission never flashes "Off".
+              value={
+                isNotificationStatusLoading
+                  ? undefined
+                  : notificationStatus === 'Authorized'
+                    ? 'On'
+                    : 'Off'
+              }
               onPress={() => router.push('/settings/notifications' as Href)}
             />
           ) : null}

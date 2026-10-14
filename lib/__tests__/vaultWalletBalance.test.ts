@@ -1,5 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
@@ -11,19 +12,24 @@ import {
 
 const vaultFor = (type: VaultType) => VAULTS.find(vault => vault.type === type)!;
 
+// A wallet balance of the token BRIDGE_TOKENS configures for this symbol and
+// chain, so it is the one the deposit form would use.
 const token = (
   contractTickerSymbol: string,
   chainId: number,
   balance = '1000000',
-): TokenBalance => ({
-  contractTickerSymbol,
-  contractName: contractTickerSymbol,
-  contractAddress: `0x${contractTickerSymbol}`,
-  balance,
-  contractDecimals: 6,
-  type: TokenType.ERC20,
-  chainId,
-});
+): TokenBalance => {
+  const configured = BRIDGE_TOKENS[chainId]?.tokens?.[contractTickerSymbol.toUpperCase()];
+  return {
+    contractTickerSymbol,
+    contractName: contractTickerSymbol,
+    contractAddress: configured?.address ?? `0x${contractTickerSymbol}`,
+    balance,
+    contractDecimals: 6,
+    type: configured?.isNative ? TokenType.NATIVE : TokenType.ERC20,
+    chainId,
+  };
+};
 
 describe('earning token identity', () => {
   it.each([
@@ -157,6 +163,32 @@ describe('getLargestDepositSelection', () => {
         vaultFor(VaultType.ETH),
       ),
     ).toEqual({ chainId: mainnet.id, principalToken: 'ETH' });
+  });
+
+  // Two 18-decimal balances one wei apart read the same as floats.
+  it('tells apart balances a float would round together', () => {
+    expect(
+      getLargestDepositSelection(
+        [
+          { ...token('USDC', bsc.id, '1000000000000000000'), contractDecimals: 18 },
+          { ...token('USDT', bsc.id, '1000000000000000001'), contractDecimals: 18 },
+        ],
+        usd,
+      ),
+    ).toEqual({ chainId: bsc.id, principalToken: 'USDT' });
+  });
+
+  // The form deposits the configured token, not whatever shares its symbol.
+  it('ignores a different token with the same symbol', () => {
+    expect(
+      getLargestDepositSelection(
+        [
+          { ...token('USDC', polygon.id, '90000000'), contractAddress: '0xfake' },
+          token('USDC', arbitrum.id, '1000000'),
+        ],
+        usd,
+      ),
+    ).toEqual({ chainId: arbitrum.id, principalToken: 'USDC' });
   });
 
   it('picks between the forms of one asset', () => {

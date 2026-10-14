@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import * as Application from 'expo-application';
 import * as IntentLauncher from 'expo-intent-launcher';
 import {
@@ -109,15 +110,20 @@ const PushPermissionCard = () => {
     }
 
     // Already answered — only the OS can change that answer now.
-    if (Platform.OS === 'android') {
-      void IntentLauncher.startActivityAsync(
-        IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
-        { extra: { 'android.provider.extra.APP_PACKAGE': Application.applicationId } },
-      );
-      return;
-    }
-
-    void Linking.openSettings();
+    const openSettings: Promise<unknown> =
+      Platform.OS === 'android'
+        ? IntentLauncher.startActivityAsync(
+            IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
+            { extra: { 'android.provider.extra.APP_PACKAGE': Application.applicationId } },
+          )
+        : Linking.openSettings();
+    openSettings.catch(() => {
+      Toast.show({
+        type: 'error',
+        text1: `Couldn’t open ${SETTINGS_APP}`,
+        text2: 'Open it yourself to change notification permission.',
+      });
+    });
   };
 
   const copy =
@@ -197,7 +203,8 @@ export default function Notifications() {
           'max-w-7xl': !isDesktop,
         })}
       >
-        <PushPermissionCard />
+        {/* The browser has no OS permission or Settings app to send anyone to. */}
+        {Platform.OS !== 'web' && <PushPermissionCard />}
 
         {isLoading ? (
           <ActivityIndicator className="mt-8" size="small" color="#8E8E8E" />

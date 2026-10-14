@@ -28,6 +28,7 @@ export const getAvatarColor = (id: string | null | undefined): AvatarColor =>
 
 /** The letter on the avatar: the name's first character, `?` when there is none. */
 export const getAvatarInitial = (name: string | null | undefined): string => {
-  const first = name?.trim().charAt(0);
+  // The first code point, so a name starting with an emoji isn't cut in half.
+  const first = name ? Array.from(name.trim())[0] : undefined;
   return first ? first.toUpperCase() : '?';
 };

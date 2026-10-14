@@ -5,6 +5,9 @@ import { SaveStatementFile } from '@/lib/statementFile.types';
 
 // This file is only loaded on iOS and Android via Metro platform resolution (.native.ts).
 
+/** expo-file-system's code for a picker the user closed (`PickerCancelledException`). */
+const PICKER_CANCELLED = 'ERR_PICKER_CANCELLED';
+
 /**
  * Hands a statement CSV to the user as a file, not as text.
  *
@@ -22,9 +25,11 @@ export const saveStatementFile: SaveStatementFile = async ({ filename, content }
     let directory: Directory;
     try {
       directory = await Directory.pickDirectoryAsync();
-    } catch {
-      // Closing the picker rejects; that is the user saying no, not a failure.
-      return 'cancelled';
+    } catch (error) {
+      // Closing the picker rejects with this code; that is the user saying no.
+      // Anything else (permissions, the document provider) is a real failure.
+      if ((error as { code?: string } | null)?.code === PICKER_CANCELLED) return 'cancelled';
+      throw error;
     }
     const file = directory.createFile(filename, 'text/csv');
     file.write(content);
