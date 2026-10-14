@@ -138,6 +138,12 @@ const VaultBalanceCard = ({ vaultType, balance: vaultBalance }: VaultBalanceCard
   const vaultApy =
     apys?.allTime != null && Number.isFinite(Number(apys.allTime)) ? Number(apys.allTime) : 0;
 
+  // `keepPreviousData` can hand this card the previous vault's summary while this
+  // one loads — or for good, while soEURC's request fails until the backend
+  // accepts `?vault=EUR`. Only this vault's own summary may stand for its rewards.
+  const vaultSummary =
+    savingsSummary?.vault?.toUpperCase() === vault.name.toUpperCase() ? savingsSummary : undefined;
+
   const rewardsInVaultCurrency = useSavingsYield({
     balance: balance ?? 0,
     apy: vaultApy,
@@ -148,7 +154,7 @@ const VaultBalanceCard = ({ vaultType, balance: vaultBalance }: VaultBalanceCard
     exchangeRate,
     tokenAddress: vault.vaults[0].address,
     inputsReady: !isApyLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0),
-    summary: savingsSummary,
+    summary: vaultSummary,
     vault: vault.name,
   });
 
