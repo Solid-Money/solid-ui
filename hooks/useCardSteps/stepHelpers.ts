@@ -288,6 +288,11 @@ export function useCardActivation(router: Router) {
         (cardStatus === CardStatus.INACTIVE && !canReplaceClosedCard)
       ) {
         setCardActivated(true);
+      } else if (cardStatus === CardStatus.INACTIVE && canReplaceClosedCard) {
+        // Cleared rather than left alone: the screen polls, and a status that
+        // gains the flag after an earlier read marked the card activated would
+        // otherwise keep the "Get new card" step hidden.
+        setCardActivated(false);
       }
     },
     [],

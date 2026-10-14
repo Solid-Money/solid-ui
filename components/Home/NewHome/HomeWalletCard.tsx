@@ -130,6 +130,14 @@ const HomeWalletCard = ({
   const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
   // The card was closed and its holder can order the next one themselves.
   const replacingClosedCard = canReplaceClosedCard(cardStatus);
+  // What the cardless card says it does. A closed card's holder is not getting
+  // their first card, so "Get your card" would misdescribe the replacement
+  // flow the tap opens — and it is the whole label for a screen reader.
+  const cardlessLabel = replacingClosedCard
+    ? 'Get a new card'
+    : awaitingKycDecision
+      ? 'Your card is on its way'
+      : 'Get your card';
 
   const card = <NewCardArt last4={last4} />;
 
@@ -161,7 +169,7 @@ const HomeWalletCard = ({
     return (
       <View>
         <Pressable
-          accessibilityLabel={awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
+          accessibilityLabel={cardlessLabel}
           accessibilityRole="button"
           onPress={handleCardlessPress}
           className="px-4"
@@ -190,7 +198,7 @@ const HomeWalletCard = ({
                       banner. "Get your card" would be the wrong invitation there;
                       this is the banner's own copy for the same rung. */}
                   <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
-                    {awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
+                    {cardlessLabel}
                   </Text>
                   <Image
                     source={getAsset('images/get-your-card-chevron.svg')}
