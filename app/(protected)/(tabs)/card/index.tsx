@@ -5,6 +5,7 @@ import PageLayout from '@/components/PageLayout';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import {
+  canReplaceClosedCard,
   getActiveCardRoute,
   hasCard,
   hasCardStatusWithRainApplication,
@@ -36,8 +37,9 @@ export default function Card() {
 
   // A card is ordered but the issuer hasn't opened it yet. The issuance flow
   // renders the "on its way" state and polls until it does; country selection
-  // would restart onboarding this user already completed.
-  if (hasPendingCard(cardStatus)) {
+  // would restart onboarding this user already completed. A closed card its
+  // holder can replace goes the same way: the issuance flow orders the new one.
+  if (hasPendingCard(cardStatus) || canReplaceClosedCard(cardStatus)) {
     return <Redirect href={path.CARD_ACTIVATE} />;
   }
 

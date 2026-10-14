@@ -69,8 +69,14 @@ function updateRegistry() {
     // Escape single quotes in path if any
     const escapedPath = relativePath.replace(/'/g, "\\'");
 
+    // A JSON asset is a JS module, not a file reference: requiring it builds the
+    // whole object. The Lottie animations are megabytes of it, and this registry
+    // is imported at startup, so require them on first use instead.
+    const isJsonModule = path.extname(file).toLowerCase() === '.json';
     registryEntries.push(
-      `  '${escapedPath}': { module: require('@/assets/${escapedPath}'), hash: '${hash}' },`,
+      isJsonModule
+        ? `  '${escapedPath}': { get module() { return require('@/assets/${escapedPath}'); }, hash: '${hash}' },`
+        : `  '${escapedPath}': { module: require('@/assets/${escapedPath}'), hash: '${hash}' },`,
     );
   }
 

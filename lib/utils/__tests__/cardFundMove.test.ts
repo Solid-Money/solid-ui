@@ -1,11 +1,12 @@
-import { base, bsc, fuse, mainnet } from 'viem/chains';
+import { zeroAddress } from 'viem';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType } from '@/lib/types';
-import { CardFundRoute, getMovableHoldings } from '@/lib/utils/cardFundMove';
+import { CardFundRoute, getMovableHoldings, getSwappableHoldings } from '@/lib/utils/cardFundMove';
 
 const BASE_USDC = BRIDGE_TOKENS[base.id].tokens!.USDC.address;
 const BSC_USDT = BRIDGE_TOKENS[bsc.id].tokens!.USDT.address;
@@ -179,5 +180,140 @@ describe('getMovableHoldings', () => {
 
   it('is empty before balances have loaded', () => {
     expect(getMovableHoldings(undefined, ROUTES, CARD_SPENDABLE_ASSETS)).toEqual([]);
+  });
+});
+
+describe('getSwappableHoldings', () => {
+  const LIFI_CHAINS = [base.id, mainnet.id, arbitrum.id, polygon.id, bsc.id];
+
+  const eth = (overrides: Partial<TokenBalance> = {}): TokenBalance =>
+    token({
+      contractTickerSymbol: 'ETH',
+      contractName: 'Ethereum',
+      contractAddress: zeroAddress,
+      contractDecimals: 18,
+      balance: '136940968058643879', // ~0.137 ETH
+      quoteRate: 2830,
+      type: TokenType.NATIVE,
+      chainId: mainnet.id,
+      ...overrides,
+    });
+
+  it('offers ETH on Ethereum, which neither the card nor a move can take', () => {
+    // The case behind this list: ~$390 of ETH on Ethereum, and a "Move from
+    // wallet" screen that said the wallet held nothing else.
+    const [holding] = getSwappableHoldings([eth()], ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS);
+
+    expect(holding).toMatchObject({
+      chainId: mainnet.id,
+      symbol: 'ETH',
+      tokenAddress: zeroAddress,
+    });
+    expect(holding.amount).toBeCloseTo(0.13694, 5);
+    expect(holding.valueUSD).toBeCloseTo(387.54, 1);
+  });
+
+  it('leaves out what a move already carries, and what the card already spends', () => {
+    const holdings = getSwappableHoldings(
+      [token({}), token({ chainId: fuse.id, contractAddress: USDC_STARGATE })],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      [...LIFI_CHAINS, fuse.id],
+    );
+
+    expect(holdings).toEqual([]);
+  });
+
+  it('leaves out chains the swap form does not quote through LI.FI', () => {
+    expect(
+      getSwappableHoldings(
+        [eth({ chainId: fuse.id, contractTickerSymbol: 'FUSE' })],
+        ROUTES,
+        CARD_SPENDABLE_ASSETS,
+        LIFI_CHAINS,
+      ),
+    ).toEqual([]);
+  });
+
+  it('leaves out Solid savings shares', () => {
+    const holdings = getSwappableHoldings(
+      [
+        token({ chainId: mainnet.id, contractTickerSymbol: 'soUSD', contractAddress: '0xabc' }),
+        eth({ contractTickerSymbol: 'soETH', contractAddress: '0xdef' }),
+      ],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      LIFI_CHAINS,
+    );
+
+    expect(holdings).toEqual([]);
+  });
+
+  it('leaves out dust and anything unpriced', () => {
+    const holdings = getSwappableHoldings(
+      [
+        eth({ balance: '100000000000000' }), // 0.0001 ETH, about 28 cents
+        token({
+          chainId: polygon.id,
+          contractTickerSymbol: 'SPAM',
+          contractAddress: '0x5ba4',
+          quoteRate: undefined,
+        }),
+      ],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      LIFI_CHAINS,
+    );
+
+    expect(holdings).toEqual([]);
+  });
+
+  it('decides the $1 line exactly, on an 18-decimal balance', () => {
+    // At $2000/ETH, 0.0005 ETH is $1.00 to the wei, and one wei less falls short.
+    const atLine = eth({ balance: '500000000000000', quoteRate: 2000 });
+    const belowLine = eth({ balance: '499999999999999', quoteRate: 2000 });
+
+    expect(getSwappableHoldings([atLine], ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toHaveLength(
+      1,
+    );
+    expect(getSwappableHoldings([belowLine], ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toEqual(
+      [],
+    );
+  });
+
+  it('skips a holding whose balance or decimals cannot be read', () => {
+    const holdings = getSwappableHoldings(
+      [eth({ balance: 'not-a-number' }), eth({ contractDecimals: Number.NaN })],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      LIFI_CHAINS,
+    );
+
+    expect(holdings).toEqual([]);
+  });
+
+  it('orders by USD value, richest first', () => {
+    const holdings = getSwappableHoldings(
+      [
+        token({
+          chainId: polygon.id,
+          contractTickerSymbol: 'POL',
+          contractAddress: zeroAddress,
+          contractDecimals: 18,
+          balance: '50000000000000000000', // 50 POL
+          quoteRate: 0.2,
+        }),
+        eth(),
+      ],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      LIFI_CHAINS,
+    );
+
+    expect(holdings.map(h => h.symbol)).toEqual(['ETH', 'POL']);
+  });
+
+  it('is empty before balances have loaded', () => {
+    expect(getSwappableHoldings(undefined, ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toEqual([]);
   });
 });

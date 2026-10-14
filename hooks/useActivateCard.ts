@@ -8,7 +8,12 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
-import { hasCard, hasCardStatusWithRainApplication, hasPendingCard } from '@/lib/utils';
+import {
+  canReplaceClosedCard,
+  hasCard,
+  hasCardStatusWithRainApplication,
+  hasPendingCard,
+} from '@/lib/utils';
 import { isCardIssuanceUnderReview } from '@/lib/utils/cardReviewState';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
@@ -57,11 +62,14 @@ export function useActivateCard() {
   // same reason, and needs saying separately: a Wirex/Sumsub applicant has no
   // Rain application for the clause above to catch, so an IP guess could bounce
   // one mid-decision into country selection — which is the "we just show the
-  // verify page again" loop this screen exists to end.
+  // verify page again" loop this screen exists to end. A cardholder replacing a
+  // closed card has held a card from this issuer already, so the gate has
+  // nothing left to ask them either.
   const skipCountryCheck =
     countryConfirmed === 'true' ||
     userHasCard ||
     hasPendingCard(cardStatusResponse) ||
+    canReplaceClosedCard(cardStatusResponse) ||
     hasRainApplicationStatus ||
     awaitingKycDecision;
   const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });

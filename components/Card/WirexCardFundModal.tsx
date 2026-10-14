@@ -2,6 +2,8 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
+import { Address } from 'viem';
+import { fuse } from 'viem/chains';
 
 import { BuyCryptoFlowContent } from '@/components/BuyCrypto/Transfi/BuyCryptoFlow';
 import CardFundDepositAddress from '@/components/Card/CardFund/CardFundDepositAddress';
@@ -20,6 +22,8 @@ import {
   WirexMoveHoldings,
 } from '@/components/Card/CardFund/WirexMoveFromWallet';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
+import { USDC_STARGATE } from '@/constants/addresses';
+import { SWAP_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -31,8 +35,10 @@ import {
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
 import { CardProvider, DepositModal } from '@/lib/types';
+import { SwapField } from '@/lib/types/swap-field';
 import { withRefreshToken } from '@/lib/utils';
-import { MovableHolding } from '@/lib/utils/cardFundMove';
+import { MovableHolding, SwappableHolding } from '@/lib/utils/cardFundMove';
+import { useSwapState } from '@/store/swapStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
 type Step = 'options' | 'networks' | 'address' | 'moveHoldings' | 'moveAmount';
@@ -117,7 +123,7 @@ export default function WirexCardFundModal({
   const [selectedChainId, setSelectedChainId] = useState<number | undefined>(undefined);
   const [depositAddress, setDepositAddress] = useState<string | undefined>(undefined);
   const [selectedHolding, setSelectedHolding] = useState<MovableHolding | undefined>(undefined);
-  const { holdings, isLoading: areHoldingsLoading } = useMovableHoldings();
+  const { holdings, swappable, isLoading: areHoldingsLoading } = useMovableHoldings();
 
   const { mutate: prepareSession } = useMutation({
     mutationFn: ({ chainId, token }: { chainId: number; token: string }) =>
@@ -236,6 +242,30 @@ export default function WirexCardFundModal({
     [goToStep],
   );
 
+  // A holding the card cannot take as is (ETH on Ethereum, say): hand it to the
+  // swap form, preset to USDC on Fuse — the USDC the card spends, so the swap's
+  // output is spendable as it lands, with no move after it. The fund sheet closes
+  // first and the swap dialog opens once it has gone, as DepositTypeSelection
+  // does for Buy FUSE: two sheets mounting at once is what that delay avoids.
+  const handleSwapPress = useCallback(
+    (holding: SwappableHolding) => {
+      track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+        deposit_method: 'wirex_swap_to_card',
+        chain_id: holding.chainId,
+        selected_token: holding.symbol,
+      });
+      handleOpenChange(false);
+      setTimeout(() => {
+        const { selectCurrency, resetForm, setModal } = useSwapState.getState().actions;
+        selectCurrency(SwapField.INPUT, holding.tokenAddress as Address, holding.chainId);
+        selectCurrency(SwapField.OUTPUT, USDC_STARGATE, fuse.id);
+        resetForm();
+        setModal(SWAP_MODAL.OPEN_FORM);
+      }, 200);
+    },
+    [handleOpenChange],
+  );
+
   // The transfer is out; the pipeline's own "Card deposit" activity takes over
   // from here, so there is nothing left for this modal to show.
   const handleMoveSubmitted = useCallback(() => {
@@ -320,8 +350,10 @@ export default function WirexCardFundModal({
       return (
         <WirexMoveHoldings
           holdings={holdings}
+          swappable={swappable}
           isLoading={areHoldingsLoading}
           onSelect={handleHoldingSelect}
+          onSwap={handleSwapPress}
         />
       );
     }
@@ -347,8 +379,10 @@ export default function WirexCardFundModal({
         return (
           <WirexMoveHoldings
             holdings={holdings}
+            swappable={swappable}
             isLoading={areHoldingsLoading}
             onSelect={handleHoldingSelect}
+            onSwap={handleSwapPress}
           />
         );
       }

@@ -9,10 +9,12 @@ import { useOtaUpdate } from '@/hooks/useOtaUpdate';
 
 /**
  * Covers the whole app with an "update available" screen once a newer OTA
- * bundle has been downloaded, and reloads into it when the user taps Update now.
+ * bundle published as critical has been downloaded, and reloads into it when
+ * the user taps Update now. Routine updates never show it; they start on the
+ * next cold launch (see `useOtaUpdate`).
  *
- * It blocks on purpose: a fix only helps once devices run it. The one way past
- * it is a failed reload, so a broken update can never lock a user out.
+ * It blocks on purpose: a critical fix only helps once devices run it. The one
+ * way past it is a failed reload, so a broken update can never lock a user out.
  *
  * Mount once, last in the root tree so it sits above every screen and sheet,
  * and only on native.
