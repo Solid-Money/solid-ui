@@ -31,11 +31,15 @@ const productDetails = (type: VaultType): Detail[] => {
     ? undefined
     : type === VaultType.USDC
       ? `$${formatNumber(minimum, 2, 0)}`
-      : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
+      : type === VaultType.EUR
+        ? `€${formatNumber(minimum, 2, 0)}`
+        : `${formatNumber(minimum, 4, 0)} ${type === VaultType.ETH ? 'ETH' : 'FUSE'}`;
   return [
     ...(type === VaultType.USDC ? [{ label: 'Fee', value: '10% of interest earned' }] : []),
     { label: 'APY shown', value: 'After fees' },
     ...(type === VaultType.USDC ? [{ label: 'Withdrawals', value: 'Usually within minutes' }] : []),
+    // The soEURC queue keeps a request open for at least three days.
+    ...(type === VaultType.EUR ? [{ label: 'Withdrawals', value: 'Up to about 3 days' }] : []),
     ...(minimumLabel ? [{ label: 'Minimum deposit', value: minimumLabel }] : []),
     ...(type === VaultType.USDC ? [{ label: 'Built with', value: 'Veda' }] : []),
     // The share token has its own contract on each network it lives on, so each gets a row

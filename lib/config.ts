@@ -92,6 +92,9 @@ export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
 export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
+/** Minimum EURC into soEURC. Unset, it matches the USD vault's minimum (in EURC rather than USDC). */
+export const EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT ?? EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT;
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
@@ -246,6 +249,12 @@ type Addresses = {
   base: {
     vault: Address;
     usdc: Address;
+    /** soEURC BoringVault — also the share token, and the spender a EURC deposit approves. */
+    soEurcVault: Address;
+    /** Plain TellerWithMultiAssetSupport: `deposit` is public, no LayerZero, no native deposits. */
+    soEurcTeller: Address;
+    soEurcAccountant: Address;
+    soEurcBoringQueue: Address;
   };
 };
 
@@ -262,6 +271,10 @@ export const PRODUCTION_VAULT_ADDRESSES = {
     vault: '0x75333830E7014e909535389a6E5b0C02aA62ca27',
     fuseVault: '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C',
     soEthVault: '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7',
+  },
+  // QA and production read the same soEURC deployment, so there is no staging twin.
+  base: {
+    soEurcVault: '0x1c6B29c8ac1E12A34D74DdaFCF016246d6aEdfff',
   },
 } as const;
 
@@ -354,6 +367,12 @@ export const ADDRESSES: Addresses = {
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     vault: '0x0000000000000000000000000000000000000000',
+    // soEURC (Solid EURC). One deployment serves both QA and production; which builds
+    // can see the vault is decided by `isDevFeatureEnabled` in constants/vaults.ts.
+    soEurcVault: PRODUCTION_VAULT_ADDRESSES.base.soEurcVault,
+    soEurcTeller: '0xb02796D0b8e1f39265C48e31c94a48c428266Ddb',
+    soEurcAccountant: '0x23710C9fdF34b7E1eF28A92a19F9fdC0aC99518c',
+    soEurcBoringQueue: '0xf68057c26eaF1F49800EaE86046B2b70Bd8Ded06',
   },
 };
 

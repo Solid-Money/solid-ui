@@ -85,10 +85,27 @@ export const EarnChip = ({
   </View>
 );
 
-/** The small "4.5% APY" tag on list rows. */
-export const ApyTag = ({ apy, isLoading }: { apy: number | undefined; isLoading?: boolean }) => {
+/**
+ * The small "4.5% APY" tag on list rows. Without a rate it shows nothing, or `emptyLabel`
+ * for a product that has no rate yet (EUR Yield's "— APY").
+ */
+export const ApyTag = ({
+  apy,
+  isLoading,
+  emptyLabel,
+}: {
+  apy: number | undefined;
+  isLoading?: boolean;
+  emptyLabel?: string;
+}) => {
   if (isLoading) return <Skeleton className="h-[18px] w-[60px] rounded-[6px] bg-white/10" />;
-  if (apy === undefined || !Number.isFinite(apy) || apy <= 0) return null;
+  if (apy === undefined || !Number.isFinite(apy) || apy <= 0) {
+    return emptyLabel ? (
+      <View className="rounded-[6px] bg-white/10 px-[6px] py-[1px]">
+        <Text className="text-[12px] font-medium leading-[16px] text-white/60">{emptyLabel}</Text>
+      </View>
+    ) : null;
+  }
   return (
     <View className="rounded-[6px] bg-[#94F27F]/15 px-[6px] py-[1px]">
       <Text className="text-[12px] font-medium leading-[16px] text-[#94F27F]">

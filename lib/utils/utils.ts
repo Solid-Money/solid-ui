@@ -322,10 +322,27 @@ export const isSoETHToken = (contractAddress: string): boolean => {
   return isSoETHEthereum(contractAddress) || isSoETHFuse(contractAddress);
 };
 
-/** Vault tokens excluded from home WalletCard total (soUSD + soFUSE + soETH) to avoid double count with savings. */
+/**
+ * soEURC, the EUR vault's share token on Base. Recognised in every build — the
+ * vault itself is listed on QA/preview only, but a soEURC balance must never be
+ * read as an ordinary wallet token wherever it turns up.
+ */
+export const isSoEURCToken = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.base.soEurcVault.toLowerCase();
+};
+
+/**
+ * Vault tokens excluded from the home WalletCard total (soUSD + soFUSE + soETH +
+ * soEURC). The USD shares are counted by Savings instead, so including them would
+ * count them twice; soEURC is held in EUR and never enters a USD total at all.
+ */
 export const isWalletCardExcludedToken = (contractAddress: string): boolean => {
   return (
-    isSoUSDToken(contractAddress) || isSoFUSEToken(contractAddress) || isSoETHToken(contractAddress)
+    isSoUSDToken(contractAddress) ||
+    isSoFUSEToken(contractAddress) ||
+    isSoETHToken(contractAddress) ||
+    isSoEURCToken(contractAddress)
   );
 };
 

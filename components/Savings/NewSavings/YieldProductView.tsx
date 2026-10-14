@@ -4,13 +4,14 @@ import { ChevronRight, Info } from 'lucide-react-native';
 import CountUp from '@/components/CountUp';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { formatYieldUsd, yieldProductName } from '@/components/Earn/yieldProducts';
+import { formatYieldAmount, yieldProductName } from '@/components/Earn/yieldProducts';
 import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
+import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
 
 import SavingsFundedActions from './SavingsFundedActions';
 import SimulateSavingsCard from './SimulateSavingsCard';
@@ -32,6 +33,8 @@ const INTRO: Record<VaultType, string> = {
     'On your dollars. Interest is added all the time, and you can withdraw whenever you want.',
   [VaultType.ETH]: 'On your ETH. Interest is added all the time, and you keep your ETH exposure.',
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
+  [VaultType.EUR]:
+    'On your euros. Yield is coming soon; until then your EURC is held and shown in euros, and you can withdraw it whenever you want.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
@@ -54,6 +57,11 @@ const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
   </Pressable>
 );
 
+/**
+ * Every amount here is in the product's own currency — euros for EUR Yield, which is never
+ * converted to dollars, dollars otherwise — whatever its prop name says. `debtUsd` is the
+ * exception: card credit is always dollars.
+ */
 export interface YieldProductViewProps {
   vaultType: VaultType;
   /** Space above the header row: the safe-area inset plus the navbar's 16px. */
@@ -104,6 +112,8 @@ export default function YieldProductView({
   onOpenCredit,
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
+  const isEur = isEurVault(vaultType);
+  const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
   const apyLabel = apy ? `${apy.toFixed(1)}%` : undefined;
   // Per day once that reaches a cent, else per month, as on Assets: a small balance would
   // otherwise read "+$0.00 today".
@@ -140,7 +150,7 @@ export default function YieldProductView({
               {apyLabel ? <EarnChip tone="positive" label={`${apyLabel} APY`} /> : null}
             </View>
             <CountUp
-              prefix="$"
+              prefix={getVaultCurrencySymbol(vaultType)}
               count={balanceUsd}
               decimalPlaces={2}
               animateOnMount={false}
@@ -154,8 +164,7 @@ export default function YieldProductView({
             {estimate ? (
               <View className="rounded-full bg-[#1C1C1C] px-[14px] py-[7px]">
                 <Text className="text-[16px] leading-5 text-[#94F27F]">
-                  +{formatYieldUsd(estimate.amount)}{' '}
-                  {estimate.period === 'day' ? 'today' : 'a month'}
+                  +{formatAmount(estimate.amount)} {estimate.period === 'day' ? 'today' : 'a month'}
                 </Text>
               </View>
             ) : null}
@@ -170,7 +179,7 @@ export default function YieldProductView({
                 <Skeleton className="mt-2 h-7 w-24 rounded-md bg-white/10" />
               ) : (
                 <Text className="mt-1 text-[24px] font-semibold leading-8 text-white">
-                  {formatYieldUsd(interestUsd)}
+                  {formatAmount(interestUsd)}
                 </Text>
               )}
               <Text className="mt-1 text-[14px] leading-5 text-white/50">Since you started</Text>
@@ -182,7 +191,7 @@ export default function YieldProductView({
                 <Skeleton className="mt-2 h-7 w-20 rounded-md bg-white/10" />
               ) : (
                 <Text className="mt-1 text-[24px] font-semibold leading-8 text-[#94F27F]">
-                  +{formatYieldUsd(past30Usd)}
+                  +{formatAmount(past30Usd)}
                 </Text>
               )}
               <Text className="mt-1 text-[14px] leading-5 text-white/50">
@@ -207,7 +216,7 @@ export default function YieldProductView({
             />
           </View>
 
-          <SimulateSavingsCard apy={apy ?? 0} initialPrincipal={balanceUsd} />
+          <SimulateSavingsCard vaultType={vaultType} apy={apy} initialPrincipal={balanceUsd} />
 
           <HowItWorksRow onPress={onOpenHelp} />
 
@@ -225,6 +234,11 @@ export default function YieldProductView({
                 Earn <Text className="text-[36px] font-semibold text-[#94F27F]">{apyLabel}</Text> a
                 year
               </Text>
+            ) : isEur ? (
+              // No rate to wait for: soEURC does not earn yet, so no skeleton that never resolves.
+              <Text className="text-center text-[36px] font-semibold leading-[44px] text-white">
+                Save in euros
+              </Text>
             ) : (
               <Skeleton className="h-11 w-64 rounded-xl bg-white/10" />
             )}
@@ -235,7 +249,7 @@ export default function YieldProductView({
 
           <StartEarningButton vaultType={vaultType} />
 
-          <SimulateSavingsCard apy={apy ?? 0} />
+          <SimulateSavingsCard vaultType={vaultType} apy={apy} />
 
           <View className="mx-4">
             <YieldBenefitsCard vaultType={vaultType} />

@@ -107,13 +107,13 @@ function isDirectDeposit(activity: ActivityEvent): boolean {
 }
 
 /** Vault share tokens — a deposit denominated in one of these mints savings. */
-const VAULT_SHARE_SYMBOLS = ['sousd', 'sofuse', 'soeth'];
+const VAULT_SHARE_SYMBOLS = ['sousd', 'sofuse', 'soeth', 'soeurc'];
 
 /**
  * True when a deposit ends up in the user's savings.
  *
  * Two shapes reach this: connect-wallet deposits, which are denominated in the
- * share token they mint (soUSD / soETH / soFUSE), and direct deposits, which keep
+ * share token they mint (soUSD / soETH / soFUSE / soEURC), and direct deposits, which keep
  * the deposited token as their symbol (USDC, ETH, ...) and record the
  * destination the webhook routed them to. Both have to be recognised, or a
  * savings deposit reads as one into the wallet.

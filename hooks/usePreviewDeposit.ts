@@ -1,6 +1,6 @@
 import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseUnits } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
+import { base, fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -112,6 +112,21 @@ export const fetchExchangeRatesoFuse = async (queryClient: QueryClient) => {
       address: ADDRESSES.fuse.fuseAccountant,
       functionName: 'getRate',
       chainId: fuse.id,
+    }),
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+  return exchangeRate;
+};
+
+/** soEURC → EURC, 6 decimals, from the soEURC accountant on Base. */
+export const fetchExchangeRateSoEurc = async (queryClient: QueryClient) => {
+  const exchangeRate = await queryClient.fetchQuery({
+    ...readContractQueryOptions(config, {
+      abi: Accountant,
+      address: ADDRESSES.base.soEurcAccountant,
+      functionName: 'getRate',
+      chainId: base.id,
     }),
     staleTime: 60_000,
     gcTime: 10 * 60 * 1000,

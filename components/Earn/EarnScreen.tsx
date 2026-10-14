@@ -7,11 +7,19 @@ import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
 import { sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
+import { findVault } from '@/lib/vaults';
 
-import { interestOverPastDays, resolveVaultApy, weightedApy, yieldHoldings } from './earnPortfolio';
+import {
+  interestOverPastDays,
+  resolveVaultApy,
+  weightedApy,
+  type YieldHolding,
+  yieldHoldings,
+} from './earnPortfolio';
 import EarnView, { type EarnProduct } from './EarnView';
 import { useVaultDetailPrefetch } from './useVaultDetailPrefetch';
 import { openYieldProduct } from './yieldProducts';
@@ -24,6 +32,9 @@ export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   useVaultDetailPrefetch();
   const portfolio = usePortfolio();
+  // soEURC, in euros, apart from every dollar figure below (see lib/vaultCurrency).
+  const { eurValue, eurShares, isEurLoading } = useTotalSavingsUSD();
+  const eurRate = useMaxAPY(VaultType.EUR);
 
   const rates = {
     [VaultType.USDC]: useMaxAPY(VaultType.USDC),
@@ -44,14 +55,14 @@ export default function EarnScreen() {
   const isLoading = portfolio.isLoading;
   const areRatesLoading = Object.values(rates).some(rate => rate.isAPYsLoading);
   // The reported rate, or the product's indicative one while analytics has none.
-  const apyOf = (type: VaultType) => resolveVaultApy(type, rates[type].maxAPY);
+  const apyOf = (type: YieldHolding['type']) => resolveVaultApy(type, rates[type].maxAPY);
 
   // Shares count wherever they are, a production share on a development build included.
   const holdings = yieldHoldings(portfolio.earnAssets, portfolio.cashAssets);
   // Locked FUSE is soFUSE in the tier lock, still earning FUSE Yield's rate, so it is part
   // of FUSE Yield and of the total (Figma: "10,000 FUSE locked" on the FUSE Yield row).
   const lockedFuse = (portfolio.lockedFuse ?? 0) > 0 ? portfolio.lockedFuse : undefined;
-  const products: EarnProduct[] = holdings.map(holding => {
+  const usdProducts: EarnProduct[] = holdings.map(holding => {
     const isLocked = holding.type === VaultType.FUSE && lockedFuse !== undefined;
     return {
       type: holding.type,
@@ -65,13 +76,34 @@ export default function EarnScreen() {
     };
   });
 
-  const total = isLoading ? undefined : sumKnownValues(products.map(item => item.valueUsd)).total;
+  // The headline, the rate chip and the interest stats are dollar figures: they cover the
+  // USD-valued products only. soEURC is held in EUR and never converted into them.
+  // TODO(soEURC): decide whether the Earn headline shows the EUR balance as its own € line.
+  const total = isLoading
+    ? undefined
+    : sumKnownValues(usdProducts.map(item => item.valueUsd)).total;
   const isFunded = (total ?? 0) > 0;
   const apyLabel = areRatesLoading
     ? undefined
     : isFunded
-      ? `${weightedApy(products.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
-      : `Up to ${Math.max(...products.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
+      ? `${weightedApy(usdProducts.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
+      : `Up to ${Math.max(...usdProducts.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
+
+  // EUR Yield, where this build lists it: its own row, valued in euros, with "—" for the
+  // rate until it earns.
+  const products: EarnProduct[] = findVault(VaultType.EUR)
+    ? [
+        ...usdProducts,
+        {
+          type: VaultType.EUR,
+          valueUsd: undefined,
+          valueEur: isEurLoading ? undefined : eurValue,
+          shareAmount: eurShares ?? 0,
+          apy: resolveVaultApy(VaultType.EUR, eurRate.maxAPY),
+          isApyLoading: eurRate.isAPYsLoading,
+        },
+      ]
+    : usdProducts;
 
   // Interest is read per product; a product with nothing in it has nothing to wait for.
   const funded = holdings.filter(holding => (holding.valueUsd ?? 0) > 0);

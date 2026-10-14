@@ -230,12 +230,20 @@ export const calculateActualDepositedAmount = async (
     tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase() ||
     tokenAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
   // Subgraph deposits/withdrawals are USDC-vault only; for FUSE vault use only chain vault transfers
-  const isFuseVault =
-    tokenAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
+  const isFuseVault = tokenAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
+  // soEURC lives on Base only. Its deposits/withdrawals come from the EUR subgraph
+  // (empty until one exists) in EURC, 6 decimals; the historical exchange rates
+  // below are soUSD's and do not apply, so its own current rate is used.
+  const isEurVault = tokenAddress.toLowerCase() === ADDRESSES.base.soEurcVault.toLowerCase();
 
+  // `fetchVaultTransfers` reads the Fuse explorer, which has no soEURC transfers:
+  // asking it would only return another chain's empty answer.
+  // TODO(soEURC): read soEURC transfers on Base once there is a Base transfer source.
   const vaultTransferAddresses = isUsdcVault
     ? [ADDRESSES.ethereum.vault, ADDRESSES.fuse.vault]
-    : [tokenAddress];
+    : isEurVault
+      ? []
+      : [tokenAddress];
 
   const vaultTransfersArrays = await Promise.all(
     vaultTransferAddresses.map(addr => fetchVaultTransfers(safeAddress, addr, decimals)),

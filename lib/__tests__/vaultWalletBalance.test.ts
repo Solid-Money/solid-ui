@@ -1,12 +1,16 @@
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
-import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
-import { TokenBalance, TokenType, VaultType } from '@/lib/types';
+import { ADDRESSES, PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
+import { TokenBalance, TokenType, Vault, VaultType } from '@/lib/types';
 import {
+  getAllowedTokensForChain,
+  getDefaultDepositSelection,
   getEarningTokenVault,
   getLargestDepositSelection,
+  getVaultDepositToken,
   hasDepositableWalletBalance,
+  isVaultShareToken,
 } from '@/lib/vaults';
 
 const vaultFor = (type: VaultType) => VAULTS.find(vault => vault.type === type)!;
@@ -185,5 +189,93 @@ describe('getLargestDepositSelection', () => {
   it('returns nothing when the wallet holds nothing the vault takes', () => {
     expect(getLargestDepositSelection([], usd)).toBeUndefined();
     expect(getLargestDepositSelection([token('FUSE', fuse.id)], usd)).toBeUndefined();
+  });
+});
+
+describe('the EUR vault (soEURC)', () => {
+  // jest runs without EXPO_PUBLIC_ENVIRONMENT, i.e. as a QA/preview build.
+  it('is listed last on QA/preview builds, so persisted vault indices keep their vault', () => {
+    expect(VAULTS[VAULTS.length - 1].type).toBe(VaultType.EUR);
+    expect(VAULTS.slice(0, 3).map(vault => vault.type)).toEqual([
+      VaultType.USDC,
+      VaultType.FUSE,
+      VaultType.ETH,
+    ]);
+    expect(vaultFor(VaultType.EUR)).toMatchObject({
+      name: 'EUR',
+      vaultToken: 'soEURC',
+      decimals: 6,
+      vaults: [{ address: ADDRESSES.base.soEurcVault, chainId: base.id }],
+      depositConfig: { supportedChains: [base.id], supportedTokens: ['EURC'] },
+    });
+    // Gated by build, not shown as "coming soon".
+    expect(vaultFor(VaultType.EUR).isComingSoon).toBeFalsy();
+  });
+
+  it('is absent when dev features are off (production)', () => {
+    let vaults: Vault[] = [];
+    jest.isolateModules(() => {
+      jest.doMock('@/lib/config', () => ({
+        ...jest.requireActual('@/lib/config'),
+        isDevFeatureEnabled: false,
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      vaults = require('@/constants/vaults').VAULTS;
+    });
+    jest.dontMock('@/lib/config');
+
+    expect(vaults.map(vault => vault.type)).toEqual([
+      VaultType.USDC,
+      VaultType.FUSE,
+      VaultType.ETH,
+    ]);
+    expect(vaults.some(vault => vault.vaultToken === 'soEURC')).toBe(false);
+  });
+
+  it('takes EURC on Base only', () => {
+    const eur = vaultFor(VaultType.EUR);
+    expect(getAllowedTokensForChain(base.id, eur)).toEqual(['EURC']);
+    expect(getAllowedTokensForChain(mainnet.id, eur)).toEqual([]);
+    expect(getDefaultDepositSelection(eur)).toEqual({ chainId: base.id, principalToken: 'EURC' });
+    expect(getVaultDepositToken(base.id, 'EURC')).toMatchObject({
+      address: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42',
+      decimals: 6,
+    });
+
+    expect(hasDepositableWalletBalance([token('EURC', base.id)], eur)).toBe(true);
+    expect(hasDepositableWalletBalance([token('EURC', mainnet.id)], eur)).toBe(false);
+    expect(hasDepositableWalletBalance([token('USDC', base.id)], eur)).toBe(false);
+  });
+
+  // EURC is kept out of BRIDGE_TOKENS so it is offered nowhere else.
+  it('does not leak EURC into any other vault or the vault-less defaults', () => {
+    expect(getAllowedTokensForChain(base.id)).not.toContain('EURC');
+    expect(getAllowedTokensForChain(base.id, vaultFor(VaultType.USDC))).not.toContain('EURC');
+    expect(hasDepositableWalletBalance([token('EURC', base.id)], vaultFor(VaultType.USDC))).toBe(
+      false,
+    );
+    expect(hasDepositableWalletBalance([token('EURC', base.id)])).toBe(false);
+  });
+
+  // qa's deposit form opens on the largest holding the vault takes: EURC on Base.
+  it('opens the deposit form on EURC on Base, never on a USD stablecoin', () => {
+    expect(
+      getLargestDepositSelection(
+        [token('USDC', base.id, '900000000'), token('EURC', base.id, '2000000')],
+        vaultFor(VaultType.EUR),
+      ),
+    ).toEqual({ chainId: base.id, principalToken: 'EURC' });
+    expect(
+      getLargestDepositSelection([token('EURC', base.id, '900000000')], vaultFor(VaultType.USDC)),
+    ).toBeUndefined();
+  });
+
+  it('recognises the soEURC share on Base, and only there', () => {
+    const contractAddress = ADDRESSES.base.soEurcVault;
+    expect(getEarningTokenVault({ contractAddress, chainId: base.id })?.vault.type).toBe(
+      VaultType.EUR,
+    );
+    expect(getEarningTokenVault({ contractAddress, chainId: mainnet.id })).toBeUndefined();
+    expect(isVaultShareToken(contractAddress)).toBe(true);
   });
 });

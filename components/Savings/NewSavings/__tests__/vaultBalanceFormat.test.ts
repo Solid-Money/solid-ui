@@ -1,5 +1,7 @@
 import {
+  formatCompactVaultAmount,
   formatCompactVaultUsd,
+  formatExactVaultAmount,
   formatExactVaultUsd,
 } from '@/components/Savings/NewSavings/vaultBalanceFormat';
 
@@ -43,5 +45,18 @@ describe('formatExactVaultUsd', () => {
   it('shows one decimal', () => {
     expect(formatExactVaultUsd(363.86)).toBe('$363.9');
     expect(formatExactVaultUsd(-1)).toBe('$0');
+  });
+});
+
+// The EUR vault is shown in euros: same figures, never a dollar sign or USD code.
+describe('EUR vault amounts', () => {
+  it('formats compact and exact figures in euros', () => {
+    expect(formatCompactVaultAmount(6759.16, 'EUR')).toBe('6.76K EUR');
+    expect(formatExactVaultAmount(363.86, 'EUR')).toBe('€363.9');
+  });
+
+  it('keeps USD the default', () => {
+    expect(formatCompactVaultAmount(1.5)).toBe('1.5 USD');
+    expect(formatExactVaultAmount(1.5)).toBe('$1.5');
   });
 });

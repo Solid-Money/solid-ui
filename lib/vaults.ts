@@ -1,7 +1,7 @@
 import { formatUnits } from 'viem';
 import { arbitrum, base, fuse, mainnet } from 'viem/chains';
 
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, type BridgeToken, EURC_TOKENS } from '@/constants/bridge';
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { DepositMethod, TokenBalance, Vault, VaultDepositConfig, VaultType } from '@/lib/types';
@@ -19,7 +19,15 @@ const ALL_SUPPORTED_TOKENS = Array.from(
   new Set(Object.values(BRIDGE_TOKENS).flatMap(chain => Object.keys(chain.tokens ?? {}))),
 );
 
-const LIVE_VAULTS = VAULTS.filter(vault => !vault.isComingSoon);
+/** The vaults a user can deposit into: every listed vault that is not marked coming soon. */
+export const LIVE_VAULTS = VAULTS.filter(vault => !vault.isComingSoon);
+
+/** The listed vault of a type — undefined for one this build does not list (soEURC in production). */
+export const findVault = (type: VaultType): Vault | undefined =>
+  VAULTS.find(vault => vault.type === type);
+
+/** EURC lives outside BRIDGE_TOKENS (see EURC_TOKENS); only a vault that names it may offer it. */
+const EURC_SYMBOL = 'EURC';
 
 export type TokenVault = {
   vault: Vault;
@@ -60,7 +68,7 @@ export const getEarningTokenVault = (
   return vault ? { vault, index: VAULTS.indexOf(vault) } : undefined;
 };
 
-/** True when the address is a vault share token (soUSD / soFUSE / soETH), i.e. a savings position. */
+/** True when the address is a vault share token (soUSD / soFUSE / soETH / soEURC), i.e. a savings position. */
 export const isVaultShareToken = (contractAddress?: string): boolean => {
   const address = contractAddress?.toLowerCase();
   if (!address) return false;
@@ -107,9 +115,22 @@ export const getVaultDepositConfig = (vault?: Vault): VaultDepositConfig => {
 export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string[] => {
   const config = getVaultDepositConfig(vault);
   const tokens = Object.keys(BRIDGE_TOKENS[chainId]?.tokens ?? {});
+  // EURC is offered only to a vault that lists it explicitly (soEURC). The default
+  // config is built from BRIDGE_TOKENS, so a vault-less call never picks it up.
+  if (vault?.depositConfig?.supportedTokens.includes(EURC_SYMBOL) && EURC_TOKENS[chainId]) {
+    tokens.push(EURC_SYMBOL);
+  }
 
   return tokens.filter(symbol => config.supportedTokens.includes(symbol));
 };
+
+/**
+ * The token a vault deposit sends: BRIDGE_TOKENS for everything but EURC, which
+ * has its own table so that listing it for soEURC does not offer it anywhere else.
+ */
+export const getVaultDepositToken = (chainId: number, symbol: string): BridgeToken | undefined =>
+  BRIDGE_TOKENS[chainId]?.tokens?.[symbol] ??
+  (symbol === EURC_SYMBOL ? EURC_TOKENS[chainId] : undefined);
 
 /** The wallet-token fields `hasDepositableWalletBalance` reads. */
 type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 'balance'>;
@@ -120,8 +141,9 @@ type DepositableToken = Pick<TokenBalance, 'chainId' | 'contractTickerSymbol' | 
  *
  * Not the same question as "does the wallet hold anything": the deposit-from-Solid
  * form is per-vault and per-chain (soUSD takes USDC/USDT on any bridged chain,
- * soETH takes ETH/WETH on Ethereum, soFUSE takes FUSE/WFUSE on Fuse), so someone
- * holding only FUSE has funds but none the USD vault could take.
+ * soETH takes ETH/WETH on Ethereum, soFUSE takes FUSE/WFUSE on Fuse, soEURC takes
+ * EURC on Base), so someone holding only FUSE has funds but none the USD vault
+ * could take.
  */
 export const hasDepositableWalletBalance = (tokens: DepositableToken[], vault?: Vault): boolean => {
   const { supportedChains, supportedTokens } = getVaultDepositConfig(vault);
@@ -157,8 +179,8 @@ export const getLargestDepositSelection = (
   for (const token of tokens) {
     if (!supportedChains.includes(token.chainId)) continue;
 
-    // The form selects by BRIDGE_TOKENS key, so a token without one on this
-    // chain is not something it could open on.
+    // The form selects by deposit-token key (BRIDGE_TOKENS, or EURC for soEURC),
+    // so a token without one on this chain is not something it could open on.
     const symbol = token.contractTickerSymbol?.toUpperCase();
     const principalToken = getAllowedTokensForChain(token.chainId, vault).find(
       key => key.toUpperCase() === symbol,

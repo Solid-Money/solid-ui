@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
+import { getVaultKey } from '@/constants/withdraw';
 import useUser from '@/hooks/useUser';
 import { constructActivity } from '@/lib/activityEvents';
 import { fetchActivityEvents } from '@/lib/api';
-import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
+import { isDevFeatureEnabled } from '@/lib/config';
+import { ActivityEvent, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useAccountRefreshStore } from '@/store/useAccountRefreshStore';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -84,8 +86,16 @@ export function useActivity() {
   });
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
+  // soEURC requests sit on their own queue, indexed (when at all) by the EUR
+  // subgraph — never by the USD one. Read only where the EUR vault is listed,
+  // which is the same `isDevFeatureEnabled` gate as its VAULTS entry.
+  const { data: eurTransactions } = useUserTransactions(
+    isDevFeatureEnabled ? user?.safeAddress : undefined,
+    VaultType.EUR,
+  );
 
   const withdraws = userTransactions?.withdraws;
+  const eurWithdraws = eurTransactions?.withdraws;
 
   // Fetch a page of activities directly from the API and push to Zustand
   const fetchPage = useCallback(
@@ -194,60 +204,56 @@ export function useActivity() {
     //
     // When subgraph data is unavailable we now show PROCESSING (not PENDING)
     // to reflect that the on-chain tx succeeded and the request is in the queue.
-    if (withdraws) {
-      userEvents = userEvents.map(activity => {
-        if (
-          activity.type === TransactionType.WITHDRAW &&
-          activity.status === TransactionStatus.SUCCESS
-        ) {
-          const matchingWithdraw = withdraws.find(w => {
-            const activityHash = activity.hash?.toLowerCase();
-            const activityUserOpHash = activity.userOpHash?.toLowerCase();
-            const reqHash = w.requestTxHash?.toLowerCase();
-            const solveHash = w.solveTxHash?.toLowerCase();
-
-            if (activityHash && (reqHash === activityHash || solveHash === activityHash)) {
-              return true;
-            }
-            // Also match by userOpHash for AA wallet transactions where the
-            // bundled tx hash may differ from what the subgraph indexes.
-            if (
-              activityUserOpHash &&
-              (reqHash === activityUserOpHash || solveHash === activityUserOpHash)
-            ) {
-              return true;
-            }
-            return false;
-          });
-
-          if (matchingWithdraw?.requestStatus === 'SOLVED') {
-            return activity; // Keep SUCCESS
-          }
-          // Request exists on subgraph but not solved yet → PROCESSING
-          if (matchingWithdraw) {
-            return { ...activity, status: TransactionStatus.PROCESSING };
-          }
-          // No matching subgraph entry — the request may not have been indexed
-          // yet.  Show PROCESSING rather than PENDING since the on-chain tx
-          // already succeeded.
-          return { ...activity, status: TransactionStatus.PROCESSING };
-        }
+    // Each withdraw is matched against its own vault's subgraph: soEURC against
+    // the EUR one, everything else against the USD one as before. There is no
+    // soEURC subgraph yet, so a soEURC withdraw stays PROCESSING once submitted.
+    // TODO(soEURC): read the request status from the queue on Base until the EUR
+    // subgraph exists, so a solved soEURC withdraw can show as complete.
+    userEvents = userEvents.map(activity => {
+      if (
+        activity.type !== TransactionType.WITHDRAW ||
+        activity.status !== TransactionStatus.SUCCESS
+      ) {
         return activity;
-      });
-    } else {
+      }
+
+      const vaultWithdraws = getVaultKey(activity.symbol) === 'EUR' ? eurWithdraws : withdraws;
+
       // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
       // waiting for solver fulfillment) instead of PENDING which implies the
       // user action hasn't been submitted.
-      userEvents = userEvents.map(activity => {
-        if (
-          activity.type === TransactionType.WITHDRAW &&
-          activity.status === TransactionStatus.SUCCESS
-        ) {
-          return { ...activity, status: TransactionStatus.PROCESSING };
+      if (!vaultWithdraws) {
+        return { ...activity, status: TransactionStatus.PROCESSING };
+      }
+
+      const matchingWithdraw = vaultWithdraws.find(w => {
+        const activityHash = activity.hash?.toLowerCase();
+        const activityUserOpHash = activity.userOpHash?.toLowerCase();
+        const reqHash = w.requestTxHash?.toLowerCase();
+        const solveHash = w.solveTxHash?.toLowerCase();
+
+        if (activityHash && (reqHash === activityHash || solveHash === activityHash)) {
+          return true;
         }
-        return activity;
+        // Also match by userOpHash for AA wallet transactions where the
+        // bundled tx hash may differ from what the subgraph indexes.
+        if (
+          activityUserOpHash &&
+          (reqHash === activityUserOpHash || solveHash === activityUserOpHash)
+        ) {
+          return true;
+        }
+        return false;
       });
-    }
+
+      if (matchingWithdraw?.requestStatus === 'SOLVED') {
+        return activity; // Keep SUCCESS
+      }
+      // Request exists on subgraph but not solved yet → PROCESSING. No matching
+      // subgraph entry — the request may not have been indexed yet. Show
+      // PROCESSING rather than PENDING since the on-chain tx already succeeded.
+      return { ...activity, status: TransactionStatus.PROCESSING };
+    });
 
     return userEvents
       .filter(activity => {
@@ -263,7 +269,7 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [userEventsFromStore, user?.userId, withdraws]);
+  }, [userEventsFromStore, user?.userId, withdraws, eurWithdraws]);
 
   useEffect(() => {
     if (!activities?.length) return;
