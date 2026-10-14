@@ -330,7 +330,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // time shows the full-screen "Update now" prompt (components/OtaUpdateGate)
     // once it has downloaded any of them, so a routine update published later
     // can't hide the critical one. Every other update applies on the next cold
-    // launch without interrupting anyone.
+    // launch without interrupting anyone. Left out of the native fingerprint
+    // (fingerprint.config.js), so setting it ships an update, not a store build.
     otaCriticalSince: process.env.OTA_CRITICAL_SINCE || null,
     eas: {
       projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
