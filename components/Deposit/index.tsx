@@ -18,6 +18,7 @@ import useDeposit from '@/hooks/useDeposit';
 import useUser from '@/hooks/useUser';
 import { useUsdcVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -102,11 +103,10 @@ const Deposit = () => {
           image: getTokenIcon({ tokenSymbol: 'USDC' }),
         },
       });
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while depositing',
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'savings_deposit',
+        details: { amount: String(data.amount), token: 'USDC' },
       });
     }
   };

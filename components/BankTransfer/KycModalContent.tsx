@@ -14,6 +14,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
 import { EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID, isProduction } from '@/lib/config';
+import { getUserErrorMessage } from '@/lib/errors';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -261,6 +262,7 @@ const BankTransferKycFrameModal = () => {
           templateId: options.templateId ?? null,
           templateVersionId: (options as any).templateVersionId ?? null,
           host: (options as any).host ?? null,
+          eventsAllowlist: null,
           onLoad: null,
           onEvent: null,
           onReady: () => {
@@ -292,7 +294,7 @@ const BankTransferKycFrameModal = () => {
                 error: e?.message || 'Verification error occurred',
                 kycUrl: url,
               });
-              setError(e?.message || 'Verification error occurred');
+              setError('Verification didn’t finish. Try again, or contact support.');
               setLoading(false);
             }
           },
@@ -308,7 +310,7 @@ const BankTransferKycFrameModal = () => {
         }
       } catch (e: any) {
         if (!destroyed) {
-          setError(e?.message || 'Failed to load verification');
+          setError(getUserErrorMessage(e, { action: 'kyc' }) || 'Couldn’t load verification.');
           setLoading(false);
         }
       }

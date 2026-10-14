@@ -29,10 +29,11 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoEth from '@/hooks/useWithdrawSoEth';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
-import { describeWithdrawError } from '@/lib/utils/withdrawErrors';
+import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -293,11 +294,11 @@ const RegularWithdrawForm = () => {
         symbol: 'soUSD',
       });
       setActiveStep(2);
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing',
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soUSD' },
       });
     }
   };
@@ -325,12 +326,11 @@ const RegularWithdrawForm = () => {
           }),
         },
       });
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing',
-        text2: describeWithdrawError(_error),
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soUSD' },
       });
     }
   };
@@ -355,12 +355,11 @@ const RegularWithdrawForm = () => {
           image: getTokenIcon({ tokenSymbol: 'FUSE' }),
         },
       });
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing',
-        text2: describeWithdrawError(_error),
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soFUSE' },
       });
     }
   };
@@ -373,11 +372,11 @@ const RegularWithdrawForm = () => {
         symbol: 'soETH',
       });
       setActiveStep(2);
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while bridging soETH',
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soETH' },
       });
     }
   };
@@ -403,12 +402,11 @@ const RegularWithdrawForm = () => {
           image: getTokenIcon({ tokenSymbol: 'WETH' }),
         },
       });
-    } catch (_error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error while withdrawing soETH',
-        text2: describeWithdrawError(_error),
-        props: { badgeText: 'Onchain' },
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soETH' },
       });
     }
   };

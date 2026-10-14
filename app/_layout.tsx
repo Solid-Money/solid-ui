@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Appearance, AppState, Platform, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import * as Font from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { Stack, useGlobalSearchParams, usePathname } from 'expo-router';
@@ -28,7 +27,9 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import {
   focusManager,
+  MutationCache,
   onlineManager,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
@@ -44,7 +45,7 @@ import OtaUpdateGate from '@/components/OtaUpdateGate';
 import AppOpenStoreReviewTrigger from '@/components/StoreReview/AppOpenStoreReviewTrigger';
 import CashbackStoreReviewTrigger from '@/components/StoreReview/CashbackStoreReviewTrigger';
 import ThirdwebConnectionBridge from '@/components/ThirdwebConnectionBridge';
-import { toastProps } from '@/components/Toast';
+import { AppToast } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { getInfoClient } from '@/graphql/clients';
@@ -61,6 +62,11 @@ import {
   EXPO_PUBLIC_SENTRY_RELEASE,
   isProduction,
 } from '@/lib/config';
+import {
+  handleMutationError,
+  handleQueryError,
+  handleQuerySuccess,
+} from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
 import {
   clearPersistedQueryCacheOnFatalError,
@@ -69,6 +75,10 @@ import {
 } from '@/lib/queryPersistence';
 import { markStartup } from '@/lib/startupTiming';
 import { isSupportChatFocused, SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
+import { installShownErrorReporter } from '@/lib/telemetry/installShownErrorReporter';
+import { installToastReporter } from '@/lib/telemetry/installToastReporter';
+import { setCurrentScreen } from '@/lib/telemetry/reportError';
+import { getSentryUser, installSentryUserSync } from '@/lib/telemetry/sentryUser';
 import { ensureFreshAccessToken } from '@/lib/utils';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
@@ -90,8 +100,9 @@ Sentry.init({
   // `<bundleId>@<version>+<build>`, which is what the Expo plugin uploads under.
   ...(EXPO_PUBLIC_SENTRY_RELEASE ? { release: EXPO_PUBLIC_SENTRY_RELEASE } : {}),
 
-  // No PII: this is a financial app, and GlitchTip is our own box but still
-  // not a place for user identifiers, headers or cookies.
+  // No default PII (IP address, headers, cookies): this is a financial app.
+  // The signed-in user is attached explicitly instead — backend user id and
+  // username, never the email — by lib/telemetry/sentryUser.
   sendDefaultPii: false,
 
   // GlitchTip is error tracking only. Tracing, profiling, replay, user
@@ -134,6 +145,13 @@ Sentry.init({
     if (event.request?.cookies) {
       delete event.request.cookies;
     }
+    // Some captures still pass `user: { id: suborgId }` inline, which replaces
+    // the scope's user for that event. The signed-in backend user id wins, so
+    // every event from one person is filed under the same id.
+    const signedInUser = getSentryUser();
+    if (signedInUser) {
+      event.user = { ...event.user, ...signedInUser };
+    }
     // A dismissed passkey prompt is the person's choice, not a failure, but
     // several places still capture it as an error, the transaction hooks
     // among them, which rethrow it as `User cancelled transaction`.
@@ -151,6 +169,14 @@ Sentry.init({
 // EAS Observe: native-side startup/performance metric collection begins at
 // launch, so configure dispatching before the app renders.
 configureObserve();
+
+// Admin Errors page: failures the shared error path (lib/errors) shows without
+// a Ref, and error toasts it did not show, are reported from here on (inert in
+// dev builds), and GlitchTip follows the signed-in user. Installed before the
+// app renders.
+installShownErrorReporter();
+installToastReporter();
+installSentryUserSync();
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
@@ -218,6 +244,10 @@ if (Platform.OS !== 'web') {
 }
 
 export const queryClient = new QueryClient({
+  // Global error handling (lib/errors/queryErrors.ts): a toast when a background
+  // refresh fails, and the shared failure UI for mutations that opt in via meta.
+  queryCache: new QueryCache({ onError: handleQueryError, onSuccess: handleQuerySuccess }),
+  mutationCache: new MutationCache({ onError: handleMutationError }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
@@ -385,6 +415,11 @@ function RootLayout() {
     trackScreen(pathname, params);
   }, [pathname, params, analyticsReady]);
 
+  // Error reports carry the screen the user was on.
+  useEffect(() => {
+    setCurrentScreen(pathname);
+  }, [pathname]);
+
   useEffect(() => {
     if (fontError) {
       console.error('Error loading fonts:', fontError);
@@ -504,7 +539,7 @@ function RootLayout() {
             </QueryClientProvider>
           </WagmiProvider>
         </LazyThirdwebProvider>
-        <Toast {...toastProps} />
+        <AppToast />
       </TurnkeyProvider>
     </SafeAreaProvider>
   );

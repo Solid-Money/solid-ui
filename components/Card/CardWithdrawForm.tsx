@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Linking, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import useUser from '@/hooks/useUser';
 import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
 import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import { CardProvider } from '@/lib/types';
 import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
 import {
@@ -26,7 +27,6 @@ import {
   isDifferentCollateralAsset,
   toAmountInputValue,
 } from '@/lib/utils/cardHelpers';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
@@ -253,8 +253,7 @@ export default function CardWithdrawForm() {
             type: 'success',
             text1: 'Withdrawal started',
             text2: `$${data.amount} ${assetSymbol} collateral withdrawal.`,
-            onPress: () => Linking.openURL(explorerUrl),
-            props: { badgeText: 'Onchain' },
+            props: { link: explorerUrl },
           });
         } else {
           const response = await withdrawFromCard({
@@ -278,24 +277,20 @@ export default function CardWithdrawForm() {
           Toast.show({
             type: 'success',
             text1: 'Withdrawal requested',
-            text2: etherscanUrl ? etherscanUrl : `$${data.amount} is being sent to your wallet.`,
-            ...(etherscanUrl && {
-              onPress: () => Linking.openURL(etherscanUrl),
-            }),
+            text2: `$${data.amount} is being sent to your wallet.`,
+            props: etherscanUrl ? { link: etherscanUrl } : undefined,
           });
         }
       } catch (err: unknown) {
-        let message = 'Withdrawal failed';
-        if (err instanceof Response) {
-          const body = await err.json().catch(() => ({}));
-          message = (body as { message?: string })?.message ?? err.statusText ?? message;
-        } else if (err instanceof Error) {
-          message = userFacingErrorMessage(err, message);
-        }
         // Collateral can move between the read and the submit (a charge settles,
         // a deposit lands), so re-read it before the user retries.
         if (toCollateral) void refetchCollateral();
-        Toast.show({ type: 'error', text1: 'Withdrawal failed', text2: message });
+        // Our own 4xx copy ("Amount exceeds your card balance") still comes
+        // through; relayed provider errors and raw SDK text never do.
+        void showFailureSheet(err, {
+          action: 'card_withdraw',
+          details: { amount: String(data.amount), token: toCollateral ? assetSymbol : undefined },
+        });
       } finally {
         setIsSubmitting(false);
       }

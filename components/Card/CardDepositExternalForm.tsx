@@ -26,6 +26,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
+import { showErrorToast, showFailureSheet } from '@/lib/errors';
 import { getChain } from '@/lib/thirdweb';
 import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
@@ -173,11 +174,14 @@ export default function CardDepositExternalForm() {
         }
 
         if (!depositTokenAddress) {
-          Toast.show({
-            type: 'error',
-            text1: 'Configuration error',
-            text2: `${depositTokenSymbol} address not found for funding chain`,
-          });
+          // A configuration gap is our bug: reported, with a Ref.
+          void showFailureSheet(
+            new Error(`${depositTokenSymbol} address not configured on chain ${fundingChainId}`),
+            {
+              action: 'card_deposit',
+              body: 'Card deposits aren’t available right now. Nothing was sent.',
+            },
+          );
           return;
         }
 
@@ -200,10 +204,11 @@ export default function CardDepositExternalForm() {
           }
         } catch (chainError) {
           console.error('Failed to switch to funding chain:', chainError);
-          Toast.show({
-            type: 'error',
-            text1: 'Network switch failed',
-            text2: `Please manually switch your wallet to the funding chain (${fundingChainId})`,
+          const networkName = getChainWagmi(fundingChainId)?.name ?? 'the funding network';
+          void showErrorToast(chainError, {
+            action: 'card_deposit',
+            title: 'Couldn’t switch networks',
+            body: `Switch your wallet to ${networkName}, then try again.`,
           });
           setSendStatus(Status.ERROR);
           return;
@@ -266,11 +271,13 @@ export default function CardDepositExternalForm() {
       } catch (error) {
         setSendStatus(Status.ERROR);
         console.error('External wallet deposit error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Deposit failed',
-          text2: 'Please try again or check your wallet balance',
-          props: { badgeText: 'Onchain' },
+        void showFailureSheet(error, {
+          action: 'card_deposit',
+          details: {
+            amount: String(data.amount),
+            token: depositTokenSymbol,
+            network: getChainWagmi(fundingChainId)?.name,
+          },
         });
       }
     },

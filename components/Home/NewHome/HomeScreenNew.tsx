@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,7 +6,6 @@ import { Address } from 'viem';
 
 import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
-import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
@@ -62,7 +61,6 @@ export default function HomeScreenNew() {
 
   const { user } = useUser();
   const portfolio = usePortfolio();
-  const [isRepayOpen, setIsRepayOpen] = useState(false);
   const queryClient = useQueryClient();
   const { refetchAll, isRefreshing } = useActivityRefresh();
   const {
@@ -267,7 +265,6 @@ export default function HomeScreenNew() {
         <>
           <CardDetailsPane />
           <SpendModeModals figures={spendModeFigures} />
-          <BorrowPositionSheet isOpen={isRepayOpen} onOpenChange={setIsRepayOpen} />
         </>
       }
       scrollEnabled={!isCardPaneOpen}
@@ -362,11 +359,7 @@ export default function HomeScreenNew() {
         </View>
 
         <HeroExit spec={HERO_EXIT.belowCard}>
-          <HomeAssetsCard
-            portfolio={portfolio}
-            borrowApy={spendModeFigures.borrowApy}
-            onRepay={() => setIsRepayOpen(true)}
-          />
+          <HomeAssetsCard portfolio={portfolio} />
         </HeroExit>
 
         <HeroExit spec={HERO_EXIT.belowCard}>

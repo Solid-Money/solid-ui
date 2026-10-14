@@ -14,6 +14,7 @@ import { useProspectiveCardIssuer } from '@/hooks/useProspectiveCardIssuer';
 import { track } from '@/lib/analytics';
 import { resumeRainKycForward } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
+import { isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
@@ -176,15 +177,18 @@ export function useCardSteps(
           Toast.show({
             type: 'error',
             text1: 'Deposit not received yet',
-            text2:
-              result.reason ?? `Keep at least $${result.minimumUsd} in savings, then try again.`,
+            text2: isSafeServerMessage(result.reason)
+              ? result.reason
+              : `Keep at least $${result.minimumUsd} in savings, then try again.`,
             props: { badgeText: '' },
           });
         } else if (result?.status === 'failed' || result?.status === 'not_ready') {
           Toast.show({
             type: 'error',
             text1: 'Could not submit your application',
-            text2: result.reason ?? 'Please try again shortly or contact support.',
+            text2: isSafeServerMessage(result.reason)
+              ? result.reason
+              : 'Try again shortly, or contact support.',
             props: { badgeText: '' },
           });
         }
@@ -193,12 +197,10 @@ export function useCardSteps(
         // may still have moved the balance the server reported.
         void queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
       },
-      onError: () => {
-        Toast.show({
-          type: 'error',
-          text1: 'Could not submit your application',
-          text2: 'Please try again shortly or contact support.',
-          props: { badgeText: '' },
+      onError: error => {
+        void showErrorToast(error, {
+          action: 'kyc',
+          title: 'Couldn’t submit your application',
         });
       },
     });

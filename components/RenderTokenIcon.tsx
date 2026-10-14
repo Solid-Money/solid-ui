@@ -18,12 +18,16 @@ const RenderTokenIcon = ({
   return tokenIcon.type === 'image' ? (
     <Image
       source={tokenIcon.source}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: '#404040', // Placeholder color while loading
-      }}
+      style={
+        tokenIcon.bare
+          ? { width: size, height: size }
+          : {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: '#404040', // Placeholder color while loading
+            }
+      }
       alt={tokenName ? `${tokenName} token icon` : 'Token icon'}
       cachePolicy="memory-disk"
       priority={priority}

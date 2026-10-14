@@ -3,23 +3,23 @@ import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { KeyRound, Lock, Mail } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
+import ProfileHubIcon from '@/components/Profile/ProfileHubIcon';
+import { ProfileRowGroup, ProfileSectionLabel } from '@/components/Profile/ProfileRow';
 import { summarizeProtections } from '@/components/Security/protections';
 import ProtectionsCard from '@/components/Security/ProtectionsCard';
 import SecurityRow from '@/components/Security/SecurityRow';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { LOST_AUTHENTICATOR_SUPPORT_MESSAGE } from '@/constants/support';
-import { useDimension } from '@/hooks/useDimension';
 import { usePasskeyManager } from '@/hooks/usePasskeyManager';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
-import { cn, isPasskeyPromptError } from '@/lib/utils';
+import { isPasskeyPromptError } from '@/lib/utils';
 import { getThisDeviceNoun } from '@/lib/utils/passkeyDevice';
 import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
 import { openSupportDrawer } from '@/store/useSupportDrawerStore';
@@ -41,10 +41,6 @@ const ModalLoadingFallback = () => (
 
 const PASSKEY_TIMEOUT_MS = 30000;
 
-const SectionLabel = ({ children }: { children: string }) => (
-  <Text className="mb-2 mt-8 text-base text-[#8E8E8E]">{children}</Text>
-);
-
 /**
  * Settings → Security.
  *
@@ -61,7 +57,6 @@ export default function Security() {
   const router = useRouter();
   const { user } = useUser();
   const { createHttpClient } = useTurnkey();
-  const { isDesktop } = useDimension();
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
@@ -205,9 +200,13 @@ export default function Security() {
   };
 
   const mobileHeader = (
-    <View className="flex-row items-center justify-between px-4 py-3">
-      <BackButton />
-      <Text className="mr-[50px] flex-1 text-center text-xl font-bold text-white">Security</Text>
+    <View className="mx-auto w-full max-w-[512px] flex-row items-center px-4 pb-6 pt-[15px]">
+      <BackButton
+        variant="header"
+        className="my-0 h-[44px] w-[44px]"
+        icon={<ProfileHubIcon name="arrow-left" />}
+      />
+      <Text className="mr-[44px] flex-1 text-center text-xl font-bold text-white">Security</Text>
     </View>
   );
 
@@ -216,9 +215,13 @@ export default function Security() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <BackButton />
+          <BackButton
+            variant="header"
+            className="my-0 h-[44px] w-[44px]"
+            icon={<ProfileHubIcon name="arrow-left" />}
+          />
           <Text className="text-3xl font-semibold text-white">Security</Text>
-          <View className="w-[50px]" />
+          <View className="w-[44px]" />
         </View>
       </View>
     </>
@@ -230,37 +233,35 @@ export default function Security() {
         customMobileHeader={mobileHeader}
         customDesktopHeader={desktopHeader}
         useDesktopBreakpoint
+        className="bg-[#111111]"
+        contentClassName="bg-[#111111]"
       >
-        <View
-          className={cn('mx-auto w-full px-4 py-4 pb-32', {
-            'max-w-[512px]': isDesktop,
-            'max-w-7xl': !isDesktop,
-          })}
-        >
+        <View className="mx-auto w-full max-w-[512px] px-4 pb-10">
           <ProtectionsCard
             summary={protections}
             onAction={handleProtectionAction}
             isActionBusy={isConfirmingTotp}
           />
 
-          <View className="mt-4 flex-row items-center gap-2 px-1">
-            <KeyRound size={14} color="#8E8E8E" />
-            <Text className="flex-1 text-sm text-[#8E8E8E]">
+          <View className="mt-6 flex-row items-center gap-2 px-1">
+            <View className="opacity-50">
+              <ProfileHubIcon name="key-round" size={14} />
+            </View>
+            <Text className="flex-1 text-[13px] leading-[18px] text-[#8E8E8E]">
               Each change asks for your passkey — no unlock step.
             </Text>
           </View>
 
-          <SectionLabel>Sign-in</SectionLabel>
-          <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
+          <ProfileSectionLabel>Sign-in</ProfileSectionLabel>
+          <ProfileRowGroup variant="hub">
             <SecurityRow
-              icon={<KeyRound size={20} color="#FFFFFF" />}
+              icon={<ProfileHubIcon name="key-round" />}
               title="Passkeys"
               subtitle={passkeysSummary}
               onPress={() => router.push('/settings/passkeys')}
             />
-            <View className="ml-[72px] h-px bg-white/10" />
             <SecurityRow
-              icon={<Lock size={20} color="#FFFFFF" />}
+              icon={<ProfileHubIcon name="lock" />}
               title="Authenticator app"
               subtitle={isTotpVerified ? 'Lost it? Contact support' : 'Two-factor authentication'}
               badge={
@@ -278,13 +279,13 @@ export default function Security() {
                   : 'Set up two-factor authentication'
               }
             />
-          </View>
+          </ProfileRowGroup>
           {totpError ? <Text className="mt-2 px-1 text-sm text-red-400">{totpError}</Text> : null}
 
-          <SectionLabel>Recovery</SectionLabel>
-          <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
+          <ProfileSectionLabel>Recovery</ProfileSectionLabel>
+          <ProfileRowGroup variant="hub">
             <SecurityRow
-              icon={<Mail size={20} color="#FFFFFF" />}
+              icon={<ProfileHubIcon name="mail" />}
               title="Recovery email"
               subtitle={user?.email || 'Not set'}
               badge={
@@ -295,8 +296,8 @@ export default function Security() {
               onPress={() => setShowEmailModal(true)}
               accessibilityLabel={user?.email ? 'Change recovery email' : 'Add a recovery email'}
             />
-          </View>
-          <Text className="mt-2 px-1 text-sm leading-5 text-[#8E8E8E]">
+          </ProfileRowGroup>
+          <Text className="mt-2 px-1 text-[13px] leading-[18px] text-[#8E8E8E]">
             We send account alerts here and use it to help you recover your wallet if you lose your
             passkey.
           </Text>

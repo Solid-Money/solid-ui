@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TextStyle, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import CountUp from '@/components/CountUp';
 import { Text } from '@/components/ui/text';
 import useDebounce from '@/hooks/useDebounce';
+import { cn } from '@/lib/utils';
 
-import AmountDropdown from './AmountDropdown';
+import AmountDropdown, { SIMULATE_AMOUNTS } from './AmountDropdown';
 import { buildProjectionSeries, formatHorizonLabel } from './savingsProjection';
 import SimulateChart from './SimulateChart';
 
@@ -46,6 +47,12 @@ const SimulationIcon = () => (
 interface SimulateSavingsCardProps {
   /** Selected vault's headline APY (percent). */
   apy: number;
+  /**
+   * Opens on this amount instead of $10,000 and offers it beside the presets — the funded
+   * page passes the user's own balance, so the projection is about their money.
+   */
+  initialPrincipal?: number;
+  className?: string;
 }
 
 /**
@@ -53,8 +60,22 @@ interface SimulateSavingsCardProps {
  * drag the chart handle to scrub the projection horizon. Future balance and
  * earned amounts animate (CountUp) as the handle moves.
  */
-const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
-  const [principal, setPrincipal] = useState<number>(DEFAULT_PRINCIPAL);
+const SimulateSavingsCard = ({ apy, initialPrincipal, className }: SimulateSavingsCardProps) => {
+  const ownAmount =
+    initialPrincipal !== undefined && Number.isFinite(initialPrincipal) && initialPrincipal >= 1
+      ? Math.round(initialPrincipal)
+      : undefined;
+  const amounts = useMemo(
+    () =>
+      ownAmount === undefined
+        ? SIMULATE_AMOUNTS
+        : [...new Set([ownAmount, ...SIMULATE_AMOUNTS])].sort((a, b) => a - b),
+    [ownAmount],
+  );
+  const [principal, setPrincipal] = useState<number>(ownAmount ?? DEFAULT_PRINCIPAL);
+  useEffect(() => {
+    if (ownAmount !== undefined) setPrincipal(ownAmount);
+  }, [ownAmount]);
   const [activeIndex, setActiveIndex] = useState<number>(DEFAULT_INDEX);
 
   const safeApy = Number.isFinite(apy) && apy > 0 ? apy : 5;
@@ -72,7 +93,7 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
   const horizonLabel = formatHorizonLabel(readoutIndex);
 
   return (
-    <View className="mx-4 gap-5 rounded-twice bg-card p-5">
+    <View className={cn('mx-4 gap-5 rounded-twice bg-card p-5', className)}>
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-1">
           <SimulationIcon />
@@ -83,7 +104,7 @@ const SimulateSavingsCard = ({ apy }: SimulateSavingsCardProps) => {
             Simulate your savings
           </Text>
         </View>
-        <AmountDropdown amount={principal} onSelect={setPrincipal} />
+        <AmountDropdown amount={principal} amounts={amounts} onSelect={setPrincipal} />
       </View>
 
       {/* Light divider separating the title/dropdown from the future-balance section. */}

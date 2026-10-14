@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -12,7 +11,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
+import { showErrorToast } from '@/lib/errors';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const ESTIMATED_TIMES: Record<number, string> = {
@@ -111,10 +110,10 @@ const DepositDirectlyNetworks = () => {
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
       setSelectedChainId(null);
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to create deposit session',
-        text2: userFacingErrorMessage(error),
+      void showErrorToast(error, {
+        action: 'deposit',
+        title: 'Couldn’t prepare your deposit',
+        tags: { type: 'direct_deposit_session_error' },
       });
     }
   };

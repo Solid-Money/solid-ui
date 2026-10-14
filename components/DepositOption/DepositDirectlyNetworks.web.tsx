@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
-import * as Sentry from '@sentry/react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
@@ -12,7 +10,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
+import { showErrorToast } from '@/lib/errors';
 import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -78,26 +76,11 @@ const DepositDirectlyNetworks = () => {
       console.error('Failed to create direct deposit session:', error);
       setSelectedChainId(null);
 
-      Sentry.captureException(error, {
-        tags: {
-          type: 'direct_deposit_session_error',
-          chainId: id.toString(),
-          userId: user?.userId,
-        },
-        extra: {
-          chainId: id,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        },
-        user: {
-          id: user?.userId,
-          address: user?.safeAddress,
-        },
-      });
-
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to create deposit session',
-        text2: userFacingErrorMessage(error),
+      // Reported (with a Ref) by the shared helper; no separate capture.
+      void showErrorToast(error, {
+        action: 'deposit',
+        title: 'Couldn’t prepare your deposit',
+        tags: { type: 'direct_deposit_session_error', chainId: id.toString() },
       });
     }
   };

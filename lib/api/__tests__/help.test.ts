@@ -2,6 +2,12 @@
 
 jest.mock('@/lib/config', () => ({
   EXPO_PUBLIC_SUPPORT_API_BASE_URL: 'https://support.example.com/',
+  USER: { storageKey: 'help-test-user' },
+}));
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
 }));
 jest.mock('@/lib/api', () => ({
   getJWTToken: () => null,

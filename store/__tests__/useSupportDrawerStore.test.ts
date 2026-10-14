@@ -83,6 +83,16 @@ describe('useSupportDrawerStore typed requests', () => {
     expect(useSupportDrawerStore.getState().context).toBeUndefined();
   });
 
+  it('carries a failure the app showed, by its event ID', () => {
+    const eventId = '9c1b4f2a5d6e4f708192a3b4c5d6e7f8';
+    openSupportDrawer({ context: { kind: 'error', id: eventId, label: 'Ref 9C1B-4F2A' } });
+    expect(useSupportDrawerStore.getState().context).toEqual({
+      kind: 'error',
+      id: eventId,
+      label: 'Ref 9C1B-4F2A',
+    });
+  });
+
   it('drops a context the server would refuse, so the message still sends', () => {
     openSupportDrawer({ context: { kind: 'made_up' as never, id: 'x' } });
     expect(useSupportDrawerStore.getState().context).toBeUndefined();

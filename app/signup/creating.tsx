@@ -23,6 +23,7 @@ import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp, initSignupOtp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
 import {
@@ -32,7 +33,7 @@ import {
   getAccountCreationStatus,
   isRateLimitedError,
 } from '@/lib/utils/signupAccountCreation';
-import { redactSecrets, userFacingErrorMessage } from '@/lib/utils/userFacingError';
+import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -388,7 +389,8 @@ export default function SignupCreating() {
 
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
-        error: redactSecrets(err?.message || errorMessage),
+        // Sanitized: raw messages here carried RPC URLs with API keys.
+        error: sanitizeTechnicalMessage(err) || errorMessage,
         step: 'creating',
         // `wallet`: the account was created and the Safe address that
         // follows it failed. `account`: the server did not create it.

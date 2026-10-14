@@ -462,7 +462,12 @@ const CardDetailsPane = () => {
       />
       {/* A true transparent overlay: the scroll content passes behind this header
           instead of stopping below a separate black layout row. */}
-      <View pointerEvents="box-none" style={[styles.headerOverlay, { paddingTop: insets.top }]}>
+      <View
+        // On web, box-none re-enables children even beneath the closed pane's
+        // pointerEvents="none". Keep its invisible back button out of hit testing.
+        pointerEvents={isOpen ? 'box-none' : 'none'}
+        style={[styles.headerOverlay, { paddingTop: insets.top }]}
+      >
         <View className="mx-auto w-full max-w-[40rem]" style={columnAlignmentStyle}>
           <CardDetailsHeader onBack={close} />
         </View>

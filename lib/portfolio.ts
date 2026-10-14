@@ -91,9 +91,14 @@ export const vaultShareHoldings = (
   const wallet = held(tokens).sort((a, b) => b.amount - a.amount);
   const escrowed = held(collateral);
   const all = [...wallet, ...escrowed];
+  const total = (list: { amount: number }[]) => list.reduce((sum, item) => sum + item.amount, 0);
   return {
     walletTokens: wallet.map(item => item.token),
-    shareAmount: all.length ? all.reduce((sum, item) => sum + item.amount, 0) : undefined,
+    shareAmount: all.length ? total(all) : undefined,
+    /** Shares the user can move: in the wallet, on any network. */
+    walletShareAmount: total(wallet),
+    /** Shares locked as credit collateral; they come back on repay. */
+    escrowedShareAmount: total(escrowed),
     shareNetworkCount: new Set(all.map(item => item.token.chainId)).size,
   };
 };

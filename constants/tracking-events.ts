@@ -488,6 +488,11 @@ export const TRACKING_EVENTS = {
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
   RETRY_ATTEMPTED: 'retry_attempted',
+  // Every failure the user is shown (toast, failure sheet, inline), with its Ref.
+  ERROR_SHOWN: 'error_shown',
+  ERROR_RETRY_PRESSED: 'error_retry_pressed',
+  ERROR_SUPPORT_PRESSED: 'error_support_pressed',
+  ERROR_REF_COPIED: 'error_ref_copied',
 
   // QR Scanner Events
   QR_SCANNER_OPENED: 'qr_scanner_opened',
@@ -549,6 +554,10 @@ export const TRACKING_EVENTS = {
   CROSS_CHAIN_SEND_SUBMITTED: 'cross_chain_send_submitted',
   CROSS_CHAIN_SEND_FAILED: 'cross_chain_send_failed',
   CROSS_CHAIN_SEND_STATUS_VIEWED: 'cross_chain_send_status_viewed',
+
+  // Statements
+  STATEMENT_DOWNLOAD_TAPPED: 'statement_download_tapped',
+  STATEMENT_DOWNLOAD_FAILED: 'statement_download_failed',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

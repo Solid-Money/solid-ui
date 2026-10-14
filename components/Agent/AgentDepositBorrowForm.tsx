@@ -10,10 +10,10 @@ import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import useBorrowAndDepositToAgent from '@/hooks/useBorrowAndDepositToAgent';
 import { isProduction } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import { openHelpLink } from '@/lib/help/links';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 const SO_USD_LTV = 70n;
 
@@ -58,11 +58,9 @@ const AgentDepositBorrowForm = ({ agentEoaAddress, onSuccess }: Props) => {
       });
       onSuccess();
     } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Deposit failed',
-        text2: userFacingErrorMessage(err),
-        props: { badgeText: 'Onchain' },
+      void showFailureSheet(err, {
+        action: 'agent_fund',
+        details: { amount: sliderValue.toString(), token: 'USDC' },
       });
     }
   };

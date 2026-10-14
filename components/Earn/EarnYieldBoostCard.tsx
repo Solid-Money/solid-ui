@@ -4,9 +4,9 @@ import Toast from 'react-native-toast-message';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useClaimYieldBoost, useYieldBoostSummary } from '@/hooks/useRewards';
+import { showFailureSheet } from '@/lib/errors';
 import { YieldBoostClaim, YieldBoostClaimStatus } from '@/lib/types';
 import { cn, formatBalanceUSD, formatNumber } from '@/lib/utils';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 
 /** "1,234.57 soFUSE", from the backend's decimal string. */
 const formatSoFuse = (amount: string) => `${formatNumber(Number(amount), 2)} soFUSE`;
@@ -41,8 +41,9 @@ interface EarnYieldBoostCardProps {
 }
 
 /**
- * Figma 26134:23293 — "Yield boost": the extra APY the user's rewards tier adds
- * on top of every vault's own yield, what it has earned so far, and the claim.
+ * "Yield boost" (Figma 26134:23293, laid out as on the Earn tab, 28551:5563): the extra APY
+ * the user's rewards tier adds on top of every vault's own yield, what it has earned so far,
+ * and the claim.
  *
  * It sits on the Earn page rather than on a vault because it is earned on the
  * user's savings across all three vaults together, and paid in soFUSE whichever
@@ -74,45 +75,39 @@ const EarnYieldBoostCard = ({ className }: EarnYieldBoostCardProps) => {
       const { claim: result } = await claim();
       Toast.show({ ...claimToast(result), props: { badgeText: 'Onchain' } });
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: "Couldn't claim yield boost",
-        text2: userFacingErrorMessage(error),
-        props: { badgeText: 'Onchain' },
-      });
+      void showFailureSheet(error, { action: 'claim', title: 'Couldn’t claim your yield boost' });
     }
   };
 
-  return (
-    <View className={cn('overflow-hidden rounded-twice bg-card', className)}>
-      <View className="h-[54px] justify-center px-5">
-        <Text className="text-base font-semibold leading-4 text-white">Yield boost</Text>
-      </View>
-      <View className="h-px bg-[#2A2A2A]" />
+  // What the line under the title says about the claim.
+  const claimState = isPaying
+    ? 'on its way'
+    : isPaused
+      ? 'claims paused'
+      : hasClaimable
+        ? 'ready to claim'
+        : undefined;
 
-      <View className="flex-row items-center px-5 pb-[18px] pt-[19px]">
-        <View className="flex-1">
-          <Text className="text-sm font-medium leading-[14px] text-white/50">Boost amount</Text>
-          {boostPercentage > 0 ? (
-            <View className="mt-[7px] h-[23px] items-center justify-center self-start rounded-lg bg-white px-[7px]">
-              <Text className="text-sm font-semibold text-[#282041]">
-                +{formatNumber(boostPercentage, 2, 0)}% Boost
-              </Text>
-            </View>
-          ) : (
-            <Text className="mt-[7px] text-sm font-semibold leading-[23px] text-white/50">—</Text>
-          )}
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-medium leading-[14px] text-white/50">Total Earned</Text>
+  return (
+    <View className={cn('overflow-hidden rounded-[20px] bg-card', className)}>
+      <View className="flex-row items-center gap-3 px-4 py-[18px]">
+        <View className="min-w-0 flex-1 gap-[5px]">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-[16px] font-semibold leading-5 text-white">Yield boost</Text>
+            {boostPercentage > 0 ? (
+              <View className="rounded-full bg-[#D4C7FF] px-2 py-[2px]">
+                <Text className="text-[13px] font-medium leading-[18px] text-[#282041]">
+                  +{formatNumber(boostPercentage, 2, 0)}%
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {isLoading ? (
-            <Skeleton className="mt-[7px] h-6 w-[88px] rounded-md bg-white/10" />
+            <Skeleton className="h-[18px] w-[160px] rounded-md bg-white/10" />
           ) : (
-            <Text
-              className="mt-[7px] text-[22px] text-white"
-              style={{ fontFamily: 'MonaSans_600SemiBold', lineHeight: 24 }}
-            >
-              {formatBalanceUSD(summary?.totalEarnedUsd ?? 0)}
+            <Text className="text-[14px] leading-[18px] text-white/50" numberOfLines={1}>
+              {formatBalanceUSD(summary?.totalEarnedUsd ?? 0)} earned
+              {claimState ? ` · ${claimState}` : ''}
             </Text>
           )}
         </View>
@@ -142,7 +137,7 @@ const EarnYieldBoostCard = ({ className }: EarnYieldBoostCardProps) => {
       </View>
 
       {isPaused ? (
-        <Text className="px-5 pb-[18px] text-sm font-medium text-white/50">
+        <Text className="px-4 pb-[18px] text-sm font-medium text-white/50">
           Claims are paused for now. Your boost keeps accruing and nothing is lost.
         </Text>
       ) : null}

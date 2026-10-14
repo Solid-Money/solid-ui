@@ -14,10 +14,10 @@ import { path } from '@/constants/path';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
 import { createCard, submitCardConsents } from '@/lib/api';
+import { showErrorToast } from '@/lib/errors';
 import { openHelpLink } from '@/lib/help/links';
 import { CardProvider, CardStatus } from '@/lib/types';
 import { getActiveCardRoute, hasCard, hasPendingCard, withRefreshToken } from '@/lib/utils';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useCardWelcomePopupStore } from '@/store/useCardWelcomePopupStore';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -223,17 +223,9 @@ export default function CardReady() {
         // The read failed too; fall through and report the original failure.
       }
 
-      // Never the raw message: this is a bundler/paymaster failure, and viem's text
-      // for it is the RPC URL (API key included), the request body and the
-      // upstream reply. A customer once pasted exactly that into a support chat.
-      Toast.show({
-        type: 'error',
-        text1: 'Card not activated',
-        text2: `${userFacingErrorMessage(
-          error,
-          'We could not enable card spending. Please try again.',
-        )} No card was created.`,
-        props: { badgeText: '' },
+      void showErrorToast(error, {
+        action: 'card_activate',
+        body: 'No card was created. Try again in a moment.',
       });
       return false;
     }
@@ -303,18 +295,10 @@ export default function CardReady() {
       // explanation from it. Refetch so that reason is there the moment the user
       // looks, rather than a poll-interval later.
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-      Toast.show({
-        type: 'error',
-        text1: 'Error activating card',
-        // Now reaches the real reason — "Cards are not available in Bangladesh
-        // (BD) yet." rather than the generic line users quoted back to support —
-        // because the API client throws an ApiError carrying the server message
-        // instead of the bare Response, which is never an `Error`.
-        // `userFacingErrorMessage` lets that server copy through and stops anything
-        // that reads as a dependency's dump.
-        text2: userFacingErrorMessage(error),
-        props: { badgeText: '' },
-      });
+      // Still reaches the real reason when the backend wrote it for users ("Cards
+      // are not available in Bangladesh (BD) yet."), via ApiError's server message;
+      // anything that reads like an internal error is replaced with plain copy.
+      void showErrorToast(error, { action: 'card_activate' });
     } finally {
       setActivationPhase('idle');
     }

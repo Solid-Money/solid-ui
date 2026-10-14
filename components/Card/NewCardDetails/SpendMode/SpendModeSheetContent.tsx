@@ -389,10 +389,9 @@ const SpendModeSheetContent = ({
 };
 
 const styles = StyleSheet.create({
-  // The close button sits in the heading's row, centred on its 36pt line box, so the modal
-  // spends no height on a row of its own.
-  heading: { justifyContent: 'center' },
-  close: { position: 'absolute', right: 0, top: (36 - MODAL_CONTROL_SIZE) / 2 },
+  // Hold enough room for the circular control so it stays inside the heading.
+  heading: { height: MODAL_CONTROL_SIZE, justifyContent: 'center' },
+  close: { position: 'absolute', right: 0, top: 0 },
   subtitle: { marginTop: HEADING_TO_SUBTITLE },
   control: { marginTop: SUBTITLE_TO_CONTROL },
   caption: {

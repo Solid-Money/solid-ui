@@ -1,14 +1,25 @@
 /// <reference types="jest" />
 
+import { useUserStore } from '@/store/useUserStore';
+
 jest.mock('@/lib/config', () => ({
   EXPO_PUBLIC_SUPPORT_API_BASE_URL: 'https://support.example.com/',
+  USER: { storageKey: 'support-test-user' },
+}));
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
 }));
 jest.mock('@/lib/api', () => ({
   getJWTToken: () => 'jwt-1',
   getPlatformHeaders: () => ({ 'X-Platform': 'ios' }),
 }));
 // One attempt is enough here; the refresh itself is the app's and has its own tests.
-jest.mock('@/lib/utils', () => ({ withRefreshToken: (fn: () => unknown) => fn() }));
+const mockWithRefreshToken = jest.fn((fn: () => Promise<unknown>) => fn());
+jest.mock('@/lib/utils', () => ({
+  withRefreshToken: (fn: () => Promise<unknown>) => mockWithRefreshToken(fn),
+}));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const support = require('@/lib/api/support') as typeof import('@/lib/api/support');
@@ -19,6 +30,8 @@ const json = (status: number, body: unknown) =>
 describe('support API client', () => {
   const fetchMock = jest.fn();
   beforeEach(() => {
+    useUserStore.setState({ users: [{ userId: 'account-a', selected: true } as never] });
+    mockWithRefreshToken.mockReset().mockImplementation(fn => fn());
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
   });
@@ -89,5 +102,37 @@ describe('support API client', () => {
     const [, init] = fetchMock.mock.calls[0];
     expect(init.body).toBeInstanceOf(FormData);
     expect(init.headers['Content-Type']).toBeUndefined();
+  });
+
+  it('does not refresh or replay an old account’s unauthorized message', async () => {
+    let finish!: (response: Response) => void;
+    fetchMock.mockReturnValue(new Promise<Response>(resolve => (finish = resolve)));
+    mockWithRefreshToken.mockImplementation(async fn => {
+      try {
+        return await fn();
+      } catch (error) {
+        if ((error as Response).status === 401) return fn();
+        throw error;
+      }
+    });
+    const pending = support.sendSupportMessage({ clientMessageId: 'old-message', body: 'Private' });
+    useUserStore.setState({ users: [{ userId: 'account-b', selected: true } as never] });
+    finish(json(401, {}));
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels before sending when the account changes during auth preflight', async () => {
+    let resume!: () => void;
+    mockWithRefreshToken.mockImplementation(async fn => {
+      await new Promise<void>(resolve => (resume = resolve));
+      return fn();
+    });
+    const pending = support.sendSupportMessage({ clientMessageId: 'old-message', body: 'Private' });
+    useUserStore.setState({ users: [] });
+    useUserStore.setState({ users: [{ userId: 'account-a', selected: true } as never] });
+    resume();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

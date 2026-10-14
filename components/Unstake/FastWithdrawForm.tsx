@@ -27,10 +27,10 @@ import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
+import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const FastWithdrawForm = () => {
@@ -191,11 +191,9 @@ const FastWithdrawForm = () => {
         reset();
       } catch (error) {
         console.error('Bridge error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Bridge failed',
-          text2: userFacingErrorMessage(error),
-          props: { badgeText: 'Onchain' },
+        void showFailureSheet(error, {
+          action: 'withdraw',
+          details: { amount: String(data.amount), token: 'soUSD' },
         });
       }
     },

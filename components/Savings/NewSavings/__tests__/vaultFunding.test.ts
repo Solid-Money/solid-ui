@@ -1,4 +1,7 @@
-import { hasSelectedVaultFunds } from '@/components/Savings/NewSavings/vaultFunding';
+import {
+  hasSelectedVaultFunds,
+  productBalanceUsd,
+} from '@/components/Savings/NewSavings/vaultFunding';
 import { VaultType } from '@/lib/types';
 
 describe('hasSelectedVaultFunds', () => {
@@ -23,5 +26,25 @@ describe('hasSelectedVaultFunds', () => {
   it('uses a wallet-discovered position when the direct vault read misses it', () => {
     expect(hasSelectedVaultFunds(undefined, VaultType.USDC, true)).toBe(true);
     expect(hasSelectedVaultFunds({ [VaultType.USDC]: 0 }, VaultType.USDC, true)).toBe(true);
+  });
+});
+
+describe('productBalanceUsd', () => {
+  it('counts a production soUSD on a development build once, not twice', () => {
+    // $27 of soUSD the savings reads miss: the wallet's by-symbol total already has it.
+    expect(productBalanceUsd({ portfolioUsd: 0, unreadUsd: 27, walletUsd: 27 })).toBe(27);
+  });
+
+  it('adds shares backing the card, which the wallet total cannot see', () => {
+    expect(productBalanceUsd({ portfolioUsd: 2560, vaultReadUsd: 2122.5, walletUsd: 2122.5 })).toBe(
+      2560,
+    );
+    expect(productBalanceUsd({ portfolioUsd: 437.5, unreadUsd: 27, walletUsd: 27 })).toBe(464.5);
+  });
+
+  it('falls back to whichever read has the position, and never goes below zero', () => {
+    expect(productBalanceUsd({ vaultReadUsd: 100 })).toBe(100);
+    expect(productBalanceUsd({ walletUsd: 50 })).toBe(50);
+    expect(productBalanceUsd({})).toBe(0);
   });
 });

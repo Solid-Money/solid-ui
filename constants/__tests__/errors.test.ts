@@ -98,8 +98,7 @@ describe('loginErrorMessage', () => {
     ).toBe('User cancelled login');
   });
 
-  it('passes through every other failure', () => {
-    expect(loginErrorMessage(new Error('Network request failed'))).toBe('Network request failed');
+  it('keeps the backend’s own copy for every other refusal', () => {
     expect(
       loginErrorMessage(
         Object.assign(new Error('This account has been closed'), {
@@ -108,11 +107,24 @@ describe('loginErrorMessage', () => {
           statusCode: 403,
         }),
       ),
-    ).toBe('This account has been closed');
+    ).toBe('This account has been closed.');
+  });
+
+  it('never shows a raw transport or runtime message', () => {
+    expect(loginErrorMessage(new Error('Network request failed'))).toBe(
+      'Check your connection and try again.',
+    );
+    expect(loginErrorMessage(new TypeError("Cannot read property 'id' of undefined"))).toBe(
+      'Try again in a moment. If it keeps happening, contact support.',
+    );
   });
 
   it('has something to say for an error carrying no message', () => {
-    expect(loginErrorMessage({})).toBe('Something went wrong. Please try again.');
-    expect(loginErrorMessage(null)).toBe('Something went wrong. Please try again.');
+    expect(loginErrorMessage({})).toBe(
+      'Try again in a moment. If it keeps happening, contact support.',
+    );
+    expect(loginErrorMessage(null)).toBe(
+      'Try again in a moment. If it keeps happening, contact support.',
+    );
   });
 });

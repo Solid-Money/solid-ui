@@ -12,3 +12,13 @@ export const openIntercom = () => {
     (window as any).Intercom('show');
   }
 };
+
+/**
+ * Open the chat with a message already typed, without the React provider: for
+ * screens that render outside it, such as the root error boundary.
+ */
+export const openIntercomWithMessage = (message: string) => {
+  if (typeof window !== 'undefined' && (window as any).Intercom) {
+    (window as any).Intercom('showNewMessage', message);
+  }
+};

@@ -28,10 +28,10 @@ import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { track } from '@/lib/analytics';
 import { confirmWirexCardRegistration } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
+import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { CardProvider } from '@/lib/types';
 import { buildModuleDisables, includesModule, SENTINEL_MODULES } from '@/lib/utils/safeModules';
-import { redactSecrets, userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -1222,13 +1222,10 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      // The raw message is a viem dump for a failed user operation — bundler URL
-      // (API key included) and request body — so the sheet gets our copy.
-      const message = userFacingErrorMessage(mutationError, 'Failed to set up card spending');
-      setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_REGISTER_FAILED, {
-        error: redactSecrets(mutationError?.message || message),
-      });
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to set up card spending';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
+      track(TRACKING_EVENTS.CARD_SPEND_REGISTER_FAILED, { error: message });
     },
   });
 
@@ -1336,13 +1333,10 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      // The raw message is a viem dump for a failed user operation — bundler URL
-      // (API key included) and request body — so the sheet gets our copy.
-      const message = userFacingErrorMessage(mutationError, 'Failed to change your limit');
-      setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_FAILED, {
-        error: redactSecrets(mutationError?.message || message),
-      });
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to change your limit';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
+      track(TRACKING_EVENTS.CARD_SPEND_LIMIT_UPDATE_FAILED, { error: message });
     },
   });
 
@@ -1384,13 +1378,11 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      // The raw message is a viem dump for a failed user operation — bundler URL
-      // (API key included) and request body — so the sheet gets our copy.
-      const message = userFacingErrorMessage(mutationError, 'Failed to cancel the limit change');
-      setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_PENDING_INCREASE_CANCEL_FAILED, {
-        error: redactSecrets(mutationError?.message || message),
-      });
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message =
+        sanitizeTechnicalMessage(mutationError) || 'Failed to cancel the limit change';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
+      track(TRACKING_EVENTS.CARD_SPEND_PENDING_INCREASE_CANCEL_FAILED, { error: message });
     },
   });
 
@@ -1551,13 +1543,10 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      // The raw message is a viem dump for a failed user operation — bundler URL
-      // (API key included) and request body — so the sheet gets our copy.
-      const message = userFacingErrorMessage(mutationError, 'Failed to change your spend mode');
-      setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, {
-        error: redactSecrets(mutationError?.message || message),
-      });
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to change your spend mode';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
+      track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, { error: message });
     },
   });
 
@@ -1618,13 +1607,10 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       });
     },
     onError: (mutationError: Error) => {
-      // The raw message is a viem dump for a failed user operation — bundler URL
-      // (API key included) and request body — so the sheet gets our copy.
-      const message = userFacingErrorMessage(mutationError, 'Failed to turn off card spending');
-      setError(message);
-      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_FAILED, {
-        error: redactSecrets(mutationError?.message || message),
-      });
+      // Sanitized for analytics; the screen gets user copy, never the raw message.
+      const message = sanitizeTechnicalMessage(mutationError) || 'Failed to turn off card spending';
+      setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);
+      track(TRACKING_EVENTS.CARD_SPEND_DISABLE_FAILED, { error: message });
     },
   });
 

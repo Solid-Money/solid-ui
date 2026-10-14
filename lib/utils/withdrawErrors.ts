@@ -81,3 +81,13 @@ export const describeWithdrawError = (error: unknown): string => {
 
   return 'Something went wrong with your withdrawal. Please try again.';
 };
+
+/**
+ * The sentence for a withdrawal that reverted with a reason we can read, for
+ * the failure sheet's body; undefined otherwise, so the shared copy (which
+ * knows whether anything was sent) takes over.
+ */
+export const withdrawRevertCopy = (error: unknown): string | undefined => {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return decodeRevertReason(message) ? describeWithdrawError(error) : undefined;
+};

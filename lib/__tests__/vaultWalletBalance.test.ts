@@ -1,9 +1,13 @@
-import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { VAULTS } from '@/constants/vaults';
 import { PRODUCTION_VAULT_ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType, VaultType } from '@/lib/types';
-import { getEarningTokenVault, hasDepositableWalletBalance } from '@/lib/vaults';
+import {
+  getEarningTokenVault,
+  getLargestDepositSelection,
+  hasDepositableWalletBalance,
+} from '@/lib/vaults';
 
 const vaultFor = (type: VaultType) => VAULTS.find(vault => vault.type === type)!;
 
@@ -93,5 +97,93 @@ describe('hasDepositableWalletBalance', () => {
   // No vault means the permissive default config (every bridged chain/token).
   it('falls back to the default config with no vault', () => {
     expect(hasDepositableWalletBalance([token('USDC', mainnet.id)])).toBe(true);
+  });
+});
+
+describe('getLargestDepositSelection', () => {
+  const usd = vaultFor(VaultType.USDC);
+
+  // The reason it exists: the form used to open on whichever chain was used
+  // last (often Fuse), not where the money is.
+  it('picks the chain holding the most of what the vault takes', () => {
+    expect(
+      getLargestDepositSelection(
+        [
+          token('USDC', fuse.id, '1000000'),
+          token('USDC', polygon.id, '25000000'),
+          token('USDT', arbitrum.id, '5000000'),
+        ],
+        usd,
+      ),
+    ).toEqual({ chainId: polygon.id, principalToken: 'USDC' });
+  });
+
+  it('picks the token as well as the chain', () => {
+    expect(
+      getLargestDepositSelection(
+        [token('USDC', arbitrum.id, '1000000'), token('USDT', arbitrum.id, '3000000')],
+        usd,
+      ),
+    ).toEqual({ chainId: arbitrum.id, principalToken: 'USDT' });
+  });
+
+  // BSC stablecoins carry 18 decimals, so raw balances do not compare.
+  it('compares amounts, not raw balances, across decimals', () => {
+    expect(
+      getLargestDepositSelection(
+        [
+          { ...token('USDC', bsc.id, '2000000000000000000'), contractDecimals: 18 },
+          token('USDC', polygon.id, '1500000'),
+        ],
+        usd,
+      ),
+    ).toEqual({ chainId: bsc.id, principalToken: 'USDC' });
+  });
+
+  it('skips tokens and chains the vault does not take, and empty balances', () => {
+    expect(
+      getLargestDepositSelection(
+        [
+          token('FUSE', fuse.id, '900000000'),
+          token('USDC', mainnet.id, '0'),
+          token('USDC', base.id, '2000000'),
+        ],
+        usd,
+      ),
+    ).toEqual({ chainId: base.id, principalToken: 'USDC' });
+    expect(
+      getLargestDepositSelection(
+        [token('ETH', polygon.id, '900000000'), token('ETH', mainnet.id, '1000000')],
+        vaultFor(VaultType.ETH),
+      ),
+    ).toEqual({ chainId: mainnet.id, principalToken: 'ETH' });
+  });
+
+  it('picks between the forms of one asset', () => {
+    expect(
+      getLargestDepositSelection(
+        [token('FUSE', fuse.id, '1000000'), token('WFUSE', fuse.id, '3000000')],
+        vaultFor(VaultType.FUSE),
+      ),
+    ).toEqual({ chainId: fuse.id, principalToken: 'WFUSE' });
+  });
+
+  // The form selects by BRIDGE_TOKENS key, whatever case the balance came in.
+  it('returns the token key for a differently cased symbol', () => {
+    expect(getLargestDepositSelection([token('usdc', polygon.id)], usd)).toEqual({
+      chainId: polygon.id,
+      principalToken: 'USDC',
+    });
+  });
+
+  it('keeps the first of equal holdings', () => {
+    expect(
+      getLargestDepositSelection([token('USDC', polygon.id), token('USDC', arbitrum.id)], usd),
+    ).toEqual({ chainId: polygon.id, principalToken: 'USDC' });
+  });
+
+  it('returns nothing when the wallet holds nothing the vault takes', () => {
+    expect(getLargestDepositSelection([], usd)).toBeUndefined();
+    expect(getLargestDepositSelection([token('FUSE', fuse.id)], usd)).toBeUndefined();
   });
 });

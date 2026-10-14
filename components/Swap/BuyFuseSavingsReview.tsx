@@ -18,6 +18,8 @@ export default function BuyFuseSavingsReview() {
     useSavingStore.getState().selectVaultForDeposit(vaultIndex);
     deposit.setSrcChainId(122);
     deposit.setPrincipalToken('FUSE');
+    // The FUSE just bought, not whatever the wallet holds most of.
+    deposit.setDepositSourceChosen(true);
     deposit.setDepositFromSolid(true);
     deposit.setModal(DEPOSIT_MODAL.OPEN_FORM);
   };

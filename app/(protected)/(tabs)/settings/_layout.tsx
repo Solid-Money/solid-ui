@@ -58,9 +58,25 @@ export default function SettingsLayout() {
         }}
       />
       <Stack.Screen
+        name="notifications"
+        options={{
+          title: 'Notifications',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="passkeys"
         options={{
           title: 'Passkeys',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="statements"
+        options={{
+          title: 'Statements',
           headerBackButtonDisplayMode: 'minimal',
           headerShown: false,
         }}

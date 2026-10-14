@@ -9,11 +9,11 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import Toast from 'react-native-toast-message';
 import { BlurView } from 'expo-blur';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 
-import { toastProps } from '@/components/Toast';
+import { AppToast } from '@/components/Toast';
+import { CIRCULAR_CONTROL_CLASS_NAME } from '@/components/ui/circular-control';
 import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
@@ -314,7 +314,7 @@ const DialogContent = React.forwardRef<
             >
               {content}
             </Animated.View>
-            <Toast {...toastProps} />
+            <AppToast />
           </View>
         </DialogPortal>
       );
@@ -356,7 +356,7 @@ const DialogContent = React.forwardRef<
                 {content}
               </Animated.View>
             ) : null}
-            <Toast {...toastProps} />
+            <AppToast />
           </DialogOverlay>
         </DialogPortal>
       );
@@ -372,7 +372,7 @@ const DialogContent = React.forwardRef<
           >
             {content}
           </Animated.View>
-          <Toast {...toastProps} />
+          <AppToast />
         </DialogOverlay>
       </DialogPortal>
     );
@@ -440,8 +440,9 @@ const DialogCloseButton = React.forwardRef<
     <DialogPrimitive.Close
       ref={ref}
       className={cn(
-        'web:group web:focus:ring-none flex h-[50px] w-[50px] items-center justify-center rounded-full border-0 bg-popover web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
+        'web:group web:focus:ring-none flex items-center justify-center rounded-full border-0 bg-popover web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
         className,
+        CIRCULAR_CONTROL_CLASS_NAME,
       )}
       onPress={handlePress}
       {...props}

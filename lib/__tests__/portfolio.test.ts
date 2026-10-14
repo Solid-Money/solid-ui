@@ -218,9 +218,15 @@ describe('asset grouping and navigation', () => {
     expect(holdings.walletTokens).toEqual([baseSoUsd, fuseSoUsd]);
     expect(holdings.shareAmount).toBeCloseTo(125.774869);
     expect(holdings.shareNetworkCount).toBe(2);
+    // The product page splits the two: wallet shares open their coin page, escrowed ones
+    // are "Backing your card".
+    expect(holdings.walletShareAmount).toBeCloseTo(25.774869);
+    expect(holdings.escrowedShareAmount).toBeCloseTo(100);
     expect(vaultShareHoldings([token()], [], VaultType.USDC)).toEqual({
       walletTokens: [],
       shareAmount: undefined,
+      walletShareAmount: 0,
+      escrowedShareAmount: 0,
       shareNetworkCount: 0,
     });
   });

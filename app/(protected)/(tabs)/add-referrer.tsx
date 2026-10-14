@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { addReferrer, fetchPoints } from '@/lib/api';
+import { isSafeServerMessage, normalizeErrorAsync } from '@/lib/errors';
 
 export default function AddReferrer() {
   const [code, setCode] = useState('');
@@ -42,18 +43,14 @@ export default function AddReferrer() {
       router.push(path.REWARDS);
     } catch (error: any) {
       console.error(error);
-      let errorMessage = 'Error, check if the code is valid and you have not added it already';
-      if (error instanceof Response) {
-        try {
-          const errorData = await error.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          // If JSON parsing fails, use default message
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      setError(errorMessage);
+      // The backend's own reason when it reads like copy ("Referral code not
+      // found"); otherwise the likely causes, never a raw message.
+      const { serverMessage } = await normalizeErrorAsync(error);
+      setError(
+        isSafeServerMessage(serverMessage)
+          ? serverMessage
+          : 'Check the code is right and that you haven’t added one already.',
+      );
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import {
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { toTransfiError } from '@/lib/transfiErrors';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
@@ -49,6 +50,7 @@ import {
   AgentSummary,
   AppOpenResponse,
   APYsByAsset,
+  AvailableStatementsResponse,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
@@ -137,6 +139,7 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
+  StatementDownload,
   StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
@@ -956,13 +959,16 @@ export class ApiError extends Error {
   readonly status: number;
   readonly statusCode: number;
   readonly code?: string;
+  /** The backend's `X-Request-Id` for the failed call; becomes the error Ref. */
+  readonly requestId?: string;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, requestId?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.statusCode = status;
     this.code = code;
+    this.requestId = requestId;
   }
 }
 
@@ -977,17 +983,20 @@ export const toApiError = async (
 ): Promise<ApiError> => {
   let code: string | undefined;
   let message: string | undefined;
+  let requestId = response.headers?.get?.('x-request-id') ?? undefined;
   try {
     const body = await response.json();
     if (body && typeof body === 'object') {
       if (typeof body.code === 'string') code = body.code;
       if (typeof body.message === 'string') message = body.message;
       else if (Array.isArray(body.message)) message = body.message.join(', ');
+      // The body copy survives where CORS hides the header.
+      if (typeof body.requestId === 'string') requestId = body.requestId;
     }
   } catch {
     // non-JSON error body — keep the generic fallback
   }
-  return new ApiError(response.status, message ?? fallbackMessage, code);
+  return new ApiError(response.status, message ?? fallbackMessage, code, requestId);
 };
 
 /**
@@ -3721,6 +3730,38 @@ export const renamePasskey = async (
   return response.json();
 };
 
+/** Failure text fields an activity can carry, which reach Mongo and the admin portal. */
+const ACTIVITY_FAILURE_FIELDS = ['error', 'errorMessage', 'reason'] as const;
+
+/**
+ * Sanitize an activity's failure text before it leaves the device. Callers have
+ * long written `error.message` straight into `metadata.error`, and for RPC
+ * failures that message holds the provider URL with its API key: hundreds of
+ * activity rows carried one. Applied here so every writer is covered.
+ */
+const withSanitizedFailure = <T extends { metadata?: unknown; failureReason?: unknown }>(
+  event: T,
+): T => {
+  const metadata =
+    event.metadata && typeof event.metadata === 'object'
+      ? { ...(event.metadata as Record<string, unknown>) }
+      : undefined;
+  if (metadata) {
+    for (const field of ACTIVITY_FAILURE_FIELDS) {
+      if (typeof metadata[field] === 'string') {
+        metadata[field] = sanitizeTechnicalMessage(metadata[field]);
+      }
+    }
+  }
+  return {
+    ...event,
+    ...(metadata ? { metadata } : {}),
+    ...(typeof event.failureReason === 'string'
+      ? { failureReason: sanitizeTechnicalMessage(event.failureReason) }
+      : {}),
+  };
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {
@@ -3734,7 +3775,7 @@ export const createActivityEvent = async (
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify(event),
+    body: JSON.stringify(withSanitizedFailure(event)),
   });
 
   if (!response.ok) throw response;
@@ -3780,7 +3821,7 @@ export const updateActivityEvent = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify(event),
+      body: JSON.stringify(withSanitizedFailure(event)),
     },
   );
 
@@ -4295,6 +4336,57 @@ export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+/** The months the signed-in user can download a statement for, newest first. */
+export const getAvailableStatements = async (): Promise<AvailableStatementsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements/available`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+const STATEMENT_FILENAME = /filename="([^"]+)"/;
+
+/**
+ * One month's statement — card activity and wallet transactions together — as
+ * CSV text. The server names the file (it marks the current month `-partial`),
+ * so the name is read from Content-Disposition and only rebuilt here if that
+ * header is not exposed to the client.
+ */
+export const downloadStatement = async (month: string): Promise<StatementDownload> => {
+  const jwt = getJWTToken();
+  const params = new URLSearchParams({ month, format: 'csv' });
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements?${params.toString()}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.csv`;
+
+  return { filename, content: await response.text() };
 };
 
 /**
@@ -5045,6 +5137,48 @@ export const recordAppOpen = async (
   });
   if (!response.ok) throw response;
   return response.json();
+};
+
+/** A failure the app just showed, as `POST /accounts/v1/client-errors` takes it. */
+export interface ClientErrorReport {
+  ref: string;
+  eventId: string;
+  requestId?: string;
+  action: string;
+  code: string;
+  kind: string;
+  surface: 'sheet' | 'toast' | 'inline' | 'screen';
+  title: string;
+  body?: string;
+  message?: string;
+  httpStatus?: number;
+  nothingSent?: boolean;
+  platform?: 'ios' | 'android' | 'web';
+  appVersion?: string;
+  route?: string;
+  details?: { amount?: string; token?: string; network?: string };
+  occurredAt: string;
+}
+
+/**
+ * Record a failure the user was shown, under the Ref on their screen, so
+ * support can look it up from the admin portal. Works signed out too: sign-up
+ * and login fail as well. Telemetry only — callers must not await it in a UI
+ * path or surface its failure.
+ */
+export const reportClientError = async (report: ClientErrorReport): Promise<void> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/client-errors`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(report),
+  });
+  if (!response.ok) throw response;
 };
 
 /** Confirm the native review sheet was actually invoked, starting its cooldown. */

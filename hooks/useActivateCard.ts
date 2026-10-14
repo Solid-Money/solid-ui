@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { path } from '@/constants/path';
@@ -97,17 +97,17 @@ export function useActivateCard() {
     cardsEndorsement,
   });
 
-  // Track page view on mount
+  // Snapshot the initial values so polling cannot count another page view.
+  const pageViewProperties = useRef({
+    card_status: cardStatus,
+    kyc_status: _kycStatus,
+    is_card_pending: isCardPending,
+    is_card_blocked: isCardBlocked,
+    is_under_review: isUnderReview,
+    country_confirmed: countryConfirmed === 'true',
+  });
   useEffect(() => {
-    track(TRACKING_EVENTS.CARD_ACTIVATE_PAGE_VIEWED, {
-      card_status: cardStatus,
-      kyc_status: _kycStatus,
-      is_card_pending: isCardPending,
-      is_card_blocked: isCardBlocked,
-      is_under_review: isUnderReview,
-      country_confirmed: countryConfirmed === 'true',
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    track(TRACKING_EVENTS.CARD_ACTIVATE_PAGE_VIEWED, pageViewProperties.current);
   }, []);
 
   // Redirect if user already has a Rain card (active/frozen/inactive). The BD

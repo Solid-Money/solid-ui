@@ -1,6 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -21,9 +28,9 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors';
 import { buildRecoveryPasskeyName, isTurnkeySessionError } from '@/lib/utils/passkey';
 import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
-import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { selectLastKnownIdentity, useUserStore } from '@/store/useUserStore';
 
 // Validation schemas
@@ -135,7 +142,8 @@ function RecoveryPasskey() {
     } catch (err: any) {
       console.error('Failed to send OTP:', err);
       setApiError(
-        userFacingErrorMessage(err, 'Failed to send verification code. Please try again.'),
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to send verification code. Please try again.',
       );
     } finally {
       setLoading(false);
@@ -173,10 +181,16 @@ function RecoveryPasskey() {
 
         // Store recovery data for passkey creation
         setRecoveryData(verifyResponse);
+        // The add-passkey step has no field to type in, so the code's keyboard
+        // has nothing left to do but sit over the "Create passkey" button.
+        Keyboard.dismiss();
         setStep(STEPS.ADD_PASSKEY);
       } catch (err: any) {
         console.error('Failed to verify OTP:', err);
-        setApiError(userFacingErrorMessage(err, 'Invalid verification code. Please try again.'));
+        setApiError(
+          getUserErrorMessage(err, { action: 'account' }) ||
+            'Invalid verification code. Please try again.',
+        );
       } finally {
         setLoading(false);
       }
@@ -308,7 +322,10 @@ function RecoveryPasskey() {
         return;
       }
 
-      setApiError(userFacingErrorMessage(err, 'Failed to create passkey. Please try again.'));
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to create passkey. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -339,7 +356,10 @@ function RecoveryPasskey() {
       setOtpId(response.otpId);
     } catch (err: any) {
       console.error('Failed to resend OTP:', err);
-      setApiError(userFacingErrorMessage(err, 'Failed to resend code. Please try again.'));
+      setApiError(
+        getUserErrorMessage(err, { action: 'account' }) ||
+          'Failed to resend code. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -380,15 +400,30 @@ function RecoveryPasskey() {
   if (!isDesktop) {
     return (
       <SafeAreaView className="flex-1 bg-background text-foreground">
-        <View className="flex-1">
+        {/* Every step but the last opens the keyboard, and the form sits
+            centred - right where the keyboard lands. Android draws edge-to-edge
+            now, so it no longer resizes the window for the keyboard either. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          enabled={Platform.OS !== 'web'}
+          className="flex-1"
+        >
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
             <BackButton onPress={handleBack} />
           </View>
 
-          {/* Content - centered vertically */}
-          <View className="flex-1 items-center justify-center px-6 pb-8">{stepContent}</View>
-        </View>
+          {/* Content - centered vertically, scrollable once the keyboard leaves
+              too little room for the whole form */}
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="flex-grow items-center justify-center px-6 pb-8"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {stepContent}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }

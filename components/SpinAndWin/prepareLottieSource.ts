@@ -67,7 +67,7 @@ function createBaseSource(): AnimationObject {
 const baseSource = createBaseSource();
 
 function findWheelRotationLayer(source: AnimationObject): LottieLayer | undefined {
-  const assets = (source as Record<string, unknown>).assets as LottieAsset[] | undefined;
+  const assets = source.assets as LottieAsset[] | undefined;
   if (!assets) return undefined;
 
   const precomp = assets.find(asset => asset.id === WHEEL_ROTATION_ASSET_ID);
