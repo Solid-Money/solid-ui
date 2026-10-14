@@ -12,6 +12,7 @@ import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client';
 let _infoClient: ReturnType<typeof createInfoClient> | null = null;
 let _infoClientFuse: ReturnType<typeof createInfoClient> | null = null;
 let _infoClientEth: ReturnType<typeof createInfoClient> | null = null;
+let _infoClientEur: ReturnType<typeof createInfoClient> | null = null;
 let _algebraInfoClient: ReturnType<typeof createAlgebraInfoClient> | null = null;
 
 const createInfoClient = (uri?: string) =>
@@ -55,6 +56,24 @@ export const getInfoClientEth = () => {
     _infoClientEth = createInfoClient(process.env.EXPO_PUBLIC_INFO_GRAPH_ETH);
   }
   return _infoClientEth;
+};
+
+/**
+ * Get the EUR (soEURC) vault info graph Apollo client, or `null` when this build
+ * has no soEURC subgraph.
+ *
+ * Unlike the FUSE and ETH getters this never falls back to `EXPO_PUBLIC_INFO_GRAPH`:
+ * that is the USD vault's subgraph, and reading soUSD deposits and withdrawals as
+ * soEURC ones would be wrong data rather than missing data. Callers treat `null` as
+ * "no history available".
+ */
+export const getInfoClientEur = () => {
+  const uri = process.env.EXPO_PUBLIC_INFO_GRAPH_EUR;
+  if (!uri) return null;
+  if (!_infoClientEur) {
+    _infoClientEur = createInfoClient(uri);
+  }
+  return _infoClientEur;
 };
 
 /**

@@ -100,6 +100,10 @@ export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
  */
 export const EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT ?? '10';
+
+/** Minimum EURC into soEURC. Unset, it matches the USD vault's minimum (in EURC rather than USDC). */
+export const EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT ?? EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT;
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
@@ -273,6 +277,12 @@ type Addresses = {
     accountant: Address;
     boringQueue: Address;
     usdc: Address;
+    /** soEURC BoringVault — also the share token, and the spender a EURC deposit approves. */
+    soEurcVault: Address;
+    /** Plain TellerWithMultiAssetSupport: `deposit` is public, no LayerZero, no native deposits. */
+    soEurcTeller: Address;
+    soEurcAccountant: Address;
+    soEurcBoringQueue: Address;
   };
 };
 
@@ -292,6 +302,7 @@ export const PRODUCTION_VAULT_ADDRESSES = {
   },
   base: {
     vault: '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31',
+    soEurcVault: '0x1c6B29c8ac1E12A34D74DdaFCF016246d6aEdfff',
   },
 } as const;
 
@@ -397,6 +408,12 @@ export const ADDRESSES: Addresses = {
     boringQueue: isProduction
       ? '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2'
       : ((process.env.EXPO_PUBLIC_BASE_SOUSD_QUEUE_ADDRESS ?? ZERO_ADDRESS) as Address),
+    // soEURC (Solid EURC). One deployment serves both QA and production; which builds
+    // can see the vault is decided by `isDevFeatureEnabled` in constants/vaults.ts.
+    soEurcVault: PRODUCTION_VAULT_ADDRESSES.base.soEurcVault,
+    soEurcTeller: '0xb02796D0b8e1f39265C48e31c94a48c428266Ddb',
+    soEurcAccountant: '0x23710C9fdF34b7E1eF28A92a19F9fdC0aC99518c',
+    soEurcBoringQueue: '0xf68057c26eaF1F49800EaE86046B2b70Bd8Ded06',
   },
 };
 
