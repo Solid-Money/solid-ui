@@ -27,6 +27,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
+import { useSyncNativeHelp } from '@/hooks/useHelp';
 import { useNotificationPermissionReminder } from '@/hooks/useNotificationPermissionReminder';
 import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
@@ -143,6 +144,8 @@ export default function ProtectedLayout() {
   // Live activity, balance and card transaction updates for the signed-in user,
   // over one Socket.IO connection (see lib/realtime/realtimeClient).
   useRealtime(!!user);
+  // Help center links open natively for users who have the in-house help center.
+  useSyncNativeHelp();
 
   // MeaWallet MPP: initialize once on native (required before any MPP API use).
   // Deferred off the first-paint critical path — MPP isn't needed at startup.
@@ -316,6 +319,34 @@ export default function ProtectedLayout() {
             name="gooddollar/index"
             options={{
               headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="support/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/index"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/articles/[slug]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="help/collections/[slug]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
             }}
           />
         </Stack>

@@ -61,3 +61,37 @@ describe('useSupportDrawerStore', () => {
     });
   });
 });
+
+describe('useSupportDrawerStore typed requests', () => {
+  afterEach(() => {
+    closeSupportDrawer();
+  });
+
+  it('carries a draft for Intercom and a reference for the in-house chat', () => {
+    openSupportDrawer({
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1', label: 'Starbucks · $4.50' },
+    });
+
+    expect(useSupportDrawerStore.getState()).toMatchObject({
+      isOpen: true,
+      chatMessage: 'Question about card transaction',
+      context: { kind: 'card_transaction', id: 'tx_1', label: 'Starbucks · $4.50' },
+    });
+
+    closeSupportDrawer();
+    expect(useSupportDrawerStore.getState().context).toBeUndefined();
+  });
+
+  it('drops a context the server would refuse, so the message still sends', () => {
+    openSupportDrawer({ context: { kind: 'made_up' as never, id: 'x' } });
+    expect(useSupportDrawerStore.getState().context).toBeUndefined();
+
+    openSupportDrawer({ context: { kind: 'activity', id: 'has spaces/and slashes' } });
+    expect(useSupportDrawerStore.getState().context).toEqual({
+      kind: 'activity',
+      id: undefined,
+      label: undefined,
+    });
+  });
+});

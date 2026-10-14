@@ -1,7 +1,7 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { useHasFeature } from '@/hooks/useFeatureAccess';
+import { useFeatureAccess, useHasFeature } from '@/hooks/useFeatureAccess';
 import { getFeatureAccess } from '@/lib/api';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -79,4 +79,30 @@ it('does not ask without a signed-in user', async () => {
 
   expect(await run('onramper')).not.toContain(true);
   expect(mockGetFeatureAccess).not.toHaveBeenCalled();
+});
+
+it('tells a failed check apart from "not on the whitelist"', async () => {
+  mockGetFeatureAccess.mockRejectedValue(new Error('offline'));
+  const client = new QueryClient();
+  const states: ReturnType<typeof useFeatureAccess>[] = [];
+  const Probe = () => {
+    states.push(useFeatureAccess('supportChat'));
+    return null;
+  };
+  let root: any;
+  await act(async () => {
+    root = create(
+      <QueryClientProvider client={client}>
+        <Probe />
+      </QueryClientProvider>,
+    );
+  });
+  // The hook retries once (after about a second) before it reports the failure.
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1_500));
+  });
+  expect(states[0]).toMatchObject({ ready: false, isError: false });
+  expect(states.at(-1)).toMatchObject({ hasFeature: false, ready: true, isError: true });
+  await act(async () => root.unmount());
+  client.clear();
 });

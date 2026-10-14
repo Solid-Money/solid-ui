@@ -1,5 +1,5 @@
 import React, { ReactNode, useCallback, useState } from 'react';
-import { Linking, Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Href, router, useFocusEffect } from 'expo-router';
 import {
@@ -37,6 +37,7 @@ import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionSt
 import { useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useTotp } from '@/hooks/useTotp';
 import useUser from '@/hooks/useUser';
+import { openHelpLink } from '@/lib/help/links';
 import { KycStatus, RewardsTier } from '@/lib/types';
 import {
   formatWholeDollars,
@@ -65,13 +66,8 @@ const mobileHeader = (
   </View>
 );
 
-const openLegal = () => {
-  if (Platform.OS === 'web') {
-    window.open(LEGAL_URL, '_blank');
-  } else {
-    void Linking.openURL(LEGAL_URL);
-  }
-};
+// In the app's help center when it can; the website otherwise.
+const openLegal = () => openHelpLink(LEGAL_URL);
 
 /** One of the two tiles under the profile: Rewards and Refer & earn. */
 const ProfileTile = ({
