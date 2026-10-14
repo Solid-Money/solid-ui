@@ -102,7 +102,7 @@ export const useTotalAPY = (vault?: VaultType) => {
   return useQuery({
     queryKey: [ANALYTICS, 'totalAPY'],
     queryFn: fetchTotalAPY,
-    // `eur` may be absent or null until the API reports the EUR vault: no APY.
+    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY.
     select: data => data[vaultKey] ?? undefined,
   });
 };
@@ -605,7 +605,7 @@ export const useAPYs = (vault?: VaultType) => {
   const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
     ...apysQueryOptions(),
-    // `eur` may be absent or null until the API reports the EUR vault: no APY.
+    // `eur` is 0 until soEURC earns, and absent or null on older APIs: no APY.
     select: (data): APYs | undefined => data[vaultKey] ?? undefined,
   });
 };

@@ -76,7 +76,7 @@ export function useSavingsYield({
 
   // A card that switches vault in place must not carry the old vault's interest
   // over: the summary-based vaults keep their last value until the backend
-  // answers, and soEURC's summary may not answer at all yet.
+  // answers, and a failed summary request never answers.
   const previousVault = useRef(vault);
   useEffect(() => {
     if (previousVault.current === vault) return;
@@ -99,8 +99,9 @@ export function useSavingsYield({
     // subgraph for either) and stays valid even if the on-chain balance read is
     // momentarily 0 (slow/failed RPC poll or a vault switch). Handle it BEFORE the
     // balance<=0 guard so a transient 0 balance can't wipe the anchor and snap
-    // interest to 0. A summary the backend cannot serve yet (soEURC before it
-    // accepts `?vault=EUR`) leaves the interest at 0 rather than guessing.
+    // interest to 0. A summary the backend cannot serve (an API that predates
+    // `?vault=EUR`, or a failed request) leaves the interest at 0 rather than
+    // guessing.
     if (mode === SavingMode.CURRENT && vault && SUMMARY_VAULTS.includes(vault)) {
       if (summary) {
         const backendInterest = parseFloat(summary.interestEarnedUSD);
