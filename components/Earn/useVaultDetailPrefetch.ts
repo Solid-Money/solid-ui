@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { InteractionManager } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { VAULTS } from '@/constants/vaults';
 import {
   DEFAULT_HISTORICAL_APY_DAYS,
   historicalApyQueryOptions,
   vaultBreakdownQueryOptions,
 } from '@/hooks/useAnalytics';
+import { LIVE_VAULTS } from '@/lib/vaults';
 
 /**
  * Warms the two queries the vault detail screen cannot inherit from Earn.
@@ -25,7 +25,8 @@ export const useVaultDetailPrefetch = () => {
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
-      for (const vault of VAULTS) {
+      // The vaults Earn shows a tile for — a coming-soon vault has no detail screen to warm.
+      for (const vault of LIVE_VAULTS) {
         queryClient.prefetchQuery(
           historicalApyQueryOptions(DEFAULT_HISTORICAL_APY_DAYS, vault.type),
         );

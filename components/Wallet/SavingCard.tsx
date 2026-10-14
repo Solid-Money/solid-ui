@@ -19,6 +19,7 @@ import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { VaultType } from '@/lib/types';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
 
 // Native doesn't resolve bg-purple/50 from CSS vars → dark opaque bar. Use bright transparent overlay to match web.
@@ -30,9 +31,12 @@ type SavingCardProps = {
   decimalPlaces?: number;
 };
 
-const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
-const usdcVault = ACTIVE_VAULTS[0];
-const fuseVault = ACTIVE_VAULTS[1];
+// By type, never by position: VAULTS gains entries per build (soEURC on QA/preview).
+const liveVault = (type: VaultType) =>
+  VAULTS.find(vault => vault.type === type && !vault.isComingSoon);
+const usdcVault = liveVault(VaultType.USDC) ?? VAULTS[0];
+const fuseVault = liveVault(VaultType.FUSE);
+const eurVault = liveVault(VaultType.EUR);
 
 const ICON_SIZE = 28;
 
@@ -45,22 +49,27 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
   const { user } = useUser();
   const address = user?.safeAddress as Address;
   const { data: balanceUsdc } = useVaultBalance(address, usdcVault);
-  const { data: balanceFuse } = useVaultBalance(address, fuseVault);
+  const { data: balanceFuse } = useVaultBalance(address, fuseVault ?? usdcVault);
+  const { data: balanceEur } = useVaultBalance(address, eurVault ?? usdcVault);
 
   const vaultIcons = useMemo(() => {
     const icons: { symbol: string; key: string }[] = [];
     if (balanceUsdc && balanceUsdc > 0) {
       icons.push({ symbol: 'SOUSD', key: 'sousd' });
     }
-    if (balanceFuse && balanceFuse > 0) {
+    if (fuseVault && balanceFuse && balanceFuse > 0) {
       icons.push({ symbol: 'SOFUSE', key: 'sofuse' });
+    }
+    // The icon only: the figure beside it is USD and soEURC is never converted into it.
+    if (eurVault && balanceEur && balanceEur > 0) {
+      icons.push({ symbol: 'SOEURC', key: 'soeurc' });
     }
     // Show soUSD by default if user has no balances yet
     if (icons.length === 0) {
       icons.push({ symbol: 'SOUSD', key: 'sousd' });
     }
     return icons;
-  }, [balanceUsdc, balanceFuse]);
+  }, [balanceUsdc, balanceFuse, balanceEur]);
 
   return (
     <Pressable

@@ -39,11 +39,17 @@ export interface UseSavingsYieldParams {
   tokenAddress?: string;
   /** When true, treat interest inputs as loaded. Omit to use internal buckets. */
   inputsReady?: boolean;
-  /** Backend savings summary — used for soFUSE interest (no subgraph available) */
+  /** Backend savings summary — used for soFUSE and soEURC interest (no subgraph available) */
   summary?: SavingsSummaryResponse | null;
-  /** Vault identifier ('USDC' | 'FUSE') — FUSE uses backend summary, USDC uses subgraph */
+  /**
+   * Vault name ('USDC' | 'FUSE' | 'ETH' | 'EUR') — FUSE and EUR use the backend
+   * summary, USDC and ETH the subgraph.
+   */
   vault?: string;
 }
+
+/** Vaults with no subgraph, whose interest comes from the backend savings summary. */
+const SUMMARY_VAULTS = ['FUSE', 'EUR'];
 
 export function useSavingsYield({
   balance,
@@ -78,11 +84,13 @@ export function useSavingsYield({
 
   // Full calc only when inputs change (no animation). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
-    // soFUSE CURRENT mode: interest comes from the backend summary (no subgraph
-    // for FUSE) and stays valid even if the on-chain balance read is momentarily
-    // 0 (slow/failed RPC poll or a vault switch). Handle it BEFORE the balance<=0
-    // guard so a transient 0 balance can't wipe the anchor and snap interest to 0.
-    if (mode === SavingMode.CURRENT && vault === 'FUSE') {
+    // soFUSE / soEURC CURRENT mode: interest comes from the backend summary (no
+    // subgraph for either) and stays valid even if the on-chain balance read is
+    // momentarily 0 (slow/failed RPC poll or a vault switch). Handle it BEFORE the
+    // balance<=0 guard so a transient 0 balance can't wipe the anchor and snap
+    // interest to 0. A summary the backend cannot serve yet (soEURC before it
+    // accepts `?vault=EUR`) leaves the interest at 0 rather than guessing.
+    if (mode === SavingMode.CURRENT && vault && SUMMARY_VAULTS.includes(vault)) {
       if (summary) {
         const backendInterest = parseFloat(summary.interestEarnedUSD);
         const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);

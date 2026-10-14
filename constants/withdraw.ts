@@ -1,5 +1,12 @@
-/** Token symbols that can be withdrawn from vaults (soUSD/soUSDC, soFUSE, fUSDC, soETH). */
-export const SOLID_TOKEN_SYMBOLS = ['sousd', 'sousdc', 'sofuse', 'fusdc', 'soeth'] as const;
+/** Token symbols that can be withdrawn from vaults (soUSD/soUSDC, soFUSE, fUSDC, soETH, soEURC). */
+export const SOLID_TOKEN_SYMBOLS = [
+  'sousd',
+  'sousdc',
+  'sofuse',
+  'fusdc',
+  'soeth',
+  'soeurc',
+] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
 
@@ -11,9 +18,9 @@ export function isSolidTokenSymbol(symbol: string | undefined): boolean {
 /**
  * A savings "vault" groups the withdrawable tokens by their underlying asset,
  * independent of the network they sit on. soUSD and fUSDC both belong to the
- * USD vault; soFUSE and soETH have their own vaults.
+ * USD vault; soFUSE, soETH and soEURC have their own vaults.
  */
-export type VaultKey = 'USD' | 'FUSE' | 'ETH';
+export type VaultKey = 'USD' | 'FUSE' | 'ETH' | 'EUR';
 
 export interface VaultMeta {
   key: VaultKey;
@@ -23,9 +30,12 @@ export interface VaultMeta {
   iconSymbol: string;
   /** Asset the user ultimately receives when withdrawing. */
   destinationSymbol: string;
+  /** Network the destination asset is delivered on, for the "To" row. */
+  destinationNetwork: string;
   /**
    * Whether reaching the destination requires bridging Fuse -> Ethereum first
-   * (a 2-step flow). soFUSE withdraws directly on Fuse in a single step.
+   * (a 2-step flow). soFUSE withdraws directly on Fuse and soEURC directly on
+   * Base, each in a single step.
    */
   requiresBridge: boolean;
 }
@@ -36,6 +46,7 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     displayName: 'soUSD',
     iconSymbol: 'soUSD',
     destinationSymbol: 'USDC',
+    destinationNetwork: 'Ethereum',
     requiresBridge: true,
   },
   ETH: {
@@ -43,6 +54,7 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     displayName: 'soETH',
     iconSymbol: 'soETH',
     destinationSymbol: 'WETH',
+    destinationNetwork: 'Ethereum',
     requiresBridge: true,
   },
   FUSE: {
@@ -50,6 +62,15 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
     displayName: 'soFUSE',
     iconSymbol: 'soFUSE',
     destinationSymbol: 'FUSE',
+    destinationNetwork: 'Fuse',
+    requiresBridge: false,
+  },
+  EUR: {
+    key: 'EUR',
+    displayName: 'soEURC',
+    iconSymbol: 'soEURC',
+    destinationSymbol: 'EURC',
+    destinationNetwork: 'Base',
     requiresBridge: false,
   },
 };
@@ -61,6 +82,7 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'sousd' || s === 'sousdc' || s === 'fusdc') return 'USD';
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
+  if (s === 'soeurc') return 'EUR';
   return null;
 }
 

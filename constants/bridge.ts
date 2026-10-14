@@ -4,7 +4,7 @@ import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'viem/c
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
-type BridgeToken = {
+export type BridgeToken = {
   name?: string;
   fullName?: string;
   address: string;
@@ -207,8 +207,14 @@ export const BRIDGE_TOKENS: BridgeTokens = {
  * Deliberately not in `BRIDGE_TOKENS`: every surface that offers a token on a
  * chain reads that map, and EURC belongs to one of them. The backend delivers a
  * EURC card deposit as EURC to the user's Safe on Base, where the Base
- * spend-module instance sells it for euro purchases. It mints no savings share,
- * and EURC sent straight to the Safe on Ethereum would stay on Ethereum.
+ * spend-module instance sells it for euro purchases. A card deposit mints no
+ * savings share, and EURC sent straight to the Safe on Ethereum would stay on
+ * Ethereum.
+ *
+ * The one savings use is the soEURC vault (QA/preview builds only, see
+ * `EUR_VAULT`): its deposit form reads EURC from here through
+ * `getVaultDepositToken`, so listing EURC for that vault still leaves it out of
+ * every `BRIDGE_TOKENS` surface, and nothing else mints soEURC from EURC.
  *
  * Base only for now. The backend also accepts EURC sent from Ethereum
  * (0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c) and bridges it to Base, but that

@@ -4,6 +4,10 @@ import { Image } from 'expo-image';
 import { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
 import { VaultType } from '@/lib/types';
 
+// Required directly, like PORTFOLIO_ICONS: the asset registry pulls in animated marks.
+// TODO(soEURC): the EURC coin mark until design supplies an EUR Yield icon.
+const EURC_ICON = require('@/assets/images/eurc.png');
+
 // The ETH and FUSE marks are drawn on a 40.77 × 40 canvas with their own 10% circle;
 // the USD glyph is the bare "$", so it gets its circle here.
 const CANVAS_RATIO = 40.7692 / 40;
@@ -22,7 +26,7 @@ interface YieldIconProps {
   ringColor?: string;
 }
 
-/** USD Yield / ETH Yield / FUSE Yield, and with `live` their share tokens. */
+/** USD Yield / ETH Yield / FUSE Yield / EUR Yield, and with `live` their share tokens. */
 export default function YieldIcon({
   vaultType,
   size = 40,
@@ -50,6 +54,12 @@ export default function YieldIcon({
             style={{ width: USD_GLYPH.width * scale, height: USD_GLYPH.height * scale }}
           />
         </View>
+      ) : vaultType === VaultType.EUR ? (
+        <Image
+          source={EURC_ICON}
+          contentFit="contain"
+          style={{ width: size * CANVAS_RATIO, height: size, borderRadius: size }}
+        />
       ) : (
         <Image
           source={vaultType === VaultType.ETH ? PORTFOLIO_ICONS.eth : PORTFOLIO_ICONS.fuse}

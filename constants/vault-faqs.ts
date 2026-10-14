@@ -8,7 +8,8 @@ import { Faq, VaultType } from '@/lib/types';
  * didn't receive 1 soUSD per USDC. Each vault answers for itself here instead.
  *
  * Copy is product-owned (Monday 12943830277) and reproduced verbatim — edit it
- * there, not here.
+ * there, not here. The EUR vault's copy is the exception: it was written with the
+ * vault's launch and is not on that board yet.
  */
 const VAULT_FAQS: Record<VaultType, Faq[]> = {
   [VaultType.USDC]: [
@@ -85,6 +86,28 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
       question: 'Why put FUSE in FUSE Yield rather than just holding it?',
       answer:
         'Idle FUSE earns nothing. The same FUSE in FUSE Yield earns network rewards plus the treasury boost, keeps earning Solid Rewards points, and counts toward Prime or Ultra through Skip the Line. One deposit, three benefits.',
+    },
+  ],
+  // TODO(soEURC): product to review and move this copy to the Monday board above.
+  [VaultType.EUR]: [
+    {
+      question: 'What is soEURC?',
+      answer:
+        'Your euro savings. Deposit EURC, the euro stablecoin, on Base and receive soEURC. Your balance is shown in euros, never converted to dollars.',
+    },
+    {
+      question: 'How do I deposit?',
+      answer:
+        'Move EURC on Base from your Solid wallet, or send it from a connected external wallet. Other tokens and networks are not supported for EUR Yield yet.',
+    },
+    {
+      question: 'Does EUR Yield earn interest yet?',
+      answer: 'Not yet. Yield is coming soon. Until it starts earning, its APY shows as —.',
+    },
+    {
+      question: 'How fast can I withdraw?',
+      answer:
+        'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
     },
   ],
 };
