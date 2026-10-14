@@ -11,6 +11,7 @@ const DISPLAY_NAMES: Record<VaultType, string> = {
   [VaultType.USDC]: 'USDC',
   [VaultType.FUSE]: 'Fuse',
   [VaultType.ETH]: 'Ethereum',
+  [VaultType.EUR]: 'Euro',
 };
 
 export type SavingsVaultDisplay = {
@@ -20,7 +21,7 @@ export type SavingsVaultDisplay = {
   index: number;
 };
 
-/** Ordered list [USDC, FUSE, ETH] with display name + icon, for the vault rows. */
+/** VAULTS order (USDC, FUSE, ETH, then EUR where listed) with display name + icon, for the vault rows. */
 export const SAVINGS_VAULTS: SavingsVaultDisplay[] = VAULTS.map((vault, index) => ({
   type: vault.type,
   name: DISPLAY_NAMES[vault.type] ?? vault.name,

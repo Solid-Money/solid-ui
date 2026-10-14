@@ -1,39 +1,52 @@
 import { type PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
+import { USD_VAULT_TYPES } from '@/lib/vaultCurrency';
 import { getEarningTokenVault } from '@/lib/vaults';
 
 import { YIELD_PRODUCT_ORDER } from './yieldProducts';
 
 export type VaultAmounts = Record<VaultType, number>;
+/** Per-vault APY, `undefined` for a vault with no rate to show (soEURC before it earns). */
+export type VaultApys = Record<VaultType, number | undefined>;
+/** Per-vault USD values. soEURC is held in EUR, so it has no entry to add. */
+export type UsdVaultAmounts = Partial<VaultAmounts>;
 
-export const formatVaultApyLabel = (apy: number) => `${apy.toFixed(1)}% APY`;
+/** `4.5% APY`, or `— APY` for a vault with no rate yet — never an invented 0%. */
+export const formatVaultApyLabel = (apy: number | undefined) =>
+  apy === undefined ? '— APY' : `${apy.toFixed(1)}% APY`;
 
 /**
  * Shown when the analytics API reports no yield for a vault, so a vault card
  * never renders a 0% headline while upstream metrics are missing or zeroed.
  * These are indicative rates, not measured ones — keep them in step with the
  * rates the vaults are actually expected to return.
+ *
+ * soEURC has none: it does not earn yet, so it shows "—" rather than a rate it
+ * has never paid.
  */
-export const FALLBACK_VAULT_APY: VaultAmounts = {
+export const FALLBACK_VAULT_APY: VaultApys = {
   [VaultType.USDC]: 4,
   [VaultType.ETH]: 2,
   [VaultType.FUSE]: 14,
+  [VaultType.EUR]: undefined,
 };
 
-/** The reported APY when there is one, otherwise the vault's indicative rate. */
+/** The reported APY when there is one, otherwise the vault's indicative rate (if it has one). */
 export const resolveVaultApy = (vaultType: VaultType, apy: number | undefined) =>
   apy && apy > 0 ? apy : FALLBACK_VAULT_APY[vaultType];
 
 /**
- * Estimated interest generated in one day at each vault's current APY.
+ * Estimated interest generated in one day at each vault's current APY, in USD.
  * The estimate is deliberately derived per vault so mixed-asset portfolios
  * are weighted by their actual USD value rather than a blended headline rate.
+ *
+ * USD-valued vaults only: soEURC is held in EUR and never enters a dollar figure.
  */
 export const calculateEstimatedDailyEarnings = (
-  valuesByVault: VaultAmounts,
-  apyByVault: VaultAmounts,
+  valuesByVault: UsdVaultAmounts,
+  apyByVault: Partial<VaultApys>,
 ) =>
-  Object.values(VaultType).reduce(
+  USD_VAULT_TYPES.reduce(
     (total, vaultType) =>
       total +
       (Math.max(valuesByVault[vaultType] ?? 0, 0) * Math.max(apyByVault[vaultType] ?? 0, 0)) /
@@ -70,9 +83,13 @@ export const interestOverPastDays = (
     : Math.min(interest, Math.max(earnedSinceStart, 0));
 };
 
-/** What the portfolio holds of one product (USD / ETH / FUSE Yield), wherever its shares are. */
+/**
+ * What the portfolio holds of one product (USD / ETH / FUSE Yield), wherever its shares are.
+ * USD-valued products only: every holding feeds a dollar total, and EUR Yield (soEURC) is
+ * held in euros, so Earn lists it apart.
+ */
 export type YieldHolding = {
-  type: VaultType;
+  type: (typeof YIELD_PRODUCT_ORDER)[number];
   /** Undefined when none of it can be valued. */
   valueUsd: number | undefined;
   /** soUSD / soETH / soFUSE on every network, including shares backing the card. */

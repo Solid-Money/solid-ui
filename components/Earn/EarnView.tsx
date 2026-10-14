@@ -10,17 +10,20 @@ import { Text } from '@/components/ui/text';
 import { formatTokenAmount } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { isEurVault } from '@/lib/vaultCurrency';
 
 import { ApyTag, CheckDot, EarnChip, LockIcon } from './EarnChips';
 import YieldIcon from './YieldIcon';
-import { formatYieldUsd, yieldProductName, yieldVault } from './yieldProducts';
+import { formatYieldAmount, formatYieldUsd, yieldProductName, yieldVault } from './yieldProducts';
 
 /** One row under "Yields": a product, what it holds and its rate. */
 export type EarnProduct = {
   type: VaultType;
-  /** Undefined while it can't be valued. */
+  /** Undefined while it can't be valued — and always for EUR Yield, which has no USD value. */
   valueUsd: number | undefined;
-  /** soUSD / soETH / soFUSE held, for the line under the value. */
+  /** EUR Yield only: its value in euros. soEURC is never converted to dollars. */
+  valueEur?: number;
+  /** soUSD / soETH / soFUSE / soEURC held, for the line under the value. */
   shareAmount: number;
   /** FUSE locked for a tier: soFUSE in the lock, still earning FUSE Yield's rate. */
   lockedFuse?: number;
@@ -71,7 +74,10 @@ const ProductRow = ({
 }) => {
   const name = yieldProductName(product.type);
   const token = yieldVault(product.type).vaultToken;
-  const funded = !isLoading && (product.valueUsd ?? 0) > 0;
+  // Each product in its own currency: euros for EUR Yield, dollars for the rest.
+  const isEur = isEurVault(product.type);
+  const value = isEur ? product.valueEur : product.valueUsd;
+  const funded = !isLoading && (value ?? 0) > 0;
   const locked = (product.lockedFuse ?? 0) > 0;
 
   return (
@@ -86,14 +92,18 @@ const ProductRow = ({
         <Text className="text-[16px] font-semibold leading-5 text-white" numberOfLines={1}>
           {name}
         </Text>
-        <ApyTag apy={product.apy} isLoading={product.isApyLoading} />
+        <ApyTag
+          apy={product.apy}
+          isLoading={product.isApyLoading}
+          emptyLabel={isEur ? '— APY' : undefined}
+        />
       </View>
       {isLoading ? (
         <Skeleton className="h-5 w-20 rounded-md bg-white/10" />
       ) : funded ? (
         <View className="shrink-0 items-end gap-[5px]">
           <Text className="text-[16px] font-semibold leading-5 text-white">
-            {formatYieldUsd(product.valueUsd)}
+            {formatYieldAmount(value, product.type)}
           </Text>
           <View className="flex-row items-center gap-1">
             {locked ? <LockIcon /> : null}

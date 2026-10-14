@@ -2,7 +2,8 @@ import { parseUnits } from 'viem';
 
 import { VAULTS } from '@/constants/vaults';
 import { groupPortfolioCash } from '@/lib/portfolio';
-import { TokenBalance, TokenType, VaultType } from '@/lib/types';
+import { TokenBalance, TokenType, Vault, VaultType } from '@/lib/types';
+import { isEurVault, type UsdVaultType } from '@/lib/vaultCurrency';
 
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import type { usePortfolio } from '@/hooks/usePortfolio';
@@ -58,7 +59,10 @@ export const portfolioFixture: ReturnType<typeof usePortfolio> = {
   nextUnlockAt: '2027-03-12T00:00:00Z',
   hasCardBalance: false,
   creditDetailsAvailable: true,
-  earnAssets: VAULTS.map(vault => ({
+  // The portfolio model values USD vaults only; soEURC is held in EUR (see usePortfolio).
+  earnAssets: VAULTS.filter(
+    (vault): vault is Vault & { type: UsdVaultType } => !isEurVault(vault.type),
+  ).map(vault => ({
     vault,
     valueUsd: vault.type === VaultType.USDC ? 2560 : vault.type === VaultType.ETH ? 310 : 0,
     underlyingAmount: vault.type === VaultType.ETH ? 0.0775 : undefined,

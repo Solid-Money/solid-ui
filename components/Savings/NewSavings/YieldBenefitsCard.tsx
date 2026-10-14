@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { View } from 'react-native';
-import { ArrowUp, Award, CreditCard, RefreshCw, TrendingUp } from 'lucide-react-native';
+import { ArrowUp, Award, CreditCard, Euro, RefreshCw, TrendingUp } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { VaultType } from '@/lib/types';
@@ -15,7 +15,10 @@ const NOTHING_TO_MANAGE: Benefit = {
   body: 'Interest is added to your balance automatically. Nothing to claim.',
 };
 
-/** Only what is true of each product: soUSD backs the card, soETH and soFUSE do not. */
+/**
+ * Only what is true of each product: soUSD backs the card, soETH and soFUSE do not, and
+ * EUR Yield does not earn yet.
+ */
 const BENEFITS: Record<VaultType, Benefit[]> = {
   [VaultType.USDC]: [
     {
@@ -61,6 +64,27 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       body: 'soFUSE tracks FUSE, so you keep your exposure and earn on top of it.',
     },
     NOTHING_TO_MANAGE,
+  ],
+  // TODO(soEURC): product to review this copy.
+  [VaultType.EUR]: [
+    {
+      key: 'euros',
+      icon: Euro,
+      title: 'Stays in euros',
+      body: 'Deposit EURC on Base. Your balance is shown in euros, never converted to dollars.',
+    },
+    {
+      key: 'withdraw',
+      icon: ArrowUp,
+      title: 'Withdraw to EURC',
+      body: 'Withdrawals go through a queue and take up to about 3 days.',
+    },
+    {
+      key: 'yield',
+      icon: TrendingUp,
+      title: 'Yield coming soon',
+      body: 'This product does not earn yet. Its APY shows as — until it does.',
+    },
   ],
 };
 
