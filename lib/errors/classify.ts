@@ -75,7 +75,7 @@ export interface UserError {
 }
 
 /** User copy that some error classes already carry (vetted, written for users). */
-const USER_COPY_ERROR_NAMES = new Set(['TransfiError', 'OrchestraError']);
+const USER_COPY_ERROR_NAMES = new Set(['TransfiError', 'OrchestraError', 'UserCopyError']);
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
@@ -171,7 +171,7 @@ export const normalizeError = (error: unknown): NormalizedError => {
     asString(asRecord(responseData?.error)?.code);
   const serverMessage = response
     ? readBodyMessage(responseData)
-    : status !== undefined
+    : status !== undefined || (name && USER_COPY_ERROR_NAMES.has(name))
       ? asString(record.message)
       : undefined;
 
@@ -235,6 +235,8 @@ interface Classification {
 export const classifyError = (n: NormalizedError): Classification => {
   const haystack = `${n.name ?? ''} ${n.message} ${n.code ?? ''}`;
   const record = asRecord(n.original);
+
+  if (n.name === 'UserCopyError') return { kind: 'rejected', code: 'USER_COPY' };
 
   if (
     (n.name && CANCELLED_NAMES.has(n.name)) ||

@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 
+import { captureAccountScope } from '@/lib/accountScope';
 import {
   getSupportMessages,
   getSupportThread,
@@ -247,13 +248,17 @@ export function refreshMessage(
   const inFlight = linkRefreshes.get(message.id);
   if (inFlight) return inFlight;
   const started = generation;
+  const scope = captureAccountScope();
   const run = getSupportMessages({ afterSeq: message.seq - 1, limit: 1 })
     .then(({ messages }) => {
+      if (started !== generation || !scope.isCurrent()) return null;
       const fresh = messages.find(candidate => candidate.id === message.id) ?? null;
-      if (fresh && started === generation) store().receive([fresh]);
+      if (fresh) store().receive([fresh]);
       return fresh;
     })
-    .finally(() => linkRefreshes.delete(message.id));
+    .finally(() => {
+      if (linkRefreshes.get(message.id) === run) linkRefreshes.delete(message.id);
+    });
   linkRefreshes.set(message.id, run);
   return run;
 }

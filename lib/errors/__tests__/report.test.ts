@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react-native';
 
 import { track } from '@/lib/analytics';
 import { reportClientError } from '@/lib/api';
-import { describeError, normalizeError } from '@/lib/errors/classify';
+import { describeError, normalizeError, normalizeErrorAsync } from '@/lib/errors/classify';
 import { compactErrorRef, formatErrorRef } from '@/lib/errors/errorRef';
 import { activityFailureMetadata, reportUserError, shouldReport } from '@/lib/errors/report';
 import { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
@@ -120,6 +120,23 @@ describe('shouldReport', () => {
 });
 
 describe('activityFailureMetadata', () => {
+  it('keeps the activity Ref when a Response request ID is found asynchronously in its body', async () => {
+    const error = new Response(JSON.stringify({ requestId: RID }), { status: 500 });
+    const activity = activityFailureMetadata(error);
+    const normalized = await normalizeErrorAsync(error);
+    const shown = reportUserError(normalized, describeError(normalized), 'sheet');
+    expect(normalized.requestId).toBe(RID);
+    expect(shown?.eventId).toBe(activity.errorEventId);
+    expect(shown?.ref).toBe(activity.errorRef);
+  });
+
+  it('retains a request ID assigned by reporting before the activity is created', async () => {
+    const error = new Response(JSON.stringify({ requestId: RID }), { status: 500 });
+    const normalized = await normalizeErrorAsync(error);
+    const shown = reportUserError(normalized, describeError(normalized), 'sheet');
+    expect(activityFailureMetadata(error).errorEventId).toBe(shown?.eventId);
+    expect(shown?.eventId).toBe(RID);
+  });
   it('stores a sanitized cause and the Ref the user is about to see', () => {
     const error = new Error(
       'An internal error was received. URL: https://api.pimlico.io/v2/8453/rpc?apikey=pim_REDACTEDREDACTED',

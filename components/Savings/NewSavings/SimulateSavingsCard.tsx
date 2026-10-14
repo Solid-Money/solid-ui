@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TextStyle, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -73,6 +73,9 @@ const SimulateSavingsCard = ({ apy, initialPrincipal, className }: SimulateSavin
     [ownAmount],
   );
   const [principal, setPrincipal] = useState<number>(ownAmount ?? DEFAULT_PRINCIPAL);
+  useEffect(() => {
+    if (ownAmount !== undefined) setPrincipal(ownAmount);
+  }, [ownAmount]);
   const [activeIndex, setActiveIndex] = useState<number>(DEFAULT_INDEX);
 
   const safeApy = Number.isFinite(apy) && apy > 0 ? apy : 5;

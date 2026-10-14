@@ -16,7 +16,7 @@ import {
   resumeTierSubscription,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
+import { getUserErrorMessage, sanitizeTechnicalMessage, UserCopyError } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
@@ -303,7 +303,7 @@ export const useLockFuseForTier = () => {
       wrappedNativeAddress?: string | null;
     }) => {
       if (!user?.suborgId || !user?.signWith) {
-        throw new Error('Your wallet is still setting up. Please try again shortly.');
+        throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
 
       const transactions = buildLockTransactions({
@@ -395,13 +395,13 @@ export const useSubscribeToTier = () => {
       moduleEnabled: boolean;
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
-        throw new Error('Your wallet is still setting up. Please try again shortly.');
+        throw new UserCopyError('Your wallet is still setting up. Please try again shortly.');
       }
 
       // Rounded to whole cents before scaling, so a price stored as a decimal
       // cannot become a mandate a fraction under what will be charged.
       const mandate = BigInt(Math.round(priceUsd * 100)) * 10n ** BigInt(BILLING_DECIMALS - 2);
-      if (mandate <= 0n) throw new Error('This tier is not available with an annual fee.');
+      if (mandate <= 0n) throw new UserCopyError('This tier is not available with an annual fee.');
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 

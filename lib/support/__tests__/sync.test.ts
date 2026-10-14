@@ -17,6 +17,11 @@ import { useSupportChatStore } from '@/store/useSupportChatStore';
 
 import { message, thread } from './fixtures';
 
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
 jest.mock('expo-crypto', () => {
   let n = 0;
   return { randomUUID: () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}` };
@@ -54,6 +59,35 @@ describe('support sync', () => {
   });
 
   describe('loading', () => {
+    it('returns no attachment URL after the account resets during a link refresh', async () => {
+      let finish!: (value: { messages: ReturnType<typeof message>[]; hasOlder: boolean }) => void;
+      const old = message({
+        attachments: [
+          {
+            key: 'private-file',
+            mime: 'application/pdf',
+            size: 100,
+            url: 'https://files.test/a?exp=1',
+            status: 'clean',
+          },
+        ],
+      });
+      mocked.getSupportMessages.mockReturnValue(new Promise(resolve => (finish = resolve)));
+      const pending = attachmentUrl(old, 'private-file');
+      resetSyncState();
+      state().reset();
+      finish({
+        messages: [
+          message({
+            id: old.id,
+            attachments: [{ ...old.attachments[0], url: 'https://files.test/fresh' }],
+          }),
+        ],
+        hasOlder: false,
+      });
+      await expect(pending).resolves.toBeNull();
+      expect(state().messages).toHaveLength(0);
+    });
     it('shares one request between callers', async () => {
       mocked.getSupportThread.mockResolvedValue(thread({ messages: [message()] }));
       await Promise.all([loadThread(), loadThread()]);

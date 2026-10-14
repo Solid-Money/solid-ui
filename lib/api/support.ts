@@ -1,3 +1,4 @@
+import { captureAccountScope } from '@/lib/accountScope';
 import { getJWTToken, getPlatformHeaders } from '@/lib/api';
 import { EXPO_PUBLIC_SUPPORT_API_BASE_URL } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
@@ -74,8 +75,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-const call = <T>(path: string, init?: RequestInit) =>
-  withRefreshToken(() => request<T>(path, init));
+const call = <T>(path: string, init?: RequestInit) => {
+  const scope = captureAccountScope();
+  return withRefreshToken(async () => {
+    scope.assertCurrent();
+    try {
+      const result = await request<T>(path, init);
+      scope.assertCurrent();
+      return result;
+    } catch (error) {
+      // Do not let a previous account's 401 refresh or retry a later session.
+      scope.assertCurrent();
+      throw error;
+    }
+  });
+};
 
 /** For the help center client (lib/api/help.ts): same base, session and errors. */
 export const supportCall = call;

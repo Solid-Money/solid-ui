@@ -10,6 +10,7 @@ import {
   normalizeErrorAsync,
   toUserError,
 } from '@/lib/errors/classify';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
 
 /** The shape `lib/api`'s ApiError has; the classifier reads it by duck type. */
 class ApiError extends Error {
@@ -45,6 +46,15 @@ const PIMLICO_ERROR = new Error(
 const RID = '9c1b4f2a0e6d4b7f8a1c2d3e4f5a6b7c';
 
 describe('toUserError', () => {
+  it.each([
+    'Your wallet is still setting up. Please try again shortly.',
+    'Real-Time Funding is not available for this card right now.',
+    'This network isn’t supported by this version of the app. Please update and try again.',
+    'This tier is not available with an annual fee.',
+  ])('preserves app-authored recovery instructions: %s', message => {
+    expect(getUserErrorMessage(new UserCopyError(message))).toBe(message);
+    expect(getUserErrorMessage(new Error(message))).not.toBe(message);
+  });
   it('turns the paymaster failure into "what failed" and "nothing was sent"', () => {
     const userError = toUserError(PIMLICO_ERROR, {
       action: 'move_to_card',
