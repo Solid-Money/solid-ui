@@ -848,6 +848,74 @@ export const ASSETS = {
     hash: '0b73bbc5',
   },
   'images/process.tsx': { module: require('@/assets/images/process.tsx'), hash: '64facfee' },
+  'images/profile-hub/arrow-left.svg': {
+    module: require('@/assets/images/profile-hub/arrow-left.svg'),
+    hash: 'f08cad06',
+  },
+  'images/profile-hub/badge-check.svg': {
+    module: require('@/assets/images/profile-hub/badge-check.svg'),
+    hash: '645c822e',
+  },
+  'images/profile-hub/bell.svg': {
+    module: require('@/assets/images/profile-hub/bell.svg'),
+    hash: '53cae15c',
+  },
+  'images/profile-hub/chevron-right.svg': {
+    module: require('@/assets/images/profile-hub/chevron-right.svg'),
+    hash: 'fb534a38',
+  },
+  'images/profile-hub/credit-card.svg': {
+    module: require('@/assets/images/profile-hub/credit-card.svg'),
+    hash: '7d583e02',
+  },
+  'images/profile-hub/file-down.svg': {
+    module: require('@/assets/images/profile-hub/file-down.svg'),
+    hash: '55cc6d0a',
+  },
+  'images/profile-hub/file-text.svg': {
+    module: require('@/assets/images/profile-hub/file-text.svg'),
+    hash: '2bd1842b',
+  },
+  'images/profile-hub/key-round.svg': {
+    module: require('@/assets/images/profile-hub/key-round.svg'),
+    hash: 'bc2548ef',
+  },
+  'images/profile-hub/life-buoy.svg': {
+    module: require('@/assets/images/profile-hub/life-buoy.svg'),
+    hash: 'e1caaadc',
+  },
+  'images/profile-hub/lock.svg': {
+    module: require('@/assets/images/profile-hub/lock.svg'),
+    hash: 'ec2b982a',
+  },
+  'images/profile-hub/log-out.svg': {
+    module: require('@/assets/images/profile-hub/log-out.svg'),
+    hash: '54d43cb4',
+  },
+  'images/profile-hub/mail.svg': {
+    module: require('@/assets/images/profile-hub/mail.svg'),
+    hash: '323ddc80',
+  },
+  'images/profile-hub/pencil.svg': {
+    module: require('@/assets/images/profile-hub/pencil.svg'),
+    hash: '1f758ba3',
+  },
+  'images/profile-hub/shield-check.svg': {
+    module: require('@/assets/images/profile-hub/shield-check.svg'),
+    hash: 'c444a1c8',
+  },
+  'images/profile-hub/sparkle.svg': {
+    module: require('@/assets/images/profile-hub/sparkle.svg'),
+    hash: '25b2fc7b',
+  },
+  'images/profile-hub/user-round.svg': {
+    module: require('@/assets/images/profile-hub/user-round.svg'),
+    hash: '00e2f8a5',
+  },
+  'images/profile-hub/users-round.svg': {
+    module: require('@/assets/images/profile-hub/users-round.svg'),
+    hash: '4f114b27',
+  },
   'images/profile.tsx': { module: require('@/assets/images/profile.tsx'), hash: 'd9b450e5' },
   'images/public_address.png': {
     module: require('@/assets/images/public_address.png'),
