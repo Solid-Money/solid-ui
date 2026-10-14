@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
+import { openHelpLink } from '@/lib/help/links';
 import { cn, formatNumber } from '@/lib/utils';
 
 import { useCreditLine } from './useCreditLine';
@@ -23,7 +23,7 @@ import { useCreditLine } from './useCreditLine';
 export const CREDIT_LINE_SUPPORT_URL =
   'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings';
 
-export const openCreditLineSupport = () => Linking.openURL(CREDIT_LINE_SUPPORT_URL);
+export const openCreditLineSupport = () => openHelpLink(CREDIT_LINE_SUPPORT_URL);
 
 /**
  * Screen scaffold for the credit line modal: the body scrolls (no visible

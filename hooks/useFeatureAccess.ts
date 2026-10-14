@@ -30,10 +30,20 @@ const STALE_MS = 5 * 60 * 1000;
  * feature: the query is shared, and cached for five minutes because the list
  * changes with a deploy, not per render.
  */
-export const useHasFeature = (feature: Exclude<WhitelistedFeature, 'cashApp'>): boolean => {
+export const useHasFeature = (feature: Exclude<WhitelistedFeature, 'cashApp'>): boolean =>
+  useFeatureAccess(feature).hasFeature;
+
+/**
+ * The same answer, plus whether it is known yet: `ready` is false while the
+ * request is out, for a screen that must not decide "no" before it hears back,
+ * and `isError` when it failed with nothing cached (unknown, not "no").
+ */
+export const useFeatureAccess = (
+  feature: Exclude<WhitelistedFeature, 'cashApp'>,
+): { hasFeature: boolean; ready: boolean; isError: boolean; retry: () => void } => {
   const { user } = useUser();
 
-  const { data } = useQuery({
+  const { data, isError, refetch } = useQuery({
     queryKey: [FEATURE_ACCESS_QUERY_KEY, user?.userId],
     queryFn: getFeatureAccess,
     // Nothing to ask about without a signed-in user, and the request would 401.
@@ -42,7 +52,12 @@ export const useHasFeature = (feature: Exclude<WhitelistedFeature, 'cashApp'>): 
     retry: 1,
   });
 
-  return data?.features?.[feature] === true;
+  return {
+    hasFeature: data?.features?.[feature] === true,
+    ready: data !== undefined || isError || !user?.userId,
+    isError: isError && data === undefined,
+    retry: () => void refetch(),
+  };
 };
 
 export default useHasFeature;

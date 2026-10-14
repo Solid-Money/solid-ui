@@ -108,6 +108,8 @@ type Path = {
   AGENT: Href;
   GOODDOLLAR: Href;
   STOCKS: Href;
+  SUPPORT: Href;
+  HELP: Href;
 };
 
 export const path: Path = {
@@ -169,6 +171,10 @@ export const path: Path = {
   AGENT: '/agent' as Href,
   GOODDOLLAR: '/gooddollar' as Href,
   STOCKS: '/stocks' as Href,
+  // The in-house support chat (users with the `supportChat` feature).
+  SUPPORT: '/support' as Href,
+  // The in-house help center (same users as the chat).
+  HELP: '/help' as Href,
 };
 
 /**

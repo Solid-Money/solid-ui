@@ -68,6 +68,7 @@ import {
   restoreQueryCache,
 } from '@/lib/queryPersistence';
 import { markStartup } from '@/lib/startupTiming';
+import { isSupportChatFocused, SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
 import { ensureFreshAccessToken } from '@/lib/utils';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
@@ -157,13 +158,18 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async notification => {
+      // A support reply the user is already reading in the chat gets no banner.
+      const quiet =
+        notification.request.content.data?.type === SUPPORT_PUSH_TYPE && isSupportChatFocused();
+      return {
+        shouldShowAlert: !quiet,
+        shouldPlaySound: !quiet,
+        shouldSetBadge: true,
+        shouldShowBanner: !quiet,
+        shouldShowList: !quiet,
+      };
+    },
   });
 }
 
