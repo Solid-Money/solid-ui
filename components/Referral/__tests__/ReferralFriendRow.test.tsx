@@ -106,3 +106,33 @@ describe('ReferralFriendRow — the referral spend rules', () => {
     expect(text).not.toContain('Needs one more');
   });
 });
+
+describe('ReferralFriendRow — a reward that will not pay the referrer', () => {
+  it('reads a cancelled reward as not eligible', () => {
+    const text = textOf(
+      render(row({ stage: ReferralFriendStage.REVERSED, spendUsd: 162, merchantCount: 4 })),
+    );
+
+    expect(text).toContain('Not eligible');
+    expect(text).not.toContain('Reversed');
+    expect(text).not.toContain('got their reward');
+  });
+
+  it('says the friend was paid when only the referrer share was withheld', () => {
+    const text = textOf(
+      render(
+        row({
+          stage: ReferralFriendStage.REVERSED,
+          referrerRewardWithheld: true,
+          rewardUsd: 0,
+          spendUsd: 162,
+          merchantCount: 4,
+        }),
+      ),
+    );
+
+    expect(text).toContain('Not eligible');
+    expect(text).toContain("Your friend got their reward; this one doesn't earn you one");
+    expect(text).not.toContain('$25');
+  });
+});

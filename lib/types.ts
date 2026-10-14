@@ -3620,6 +3620,12 @@ export interface ReferralRewardListItem {
    */
   awaitingActivity?: boolean;
   /**
+   * The friend was paid their reward but the referrer's share was withheld —
+   * by a referrer block or a support decision. The row reads as not eligible,
+   * at $0. Set on the referrer's own row only.
+   */
+  referrerRewardWithheld?: boolean;
+  /**
    * The bar this row is measured against. For a friend who has qualified it is
    * the bar they cleared, which can be lower than today's — the target moved
    * from $75 to $150 while rewards were still in their payout delay, and

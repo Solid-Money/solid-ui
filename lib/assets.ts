@@ -8,7 +8,12 @@ import { EXPO_PUBLIC_BASE_URL } from './config';
  */
 export const ASSETS = {
   // @assets-registry-start
-  'animations/card.json': { module: require('@/assets/animations/card.json'), hash: 'ea9c0b6b' },
+  'animations/card.json': {
+    get module() {
+      return require('@/assets/animations/card.json');
+    },
+    hash: 'ea9c0b6b',
+  },
   'animations/credit-help-keep-earning-poster.png': {
     module: require('@/assets/animations/credit-help-keep-earning-poster.png'),
     hash: 'cf64f886',
@@ -49,9 +54,16 @@ export const ASSETS = {
     module: require('@/assets/animations/figma-credit-help-source/repay-label.png'),
     hash: '52ce6b16',
   },
-  'animations/glow.json': { module: require('@/assets/animations/glow.json'), hash: '8e169067' },
+  'animations/glow.json': {
+    get module() {
+      return require('@/assets/animations/glow.json');
+    },
+    hash: '8e169067',
+  },
   'animations/lightning.json': {
-    module: require('@/assets/animations/lightning.json'),
+    get module() {
+      return require('@/assets/animations/lightning.json');
+    },
     hash: '234b6520',
   },
   'animations/rewards-help-perks.mp4': {
@@ -71,7 +83,9 @@ export const ASSETS = {
     hash: '6a39b2c7',
   },
   'animations/rocket.json': {
-    module: require('@/assets/animations/rocket.json'),
+    get module() {
+      return require('@/assets/animations/rocket.json');
+    },
     hash: '48d71bbc',
   },
   'animations/savings-help-deposit.mp4': {
@@ -87,12 +101,21 @@ export const ASSETS = {
     hash: 'e5cd6ce0',
   },
   'animations/spin-wheel.json': {
-    module: require('@/assets/animations/spin-wheel.json'),
+    get module() {
+      return require('@/assets/animations/spin-wheel.json');
+    },
     hash: '180926fd',
   },
-  'animations/spin.json': { module: require('@/assets/animations/spin.json'), hash: '9f636075' },
+  'animations/spin.json': {
+    get module() {
+      return require('@/assets/animations/spin.json');
+    },
+    hash: '9f636075',
+  },
   'animations/spin_with_animation.json': {
-    module: require('@/assets/animations/spin_with_animation.json'),
+    get module() {
+      return require('@/assets/animations/spin_with_animation.json');
+    },
     hash: '318699b9',
   },
   'animations/star-1.webp': {
@@ -107,9 +130,16 @@ export const ASSETS = {
     module: require('@/assets/animations/star-3.webp'),
     hash: 'e4ab5e37',
   },
-  'animations/vault.json': { module: require('@/assets/animations/vault.json'), hash: '85dffdd4' },
+  'animations/vault.json': {
+    get module() {
+      return require('@/assets/animations/vault.json');
+    },
+    hash: '85dffdd4',
+  },
   'animations/win_screen_2.json': {
-    module: require('@/assets/animations/win_screen_2.json'),
+    get module() {
+      return require('@/assets/animations/win_screen_2.json');
+    },
     hash: '4d9cc420',
   },
   'fonts/SolidLink-Bold.ttf': {
@@ -1713,11 +1743,28 @@ export const ASSETS = {
     module: require('@/assets/splash/splash-icon.png'),
     hash: '15315f99',
   },
-  'tabs-icons/bell.json': { module: require('@/assets/tabs-icons/bell.json'), hash: 'c04fca2a' },
-  'tabs-icons/card.json': { module: require('@/assets/tabs-icons/card.json'), hash: '50468e69' },
-  'tabs-icons/home.json': { module: require('@/assets/tabs-icons/home.json'), hash: '95521f4f' },
+  'tabs-icons/bell.json': {
+    get module() {
+      return require('@/assets/tabs-icons/bell.json');
+    },
+    hash: 'c04fca2a',
+  },
+  'tabs-icons/card.json': {
+    get module() {
+      return require('@/assets/tabs-icons/card.json');
+    },
+    hash: '50468e69',
+  },
+  'tabs-icons/home.json': {
+    get module() {
+      return require('@/assets/tabs-icons/home.json');
+    },
+    hash: '95521f4f',
+  },
   'tabs-icons/lightning.json': {
-    module: require('@/assets/tabs-icons/lightning.json'),
+    get module() {
+      return require('@/assets/tabs-icons/lightning.json');
+    },
     hash: '5f0a954e',
   },
   // @assets-registry-end

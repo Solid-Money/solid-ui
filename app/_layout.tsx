@@ -68,11 +68,18 @@ import {
   handleQuerySuccess,
 } from '@/lib/errors/queryErrors';
 import { configureObserve, markAppInteractive, withObserve } from '@/lib/observe';
+import {
+  clearPersistedQueryCacheOnFatalError,
+  persistQueryCache,
+  restoreQueryCache,
+} from '@/lib/queryPersistence';
+import { markStartup } from '@/lib/startupTiming';
 import { isSupportChatFocused, SUPPORT_PUSH_TYPE } from '@/lib/support/focus';
 import { installShownErrorReporter } from '@/lib/telemetry/installShownErrorReporter';
 import { installToastReporter } from '@/lib/telemetry/installToastReporter';
 import { setCurrentScreen } from '@/lib/telemetry/reportError';
 import { getSentryUser, installSentryUserSync } from '@/lib/telemetry/sentryUser';
+import { ensureFreshAccessToken } from '@/lib/utils';
 import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { redactSecretsDeep } from '@/lib/utils/userFacingError';
 import { config } from '@/lib/wagmi';
@@ -251,6 +258,16 @@ export const queryClient = new QueryClient({
   },
 });
 
+// Before the first render, so a returning user's home draws their last balances
+// instead of skeletons, then refreshes them in place. See lib/queryPersistence.
+restoreQueryCache(queryClient);
+persistQueryCache(queryClient);
+clearPersistedQueryCacheOnFatalError();
+
+// Start renewing an expired session now, while the bundle finishes loading, so
+// the first requests go out with a valid token instead of failing with 401.
+void ensureFreshAccessToken();
+
 function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
@@ -365,8 +382,10 @@ function RootLayout() {
       // loading its initial state and rendering its first pixels. So instead,
       // we hide the splash screen once we know the root view has already
       // performed layout.
+      markStartup('firstLayout');
       try {
         await SplashScreen.hideAsync();
+        markStartup('splashHidden');
         setSplashScreenHidden(true);
       } catch (error) {
         console.warn('Error hiding splash screen:', error);

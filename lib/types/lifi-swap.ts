@@ -68,7 +68,7 @@ export interface LifiSwapQuote {
   solidFee: {
     percentage: number;
     tierName: string;
-    waiveReason?: 'TierFree' | 'BelowMinimum' | 'Disabled';
+    waiveReason?: 'TierFree' | 'Disabled';
   };
   transactionRequest: {
     to: Address;

@@ -20,6 +20,7 @@ import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { buildLockTransactions } from '@/lib/tierLockTransactions';
 import { RewardsTier, TierMembershipState } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { selectedRewardsUserId, useRewardsUpgradeStore } from '@/store/useRewardsUpgradeStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -81,7 +82,9 @@ export const useTierMembership = () => {
 
   return useQuery<TierMembershipState>({
     queryKey: [TIER_MEMBERSHIP_QUERY_KEY, selectedUserId],
-    queryFn: fetchTierMembership,
+    // Wrapped like the other session calls: an expired token is refreshed rather
+    // than leaving the portfolio waiting on React Query's retries.
+    queryFn: () => withRefreshToken(fetchTierMembership),
     enabled: Boolean(selectedUserId),
     staleTime: 30_000,
   });

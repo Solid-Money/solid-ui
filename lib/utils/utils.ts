@@ -6,7 +6,7 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { getUsdcAddress } from '@/constants/bridge';
-import { refreshToken } from '@/lib/api';
+import { refreshToken, setAuthPreflight } from '@/lib/api';
 import {
   ADDRESSES,
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
@@ -188,9 +188,20 @@ export const refreshSessionTokens = async (): Promise<void> => {
   // Use existing refresh token promise if one is in progress
   const isNewRefresh = !refreshTokenPromise;
   if (isNewRefresh) {
+    // On web the browser keeps the cookies the response sets.
+    const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
+    // Read in the same tick as refreshToken() reads the token it sends.
+    const sender = isNative ? refreshingAccount() : null;
     refreshTokenPromise = refreshToken()
       .then(async response => {
         const data: { tokens: AuthTokens } = await response.json();
+        // Save before the in-flight promise is cleared. A refresh that starts in
+        // between would otherwise send the refresh token the server has just
+        // retired, which it treats as reuse and answers by revoking the session.
+        if (isNative && data.tokens) {
+          saveNewTokens(data.tokens, sender);
+          learnClockSkew(data.tokens.accessToken);
+        }
         return data.tokens;
       })
       .finally(() => {
@@ -200,9 +211,8 @@ export const refreshSessionTokens = async (): Promise<void> => {
     console.warn('[TokenRefresh] Reusing in-flight token refresh');
   }
 
-  let tokens: AuthTokens | null = null;
   try {
-    tokens = await refreshTokenPromise;
+    await refreshTokenPromise;
   } catch (error) {
     // Callers sharing one in-flight refresh all land here; count the 429 once.
     if (isHTTPError(error, 429) && Date.now() >= refreshBlockedUntil) {
@@ -211,19 +221,103 @@ export const refreshSessionTokens = async (): Promise<void> => {
     throw error;
   }
   refreshRateLimitStrikes = 0;
+};
 
-  // Only save new tokens on mobile platforms
-  // On web, we don't need to save new tokens
-  // because the browser will handle it
-  if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
-    saveNewTokens(tokens);
+// Refresh this long before expiry, so a request isn't sent with a token that
+// lapses on its way to the server.
+const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60_000;
+// A request waits at most this long for a refresh before going ahead without it.
+const REFRESH_PREFLIGHT_TIMEOUT_MS = 8_000;
+// And a proactive refresh happens at most this often, whatever the token says.
+const MIN_PROACTIVE_REFRESH_INTERVAL_MS = 30_000;
+
+/** Reads a JWT's payload. Decodes only; verifies nothing. */
+const readJwtPayload = (token: string): { exp?: unknown; iat?: unknown } | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(padded)) as { exp?: unknown; iat?: unknown };
+  } catch {
+    return null;
   }
 };
+
+const secondsToMs = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value * 1000 : null;
+
+/** A JWT's `exp` in ms, or null when it can't be read. Decodes only; verifies nothing. */
+export const getJwtExpiryMs = (token: string): number | null =>
+  secondsToMs(readJwtPayload(token)?.exp);
+
+// How far the device clock is ahead of the server's, read off the `iat` of a
+// token the moment it arrives. Expiry is judged on the server's clock: a phone
+// set an hour fast would otherwise find every new token already expired and
+// refresh before every request.
+let clockSkewMs = 0;
+const CLOCK_SKEW_IGNORED_BELOW_MS = 5 * 60_000;
+
+const learnClockSkew = (accessToken: string) => {
+  const issuedAt = secondsToMs(readJwtPayload(accessToken)?.iat);
+  if (issuedAt === null) return;
+  const skew = Date.now() - issuedAt;
+  clockSkewMs = Math.abs(skew) < CLOCK_SKEW_IGNORED_BELOW_MS ? 0 : skew;
+};
+
+let lastProactiveRefreshAt = 0;
+
+/**
+ * Refresh the session first when the stored access token has expired or is
+ * about to. The access token lasts an hour, so most launches start with an
+ * expired one: without this every request of the first burst fails with 401,
+ * waits for one shared refresh, and is sent again.
+ *
+ * Native only, where the token is ours to read; on web it is an httpOnly
+ * cookie. Joins a refresh already in flight, and waits for it at most
+ * {@link REFRESH_PREFLIGHT_TIMEOUT_MS}. Never throws: when the refresh fails
+ * or is slow, the request goes ahead and `withRefreshToken`'s 401 handling
+ * decides what happens, exactly as before.
+ */
+export const ensureFreshAccessToken = async (): Promise<void> => {
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+  if (isLoggingOut || Date.now() < refreshBlockedUntil) return;
+
+  const tokens = useUserStore.getState().users.find(user => user.selected)?.tokens;
+  if (!tokens?.accessToken || !tokens.refreshToken) return;
+
+  const expiresAt = getJwtExpiryMs(tokens.accessToken);
+  const serverNow = Date.now() - clockSkewMs;
+  if (expiresAt === null || expiresAt - serverNow > ACCESS_TOKEN_REFRESH_MARGIN_MS) return;
+
+  // Join a refresh that is already running; otherwise start one at most this often.
+  if (!refreshTokenPromise) {
+    if (Date.now() - lastProactiveRefreshAt < MIN_PROACTIVE_REFRESH_INTERVAL_MS) return;
+    lastProactiveRefreshAt = Date.now();
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    refreshSessionTokens().catch(() => {
+      // Left to the 401 path.
+    }),
+    new Promise<void>(resolve => {
+      timer = setTimeout(resolve, REFRESH_PREFLIGHT_TIMEOUT_MS);
+    }),
+  ]);
+  clearTimeout(timer);
+};
+
+// Axios requests to the Solid APIs renew an expired session the same way. Set
+// from here because lib/api.ts can't import this module (this one imports it).
+// Optional call: test suites that mock lib/api don't provide it.
+setAuthPreflight?.(ensureFreshAccessToken);
 
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
 ): Promise<T> => {
+  await ensureFreshAccessToken();
   try {
     return await apiCall();
   } catch (error: any) {
@@ -264,21 +358,34 @@ export const withRefreshToken = async <T>(
   }
 };
 
-function saveNewTokens(tokens: AuthTokens) {
+type RefreshingAccount = { userId: string; refreshToken: string | null };
+
+/** The selected account and the refresh token a refresh started now sends for it. */
+const refreshingAccount = (): RefreshingAccount | null => {
+  const user = useUserStore.getState().users.find((user: User) => user.selected);
+  return user ? { userId: user.userId, refreshToken: user.tokens?.refreshToken ?? null } : null;
+};
+
+/**
+ * Saves a refresh's tokens to the account that sent it, which is no longer the
+ * selected one if the user switched accounts while it was in flight. Drops them
+ * when that account has since signed out or signed in again: it no longer holds
+ * the refresh token this one replaced.
+ */
+function saveNewTokens(tokens: AuthTokens, sender: RefreshingAccount | null) {
+  if (!sender || !tokens.accessToken) return;
+
   const { users, updateUser } = useUserStore.getState();
-  const currentUser = users.find((user: User) => user.selected);
+  const account = users.find((user: User) => user.userId === sender.userId);
+  if (!account || (account.tokens?.refreshToken ?? null) !== sender.refreshToken) return;
 
-  if (!currentUser) throw new Error('No current user found');
-
-  if (tokens.accessToken) {
-    updateUser({
-      ...currentUser,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
-    });
-  }
+  updateUser({
+    ...account,
+    tokens: {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    },
+  });
 }
 
 export const getNonce = async ({ appId }: { appId: string }): Promise<bigint> => {
