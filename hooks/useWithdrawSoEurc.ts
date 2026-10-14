@@ -40,8 +40,10 @@ const useWithdrawSoEurc = (): WithdrawSoEurcResult => {
 
   const withdrawSoEurc = useCallback(
     async (amount: string) => {
-      const amountWei = parseUnits(amount, SOEURC_DECIMALS);
       try {
+        // Inside the try, so an amount that does not parse ends in the same error
+        // state and Sentry report as any other failure.
+        const amountWei = parseUnits(amount, SOEURC_DECIMALS);
         if (!user) {
           throw new Error('User not found');
         }
