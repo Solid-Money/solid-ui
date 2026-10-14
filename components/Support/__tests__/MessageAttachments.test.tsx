@@ -1,5 +1,6 @@
 import React from 'react';
 import { Linking } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 import MessageAttachments from '@/components/Support/MessageAttachments';
 import { message } from '@/lib/support/__tests__/fixtures';
@@ -20,6 +21,7 @@ jest.mock('@/lib/support/sync', () => ({
   isLinkFresh: () => false,
   refreshMessage: jest.fn(),
 }));
+jest.mock('react-native-toast-message', () => ({ show: jest.fn() }));
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
@@ -42,6 +44,7 @@ let open: jest.SpyInstance;
 beforeEach(() => {
   useUserStore.setState({ users: [{ userId: 'account-a', selected: true } as never] });
   mockAttachmentUrl.mockReset();
+  jest.mocked(Toast.show).mockClear();
   open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
   open.mockClear();
   act(() => {
@@ -65,6 +68,11 @@ it('handles link refresh and viewer rejections and lets the user retry', async (
     press();
   });
   expect(open).not.toHaveBeenCalled();
+  expect(Toast.show).toHaveBeenCalledWith({
+    type: 'error',
+    text1: "Couldn't open this file",
+    text2: 'Check your connection and tap it again.',
+  });
   open.mockRejectedValueOnce(new Error('Unsupported viewer'));
   await act(async () => {
     press();
@@ -74,6 +82,7 @@ it('handles link refresh and viewer rejections and lets the user retry', async (
   });
   expect(mockAttachmentUrl).toHaveBeenCalledTimes(3);
   expect(open).toHaveBeenCalledTimes(2);
+  expect(Toast.show).toHaveBeenCalledTimes(2);
 });
 
 it('does not open a private file after switching accounts during its refresh', async () => {
@@ -87,4 +96,19 @@ it('does not open a private file after switching accounts during its refresh', a
     finish('https://files.test/private');
   });
   expect(open).not.toHaveBeenCalled();
+  expect(Toast.show).not.toHaveBeenCalled();
+});
+
+it("does not show a previous account's refresh failure after switching accounts", async () => {
+  let reject!: (error: Error) => void;
+  mockAttachmentUrl.mockReturnValue(new Promise<string>((_, fail) => (reject = fail)));
+  await act(async () => {
+    press();
+  });
+  useUserStore.setState({ users: [{ userId: 'account-b', selected: true } as never] });
+  await act(async () => {
+    reject(new Error('Expired link'));
+  });
+  expect(open).not.toHaveBeenCalled();
+  expect(Toast.show).not.toHaveBeenCalled();
 });

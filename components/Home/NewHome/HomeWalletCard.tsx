@@ -26,6 +26,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { canReplaceClosedCard } from '@/lib/utils/cardStatusRouting';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -127,6 +128,16 @@ const HomeWalletCard = ({
   const { data: cardStatus } = useCardStatus();
   // Verification already submitted, decision still out — for either issuer.
   const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
+  // The card was closed and its holder can order the next one themselves.
+  const replacingClosedCard = canReplaceClosedCard(cardStatus);
+  // What the cardless card says it does. A closed card's holder is not getting
+  // their first card, so "Get your card" would misdescribe the replacement
+  // flow the tap opens — and it is the whole label for a screen reader.
+  const cardlessLabel = replacingClosedCard
+    ? 'Get a new card'
+    : awaitingKycDecision
+      ? 'Your card is on its way'
+      : 'Get your card';
 
   const card = <NewCardArt last4={last4} />;
 
@@ -137,10 +148,12 @@ const HomeWalletCard = ({
    * "your card is on its way" screen. The "Your card is waiting → Verify now"
    * prompt is the wrong thing to put in front of them: its CTA starts card
    * onboarding, which for an applicant mid-decision means country selection and
-   * a fresh KYC session — asking them to redo work they have finished.
+   * a fresh KYC session — asking them to redo work they have finished. A
+   * cardholder whose card was closed goes to the same screen, where the
+   * activate step orders the replacement.
    */
   const handleCardlessPress = () => {
-    if (awaitingKycDecision) {
+    if (awaitingKycDecision || replacingClosedCard) {
       track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
         source: 'home_wallet_card',
         kycStatus: cardStatus?.kycStatus,
@@ -156,7 +169,7 @@ const HomeWalletCard = ({
     return (
       <View>
         <Pressable
-          accessibilityLabel={awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
+          accessibilityLabel={cardlessLabel}
           accessibilityRole="button"
           onPress={handleCardlessPress}
           className="px-4"
@@ -185,7 +198,7 @@ const HomeWalletCard = ({
                       banner. "Get your card" would be the wrong invitation there;
                       this is the banner's own copy for the same rung. */}
                   <Text className="text-[16px] font-medium text-white" style={styles.getCardText}>
-                    {awaitingKycDecision ? 'Your card is on its way' : 'Get your card'}
+                    {cardlessLabel}
                   </Text>
                   <Image
                     source={getAsset('images/get-your-card-chevron.svg')}

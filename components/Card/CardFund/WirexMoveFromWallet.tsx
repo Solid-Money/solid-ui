@@ -3,6 +3,7 @@ import { ActivityIndicator, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { Address, formatUnits, parseUnits } from 'viem';
+import { fuse } from 'viem/chains';
 
 import CardFundGroup from '@/components/Card/CardFund/CardFundGroup';
 import CardFundRow from '@/components/Card/CardFund/CardFundRow';
@@ -14,6 +15,7 @@ import {
 } from '@/components/Card/CardFund/constants';
 import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -22,35 +24,94 @@ import {
   CARD_SPENDABLE_ASSETS,
   describeCardSpendableAssets,
 } from '@/constants/cardSpendableAssets';
+import { SWAP_CHAIN_IDS } from '@/constants/swapChains';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBalances } from '@/hooks/useBalances';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
 import { createDirectDepositSession } from '@/lib/api';
 import { showFailureSheet } from '@/lib/errors';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, formatNumber, withRefreshToken } from '@/lib/utils';
-import { getMovableHoldings, MovableHolding } from '@/lib/utils/cardFundMove';
+import {
+  getMovableHoldings,
+  getSwappableHoldings,
+  MovableHolding,
+  SwappableHolding,
+} from '@/lib/utils/cardFundMove';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
-/** The holdings this cardholder could make spendable, richest first. */
-export const useMovableHoldings = (): { holdings: MovableHolding[]; isLoading: boolean } => {
+/** Every swap chain but Fuse — see `getSwappableHoldings` for why Fuse is left out. */
+const LIFI_SWAP_CHAIN_IDS = SWAP_CHAIN_IDS.filter(chainId => chainId !== fuse.id);
+
+/**
+ * The holdings this cardholder could make spendable, richest first: the ones a
+ * move carries as they are, and the ones that need a swap first.
+ */
+export const useMovableHoldings = (): {
+  holdings: MovableHolding[];
+  swappable: SwappableHolding[];
+  isLoading: boolean;
+} => {
   const { tokens, isLoading } = useBalances();
 
-  const holdings = useMemo(
-    () => getMovableHoldings(tokens, getCardFundRoutes(), CARD_SPENDABLE_ASSETS),
-    [tokens],
-  );
+  const { holdings, swappable } = useMemo(() => {
+    const routes = getCardFundRoutes();
+    return {
+      holdings: getMovableHoldings(tokens, routes, CARD_SPENDABLE_ASSETS),
+      swappable: getSwappableHoldings(tokens, routes, CARD_SPENDABLE_ASSETS, LIFI_SWAP_CHAIN_IDS),
+    };
+  }, [tokens]);
 
-  return { holdings, isLoading };
+  return { holdings, swappable, isLoading };
 };
 
 const chainName = (chainId: number): string => BRIDGE_TOKENS[chainId]?.name ?? `Chain ${chainId}`;
 
 /** "12.5 USDC" — the balance in its own token, not converted. */
-const holdingLabel = (holding: MovableHolding): string =>
+const holdingLabel = (holding: Pick<MovableHolding, 'amount' | 'symbol'>): string =>
   `${formatNumber(holding.amount, 6, 2)} ${holding.symbol}`;
+
+/**
+ * The "Swap first" group: holdings the card cannot take as they are. Each row
+ * hands off to the swap form, preset to turn it into USDC on Fuse — which the
+ * card spends straight away, so there is no move step after it.
+ */
+const SwapFirstGroup = ({
+  swappable,
+  onSwap,
+}: {
+  swappable: SwappableHolding[];
+  onSwap: (holding: SwappableHolding) => void;
+}) => (
+  <View className="gap-y-2">
+    <CardFundGroup label="Swap first">
+      {swappable.map(holding => (
+        <CardFundRow
+          key={`${holding.chainId}:${holding.tokenAddress}`}
+          icon={
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({ logoUrl: holding.logoUrl, tokenSymbol: holding.symbol })}
+              size={36}
+              tokenName={holding.symbol}
+            />
+          }
+          title={holdingLabel(holding)}
+          subtitle={`≈ $${formatNumber(holding.valueUSD, 2, 2)}`}
+          chips={[chainName(holding.chainId)]}
+          chipsPosition="inline"
+          onPress={() => onSwap(holding)}
+        />
+      ))}
+    </CardFundGroup>
+    <Text className="px-1 text-sm leading-5 text-white/50">
+      Your card spends stablecoins only. Swap these to USDC on Fuse and they are spendable as soon
+      as the swap lands.
+    </Text>
+  </View>
+);
 
 /**
  * Step 1 of "Move from wallet": which holding to make spendable.
@@ -59,16 +120,27 @@ const holdingLabel = (holding: MovableHolding): string =>
  * `getMovableHoldings`. When there are none the screen says so rather than
  * rendering an empty card, because "nothing to move" and "we could not load your
  * balances" look identical otherwise and only one of them is good news.
+ *
+ * Holdings that are not stablecoins (ETH on Ethereum, say) are listed beneath,
+ * as "Swap first" — see `getSwappableHoldings`. Leaving them off is what told a
+ * cardholder holding ~$390 of ETH that their wallet held nothing else.
  */
 export const WirexMoveHoldings = ({
   holdings,
+  swappable = [],
   isLoading,
   onSelect,
+  onSwap,
 }: {
   holdings: MovableHolding[];
+  swappable?: SwappableHolding[];
   isLoading?: boolean;
   onSelect: (holding: MovableHolding) => void;
+  onSwap?: (holding: SwappableHolding) => void;
 }) => {
+  const swapFirst =
+    onSwap && swappable.length ? <SwapFirstGroup swappable={swappable} onSwap={onSwap} /> : null;
+
   if (isLoading) {
     return (
       <View className="gap-y-3">
@@ -83,13 +155,15 @@ export const WirexMoveHoldings = ({
       <View className="gap-y-8">
         <View className="gap-y-2 rounded-[15px] bg-card px-[18px] py-5">
           <Text className="text-lg font-semibold leading-tight text-primary">
-            Nothing to move right now
+            {swapFirst ? 'No stablecoins to move' : 'Nothing to move right now'}
           </Text>
           <Text className="text-sm leading-5 text-white/70">
-            Your card already spends {describeCardSpendableAssets()}, and that is everything your
-            wallet holds on a supported network. To add more, go back and deposit a stablecoin.
+            {swapFirst
+              ? `Your card already spends ${describeCardSpendableAssets()}, and you hold no other stablecoin it can take. What you do hold has to be swapped first.`
+              : `Your card already spends ${describeCardSpendableAssets()}, and you hold no other stablecoin it can take. To add more, go back and deposit a stablecoin.`}
           </Text>
         </View>
+        {swapFirst}
         <View className="items-center">
           <NeedHelp />
         </View>
@@ -117,6 +191,7 @@ export const WirexMoveHoldings = ({
           />
         ))}
       </CardFundGroup>
+      {swapFirst}
       <View className="items-center">
         <NeedHelp />
       </View>

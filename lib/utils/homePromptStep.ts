@@ -1,5 +1,6 @@
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { CardStatusResponse } from '@/lib/types';
+import { canReplaceClosedCard } from '@/lib/utils/cardStatusRouting';
 import { KycProgress, resolveKycProgress } from '@/lib/utils/kyc/verificationProgress';
 
 import type { HomePromptKey } from '@/store/useHomePromptStore';
@@ -42,6 +43,8 @@ export interface HomePromptStepInput {
  * 3. `kyc-review` — submitted; waiting on a decision.
  * 4. `kyc-rejected` — declined.
  * 5. `activate-card` — verified, no card issued yet.
+ *    `replace-card` — the same rung for a cardholder whose card was closed
+ *    (e.g. after its details leaked) and who can order the next one.
  * 6. `fund` — card issued, account unfunded.
  * 7. `add-to-wallet` — funded card that isn't in Apple/Google Wallet.
  * 8. `cashback` — the card has been used; the terminal banner.
@@ -66,6 +69,10 @@ export function resolveHomePromptStep({
   wallet,
   eligibility,
 }: HomePromptStepInput): HomePromptKey | null {
+  // Verified long ago and spent on a card that is now gone: "Your Solid card is
+  // ready! Activate" would be the wrong news, and was all this user was shown.
+  if (canReplaceClosedCard(cardStatus)) return 'replace-card';
+
   if (!hasCard) return kycBanner(resolveKycProgress(cardStatus, kycStartedAt ?? null));
 
   if (!depositCompleted) return 'fund';

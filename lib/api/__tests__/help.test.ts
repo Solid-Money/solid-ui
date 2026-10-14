@@ -46,6 +46,34 @@ describe('help center API client', () => {
     );
   });
 
+  it('refuses a help home it cannot show, instead of handing it to the screen and the cache', async () => {
+    const collection = {
+      slug: 'cards',
+      name: 'Cards',
+      description: '',
+      articleCount: 1,
+      articles: [
+        { id: 'a1', slug: 'apple-pay', title: 'Apple Pay', description: '', collection: null },
+      ],
+      children: [],
+    };
+    fetchMock.mockResolvedValueOnce(json(200, { collections: [collection], otherArticles: [] }));
+    await expect(help.getHelpHome()).resolves.toEqual({
+      collections: [collection],
+      otherArticles: [],
+    });
+
+    for (const body of [
+      { otherArticles: [] },
+      { collections: null, otherArticles: [] },
+      { collections: [{ ...collection, articles: undefined }], otherArticles: [] },
+      { collections: [], otherArticles: [{ slug: 'x' }] },
+    ]) {
+      fetchMock.mockResolvedValueOnce(json(200, body));
+      await expect(help.getHelpHome()).rejects.toMatchObject({ status: 502 });
+    }
+  });
+
   it('votes on the exact version that was read', async () => {
     fetchMock.mockResolvedValue(json(200, { recorded: true }));
     await help.sendHelpFeedback('a1', 'v9', false);

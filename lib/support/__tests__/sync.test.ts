@@ -127,6 +127,77 @@ describe('support sync', () => {
       expect(state().messages).toHaveLength(103);
     });
 
+    it('remembers a gap it could not finish, and fills it on the next catch-up', async () => {
+      state().setThread(thread({ messages: [message({ seq: 10 })] }));
+      mocked.getSupportThread.mockResolvedValue(thread({ messages: [message({ seq: 1000 })] }));
+      const fullPage = (after: number) => ({
+        messages: Array.from({ length: 100 }, (_, index) => message({ seq: after + 1 + index })),
+        hasOlder: true,
+      });
+      for (let page = 0; page < 5; page++) {
+        mocked.getSupportMessages.mockResolvedValueOnce(fullPage(10 + page * 100));
+      }
+      await syncThread();
+      expect(mocked.getSupportMessages).toHaveBeenCalledTimes(5);
+
+      // Next catch-up: the newest page has not moved; the gap continues from seq 510.
+      mocked.getSupportMessages.mockClear();
+      mocked.getSupportMessages.mockResolvedValueOnce({
+        messages: [message({ seq: 511 })],
+        hasOlder: true,
+      });
+      await syncThread();
+      expect(mocked.getSupportMessages).toHaveBeenCalledWith({ afterSeq: 510, limit: 100 });
+
+      // Closed: nothing more is asked for.
+      mocked.getSupportMessages.mockClear();
+      await syncThread();
+      expect(mocked.getSupportMessages).not.toHaveBeenCalled();
+    });
+
+    it('fills an open gap from its top when the user scrolls up', async () => {
+      state().setThread(thread({ messages: [message({ seq: 10 })], hasOlder: true }));
+      mocked.getSupportThread.mockResolvedValue(thread({ messages: [message({ seq: 1000 })] }));
+      for (let page = 0; page < 5; page++) {
+        mocked.getSupportMessages.mockResolvedValueOnce({
+          messages: Array.from({ length: 100 }, (_, index) =>
+            message({ seq: 11 + page * 100 + index }),
+          ),
+          hasOlder: true,
+        });
+      }
+      await syncThread();
+      mocked.getSupportMessages.mockClear();
+
+      mocked.getSupportMessages.mockResolvedValueOnce({
+        messages: Array.from({ length: 100 }, (_, index) => message({ seq: 900 + index })),
+        hasOlder: true,
+      });
+      await loadOlder();
+      expect(mocked.getSupportMessages).toHaveBeenCalledWith({ beforeSeq: 1000, limit: 100 });
+      // hasOlder is about history before the oldest message, untouched by gap filling.
+      expect(state().hasOlder).toBe(true);
+    });
+
+    it('lets a load for the new account keep its slot when the old one settles', async () => {
+      let resolveOld!: (value: ReturnType<typeof thread>) => void;
+      mocked.getSupportThread.mockReturnValueOnce(new Promise(done => (resolveOld = done)));
+      const old = loadThread();
+      resetSyncState();
+      state().reset();
+      let resolveNew!: (value: ReturnType<typeof thread>) => void;
+      mocked.getSupportThread.mockReturnValueOnce(new Promise(done => (resolveNew = done)));
+      const current = loadThread();
+      resolveOld(thread());
+      await old;
+      // Still the new account's request: a second caller shares it instead of starting another.
+      expect(loadThread()).toBe(current);
+      expect(mocked.getSupportThread).toHaveBeenCalledTimes(2);
+      resolveNew(thread({ messages: [message()] }));
+      await current;
+      expect(state().loaded).toBe(true);
+    });
+
     it('asks for nothing more when the newest page joins what was held', async () => {
       state().setThread(thread({ messages: [message({ seq: 10 })] }));
       mocked.getSupportThread.mockResolvedValue(thread({ messages: [message({ seq: 11 })] }));

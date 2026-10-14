@@ -19,8 +19,9 @@ export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_
 /**
  * flash-support-service (the in-house support chat), e.g.
  * https://support-api.solid.xyz. Empty means the chat is unavailable and the
- * app keeps using Intercom. Unset on a qa build (accounts-qa), it defaults to
- * the qa support service; see `supportApiUrlFor`.
+ * app keeps using Intercom. Unset, it follows the accounts API: qa builds get
+ * the qa support service and production builds the production one; see
+ * `supportApiUrlFor`.
  */
 export const EXPO_PUBLIC_SUPPORT_API_BASE_URL =
   process.env.EXPO_PUBLIC_SUPPORT_API_BASE_URL || supportApiUrlFor(EXPO_PUBLIC_FLASH_API_BASE_URL);
