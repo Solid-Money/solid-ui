@@ -13,7 +13,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react-native';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 
 import SupportIcon from '@/assets/images/support-svg';
 import ActivityStatusPill, {
@@ -36,7 +36,9 @@ import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
-import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
+import useCancelOnchainWithdraw, {
+  getCancelWithdrawTarget,
+} from '@/hooks/useCancelOnchainWithdraw';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/useCardTransactions';
@@ -912,6 +914,9 @@ export default function ActivityDetail() {
     (isFuseVaultDepositSymbol(symbolLower) ||
       isFuseVaultDepositSymbol(metaInput) ||
       isFuseVaultDepositSymbol(metaOutput));
+  // soEURC deposits are a single teller call on Base, like soFUSE's on Fuse.
+  const isSoEurcOnBase =
+    Number(chainId) === base.id && (symbolLower === 'eurc' || symbolLower === 'soeurc');
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
@@ -932,9 +937,9 @@ export default function ActivityDetail() {
   const estimatedDurationSeconds = useMemo(() => {
     if (isFund) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
-    if (isSoFuseOnFuse) return minutesToSeconds(2);
+    if (isSoFuseOnFuse || isSoEurcOnBase) return minutesToSeconds(2);
     return minutesToSeconds(20);
-  }, [isFund, isEthereum, isSoFuseOnFuse]);
+  }, [isFund, isEthereum, isSoFuseOnFuse, isSoEurcOnBase]);
 
   useEffect(() => {
     if (!finalActivity || !(isDeposit || isFund) || !createdAt) return;
@@ -977,11 +982,17 @@ export default function ActivityDetail() {
   // Deposits denominated in a share token, i.e. a mint into savings. soETH was
   // missing here, so soETH deposits rendered as outgoing wallet deposits.
   const isSavingsDeposit =
-    isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse' || symbolLower === 'soeth');
+    isDeposit &&
+    (symbolLower === 'sousd' ||
+      symbolLower === 'sofuse' ||
+      symbolLower === 'soeth' ||
+      symbolLower === 'soeurc');
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
-  const isCancelWithdraw = finalActivity?.requestId && isPending;
+  // Only where the request's own queue lets the user cancel it (not soFUSE or soEURC).
+  const isCancelWithdraw =
+    finalActivity?.requestId && isPending && !!getCancelWithdrawTarget(finalActivity.symbol);
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
   const isCrossChainSend = finalActivity?.type === TransactionType.CROSS_CHAIN_SEND;
@@ -1021,8 +1032,8 @@ export default function ActivityDetail() {
 
   const handleCancelWithdraw = useCallback(async () => {
     if (!isCancelWithdraw || !finalActivity?.requestId) return;
-    await cancelOnchainWithdraw(finalActivity.requestId);
-  }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
+    await cancelOnchainWithdraw(finalActivity.requestId, finalActivity.symbol);
+  }, [isCancelWithdraw, finalActivity?.requestId, finalActivity?.symbol, cancelOnchainWithdraw]);
 
   const handleExplorerPress = useCallback(() => {
     if (finalActivity?.url) Linking.openURL(finalActivity.url);
