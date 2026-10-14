@@ -33,13 +33,13 @@ export const getVaultCurrencySymbol = (vaultType: VaultType | undefined): string
   CURRENCY_SYMBOLS[getVaultCurrency(vaultType)];
 
 /**
- * A vault amount with its currency symbol: `€1,234.56`, `$1,234.56`, `-€5.00`.
+ * An amount with its currency symbol: `€1,234.56`, `$1,234.56`, `-€5.00`.
  * The digits follow `formatNumber`: the minimum only applies from 1 upwards, so
  * dust reads `€0.004` rather than `€0.00`.
  */
-export const formatVaultAmount = (
+export const formatCurrencyAmount = (
   value: number,
-  vaultType: VaultType | undefined,
+  currency: VaultCurrency,
   maximumFractionDigits = 2,
   minimumFractionDigits = 2,
 ): string => {
@@ -52,5 +52,19 @@ export const formatVaultAmount = (
     maximumFractionDigits: max,
     minimumFractionDigits: min,
   }).format(abs);
-  return `${safe < 0 ? '-' : ''}${getVaultCurrencySymbol(vaultType)}${digits}`;
+  return `${safe < 0 ? '-' : ''}${CURRENCY_SYMBOLS[currency]}${digits}`;
 };
+
+/** A vault amount in the vault's own currency — euros for soEURC, dollars otherwise. */
+export const formatVaultAmount = (
+  value: number,
+  vaultType: VaultType | undefined,
+  maximumFractionDigits = 2,
+  minimumFractionDigits = 2,
+): string =>
+  formatCurrencyAmount(
+    value,
+    getVaultCurrency(vaultType),
+    maximumFractionDigits,
+    minimumFractionDigits,
+  );

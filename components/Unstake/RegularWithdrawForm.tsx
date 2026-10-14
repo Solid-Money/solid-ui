@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
+import { base } from 'viem/chains';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -28,6 +29,7 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoEth from '@/hooks/useWithdrawSoEth';
+import useWithdrawSoEurc from '@/hooks/useWithdrawSoEurc';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import { showFailureSheet } from '@/lib/errors';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -37,9 +39,10 @@ import {
   SOUSD_WITHDRAW_CHAINS,
   SoUsdWithdrawChainId,
 } from '@/lib/soUsdWithdraw';
-import { Status, TokenType } from '@/lib/types';
+import { Status, TokenType, VaultType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { withdrawRevertCopy } from '@/lib/utils/withdrawErrors';
+import { formatVaultAmount } from '@/lib/vaultCurrency';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { selectWithdrawSession, useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -131,7 +134,11 @@ const RegularWithdrawForm = () => {
 
   const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
   const isSoEth = selectedToken?.contractTickerSymbol?.toLowerCase() === 'soeth';
-  const { data: exchangeRate } = useVaultExchangeRate(isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : 'USDC');
+  // soEURC withdraws in one step on Base, like soFUSE on Fuse, and is shown in EUR.
+  const isSoEurc = selectedToken?.contractTickerSymbol?.toLowerCase() === 'soeurc';
+  const { data: exchangeRate } = useVaultExchangeRate(
+    isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
+  );
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
@@ -254,19 +261,21 @@ const RegularWithdrawForm = () => {
   const { withdraw, withdrawStatus, isAllowanceLoading } = useWithdraw(withdrawChainId);
   const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth();
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
+  const { withdrawSoEurc, withdrawSoEurcStatus } = useWithdrawSoEurc();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
   const isBridgeSoEthLoading = bridgeSoEthStatus === Status.PENDING;
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
   const isWithdrawSoEthLoading = withdrawSoEthStatus === Status.PENDING;
   const isWithdrawSoFuseLoading = withdrawSoFuseStatus === Status.PENDING;
+  const isWithdrawSoEurcLoading = withdrawSoEurcStatus === Status.PENDING;
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Bridging vaults (soUSD, soETH) always render both steps. A token held on
   // Fuse starts on step 1 (bridge); a token already on the withdraw chain (Base
   // or Ethereum for soUSD, Ethereum for soETH) — or an unfinished withdraw
   // resumed from storage — jumps to step 2 (withdraw).
-  // soFUSE has no bridge and keeps its single-step layout.
-  const isUsdVault = !isSoFuse && !isSoEth;
+  // soFUSE and soEURC have no bridge and keep the single-step layout.
+  const isUsdVault = !isSoFuse && !isSoEth && !isSoEurc;
   const isEthVault = isSoEth;
   const isOnEthereum = selectedToken?.chainId === 1;
   const isOnWithdrawChain = isUsdVault ? tokenWithdrawChainId !== undefined : isOnEthereum;
@@ -294,10 +303,15 @@ const RegularWithdrawForm = () => {
     }
   }, [session, selectedVault, setValue, trigger]);
 
-  const balanceUSD = useMemo(() => {
-    if (!selectedToken) return 0;
-    return Number(watchedAmount || 0) * (selectedToken?.quoteRate || 0);
-  }, [selectedToken, watchedAmount]);
+  // Under the amount: dollars from the share's USD quote, or euros for soEURC,
+  // which has no USD quote and is never shown in dollars.
+  const amountValueLabel = useMemo(() => {
+    if (isSoEurc) {
+      return formatVaultAmount(Number(watchedAmount || 0) * (exchangeRate ?? 1), VaultType.EUR);
+    }
+    if (!selectedToken) return '$0.00';
+    return `$${formatNumber(Number(watchedAmount || 0) * (selectedToken?.quoteRate || 0), 2)}`;
+  }, [isSoEurc, exchangeRate, selectedToken, watchedAmount]);
 
   const handleTokenSelectorPress = () => {
     setModal(UNSTAKE_MODAL.OPEN_TOKEN_SELECTOR);
@@ -390,6 +404,35 @@ const RegularWithdrawForm = () => {
     }
   };
 
+  const onSoEurcSubmit = async (data: WithdrawFormData) => {
+    try {
+      const transaction = await withdrawSoEurc(data.amount.toString());
+      setTransaction({
+        amount: Number(data.amount),
+        symbol: 'soEURC',
+      });
+      reset();
+      setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
+      Toast.show({
+        type: 'success',
+        text1: 'Withdraw submitted',
+        text2: `${data.amount} soEURC → EURC on Base`,
+        props: {
+          badgeText: 'Onchain',
+          link: `${base.blockExplorers.default.url}/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: getTokenIcon({ tokenSymbol: 'EURC' }),
+        },
+      });
+    } catch (error) {
+      void showFailureSheet(error, {
+        action: 'withdraw',
+        body: withdrawRevertCopy(error),
+        details: { amount: String(data.amount), token: 'soEURC' },
+      });
+    }
+  };
+
   const onBridgeSoEthSubmit = async (data: WithdrawFormData) => {
     try {
       await bridgeSoEth(data.amount.toString());
@@ -437,21 +480,41 @@ const RegularWithdrawForm = () => {
     }
   };
 
-  const isWithdrawFormDisabled = () => {
-    const balanceLoading = isSoFuse
-      ? isLoadingSoFuseBalance
-      : isSoEth
-        ? isLoadingSoEthBalance
+  // soEURC reads its balance from the selected token itself (the generic ERC-20
+  // read above), not from the soUSD Fuse vault.
+  const isVaultBalanceLoading = isSoFuse
+    ? isLoadingSoFuseBalance
+    : isSoEth
+      ? isLoadingSoEthBalance
+      : isSoEurc
+        ? isLoading
         : isLoadingFuseBalance;
+
+  const isWithdrawFormDisabled = () => {
     return (
-      balanceLoading ||
+      isVaultBalanceLoading ||
       !isBridgeValid ||
       !watchedAmount ||
       (isSoEth ? isBridgeSoEthLoading : isBridgeLoading) ||
-      (isSoFuse ? isWithdrawSoFuseLoading : isSoEth ? isWithdrawSoEthLoading : isWithdrawLoading) ||
+      (isSoFuse
+        ? isWithdrawSoFuseLoading
+        : isSoEth
+          ? isWithdrawSoEthLoading
+          : isSoEurc
+            ? isWithdrawSoEurcLoading
+            : isWithdrawLoading) ||
       !selectedToken
     );
   };
+
+  const destinationSymbol = isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : isSoEurc ? 'EURC' : 'USDC';
+  const destinationLabel = isSoFuse
+    ? 'WFUSE on Fuse'
+    : isSoEth
+      ? 'WETH on Ethereum'
+      : isSoEurc
+        ? 'EURC on Base'
+        : `USDC on ${withdrawChain.name}`;
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
@@ -463,12 +526,7 @@ const RegularWithdrawForm = () => {
               <View className="flex-row items-center gap-2">
                 <Wallet size={16} color="#ffffff80" />
                 <Text className="text-base opacity-50">
-                  {isLoading ||
-                  (isSoFuse
-                    ? isLoadingSoFuseBalance
-                    : isSoEth
-                      ? isLoadingSoEthBalance
-                      : isLoadingFuseBalance)
+                  {isLoading || isVaultBalanceLoading
                     ? '...'
                     : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
@@ -503,7 +561,7 @@ const RegularWithdrawForm = () => {
                 )}
               />
 
-              <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
+              <Text className="text-sm opacity-50">{amountValueLabel}</Text>
             </View>
 
             <WalletTokenButton
@@ -523,19 +581,13 @@ const RegularWithdrawForm = () => {
             <View className="flex-row items-center gap-1.5">
               <RenderTokenIcon
                 tokenIcon={getTokenIcon({
-                  tokenSymbol: isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC',
+                  tokenSymbol: destinationSymbol,
                   size: 28,
                 })}
                 size={28}
               />
               <View className="flex-col">
-                <Text className="text-base">
-                  {isSoFuse
-                    ? 'WFUSE on Fuse'
-                    : isSoEth
-                      ? 'WETH on Ethereum'
-                      : `USDC on ${withdrawChain.name}`}
-                </Text>
+                <Text className="text-base">{destinationLabel}</Text>
               </View>
             </View>
           </View>
@@ -561,8 +613,8 @@ const RegularWithdrawForm = () => {
             <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">
                 {watchedAmount
-                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC'}`
-                  : `0 ${isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC'}`}
+                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${destinationSymbol}`
+                  : `0 ${destinationSymbol}`}
               </Text>
             </View>
           </View>
@@ -587,6 +639,42 @@ const RegularWithdrawForm = () => {
                 disabled={isWithdrawFormDisabled() || isWithdrawSoFuseLoading}
               >
                 {isWithdrawSoFuseLoading ? (
+                  <ActivityIndicator color="black" />
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <Image
+                      source={require('@/assets/images/key.png')}
+                      tintColor="#18181b"
+                      className="h-6 w-6"
+                      contentFit="contain"
+                    />
+                    <Text className="text-base font-bold" style={{ color: '#18181b' }}>
+                      Withdraw
+                    </Text>
+                  </View>
+                )}
+              </Button>
+            </View>
+          ) : isSoEurc ? (
+            <View className="px-5 py-6 md:p-5">
+              <View className="mb-4 flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({ tokenSymbol: 'soEURC', size: 22 })}
+                    size={22}
+                  />
+                  <Text className="text-base font-bold text-white">Withdraw to EURC</Text>
+                </View>
+                {/* Solved through the queue, which keeps a request open for at least three days. */}
+                <Text className="text-base font-medium text-muted-foreground">Up to 3 days</Text>
+              </View>
+              <Button
+                variant="brand"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
+                onPress={handleSubmit(onSoEurcSubmit)}
+                disabled={isWithdrawFormDisabled() || isWithdrawSoEurcLoading}
+              >
+                {isWithdrawSoEurcLoading ? (
                   <ActivityIndicator color="black" />
                 ) : (
                   <View className="flex-row items-center gap-2">
