@@ -17,7 +17,12 @@ import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { resolveKycProvider } from '@/lib/kycProviderRouting';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { CardProvider, CardStatusResponse, KycProvider, KycStatus } from '@/lib/types';
-import { hasMetSavingsDeposit, requiresCardDeposit, withRefreshToken } from '@/lib/utils';
+import {
+  canReplaceClosedCard,
+  hasMetSavingsDeposit,
+  requiresCardDeposit,
+  withRefreshToken,
+} from '@/lib/utils';
 import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -203,10 +208,14 @@ export function useCardSteps(
     [runSubmitPendingApplication],
   );
 
+  // A closed card its holder can replace: the activate step stays open and
+  // orders the new card, rather than reading as already done.
+  const replacingClosedCard = canReplaceClosedCard(cardStatusResponse);
+
   // Sync card activation state with server
   useEffect(() => {
-    syncCardActivationState(cardStatusResponse?.status);
-  }, [cardStatusResponse?.status, syncCardActivationState]);
+    syncCardActivationState(cardStatusResponse?.status, replacingClosedCard);
+  }, [cardStatusResponse?.status, replacingClosedCard, syncCardActivationState]);
 
   // Handle the KYC flow initiation
   const handleProceedToKyc = useCallback(async () => {
@@ -423,6 +432,7 @@ export function useCardSteps(
           rainForwardPendingDeposit: cardStatusResponse?.rainForwardPendingDeposit,
           submitPendingApplication,
           isSubmittingPendingApplication,
+          replacingClosedCard,
         },
       ),
     [
@@ -447,6 +457,7 @@ export function useCardSteps(
       openSavingsDepositModal,
       submitPendingApplication,
       isSubmittingPendingApplication,
+      replacingClosedCard,
     ],
   );
 

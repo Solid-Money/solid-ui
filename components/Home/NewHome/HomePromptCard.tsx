@@ -105,6 +105,15 @@ const CONTENT: Record<Exclude<HomePromptKey, 'cashback'>, PromptContent> = {
     icon: <FaceScan />,
     cta: { label: 'Activate card', href: path.CARD_ACTIVATE },
   },
+  // Not drawn in Figma: the activate-card banner, re-worded for a cardholder
+  // whose card was closed. Same door — /card/activate, whose activate step
+  // orders the replacement.
+  'replace-card': {
+    title: 'Your card was closed',
+    description: 'Get a new virtual card with a new number. Your balance stays where it is',
+    icon: <FaceScan />,
+    cta: { label: 'Get new card', href: path.CARD_ACTIVATE },
+  },
   // Figma 25141:7265
   fund: {
     title: 'Fund your wallet',

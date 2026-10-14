@@ -61,6 +61,11 @@ export function buildCardSteps(
     submitPendingApplication?: () => void;
     /** Whether {@link submitPendingApplication} is in flight. */
     isSubmittingPendingApplication?: boolean;
+    /**
+     * The cardholder's card was closed and they are ordering the next one, so
+     * the activate step says so instead of greeting them as a first-timer.
+     */
+    replacingClosedCard?: boolean;
   },
 ): Step[] {
   // The Bridge endorsement is a fallback for Bridge-only users, who have no card
@@ -108,9 +113,12 @@ export function buildCardSteps(
   // with that banner directly above this list. Worse, `useStepNavigation`
   // auto-expands the first incomplete step, which for a blocked applicant IS
   // this one, so the same sentence met the user twice on first paint.
+  const replacingClosedCard = Boolean(options?.replacingClosedCard);
   const orderCardDesc = activationBlocked
     ? 'On hold — see the message above for what happened and what to do next.'
-    : 'All is set! Click on "Activate card" to review the agreements and issue your new card.';
+    : replacingClosedCard
+      ? 'Your previous card was closed and can no longer be used. Click on "Get new card" to review the agreements and issue a new virtual card with a new number — your balance stays where it is.'
+      : 'All is set! Click on "Activate card" to review the agreements and issue your new card.';
 
   const kycStepOnPress =
     options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress
@@ -176,11 +184,16 @@ export function buildCardSteps(
 
   const activateStep: Omit<Step, 'id'> = {
     key: 'activate',
-    title: 'Activate your card',
+    title: replacingClosedCard ? 'Get a new card' : 'Activate your card',
     description: orderCardDesc,
     completed: cardActivated,
     status: cardActivated ? 'completed' : 'pending',
-    buttonText: activationBlocked || !isKycComplete ? undefined : 'Activate card',
+    buttonText:
+      activationBlocked || !isKycComplete
+        ? undefined
+        : replacingClosedCard
+          ? 'Get new card'
+          : 'Activate card',
     onPress: activationBlocked || !isKycComplete ? undefined : pushCardReady,
   };
 
@@ -262,16 +275,23 @@ export function useCardActivation(router: Router) {
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard] = useState(false);
 
-  const syncCardActivationState = useCallback((cardStatus: CardStatus | undefined) => {
-    // Mark card as activated if user has a card in any state
-    if (
-      cardStatus === CardStatus.ACTIVE ||
-      cardStatus === CardStatus.FROZEN ||
-      cardStatus === CardStatus.INACTIVE
-    ) {
-      setCardActivated(true);
-    }
-  }, []);
+  const syncCardActivationState = useCallback(
+    (cardStatus: CardStatus | undefined, canReplaceClosedCard = false) => {
+      // Mark card as activated if user has a card in any state — except a
+      // closed card its holder can replace. Counting that one as activated
+      // completed the "Activate your card" step, leaving "To the card" as the
+      // only button: it opened a card that no longer worked, and the
+      // cardholder ended up back on the wallet with no way to order a new one.
+      if (
+        cardStatus === CardStatus.ACTIVE ||
+        cardStatus === CardStatus.FROZEN ||
+        (cardStatus === CardStatus.INACTIVE && !canReplaceClosedCard)
+      ) {
+        setCardActivated(true);
+      }
+    },
+    [],
+  );
 
   const pushCardDetails = useCallback(() => {
     router.navigate(path.CARD_INFO);

@@ -26,6 +26,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomeSetupSteps } from '@/hooks/useHomeSetupSteps';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { canReplaceClosedCard } from '@/lib/utils/cardStatusRouting';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -127,6 +128,8 @@ const HomeWalletCard = ({
   const { data: cardStatus } = useCardStatus();
   // Verification already submitted, decision still out — for either issuer.
   const awaitingKycDecision = isKycAwaitingDecision(cardStatus);
+  // The card was closed and its holder can order the next one themselves.
+  const replacingClosedCard = canReplaceClosedCard(cardStatus);
 
   const card = <NewCardArt last4={last4} />;
 
@@ -137,10 +140,12 @@ const HomeWalletCard = ({
    * "your card is on its way" screen. The "Your card is waiting → Verify now"
    * prompt is the wrong thing to put in front of them: its CTA starts card
    * onboarding, which for an applicant mid-decision means country selection and
-   * a fresh KYC session — asking them to redo work they have finished.
+   * a fresh KYC session — asking them to redo work they have finished. A
+   * cardholder whose card was closed goes to the same screen, where the
+   * activate step orders the replacement.
    */
   const handleCardlessPress = () => {
-    if (awaitingKycDecision) {
+    if (awaitingKycDecision || replacingClosedCard) {
       track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
         source: 'home_wallet_card',
         kycStatus: cardStatus?.kycStatus,

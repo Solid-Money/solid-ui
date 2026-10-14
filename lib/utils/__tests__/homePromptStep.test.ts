@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
 import { DigitalWalletType } from '@/constants/digital-wallet';
-import { KycStatus, RainApplicationStatus } from '@/lib/types';
+import { CardProvider, CardStatus, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { HomePromptStepInput, resolveHomePromptStep } from '@/lib/utils/homePromptStep';
 
 const STARTED_AT = 1_700_000_000_000;
@@ -69,6 +69,32 @@ describe('resolveHomePromptStep — the pre-card rungs', () => {
     );
     expect(
       step({ ...noCard, cardStatus: { rainApplicationStatus: RainApplicationStatus.APPROVED } }),
+    ).toBe('activate-card');
+  });
+
+  it('tells a cardholder whose card was closed to get a new one', () => {
+    const closed = {
+      status: CardStatus.INACTIVE,
+      provider: CardProvider.WIREX,
+      canRequestNewCard: true,
+      kycStatus: KycStatus.APPROVED,
+    };
+
+    // Not "Your Solid card is ready! Activate" — they have had a card, and
+    // the one they had is gone.
+    expect(step({ ...noCard, cardStatus: closed })).toBe('replace-card');
+    // Funded or not: a closed card cannot be funded, so the next step is the card.
+    expect(step({ hasCard: false, depositCompleted: true, cardStatus: closed })).toBe(
+      'replace-card',
+    );
+  });
+
+  it('keeps offering activation for a closed card support has to replace', () => {
+    expect(
+      step({
+        ...noCard,
+        cardStatus: { status: CardStatus.INACTIVE, kycStatus: KycStatus.APPROVED },
+      }),
     ).toBe('activate-card');
   });
 
