@@ -268,6 +268,30 @@ describe('getSwappableHoldings', () => {
     expect(holdings).toEqual([]);
   });
 
+  it('decides the $1 line exactly, on an 18-decimal balance', () => {
+    // At $2000/ETH, 0.0005 ETH is $1.00 to the wei, and one wei less falls short.
+    const atLine = eth({ balance: '500000000000000', quoteRate: 2000 });
+    const belowLine = eth({ balance: '499999999999999', quoteRate: 2000 });
+
+    expect(getSwappableHoldings([atLine], ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toHaveLength(
+      1,
+    );
+    expect(getSwappableHoldings([belowLine], ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toEqual(
+      [],
+    );
+  });
+
+  it('skips a holding whose balance or decimals cannot be read', () => {
+    const holdings = getSwappableHoldings(
+      [eth({ balance: 'not-a-number' }), eth({ contractDecimals: Number.NaN })],
+      ROUTES,
+      CARD_SPENDABLE_ASSETS,
+      LIFI_CHAINS,
+    );
+
+    expect(holdings).toEqual([]);
+  });
+
   it('orders by USD value, richest first', () => {
     const holdings = getSwappableHoldings(
       [
