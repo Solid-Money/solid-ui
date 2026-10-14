@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
+import { format, isValid, minutesToSeconds } from 'date-fns';
 import {
   ArrowUpRight,
   ChevronRight,
@@ -323,6 +323,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const refundRowId = getPurchaseRefundId(transaction);
   const refundLabel = getCardRefundLabel(transaction);
   const { transaction: refundedPurchase } = useCardTransactionFromList(refundedPurchaseId);
+  const refundedPurchaseDate = useMemo(() => {
+    const dateStr = refundedPurchase?.authorized_at || refundedPurchase?.posted_at;
+    const date = dateStr ? new Date(dateStr) : undefined;
+    return date && isValid(date) ? date : undefined;
+  }, [refundedPurchase?.authorized_at, refundedPurchase?.posted_at]);
   // Once the refund has a row of its own, its payout figures are shown there and
   // not repeated on the purchase. Support still gets them from either screen.
   const refundLeg = refundRowId ? undefined : refund;
@@ -589,15 +594,19 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             >
               <Value>
                 {refundedPurchase
-                  ? `${formatCardTransactionAmount(
-                      refundedPurchase.amount,
-                      isOutgoingCardTransaction(refundedPurchase),
-                      cardProvider,
-                      refundedPurchase.currency,
-                    )} · ${format(
-                      new Date(refundedPurchase.authorized_at || refundedPurchase.posted_at),
-                      'MMM d',
-                    )}`
+                  ? [
+                      formatCardTransactionAmount(
+                        refundedPurchase.amount,
+                        isOutgoingCardTransaction(refundedPurchase),
+                        cardProvider,
+                        refundedPurchase.currency,
+                      ),
+                      // The amount alone when the date is missing or malformed:
+                      // `format` throws on an invalid date.
+                      refundedPurchaseDate && format(refundedPurchaseDate, 'MMM d'),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
                   : 'Original purchase'}
               </Value>
               <ChevronRight size={16} color="rgba(255, 255, 255, 0.5)" />
@@ -704,6 +713,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     isRefund,
     refundedPurchaseId,
     refundedPurchase,
+    refundedPurchaseDate,
     refundRowId,
     openLinkedTransaction,
   ]);
