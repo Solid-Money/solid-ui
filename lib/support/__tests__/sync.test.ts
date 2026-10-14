@@ -65,6 +65,10 @@ describe('support sync', () => {
         attachments: [
           {
             key: 'private-file',
+            fileName: 'Statement.pdf',
+            width: null,
+            height: null,
+            blurhash: null,
             mime: 'application/pdf',
             size: 100,
             url: 'https://files.test/a?exp=1',

@@ -30,6 +30,9 @@ const file: SupportAttachment = {
   mime: 'application/pdf',
   size: 100,
   fileName: 'Statement.pdf',
+  width: null,
+  height: null,
+  blurhash: null,
   url: 'https://files.test/old',
   status: 'clean',
 };

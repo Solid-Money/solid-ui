@@ -49,9 +49,7 @@ it.each([undefined, null, '', 'invalid-date', '2026-10-01T00:00:00Z'])(
       .flat()
       .join(' ');
     expect(text.includes('Updated')).toBe(updatedAt === '2026-10-01T00:00:00Z');
-    if (updatedAt) {
-      if (updatedAt !== 'invalid-date') expect(text).toContain('October 1, 2026');
-    }
+    if (updatedAt === '2026-10-01T00:00:00Z') expect(text).toContain('October 1, 2026');
     act(() => tree.unmount());
   },
 );
