@@ -19,15 +19,28 @@ export const useSupportChatEnabled = (): boolean => {
   return hasFeature && isSupportChatConfigured();
 };
 
+export type SupportChatAvailability = 'loading' | 'on' | 'off' | 'error';
+
 /**
  * For the chat screen itself: `loading` until the feature answer is in, so a
- * notification tap doesn't send a whitelisted user to Intercom while it loads.
+ * notification tap doesn't send a whitelisted user to Intercom while it loads,
+ * and `error` when that answer couldn't be loaded (unknown, so not "off").
  */
-export const useSupportChatAvailability = (): 'loading' | 'on' | 'off' => {
-  const { hasFeature, ready } = useFeatureAccess('supportChat');
-  if (!isSupportChatConfigured()) return 'off';
-  if (!ready) return 'loading';
-  return hasFeature ? 'on' : 'off';
+export const useSupportChatAvailability = (): {
+  availability: SupportChatAvailability;
+  retry: () => void;
+} => {
+  const { hasFeature, ready, isError, retry } = useFeatureAccess('supportChat');
+  const availability: SupportChatAvailability = !isSupportChatConfigured()
+    ? 'off'
+    : !ready
+      ? 'loading'
+      : isError
+        ? 'error'
+        : hasFeature
+          ? 'on'
+          : 'off';
+  return { availability, retry };
 };
 
 /**
