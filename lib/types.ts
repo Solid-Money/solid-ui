@@ -3108,7 +3108,7 @@ export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
   eth: number;
-  /** soEURC. Absent, null or 0 until the vault earns — read all three as "no APY". */
+  /** soEURC. 0 until the vault earns (absent or null on older APIs) — all read as "no APY". */
   eur?: number | null;
 }
 
@@ -3116,7 +3116,7 @@ export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
   eth: APYs;
-  /** soEURC. Absent or null until the analytics API reports the EUR vault. */
+  /** soEURC. Zeroes until the vault earns; absent or null on older APIs. Both read as "no APY". */
   eur?: APYs | null;
 }
 
