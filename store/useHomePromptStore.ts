@@ -22,6 +22,8 @@ export type HomePromptKey =
   | 'kyc-rejected'
   /** Verified, card not issued yet — "Your Solid card is ready!". */
   | 'activate-card'
+  /** The card was closed and a new one can be ordered — "Your card was closed". */
+  | 'replace-card'
   /** Card issued, account unfunded — "Fund your wallet". */
   | 'fund'
   /** Funded card that isn't in Apple/Google Wallet — "Add to Apple Pay". */
@@ -52,6 +54,7 @@ export const HOME_PROMPT_SNOOZE_MS: Record<DismissibleHomePromptKey, number> = {
   'kyc-review': 3 * DAY_MS,
   'kyc-rejected': 7 * DAY_MS,
   'activate-card': 3 * DAY_MS,
+  'replace-card': 3 * DAY_MS,
   fund: 3 * DAY_MS,
   'add-to-wallet': 3 * DAY_MS,
 };

@@ -11,7 +11,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { CardStatus } from '@/lib/types';
-import { hasCard } from '@/lib/utils';
+import { canReplaceClosedCard, hasCard } from '@/lib/utils';
 
 import SwipeableBanner from './SwipeableBanner';
 
@@ -28,6 +28,19 @@ const CardBanner = () => {
   const { data: cardStatus, isLoading } = useCardStatus();
 
   const bannerContent: BannerContent = useMemo(() => {
+    // Checked before the promo below: a closed card is not "has card", and
+    // "Solid Card is live! Get your card" is the wrong news for someone whose
+    // card was just closed.
+    if (canReplaceClosedCard(cardStatus)) {
+      return {
+        title: 'Your card was closed',
+        description: 'Get a new virtual card with a new number.',
+        ctaText: 'Get new card',
+        action: () => router.push(path.CARD_ACTIVATE),
+        showPromo: false,
+      };
+    }
+
     // Rain-first: no Rain card (incl. Bridge-only) → show promotional content
     if (!hasCard(cardStatus)) {
       return {

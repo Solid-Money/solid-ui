@@ -52,6 +52,20 @@ export const hasPendingCard = (cardStatus: CardStatusResponse | null | undefined
   cardStatus?.status === CardStatus.PENDING && cardStatus.provider !== CardProvider.BRIDGE;
 
 /**
+ * The card is closed for good and the backend will issue its holder a new one.
+ *
+ * Distinct from every state above: `inactive` is not a usable card (so not
+ * `hasCard`), not one on its way (not `hasPendingCard`), and — for a closed
+ * Wirex card — not a dead end either. Read as "has a card", it sent a
+ * cardholder whose card was closed after its details leaked from the card
+ * screen to their card, which no longer worked, and back to the wallet, with no
+ * way to order the replacement. These users belong on the issuance flow, whose
+ * activate step orders the new card.
+ */
+export const canReplaceClosedCard = (cardStatus: CardStatusResponse | null | undefined): boolean =>
+  cardStatus?.status === CardStatus.INACTIVE && cardStatus.canRequestNewCard === true;
+
+/**
  * Which issuer the user's card is on, or null when they effectively have none.
  *
  * Every consumer branches on `provider === RAIN` to decide whether Rain-only

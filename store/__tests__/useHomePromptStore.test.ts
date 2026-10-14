@@ -74,6 +74,7 @@ describe('home prompt snoozing', () => {
       'kyc-review',
       'kyc-rejected',
       'activate-card',
+      'replace-card',
       'fund',
       'add-to-wallet',
     ] as const;

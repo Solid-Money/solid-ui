@@ -616,6 +616,12 @@ export interface CardStatusResponse {
   activationFailure?: CardActivationFailure;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /**
+   * The card is permanently closed and the cardholder can order a new one
+   * themselves (`POST /cards`). Set only for a closed Wirex card — a closed
+   * Rain card is replaced by support. See `canReplaceClosedCard`.
+   */
+  canRequestNewCard?: boolean;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
   kycStatus?: KycStatus;
   /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
