@@ -34,9 +34,14 @@ export const usePendingTierLockReconciler = (userId: string | undefined) => {
 
   useEffect(() => {
     if (!userId || !hasPending) return;
+    // Set on cleanup. A run still in flight when the account switches must not
+    // refresh anything afterwards: `invalidate` arms the upgrade card for
+    // whichever account is selected by then, which is no longer this one.
+    let cancelled = false;
 
     const run = () => {
       void reconcilePendingTierLocks(userId).then(results => {
+        if (cancelled) return;
         // A confirmed lock is a tier purchase landing, however late: the same
         // refresh the lock flow does on success, so the tier and the
         // "You're on Prime now!" card show up.
@@ -55,6 +60,7 @@ export const usePendingTierLockReconciler = (userId: string | undefined) => {
     });
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
       subscription.remove();
     };
