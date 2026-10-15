@@ -28,11 +28,13 @@ jest.mock('@/lib/errors', () => ({
   sanitizeTechnicalMessage: () => 'Sanitized error',
 }));
 jest.mock('@/lib/execute', () => ({ USER_CANCELLED_TRANSACTION: 'cancelled' }));
+jest.mock('@/lib/pendingTierLocks', () => ({}));
 jest.mock('@/lib/tierLockTransactions', () => ({}));
 jest.mock('@/lib/wagmi', () => ({}));
 jest.mock('@/lib/utils', () => ({}));
 jest.mock('@/store/useUserStore', () => ({}));
 jest.mock('@/store/useRewardsUpgradeStore', () => ({}));
+jest.mock('@/store/usePendingTierLockStore', () => ({}));
 
 let errors: (string | null | undefined)[];
 const Probe = () => {

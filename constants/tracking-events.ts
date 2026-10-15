@@ -537,6 +537,11 @@ export const TRACKING_EVENTS = {
   TIER_LOCK_CANCELLED: 'tier_lock_cancelled',
   TIER_LOCK_COMPLETED: 'tier_lock_completed',
   TIER_LOCK_FAILED: 'tier_lock_failed',
+  // Sent, but not seen through: the receipt wait gave up (usually the app was
+  // backgrounded) or the confirm failed. Not a failure — the lock is finished
+  // by the reconciler, which reports what became of it.
+  TIER_LOCK_PENDING: 'tier_lock_pending',
+  TIER_LOCK_RECONCILED: 'tier_lock_reconciled',
   TIER_SUBSCRIBE_PRESSED: 'tier_subscribe_pressed',
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
