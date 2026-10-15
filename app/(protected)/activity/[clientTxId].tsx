@@ -1090,7 +1090,7 @@ export default function ActivityDetail() {
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
   // A Base request reads as PROCESSING while it waits in the queue (see
   // useBaseWithdrawRequests), and can be cancelled until it is solved. Only where
-  // the request's own queue lets the user cancel it (not soFUSE or soEURC).
+  // the request's own queue lets the user cancel it (not soFUSE).
   const isCancelWithdraw =
     finalActivity?.requestId &&
     (isPending || (isProcessing && finalActivity.chainId === base.id)) &&

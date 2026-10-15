@@ -302,7 +302,7 @@ export const PRODUCTION_VAULT_ADDRESSES = {
   },
   base: {
     vault: '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31',
-    soEurcVault: '0x1c6B29c8ac1E12A34D74DdaFCF016246d6aEdfff',
+    soEurcVault: '0x4f4B212aF8B5020399dde325e1Bc5B33b53DB70B',
   },
 } as const;
 
@@ -408,12 +408,21 @@ export const ADDRESSES: Addresses = {
     boringQueue: isProduction
       ? '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2'
       : ((process.env.EXPO_PUBLIC_BASE_SOUSD_QUEUE_ADDRESS ?? ZERO_ADDRESS) as Address),
-    // soEURC (Solid EURC). One deployment serves both QA and production; which builds
-    // can see the vault is decided by `isDevFeatureEnabled` in constants/vaults.ts.
-    soEurcVault: PRODUCTION_VAULT_ADDRESSES.base.soEurcVault,
-    soEurcTeller: '0xb02796D0b8e1f39265C48e31c94a48c428266Ddb',
-    soEurcAccountant: '0x23710C9fdF34b7E1eF28A92a19F9fdC0aC99518c',
-    soEurcBoringQueue: '0xf68057c26eaF1F49800EaE86046B2b70Bd8Ded06',
+    // soEURC (on-chain "Solid EUR", symbol soEUR). QA and production each have their
+    // own deployment; which builds can see the vault is decided by `isDevFeatureEnabled`
+    // in constants/vaults.ts.
+    soEurcVault: isProduction
+      ? PRODUCTION_VAULT_ADDRESSES.base.soEurcVault
+      : '0xd094c7012357096b7DE164dc471630273A6fDa8C',
+    soEurcTeller: isProduction
+      ? '0x47B18fB56882bb44B747423B732785A3896Ef112'
+      : '0x06cCD4774D3649Fdd76C78dac306705DA53De0c9',
+    soEurcAccountant: isProduction
+      ? '0xdCf7A01E32Bff2a15b5b42197f75fBA7e1f8bE35'
+      : '0x955B7c02754C74e76b2A25A6f50D2C639265CC9D',
+    soEurcBoringQueue: isProduction
+      ? '0x2bb79C2f37Ec9A4d907832Bf0607dCAE0651d147'
+      : '0x60fCf867453aE1D2C3F8F400E44A0d5F9698B693',
   },
 };
 
