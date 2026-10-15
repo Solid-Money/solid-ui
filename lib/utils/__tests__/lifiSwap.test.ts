@@ -1,10 +1,5 @@
 import { LifiSwapFee, LifiSwapQuote } from '@/lib/types/lifi-swap';
-import {
-  formatEta,
-  lifiPriceImpact,
-  lifiTotalCostUsd,
-  userOperationPrefund,
-} from '@/lib/utils/swap/lifi';
+import { formatEta, lifiPriceImpact, lifiTotalCostUsd } from '@/lib/utils/swap/lifi';
 
 const USDC = { address: '0xusdc', chainId: 8453, symbol: 'USDC', decimals: 6, name: 'USD Coin' };
 const ETH = { address: '0x0', chainId: 8453, symbol: 'ETH', decimals: 18, name: 'Ether' };
@@ -73,47 +68,6 @@ describe('lifiTotalCostUsd', () => {
       }),
     );
     expect(total).toBeCloseTo(1.3);
-  });
-
-  it('adds the network fee only when the user pays it', () => {
-    const paid = quote({
-      fromAmountUsd: '100',
-      toAmountUsd: '99',
-      gasCosts: [{ token: ETH, amount: '1', amountUsd: '0.42' }],
-    });
-    expect(lifiTotalCostUsd(paid)).toBeCloseTo(1);
-    expect(lifiTotalCostUsd(paid, { includeGas: true })).toBeCloseTo(1.42);
-  });
-});
-
-describe('userOperationPrefund', () => {
-  /**
-   * The last Oct 14 ETH → USDC swap out of a new Safe on Ethereum, which our
-   * policy refused: about 0.00119 ETH up front, though the swap itself would
-   * have burnt a fraction of that.
-   */
-  it('takes every gas limit at the max fee', () => {
-    expect(
-      userOperationPrefund({
-        callGasLimit: 0x92010n,
-        verificationGasLimit: 0x6d2e6n,
-        preVerificationGas: 0x13a30n,
-        paymasterVerificationGasLimit: 0xb578n,
-        paymasterPostOpGasLimit: 1n,
-        maxFeePerGas: 0x3c4ab59an,
-      }),
-    ).toBe(1_172_127n * 1_011_529_114n);
-  });
-
-  it('counts no paymaster gas on an unsponsored operation', () => {
-    expect(
-      userOperationPrefund({
-        callGasLimit: 100n,
-        verificationGasLimit: 200n,
-        preVerificationGas: 50n,
-        maxFeePerGas: 3n,
-      }),
-    ).toBe(1050n);
   });
 });
 

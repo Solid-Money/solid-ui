@@ -1,12 +1,4 @@
-import {
-  createContext,
-  createElement,
-  ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, createElement, ReactNode, useCallback, useContext, useMemo } from 'react';
 import { Percent } from '@cryptoalgebra/fuse-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
@@ -62,17 +54,6 @@ export interface LifiSwapInfo {
    * the quote can't be refreshed at all.
    */
   refreshQuote: () => Promise<LifiSwapQuote | undefined>;
-  /**
-   * Our paymaster refused to sponsor swaps out of the source chain, so the
-   * next swap is one where the user pays the network fee from the Safe.
-   */
-  paysNetworkFee: boolean;
-  /**
-   * Record that the paymaster refused a swap out of `chainId`. Kept per chain
-   * and account: what's over the cap is that chain's gas, not the amount, so
-   * retyping the amount doesn't change the answer.
-   */
-  setNetworkFeeNotSponsored: (chainId: number) => void;
 }
 
 const LifiSwapInfoContext = createContext<LifiSwapInfo | undefined>(undefined);
@@ -230,20 +211,6 @@ function useLifiSwapInfoState(): LifiSwapInfo {
     return fresh;
   }, [quote, refetch]);
 
-  const [unsponsored, setUnsponsored] = useState<{ userId: string; chainId: number }>();
-  const paysNetworkFee =
-    !!user &&
-    !!fromAsset &&
-    unsponsored?.userId === user.userId &&
-    unsponsored.chainId === fromAsset.chainId;
-  const userId = user?.userId;
-  const setNetworkFeeNotSponsored = useCallback(
-    (chainId: number) => {
-      if (userId) setUnsponsored({ userId, chainId });
-    },
-    [userId],
-  );
-
   return {
     fromAsset,
     toAsset,
@@ -258,8 +225,6 @@ function useLifiSwapInfoState(): LifiSwapInfo {
     routeOrder,
     setRouteOrder,
     refreshQuote,
-    paysNetworkFee,
-    setNetworkFeeNotSponsored,
   };
 }
 

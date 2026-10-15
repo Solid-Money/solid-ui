@@ -493,6 +493,11 @@ export const TRACKING_EVENTS = {
   ERROR_RETRY_PRESSED: 'error_retry_pressed',
   ERROR_SUPPORT_PRESSED: 'error_support_pressed',
   ERROR_REF_COPIED: 'error_ref_copied',
+  // Our paymaster refused a transaction on its cost cap and the user was asked
+  // to pay the network fee themselves.
+  NETWORK_FEE_PAYMENT_PROMPTED: 'network_fee_payment_prompted',
+  NETWORK_FEE_PAYMENT_ACCEPTED: 'network_fee_payment_accepted',
+  NETWORK_FEE_PAYMENT_DECLINED: 'network_fee_payment_declined',
 
   // QR Scanner Events
   QR_SCANNER_OPENED: 'qr_scanner_opened',

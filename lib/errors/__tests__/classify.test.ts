@@ -104,7 +104,7 @@ describe('toUserError', () => {
     expect(toUserError(capped, { action: 'swap' })).toMatchObject({
       code: 'SPONSORSHIP_LIMIT',
       nothingSent: true,
-      body: 'Nothing was sent. The network fee is above what we can cover right now. Try again later.',
+      body: 'Nothing was sent. The network fee for this is above what we cover.',
     });
 
     // A request body naming the policy is not a refusal by it.

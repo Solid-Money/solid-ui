@@ -230,7 +230,8 @@ const BLOCKCHAIN =
  * `InvalidParamsRpcError`, so the short message ("Invalid parameters were
  * provided to the RPC method") says nothing about it. Unlike an empty balance it
  * does not clear up on a retry: the operation's worst-case gas cost is over the
- * cap, which is what an Ethereum LI.FI route out of a new Safe always was.
+ * cap. By policy the user pays such a fee themselves, which
+ * `executeTransactions` offers; this copy is for paths that can't.
  *
  * `sponsorshipPolicy\b` can't match the `sponsorshipPolicyId` every sponsored
  * request body carries.
@@ -377,8 +378,8 @@ const bodyFor = (
     case 'blockchain':
       if (code === 'SPONSORSHIP_LIMIT') {
         return details?.amount && details.token
-          ? `Nothing was sent. Your ${details.amount} ${details.token} hasn’t moved. The network fee is above what we cover right now.`
-          : 'Nothing was sent. The network fee is above what we can cover right now. Try again later.';
+          ? `Nothing was sent. Your ${details.amount} ${details.token} hasn’t moved. Its network fee is above what we cover.`
+          : 'Nothing was sent. The network fee for this is above what we cover.';
       }
       if (nothingSent) {
         return details?.amount && details.token

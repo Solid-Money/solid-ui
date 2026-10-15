@@ -11,7 +11,6 @@ import { cn, formatNumber } from '@/lib/utils';
 import {
   formatEta,
   formatUsd,
-  lifiGasUsd,
   lifiPriceImpact,
   lifiTotalCostUsd,
   sumFeesUsd,
@@ -35,8 +34,7 @@ const WAIVE_COPY: Record<string, string> = {
  * top in gas token are kept apart, because only the second needs extra balance.
  */
 const LifiSwapParams = () => {
-  const { quote, isQuoting, slippage, routeOrder, setRouteOrder, paysNetworkFee } =
-    useLifiSwapInfo();
+  const { quote, isQuoting, slippage, routeOrder, setRouteOrder } = useLifiSwapInfo();
   const [isExpanded, setExpanded] = useState(false);
 
   if (!quote && !isQuoting) return null;
@@ -49,7 +47,6 @@ const LifiSwapParams = () => {
           quote={quote}
           isQuoting={isQuoting}
           slippage={slippage}
-          paysNetworkFee={paysNetworkFee}
           isExpanded={isExpanded}
           onToggle={() => setExpanded(!isExpanded)}
         />
@@ -112,14 +109,12 @@ const QuoteSummary = ({
   quote,
   isQuoting,
   slippage,
-  paysNetworkFee,
   isExpanded,
   onToggle,
 }: {
   quote: LifiSwapQuote;
   isQuoting: boolean;
   slippage: number;
-  paysNetworkFee: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }) => {
@@ -137,7 +132,7 @@ const QuoteSummary = ({
           <Text className="text-base font-semibold text-white/70">Total cost</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <TotalCost quote={quote} paysNetworkFee={paysNetworkFee} />
+          <TotalCost quote={quote} />
           {isCrossChain && (
             <Text className="text-sm text-white/50">
               · {formatEta(quote.executionDurationSeconds)}
@@ -148,21 +143,13 @@ const QuoteSummary = ({
           </View>
         </View>
       </Pressable>
-      {isExpanded && (
-        <Breakdown quote={quote} slippage={slippage} paysNetworkFee={paysNetworkFee} />
-      )}
+      {isExpanded && <Breakdown quote={quote} slippage={slippage} />}
     </View>
   );
 };
 
-const TotalCost = ({
-  quote,
-  paysNetworkFee,
-}: {
-  quote: LifiSwapQuote;
-  paysNetworkFee: boolean;
-}) => {
-  const total = lifiTotalCostUsd(quote, { includeGas: paysNetworkFee });
+const TotalCost = ({ quote }: { quote: LifiSwapQuote }) => {
+  const total = lifiTotalCostUsd(quote);
   return (
     <Text className="text-base font-bold">{total === undefined ? '-' : formatUsd(total)}</Text>
   );
@@ -206,21 +193,12 @@ const FeeValue = ({ fees }: { fees: LifiSwapFee[] }) => {
   return <Text className="text-base font-semibold">{formatUsd(usdTotal)}</Text>;
 };
 
-const Breakdown = ({
-  quote,
-  slippage,
-  paysNetworkFee,
-}: {
-  quote: LifiSwapQuote;
-  slippage: number;
-  paysNetworkFee: boolean;
-}) => {
+const Breakdown = ({ quote, slippage }: { quote: LifiSwapQuote; slippage: number }) => {
   const solidFees = quote.fees.filter(fee => fee.kind === 'solid');
   const lifiFees = quote.fees.filter(fee => fee.kind === 'lifi');
   const providerFees = quote.fees.filter(fee => fee.kind === 'provider' && fee.included);
   const onTopFees = quote.fees.filter(fee => !fee.included);
-  const gasUsd = lifiGasUsd(quote);
-  const gasSymbol = quote.gasCosts[0]?.token.symbol ?? 'gas token';
+  const gasUsd = quote.gasCosts.reduce((total, gas) => total + Number(gas.amountUsd ?? 0), 0);
 
   const rate = useMemo(() => {
     const from = Number(formatUnits(BigInt(quote.fromAmount), quote.fromToken.decimals));
@@ -283,21 +261,12 @@ const Breakdown = ({
         </Row>
       )}
       <Row label="Network fee">
-        {paysNetworkFee ? (
-          // LI.FI's estimate. The Safe holds back more than this until the
-          // swap runs and is refunded what goes unused.
-          <View className="items-end">
-            <Text className="text-base font-semibold">Paid in {gasSymbol}</Text>
-            {gasUsd > 0 && <Text className="text-sm text-white/50">~{formatUsd(gasUsd)}</Text>}
-          </View>
-        ) : (
-          <View className="items-end">
-            <Text className="text-base font-semibold text-green-400">Sponsored</Text>
-            {gasUsd > 0 && (
-              <Text className="text-sm text-white/40 line-through">{formatUsd(gasUsd)}</Text>
-            )}
-          </View>
-        )}
+        <View className="items-end">
+          <Text className="text-base font-semibold text-green-400">Sponsored</Text>
+          {gasUsd > 0 && (
+            <Text className="text-sm text-white/40 line-through">{formatUsd(gasUsd)}</Text>
+          )}
+        </View>
       </Row>
       <Row label="Price impact">
         <Text className={cn('text-base font-semibold', impactColor)}>
