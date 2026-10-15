@@ -1,6 +1,10 @@
 import { getUserErrorMessage } from '@/lib/errors/classify';
 import { UserCopyError } from '@/lib/errors/UserCopyError';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import {
+  executeTransactions,
+  sendUserOperationPayingGasIfRefused,
+  USER_CANCELLED_TRANSACTION,
+} from '@/lib/execute';
 
 jest.mock('@sentry/react-native', () => ({
   addBreadcrumb: jest.fn(),
@@ -160,4 +164,36 @@ it('leaves any other failure as it was', async () => {
 
   await expect(run()).rejects.toBe(other);
   expect(mockUnsponsored.prepareUserOperation).not.toHaveBeenCalled();
+});
+
+describe('an operation sent outside executeTransactions', () => {
+  // Collateral withdrawal deploys the Safe with a no-op first, at the
+  // account's next nonce.
+  const deploy = [{ to: '0xsafe', data: '0x', value: 0n }];
+
+  it('gets the same offer, at the account’s own nonce', async () => {
+    sponsored.sendUserOperation.mockRejectedValue(policyRefusal);
+    mockGetBalance.mockResolvedValue(prefund);
+    mockAsk.mockResolvedValue(true);
+
+    await expect(
+      sendUserOperationPayingGasIfRefused(sponsored, deploy, undefined, chain),
+    ).resolves.toBe('0xselfpaid');
+    expect(sponsored.sendUserOperation).toHaveBeenCalledWith({ calls: deploy, nonce: undefined });
+    expect(mockUnsponsored.prepareUserOperation).toHaveBeenCalledWith({
+      calls: deploy,
+      nonce: undefined,
+    });
+  });
+
+  it('resolves to nothing when the user declines', async () => {
+    sponsored.sendUserOperation.mockRejectedValue(policyRefusal);
+    mockGetBalance.mockResolvedValue(prefund);
+    mockAsk.mockResolvedValue(false);
+
+    await expect(
+      sendUserOperationPayingGasIfRefused(sponsored, deploy, undefined, chain),
+    ).resolves.toBeUndefined();
+    expect(mockUnsponsored.sendUserOperation).not.toHaveBeenCalled();
+  });
 });

@@ -27,11 +27,15 @@ const PREFUND_SHORTFALL = /\bAA21\b|didn'?t pay prefund|insufficient (?:funds|ba
  * passkey prompt, so nothing was signed or sent when it refuses. The user is
  * then asked, with the most the fee can come to, and only signs if they agree.
  * Resolves to undefined when they decline.
+ *
+ * {@link executeTransactions} sends through this; use it directly only for an
+ * operation that can't go through there (and so isn't tracked as an activity).
+ * Without a `nonce` the account's next one is used.
  */
-const sendUserOperationPayingGasIfRefused = async (
+export const sendUserOperationPayingGasIfRefused = async (
   smartAccountClient: SmartAccountClient,
   transactions: any[],
-  nonce: bigint,
+  nonce: bigint | undefined,
   chain: Chain,
 ): Promise<`0x${string}` | undefined> => {
   try {
