@@ -26,6 +26,14 @@ const TRAILING_DETAIL_MARKERS = [
   'Version: viem@',
 ];
 
+/**
+ * viem's `Details:` line is the server's own reason, e.g. `sponsorshipPolicy
+ * perOpMaximumUsd reached`. It sits after the request dump cut off above, and
+ * is often the one line that says what went wrong: without it every paymaster
+ * refusal read as "Invalid parameters were provided to the RPC method".
+ */
+const DETAILS_LINE = /^Details:[ \t]*(\S.*)$/m;
+
 const toText = (raw: unknown): string => {
   if (raw === undefined || raw === null) return '';
   if (typeof raw === 'string') return raw;
@@ -54,10 +62,16 @@ export const sanitizeTechnicalMessage = (
   maxLength = TECHNICAL_MESSAGE_MAX,
 ): string => {
   let message = toText(raw);
+  const details = message.match(DETAILS_LINE)?.[1]?.trim();
 
   for (const marker of TRAILING_DETAIL_MARKERS) {
     const index = message.indexOf(marker);
     if (index > 0) message = message.slice(0, index);
+  }
+
+  // Redacted below along with everything else.
+  if (details && !message.includes(details)) {
+    message = `${message.trimEnd()}\nDetails: ${details}`;
   }
 
   message = message

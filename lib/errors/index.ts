@@ -20,6 +20,7 @@ export type { ErrorContext, ErrorDetails, ErrorKind, UserError } from '@/lib/err
 export {
   getUserErrorMessage,
   isSafeServerMessage,
+  isSponsorshipLimitError,
   normalizeError,
   normalizeErrorAsync,
   toUserError,

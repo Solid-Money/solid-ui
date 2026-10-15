@@ -55,6 +55,15 @@ import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
 
+export interface SafeAAOptions {
+  /**
+   * Whether our paymaster pays the gas. Defaults to true. Unsponsored, the
+   * Safe prefunds its own operation from its native balance on that chain, so
+   * only use it once the person has agreed to pay the network fee.
+   */
+  sponsored?: boolean;
+}
+
 interface UseUserReturn {
   user: User | undefined;
   handleLogin: () => Promise<void>;
@@ -67,7 +76,7 @@ interface UseUserReturn {
     chain: Chain,
     subOrganization: string,
     signWith: string,
-    turnkeyClient?: any,
+    options?: SafeAAOptions,
   ) => Promise<SmartAccountClient>;
   checkBalance: (user: User) => Promise<boolean>;
 }
@@ -109,7 +118,12 @@ const useUser = (): UseUserReturn => {
   const clearBalance = useBalanceStore(state => state.clearBalance);
 
   const safeAA = useCallback(
-    async (chain: Chain, subOrganization: string, signWith: string) => {
+    async (
+      chain: Chain,
+      subOrganization: string,
+      signWith: string,
+      { sponsored = true }: SafeAAOptions = {},
+    ) => {
       // Create a passkey-specific HTTP client that always requires passkey signing
       // This ensures every transaction requires explicit user confirmation via passkey
       const passkeyClient = createHttpClient({
@@ -195,10 +209,11 @@ const useUser = (): UseUserReturn => {
       return createSmartAccountClient({
         account: safeAccount,
         chain: chain,
-        paymaster: bundlerClient,
-        paymasterContext: EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID
-          ? { sponsorshipPolicyId: EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID }
-          : undefined,
+        paymaster: sponsored ? bundlerClient : undefined,
+        paymasterContext:
+          sponsored && EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID
+            ? { sponsorshipPolicyId: EXPO_PUBLIC_PIMLICO_SPONSORSHIP_POLICY_ID }
+            : undefined,
         userOperation: {
           estimateFeesPerGas: async () => {
             try {
