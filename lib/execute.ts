@@ -1,12 +1,112 @@
 import * as Sentry from '@sentry/react-native';
-import { SmartAccountClient } from 'permissionless';
+import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { getAccountNonce } from 'permissionless/actions';
-import { Chain } from 'viem';
+import { Chain, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 
+import { USER } from '@/lib/config';
+import { isSponsorshipLimitError } from '@/lib/errors/classify';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
+import { pimlicoClient } from '@/lib/pimlico';
+import { formatNativeAmount, userOperationPrefund } from '@/lib/utils/userOperation';
 import { publicClient } from '@/lib/wagmi';
+import { askToPayNetworkFee } from '@/store/useNetworkFeeStore';
 
 export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
+
+/** The bundler refusing an unsponsored operation the account can't prefund. */
+const PREFUND_SHORTFALL = /\bAA21\b|didn'?t pay prefund|insufficient (?:funds|balance)/i;
+
+/**
+ * Sends the operation with our paymaster paying its gas, and when the
+ * paymaster's policy won't (it caps what one operation may cost at worst, $2
+ * when this was written, and Ethereum gas routinely passes it), offers to let
+ * the account pay its own gas instead.
+ *
+ * The paymaster answers while the operation is being prepared, before the
+ * passkey prompt, so nothing was signed or sent when it refuses. The user is
+ * then asked, with the most the fee can come to, and only signs if they agree.
+ * Resolves to undefined when they decline.
+ *
+ * {@link executeTransactions} sends through this; use it directly only for an
+ * operation that can't go through there (and so isn't tracked as an activity).
+ * Without a `nonce` the account's next one is used.
+ */
+export const sendUserOperationPayingGasIfRefused = async (
+  smartAccountClient: SmartAccountClient,
+  transactions: any[],
+  nonce: bigint | undefined,
+  chain: Chain,
+): Promise<`0x${string}` | undefined> => {
+  try {
+    return await smartAccountClient.sendUserOperation({ calls: transactions, nonce });
+  } catch (error) {
+    if (!isSponsorshipLimitError(error) || !smartAccountClient.account) throw error;
+  }
+
+  const account = smartAccountClient.account;
+  const { symbol, decimals } = chain.nativeCurrency;
+  Sentry.addBreadcrumb({
+    message: 'Gas not sponsored: over the policy limit; offering to pay it',
+    category: 'transaction',
+    level: 'info',
+    data: { chainId: chain.id },
+  });
+
+  const bundler = pimlicoClient(chain.id);
+  const unsponsored = createSmartAccountClient({
+    account,
+    chain,
+    bundlerTransport: http(USER.pimlicoUrl(chain.id)),
+    userOperation: {
+      estimateFeesPerGas: async () => (await bundler.getUserOperationGasPrice()).fast,
+    },
+  });
+
+  // Whatever the calls send leaves the account too; a smaller amount only
+  // frees gas money when it is the gas token being sent.
+  const sent = transactions.reduce(
+    (total: bigint, call: { value?: bigint | string | number }) => total + BigInt(call.value ?? 0),
+    0n,
+  );
+  const shortfall = (maxFee?: bigint) =>
+    new UserCopyError(
+      `Not enough ${symbol} on ${chain.name} to pay the network fee` +
+        (maxFee ? ` (up to ${formatNativeAmount(maxFee, decimals)} ${symbol})` : '') +
+        (sent > 0n ? `. Lower the amount or add ${symbol}.` : `. Add ${symbol} and try again.`),
+    );
+
+  let request;
+  try {
+    request = await unsponsored.prepareUserOperation({ calls: transactions, nonce });
+  } catch (error: any) {
+    // Some bundlers simulate with the real fees, so an account short of gas
+    // money fails here rather than at the balance check below.
+    if (PREFUND_SHORTFALL.test(`${error?.details ?? ''} ${error?.message ?? ''}`)) {
+      throw shortfall();
+    }
+    throw error;
+  }
+
+  const maxFee = userOperationPrefund(request);
+  const balance = await publicClient(chain.id).getBalance({ address: account.address });
+  if (balance < maxFee + sent) throw shortfall(maxFee);
+
+  const accepted = await askToPayNetworkFee({
+    chainId: chain.id,
+    network: chain.name,
+    symbol,
+    decimals,
+    maxFee,
+  });
+  if (!accepted) return undefined;
+
+  // Sent as prepared, so the fee is the one the user just agreed to. The
+  // prepared operation carries a stub signature, which would be sent as-is:
+  // dropped so the passkey signs the real one.
+  const { signature: _stub, ...unsigned } = request;
+  return unsponsored.sendUserOperation(unsigned as any);
+};
 
 export type TransactionResult =
   | {
@@ -86,11 +186,24 @@ export const executeTransactions = async (
       await onBeforeBroadcast();
     }
 
-    // Get userOpHash immediately (this triggers passkey signing)
-    userOpHash = await smartAccountClient.sendUserOperation({
-      calls: transactions,
+    // Get userOpHash immediately (this triggers passkey signing). Gas is
+    // sponsored, or paid by the account if the user agrees once our
+    // paymaster's cost cap refuses it.
+    userOpHash = await sendUserOperationPayingGasIfRefused(
+      smartAccountClient,
+      transactions,
       nonce,
-    });
+      chain,
+    );
+    if (!userOpHash) {
+      Sentry.addBreadcrumb({
+        message: 'User declined to pay the network fee',
+        category: 'transaction',
+        level: 'info',
+        data: { chainId: chain.id },
+      });
+      return USER_CANCELLED_TRANSACTION;
+    }
 
     // Call the callback immediately with userOpHash (before waiting for receipt)
     if (onUserOpHash && userOpHash) {
@@ -177,6 +290,9 @@ export const executeTransactions = async (
       });
       return USER_CANCELLED_TRANSACTION;
     }
+
+    // Our own copy for a known state, e.g. no gas money to pay the fee with.
+    if (error instanceof UserCopyError) throw error;
 
     // Enhanced error handling for UserOperation failures
     if (isUserOperationError(error)) {
