@@ -194,6 +194,14 @@ import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 import { revealWirexCardWithSession } from './utils/wirexCardReveal';
 
+// Throws a proper Error when a fetch response is not OK, so callers always
+// receive an Error instance rather than a raw Response object.
+export function throwIfNotOk(response: Response): void {
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText} (${response.url})`);
+  }
+}
+
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
@@ -340,7 +348,7 @@ export const refreshToken = async () => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response;
 };
@@ -367,7 +375,7 @@ export const signUp = async (
     credentials: 'include',
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -386,7 +394,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
       body: JSON.stringify({ safeAddress }),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -405,7 +413,7 @@ export const addReferrer = async (referralCode: string) => {
       body: JSON.stringify({ referralCode }),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -424,7 +432,7 @@ export const updateUserCredentialId = async (credentialId: string) => {
       body: JSON.stringify({ credentialId }),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -439,7 +447,7 @@ export const logout = async () => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -458,7 +466,7 @@ export const updateExternalWalletAddress = async (externalWalletAddress: string)
       body: JSON.stringify({ externalWalletAddress }),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -801,7 +809,7 @@ export const createKycLink = async (
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -820,7 +828,7 @@ export const getKycLink = async (kycLinkId: string): Promise<KycLink> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -841,7 +849,7 @@ export const getKycLinkFromBridge = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -863,7 +871,7 @@ export const submitPersonaKyc = async (
     body: JSON.stringify({ personaInquiryId }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -892,7 +900,7 @@ export const personaSimulateAction = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -943,7 +951,7 @@ export const submitRainKyc = async (formData: FormData): Promise<RainKycSubmitRe
     body: formData,
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1114,7 +1122,7 @@ export const getDiditVerificationStatus = async (): Promise<DiditVerificationSta
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -1186,7 +1194,7 @@ export const getSumsubVerificationStatus = async (): Promise<SumsubVerificationS
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -1225,7 +1233,7 @@ export const getProviderRouting = async (
       },
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -1243,7 +1251,7 @@ export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
 
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1265,7 +1273,7 @@ export const getCustomerFromBridge = async (): Promise<CustomerFromBridgeRespons
 
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1292,7 +1300,7 @@ export const getKycLinkForExistingCustomer = async (params: {
   });
 
   if (response.status === 404) return null;
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1313,7 +1321,7 @@ export const getCustomerEndorsements = async (): Promise<BridgeCustomerEndorseme
 
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1369,7 +1377,7 @@ export const orderPhysicalCard = async (options?: {
     body: JSON.stringify(options ?? {}),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1392,7 +1400,7 @@ export const getPhysicalCardStatus = async (): Promise<{
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1414,7 +1422,7 @@ export const cancelPhysicalCard = async (cardId: string): Promise<{ message: str
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1443,7 +1451,7 @@ export const getPhysicalCardShippingData = async (): Promise<{
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1461,7 +1469,7 @@ export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
 
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1482,7 +1490,7 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto | null> =
   // Response that appears as a raw LogBox error in development.
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1499,7 +1507,7 @@ export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -1531,7 +1539,7 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1615,7 +1623,7 @@ export const getCardCollateralAvailable = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1636,7 +1644,7 @@ export const getOnrampAutomation = async (): Promise<OnrampAutomationResponseDto
   });
 
   if (response.status === 404) return null;
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1662,7 +1670,7 @@ export const createOnrampAutomation = async (
     body: JSON.stringify({ rail }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1695,7 +1703,7 @@ export const getWirexBankOverview = async (): Promise<WirexBankOverviewDto> => {
     headers: wirexBankHeaders(),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1716,7 +1724,7 @@ export const activateWirexBankAccount = async (
     body: JSON.stringify({ accountType }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1730,7 +1738,7 @@ export const initWirexWalletLink = async (): Promise<WirexWalletLinkChallengeDto
     body: JSON.stringify({}),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1751,7 +1759,7 @@ export const completeWirexWalletLink = async (
     body: JSON.stringify({ signedChallenge }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1773,7 +1781,7 @@ export const estimateWirexBankTransfer = async (
     body: JSON.stringify(request),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1789,7 +1797,7 @@ export const createWirexBankTransfer = async (
     body: JSON.stringify(request),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -1802,7 +1810,7 @@ export const getWirexBankTransfers = async (limit?: number): Promise<WirexBankTr
     headers: wirexBankHeaders(),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2072,7 +2080,7 @@ export const getWalletEligibility = async (): Promise<WalletEligibilityResponse>
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2092,7 +2100,7 @@ export const getMppCredentials = async (): Promise<MppCredentialsResponse> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2115,7 +2123,7 @@ export const getWebProvisioningToken = async (): Promise<WebProvisioningTokenRes
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2133,7 +2141,7 @@ export const getExtensionCards = async (bearerToken: string): Promise<ExtensionC
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2158,7 +2166,7 @@ export const createProvisioningSession = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2180,7 +2188,7 @@ export const addToCardWaitlist = async (
     body: JSON.stringify({ email, countryCode }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2198,7 +2206,7 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2216,7 +2224,7 @@ export const checkVaAccess = async (countryCode: string): Promise<CardAccessResp
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2232,7 +2240,7 @@ export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitli
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2288,7 +2296,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
       filterValue: username,
     }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2308,7 +2316,7 @@ export const fetchPoints = async (): Promise<Points> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2328,7 +2336,7 @@ export const fetchReferralSummary = async (): Promise<ReferralSummary> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2355,7 +2363,7 @@ export const fetchLeaderboardUsers = async (params: {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2374,7 +2382,7 @@ export const fetchRewardsUserData = async (): Promise<RewardsUserData> => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2389,7 +2397,7 @@ export const optInToRewards = async (): Promise<RewardsUserData> => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2418,7 +2426,7 @@ export const activateTierTrial = async (): Promise<RewardsUserData> => {
       credentials: 'include',
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2607,7 +2615,7 @@ export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
       credentials: 'include',
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2630,7 +2638,7 @@ export const fetchProductFeeRates = async (): Promise<ProductFeeRates> => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2650,7 +2658,7 @@ export const fetchProductFeeQuote = async (
     credentials: 'include',
     body: JSON.stringify({ product, baseAmountUsd }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2675,7 +2683,7 @@ export const recordSwapFee = async (
     credentials: 'include',
     body: JSON.stringify(params),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2759,7 +2767,7 @@ export const recordStocksFee = async (
       body: JSON.stringify(params),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2772,7 +2780,7 @@ export const fetchRewardsConfig = async (): Promise<FullRewardsConfig> => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -2819,7 +2827,7 @@ export const createMercuryoTransaction = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   const data: { widgetUrl: string } = await response.json();
   return data.widgetUrl;
@@ -2913,7 +2921,7 @@ export const fetchOnramperWidgetSession = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2934,7 +2942,7 @@ export const bridgeDeposit = async (
     body: JSON.stringify(bridge),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -2955,7 +2963,7 @@ export const bridgeDepositTransactions = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3010,7 +3018,7 @@ export const createBridgeTransfer = async (params: {
     body: JSON.stringify(params),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3054,7 +3062,7 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
     body: JSON.stringify(deposit),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3073,7 +3081,7 @@ export const depositTransactions = async (safeAddress: string): Promise<DepositT
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3093,7 +3101,7 @@ export const deleteAccount = async (): Promise<{ success: boolean; message?: str
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3115,7 +3123,7 @@ export const getExchangeRate = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3173,7 +3181,7 @@ export const bridgeTransaction = async (bridge: BridgeTransactionRequest): Promi
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response;
 };
@@ -3192,7 +3200,7 @@ export const getBankTransfers = async (): Promise<BridgeApiTransfer[]> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3210,7 +3218,7 @@ export const freezeCard = async (): Promise<{ message: string }> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3228,7 +3236,7 @@ export const unfreezeCard = async (): Promise<{ message: string }> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3247,7 +3255,7 @@ export const withdrawFromCard = async (body: CardWithdrawal): Promise<CardWithdr
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3272,7 +3280,7 @@ export const withdrawCardToSafeAddress = async (body: {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3301,7 +3309,7 @@ export const getCardWithdrawals = async (params?: {
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3325,7 +3333,7 @@ export const withdrawFromCardToSavings = async (body: {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3349,7 +3357,7 @@ export const withdrawCardCollateral = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3382,7 +3390,7 @@ export const getCardTransactions = async (
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3398,7 +3406,7 @@ export const getCashbacks = async (): Promise<Cashback[]> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3428,7 +3436,7 @@ export const getCardTransaction = async (
   // retrying, and the detail screen falls back to exactly that.
   if (response.status === 404) return null;
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3612,7 +3620,7 @@ export const setupTotp = async (): Promise<{
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3637,7 +3645,7 @@ export const verifyTotp = async (
     body: JSON.stringify({ code, context }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3658,7 +3666,7 @@ export const getTotpStatus = async (): Promise<{ verified: boolean }> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3778,7 +3786,7 @@ export const createActivityEvent = async (
     body: JSON.stringify(withSanitizedFailure(event)),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3800,7 +3808,7 @@ export const fetchActivityEvents = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3825,7 +3833,7 @@ export const updateActivityEvent = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3846,7 +3854,7 @@ export const bulkUpsertActivityEvent = async (
     body: JSON.stringify(events),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3891,7 +3899,7 @@ export const syncActivities = async (
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3922,7 +3930,7 @@ export const requestCardSecrets = async (
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3946,7 +3954,7 @@ export const updateCardPin = async (
     body: JSON.stringify({ encryptedPin }),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   const text = await response.text();
   return text ? JSON.parse(text) : {};
@@ -3965,7 +3973,7 @@ export const getCardPin = async (sessionIdBase64: string): Promise<CardPinRespon
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -3993,7 +4001,7 @@ export const requestEphemeralKey = async (nonce: string): Promise<EphemeralKeyRe
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4017,7 +4025,7 @@ export const revealCardDetails = async (
     },
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4064,7 +4072,7 @@ export const getWirexThreeDsRequests = async (): Promise<WirexThreeDsRequestsRes
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4099,7 +4107,7 @@ export const approveWirexThreeDsRequest = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4128,7 +4136,7 @@ export const declineWirexThreeDsRequest = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4153,7 +4161,7 @@ export const getWirexRevealSession = async (): Promise<WirexRevealSessionRespons
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4228,7 +4236,7 @@ export const getWirexCardRegistration = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4316,7 +4324,7 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4419,7 +4427,7 @@ export const confirmWirexCardRegistration = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4440,7 +4448,7 @@ export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
   });
 
   if (response.status === 404 || response.status === 204) return null;
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   const text = await response.text();
   if (!text) return null;
@@ -4465,7 +4473,7 @@ export const fetchPromotionsBanner = async (): Promise<PromotionsBannerResponse>
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4484,7 +4492,7 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4525,7 +4533,7 @@ export const createDirectDepositSession = async (
     DIRECT_DEPOSIT_SESSION_TIMEOUT_MS,
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4555,7 +4563,7 @@ export const getDetectedDirectDeposit = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4611,7 +4619,7 @@ export const getDirectDepositSession = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4633,7 +4641,7 @@ export const deleteDirectDepositSession = async (
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4827,7 +4835,7 @@ const postAgentJson = async <T>(path: string, body?: unknown): Promise<T> => {
     credentials: 'include',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4852,7 +4860,7 @@ export const fetchAgent = async (): Promise<AgentSummary> => {
     headers: agentJsonHeaders(),
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4870,7 +4878,7 @@ export const fetchAgentHasDeposited = async (): Promise<boolean> => {
     },
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   const json = (await response.json()) as { totalDocs?: number; docs?: unknown[] };
   return (json.totalDocs ?? json.docs?.length ?? 0) > 0;
 };
@@ -4881,7 +4889,7 @@ export const fetchAgentApiKeys = async (): Promise<AgentApiKeySummary[]> => {
     headers: agentJsonHeaders(),
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4892,7 +4900,7 @@ export const generateAgentApiKey = async (name?: string): Promise<GenerateAgentA
     credentials: 'include',
     body: JSON.stringify({ name }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4902,7 +4910,7 @@ export const revokeAgentApiKey = async (id: string): Promise<void> => {
     headers: agentJsonHeaders(),
     credentials: 'include',
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 };
 
 export const fetchAddressBook = async (): Promise<AddressBookResponse[]> => {
@@ -4917,7 +4925,7 @@ export const fetchAddressBook = async (): Promise<AddressBookResponse[]> => {
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4934,7 +4942,7 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
     body: JSON.stringify(data),
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -4969,7 +4977,7 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -4985,7 +4993,7 @@ export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -5002,7 +5010,7 @@ export const getHoldingFundsPointsMultiplier =
       },
     );
 
-    if (!response.ok) throw response;
+    throwIfNotOk(response);
 
     return response.json();
   };
@@ -5030,7 +5038,7 @@ export const getWebhookStatus = async (): Promise<WebhookStatus> => {
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -5056,7 +5064,7 @@ export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse
     },
   );
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
@@ -5075,7 +5083,7 @@ export const registerPushToken = async (token: string, platform: string) => {
     credentials: 'include',
     body: JSON.stringify({ token, platform }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -5091,7 +5099,7 @@ export const removePushToken = async (token: string) => {
     credentials: 'include',
     body: JSON.stringify({ token }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -5107,7 +5115,7 @@ export const trackUserPlatform = async (platform: typeof Platform.OS) => {
     credentials: 'include',
     body: JSON.stringify({ platform }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 };
 
 /**
@@ -5135,7 +5143,7 @@ export const recordAppOpen = async (
       deviceId,
     }),
   });
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -5199,7 +5207,7 @@ export const markStoreReviewPrompted = async (
       body: JSON.stringify({ platform }),
     },
   );
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
   return response.json();
 };
 
@@ -5219,7 +5227,7 @@ export const fetchSavingsSummary = async (
     credentials: 'include',
   });
 
-  if (!response.ok) throw response;
+  throwIfNotOk(response);
 
   return response.json();
 };
