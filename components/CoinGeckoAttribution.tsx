@@ -21,7 +21,12 @@ interface CoinGeckoAttributionProps {
 export default function CoinGeckoAttribution({ className }: CoinGeckoAttributionProps) {
   return (
     <Pressable
-      onPress={() => void Linking.openURL(COINGECKO_ATTRIBUTION_URL)}
+      onPress={() => {
+        // A failed open (no browser, a blocked URL) is not worth an unhandled rejection.
+        Linking.openURL(COINGECKO_ATTRIBUTION_URL).catch(error =>
+          console.warn('Could not open the CoinGecko attribution link:', error),
+        );
+      }}
       className={cn('self-center px-2 py-4 active:opacity-70', className)}
       accessibilityRole="link"
       accessibilityLabel="Price data provided by CoinGecko"
