@@ -63,6 +63,31 @@ describe('sanitizeTechnicalMessage', () => {
     expect(out).not.toContain('callData');
   });
 
+  it('redacts a bare bearer token in the Details line, but not the word in a sentence', () => {
+    expect(
+      sanitizeTechnicalMessage(
+        'RPC Request failed.\n\nRequest body: {"id":1}\n\nDetails: rejected Bearer eyJhbGciOi.J9.abc123',
+      ),
+    ).toBe('RPC Request failed. Details: rejected [redacted]');
+    expect(sanitizeTechnicalMessage('Bearer authentication failed')).toBe(
+      'Bearer authentication failed',
+    );
+  });
+
+  it('redacts the whole Authorization value, scheme and credential', () => {
+    expect(sanitizeTechnicalMessage('401 Authorization: Basic dXNlcjpzZWNyZXQ=')).toBe(
+      '401 Authorization: [redacted]',
+    );
+  });
+
+  it('drops a request dump that starts the message, keeping its Details', () => {
+    expect(
+      sanitizeTechnicalMessage(
+        'Request body: {"privateKey":"sensitiveValue"}\n\nDetails: nonce too low',
+      ),
+    ).toBe('Details: nonce too low');
+  });
+
   it('redacts a key that turns up in the Details line itself', () => {
     const out = sanitizeTechnicalMessage(
       'RPC Request failed.\n\nRequest body: {"id":1}\n\nDetails: bad key apikey=pim_TestKey1234567890abc',

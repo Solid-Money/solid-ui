@@ -6,12 +6,21 @@ const LONG_HEX = /0x[0-9a-fA-F]{65,}/g;
 
 const URL_PATTERN = /\bhttps?:\/\/[^\s"'<>]+/gi;
 
-/** `apikey=…`, `token: …`, `"secret":"…"` and friends, in query strings, headers or JSON. */
+/**
+ * `apikey=…`, `token: …`, `"secret":"…"` and friends, in query strings, headers
+ * or JSON. An `Authorization` value loses its scheme's credential too, not just
+ * the scheme: `Authorization: Basic dXNl…` → `Authorization: [redacted]`.
+ */
 const SECRET_PAIR =
-  /\b(api[_-]?key|apikey|key|token|access[_-]?token|secret|password|authorization)\b(["']?\s*[:=]\s*["']?)(?:Bearer\s+)?[^\s"'&,;}]+/gi;
+  /\b(api[_-]?key|apikey|key|token|access[_-]?token|secret|password|authorization)\b(["']?\s*[:=]\s*["']?)(?:(?:Bearer|Basic)\s+)?[^\s"'&,;}]+/gi;
 
-/** Provider key formats that turn up bare in SDK errors. */
-const BARE_SECRETS = [/\bpim_[A-Za-z0-9]{8,}/g, /\bsk_(?:live|test)_[A-Za-z0-9]{8,}/g];
+/** Provider key formats and credentials that turn up bare in SDK errors. */
+const BARE_SECRETS = [
+  /\bpim_[A-Za-z0-9]{8,}/g,
+  /\bsk_(?:live|test)_[A-Za-z0-9]{8,}/g,
+  // A token, not prose: it has a digit or symbol ("Bearer authentication" stays).
+  /\bBearer\s+(?=[A-Za-z0-9._~+/=-]*[0-9._~+/=-])[A-Za-z0-9._~+/=-]{8,}/g,
+];
 
 /**
  * viem and ethers append the whole request after the human part of the
@@ -64,9 +73,11 @@ export const sanitizeTechnicalMessage = (
   let message = toText(raw);
   const details = message.match(DETAILS_LINE)?.[1]?.trim();
 
+  // A dump that starts the message goes too; the Details line, if any, is
+  // all that is left of it.
   for (const marker of TRAILING_DETAIL_MARKERS) {
     const index = message.indexOf(marker);
-    if (index > 0) message = message.slice(0, index);
+    if (index >= 0) message = message.slice(0, index);
   }
 
   // Redacted below along with everything else.
