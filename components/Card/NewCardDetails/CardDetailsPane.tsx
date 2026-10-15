@@ -42,6 +42,7 @@ import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetail
 import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
 import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
 import { DigitalWalletType } from '@/constants/digital-wallet';
+import { CARD_FROZEN_BY_SOLID_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -61,6 +62,7 @@ import {
   canAddFundsToCard,
   canToggleCardFreeze,
   canWithdrawFromCard,
+  isCardFrozenBySolidError,
   isCustomerFundsRestricted,
 } from '@/lib/utils/cardHelpers';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
@@ -284,11 +286,17 @@ const CardDetailsPane = () => {
       setIsFreezing(true);
       await (isCardFrozen ? unfreezeCard() : freezeCard());
       await refetch();
-    } catch {
-      Alert.alert(
-        'Error',
-        `Failed to ${isCardFrozen ? 'unfreeze' : 'freeze'} card. Please try again.`,
-      );
+    } catch (error) {
+      if (isCardFrozen && (await isCardFrozenBySolidError(error))) {
+        // Retrying can't help; the details refresh hides the button.
+        Alert.alert('Card frozen by Solid', CARD_FROZEN_BY_SOLID_MESSAGE);
+        void refetch();
+      } else {
+        Alert.alert(
+          'Error',
+          `Failed to ${isCardFrozen ? 'unfreeze' : 'freeze'} card. Please try again.`,
+        );
+      }
     } finally {
       setIsFreezing(false);
     }
