@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { type Address, type Chain, TransactionReceipt, zeroAddress } from 'viem';
-import { mainnet } from 'viem/chains';
+import { base, mainnet } from 'viem/chains';
 import { encodeFunctionData } from 'viem/utils';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -27,11 +27,10 @@ type CancelWithdrawTarget = {
  * soUSD queue on Ethereum whatever vault the request was for.
  *
  * `undefined` where a user cannot cancel at all, and the activity screen then
- * offers no Cancel button: the soFUSE and soEURC queues do not make
- * `cancelOnChainWithdrawUsingRequestId` a public capability (read from each
- * queue's RolesAuthority on 2026-10-14), so a cancel there can only revert.
- * TODO(soEURC): map EUR to `ADDRESSES.base.soEurcBoringQueue` on Base once that
- * queue grants the public cancel role.
+ * offers no Cancel button: the soFUSE queue does not make
+ * `cancelOnChainWithdrawUsingRequestId` a public capability (read from its
+ * RolesAuthority on 2026-10-14), so a cancel there can only revert. The soEURC
+ * queues on Base, QA's and production's, both do (read 2026-10-15).
  */
 const CANCEL_TARGETS: Record<VaultKey, CancelWithdrawTarget | undefined> = {
   USD: {
@@ -50,7 +49,12 @@ const CANCEL_TARGETS: Record<VaultKey, CancelWithdrawTarget | undefined> = {
           shareAddress: ADDRESSES.ethereum.soEthVault,
         },
   FUSE: undefined,
-  EUR: undefined,
+  EUR: {
+    chain: base,
+    queue: ADDRESSES.base.soEurcBoringQueue,
+    shareSymbol: 'soEURC',
+    shareAddress: ADDRESSES.base.soEurcVault,
+  },
 };
 
 /**

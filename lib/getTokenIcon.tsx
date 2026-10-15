@@ -49,7 +49,9 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       };
     case 'EURC':
     // TODO(soEURC): the share reuses the EURC mark until design supplies a soEURC icon.
+    // SOEUR is the share's on-chain symbol, which wallet token lists show.
     case 'SOEURC':
+    case 'SOEUR':
       return {
         type: 'image',
         source: getAsset('images/eurc.png'),
