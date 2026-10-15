@@ -74,6 +74,16 @@ describe('sanitizeTechnicalMessage', () => {
     );
   });
 
+  it('redacts a bearer token in any case, and an all-letter one too long to be a word', () => {
+    expect(sanitizeTechnicalMessage('rejected bearer eyJhbGciOi.J9.abc123')).toBe(
+      'rejected [redacted]',
+    );
+    expect(sanitizeTechnicalMessage('rejected BEARER abcdefghijklmnopqrstuvwxyz')).toBe(
+      'rejected [redacted]',
+    );
+    expect(sanitizeTechnicalMessage('bearer token missing')).toBe('bearer token missing');
+  });
+
   it('redacts the whole Authorization value, scheme and credential', () => {
     expect(sanitizeTechnicalMessage('401 Authorization: Basic dXNlcjpzZWNyZXQ=')).toBe(
       '401 Authorization: [redacted]',

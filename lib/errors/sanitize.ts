@@ -18,8 +18,9 @@ const SECRET_PAIR =
 const BARE_SECRETS = [
   /\bpim_[A-Za-z0-9]{8,}/g,
   /\bsk_(?:live|test)_[A-Za-z0-9]{8,}/g,
-  // A token, not prose: it has a digit or symbol ("Bearer authentication" stays).
-  /\bBearer\s+(?=[A-Za-z0-9._~+/=-]*[0-9._~+/=-])[A-Za-z0-9._~+/=-]{8,}/g,
+  // A credential, not prose: it has a digit or symbol, or is too long to be a
+  // word ("Bearer authentication" stays). The scheme is case-insensitive.
+  /\bbearer\s+(?:(?=[A-Za-z0-9._~+/=-]*[0-9._~+/=-])[A-Za-z0-9._~+/=-]{8,}|[A-Za-z0-9._~+/=-]{20,})/gi,
 ];
 
 /**
