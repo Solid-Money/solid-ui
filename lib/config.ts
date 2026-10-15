@@ -135,7 +135,6 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
   process.env.EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID ?? '';
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
-export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 
 /**
  * Flashnet Orchestra — the Lightning fiat onramp.

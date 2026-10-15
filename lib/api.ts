@@ -33,7 +33,6 @@ import { useUserStore } from '@/store/useUserStore';
 
 import {
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
-  EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
@@ -76,7 +75,6 @@ import {
   CardWithdrawal,
   CardWithdrawalResponse,
   Cashback,
-  CoinHistoricalChart,
   ConfirmOnboardingFeeParams,
   CustomerFromBridgeResponse,
   Deposit,
@@ -137,7 +135,6 @@ import {
   RewardsTier,
   RewardsUserData,
   SavingsSummaryResponse,
-  SearchCoin,
   SourceDepositInstructions,
   StatementDownload,
   StoreReviewPromptedResponse,
@@ -296,18 +293,15 @@ const captureAxiosError = (error: any) => {
 axios.interceptors.response.use(response => response, captureAxiosError);
 
 /**
- * Axios instance for third-party APIs (Alchemy Prices, CoinGecko).
+ * Axios instance for third-party APIs (Alchemy Prices).
  *
  * The global request interceptor above attaches the Solid backend Bearer JWT to
  * every axios request on iOS/Android. Third-party hosts either reject that
- * token or receive a credential they should never see:
- *
- *  - Alchemy treats an `Authorization: Bearer …` header as its own credential
- *    and ignores the API key in the URL path, so the request 401s. Every price
- *    lookup then resolves to 0 and balances render as $0.00 — on native only,
- *    since `getJWTToken()` returns null on web and no header is attached there.
- *  - CoinGecko authenticates via `x-cg-pro-api-key` and ignores the header, so
- *    it still works, but the user's access token leaves the app for no reason.
+ * token or receive a credential they should never see: Alchemy treats an
+ * `Authorization: Bearer …` header as its own credential and ignores the API
+ * key in the URL path, so the request 401s. Every price lookup then resolves to
+ * 0 and balances render as $0.00 — on native only, since `getJWTToken()`
+ * returns null on web and no header is attached there.
  *
  * `axios.create()` starts with no interceptors, so this instance sends neither
  * the JWT nor the platform headers. Error reporting is kept so failures against
@@ -547,7 +541,12 @@ const BACKEND_PRICES_MAX_SYMBOL_LENGTH = 64;
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 let backendPricesPausedUntil = 0;
 
-type BackendPrices = { symbols: Record<string, number>; tokens: Record<string, number> };
+type BackendPrices = {
+  symbols: Record<string, number>;
+  tokens: Record<string, number>;
+  /** By lower-cased CoinGecko coin id. Empty from a backend that predates it. */
+  coins: Record<string, number>;
+};
 
 const positivePrices = (value: unknown): Record<string, number> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
@@ -572,6 +571,7 @@ const positivePrices = (value: unknown): Record<string, number> | undefined => {
 const fetchBackendPrices = async (body: {
   symbols?: string[];
   tokens?: { chainId: number; address: string }[];
+  coinIds?: string[];
 }): Promise<BackendPrices | undefined> => {
   if (Date.now() < backendPricesPausedUntil) return undefined;
   try {
@@ -591,13 +591,20 @@ const fetchBackendPrices = async (body: {
       BACKEND_PRICES_TIMEOUT_MS,
     );
     if (!response.ok) throw new Error(`Backend prices responded ${response.status}`);
-    const data = (await response.json()) as { symbols?: unknown; tokens?: unknown };
+    const data = (await response.json()) as {
+      symbols?: unknown;
+      tokens?: unknown;
+      coins?: unknown;
+    };
     const symbols = positivePrices(data?.symbols);
     const tokens = positivePrices(data?.tokens);
+    // A backend released before coin ids were added answers without `coins`;
+    // that is "no coin prices", not a failure of the symbols and tokens.
+    const coins = data?.coins === undefined ? {} : positivePrices(data.coins);
     // Anything but the expected shape is a failure, not "no prices": a miss is
     // remembered for minutes, so a misrouted reply mustn't be taken for one.
-    if (!symbols || !tokens) throw new Error('Unexpected backend prices response');
-    return { symbols, tokens };
+    if (!symbols || !tokens || !coins) throw new Error('Unexpected backend prices response');
+    return { symbols, tokens, coins };
   } catch {
     backendPricesPausedUntil = Date.now() + BACKEND_PRICES_RETRY_MS;
     return undefined;
@@ -709,11 +716,64 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
   },
 });
 
+/** What the backend route accepts as a CoinGecko coin id; anything else would fail the request. */
+const COIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,99}$/;
+
+/**
+ * Keyed by lower-cased CoinGecko coin id. Answered by the backend only: it
+ * prices every coin the app asks about from one CoinGecko cache shared by all
+ * users, so the app holds no CoinGecko key and never calls CoinGecko itself.
+ * The timings match the Alchemy lookups; the backend refreshes its cache every
+ * two minutes, so asking it more often than once a minute gains nothing.
+ */
+const coinPricesById = createBatchedLoader<number>({
+  ttlMs: ALCHEMY_PRICE_TTL_MS,
+  missTtlMs: ALCHEMY_PRICE_MISS_TTL_MS,
+  errorTtlMs: ALCHEMY_PRICE_ERROR_TTL_MS,
+  maxStaleMs: ALCHEMY_PRICE_MAX_STALE_MS,
+  chunk: ids => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+      chunks.push(ids.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+    }
+    return chunks;
+  },
+  fetchChunk: async ids => {
+    const fromBackend = await fetchBackendPrices({ coinIds: ids });
+    if (!fromBackend) throw new Error('Backend prices unavailable');
+    return new Map(Object.entries(fromBackend.coins));
+  },
+});
+
 /** Drops every cached price and lifts any pause on the backend or on Alchemy. */
 export const clearAlchemyPriceCache = () => {
   alchemyPricesBySymbol.clear();
   alchemyPricesByAddress.clear();
+  coinPricesById.clear();
   backendPricesPausedUntil = 0;
+};
+
+/**
+ * USD prices by CoinGecko coin id (e.g. `wrapped-bitcoin`), keyed by the ids as
+ * passed — the `tokenId` swap tokens carry, and the native coin ids.
+ *
+ * Served by the backend's shared CoinGecko cache; lookups started in the same
+ * tick share one request, and a price is reused by every caller for a minute.
+ * Never throws: an id without a price, or one the backend couldn't be asked
+ * about, is left out so the caller's next price source gets its turn.
+ */
+export const fetchCoinPricesById = async (ids: string[]): Promise<Record<string, number>> => {
+  const wanted = [
+    ...new Set(ids.filter(id => typeof id === 'string' && COIN_ID_PATTERN.test(id.toLowerCase()))),
+  ];
+  if (wanted.length === 0) return {};
+  const prices = await coinPricesById.load(wanted.map(id => id.toLowerCase()));
+  const byId: Record<string, number> = {};
+  for (const id of wanted) {
+    const price = prices.get(id.toLowerCase());
+    if (price !== undefined) byId[id] = price;
+  }
+  return byId;
 };
 
 /**
@@ -4636,46 +4696,6 @@ export const deleteDirectDepositSession = async (
   if (!response.ok) throw response;
 
   return response.json();
-};
-
-export const searchCoin = async (query: string) => {
-  const response = await externalAxios.get<SearchCoin>(
-    `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data;
-};
-
-export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1') => {
-  const response = await externalAxios.get<CoinHistoricalChart>(
-    `https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data;
-};
-
-export const fetchCoinSimplePrice = async (
-  coinIds: string[],
-): Promise<Record<string, { usd?: number }>> => {
-  if (coinIds.length === 0) return {};
-  const ids = [...new Set(coinIds)].filter(Boolean).join(',');
-  const response = await externalAxios.get<Record<string, { usd?: number }>>(
-    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data ?? {};
 };
 
 export const fetchHistoricalAPY = async (
