@@ -12,6 +12,7 @@ import {
 } from '@/lib/execute';
 import { toErc1271Signature, waitForSmartAccountDeployment } from '@/lib/smartAccountSigning';
 import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
+import { isCancelledByUser } from '@/lib/utils/passkeyErrors';
 import { getChain, publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
@@ -249,6 +250,14 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         setStatus(Status.SUCCESS);
         return transaction_result;
       } catch (err) {
+        // Declining the network fee or the passkey prompt is a decision, not a
+        // failure: nothing to report. Still thrown, so the caller stops; its
+        // failure sheet stays silent for a cancel.
+        if (isCancelledByUser(err)) {
+          setStatus(Status.IDLE);
+          throw err;
+        }
+
         console.error('Rain collateral withdrawal error:', err);
 
         Sentry.captureException(err, {
