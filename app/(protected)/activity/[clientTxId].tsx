@@ -990,7 +990,7 @@ export default function ActivityDetail() {
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
-  // Only where the request's own queue lets the user cancel it (not soFUSE or soEURC).
+  // Only where the request's own queue lets the user cancel it (not soFUSE).
   const isCancelWithdraw =
     finalActivity?.requestId && isPending && !!getCancelWithdrawTarget(finalActivity.symbol);
 
