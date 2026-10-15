@@ -24,6 +24,25 @@ export const PASSKEY_NOT_REGISTERED_CODE = 'PASSKEY_NOT_REGISTERED';
 export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
 
 /**
+ * Backend code for a signup, or an email change, on a domain on the
+ * anti-abuse blocklist (throwaway inboxes used by account farms). Retrying
+ * with the same address cannot succeed; another address can.
+ */
+export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
+
+export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE =
+  "We can't create accounts with this email provider. Please use a different email address.";
+
+/**
+ * Backend code for an unfreeze the cardholder asked for on a card Solid (or the
+ * issuer) froze. Only support can lift it.
+ */
+export const CARD_FROZEN_BY_SOLID_CODE = 'CARD_FROZEN_BY_SOLID';
+
+export const CARD_FROZEN_BY_SOLID_MESSAGE =
+  "Your card was frozen by Solid and can't be unfrozen from the app. Please contact support.";
+
+/**
  * Our own copy for a 404 that arrives without a `code` — an older backend, which
  * answered both cases above with a bare "User not found". Shown instead of that
  * text because the account usually is not missing: it is the passkey that isn't
