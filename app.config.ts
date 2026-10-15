@@ -72,13 +72,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription:
-        'Solid needs camera access to scan QR codes and to capture your ID and selfie during identity verification',
+        'Solid needs camera access to scan QR codes, to capture your ID and selfie during identity verification, and to take photos you send to Solid support',
       NSUserTrackingUsageDescription:
         'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
       NSMicrophoneUsageDescription:
         'Access your microphone to transcribe voice messages and to record video during identity verification',
       NSPhotoLibraryUsageDescription:
-        'Solid needs photo library access to upload identity documents during verification',
+        'Solid needs photo library access to upload identity documents during verification and to send photos to Solid support',
       // Required by Sumsub's IdensicMobileSDK, which links CoreLocation for the
       // geolocation step of identity verification. Apple's static scanner flags
       // the reference whether or not the step runs (ITMS-90683), and iOS crashes
