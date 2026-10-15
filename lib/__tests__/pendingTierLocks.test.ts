@@ -33,6 +33,12 @@ jest.mock('@/lib/utils', () => ({
   withRefreshToken: <T>(call: () => Promise<T>) => call(),
 }));
 
+// The account whose session an API call made now would carry.
+const mockSelectedUserId = jest.fn();
+jest.mock('@/store/useRewardsUpgradeStore', () => ({
+  selectedRewardsUserId: () => mockSelectedUserId(),
+}));
+
 const mockTrack = jest.fn();
 jest.mock('@/lib/analytics', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
@@ -79,6 +85,7 @@ describe('reconciling pending tier locks', () => {
     mockGetUserOperationReceipt.mockReset();
     mockConfirmTierLock.mockReset().mockResolvedValue({});
     mockTrack.mockReset();
+    mockSelectedUserId.mockReset().mockReturnValue(USER);
   });
 
   it('confirms a lock that landed, and forgets it', async () => {
@@ -159,6 +166,26 @@ describe('reconciling pending tier locks', () => {
 
     const results = await reconcilePendingTierLocks(USER);
 
+    expect(results.map(({ outcome }) => outcome)).toEqual(['pending']);
+    expect(stored()).toEqual([HASH]);
+  });
+
+  /**
+   * The confirm carries whichever account is selected when it is sent. A run
+   * that outlived a switch to another account must not confirm the lock as
+   * that account — the backend would record it there.
+   */
+  it('leaves the lock for its owner when the account switched mid-run', async () => {
+    usePendingTierLockStore.getState().remember(lock());
+    mockGetUserOperationReceipt.mockImplementation(async () => {
+      // The switch happens while the receipt is being looked up.
+      mockSelectedUserId.mockReturnValue('someone-else');
+      return { success: true, receipt: { transactionHash: TX } };
+    });
+
+    const results = await reconcilePendingTierLocks(USER);
+
+    expect(mockConfirmTierLock).not.toHaveBeenCalled();
     expect(results.map(({ outcome }) => outcome)).toEqual(['pending']);
     expect(stored()).toEqual([HASH]);
   });

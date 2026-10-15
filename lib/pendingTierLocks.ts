@@ -11,6 +11,7 @@ import {
   pendingTierLocksFor,
   usePendingTierLockStore,
 } from '@/store/usePendingTierLockStore';
+import { selectedRewardsUserId } from '@/store/useRewardsUpgradeStore';
 
 import type { UserOperationReceipt } from 'viem/account-abstraction';
 
@@ -102,14 +103,24 @@ const settle = async (lock: PendingTierLock, now: number): Promise<PendingTierLo
     return 'reverted';
   }
 
+  let confirmed: boolean;
   try {
-    await withRefreshToken(() =>
-      confirmTierLock({ transactionHash: receipt.receipt.transactionHash }),
-    );
+    confirmed = await withRefreshToken(async () => {
+      // The confirm goes out under whichever account is selected at this
+      // moment, and the backend records the lock against that account. A run
+      // that started for this lock's owner and outlived a switch must not
+      // confirm it as someone else — it is left for the owner's next session.
+      // Checked here, right before the request, because the receipt lookup and
+      // the token refresh above both wait long enough for a switch to happen.
+      if (selectedRewardsUserId() !== lock.userId) return false;
+      await confirmTierLock({ transactionHash: receipt.receipt.transactionHash });
+      return true;
+    });
   } catch {
     // Landed but not yet confirmed. Kept, so the next run tries again.
     return 'pending';
   }
+  if (!confirmed) return 'pending';
 
   forget(lock.userOpHash);
   return 'confirmed';
