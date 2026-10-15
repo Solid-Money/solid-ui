@@ -30,6 +30,7 @@ import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { useSyncNativeHelp } from '@/hooks/useHelp';
 import { useNotificationPermissionReminder } from '@/hooks/useNotificationPermissionReminder';
 import { detectPasskeyBlock, passkeyNotSupportedHref } from '@/hooks/usePasskey';
+import { usePendingTierLockReconciler } from '@/hooks/usePendingTierLockReconciler';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import { useRealtime } from '@/hooks/useRealtime';
 import useUser from '@/hooks/useUser';
@@ -146,6 +147,9 @@ export default function ProtectedLayout() {
   useRealtime(!!user);
   // Help center links open natively for users who have the in-house help center.
   useSyncNativeHelp();
+  // Finishes a tier lock that was sent but never confirmed — the receipt wait
+  // does not survive the app being backgrounded. Idle unless one is pending.
+  usePendingTierLockReconciler(user?.userId);
 
   // MeaWallet MPP: initialize once on native (required before any MPP API use).
   // Deferred off the first-paint critical path — MPP isn't needed at startup.
