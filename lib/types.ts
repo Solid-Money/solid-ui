@@ -3064,21 +3064,6 @@ export interface HistoricalAPYPoint {
   value: number;
 }
 
-export interface Coin {
-  id: string;
-  name: string;
-  api_symbol: string;
-  symbol: string;
-}
-
-export interface SearchCoin {
-  coins: Coin[];
-}
-
-export interface CoinHistoricalChart {
-  prices: [number, number][];
-}
-
 export interface ChartPayload {
   time: number | string;
   value: number;
