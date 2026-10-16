@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
+import useBridgeForWithdraw from '@/hooks/useBridgeForWithdraw';
 import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
 import { Status, TransactionStatus } from '@/lib/types';
 
@@ -38,6 +38,10 @@ jest.mock('@/hooks/useActivityActions', () => ({
 }));
 jest.mock('@/lib/config', () => ({ ADDRESSES: { fuse: {} } }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
+jest.mock('@/lib/soUsdWithdraw', () => ({
+  SOUSD_WITHDRAW_CHAIN_ID: 8453,
+  SOUSD_WITHDRAW_CHAINS: { 8453: { lzEid: 30184 } },
+}));
 jest.mock('@/lib/execute', () => ({
   USER_CANCELLED_TRANSACTION: 'cancelled',
   executeTransactions: async (
@@ -58,10 +62,10 @@ jest.mock('@/store/useWithdrawSessionStore', () => ({
   useWithdrawSessionStore: { getState: () => ({ setSession: mockSetSession }) },
 }));
 
-let usd: ReturnType<typeof useBridgeToMainnet>;
+let usd: ReturnType<typeof useBridgeForWithdraw>;
 let eth: ReturnType<typeof useBridgeToMainnetSoEth>;
 const Probe = () => {
-  const usdResult = useBridgeToMainnet();
+  const usdResult = useBridgeForWithdraw();
   const ethResult = useBridgeToMainnetSoEth();
   useEffect(() => {
     usd = usdResult;

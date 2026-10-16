@@ -1,4 +1,5 @@
-import { fuse, mainnet } from 'viem/chains';
+import { zeroAddress } from 'viem';
+import { base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import {
@@ -28,6 +29,11 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.vault,
         chainId: fuse.id,
       },
+      // Shares sit on Base between a withdrawal's bridge and its queue request.
+      // Kept last: screens that show one share address read vaults[0].
+      ...(ADDRESSES.base.vault !== zeroAddress
+        ? [{ address: ADDRESSES.base.vault, chainId: base.id }]
+        : []),
     ],
     depositConfig: {
       methods: [
