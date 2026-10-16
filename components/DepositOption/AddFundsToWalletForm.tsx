@@ -222,6 +222,11 @@ function AddFundsToWalletForm({
               }}
             />
           </View>
+          {minDeposit ? (
+            <Text className="text-sm text-muted-foreground">
+              {`Minimum deposit: ${minDeposit} ${selectedTokenInfo.name}`}
+            </Text>
+          ) : null}
         </View>
 
         <CheckConnectionWrapper props={{ size: 'xl' }}>
