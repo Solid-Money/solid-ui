@@ -93,6 +93,13 @@ export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
 export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
+/**
+ * Minimum USDC for a card funding the backend carries out: from the Solid
+ * wallet, or from a connected wallet to the card's deposit address. Matches the
+ * backend's MINIMUM_SPONSOR_AMOUNT_CARD, which refuses or refunds anything less.
+ */
+export const EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT ?? '10';
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
