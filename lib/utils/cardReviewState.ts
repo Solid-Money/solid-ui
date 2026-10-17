@@ -1,26 +1,10 @@
-import { EndorsementStatus } from '@/components/BankTransfer/enums';
-import { BridgeCustomerEndorsement, CardStatusResponse } from '@/lib/types';
+import { CardStatusResponse } from '@/lib/types';
 import { blocksCardActivation } from '@/lib/utils/cardActivationRetry';
 import { isKycAwaitingDecision } from '@/lib/utils/kyc/verificationProgress';
 
 export interface CardIssuanceReviewInput {
   /** Latest `/cards/status` response; the issuance screen polls it. */
   cardStatus: CardStatusResponse | null | undefined;
-  /**
-   * The deprecated bridge.xyz "cards" endorsement, when the user has one. That
-   * flow never reported a KYC status on `/cards/status`, so its review state is
-   * only visible here.
-   */
-  cardsEndorsement: BridgeCustomerEndorsement | undefined;
-}
-
-/** The bridge.xyz/Persona review state: an endorsement with pending requirements. */
-function hasBridgeEndorsementUnderReview(
-  cardsEndorsement: BridgeCustomerEndorsement | undefined,
-): boolean {
-  if (cardsEndorsement?.status !== EndorsementStatus.INCOMPLETE) return false;
-  const pending = cardsEndorsement.requirements?.pending;
-  return Array.isArray(pending) && pending.length > 0;
 }
 
 /**
@@ -39,14 +23,9 @@ function hasBridgeEndorsementUnderReview(
  *
  * Both live issuers are covered by one question — see `isKycAwaitingDecision` —
  * so Rain/Didit and Wirex/Sumsub need no branch of their own here. The
- * endorsement clause is the deprecated bridge.xyz/Persona path, unchanged.
+ * retired bridge.xyz/Persona endorsement is not consulted.
  */
-export function isCardIssuanceUnderReview({
-  cardStatus,
-  cardsEndorsement,
-}: CardIssuanceReviewInput): boolean {
-  if (hasBridgeEndorsementUnderReview(cardsEndorsement)) return true;
-
+export function isCardIssuanceUnderReview({ cardStatus }: CardIssuanceReviewInput): boolean {
   if (!isKycAwaitingDecision(cardStatus)) return false;
 
   // Issuance is blocked (e.g. a provider registration that cannot be retried).

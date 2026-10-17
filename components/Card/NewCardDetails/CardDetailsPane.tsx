@@ -50,7 +50,6 @@ import {
   useCardSpendRegistration,
 } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { useCustomer } from '@/hooks/useCustomer';
 import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
@@ -61,7 +60,6 @@ import {
   canAddFundsToCard,
   canToggleCardFreeze,
   canWithdrawFromCard,
-  isCustomerFundsRestricted,
 } from '@/lib/utils/cardHelpers';
 import { useCardHeroStore } from '@/store/useCardHeroStore';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
@@ -109,7 +107,6 @@ const CardDetailsPane = () => {
 
   const { data: cardDetails, refetch } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
-  const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
@@ -242,7 +239,6 @@ const CardDetailsPane = () => {
   // Add funds and Withdraw part ways on a frozen card — see the two helpers.
   const fundsAccess = {
     isCardFrozen,
-    isCustomerRestricted: isCustomerFundsRestricted(customer?.status),
     provider,
   };
 
