@@ -336,6 +336,12 @@ describe('swapAmountFor', () => {
     expect(swapAmountFor(20.001, holding('500000000000000000'))).toBe('0.010001');
   });
 
+  it('rounds up at the precision of a token with fewer than six places', () => {
+    // Two decimals at $1,000 a token: $14 is 0.014, which must offer 0.02, not round to 0.01.
+    expect(swapAmountFor(14, holding('10000', 2, 1000))).toBe('0.02');
+    expect(swapAmountFor(1, holding('10000', 2, 1000))).toBe('0.01');
+  });
+
   it('never offers more than the balance, to the wei', () => {
     // 0.1234567 ETH: rounding up at six places gives 0.123457, which they do not hold.
     const all = holding('123456700000000000');
