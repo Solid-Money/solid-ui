@@ -133,7 +133,7 @@ const useDepositFromSolidUsdc = (
       if (!safeAddress) {
         throw new Error('Solid wallet (Safe) address not found');
       }
-      if (!isCard && !isSponsor) {
+      if (!isSponsor) {
         throw new Error(`Minimum deposit amount is $${minimumAmount}`);
       }
 

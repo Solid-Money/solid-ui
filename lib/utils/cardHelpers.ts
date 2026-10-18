@@ -1,3 +1,4 @@
+import { CARD_FROZEN_BY_SOLID_CODE } from '@/constants/errors';
 import {
   CardCollateralTokenBalanceDto,
   CardFeeInfo,
@@ -870,3 +871,21 @@ export const getCardFeeInfo = (transaction: Pick<CardTransaction, 'fees'>): Card
 };
 
 const isWaivedFee = (fee: CardTransactionFee): boolean => fee.status === CardFeeStatus.Waived;
+
+/**
+ * Whether a failed unfreeze was refused because Solid, not the cardholder,
+ * froze the card. `unfreezeCard` throws the raw `Response`, so its body is read
+ * here; a clone is read so the caller can still consume the original.
+ */
+export const isCardFrozenBySolidError = async (error: unknown): Promise<boolean> => {
+  if (typeof Response !== 'undefined' && error instanceof Response) {
+    if (error.status !== 403) return false;
+    try {
+      const body = (await error.clone().json()) as { code?: unknown } | null;
+      return body?.code === CARD_FROZEN_BY_SOLID_CODE;
+    } catch {
+      return false;
+    }
+  }
+  return (error as { code?: unknown } | null)?.code === CARD_FROZEN_BY_SOLID_CODE;
+};

@@ -37,6 +37,7 @@ import {
   getBuyCryptoTitle,
   getEmbeddedBuyCryptoTarget,
 } from '@/lib/buyCryptoFlow';
+import { EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT } from '@/lib/config';
 import { getOrchestraBackTarget, getOrchestraTitle, isOrchestraModal } from '@/lib/orchestraFlow';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { CardProvider, DepositModal, RainApplicationStatus } from '@/lib/types';
@@ -492,6 +493,7 @@ export default function CardDirectDepositModal({
       return depositAddress ? (
         <AddFundsToWalletForm
           destinationAddress={depositAddress}
+          minDeposit={EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT}
           onSuccess={() => handleOpenChange(false)}
           lockToken
         />

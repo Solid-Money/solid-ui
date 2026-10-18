@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { KeyRound } from 'lucide-react-native';
 
 import Loading from '@/components/Loading';
@@ -165,7 +166,25 @@ const UpgradeReviewContent = () => {
 
         // Null is the passkey prompt being dismissed — a decision, not a
         // failure, so the modal stays where the user left it.
-        if (result) close();
+        if (!result) return;
+
+        // Sent but not yet seen through: said as what it is, and the modal
+        // closed, so the one thing the user cannot do is lock the same FUSE
+        // again while the first lock is landing.
+        if (result.status === 'pending') {
+          Toast.show({
+            type: 'info',
+            text1: 'Your lock is confirming',
+            text2: `Your ${getTierDisplayName(tier)} membership updates as soon as it lands. No need to lock again.`,
+          });
+        } else if (result.status === 'already-locked') {
+          Toast.show({
+            type: 'info',
+            text1: 'Your earlier lock went through',
+            text2: 'Your membership is updating. Check it before locking any more.',
+          });
+        }
+        close();
         return;
       }
 

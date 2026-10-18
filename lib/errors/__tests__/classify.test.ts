@@ -6,6 +6,7 @@ import {
   classifyError,
   getUserErrorMessage,
   isSafeServerMessage,
+  isSponsorshipLimitError,
   normalizeError,
   normalizeErrorAsync,
   toUserError,
@@ -72,6 +73,48 @@ describe('toUserError', () => {
     // The technical cause is kept for telemetry, minus the key and the request dump.
     expect(userError.technical).not.toContain('pim_');
     expect(userError.technical).not.toContain('callData');
+  });
+
+  it('tells a sponsorship limit apart from a paymaster that is down', () => {
+    // Every LI.FI swap out of Ethereum on Oct 14 (key and calldata trimmed).
+    const capped = Object.assign(
+      new Error(
+        [
+          'Invalid parameters were provided to the RPC method.',
+          'Double check you have provided the correct parameters.',
+          '',
+          'URL: https://api.pimlico.io/v2/1/rpc?apikey=pim_REDACTEDREDACTED',
+          'Request body: {"method":"pm_getPaymasterData","params":[{"callData":"0x541d63c8"},"0x0000000071727De22E5E9d8BAf0edAc6f37da032","0x1",{"sponsorshipPolicyId":"sp_test"}]}',
+          '',
+          'Details: sponsorshipPolicy perOpMaximumUsd reached',
+          'Version: viem@2.47.10',
+        ].join('\n'),
+      ),
+      {
+        name: 'InvalidParamsRpcError',
+        shortMessage: 'Invalid parameters were provided to the RPC method.',
+        details: 'sponsorshipPolicy perOpMaximumUsd reached',
+      },
+    );
+
+    expect(isSponsorshipLimitError(capped)).toBe(true);
+    expect(
+      isSponsorshipLimitError(Object.assign(new Error('Swap failed'), { cause: capped })),
+    ).toBe(true);
+    expect(toUserError(capped, { action: 'swap' })).toMatchObject({
+      code: 'SPONSORSHIP_LIMIT',
+      nothingSent: true,
+      body: 'Nothing was sent. The network fee for this is above what we cover.',
+    });
+
+    // A request body naming the policy is not a refusal by it.
+    expect(isSponsorshipLimitError(PIMLICO_ERROR)).toBe(false);
+    expect(
+      isSponsorshipLimitError(
+        new Error('Request body: {"params":[{},"0x0","0x1",{"sponsorshipPolicyId":"sp_reached"}]}'),
+      ),
+    ).toBe(false);
+    expect(classifyError(normalizeError(PIMLICO_ERROR)).code).toBe('PAYMASTER_REJECTED');
   });
 
   it('says nothing when the user backed out of the passkey or wallet prompt', () => {

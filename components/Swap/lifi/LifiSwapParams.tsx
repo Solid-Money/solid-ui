@@ -198,7 +198,6 @@ const Breakdown = ({ quote, slippage }: { quote: LifiSwapQuote; slippage: number
   const lifiFees = quote.fees.filter(fee => fee.kind === 'lifi');
   const providerFees = quote.fees.filter(fee => fee.kind === 'provider' && fee.included);
   const onTopFees = quote.fees.filter(fee => !fee.included);
-  const gasUsd = quote.gasCosts.reduce((total, gas) => total + Number(gas.amountUsd ?? 0), 0);
 
   const rate = useMemo(() => {
     const from = Number(formatUnits(BigInt(quote.fromAmount), quote.fromToken.decimals));
@@ -260,12 +259,17 @@ const Breakdown = ({ quote, slippage }: { quote: LifiSwapQuote; slippage: number
           <FeeValue fees={onTopFees} />
         </Row>
       )}
+      {/* Our paymaster covers an operation only while its worst-case gas is
+          under the policy's cap, so whether this one is covered isn't known
+          until it is sent. Over the cap the app asks before the user pays
+          (executeTransactions). No figure here: the cap is on the worst case,
+          which a cheap-looking Ethereum swap can still pass. */}
       <Row label="Network fee">
         <View className="items-end">
-          <Text className="text-base font-semibold text-green-400">Sponsored</Text>
-          {gasUsd > 0 && (
-            <Text className="text-sm text-white/40 line-through">{formatUsd(gasUsd)}</Text>
-          )}
+          <Text className="text-base font-semibold text-green-400">Sponsored up to a limit</Text>
+          <Text className="text-right text-sm text-white/50">
+            Above it, we’ll ask before you pay
+          </Text>
         </View>
       </Row>
       <Row label="Price impact">

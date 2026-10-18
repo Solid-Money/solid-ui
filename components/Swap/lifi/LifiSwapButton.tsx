@@ -15,6 +15,8 @@ import { useLifiSwapInfo } from '@/hooks/swap/useLifiSwapInfo';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { getUserErrorMessage } from '@/lib/errors/classify';
+import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { lifiPriceImpact } from '@/lib/utils/swap/lifi';
 import { warningSeverity } from '@/lib/utils/swap/prices';
 import { useSwapState } from '@/store/swapStore';
@@ -121,13 +123,20 @@ const LifiSwapButton: React.FC = () => {
       setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
     } catch (error: any) {
       console.error('LI.FI swap failed:', error);
-      track(TRACKING_EVENTS.SWAP_FAILED, { ...trackingProps, error: String(error) });
+      // The raw message carries the bundler URL and its API key.
+      track(TRACKING_EVENTS.SWAP_FAILED, {
+        ...trackingProps,
+        error: sanitizeTechnicalMessage(error),
+      });
       if (
         selectedRewardsUserId() === user?.userId &&
         operationSession.current === useRewardsUpgradeStore.getState().session
       ) {
+        // viem's shortMessage ("Invalid parameters were provided to the RPC
+        // method") is SDK text; the screen gets user copy.
         setSubmissionError(
-          error?.shortMessage || error?.message || 'Unable to complete the swap. Please try again.',
+          getUserErrorMessage(error, { action: 'swap' }) ||
+            'Unable to complete the swap. Please try again.',
         );
       }
     } finally {

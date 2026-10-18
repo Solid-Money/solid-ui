@@ -93,6 +93,13 @@ export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
 export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
+/**
+ * Minimum USDC for a card funding the backend carries out: from the Solid
+ * wallet, or from a connected wallet to the card's deposit address. Matches the
+ * backend's MINIMUM_SPONSOR_AMOUNT_CARD, which refuses or refunds anything less.
+ */
+export const EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_CARD_DEPOSIT_AMOUNT ?? '10';
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
@@ -135,6 +142,17 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
   process.env.EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID ?? '';
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
+/**
+ * Request new soUSD withdrawals on Base instead of Ethereum: shares bridge
+ * Fuse -> Base and are queued on the Base vault for Base USDC.
+ *
+ * Off until the Fuse teller is peered with Base and the Base vault's transfer
+ * hook is set. Before then a Fuse -> Base bridge reverts, or mints shares the
+ * queue cannot pull. Withdrawals already bridged to Ethereum finish there
+ * either way.
+ */
+export const EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS =
+  process.env.EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS === 'true';
 
 /**
  * Flashnet Orchestra — the Lightning fiat onramp.
@@ -243,8 +261,17 @@ type Addresses = {
     soEthTeller: Address;
     soEthAccountant: Address;
   };
+  /**
+   * soUSD on Base: the hub withdrawals are requested on once
+   * {@link EXPO_PUBLIC_SOUSD_BASE_WITHDRAWALS} is on. The vault was a strategy
+   * sub-account of the Ethereum vault before it took deposits, so it holds shares
+   * only once users bridge them here.
+   */
   base: {
     vault: Address;
+    teller: Address;
+    accountant: Address;
+    boringQueue: Address;
     usdc: Address;
   };
 };
@@ -262,6 +289,9 @@ export const PRODUCTION_VAULT_ADDRESSES = {
     vault: '0x75333830E7014e909535389a6E5b0C02aA62ca27',
     fuseVault: '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C',
     soEthVault: '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7',
+  },
+  base: {
+    vault: '0x3c0c8f95D7f4265B2dc5575eBc37a6945c7a7A31',
   },
 } as const;
 
@@ -351,9 +381,22 @@ export const ADDRESSES: Addresses = {
       ? '0x4BD5873720072b4AC7956898dbCBc543b2fD3749'
       : '0x7EFD6391537518dC2A8260ff535439704AD6a111',
   },
+  // QA has no soUSD teller, accountant or queue on Base yet; a QA build points at
+  // one through the env overrides, and stays on Ethereum without them.
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    vault: '0x0000000000000000000000000000000000000000',
+    vault: isProduction
+      ? PRODUCTION_VAULT_ADDRESSES.base.vault
+      : ((process.env.EXPO_PUBLIC_BASE_SOUSD_VAULT_ADDRESS ?? ZERO_ADDRESS) as Address),
+    teller: isProduction
+      ? '0xf84cAB7b080fDE4C19C303bd7A1A60beEbe11c13'
+      : ((process.env.EXPO_PUBLIC_BASE_SOUSD_TELLER_ADDRESS ?? ZERO_ADDRESS) as Address),
+    accountant: isProduction
+      ? '0x88a2cB28C1219388dE9f0647067C3Fa97EAe38d1'
+      : ((process.env.EXPO_PUBLIC_BASE_SOUSD_ACCOUNTANT_ADDRESS ?? ZERO_ADDRESS) as Address),
+    boringQueue: isProduction
+      ? '0x204bdC7cc220A743D3b4aC88B2017ccc6b2c21e2'
+      : ((process.env.EXPO_PUBLIC_BASE_SOUSD_QUEUE_ADDRESS ?? ZERO_ADDRESS) as Address),
   },
 };
 

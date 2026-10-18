@@ -18,8 +18,8 @@ import { CardProvider, DepositFeeQuote } from '@/lib/types';
  * | Wallet         | Wirex           | Stablecoins, on every chain but Fuse, where the   |
  * |                |                 | Safe the card spends from lives                   |
  * | Wallet         | No card         | Nothing                                           |
- * | Savings        | Rain or no card | Every chain but the vault's: Ethereum for soUSD   |
- * |                |                 | and soETH, Fuse for soFUSE                        |
+ * | Savings        | Rain or no card | Every chain but the vault's: Base for soUSD,      |
+ * |                |                 | Ethereum for soETH, Fuse for soFUSE               |
  * | Savings        | Wirex           | Nothing, for Phase 1                              |
  *
  * The client collects nothing here. This only decides whether a deposit address
@@ -51,9 +51,13 @@ export const DEFAULT_DEPOSIT_FEE_RATE_PPM = 300;
  */
 export type DepositFeeProduct = 'card' | 'wallet' | 'savings';
 
-/** The chain each vault lives on, keyed by the share token it mints. */
+/**
+ * The chain each vault's deposits mint on, keyed by the share token. soUSD's
+ * moved from Ethereum to Base, so a soUSD deposit sent on Ethereum is now
+ * bridged to Base and charged, and one sent on Base is free.
+ */
 const VAULT_CHAIN_IDS: Record<string, number> = {
-  soUSD: mainnet.id,
+  soUSD: base.id,
   soETH: mainnet.id,
   soFUSE: fuse.id,
 };

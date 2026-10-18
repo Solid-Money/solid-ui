@@ -15,6 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
+import {
+  EMAIL_DOMAIN_NOT_ALLOWED_CODE,
+  EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE,
+} from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -178,7 +182,10 @@ export default function SignupEmail() {
         errorMessage.includes('please wait and try again') ||
         errorMessage.includes('Turnkey error 3');
 
-      if (isRateLimitError) {
+      if (err?.code === EMAIL_DOMAIN_NOT_ALLOWED_CODE) {
+        // Retrying this address can't succeed; another one can.
+        setError(EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE);
+      } else if (isRateLimitError) {
         setRateLimitError(
           'Too many verification codes requested. Please wait a few minutes before trying again.',
         );

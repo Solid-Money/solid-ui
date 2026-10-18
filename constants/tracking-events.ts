@@ -493,6 +493,11 @@ export const TRACKING_EVENTS = {
   ERROR_RETRY_PRESSED: 'error_retry_pressed',
   ERROR_SUPPORT_PRESSED: 'error_support_pressed',
   ERROR_REF_COPIED: 'error_ref_copied',
+  // Our paymaster refused a transaction on its cost cap and the user was asked
+  // to pay the network fee themselves.
+  NETWORK_FEE_PAYMENT_PROMPTED: 'network_fee_payment_prompted',
+  NETWORK_FEE_PAYMENT_ACCEPTED: 'network_fee_payment_accepted',
+  NETWORK_FEE_PAYMENT_DECLINED: 'network_fee_payment_declined',
 
   // QR Scanner Events
   QR_SCANNER_OPENED: 'qr_scanner_opened',
@@ -537,6 +542,11 @@ export const TRACKING_EVENTS = {
   TIER_LOCK_CANCELLED: 'tier_lock_cancelled',
   TIER_LOCK_COMPLETED: 'tier_lock_completed',
   TIER_LOCK_FAILED: 'tier_lock_failed',
+  // Sent, but not seen through: the receipt wait gave up (usually the app was
+  // backgrounded) or the confirm failed. Not a failure — the lock is finished
+  // by the reconciler, which reports what became of it.
+  TIER_LOCK_PENDING: 'tier_lock_pending',
+  TIER_LOCK_RECONCILED: 'tier_lock_reconciled',
   TIER_SUBSCRIBE_PRESSED: 'tier_subscribe_pressed',
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
