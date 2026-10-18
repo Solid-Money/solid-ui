@@ -9,10 +9,8 @@ import {
   formatApy,
   healthFactorToNumber,
 } from '@/constants/cardSpendV2';
-import { useCardSpendable } from '@/hooks/useCardSpendable';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
-import { formatCardCurrency, spendableDisplay } from '@/lib/utils/cardCurrency';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 
@@ -30,17 +28,8 @@ export interface SpendModeFigures {
   /** A switch that is armed but not in force, or null. Null at the launch `modeDelay` of 0. */
   pendingMode: SpendMode | null;
 
-  /**
-   * "$1,240", or "€983.47" for a Wirex card billed in euros — the user's own holdings a card can
-   * draw on, in the currency the till will charge whenever the backend has a rate for it. See
-   * `spendableDisplay`.
-   */
+  /** "$1,240" — the user's own holdings a card can draw on. */
   cashBalance: string;
-  /**
-   * "$1,120.00" — the dollars {@link cashBalance} was converted from, when it was converted.
-   * Undefined for a balance already in dollars, where there is nothing to explain.
-   */
-  cashBalanceUsd?: string;
   /** "$0.80" — outstanding debt, including accrued interest. */
   borrowed: string;
   /** "$246.50" — the whole credit line the cardholder's collateral backs, drawn or not. */
@@ -131,12 +120,9 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   } = useCardSpendRegistration();
 
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
-  // Wirex only (the query is off for any other card): the same figure in the card's currency.
-  const { data: spendable, isLoading: isSpendableLoading } = useCardSpendable();
 
   return useMemo(() => {
     const cashMicro = usdToMicro(cashBalanceUsd);
-    const inCardCurrency = spendableDisplay(spendable);
     const debt = position?.debtUsd ?? 0n;
 
     // The whole line, and the reason the card no longer reads "$0 / $0" for a cardholder
@@ -172,10 +158,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       canChangeMode,
       pendingMode,
 
-      cashBalance: inCardCurrency?.label ?? cashLabel,
-      ...(inCardCurrency?.usdEquivalent !== undefined && {
-        cashBalanceUsd: formatCardCurrency(inCardCurrency.usdEquivalent, 'USD'),
-      }),
+      cashBalance: cashLabel,
       borrowed: formatUsd(debt),
       // What the cardholder's collateral backs, drawn or not — which is what the
       // "borrowed / limit" pair means. Deliberately the collateral-derived figure rather
@@ -192,13 +175,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
         // The design's empty state: a cardholder with nothing to spend is told what to do
         // rather than shown a zero. "Funds", not a ticker — the balance above sums USDC,
         // USDT and soUSD, so naming one of them would send the other two to the wrong place.
-        cash: inCardCurrency
-          ? inCardCurrency.amount > 0
-            ? inCardCurrency.label
-            : 'Add funds'
-          : cashMicro > 0n
-            ? cashLabel
-            : 'Add funds',
+        cash: cashMicro > 0n ? cashLabel : 'Add funds',
         credit: availableLabel,
         // `max`, not a sum — and the same rule the authorize path applies. One transaction
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
@@ -215,7 +192,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       healthFactor: position ? healthFactorToNumber(position.healthFactorWad) : null,
       fullyPriced: position?.fullyPriced ?? true,
 
-      isLoading: isRegistrationLoading || isBalanceLoading || isSpendableLoading,
+      isLoading: isRegistrationLoading || isBalanceLoading,
     };
   }, [
     mode,
@@ -224,10 +201,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     position,
     borrowApyPerSecond,
     cashBalanceUsd,
-    spendable,
     isRegistrationLoading,
     isBalanceLoading,
-    isSpendableLoading,
   ]);
 };
 
