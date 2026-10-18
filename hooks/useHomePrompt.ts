@@ -11,6 +11,12 @@ import { HomePromptKey, isHomePromptSnoozed, useHomePromptStore } from '@/store/
 import { useKycStore } from '@/store/useKycStore';
 import { useUserStore } from '@/store/useUserStore';
 
+/**
+ * The "Turn on euro spending" banner, held back for now. The step stays in the
+ * ladder so turning this back on is the whole change.
+ */
+const EURO_SPENDING_PROMPT_ENABLED = false;
+
 interface UseHomePromptParams {
   /** Whether the user already holds an active card. */
   hasCard: boolean;
@@ -67,7 +73,7 @@ export function useHomePrompt({
     wallet: walletPromptPossible ? DEVICE_DIGITAL_WALLET : null,
     eligibility,
     hasUncoveredDecline: isWirexCardholder && !!declinedPayment,
-    holdsUnusableEurc: isWirexCardholder && eurc > 0,
+    holdsUnusableEurc: EURO_SPENDING_PROMPT_ENABLED && isWirexCardholder && eurc > 0,
   });
 
   if (!key || isHomePromptSnoozed(dismissedAt, key)) return null;
