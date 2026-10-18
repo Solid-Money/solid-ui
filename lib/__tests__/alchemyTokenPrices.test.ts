@@ -42,6 +42,7 @@ const { post, get } = (require('axios') as { default: { post: jest.Mock; get: je
   .default;
 const {
   clearAlchemyPriceCache,
+  fetchCoinPricesById,
   fetchTokenPricesByAddress,
   fetchTokenPricesBySymbol,
   fetchTokenPriceUsd,
@@ -508,5 +509,62 @@ describe('prices from the backend', () => {
       { symbols: ['ETH'] },
       { tokens: [{ chainId: 1, address: USDC_ETHEREUM.toLowerCase() }] },
     ]);
+  });
+});
+
+describe('fetchCoinPricesById', () => {
+  it('asks the backend for CoinGecko ids and never calls CoinGecko itself', async () => {
+    backendAnswers({
+      symbols: {},
+      tokens: {},
+      coins: { 'wrapped-bitcoin': 83_324.75, 'fuse-network-token': 0.0096 },
+    });
+
+    await expect(
+      fetchCoinPricesById(['wrapped-bitcoin', 'fuse-network-token', 'unlisted-coin']),
+    ).resolves.toEqual({ 'wrapped-bitcoin': 83_324.75, 'fuse-network-token': 0.0096 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/accounts\/v1\/prices$/);
+    expect(JSON.parse(init.body as string)).toEqual({
+      coinIds: ['wrapped-bitcoin', 'fuse-network-token', 'unlisted-coin'],
+    });
+    expect(get).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('shares one cached answer instead of asking the backend again', async () => {
+    backendAnswers({ symbols: {}, tokens: {}, coins: { ethereum: 2500 } });
+
+    await fetchCoinPricesById(['ethereum']);
+    await expect(fetchCoinPricesById(['ethereum'])).resolves.toEqual({ ethereum: 2500 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers nothing, without calling anyone else, when the backend cannot be asked', async () => {
+    await expect(fetchCoinPricesById(['ethereum'])).resolves.toEqual({});
+    expect(get).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('takes an older backend without coin prices as no prices, not a failure', async () => {
+    backendAnswers({ symbols: { ETH: 2658.09 }, tokens: {} });
+
+    await expect(fetchCoinPricesById(['ethereum'])).resolves.toEqual({});
+    // The backend was not paused: symbol lookups still go to it.
+    await expect(fetchTokenPriceUsd('ETH')).resolves.toBe('2658.09');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('never sends an id the backend would reject', async () => {
+    backendAnswers({ symbols: {}, tokens: {}, coins: {} });
+
+    await fetchCoinPricesById(['../coins/list', 'bad id', '', 'usd-coin']);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ coinIds: ['usd-coin'] });
   });
 });

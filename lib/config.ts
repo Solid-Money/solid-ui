@@ -142,7 +142,6 @@ export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
   process.env.EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID ?? '';
 export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
   process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
-export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 /**
  * Request new soUSD withdrawals on Base instead of Ethereum: shares bridge
  * Fuse -> Base and are queued on the Base vault for Base USDC.

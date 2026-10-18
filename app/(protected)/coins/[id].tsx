@@ -9,6 +9,7 @@ import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinBalanceBreakdown from '@/components/Coin/CoinBalanceBreakdown';
 import CoinEarnLink from '@/components/Coin/CoinEarnLink';
 import CoinSummary from '@/components/Coin/CoinSummary';
+import CoinGeckoAttribution from '@/components/CoinGeckoAttribution';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useCoinBreakdown, useCoinFamily } from '@/hooks/useCoinBreakdown';
@@ -77,6 +78,8 @@ export default function Coin() {
         <CoinEarnLink shareVault={shareVault} />
 
         <CoinBalanceBreakdown breakdown={breakdown} isShare={!!shareVault} />
+
+        <CoinGeckoAttribution className="-mt-4" />
 
         {token?.contractTickerSymbol && (
           <Text className="text-[16px] leading-5 text-white/50">Recent activity</Text>

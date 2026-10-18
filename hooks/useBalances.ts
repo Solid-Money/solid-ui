@@ -5,7 +5,7 @@ import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import {
-  fetchCoinSimplePrice,
+  fetchCoinPricesById,
   fetchTokenList,
   fetchTokenPricesByAddress,
   fetchTokenPricesBySymbol,
@@ -110,10 +110,11 @@ const symbols = {
 
 /**
  * Native-token USD price per chain. Uses the shared fetcher (Alchemy by symbol,
- * CoinGecko on failure) rather than a bare Alchemy call, so a chain still gets
- * a price while Alchemy has none or is rate-limiting us. The five lookups start
- * in the same tick, so they ride one Prices API request — ETH is asked for once,
- * not once per chain — and are served from cache for the next minute.
+ * then CoinGecko through the backend) rather than a bare Alchemy call, so a
+ * chain still gets a price while Alchemy has none or is rate-limiting us. The
+ * five lookups start in the same tick, so they ride one Prices API request —
+ * ETH is asked for once, not once per chain — and are served from cache for the
+ * next minute.
  */
 const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> = {
   [mainnet.id]: makeNativePriceFetcher(mainnet.id),
@@ -602,7 +603,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
     }
   }
 
-  // Fallback 2: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
+  // Fallback 2: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for
+  // native), from the backend's shared cache: the app holds no CoinGecko key.
   const zeroRateTokens = allTokens.filter(
     t => isZeroRate(t.quoteRate) && !isUnderlyingPricedShare(t.contractAddress),
   );
@@ -615,11 +617,11 @@ const fetchTokenBalances = async (safeAddress: string) => {
   ];
   if (coinIds.length > 0) {
     try {
-      const priceMap = await fetchCoinSimplePrice(coinIds);
+      const priceById = await fetchCoinPricesById(coinIds);
       allTokens = allTokens.map(t => {
         if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
         const id = t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
-        const usd = id ? parsePrice(priceMap[id]?.usd) : undefined;
+        const usd = id ? priceById[id] : undefined;
         if (usd != null && usd > 0) return { ...t, quoteRate: usd };
         return t;
       });
