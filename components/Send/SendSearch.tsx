@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { EllipsisVertical, Plus } from 'lucide-react-native';
@@ -9,12 +8,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
@@ -27,7 +20,9 @@ import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
 import AddAddress from './AddAddress';
 import { CashoutEntryRow } from './Cashout/CashoutEntryRow';
-import ToInput from './ToInput';
+import SendRecipientInput from './SendRecipientInput';
+
+const SHOW_CASHOUT_ENTRY_IN_SEARCH = false;
 
 const SendSearch: React.FC = () => {
   const {
@@ -52,7 +47,7 @@ const SendSearch: React.FC = () => {
     })),
   );
   const { getNetwork } = useCrossChainSendConfig({ enabled: isCrossChain });
-  const insets = useSafeAreaInsets();
+  const [openMenuAddress, setOpenMenuAddress] = useState<string | null>(null);
   const { activities } = useActivity();
 
   const { data: addressBook = [], isLoading: isLoadingAddressBook } = useQuery({
@@ -65,7 +60,8 @@ const SendSearch: React.FC = () => {
   const sendActivities = useMemo(() => {
     const filtered = activities.filter(
       activity =>
-        activity.type === TransactionType.SEND &&
+        (activity.type === TransactionType.SEND ||
+          activity.type === TransactionType.CROSS_CHAIN_SEND) &&
         activity.toAddress &&
         activity.status === TransactionStatus.SUCCESS,
     );
@@ -144,19 +140,11 @@ const SendSearch: React.FC = () => {
     setModal(SEND_MODAL.OPEN_ADDRESS_BOOK);
   };
 
-  const contentInsets = {
-    top: insets.top,
-    bottom: insets.bottom,
-    left: 12,
-    right: 12,
-  };
-
   return (
-    <View className="gap-8">
-      <ToInput />
+    <View className="gap-4">
+      <SendRecipientInput showLabel={false} placeholder="Address or saved contact" />
 
-      {/* Off-ramp to fiat: hidden while the user is searching for a wallet. */}
-      {!searchQuery.trim() ? <CashoutEntryRow /> : null}
+      {SHOW_CASHOUT_ENTRY_IN_SEARCH && !searchQuery.trim() ? <CashoutEntryRow /> : null}
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredRecentActivities.length > 0 && (
@@ -175,47 +163,63 @@ const SendSearch: React.FC = () => {
                   <View
                     key={`${activity.clientTxId}-${index}`}
                     className={cn(
-                      'flex-row items-center justify-between border-b border-foreground/10 p-4',
+                      'border-b border-foreground/10',
                       filteredRecentActivities.length - 1 === index && 'border-b-0',
                     )}
                   >
-                    <Pressable
-                      className="flex-1 flex-row items-center gap-3"
-                      onPress={() => handleToInput(walletAddress, addressBookEntry?.name)}
-                    >
-                      <Avatar name={addressBookEntry?.name || walletAddress} />
-                      <View className="flex-1">
-                        <Text className="text-base font-semibold">{displayName}</Text>
-                        <Text className="text-sm opacity-50">
-                          Last sent{' '}
-                          {formatDistanceToNow(new Date(parseInt(activity.timestamp) * 1000), {
-                            addSuffix: true,
-                          })}
-                        </Text>
-                      </View>
-                    </Pressable>
-                    {!isInAddressBook && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <EllipsisVertical color="white" size={20} />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          insets={contentInsets}
-                          align="end"
-                          className="w-44 rounded-xl border-0 border-none bg-card"
+                    <View className="flex-row items-center justify-between p-4">
+                      <Pressable
+                        className="flex-1 flex-row items-center gap-3"
+                        onPress={() => handleToInput(walletAddress, addressBookEntry?.name)}
+                      >
+                        <Avatar name={addressBookEntry?.name || walletAddress} />
+                        <View className="flex-1">
+                          <Text className="text-base font-semibold">{displayName}</Text>
+                          <Text className="text-sm opacity-50">
+                            Last sent{' '}
+                            {formatDistanceToNow(new Date(parseInt(activity.timestamp) * 1000), {
+                              addSuffix: true,
+                            })}
+                          </Text>
+                        </View>
+                      </Pressable>
+                      {!isInAddressBook && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          accessibilityLabel={`Options for ${displayName}`}
+                          accessibilityState={{
+                            expanded:
+                              openMenuAddress?.toLowerCase() === walletAddress.toLowerCase(),
+                          }}
+                          onPress={() =>
+                            setOpenMenuAddress(current =>
+                              current?.toLowerCase() === walletAddress.toLowerCase()
+                                ? null
+                                : walletAddress,
+                            )
+                          }
                         >
-                          <DropdownMenuItem
-                            className="h-10 flex-row items-center gap-2 rounded-xl px-4 web:cursor-pointer"
-                            onPress={() => handleAddToAddressBook(walletAddress)}
-                          >
-                            <Plus size={16} color="white" />
-                            <Text className="text-white">Add to contacts</Text>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                          <EllipsisVertical color="white" size={20} />
+                        </Button>
+                      )}
+                    </View>
+                    {!isInAddressBook &&
+                      openMenuAddress?.toLowerCase() === walletAddress.toLowerCase() && (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Add ${displayName} to contacts`}
+                          className="h-12 flex-row items-center gap-2 border-t border-foreground/10 px-4 active:bg-popover"
+                          onPress={() => {
+                            setOpenMenuAddress(null);
+                            handleAddToAddressBook(walletAddress);
+                          }}
+                        >
+                          <Plus size={16} color="white" />
+                          <Text className="text-white">Add to contacts</Text>
+                        </Pressable>
+                      )}
                   </View>
                 );
               })}

@@ -30,7 +30,7 @@ export const useCashoutKycNavigate = () => {
           return;
         case DEPOSIT_MODAL.OPEN_OPTIONS.name:
           setKycModal(null);
-          setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+          setModal(useSendStore.getState().recipientModal);
           return;
         case DEPOSIT_MODAL.OPEN_BUY_CRYPTO_AMOUNT.name:
           setKycModal(null);

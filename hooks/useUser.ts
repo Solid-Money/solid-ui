@@ -335,6 +335,7 @@ const useUser = (): UseUserReturn => {
         walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
+        createdAt: user.createdAt,
         signWith: user.walletAddress,
         suborgId: user.subOrganizationId,
         selected: true,
@@ -647,6 +648,7 @@ const useUser = (): UseUserReturn => {
         storeUser({
           ...selectedUser,
           selected: true,
+          createdAt: authedUser.createdAt ?? selectedUser.createdAt,
           tokens: authedUser.tokens || undefined,
           credentialId: stampedCredentialId ?? authedUser.credentialId ?? selectedUser.credentialId,
           // Prefer the backend's list (healed from Turnkey) over the local one,

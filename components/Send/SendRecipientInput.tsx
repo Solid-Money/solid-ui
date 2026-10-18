@@ -1,0 +1,229 @@
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, X } from 'lucide-react-native';
+import { isAddress } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
+
+import ScanAddress from '@/assets/images/scan-address';
+import Avatar from '@/components/Avatar';
+import { Text } from '@/components/ui/text';
+import { SEND_MODAL } from '@/constants/modals';
+import { fetchAddressBook } from '@/lib/api';
+import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
+import { recipientNextModal, useSendStore } from '@/store/useSendStore';
+
+interface SendRecipientInputProps {
+  placeholder?: string;
+  showLabel?: boolean;
+}
+
+const SendRecipientInput: React.FC<SendRecipientInputProps> = ({
+  placeholder = 'Address or name',
+  showLabel = true,
+}) => {
+  const {
+    address,
+    name,
+    searchQuery,
+    currentModal,
+    setAddress,
+    setModal,
+    setName,
+    setSearchQuery,
+  } = useSendStore(
+    useShallow(state => ({
+      address: state.address,
+      name: state.name,
+      searchQuery: state.searchQuery,
+      currentModal: state.currentModal,
+      setAddress: state.setAddress,
+      setModal: state.setModal,
+      setName: state.setName,
+      setSearchQuery: state.setSearchQuery,
+    })),
+  );
+
+  const handleOpenScanner = useCallback(() => {
+    // Open QR scanner within the Send modal for seamless UX
+    setModal(SEND_MODAL.OPEN_QR_SCANNER);
+  }, [setModal]);
+  const { data: addressBook = [] } = useQuery({
+    queryKey: ['address-book'],
+    queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  const prevNameRef = useRef(name);
+  const prevAddressRef = useRef(address);
+
+  // Sync searchQuery only when name/address changes from empty to set (not when user clears input)
+  useEffect(() => {
+    const nameChanged = name !== prevNameRef.current;
+    const addressChanged = address !== prevAddressRef.current;
+
+    if ((nameChanged || addressChanged) && (name || address) && !searchQuery) {
+      setSearchQuery(name || address);
+    }
+
+    prevNameRef.current = name;
+    prevAddressRef.current = address;
+  }, [name, address, searchQuery, setSearchQuery]);
+
+  const isSearch = [SEND_MODAL.OPEN_SEND_SEARCH.name, SEND_MODAL.OPEN_SEND_OPTIONS.name].includes(
+    currentModal.name,
+  );
+
+  const isValidAddress = useMemo(() => {
+    return searchQuery.trim() && isAddress(searchQuery.trim());
+  }, [searchQuery]);
+
+  const getValidEntry = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return addressBook.find(
+      entry => entry.name?.toLowerCase() === query || entry.walletAddress.toLowerCase() === query,
+    );
+  }, [searchQuery, addressBook]);
+
+  const isValidName = useMemo(() => {
+    if (!searchQuery.trim()) return false;
+    return !!getValidEntry?.name;
+  }, [searchQuery, getValidEntry?.name]);
+
+  const isValid = isValidAddress || isValidName;
+
+  const handleContinue = () => {
+    if (isValidName) {
+      const entry = getValidEntry;
+      if (entry) {
+        setAddress(entry.walletAddress);
+        setName(entry.name || '');
+        setSearchQuery(entry.name || entry.walletAddress);
+        setModal(recipientNextModal());
+      }
+    } else if (isValidAddress) {
+      const trimmedQuery = searchQuery.trim();
+      setAddress(trimmedQuery);
+      setName('');
+      setSearchQuery(trimmedQuery);
+      setModal(recipientNextModal());
+    }
+  };
+
+  const handleClear = () => {
+    setAddress('');
+    setName('');
+    setSearchQuery('');
+  };
+
+  const handleEnterKeyPress = () => {
+    if (isValid) {
+      handleContinue();
+    }
+  };
+
+  const inputRef = useRef<TextInput>(null);
+
+  const handleTextChange = (text: string) => {
+    // If user starts typing after a name is selected, clear the name
+    if (name && text.length > 0) {
+      setName('');
+      setAddress('');
+    }
+    setSearchQuery(text);
+  };
+
+  const handleKeyPress = (e: any) => {
+    // Handle backspace to remove selected name
+    if (e.nativeEvent.key === 'Backspace' && name && searchQuery === '') {
+      setName('');
+      setAddress('');
+      setSearchQuery('');
+    }
+  };
+
+  const to = name || address;
+
+  return (
+    <View className="gap-2 md:gap-4">
+      {showLabel && <Text className="text-base font-medium opacity-70">To</Text>}
+      <Pressable
+        className={cn(
+          'relative h-16 flex-row items-center gap-2 rounded-2xl bg-card px-5',
+          !showLabel && 'h-[60px] rounded-[15px]',
+        )}
+        onPress={() => {
+          if (!isSearch) {
+            setSearchQuery('');
+            setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+          }
+        }}
+      >
+        <View className="relative flex-1">
+          {to ? (
+            <View className="pointer-events-none flex-row items-center">
+              <View className="flex-row items-center justify-center gap-2 rounded-full bg-foreground/10 px-3 py-2">
+                <Avatar name={to} className="h-7 w-7" />
+                <Text className="text-base font-semibold">{name ? to : eclipseAddress(to)}</Text>
+              </View>
+            </View>
+          ) : (
+            <TextInput
+              ref={inputRef}
+              className={cn(
+                'flex-1 text-base text-foreground web:focus:outline-none',
+                !showLabel && 'text-[16px] font-medium',
+              )}
+              accessibilityLabel={placeholder}
+              placeholder={placeholder}
+              placeholderTextColor="#ffffff80"
+              value={searchQuery}
+              onChangeText={handleTextChange}
+              onKeyPress={handleKeyPress}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={handleEnterKeyPress}
+            />
+          )}
+        </View>
+        {isSearch && to ? (
+          <Pressable
+            onPress={handleClear}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+          >
+            <X size={20} color="white" />
+          </Pressable>
+        ) : isSearch && isValid ? (
+          <Pressable
+            onPress={handleContinue}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
+          >
+            <ArrowRight size={20} color="white" />
+          </Pressable>
+        ) : Platform.OS !== 'web' ? (
+          <Pressable
+            onPress={handleOpenScanner}
+            accessibilityRole="button"
+            accessibilityLabel="Scan recipient QR code"
+            className="flex h-10 w-10 items-center justify-center"
+            hitSlop={10}
+          >
+            {showLabel ? (
+              <ScanAddress width={22} height={22} />
+            ) : (
+              <Image
+                source={require('@/assets/images/send/qr.svg')}
+                style={{ width: 21.25, height: 21.25 }}
+              />
+            )}
+          </Pressable>
+        ) : null}
+      </Pressable>
+    </View>
+  );
+};
+
+export default SendRecipientInput;
