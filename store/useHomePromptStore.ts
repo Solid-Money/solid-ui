@@ -28,6 +28,14 @@ export type HomePromptKey =
   | 'fund'
   /** Funded card that isn't in Apple/Google Wallet — "Add to Apple Pay". */
   | 'add-to-wallet'
+  /**
+   * Wirex: a payment declined for want of funds in the last day, still not covered —
+   * "Your payment was declined". Dismissed per payment, not on a timer: see
+   * `dismissedDeclines`.
+   */
+  | 'card-declined'
+  /** Wirex: EURC on Base the card cannot spend until euro spending is on — "Turn on euro spending". */
+  | 'euro-spending'
   /** Everything done — the cashback banner, which never goes away. */
   | 'cashback';
 
@@ -57,7 +65,17 @@ export const HOME_PROMPT_SNOOZE_MS: Record<DismissibleHomePromptKey, number> = {
   'replace-card': 3 * DAY_MS,
   fund: 3 * DAY_MS,
   'add-to-wallet': 3 * DAY_MS,
+  // Never consulted: a declined-payment banner is hidden for that payment, by id, so the next
+  // decline still shows — see `dismissedDeclines`. A day is the window the banner exists in at all.
+  'card-declined': DAY_MS,
+  'euro-spending': 3 * DAY_MS,
 };
+
+/**
+ * How long a dismissed decline is remembered. The banner only offers a decline from the last day,
+ * so a week is ample, and pruning keeps the persisted list from growing for good.
+ */
+const DISMISSED_DECLINE_TTL_MS = 7 * DAY_MS;
 
 /** Whether this banner offers a ✕ at all — the cashback one does not. */
 export function isHomePromptDismissible(key: HomePromptKey): key is DismissibleHomePromptKey {
@@ -68,6 +86,14 @@ interface HomePromptState {
   /** Epoch ms of the last dismissal, per variant. */
   dismissedAt: Partial<Record<DismissibleHomePromptKey, number>>;
   dismiss: (key: DismissibleHomePromptKey) => void;
+  /**
+   * Declined payments whose banner was closed, by card transaction id → epoch ms.
+   *
+   * Per payment rather than a snooze: "✕ hides it for that payment" — a cardholder who closes
+   * one decline and is declined again an hour later must still be told about the second.
+   */
+  dismissedDeclines: Record<string, number>;
+  dismissDecline: (transactionId: string) => void;
 }
 
 const HOME_PROMPT_STORAGE_KEY = 'home-prompt-storage';
@@ -88,6 +114,17 @@ export const useHomePromptStore = create<HomePromptState>()(
       dismissedAt: {},
       dismiss: (key: DismissibleHomePromptKey) =>
         set(state => ({ dismissedAt: { ...state.dismissedAt, [key]: Date.now() } })),
+      dismissedDeclines: {},
+      dismissDecline: (transactionId: string) =>
+        set(state => {
+          const now = Date.now();
+          const kept = Object.fromEntries(
+            Object.entries(state.dismissedDeclines ?? {}).filter(
+              ([, at]) => now - at < DISMISSED_DECLINE_TTL_MS,
+            ),
+          );
+          return { dismissedDeclines: { ...kept, [transactionId]: now } };
+        }),
     }),
     {
       name: HOME_PROMPT_STORAGE_KEY,

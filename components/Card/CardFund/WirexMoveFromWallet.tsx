@@ -217,12 +217,25 @@ export const WirexMoveHoldings = ({
  */
 export const WirexMoveAmount = ({
   holding,
+  suggestedAmount,
   onDone,
 }: {
   holding: MovableHolding;
+  /**
+   * Where the amount starts, in the holding's own units — the dollar stablecoins this step moves
+   * are a dollar a unit. Capped at the balance, and left empty when there is nothing to suggest,
+   * so a pre-fill can never be an amount the transfer would refuse.
+   */
+  suggestedAmount?: number;
   onDone: () => void;
 }) => {
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(() => {
+    if (!suggestedAmount || suggestedAmount <= 0) return '';
+    // The balance as its exact string, not the float `holding.amount`: capped at the balance it
+    // must parse back to the balance, which is what "Max" below does for the same reason.
+    const max = formatUnits(BigInt(holding.balance || '0'), holding.decimals);
+    return suggestedAmount >= Number(max) ? max : String(suggestedAmount);
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { send, sendStatus, totpModal } = useSend({

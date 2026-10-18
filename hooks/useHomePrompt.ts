@@ -1,7 +1,11 @@
 import { DEVICE_DIGITAL_WALLET } from '@/constants/digital-wallet';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { useWalletEligibility } from '@/hooks/useWalletEligibility';
+import { CardProvider } from '@/lib/types';
 import { resolveHomePromptStep } from '@/lib/utils/homePromptStep';
 import { HomePromptKey, isHomePromptSnoozed, useHomePromptStore } from '@/store/useHomePromptStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -43,6 +47,13 @@ export function useHomePrompt({
     enabled: hasCard,
   });
 
+  // The two Wirex-only steps. Both reads are already on Home for a Wirex cardholder (the card
+  // history above, the spend tile's balance), and both are off for everyone else.
+  const { provider } = useCardProvider();
+  const isWirexCardholder = hasCard && provider === CardProvider.WIREX;
+  const declinedPayment = useDeclinedPaymentPrompt(isWirexCardholder);
+  const { eurc } = useUnusableEurc();
+
   const key = resolveHomePromptStep({
     hasCard,
     depositCompleted,
@@ -55,6 +66,8 @@ export function useHomePrompt({
     isCardSpendResolved: !isCardSpendLoading,
     wallet: walletPromptPossible ? DEVICE_DIGITAL_WALLET : null,
     eligibility,
+    hasUncoveredDecline: isWirexCardholder && !!declinedPayment,
+    holdsUnusableEurc: isWirexCardholder && eurc > 0,
   });
 
   if (!key || isHomePromptSnoozed(dismissedAt, key)) return null;

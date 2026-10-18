@@ -7,6 +7,7 @@ const USER_QUERY_ROOTS = new Set([
   'cardStatus',
   'cardDetails',
   'cardBalance',
+  'cardSpendable',
   'cardSpendRegistration',
   'cardSpendModeAccess',
   'portfolioCustody',

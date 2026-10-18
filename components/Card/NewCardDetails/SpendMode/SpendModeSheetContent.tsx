@@ -310,7 +310,15 @@ const SpendModeSheetContent = ({
           {SPEND_MODE_COPY[selected].panels.map((panel, index) => (
             <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
               {panel === 'balance' ? (
-                <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
+                <SpendModeBalancePanel
+                  balance={figures.cashBalance}
+                  caption={
+                    figures.cashBalanceUsd
+                      ? `≈ ${figures.cashBalanceUsd} at today's rate`
+                      : undefined
+                  }
+                  onAddFunds={onAddFunds}
+                />
               ) : (
                 <SpendModeBorrowedPanel
                   borrowed={figures.borrowed}

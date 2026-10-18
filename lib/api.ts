@@ -65,6 +65,7 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardSpendableResponse,
   CardSpendDeploymentConfirmRequest,
   CardSpendDeploymentsResponse,
   CardSpendModeAccessResponse,
@@ -4287,6 +4288,29 @@ export const getWirexCardRegistration = async (
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * What a Wirex card can spend right now, in dollars and in the card's own currency.
+ *
+ * The card-details `balances` figures without the Wirex reads that response makes, so the
+ * declined receipt can re-read it while the cardholder adds funds. 503 while the chain cannot be
+ * read, which callers treat as "unknown" rather than zero.
+ */
+export const getCardSpendable = async (): Promise<CardSpendableResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spendable`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 

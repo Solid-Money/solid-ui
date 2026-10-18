@@ -46,6 +46,17 @@ type NotificationData = {
   cashbackRate?: string;
   cashbackLocalAmount?: string;
   cashbackLocalCurrency?: string;
+  /** Card decline only: our decline code, e.g. `INSUFFICIENT_FUNDS`. */
+  declineCode?: string;
+  /**
+   * Insufficient-funds decline (Wirex) and EURC arrival: the fix the push led with —
+   * `turn_on_euro`, `swap` or `add_funds`. The tap still opens the receipt (or the card
+   * screen, via `link`), which works the fix out again from what the user holds by then.
+   */
+  fix?: string;
+  /** Insufficient-funds decline: the gap, as a decimal in `shortfallCurrency`. */
+  shortfall?: string;
+  shortfallCurrency?: string;
   /**
    * Campaign attribution, stamped by the backend on every push
    * (`libs/common/src/constants/push-attribution.constants.ts`). `utm_source`
@@ -260,6 +271,11 @@ function recordOpen(data?: NotificationData) {
       // means either a spend push (which never has one) or a notification sent
       // before links existed, and both route on `type` instead.
       push_link: data?.link,
+      // Card spend only: which outcome, and for a decline why and the fix the push
+      // led with — what turns "opened a decline push" into "opened, then fixed it".
+      ...(data?.status && { status: data.status }),
+      ...(data?.declineCode && { decline_code: data.declineCode }),
+      ...(data?.fix && { fix: data.fix }),
     });
   } catch (error) {
     // Never let telemetry swallow the navigation below.

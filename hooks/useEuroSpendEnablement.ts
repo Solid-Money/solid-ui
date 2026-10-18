@@ -98,8 +98,15 @@ interface EuroSpendEnablement {
   isEnabling: boolean;
   error: string | undefined;
   clearError: () => void;
-  enable: () => void;
+  /**
+   * Starts the flow. `source` names the surface the tap came from — the card screen, the Home
+   * banner, a declined receipt, the deposit screen — so the enable funnel can say which one works.
+   */
+  enable: (source?: EuroSpendEnableSource) => void;
 }
+
+/** Where "turn on euro spending" was tapped. Rides on the started event as `source`. */
+export type EuroSpendEnableSource = 'card_screen' | 'home_banner' | 'declined_receipt' | 'deposit';
 
 /**
  * The user's spend-module deployments as the backend records them.
@@ -311,13 +318,17 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
     },
   });
 
-  const enable = useCallback(() => {
-    setError(undefined);
-    track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
-      chain_id: BASE_SPEND_DEPLOYMENT.chainId,
-    });
-    enableMutation.mutate();
-  }, [enableMutation]);
+  const enable = useCallback(
+    (source: EuroSpendEnableSource = 'card_screen') => {
+      setError(undefined);
+      track(TRACKING_EVENTS.CARD_EURO_SPEND_ENABLE_STARTED, {
+        chain_id: BASE_SPEND_DEPLOYMENT.chainId,
+        source,
+      });
+      enableMutation.mutate();
+    },
+    [enableMutation],
+  );
 
   return {
     shouldOffer: Boolean(

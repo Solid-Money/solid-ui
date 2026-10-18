@@ -1,4 +1,4 @@
-import { zeroAddress } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
 import { USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
@@ -6,7 +6,12 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_SPENDABLE_ASSETS } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenType } from '@/lib/types';
-import { CardFundRoute, getMovableHoldings, getSwappableHoldings } from '@/lib/utils/cardFundMove';
+import {
+  CardFundRoute,
+  getMovableHoldings,
+  getSwappableHoldings,
+  swapAmountFor,
+} from '@/lib/utils/cardFundMove';
 
 const BASE_USDC = BRIDGE_TOKENS[base.id].tokens!.USDC.address;
 const BSC_USDT = BRIDGE_TOKENS[bsc.id].tokens!.USDT.address;
@@ -315,5 +320,42 @@ describe('getSwappableHoldings', () => {
 
   it('is empty before balances have loaded', () => {
     expect(getSwappableHoldings(undefined, ROUTES, CARD_SPENDABLE_ASSETS, LIFI_CHAINS)).toEqual([]);
+  });
+});
+
+/** What "Swap €20 of ETH" fills the swap form with. */
+describe('swapAmountFor', () => {
+  const holding = (balance: string, decimals = 18, priceUsd = 2000) => {
+    const amount = Number(balance) / 10 ** decimals;
+    return { balance, decimals, amount, valueUSD: amount * priceUsd };
+  };
+
+  it('rounds the amount up at six places, so the swap is never a fraction short', () => {
+    // $20 at $2000/ETH is exactly 0.01 ETH; $20.001 needs a hair more.
+    expect(swapAmountFor(20, holding('500000000000000000'))).toBe('0.01');
+    expect(swapAmountFor(20.001, holding('500000000000000000'))).toBe('0.010001');
+  });
+
+  it('rounds up at the precision of a token with fewer than six places', () => {
+    // Two decimals at $1,000 a token: $14 is 0.014, which must offer 0.02, not round to 0.01.
+    expect(swapAmountFor(14, holding('10000', 2, 1000))).toBe('0.02');
+    expect(swapAmountFor(1, holding('10000', 2, 1000))).toBe('0.01');
+  });
+
+  it('never offers more than the balance, to the wei', () => {
+    // 0.1234567 ETH: rounding up at six places gives 0.123457, which they do not hold.
+    const all = holding('123456700000000000');
+    const offered = swapAmountFor(all.valueUSD, all);
+
+    expect(offered).toBe('0.1234567');
+    expect(parseUnits(offered!, 18)).toBeLessThanOrEqual(123456700000000000n);
+  });
+
+  it('offers nothing it cannot work out', () => {
+    expect(
+      swapAmountFor(20, { ...holding('500000000000000000'), balance: 'nope' }),
+    ).toBeUndefined();
+    expect(swapAmountFor(0, holding('500000000000000000'))).toBeUndefined();
+    expect(swapAmountFor(20, { ...holding('0'), amount: 0, valueUSD: 0 })).toBeUndefined();
   });
 });

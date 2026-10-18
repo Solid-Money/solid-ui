@@ -4,7 +4,11 @@ import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { CARD_SPENDABLE_ASSETS, CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
-import { cardSpendableAssetsFor, sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+import {
+  baseEurcHeld,
+  cardSpendableAssetsFor,
+  sumCardSpendableUSD,
+} from '@/lib/utils/cardSpendable';
 
 const SOUSD = ADDRESSES.fuse.vault;
 
@@ -243,5 +247,50 @@ describe('cardSpendableAssetsFor', () => {
     const assets = cardSpendableAssetsFor([baseDeployment()]);
 
     expect(sumCardSpendableUSD([eurc({ chainId: mainnet.id })], assets)).toBe(0);
+  });
+
+  /** The EURC the "Turn on euro spending" banner and the declined receipt talk about. */
+  describe('baseEurcHeld', () => {
+    it('is the EURC on Base in euros, before euro spending is on', () => {
+      const deployments = [baseDeployment({ enabled: false })];
+
+      expect(baseEurcHeld([token({}), eurc()], deployments)).toBeCloseTo(250.96, 2);
+    });
+
+    it('ignores a lookalike and EURC on another chain', () => {
+      const deployments = [baseDeployment({ enabled: false })];
+
+      expect(
+        baseEurcHeld(
+          [
+            eurc({ contractAddress: '0x0000000000000000000000000000000000000002' }),
+            eurc({ chainId: mainnet.id }),
+          ],
+          deployments,
+        ),
+      ).toBe(0);
+    });
+
+    it('counts only the EURC on a Base allowlist that also holds dollars', () => {
+      const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+      const deployments = [
+        baseDeployment({ enabled: false, spendTokens: [BASE_EURC.toLowerCase(), BASE_USDC] }),
+      ];
+      const usdcOnBase = token({
+        contractTickerSymbol: 'USDC',
+        contractName: 'USD Coin',
+        contractAddress: BASE_USDC,
+        balance: '500000000',
+        contractDecimals: 6,
+        chainId: base.id,
+      });
+
+      expect(baseEurcHeld([usdcOnBase, eurc()], deployments)).toBeCloseTo(250.96, 2);
+      expect(baseEurcHeld([usdcOnBase], deployments)).toBe(0);
+    });
+
+    it('is zero before the balances load', () => {
+      expect(baseEurcHeld(undefined, [baseDeployment({ enabled: false })])).toBe(0);
+    });
   });
 });

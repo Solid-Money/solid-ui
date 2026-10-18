@@ -89,3 +89,36 @@ export const cardSpendableAssetsFor = (
 
   return [...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(addresses)];
 };
+
+/**
+ * EURC held on Base, in euros — the balance euro spending lets the card draw on.
+ *
+ * Matched on this build's EURC address when it has one. Without it, on the Base instance's
+ * allowlist — but only the EURC on it: that list is a draw order, and holds dollar assets too
+ * once USDC debits move to Base, which counted here would be dollars quoted as euros. Failing
+ * both, on the ticker: the question is "does this cardholder hold EURC the card cannot reach",
+ * and an unconfigured QA address must not answer "no" for everyone.
+ */
+export const baseEurcHeld = (
+  tokens: TokenBalance[] | undefined,
+  deployments: CardSpendDeployment[] | undefined,
+): number => {
+  const configured = BASE_SPEND_DEPLOYMENT.spendTokenAddress?.toLowerCase();
+  const allowlist = (
+    deployments?.find(deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId)
+      ?.spendTokens ?? []
+  ).map(address => address.toLowerCase());
+
+  const isBaseEurc = (token: TokenBalance): boolean => {
+    if (token.chainId !== BASE_SPEND_DEPLOYMENT.chainId) return false;
+    const address = token.contractAddress?.toLowerCase() ?? '';
+    if (configured) return address === configured;
+    const ticker = token.contractTickerSymbol?.trim().toUpperCase() === 'EURC';
+    return allowlist.length ? ticker && allowlist.includes(address) : ticker;
+  };
+
+  return (tokens ?? []).filter(isBaseEurc).reduce((total, token) => {
+    const amount = Number(token.balance ?? 0) / 10 ** token.contractDecimals;
+    return Number.isFinite(amount) && amount > 0 ? total + amount : total;
+  }, 0);
+};

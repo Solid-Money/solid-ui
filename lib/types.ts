@@ -468,6 +468,30 @@ interface Balance {
 interface Balances {
   available: Balance;
   hold: Balance;
+  /**
+   * `available` in the card's own currency, at Wirex's latest quote for it — what
+   * the till will accept. Wirex cards only, and only when the card is billed in
+   * something other than dollars and the quote is under a day old.
+   */
+  available_in_card_currency?: CardCurrencyAmount;
+}
+
+/** A Wirex card's spendable figure in the currency it is billed in. */
+export interface CardCurrencyAmount {
+  /** Decimal string, rounded down to the cent: "983.47". */
+  amount: string;
+  /** ISO 4217, upper case: "EUR". */
+  currency: string;
+  /** USD per one unit of `currency` — Wirex's quote, its spread included. */
+  rate: number;
+  /** When that quote was taken, ISO 8601. */
+  rate_at: string;
+}
+
+/** `GET /wirex/spendable`: the card-details `balances` figures, cheap enough to poll. */
+export interface CardSpendableResponse {
+  available: { amount: string; currency: 'usd' };
+  available_in_card_currency?: CardCurrencyAmount;
 }
 
 interface CryptoAccount {
@@ -2738,6 +2762,15 @@ export interface CardSpendDetails {
   state?: string;
   settled_at?: string;
   decline_reason?: string;
+  /**
+   * What Wirex billed the card, as the decimal string it sent: "18.75". Not the
+   * receipt total when the merchant charged in something else — a BRL shop is
+   * billed to a euro card in euros — which is why the declined receipt compares
+   * this, not `amount`, with what the card can spend.
+   */
+  card_amount?: string;
+  /** ISO 4217 of {@link card_amount}. */
+  card_currency?: string;
   /**
    * The refund leg, when this transaction has one.
    *

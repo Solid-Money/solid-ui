@@ -174,3 +174,38 @@ describe('resolveHomePromptStep — the post-card rungs', () => {
     expect(step({ hasSpentOnCard: true, wallet: null })).toBe('cashback');
   });
 });
+
+/**
+ * The two Wirex steps (Figma 28856:9546). A Wirex cardholder who has funded and used the card
+ * used to land on `cashback`, which Home hides behind the cashback tile — so they saw no banner at
+ * all, even with a payment declined that morning.
+ */
+describe('resolveHomePromptStep — the Wirex steps', () => {
+  const spent = { hasSpentOnCard: true } as const;
+
+  it('tells a cardholder about a decline the balance still does not cover', () => {
+    expect(step({ ...spent, hasUncoveredDecline: true })).toBe('card-declined');
+  });
+
+  it('asks to turn on euro spending for EURC the card cannot reach', () => {
+    expect(step({ ...spent, holdsUnusableEurc: true })).toBe('euro-spending');
+  });
+
+  it('puts the decline first: it is a payment they are trying to make now', () => {
+    expect(step({ ...spent, hasUncoveredDecline: true, holdsUnusableEurc: true })).toBe(
+      'card-declined',
+    );
+  });
+
+  it('outranks the wallet nudge as well as cashback', () => {
+    expect(step({ holdsUnusableEurc: true })).toBe('euro-spending');
+  });
+
+  it('leaves "Fund your wallet" first for a cardholder who never funded', () => {
+    expect(step({ depositCompleted: false, hasUncoveredDecline: true })).toBe('fund');
+  });
+
+  it('falls back to the usual ladder with neither', () => {
+    expect(step(spent)).toBe('cashback');
+  });
+});

@@ -1,4 +1,4 @@
-import { formatUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { TokenBalance } from '@/lib/types';
@@ -149,6 +149,9 @@ export interface SwappableHolding {
   symbol: string;
   /** The token's contract, or the zero address for the chain's native currency. */
   tokenAddress: string;
+  decimals: number;
+  /** Raw balance in token units — what a swap amount is capped against, exactly. */
+  balance: string;
   /** `balance` scaled out of its decimals. */
   amount: number;
   /** `amount` at its quoted rate; at least {@link MIN_SWAPPABLE_VALUE_USD}. */
@@ -211,6 +214,8 @@ export const getSwappableHoldings = (
           chainId: token.chainId,
           symbol: token.contractTickerSymbol,
           tokenAddress: token.contractAddress,
+          decimals: token.contractDecimals,
+          balance: balance.toString(),
           amount,
           valueUSD: amount * quoteRate,
           logoUrl: token.logoUrl,
@@ -218,4 +223,36 @@ export const getSwappableHoldings = (
       ];
     })
     .sort((a, b) => b.valueUSD - a.valueUSD);
+};
+
+/**
+ * The token amount that swaps for `usd`, in the holding's units: rounded up at six places (fewer
+ * when the token has fewer) so the swap never comes out a fraction short, and capped at what they
+ * hold. Exact-in, because the cross-chain form quotes nothing else.
+ *
+ * The cap is taken in the token's own integer units, against the raw balance: capped as a float
+ * and then rounded, a 0.1234567 ETH holding came out as "0.123457" — more than they hold, which
+ * the swap form refuses.
+ */
+export const swapAmountFor = (
+  usd: number,
+  holding: Pick<SwappableHolding, 'amount' | 'valueUSD' | 'balance' | 'decimals'>,
+) => {
+  const price = holding.valueUSD / holding.amount;
+  if (!Number.isFinite(price) || price <= 0) return undefined;
+  // Rounded up at the token's own precision when it has fewer than six places: `parseUnits` would
+  // otherwise round the extra places to nearest, and a 2-decimal token could come out short.
+  const places = Math.min(6, holding.decimals);
+  const scale = 10 ** places;
+  const wanted = Math.ceil((usd / price) * scale) / scale;
+  if (!Number.isFinite(wanted) || wanted <= 0) return undefined;
+  try {
+    const balance = BigInt(holding.balance);
+    const units = parseUnits(wanted.toFixed(places), holding.decimals);
+    const capped = units < balance ? units : balance;
+    return capped > 0n ? formatUnits(capped, holding.decimals) : undefined;
+  } catch {
+    // An unreadable balance or decimals: open the form empty rather than on a guess.
+    return undefined;
+  }
 };
