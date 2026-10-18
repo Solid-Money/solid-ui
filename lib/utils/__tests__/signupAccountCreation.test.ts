@@ -22,7 +22,7 @@ describe('getAccountCreationRecovery', () => {
   });
 
   it('sends a blocked email domain back to the email step', () => {
-    const blocked = Object.assign(new Error('We can’t create accounts with this email provider.'), {
+    const blocked = Object.assign(new Error("This email provider isn't supported."), {
       status: 400,
       data: { statusCode: 400, code: 'EMAIL_DOMAIN_NOT_ALLOWED', message: 'blocked' },
     });

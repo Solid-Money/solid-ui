@@ -31,7 +31,7 @@ export const PASSKEY_ACCOUNT_NOT_FOUND_CODE = 'PASSKEY_ACCOUNT_NOT_FOUND';
 export const EMAIL_DOMAIN_NOT_ALLOWED_CODE = 'EMAIL_DOMAIN_NOT_ALLOWED';
 
 export const EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE =
-  "We can't create accounts with this email provider. Please use a different email address.";
+  "This email provider isn't supported. Please use a different email address.";
 
 /**
  * Backend code for an unfreeze the cardholder asked for on a card Solid (or the

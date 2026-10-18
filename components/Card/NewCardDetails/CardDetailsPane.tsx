@@ -109,12 +109,16 @@ const CardDetailsPane = () => {
     state => state.setShouldShowWelcomePopup,
   );
 
-  const { data: cardDetails, refetch } = useCardDetails();
+  const { data: cardDetails, refetch, dataUpdatedAt } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
   const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
   const [isFreezing, setIsFreezing] = useState(false);
+  // When Solid last refused an unfreeze. Until a card read newer than that lands,
+  // the details on screen are the ones that offered it, so a refresh that fails
+  // must not bring the button back.
+  const [solidFreezeRefusedAt, setSolidFreezeRefusedAt] = useState<number | null>(null);
   const [isAddToWalletOpen, setIsAddToWalletOpen] = useState(false);
   const [walletFromManage, setWalletFromManage] = useState<DigitalWalletType | undefined>();
   // The card-spending sheet is owned here rather than by the action row, because two
@@ -240,7 +244,9 @@ const CardDetailsPane = () => {
   }, [isOpen]);
 
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
-  const canToggleFreeze = canToggleCardFreeze(cardDetails);
+  const canToggleFreeze =
+    canToggleCardFreeze(cardDetails) &&
+    (solidFreezeRefusedAt === null || dataUpdatedAt > solidFreezeRefusedAt);
   // Add funds and Withdraw part ways on a frozen card — see the two helpers.
   const fundsAccess = {
     isCardFrozen,
@@ -288,7 +294,9 @@ const CardDetailsPane = () => {
       await refetch();
     } catch (error) {
       if (isCardFrozen && (await isCardFrozenBySolidError(error))) {
-        // Retrying can't help; the details refresh hides the button.
+        // Retrying can't help: hide the button now, and let the refreshed
+        // details say what the card's state really is.
+        setSolidFreezeRefusedAt(Date.now());
         Alert.alert('Card frozen by Solid', CARD_FROZEN_BY_SOLID_MESSAGE);
         void refetch();
       } else {
