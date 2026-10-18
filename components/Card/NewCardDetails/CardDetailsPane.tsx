@@ -379,7 +379,7 @@ const CardDetailsPane = () => {
               <EnableEuroSpendCard
                 isEnabling={euroSpend.isEnabling}
                 error={euroSpend.error}
-                onEnable={euroSpend.enable}
+                onEnable={() => euroSpend.enable('card_screen')}
               />
             </HeroEnter>
           ) : null}

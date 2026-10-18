@@ -1,4 +1,4 @@
-import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
+import { cardDeclineReason, isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 
 /**
  * The decline row on a card transaction.
@@ -81,5 +81,29 @@ describe('cardDeclineReason', () => {
         spend_details: { decline_reason: '  safe_paused  ' },
       }),
     ).toBe('Card spending paused');
+  });
+});
+
+/** Whether the declined receipt offers "Not enough to pay" at all. */
+describe('isInsufficientDecline', () => {
+  it('trusts our code when the ledger answered', () => {
+    expect(isInsufficientDecline({ spend_details: { decline_reason: 'INSUFFICIENT_FUNDS' } })).toBe(
+      true,
+    );
+    // Wirex calls a limit decline "insufficient funds" too; our code knows better.
+    expect(
+      isInsufficientDecline({
+        declined_reason: 'Insufficient funds',
+        spend_details: { decline_reason: 'VELOCITY_LIMIT' },
+      }),
+    ).toBe(false);
+  });
+
+  it("falls back to the issuer's reason without one", () => {
+    expect(isInsufficientDecline({ declined_reason: 'Insufficient funds' })).toBe(true);
+    expect(isInsufficientDecline({ declined_reason: 'Declined external authorization' })).toBe(
+      false,
+    );
+    expect(isInsufficientDecline({})).toBe(false);
   });
 });

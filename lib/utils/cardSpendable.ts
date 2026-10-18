@@ -89,3 +89,38 @@ export const cardSpendableAssetsFor = (
 
   return [...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(addresses)];
 };
+
+/**
+ * EURC held on Base, in euros — the balance euro spending lets the card draw on.
+ *
+ * Matched on the Base instance's own allowlist when the backend serves one (the same
+ * address `cardSpendableAssetsFor` counts once euro spending is on), else this build's,
+ * else on the ticker: the question here is "does this cardholder hold EURC the card
+ * cannot reach", and an unconfigured QA address must not answer "no" for everyone.
+ */
+export const baseEurcHeld = (
+  tokens: TokenBalance[] | undefined,
+  deployments: CardSpendDeployment[] | undefined,
+): number => {
+  const baseDeployment = deployments?.find(
+    deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
+  );
+  const addresses = (
+    baseDeployment?.spendTokens?.length
+      ? baseDeployment.spendTokens
+      : BASE_SPEND_DEPLOYMENT.spendTokenAddress
+        ? [BASE_SPEND_DEPLOYMENT.spendTokenAddress]
+        : []
+  ).map(address => address.toLowerCase());
+
+  const asset: CardSpendableAsset = addresses.length
+    ? baseEurcSpendableAsset(addresses)
+    : { symbol: 'EURC', chainIds: [BASE_SPEND_DEPLOYMENT.chainId] };
+
+  return (tokens ?? [])
+    .filter(token => matchesAsset(token, asset))
+    .reduce((total, token) => {
+      const amount = Number(token.balance ?? 0) / 10 ** token.contractDecimals;
+      return Number.isFinite(amount) && amount > 0 ? total + amount : total;
+    }, 0);
+};

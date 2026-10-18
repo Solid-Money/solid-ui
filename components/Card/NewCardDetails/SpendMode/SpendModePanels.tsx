@@ -28,6 +28,11 @@ const NOTICE_BADGE = require('@/assets/images/spend-mode-credit-notice-badge.svg
 interface BalancePanelProps {
   balance: string;
   /**
+   * "≈ $1,120.00 at today's rate", under a balance shown in the card's own currency. The euro
+   * figure moves with the rate while the dollars behind it do not, and this is what says so.
+   */
+  caption?: string;
+  /**
    * Opens the add-funds flow. Without one the pill is not drawn: it used to render with
    * nothing behind it, and a button that ignores the tap reads as broken.
    */
@@ -35,17 +40,23 @@ interface BalancePanelProps {
 }
 
 /**
- * "Your USD balance / $0.0" with the Add funds pill on the right.
+ * "Your balance / €983.47" with the Add funds pill on the right.
  *
- * Deliberately not "USDC": the figure behind it is `useCardSpendableBalanceUSD`, which sums
- * every asset in `CARD_SPENDABLE_ASSETS` — USDC, USDT and soUSD on Fuse. Naming one of the
- * three told a cardholder holding USDT that the balance shown was somebody else's.
+ * "Your balance" rather than "Your USD balance": a Wirex card billed in euros shows the figure
+ * in euros — what the till will accept — and only falls back to dollars when it has no rate.
+ *
+ * Deliberately not "USDC" either: the dollar figure sums every asset in
+ * `CARD_SPENDABLE_ASSETS` — USDC, USDT and soUSD on Fuse. Naming one of the three told a
+ * cardholder holding USDT that the balance shown was somebody else's.
  */
-export const SpendModeBalancePanel = ({ balance, onAddFunds }: BalancePanelProps) => (
+export const SpendModeBalancePanel = ({ balance, caption, onAddFunds }: BalancePanelProps) => (
   <View style={[styles.panel, styles.balancePanel]}>
-    <View style={styles.balanceText}>
-      <Text className="text-[16px] font-normal leading-[20px] text-white/70">Your USD balance</Text>
+    <View style={[styles.balanceText, caption ? styles.balanceTextWithCaption : undefined]}>
+      <Text className="text-[16px] font-normal leading-[20px] text-white/70">Your balance</Text>
       <Text className="text-[24px] font-medium leading-[28px] text-white">{balance}</Text>
+      {caption ? (
+        <Text className="text-[14px] font-normal leading-[16px] text-white/50">{caption}</Text>
+      ) : null}
     </View>
     {onAddFunds ? (
       <Pressable
@@ -144,6 +155,8 @@ const styles = StyleSheet.create({
     paddingRight: 24,
   },
   balanceText: { flex: 1, gap: Platform.OS === 'ios' ? 8 : 10 },
+  // Three lines in the same fixed 106pt panel, so the rhythm tightens to fit.
+  balanceTextWithCaption: { gap: 4 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',

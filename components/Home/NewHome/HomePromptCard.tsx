@@ -1,20 +1,36 @@
-import { Pressable, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
 
 import ApplePayCircle from '@/assets/images/apple-pay-circle';
+import CardDeclined from '@/assets/images/card-declined';
+import EuroCircle from '@/assets/images/euro-circle';
 import FaceScan from '@/assets/images/face-scan';
 import FundDollar from '@/assets/images/fund-dollar';
 import GooglePayCircle from '@/assets/images/google-pay-circle';
+import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
 import { HOME_BANNER_RADIUS } from '@/components/Home/NewHome/homeBannerStyle';
 import HomeCashbackCtaBanner from '@/components/Home/NewHome/HomeCashbackCtaBanner';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEVICE_DIGITAL_WALLET, DigitalWalletType } from '@/constants/digital-wallet';
-import { cardInfoWalletGuidePath, path } from '@/constants/path';
+import { cardInfoWalletGuidePath, cardTransactionDetailPath, path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { DeclinedPaymentPrompt, useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { track } from '@/lib/analytics';
+import { CardProvider } from '@/lib/types';
+import { formatCardCurrency } from '@/lib/utils/cardCurrency';
 import {
   DismissibleHomePromptKey,
   HomePromptKey,
@@ -50,21 +66,38 @@ interface PromptContent {
    * way to find out why, which is what users reported as "KYC, no option". The
    * card screen has carried the provider's own reason for the decline all
    * along; this banner just never let anyone reach it.
+   *
+   * `href` is a redirect, which is what every banner but one does. `onPress` is
+   * for "Turn on euro spending", whose flow is a single signature with nothing to
+   * navigate to; `busy` shows it in flight.
    */
-  cta?: { label: string; href: Href };
+  cta?: { label: string; href?: Href; onPress?: () => void; busy?: boolean };
 }
+
+/** The banners whose copy never changes. The two Wirex steps carry figures — see `wirexContent`. */
+type StaticPromptKey = Exclude<HomePromptKey, 'cashback' | 'card-declined' | 'euro-spending'>;
+
+// Figma 28856:9574 / 25141:7265 — on ✕ the banner fades out and lifts 18pt before it goes:
+// opacity over 420ms ease-out, the lift over 460ms on the same quint curve the card hero uses.
+const DISMISS_FADE_MS = 420;
+const DISMISS_LIFT_MS = 460;
+const DISMISS_LIFT = -18;
 
 /**
  * One banner per rung of the card funnel (Figma 25141:6965). `useHomePrompt`
  * decides which rung the user is on; this is only the copy and the destination.
  *
- * Every CTA is a plain redirect — the banner navigates and nothing else, so the
+ * Every CTA here is a plain redirect — the banner navigates and nothing else, so the
  * screen it lands on stays the single owner of the flow (starting KYC, opening
  * the deposit sheet, provisioning the card). `/card/activate` is the one door
  * into issuance for all three verification banners: it runs the country gate for
  * a first-timer and resumes an application or a pending card for everyone else.
+ *
+ * The one exception is "Turn on euro spending" (see `wirexContent`): its flow is a
+ * single signature owned by `useEuroSpendEnablement`, with no screen to send
+ * anyone to, so the banner starts it in place.
  */
-const CONTENT: Record<Exclude<HomePromptKey, 'cashback'>, PromptContent> = {
+const CONTENT: Record<StaticPromptKey, PromptContent> = {
   // Figma 25141:7075
   'get-card': {
     title: 'Get your card',
@@ -136,6 +169,55 @@ const CONTENT: Record<Exclude<HomePromptKey, 'cashback'>, PromptContent> = {
   },
 };
 
+/**
+ * The two Wirex steps, whose copy carries the cardholder's own figures — the declined payment and
+ * what they have now, or the EURC their card cannot reach. `undefined` while the figures are not
+ * in, which renders nothing rather than a banner with blanks in it.
+ */
+function wirexContent(
+  key: 'card-declined' | 'euro-spending',
+  {
+    declined,
+    eurc,
+    euroSpend,
+  }: {
+    declined: DeclinedPaymentPrompt | null;
+    eurc: number;
+    euroSpend: ReturnType<typeof useUnusableEurc>['euroSpend'];
+  },
+): PromptContent | undefined {
+  if (key === 'card-declined') {
+    if (!declined) return undefined;
+    const { payment, available, merchantName, transactionId } = declined;
+    // Figma 28856:9595: "€18.75 at Corner Market. You have €0 available to spend."
+    return {
+      title: 'Your payment was declined',
+      description:
+        `${formatCardCurrency(payment.amount, payment.currency)}` +
+        `${merchantName ? ` at ${merchantName}` : ''}. ` +
+        `You have ${formatCardCurrency(available.amount, available.currency, { wholeZero: true })} available to spend.`,
+      icon: <CardDeclined />,
+      // The receipt is where the fix is — the right one of Add funds, Swap or Turn on.
+      cta: { label: 'Fix it', href: cardTransactionDetailPath(transactionId) },
+    };
+  }
+
+  if (eurc <= 0) return undefined;
+  // Figma 28856:9637. The euro figure rounded down: it is what the card would reach.
+  return {
+    title: 'Turn on euro spending',
+    description:
+      euroSpend.error ??
+      `Your ${formatCardCurrency(Math.floor(eurc * 100) / 100, 'EUR')} EURC can't be used by your card yet.`,
+    icon: <EuroCircle />,
+    cta: {
+      label: 'Turn on',
+      onPress: () => euroSpend.enable('home_banner'),
+      busy: euroSpend.isEnabling,
+    },
+  };
+}
+
 interface HomePromptCardProps {
   /** Which banner to show — resolved by `useHomePrompt`. */
   promptKey: HomePromptKey;
@@ -162,15 +244,52 @@ interface HomePromptCardProps {
  */
 const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCardProps) => {
   const dismiss = useHomePromptStore(state => state.dismiss);
+  const dismissDecline = useHomePromptStore(state => state.dismissDecline);
   const { data: cardStatus } = useCardStatus();
+  const { provider } = useCardProvider();
+  // Only read for the two Wirex steps; off — and free — for every other banner.
+  const declined = useDeclinedPaymentPrompt(
+    promptKey === 'card-declined' && provider === CardProvider.WIREX,
+  );
+  const { eurc, euroSpend } = useUnusableEurc();
+
+  const opacity = useSharedValue(1);
+  const lift = useSharedValue(0);
+  const exitStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: lift.value }],
+  }));
+
+  // The slot can go straight on to the next rung once this one is dismissed, and
+  // that banner must arrive at rest, not still faded from the last one.
+  const declinedId = declined?.transactionId;
+  useEffect(() => {
+    opacity.value = 1;
+    lift.value = 0;
+  }, [promptKey, declinedId, opacity, lift]);
 
   // The terminal banner is a different card entirely: no icon, no CTA, no ✕.
   if (promptKey === 'cashback') return <HomeCashbackCtaBanner className={className} />;
 
-  const { title, description, icon, cta } = CONTENT[promptKey];
+  const content =
+    promptKey === 'card-declined' || promptKey === 'euro-spending'
+      ? wirexContent(promptKey, { declined, eurc, euroSpend })
+      : CONTENT[promptKey];
+  if (!content) return null;
+
+  const { title, description, icon, cta } = content;
 
   // Narrowed by the early return above: every banner that reaches here has a ✕.
   const dismissibleKey: DismissibleHomePromptKey = promptKey;
+
+  // A decline is closed for that payment only; every other banner snoozes.
+  const closeBanner = () => {
+    if (dismissibleKey === 'card-declined') {
+      if (declinedId) dismissDecline(declinedId);
+      return;
+    }
+    dismiss(dismissibleKey);
+  };
 
   const onPressDismiss = () => {
     // Which banner was closed, how long that buys, and where the user was in the
@@ -178,26 +297,38 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
     // "gave up on verification" without an event per variant.
     track(TRACKING_EVENTS.HOME_PROMPT_DISMISSED, {
       prompt: dismissibleKey,
-      snoozeDays: homePromptSnoozeDays(dismissibleKey),
+      snoozeDays: dismissibleKey === 'card-declined' ? 0 : homePromptSnoozeDays(dismissibleKey),
       kycStatus: cardStatus?.kycStatus,
       rainApplicationStatus: cardStatus?.rainApplicationStatus,
       depositCompleted,
+      ...(declinedId && dismissibleKey === 'card-declined' && { transactionId: declinedId }),
     });
-    dismiss(dismissibleKey);
+    opacity.value = withTiming(0, { duration: DISMISS_FADE_MS, easing: Easing.out(Easing.ease) });
+    lift.value = withTiming(
+      DISMISS_LIFT,
+      { duration: DISMISS_LIFT_MS, easing: EASE_OUT_QUINT },
+      finished => {
+        if (finished) scheduleOnRN(closeBanner);
+      },
+    );
   };
 
-  const onPressCta = (destination: Href) => () => {
+  const onPressCta = (action: NonNullable<PromptContent['cta']>) => () => {
     track(TRACKING_EVENTS.HOME_PROMPT_CTA_PRESSED, {
       prompt: promptKey,
       kycStatus: cardStatus?.kycStatus,
       rainApplicationStatus: cardStatus?.rainApplicationStatus,
       depositCompleted,
     });
-    router.push(destination);
+    if (action.onPress) {
+      action.onPress();
+      return;
+    }
+    if (action.href) router.push(action.href);
   };
 
   return (
-    <View className={className}>
+    <Animated.View className={className} style={exitStyle}>
       <View className="overflow-hidden bg-card p-5" style={{ borderRadius: HOME_BANNER_RADIUS }}>
         <View className="flex-row items-center justify-between">
           <View className="flex-1 gap-1 pr-4">
@@ -213,9 +344,16 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
                 variant="brand"
                 size="sm"
                 className="mt-4 h-[35px] self-start rounded-full px-4"
-                onPress={onPressCta(cta.href)}
+                disabled={cta.busy}
+                onPress={onPressCta(cta)}
               >
-                <Text className="text-base font-semibold text-primary-foreground">{cta.label}</Text>
+                {cta.busy ? (
+                  <ActivityIndicator color="black" size="small" />
+                ) : (
+                  <Text className="text-base font-semibold text-primary-foreground">
+                    {cta.label}
+                  </Text>
+                )}
               </Button>
             )}
           </View>
@@ -234,7 +372,7 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
           <X size={24} color="rgba(255,255,255,0.5)" strokeWidth={2} />
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

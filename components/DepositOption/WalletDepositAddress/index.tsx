@@ -14,6 +14,7 @@ import { Text } from '@/components/ui/text';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
+import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useWalletDepositAddress } from '@/hooks/useWalletDepositAddress';
 import { openHelpLink } from '@/lib/help/links';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -81,6 +82,10 @@ const WalletDepositAddress = () => {
   // then — never a blank, which is the one thing this line must not show.
   const { data: depositAssets } = useDepositAssets();
   const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
+  // EURC lands in the Safe on Base, where the card can only spend it once euro spending is
+  // on — said here, before the deposit, rather than by the first declined payment after it.
+  const euroSpend = useEuroSpendEnablement();
+  const showsEuroSpendingNote = symbol === 'EURC' && euroSpend.shouldOffer;
 
   // Only a minted address is watched, so only then is there anything to scan for.
   // The Safe is not registered with the pipeline; saying "scanning" over it would
@@ -200,6 +205,26 @@ const WalletDepositAddress = () => {
         <Text className="text-center text-sm text-white/50">
           Deposits below the minimum will not be credited or refunded
         </Text>
+        {showsEuroSpendingNote ? (
+          <View className="flex-row flex-wrap items-center justify-center gap-x-1">
+            <Text className="text-center text-sm text-white/70">
+              {euroSpend.error ?? 'Your card can spend EURC once euro spending is on.'}
+            </Text>
+            {euroSpend.isEnabling ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Turn on euro spending"
+                onPress={() => euroSpend.enable('deposit')}
+                hitSlop={8}
+                className="web:hover:opacity-70"
+              >
+                <Text className="text-sm font-semibold text-brand underline">Turn on</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
         <DepositFeeNotice
           product="wallet"
           provider={provider}

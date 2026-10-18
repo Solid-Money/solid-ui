@@ -4,7 +4,11 @@ import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
 import { CARD_SPENDABLE_ASSETS, CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
-import { cardSpendableAssetsFor, sumCardSpendableUSD } from '@/lib/utils/cardSpendable';
+import {
+  baseEurcHeld,
+  cardSpendableAssetsFor,
+  sumCardSpendableUSD,
+} from '@/lib/utils/cardSpendable';
 
 const SOUSD = ADDRESSES.fuse.vault;
 
@@ -243,5 +247,32 @@ describe('cardSpendableAssetsFor', () => {
     const assets = cardSpendableAssetsFor([baseDeployment()]);
 
     expect(sumCardSpendableUSD([eurc({ chainId: mainnet.id })], assets)).toBe(0);
+  });
+
+  /** The EURC the "Turn on euro spending" banner and the declined receipt talk about. */
+  describe('baseEurcHeld', () => {
+    it('is the EURC on Base in euros, before euro spending is on', () => {
+      const deployments = [baseDeployment({ enabled: false })];
+
+      expect(baseEurcHeld([token({}), eurc()], deployments)).toBeCloseTo(250.96, 2);
+    });
+
+    it('ignores a lookalike and EURC on another chain', () => {
+      const deployments = [baseDeployment({ enabled: false })];
+
+      expect(
+        baseEurcHeld(
+          [
+            eurc({ contractAddress: '0x0000000000000000000000000000000000000002' }),
+            eurc({ chainId: mainnet.id }),
+          ],
+          deployments,
+        ),
+      ).toBe(0);
+    });
+
+    it('is zero before the balances load', () => {
+      expect(baseEurcHeld(undefined, [baseDeployment({ enabled: false })])).toBe(0);
+    });
   });
 });

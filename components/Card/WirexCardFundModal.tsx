@@ -72,6 +72,12 @@ export interface WirexCardFundModalProps {
   /** Controlled mode: when provided, the modal no longer owns its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Dollars to start "Move from wallet" at, when the flow was opened to cover a known gap — the
+   * declined receipt passes the shortfall, rounded up. The one step that takes an amount; every
+   * other option is an address, which has no amount to fill.
+   */
+  suggestedAmountUsd?: number;
 }
 
 /**
@@ -104,6 +110,7 @@ export default function WirexCardFundModal({
   trigger = null,
   isOpen: isOpenProp,
   onOpenChange,
+  suggestedAmountUsd,
 }: WirexCardFundModalProps) {
   const { provider } = useCardProvider();
   const resetTransfi = useTransfiStore(state => state.reset);
@@ -393,6 +400,7 @@ export default function WirexCardFundModal({
         <WirexMoveAmount
           key={`${holding.chainId}:${holding.tokenAddress}`}
           holding={holding}
+          suggestedAmount={suggestedAmountUsd}
           onDone={handleMoveSubmitted}
         />
       );

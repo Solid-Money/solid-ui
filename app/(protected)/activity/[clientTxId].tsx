@@ -22,6 +22,7 @@ import ActivityStatusPill, {
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
+import NotEnoughToPayCard from '@/components/Activity/NotEnoughToPayCard';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
@@ -56,7 +57,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { cardDeclineReason } from '@/lib/utils/cardDeclineReason';
+import { cardDeclineReason, isInsufficientDecline } from '@/lib/utils/cardDeclineReason';
 import {
   cardRefundExplorerUrl,
   cardSweepExplorerUrl,
@@ -346,6 +347,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // decline code where it says more than the issuer's reason, which collapses
   // several distinct causes onto "insufficient funds".
   const declineReason = useMemo(() => cardDeclineReason(transaction), [transaction]);
+  // A Wirex payment the balance did not cover, which the cardholder can fix from
+  // here. Our own code when the ledger answered; Wirex's reason otherwise, which is
+  // the same "insufficient" for a limit decline — the card's live comparison then
+  // says the balance already covers it rather than offering money they have.
+  const isNotEnoughToPay = useMemo(
+    () => isDeclined && cardProvider === CardProvider.WIREX && isInsufficientDecline(transaction),
+    [isDeclined, cardProvider, transaction],
+  );
 
   // Support needs the ledger side to trace a purchase whose sweep is stuck or
   // failed; none of it is worth a row on screen, but all of it belongs in the
@@ -844,6 +853,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </View>
         </View>
 
+        {/* Above the details (Figma 28823:9338): on a payment declined for want of
+            funds, the gap and the fix are what the cardholder came here for. */}
+        {isNotEnoughToPay && <NotEnoughToPayCard transaction={transaction} />}
         <DetailCard rows={merchantRows} />
         {/* No cashback card for an excluded purchase: it earns nothing, and the
             receipt reads like any purchase with no cashback rather than
