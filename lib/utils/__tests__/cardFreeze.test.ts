@@ -1,5 +1,5 @@
 import { CardStatus, FreezeInitiator } from '@/lib/types';
-import { canToggleCardFreeze } from '@/lib/utils/cardHelpers';
+import { canToggleCardFreeze, isCardFrozenBySolidError } from '@/lib/utils/cardHelpers';
 
 /**
  * The card screens hide the Freeze/Unfreeze action entirely when this says no,
@@ -47,5 +47,42 @@ describe('canToggleCardFreeze', () => {
     // An unloaded card is not a frozen one — the row should render its default
     // action rather than dropping a column and reflowing once data arrives.
     expect(canToggleCardFreeze(undefined)).toBe(true);
+  });
+});
+
+/**
+ * The backend refuses a customer unfreeze of a freeze Solid placed. The app
+ * must tell that apart from a transient failure, or it asks the cardholder to
+ * retry something that can never succeed.
+ */
+describe('isCardFrozenBySolidError', () => {
+  const response = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  it('recognises the refusal on the raw response unfreezeCard throws', async () => {
+    await expect(
+      isCardFrozenBySolidError(response(403, { code: 'CARD_FROZEN_BY_SOLID', message: 'x' })),
+    ).resolves.toBe(true);
+  });
+
+  it('leaves the response body readable for the caller', async () => {
+    const res = response(403, { code: 'CARD_FROZEN_BY_SOLID' });
+
+    await isCardFrozenBySolidError(res);
+
+    await expect(res.json()).resolves.toEqual({ code: 'CARD_FROZEN_BY_SOLID' });
+  });
+
+  it('does not mistake other failures for it', async () => {
+    await expect(isCardFrozenBySolidError(response(403, { code: 'OTHER' }))).resolves.toBe(false);
+    await expect(
+      isCardFrozenBySolidError(response(500, { code: 'CARD_FROZEN_BY_SOLID' })),
+    ).resolves.toBe(false);
+    await expect(isCardFrozenBySolidError(new TypeError('Network request failed'))).resolves.toBe(
+      false,
+    );
   });
 });
