@@ -54,10 +54,28 @@ export const formatCardCurrency = (
   }
 };
 
-/** `available_in_card_currency` as a number, or undefined when it is missing or malformed. */
-export const cardCurrencyFigure = (figure?: CardCurrencyAmount | null): Money | undefined => {
-  const amount = Number(figure?.amount);
-  if (!figure?.currency || !Number.isFinite(amount)) return undefined;
+/** The backend's own cut-off: a figure on a quote older than this is not sent at all. */
+const QUOTE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * `available_in_card_currency` as a number, or undefined when it is missing, malformed or on a
+ * quote a day old or more.
+ *
+ * The backend never sends a stale quote, but a response can outlive its quote in the cache, and
+ * "≈ $1,120.00 at today's rate" must not be yesterday's. Only age counts: a phone clock running
+ * behind is no reason to hide a quote that reads as from the future.
+ */
+export const cardCurrencyFigure = (
+  figure?: CardCurrencyAmount | null,
+  now: number = Date.now(),
+): Money | undefined => {
+  if (!figure?.currency || typeof figure.amount !== 'string' || !figure.amount.trim()) {
+    return undefined;
+  }
+  const amount = Number(figure.amount);
+  const quotedAt = Date.parse(figure.rate_at);
+  if (!Number.isFinite(amount) || !Number.isFinite(quotedAt)) return undefined;
+  if (now - quotedAt >= QUOTE_MAX_AGE_MS) return undefined;
   return { amount, currency: figure.currency.trim().toUpperCase() };
 };
 
@@ -150,7 +168,7 @@ export const declinedPaymentFigures = (
 
   if (!spendable) return { payment };
 
-  const usd = Number(spendable.available.amount);
+  const usd = Number(spendable.available?.amount);
   const usdAvailable = Number.isFinite(usd) ? usd : 0;
   const inCard = cardCurrencyFigure(spendable.available_in_card_currency);
   const rate = spendable.available_in_card_currency?.rate;

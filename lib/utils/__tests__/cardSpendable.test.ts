@@ -271,6 +271,24 @@ describe('cardSpendableAssetsFor', () => {
       ).toBe(0);
     });
 
+    it('counts only the EURC on a Base allowlist that also holds dollars', () => {
+      const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+      const deployments = [
+        baseDeployment({ enabled: false, spendTokens: [BASE_EURC.toLowerCase(), BASE_USDC] }),
+      ];
+      const usdcOnBase = token({
+        contractTickerSymbol: 'USDC',
+        contractName: 'USD Coin',
+        contractAddress: BASE_USDC,
+        balance: '500000000',
+        contractDecimals: 6,
+        chainId: base.id,
+      });
+
+      expect(baseEurcHeld([usdcOnBase, eurc()], deployments)).toBeCloseTo(250.96, 2);
+      expect(baseEurcHeld([usdcOnBase], deployments)).toBe(0);
+    });
+
     it('is zero before the balances load', () => {
       expect(baseEurcHeld(undefined, [baseDeployment({ enabled: false })])).toBe(0);
     });

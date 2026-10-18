@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useCardSpendable } from '@/hooks/useCardSpendable';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
@@ -45,11 +45,15 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
   // Same query keys the wallet screen already reads, so these are cache hits.
   const { data: transactions } = useCardTransactions({ enabled });
   const { data: spendable } = useCardSpendable({ enabled });
+  // When the decline on show left its day, set the moment it does. Home can stay mounted for
+  // longer than that with nothing refetching, and the banner must not outlive its window just
+  // because the data it was picked from did not change.
+  const [checkedAt, setCheckedAt] = useState(0);
 
-  return useMemo(() => {
+  const shown = useMemo(() => {
     if (!enabled || !spendable) return null;
 
-    const now = Date.now();
+    const now = Math.max(Date.now(), checkedAt);
     const purchases = (transactions?.pages ?? [])
       .flatMap(page => page.data)
       .filter(row => row.category === CardTransactionCategory.PURCHASE)
@@ -70,12 +74,28 @@ export const useDeclinedPaymentPrompt = (enabled: boolean): DeclinedPaymentPromp
     if (!available || !comparable || comparable.available >= comparable.payment) return null;
 
     return {
-      transactionId: declined.id,
-      payment,
-      available,
-      merchantName: declined.merchant_name?.trim() || declined.description?.trim() || undefined,
+      prompt: {
+        transactionId: declined.id,
+        payment,
+        available,
+        merchantName: declined.merchant_name?.trim() || declined.description?.trim() || undefined,
+      },
+      expiresAt: timeOf(declined) + DECLINE_WINDOW_MS,
     };
-  }, [enabled, spendable, transactions?.pages, dismissedDeclines]);
+  }, [enabled, spendable, transactions?.pages, dismissedDeclines, checkedAt]);
+
+  const expiresAt = shown?.expiresAt;
+  useEffect(() => {
+    if (expiresAt === undefined) return;
+    // A second past the edge, so the re-check lands on the far side of it.
+    const timer = setTimeout(
+      () => setCheckedAt(Date.now()),
+      Math.max(0, expiresAt - Date.now()) + 1000,
+    );
+    return () => clearTimeout(timer);
+  }, [expiresAt]);
+
+  return shown?.prompt ?? null;
 };
 
 export default useDeclinedPaymentPrompt;

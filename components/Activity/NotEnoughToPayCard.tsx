@@ -24,6 +24,7 @@ import {
   roundUpShortfall,
   shortfallOf,
 } from '@/lib/utils/cardCurrency';
+import { swapAmountFor } from '@/lib/utils/cardFundMove';
 import { useSwapState } from '@/store/swapStore';
 
 /**
@@ -44,18 +45,6 @@ const SECONDARY_BUTTON =
 
 /** "0.5", "0.0123" — a holding in its own units, to four places. */
 const tokenAmount = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 4 });
-
-/**
- * The token amount that swaps for `usd`, in the holding's units: rounded up at six places so the
- * swap never comes out a fraction short, and capped at what they hold. Exact-in, because the
- * cross-chain form quotes nothing else.
- */
-const swapInputFor = (usd: number, holding: { amount: number; valueUSD: number }) => {
-  const price = holding.valueUSD / holding.amount;
-  if (!Number.isFinite(price) || price <= 0) return undefined;
-  const units = Math.min(Math.ceil((usd / price) * 1e6) / 1e6, holding.amount);
-  return units > 0 ? units.toFixed(6).replace(/\.?0+$/, '') : undefined;
-};
 
 interface NotEnoughToPayCardProps {
   transaction: CardTransaction;
@@ -149,7 +138,7 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   }, [euroSpend, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
-  const swapInput = holding ? swapInputFor(swapUsd, holding) : undefined;
+  const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
 
   const openSwap = useCallback(() => {
     if (!holding) return;

@@ -15,7 +15,8 @@ const EUR_SPENDABLE = {
     amount: '12.73',
     currency: 'EUR',
     rate: 1.1358,
-    rate_at: '2026-10-15T08:00:00.000Z',
+    // An hour old: fresh, as the backend only ever sends.
+    rate_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   },
 };
 
@@ -49,6 +50,29 @@ describe('spendableDisplay', () => {
   it('has nothing to say for a dollar card', () => {
     expect(spendableDisplay({ available: { amount: '14.46' } })).toBeUndefined();
   });
+
+  it("drops a quote a day old, rather than call it today's rate", () => {
+    const stale = {
+      ...EUR_SPENDABLE,
+      available_in_card_currency: {
+        ...EUR_SPENDABLE.available_in_card_currency,
+        rate_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      },
+    };
+
+    expect(spendableDisplay(stale)).toBeUndefined();
+  });
+
+  it('drops a figure with no amount or no quote time', () => {
+    const { available_in_card_currency: figure } = EUR_SPENDABLE;
+
+    expect(
+      spendableDisplay({ available_in_card_currency: { ...figure, amount: '' } }),
+    ).toBeUndefined();
+    expect(
+      spendableDisplay({ available_in_card_currency: { ...figure, rate_at: '' } }),
+    ).toBeUndefined();
+  });
 });
 
 describe('roundUpShortfall', () => {
@@ -61,6 +85,14 @@ describe('roundUpShortfall', () => {
 });
 
 describe('declinedPaymentFigures', () => {
+  it('reads a response with no dollar figure as nothing to spend, rather than throwing', () => {
+    const figures = declinedPaymentFigures({ amount: '18.75', currency: 'USD' }, {
+      available_in_card_currency: EUR_SPENDABLE.available_in_card_currency,
+    } as any);
+
+    expect(figures.available).toEqual({ amount: 0, currency: 'USD' });
+  });
+
   it("compares the billed euros with what the card can spend in euros (Oct 15's 7¢ case)", () => {
     const figures = declinedPaymentFigures(
       {
