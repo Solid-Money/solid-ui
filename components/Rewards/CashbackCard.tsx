@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import {
+  isMonthlyCashbackCapReached,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
   resolveCashbackProgress,
@@ -46,6 +47,7 @@ const CashbackCard = ({
     { maxCashbackMonthly, cashbackHeadroomThisMonth },
     earned,
   );
+  const capReached = isMonthlyCashbackCapReached(remainingCashback);
   const remainingSpend = cashbackRate > 0 ? (remainingCashback * 100) / cashbackRate : 0;
 
   return (
@@ -70,7 +72,9 @@ const CashbackCard = ({
         {maxCashbackMonthly > 0 && (
           <View className="gap-4">
             <Text className="text-base font-medium opacity-70">
-              Spend ${formatNumber(remainingSpend, 0, 0)} more for max cashback this month
+              {capReached
+                ? "You've reached max cashback this month"
+                : `Spend $${formatNumber(remainingSpend, 0, 0)} more for max cashback this month`}
             </Text>
             <View className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
               <View className="h-full rounded-full bg-brand" style={{ width: `${earnedPct}%` }} />

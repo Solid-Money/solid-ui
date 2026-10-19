@@ -1,4 +1,5 @@
 import {
+  isMonthlyCashbackCapReached,
   monthlyCashbackCap,
   monthlyCashbackHeadroom,
   monthlyCashbackTotal,
@@ -77,5 +78,34 @@ describe('monthlyCashbackHeadroom', () => {
   it('works out cap minus earned on an older backend', () => {
     expect(monthlyCashbackHeadroom({ maxCashbackMonthly: 50 }, 20)).toBe(30);
     expect(monthlyCashbackHeadroom({ maxCashbackMonthly: 50 }, 80)).toBe(0);
+  });
+
+  it("measures against the tier's cap, not the month's, when no headroom is sent", () => {
+    // The trial's $100 is not open to a purchase made now; Core's $50 is.
+    expect(monthlyCashbackHeadroom({ maxCashbackMonthly: 50, cashbackCapThisMonth: 100 }, 92)).toBe(
+      0,
+    );
+  });
+});
+
+describe('isMonthlyCashbackCapReached', () => {
+  it('is reached when a new purchase can earn nothing, even under a higher month cap', () => {
+    // "$92 / $100" with nothing left: the hint must not ask for "$0 more".
+    expect(isMonthlyCashbackCapReached(0)).toBe(true);
+  });
+
+  it('treats float dust and sub-cent headroom as none', () => {
+    expect(isMonthlyCashbackCapReached(7e-15)).toBe(true);
+    expect(isMonthlyCashbackCapReached(0.004)).toBe(true);
+  });
+
+  it('is not reached while a purchase can still add a cent or more', () => {
+    expect(isMonthlyCashbackCapReached(0.01)).toBe(false);
+    expect(isMonthlyCashbackCapReached(8)).toBe(false);
+  });
+
+  it('treats nonsensical headroom as none', () => {
+    expect(isMonthlyCashbackCapReached(Number.NaN)).toBe(true);
+    expect(isMonthlyCashbackCapReached(-3)).toBe(true);
   });
 });

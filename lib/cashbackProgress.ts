@@ -65,8 +65,9 @@ export const monthlyCashbackCap = (data: MonthlyCapFields | undefined): number =
  *
  * Not simply cap minus earned: a new purchase is held to the cap of the tier
  * held now, so a month already past it (a trial's purchases, say) has nothing
- * left even when its own cap reads higher. An older backend sends no headroom,
- * and cap minus earned is exactly what it used to be.
+ * left even when its own cap reads higher. Without a headroom figure it is
+ * worked out the same way — against the tier's cap, not the month's — which on
+ * an older backend, sending neither, is exactly the cap minus earned it was.
  */
 export const monthlyCashbackHeadroom = (
   data: MonthlyCapFields | undefined,
@@ -74,7 +75,20 @@ export const monthlyCashbackHeadroom = (
 ): number =>
   data?.cashbackHeadroomThisMonth !== undefined
     ? toPositive(data.cashbackHeadroomThisMonth)
-    : Math.max(0, monthlyCashbackCap(data) - toPositive(earned));
+    : Math.max(0, toPositive(data?.maxCashbackMonthly) - toPositive(earned));
+
+/**
+ * Whether a purchase made now can earn nothing more this month, so the hint
+ * should say the cap is reached instead of asking for "$0 more" spend.
+ *
+ * That includes a bar that is not full: after a trial ends mid-month the month
+ * can read "$92 / $100" with no headroom, the last $8 having been open only to
+ * purchases made on the trial. Under a cent counts as none — it is all a
+ * purchase could add, and a sum landing exactly on the cap can leave float
+ * dust above zero.
+ */
+export const isMonthlyCashbackCapReached = (headroom: number): boolean =>
+  toPositive(headroom) < 0.01;
 
 /** A non-finite or negative amount contributes nothing rather than NaN. */
 const toPositive = (value: number | undefined): number =>
