@@ -186,6 +186,30 @@ export const borrowApyPercent = (ratePerSecondWad: bigint): number => {
   return Number.isFinite(yearly) ? yearly * 100 : 0;
 };
 
+/**
+ * One rate to quote for credit drawn on several instances, each with its own per-second rate.
+ *
+ * What the cardholder actually pays when there is debt: the rates weighted by it. With nothing
+ * drawn there is nothing to weight, so the highest rate is quoted — a line that might be drawn on
+ * either instance is never advertised as cheaper than one of them would charge.
+ */
+export const combinedBorrowRate = (
+  instances: readonly { debtUsd: bigint; borrowApyPerSecond: bigint }[],
+): bigint => {
+  const totalDebt = instances.reduce((sum, instance) => sum + instance.debtUsd, 0n);
+  if (totalDebt > 0n) {
+    const weighted = instances.reduce(
+      (sum, instance) => sum + instance.debtUsd * instance.borrowApyPerSecond,
+      0n,
+    );
+    return weighted / totalDebt;
+  }
+  return instances.reduce(
+    (max, instance) => (instance.borrowApyPerSecond > max ? instance.borrowApyPerSecond : max),
+    0n,
+  );
+};
+
 /** "5.57%" — two decimals, matching how the rate is quoted in the sheets. */
 export const formatApy = (percent: number): string => `${percent.toFixed(2)}%`;
 

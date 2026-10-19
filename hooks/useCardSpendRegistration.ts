@@ -488,7 +488,7 @@ type RawSpendingLimit = {
  * else, and that has to degrade to "no lens" rather than let a confident `undefined` reach a
  * figure the cardholder reads as their credit line.
  */
-const lensCredit = (
+export const lensCredit = (
   result: { status: string; result?: unknown } | undefined,
 ):
   | {
@@ -544,7 +544,7 @@ const lensCredit = (
  * because it can only be lower, except under a limits waiver — which lifts the per-Safe cap
  * here too, and which only the lens knows about.
  */
-const creditHeadroom = (
+export const creditHeadroom = (
   credit: NonNullable<ReturnType<typeof lensCredit>>,
   caps: { maxDebtPerSafeUsd: bigint; maxGlobalDebtUsd: bigint },
   totalDebtUsd: bigint,

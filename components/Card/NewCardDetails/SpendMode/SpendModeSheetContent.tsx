@@ -25,9 +25,11 @@ import SheetIconButton, {
 import {
   BALANCE_PANEL_HEIGHT,
   BORROWED_PANEL_HEIGHT,
+  creditPanelHeight,
   SPEND_MODE_NOTICE_HEIGHT,
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
+  SpendModeCreditPanel,
   SpendModeNotice,
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import {
@@ -41,6 +43,7 @@ import SpendModeSegmentedControl from '@/components/Card/NewCardDetails/SpendMod
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
+import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 
 /**
@@ -50,11 +53,12 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  *
  *   heading top        50      subtitle           95
  *   control           143     caption           235
- *   notice            272     first panel       377   (Credit only)
+ *   notice            272     first panel       377   (a mode with a notice)
  *   action button     537
  *
  * A mode with no notice starts its first card {@link CAPTION_TO_PANEL} below the caption
- * instead.
+ * instead, and Credit, whose panel lists its collateral (Figma 29123:9389), starts it
+ * {@link CAPTION_TO_CREDIT_PANEL} below.
  *
  * The heading is given a 36pt line box rather than Figma's 24, which would clip
  * a 30pt face on Android; starting it at 50 puts that taller box back on the
@@ -64,6 +68,8 @@ const HEADING_TO_SUBTITLE = 9;
 const SUBTITLE_TO_CONTROL = 30;
 const CONTROL_TO_CAPTION = 19;
 const CAPTION_TO_PANEL = 49;
+/** The Credit frame with collateral (Figma 29123:9389) starts its panel closer: 246 → 276. */
+const CAPTION_TO_CREDIT_PANEL = 30;
 const CAPTION_TO_NOTICE = 17;
 const NOTICE_TO_PANEL = 42;
 const PANEL_GAP = 12;
@@ -73,31 +79,42 @@ export const SPEND_MODE_SHEET_TOP = 50;
 /** The sheet keeps this much below the button, before any safe-area inset. */
 export const SPEND_MODE_SHEET_BOTTOM = 57;
 
-const PANEL_HEIGHT: Record<SpendModePanel, number> = {
-  balance: BALANCE_PANEL_HEIGHT,
-  borrowed: BORROWED_PANEL_HEIGHT,
-};
+/** A card's height; the Credit panel's grows with the collateral it lists. */
+const panelHeight = (panel: SpendModePanel, collateralRows: number) =>
+  panel === 'balance'
+    ? BALANCE_PANEL_HEIGHT
+    : panel === 'borrowed'
+      ? BORROWED_PANEL_HEIGHT
+      : creditPanelHeight(collateralRows);
+
+/** Space from the caption to the first card's top, without any notice. */
+const captionToPanel = (mode: SpendMode) =>
+  SPEND_MODE_COPY[mode].panels[0] === 'credit' ? CAPTION_TO_CREDIT_PANEL : CAPTION_TO_PANEL;
 
 /** Space from the caption to the first card, through the notice when the mode has one. */
 const leadHeight = (mode: SpendMode, noticeHeight: number) =>
   SPEND_MODE_COPY[mode].notice
     ? CAPTION_TO_NOTICE + noticeHeight + NOTICE_TO_PANEL
-    : CAPTION_TO_PANEL;
+    : captionToPanel(mode);
 
 /**
  * Room held below the caption: the tallest stack among the modes the picker offers —
- * Credit's notice and card while Smart is hidden, Smart's two cards when it is shown.
+ * Credit's panel and its collateral rows while Smart is hidden, Smart's two cards when shown.
  *
  * Without it the sheet changed height on every tap — the modes stack different cards — so
  * the drawer and its button jumped under the thumb that was browsing. Held at the tallest
  * offered, a shorter mode leaves space below its card and nothing else moves, and a hidden
  * mode reserves no space at all.
  */
-const panelsMinHeight = (modes: readonly SpendMode[], noticeHeight: number) =>
+const panelsMinHeight = (
+  modes: readonly SpendMode[],
+  noticeHeight: number,
+  collateralRows: number,
+) =>
   Math.max(
     ...modes.map(mode => {
       const panels = SPEND_MODE_COPY[mode].panels;
-      const cards = panels.reduce((sum, panel) => sum + PANEL_HEIGHT[panel], 0);
+      const cards = panels.reduce((sum, panel) => sum + panelHeight(panel, collateralRows), 0);
       return leadHeight(mode, noticeHeight) + cards + PANEL_GAP * Math.max(0, panels.length - 1);
     }),
   );
@@ -115,6 +132,11 @@ interface SpendModeSheetContentProps {
   activeMode: SpendMode;
   /** Every figure the panels and the control show. */
   figures: SpendModeFigures;
+  /**
+   * The Credit panel's figures, across Fuse and Base. Also what the Credit segment shows, so
+   * the segment and the panel under it quote the same line.
+   */
+  credit: CreditModeFigures;
   /**
    * Bumped every time the sheet opens, which resets the selection so a sheet
    * reopened after browsing Credit doesn't come back still showing it.
@@ -149,6 +171,7 @@ interface SpendModeSheetContentProps {
 const SpendModeSheetContent = ({
   activeMode,
   figures,
+  credit,
   session,
   onConfirm,
   isSwitching,
@@ -171,9 +194,14 @@ const SpendModeSheetContent = ({
     (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
     [],
   );
+  const collateralRows = credit.collateral.length;
   const panelsStyle = useMemo(
-    () => ({ minHeight: panelsMinHeight(modes, noticeHeight) }),
-    [modes, noticeHeight],
+    () => ({ minHeight: panelsMinHeight(modes, noticeHeight, collateralRows) }),
+    [modes, noticeHeight, collateralRows],
+  );
+  const segmentValue = useMemo(
+    () => ({ ...figures.segmentValue, credit: credit.availableToBorrow }),
+    [figures.segmentValue, credit.availableToBorrow],
   );
   const notice = SPEND_MODE_COPY[selected].notice;
 
@@ -263,7 +291,7 @@ const SpendModeSheetContent = ({
         <SpendModeSegmentedControl
           modes={modes}
           selected={selected}
-          segmentValue={figures.segmentValue}
+          segmentValue={segmentValue}
           onSelect={handleSelect}
           // Locked while committing, for the same reason the button is. `onConfirm`
           // captured the mode as it was at the press, so a segment tapped mid-switch
@@ -300,7 +328,7 @@ const SpendModeSheetContent = ({
           key={`panels-${selected}`}
           entering={entering}
           exiting={exiting}
-          style={{ paddingTop: notice ? CAPTION_TO_NOTICE : CAPTION_TO_PANEL }}
+          style={{ paddingTop: notice ? CAPTION_TO_NOTICE : captionToPanel(selected) }}
         >
           {notice ? (
             <View style={styles.notice}>
@@ -311,6 +339,15 @@ const SpendModeSheetContent = ({
             <View key={panel} style={index > 0 ? styles.stackedPanel : undefined}>
               {panel === 'balance' ? (
                 <SpendModeBalancePanel balance={figures.cashBalance} onAddFunds={onAddFunds} />
+              ) : panel === 'credit' ? (
+                <SpendModeCreditPanel
+                  borrowed={credit.borrowed}
+                  creditLimit={credit.creditLimit}
+                  borrowApy={credit.borrowApy}
+                  borrowedProgress={credit.borrowedProgress}
+                  collateral={credit.collateral}
+                  onHelpPress={onHelpPress}
+                />
               ) : (
                 <SpendModeBorrowedPanel
                   borrowed={figures.borrowed}

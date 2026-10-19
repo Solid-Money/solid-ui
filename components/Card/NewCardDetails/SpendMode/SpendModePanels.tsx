@@ -1,8 +1,10 @@
 import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import { Text } from '@/components/ui/text';
 
+import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 
 /**
@@ -16,6 +18,16 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
 export const BALANCE_PANEL_HEIGHT = 106;
 /** Figma 25961:3504. See {@link BALANCE_PANEL_HEIGHT}. */
 export const BORROWED_PANEL_HEIGHT = 126;
+
+/**
+ * Figma 29123:9483, which grows a 58pt row per collateral asset: the borrowed block and the
+ * divider take 120, the collateral title 18 + 20 + 8 above the rows, and 12 is left below them.
+ * Fixed per row count, so the sheet can still reserve room for the panel before it renders.
+ */
+const CREDIT_PANEL_BASE_HEIGHT = 120 + 18 + 28 + 12;
+const COLLATERAL_ROW_HEIGHT = 58;
+export const creditPanelHeight = (collateralRows: number) =>
+  CREDIT_PANEL_BASE_HEIGHT + COLLATERAL_ROW_HEIGHT * collateralRows;
 /**
  * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
  * a narrower sheet wraps the message to a third line, so the sheet measures the real one.
@@ -24,6 +36,18 @@ export const SPEND_MODE_NOTICE_HEIGHT = 63;
 
 const NOTICE_BACKGROUND = require('@/assets/images/spend-mode-credit-notice-bg.png');
 const NOTICE_BADGE = require('@/assets/images/spend-mode-credit-notice-badge.svg');
+const COLLATERAL_ICON = {
+  usd: {
+    source: require('@/assets/images/spend-mode-collateral-usd.svg'),
+    width: 9.51181,
+    height: 18.7791,
+  },
+  eur: {
+    source: require('@/assets/images/spend-mode-collateral-eur.svg'),
+    width: 17,
+    height: 17,
+  },
+} as const;
 
 interface BalancePanelProps {
   balance: string;
@@ -132,6 +156,80 @@ export const SpendModeBorrowedPanel = (figures: BorrowedSummaryFigures) => (
   </View>
 );
 
+interface CreditPanelProps extends BorrowedSummaryFigures {
+  collateral: CreditModeFigures['collateral'];
+  /** The "?" beside "Collateral assets". */
+  onHelpPress?: () => void;
+}
+
+/**
+ * The Credit panel (Figma 29123:9483): the borrowed block over the assets that back it, on
+ * every instance the card borrows on — soUSD on Fuse and, once euro spending is enabled, soEUR
+ * on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
+ * is in dollars.
+ */
+export const SpendModeCreditPanel = ({
+  collateral,
+  onHelpPress,
+  ...borrowed
+}: CreditPanelProps) => (
+  <View style={[styles.panel, { height: creditPanelHeight(collateral.length) }]}>
+    <View style={styles.creditBorrowed}>
+      <BorrowedSummary {...borrowed} />
+    </View>
+    <View style={styles.divider} />
+    <View style={styles.collateral}>
+      <View style={styles.collateralTitle}>
+        <View style={styles.collateralTitleLeft}>
+          <Text className="text-[18px] font-medium leading-[18px] text-white">
+            Collateral assets
+          </Text>
+          {onHelpPress ? (
+            <Pressable
+              accessibilityLabel="How collateral works"
+              accessibilityRole="button"
+              className="active:opacity-80"
+              hitSlop={12}
+              onPress={onHelpPress}
+            >
+              <HelpBadge />
+            </Pressable>
+          ) : (
+            <HelpBadge />
+          )}
+        </View>
+        <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">Keeps earning</Text>
+      </View>
+      {collateral.map(row => (
+        <View key={row.key} style={styles.collateralRow}>
+          <View accessible={false} style={styles.collateralIcon}>
+            <Image
+              source={COLLATERAL_ICON[row.icon].source}
+              style={{
+                width: COLLATERAL_ICON[row.icon].width,
+                height: COLLATERAL_ICON[row.icon].height,
+              }}
+            />
+          </View>
+          <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
+            {row.label}
+          </Text>
+          <View style={styles.collateralValue}>
+            <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+              {row.value}
+            </Text>
+            {row.usdEquivalent ? (
+              <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                {row.usdEquivalent}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#2B2B2B', borderRadius: 20, overflow: 'hidden' },
 
@@ -172,6 +270,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   fill: { backgroundColor: '#94F27F', borderRadius: 5, height: 10 },
+
+  // The borrowed block ends with its track at 99; the divider sits 20 under it, at 119.
+  creditBorrowed: { height: 119, paddingTop: 23 },
+  divider: { backgroundColor: 'rgba(255, 255, 255, 0.08)', height: 1 },
+  collateral: { paddingBottom: 12, paddingLeft: 20, paddingRight: 25, paddingTop: 18 },
+  collateralTitle: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    height: 20,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  collateralTitleLeft: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  collateralRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    height: COLLATERAL_ROW_HEIGHT,
+  },
+  // 32 × 31.4 in Figma, the glyph centred in it at its own size.
+  collateralIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15.698,
+    height: 31.396,
+    justifyContent: 'center',
+    width: 32,
+  },
+  collateralValue: { alignItems: 'flex-end', gap: 4 },
 
   // Figma places the badge at 15, the message at 50.5 and 12 from the top, and leaves 15
   // under it and 17.5 after it — all from the outer edge. Padding here starts inside the

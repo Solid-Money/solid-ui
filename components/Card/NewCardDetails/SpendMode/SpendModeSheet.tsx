@@ -5,6 +5,7 @@ import SpendModeSheetContent, {
   SPEND_MODE_SHEET_BOTTOM,
   SPEND_MODE_SHEET_TOP,
 } from '@/components/Card/NewCardDetails/SpendMode/SpendModeSheetContent';
+import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 
@@ -27,6 +28,8 @@ const SpendModeSheet = ({
   onAddFunds,
 }: SpendModeSheetProps) => {
   const figures = useSpendModeFigures();
+  // Fuse and Base together, with the collateral behind each — read only while the sheet is open.
+  const credit = useCreditModeFigures({ enabled: isOpen });
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
 
   const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
@@ -53,6 +56,7 @@ const SpendModeSheet = ({
         <SpendModeSheetContent
           activeMode={activeMode}
           figures={figures}
+          credit={credit}
           session={session}
           onConfirm={confirm}
           isSwitching={isSwitchingMode}
