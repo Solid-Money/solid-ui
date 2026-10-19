@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address, encodeFunctionData } from 'viem';
-import { fuse } from 'viem/chains';
+import { base, fuse } from 'viem/chains';
 
 import {
   CASH_USD_DECIMALS,
@@ -14,12 +14,16 @@ import {
 import {
   isCardSpendV2Configured,
   isModeSwitchPending,
+  modeSwitchTargets,
   SpendCohort,
   toContractMode,
   toSpendMode,
 } from '@/constants/cardSpendV2';
+import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardSpendModeAccess } from '@/hooks/useCardSpendModeAccess';
+import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModule_ABI } from '@/lib/abis/SolidCashModule';
@@ -566,6 +570,57 @@ const creditHeadroom = (
  * v1 is where every cardholder already is. An address that is not a contract yet, a
  * mis-set env override and a node hiccup all land here and all degrade the same way.
  */
+/**
+ * The Base instance's view of a Safe, for carrying a mode switch over to it.
+ *
+ * Read from the module, not the lens: the Base lens reverts for a Safe it has not registered,
+ * because its v1 sentinel has no code (see `useEuroSpendEnablement`). Base's `modeDelay` is zero,
+ * so `getMode` is the whole answer: nothing is ever armed there.
+ */
+const readBaseModeState = async (
+  safeAddress: Address,
+  moduleAddress: Address,
+): Promise<{ live: boolean; mode: SpendMode }> => {
+  const client = publicClient(base.id);
+  const [moduleEnabled, registered, mode] = await Promise.all([
+    client.readContract({
+      address: moduleAddress,
+      abi: SolidCashModuleV2_ABI,
+      functionName: 'isModuleEnabledOn',
+      args: [safeAddress],
+    }),
+    client.readContract({
+      address: moduleAddress,
+      abi: SolidCashModuleV2_ABI,
+      functionName: 'isRegistered',
+      args: [safeAddress],
+    }),
+    client.readContract({
+      address: moduleAddress,
+      abi: SolidCashModuleV2_ABI,
+      functionName: 'getMode',
+      args: [safeAddress],
+    }),
+  ]);
+
+  return { live: moduleEnabled && registered, mode: toSpendMode(mode) };
+};
+
+/**
+ * The Fuse switch landed and the Base one did not, so the card's two instances now disagree.
+ *
+ * Raised rather than resolved so the sheet stays open on a message that says so. Asking for the
+ * same mode again finishes the job: Fuse already has it, so only Base is sent.
+ */
+export class BaseModeSwitchError extends Error {
+  constructor() {
+    super(
+      'Your spend mode changed, but euro spending on Base kept its old mode. Try again to finish.',
+    );
+    this.name = 'BaseModeSwitchError';
+  }
+}
+
 const readV2State = async (safeAddress: Address): Promise<V2State | null> => {
   if (!isCardSpendV2Configured()) return null;
 
@@ -1041,6 +1096,19 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   // it, for every cardholder. v1 only for a build without v2.
   const preferV2 = isCardSpendV2Configured();
 
+  // A mode switch also carries over to Base for the spend-mode cohort. The backend's Base
+  // address wins over the build's, as in `useEuroSpendEnablement`: the app can be weeks behind
+  // a redeploy.
+  const { isEnabled: isSpendModeCohort } = useCardSpendModeAccess();
+  const { data: spendDeployments } = useCardSpendDeployments();
+  const baseDeployment = spendDeployments?.deployments.find(
+    deployment => deployment.chainId === base.id,
+  );
+  // Only for a Safe that has enabled euro spending; everyone else has no Base mode to keep in step.
+  const isBaseEnabled = baseDeployment?.enabled === true;
+  const baseModuleAddress = (baseDeployment?.moduleAddress ??
+    BASE_SPEND_DEPLOYMENT.moduleAddress) as Address | undefined;
+
   const query = useQuery<CardSpendRegistration>({
     ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
     enabled: isEnabled,
@@ -1434,103 +1502,195 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       if (!v2) throw new Error('This spend mode is not available yet.');
 
       if (!fresh.registered) throw new Error('Set up card spending first.');
-      if (fresh.mode === target) throw new Error('That is already your spend mode.');
-      if (fresh.pendingMode === target) {
-        throw new Error('That change is already on its way.');
+
+      // For the spend-mode cohort, a Base instance the Safe has enabled follows it too, so a euro
+      // purchase is funded the way the cardholder chose: Base borrows against soEUR as Fuse does
+      // against soUSD. Read here, before anything is signed, so a Base that is already there is
+      // not asked again.
+      //
+      // A Base read that fails does not hold up Fuse: a switch away from credit must still land
+      // where the card's dollar spending happens. The cardholder is told Base did not follow.
+      let baseState: { live: boolean; mode: SpendMode } | undefined;
+      let isBaseUnreadable = false;
+      if (isSpendModeCohort && isBaseEnabled && baseModuleAddress) {
+        try {
+          baseState = await readBaseModeState(safeAddress, baseModuleAddress);
+        } catch {
+          isBaseUnreadable = true;
+        }
       }
-
-      const needsRegistration = !v2.registeredOnChain;
-      // `registerSafe` always starts a Safe in cash, so a fresh migration lands there
-      // whatever the cardholder asked for. An already-registered Safe keeps the mode v2
-      // has stored for it — which is not necessarily what `fresh` reports, since a Safe
-      // with v1 re-enabled is reported as the v1 cardholder it is behaving like.
-      const modeAfterBatch: SpendMode = needsRegistration ? 'cash' : v2.mode;
-
-      // v1 has to go first and has to go entirely: while it is enabled v2 is inert by
-      // design, and `registerSafe` refuses rather than letting one Safe hold two
-      // independent sets of spending caps. A retired v2 core comes off in the same place —
-      // this is the one write a Safe left holding both cores is sure to make again.
-      const cleanup = await encodeModuleDisables(safeAddress, [
-        ...(v2.legacyEnabled ? [MODULE as Address] : []),
-        ...RETIRED_MODULES_V2,
-      ]);
-      if (v2.legacyEnabled && !includesModule(cleanup.disabled, MODULE as Address)) {
-        throw new Error('Could not read your Safe. Please try again.');
-      }
-
-      const transactions: { to: Address; data: `0x${string}` }[] = [...cleanup.transactions];
-
-      if (!v2.moduleEnabled) {
-        transactions.push({
-          to: safeAddress,
-          data: encodeFunctionData({
-            abi: Safe_ABI,
-            functionName: 'enableModule',
-            args: [MODULE_V2],
-          }),
-        });
-      }
-
-      if (needsRegistration) {
-        const carried = carriedLimits(fresh.limit, v2);
-        transactions.push({
-          to: MODULE_V2,
-          data: encodeRegisterSafe(
-            MODULE_V2,
-            carried.dailyLimitUsd,
-            carried.monthlyLimitUsd,
-            BigInt(carried.timezoneOffset),
-          ),
-        });
-      }
-
-      if (modeAfterBatch !== target) {
-        transactions.push({
-          to: MODULE_V2,
-          data: encodeFunctionData({
-            abi: SolidCashModuleV2_ABI,
-            functionName: 'setMode',
-            args: [toContractMode(target)],
-          }),
-        });
-      }
-
-      if (transactions.length === 0) throw new Error('That is already your spend mode.');
-
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Failed to change your spend mode',
-        fuse,
+      // Fuse, the card's home instance, always follows the switch.
+      const { fuse: fuseNeedsSwitch, base: baseNeedsSwitch } = modeSwitchTargets(
+        target,
+        fresh,
+        baseState,
       );
 
-      if (result === USER_CANCELLED_TRANSACTION) {
-        track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_CANCELLED, { mode: target });
-        return null;
+      if (!fuseNeedsSwitch && !baseNeedsSwitch) {
+        if (isBaseUnreadable)
+          throw new Error('Could not read your euro spending. Please try again.');
+        throw new Error(
+          fresh.pendingMode === target
+            ? 'That change is already on its way.'
+            : 'That is already your spend mode.',
+        );
       }
 
-      // Only worth reporting when the caps actually moved module — an ordinary mode change
-      // leaves them exactly where the backend already has them.
-      if (needsRegistration) {
-        const carried = carriedLimits(fresh.limit, v2);
-        await confirmWithBackend({
-          transactionHash: result.transactionHash,
-          dailyLimitUsd: carried.dailyLimitUsd,
-          monthlyLimitUsd: carried.monthlyLimitUsd,
-          timezoneOffset: carried.timezoneOffset,
-          moduleAddress: MODULE_V2,
-        });
+      let fuseResult: { transactionHash: `0x${string}`; migrated: boolean } | undefined;
+
+      if (fuseNeedsSwitch) {
+        const needsRegistration = !v2.registeredOnChain;
+        // `registerSafe` always starts a Safe in cash, so a fresh migration lands there
+        // whatever the cardholder asked for. An already-registered Safe keeps the mode v2
+        // has stored for it — which is not necessarily what `fresh` reports, since a Safe
+        // with v1 re-enabled is reported as the v1 cardholder it is behaving like.
+        const modeAfterBatch: SpendMode = needsRegistration ? 'cash' : v2.mode;
+
+        // v1 has to go first and has to go entirely: while it is enabled v2 is inert by
+        // design, and `registerSafe` refuses rather than letting one Safe hold two
+        // independent sets of spending caps. A retired v2 core comes off in the same place —
+        // this is the one write a Safe left holding both cores is sure to make again.
+        const cleanup = await encodeModuleDisables(safeAddress, [
+          ...(v2.legacyEnabled ? [MODULE as Address] : []),
+          ...RETIRED_MODULES_V2,
+        ]);
+        if (v2.legacyEnabled && !includesModule(cleanup.disabled, MODULE as Address)) {
+          throw new Error('Could not read your Safe. Please try again.');
+        }
+
+        const transactions: { to: Address; data: `0x${string}` }[] = [...cleanup.transactions];
+
+        if (!v2.moduleEnabled) {
+          transactions.push({
+            to: safeAddress,
+            data: encodeFunctionData({
+              abi: Safe_ABI,
+              functionName: 'enableModule',
+              args: [MODULE_V2],
+            }),
+          });
+        }
+
+        if (needsRegistration) {
+          const carried = carriedLimits(fresh.limit, v2);
+          transactions.push({
+            to: MODULE_V2,
+            data: encodeRegisterSafe(
+              MODULE_V2,
+              carried.dailyLimitUsd,
+              carried.monthlyLimitUsd,
+              BigInt(carried.timezoneOffset),
+            ),
+          });
+        }
+
+        if (modeAfterBatch !== target) {
+          transactions.push({
+            to: MODULE_V2,
+            data: encodeFunctionData({
+              abi: SolidCashModuleV2_ABI,
+              functionName: 'setMode',
+              args: [toContractMode(target)],
+            }),
+          });
+        }
+
+        if (transactions.length === 0) throw new Error('That is already your spend mode.');
+
+        const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+        const result = await executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Failed to change your spend mode',
+          fuse,
+        );
+
+        if (result === USER_CANCELLED_TRANSACTION) {
+          track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_CANCELLED, { mode: target });
+          return null;
+        }
+
+        // Only worth reporting when the caps actually moved module — an ordinary mode change
+        // leaves them exactly where the backend already has them.
+        if (needsRegistration) {
+          const carried = carriedLimits(fresh.limit, v2);
+          await confirmWithBackend({
+            transactionHash: result.transactionHash,
+            dailyLimitUsd: carried.dailyLimitUsd,
+            monthlyLimitUsd: carried.monthlyLimitUsd,
+            timezoneOffset: carried.timezoneOffset,
+            moduleAddress: MODULE_V2,
+          });
+        }
+
+        fuseResult = { transactionHash: result.transactionHash, migrated: needsRegistration };
+      }
+
+      if (isBaseUnreadable && fuseResult) {
+        invalidateAfterWrite();
+        track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, { error: 'base_mode_unreadable' });
+        throw new BaseModeSwitchError();
+      }
+
+      // Base second, as its own user operation: it is another chain, so it cannot share Fuse's
+      // batch. A plain `setMode` — the Safe is already registered there, and Base never ran v1.
+      let baseTransactionHash: `0x${string}` | undefined;
+      if (baseNeedsSwitch && baseModuleAddress) {
+        let baseFailure: unknown;
+        try {
+          const baseClient = await safeAA(base, user.suborgId, user.signWith);
+          const baseResult = await executeTransactions(
+            baseClient,
+            [
+              {
+                to: baseModuleAddress,
+                data: encodeFunctionData({
+                  abi: SolidCashModuleV2_ABI,
+                  functionName: 'setMode',
+                  args: [toContractMode(target)],
+                }),
+              },
+            ],
+            'Failed to change your euro spend mode',
+            base,
+          );
+          if (baseResult === USER_CANCELLED_TRANSACTION) {
+            baseFailure = USER_CANCELLED_TRANSACTION;
+          } else {
+            baseTransactionHash = baseResult.transactionHash;
+          }
+        } catch (error) {
+          baseFailure = error;
+        }
+
+        if (baseFailure !== undefined) {
+          // Only Base was asked for: nothing has changed, so this is an ordinary cancel or
+          // failure of the one thing the cardholder asked to do.
+          if (!fuseResult) {
+            if (baseFailure === USER_CANCELLED_TRANSACTION) {
+              track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_CANCELLED, { mode: target });
+              return null;
+            }
+            throw baseFailure;
+          }
+          // Fuse moved and Base did not. Refresh what the screen shows of Fuse, then say so.
+          invalidateAfterWrite();
+          track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_FAILED, {
+            error: 'base_mode_switch_incomplete',
+          });
+          throw new BaseModeSwitchError();
+        }
       }
 
       return {
-        transactionHash: result.transactionHash,
+        transactionHash: (fuseResult?.transactionHash ?? baseTransactionHash) as `0x${string}`,
         mode: target,
-        migrated: needsRegistration,
+        migrated: fuseResult?.migrated ?? false,
         // `modeDelay` is zero at launch, so the switch is in force in the same block. Read
         // rather than assumed: a non-zero value would leave the cardholder in their old
         // mode for a while, and the sheet has to be able to say so.
-        activatesInSeconds: v2.modeDelaySeconds,
+        activatesInSeconds: fuseResult ? v2.modeDelaySeconds : 0,
+        baseSwitched: baseTransactionHash !== undefined,
       };
     },
     onSuccess: result => {
@@ -1539,10 +1699,16 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       track(TRACKING_EVENTS.CARD_SPEND_MODE_CHANGE_COMPLETED, {
         mode: result.mode,
         migrated: result.migrated,
+        base_switched: result.baseSwitched,
         transaction_hash: result.transactionHash,
       });
     },
     onError: (mutationError: Error) => {
+      // Already tracked where it was raised, and its message is the user copy.
+      if (mutationError instanceof BaseModeSwitchError) {
+        setError(mutationError.message);
+        return;
+      }
       // Sanitized for analytics; the screen gets user copy, never the raw message.
       const message = sanitizeTechnicalMessage(mutationError) || 'Failed to change your spend mode';
       setError(getUserErrorMessage(mutationError, { action: 'card_settings' }) || null);

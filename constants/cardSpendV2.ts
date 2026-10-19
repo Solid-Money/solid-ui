@@ -62,6 +62,21 @@ export const toSpendMode = (raw: number | bigint): SpendMode =>
 
 export const toContractMode = (mode: SpendMode): ContractSpendMode => MODE_TO_CONTRACT[mode];
 
+/**
+ * Which instances a switch to `target` has to be sent to.
+ *
+ * Fuse unless it is already there or already on its way; Base only for a Safe live there (module
+ * enabled and registered) whose mode differs. `base` is undefined where Base is not read at all.
+ */
+export const modeSwitchTargets = (
+  target: SpendMode,
+  fuse: { mode: SpendMode; pendingMode: SpendMode | null },
+  base: { live: boolean; mode: SpendMode } | undefined,
+): { fuse: boolean; base: boolean } => ({
+  fuse: fuse.mode !== target && fuse.pendingMode !== target,
+  base: base?.live === true && base.mode !== target,
+});
+
 /** Whether a mode needs the v2 module at all. Cash is what v1 already does. */
 export const requiresV2 = (mode: SpendMode): boolean => mode !== 'cash';
 
