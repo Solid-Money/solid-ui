@@ -309,6 +309,7 @@ export default function SignupCreating() {
         walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
+        createdAt: user.createdAt,
         signWith: user.walletAddress,
         suborgId: user.subOrganizationId,
         selected: true,

@@ -13,6 +13,7 @@ import { activationDailyLimit, formatUsd, usdToOnChain } from '@/constants/cardS
 import { path } from '@/constants/path';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
+import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
 import { openHelpLink } from '@/lib/help/links';
@@ -264,6 +265,7 @@ export default function CardReady() {
       if (!card) throw new Error('Failed to create card');
 
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WALLET_ELIGIBILITY_KEY] });
 
       // Show the welcome popup whenever the card lands, including when it opens a
       // moment later on the issuance flow.

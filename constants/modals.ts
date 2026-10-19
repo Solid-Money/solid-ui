@@ -227,8 +227,16 @@ export const SEND_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_SEND_OPTIONS: {
+    name: 'open_send_options',
+    number: 0.5,
+  },
   OPEN_SEND_SEARCH: {
     name: 'open_send_search',
+    number: 1,
+  },
+  OPEN_BANK_TRANSFER: {
+    name: 'open_send_bank_transfer',
     number: 1,
   },
   /**

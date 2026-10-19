@@ -248,6 +248,8 @@ export interface User {
   signWith: string;
   suborgId: string;
   userId: string;
+  /** Account signup date from the existing authentication response. */
+  createdAt?: string;
   referralCode?: string;
   isDeposited?: boolean;
   tokens?: AuthTokens;

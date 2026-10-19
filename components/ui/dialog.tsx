@@ -134,6 +134,7 @@ const DialogContent = React.forwardRef<
      * wider, where both platforms show a centred modal.
      */
     nativePresentation?: 'modal' | 'bottom-sheet';
+    mobileTopOffset?: number;
   }
 >(
   (
@@ -146,6 +147,7 @@ const DialogContent = React.forwardRef<
       showCloseButton = true,
       webPresentation = 'modal',
       nativePresentation = 'modal',
+      mobileTopOffset,
       style,
       onMoveShouldSetResponder,
       onStartShouldSetResponder,
@@ -168,7 +170,7 @@ const DialogContent = React.forwardRef<
     // ends exactly at the bottom edge.
     const mobileSheetHeight =
       !isScreenMedium && shouldAlignTop
-        ? Math.max(windowHeight * (1 - MOBILE_SHEET_TOP_RATIO) - 8, 0)
+        ? Math.max(windowHeight - (mobileTopOffset ?? windowHeight * MOBILE_SHEET_TOP_RATIO + 8), 0)
         : undefined;
 
     // Web bounce animation using useAnimatedStyle
@@ -258,6 +260,9 @@ const DialogContent = React.forwardRef<
             ? {
                 height: mobileSheetHeight,
                 maxHeight: mobileSheetHeight,
+                ...(mobileTopOffset !== undefined
+                  ? { marginTop: Math.max(mobileTopOffset - 8, 0) }
+                  : null),
               }
             : undefined,
         ]}

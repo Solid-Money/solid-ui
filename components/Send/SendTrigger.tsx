@@ -68,7 +68,10 @@ const SendTrigger: React.FC<SendTriggerProps> = ({
       });
     }
 
-    setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+    const entryModal =
+      token || tokenAddress ? SEND_MODAL.OPEN_SEND_SEARCH : SEND_MODAL.OPEN_SEND_OPTIONS;
+    useSendStore.getState().setEntryModal(entryModal);
+    setModal(entryModal);
     onPress?.();
   };
 

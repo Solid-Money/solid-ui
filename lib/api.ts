@@ -2118,8 +2118,8 @@ export const getTransfiCashoutOrder = async (
   return response.json();
 };
 
-/** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
-export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
+/** Rain MPP: wallet eligibility, or null when there is no card to provision. */
+export const getWalletEligibility = async (): Promise<WalletEligibilityResponse | null> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -2132,6 +2132,11 @@ export const getWalletEligibility = async (): Promise<WalletEligibilityResponse>
       },
     },
   );
+
+  // Card status can be cached after a card is removed or while one is being
+  // issued. The backend's "Card not found" is an empty eligibility result,
+  // rather than a failed operation to retry and print as a raw LogBox error.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
