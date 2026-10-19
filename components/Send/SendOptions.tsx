@@ -21,6 +21,8 @@ import { RecipientAvatar } from './RecipientAvatar';
 import { SendMethodTiles } from './SendMethodTiles';
 import SendRecipientInput from './SendRecipientInput';
 
+const SHOW_RECENT_RECIPIENTS = false;
+
 const SendOptions: React.FC = () => {
   const {
     setAddress,
@@ -142,7 +144,7 @@ const SendOptions: React.FC = () => {
 
       {isOptions ? (
         <>
-          {recentRecipients.length > 0 && (
+          {SHOW_RECENT_RECIPIENTS && recentRecipients.length > 0 && (
             <View className="gap-4">
               <View className="flex-row items-center justify-between px-0.5 pt-1">
                 <Text className="text-[16px] font-medium text-white/70">Recent recipients</Text>

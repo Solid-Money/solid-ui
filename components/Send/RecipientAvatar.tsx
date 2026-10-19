@@ -1,9 +1,9 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { Wallet } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { CHAIN_ICONS } from '@/constants/chains';
-import { getAsset } from '@/lib/assets';
 import { SendRecipient } from '@/lib/sendRecipients';
 import { getColorForTransaction } from '@/lib/utils/cardHelpers';
 
@@ -30,17 +30,14 @@ export function RecipientAvatar({
     <View style={{ width: size, height: size, flexShrink: 0 }}>
       <View
         className="h-full w-full items-center justify-center rounded-full"
-        style={{ backgroundColor: color.bg }}
+        style={{ backgroundColor: label ? color.bg : '#262626' }}
       >
         {label ? (
           <Text className="font-medium" style={{ color: color.text, fontSize: compact ? 20 : 16 }}>
             {label}
           </Text>
         ) : (
-          <Image
-            source={getAsset('images/send/wallet.svg')}
-            style={{ width: 28, height: 28, tintColor: color.text }}
-          />
+          <Wallet size={compact ? 24 : 22} color="#C8C8C8" strokeWidth={1.6} />
         )}
       </View>
       {compact && networkIcon ? (
