@@ -22,15 +22,19 @@ import {
 import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardSpendModeAccess } from '@/hooks/useCardSpendModeAccess';
-import { useCardSpendDeployments } from '@/hooks/useEuroSpendEnablement';
+import { CARD_SPEND_MODE_ACCESS_QUERY_KEY } from '@/hooks/useCardSpendModeAccess';
+import { CARD_SPEND_DEPLOYMENTS_QUERY_KEY } from '@/hooks/useEuroSpendEnablement';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
 import { SolidCashModule_ABI } from '@/lib/abis/SolidCashModule';
 import { SolidCashModuleV2_ABI } from '@/lib/abis/SolidCashModuleV2';
 import { SolidSpendLens_ABI } from '@/lib/abis/SolidSpendLens';
 import { track } from '@/lib/analytics';
-import { confirmWirexCardRegistration } from '@/lib/api';
+import {
+  confirmWirexCardRegistration,
+  getCardSpendDeployments,
+  getCardSpendModeAccess,
+} from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { getUserErrorMessage, sanitizeTechnicalMessage } from '@/lib/errors';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -607,6 +611,37 @@ const readBaseModeState = async (
 };
 
 /**
+ * The Base module a mode switch carries over to, or undefined when it does not carry over: the
+ * cardholder is in the spend-mode cohort and has enabled euro spending on Base.
+ *
+ * Fetched when the switch runs rather than read from the hooks' render-time state, which reads
+ * false while a query loads and after one fails. Throws when either gate cannot be answered, which
+ * the caller treats as Base unreadable. The backend's module address wins over the build's, as in
+ * `useEuroSpendEnablement`: the app can be weeks behind a redeploy.
+ */
+const resolveBaseModeModule = async (
+  queryClient: QueryClient,
+  userId: string,
+): Promise<Address | undefined> => {
+  const [access, deployments] = await Promise.all([
+    queryClient.fetchQuery({
+      queryKey: [CARD_SPEND_MODE_ACCESS_QUERY_KEY, userId],
+      queryFn: getCardSpendModeAccess,
+    }),
+    queryClient.fetchQuery({
+      queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, userId],
+      queryFn: getCardSpendDeployments,
+    }),
+  ]);
+  if (access?.enabled !== true) return undefined;
+
+  const deployment = deployments?.deployments.find(entry => entry.chainId === base.id);
+  if (deployment?.enabled !== true) return undefined;
+
+  return (deployment.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as Address | undefined;
+};
+
+/**
  * The Fuse switch landed and the Base one did not, so the card's two instances now disagree.
  *
  * Raised rather than resolved so the sheet stays open on a message that says so. Asking for the
@@ -1096,19 +1131,6 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
   // it, for every cardholder. v1 only for a build without v2.
   const preferV2 = isCardSpendV2Configured();
 
-  // A mode switch also carries over to Base for the spend-mode cohort. The backend's Base
-  // address wins over the build's, as in `useEuroSpendEnablement`: the app can be weeks behind
-  // a redeploy.
-  const { isEnabled: isSpendModeCohort } = useCardSpendModeAccess();
-  const { data: spendDeployments } = useCardSpendDeployments();
-  const baseDeployment = spendDeployments?.deployments.find(
-    deployment => deployment.chainId === base.id,
-  );
-  // Only for a Safe that has enabled euro spending; everyone else has no Base mode to keep in step.
-  const isBaseEnabled = baseDeployment?.enabled === true;
-  const baseModuleAddress = (baseDeployment?.moduleAddress ??
-    BASE_SPEND_DEPLOYMENT.moduleAddress) as Address | undefined;
-
   const query = useQuery<CardSpendRegistration>({
     ...cardSpendRegistrationQueryOptions(selectedUserId, safeAddress, preferV2),
     enabled: isEnabled,
@@ -1510,14 +1532,22 @@ export function useCardSpendRegistration({ enabled }: UseCardSpendRegistrationOp
       //
       // A Base read that fails does not hold up Fuse: a switch away from credit must still land
       // where the card's dollar spending happens. The cardholder is told Base did not follow.
+      //
+      // Whether Base follows is resolved here too, not taken from render-time state: the cohort and
+      // deployment gates read false while their queries load or after one fails, and a switch made
+      // then changed Fuse alone and reported success — Base kept borrowing against soEUR after a
+      // switch to cash. A gate that cannot be answered counts as Base unreadable, so the cardholder
+      // is told Base did not follow.
       let baseState: { live: boolean; mode: SpendMode } | undefined;
+      let baseModuleAddress: Address | undefined;
       let isBaseUnreadable = false;
-      if (isSpendModeCohort && isBaseEnabled && baseModuleAddress) {
-        try {
+      try {
+        baseModuleAddress = await resolveBaseModeModule(queryClient, user.userId);
+        if (baseModuleAddress) {
           baseState = await readBaseModeState(safeAddress, baseModuleAddress);
-        } catch {
-          isBaseUnreadable = true;
         }
+      } catch {
+        isBaseUnreadable = true;
       }
       // Fuse, the card's home instance, always follows the switch.
       const { fuse: fuseNeedsSwitch, base: baseNeedsSwitch } = modeSwitchTargets(
