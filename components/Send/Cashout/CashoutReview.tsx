@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Info, Key } from 'lucide-react-native';
 import { formatUnits, isAddress, parseUnits } from 'viem';
 
@@ -13,6 +14,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCashoutEntry, useCashoutKycNavigate, useCashoutUsdc } from '@/hooks/useCashout';
 import useSend from '@/hooks/useSend';
 import {
+  cashoutLimitsKey,
   useCreateTransfiCashoutOrder,
   useSubmitTransfiCashoutDeposit,
   useTransfiCashoutConfig,
@@ -22,6 +24,7 @@ import {
 import { track } from '@/lib/analytics';
 import { getTransfiCashoutOrder } from '@/lib/api';
 import { formatCashoutFiat, formatCashoutRate } from '@/lib/cashoutFormat';
+import { limitsFromError } from '@/lib/cashoutLimits';
 import { maskPayoutDestination, payoutHolderName, validatePayoutDetails } from '@/lib/payoutFields';
 import { kycUpgradeLevel, TRANSFI_ERROR_CODE, TransfiError } from '@/lib/transfiErrors';
 import { TokenType, TransactionType } from '@/lib/types';
@@ -68,6 +71,7 @@ const toDepositWei = (amount: string, decimals: number): bigint => {
  */
 export const CashoutReview = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setModal = useSendStore(state => state.setModal);
   const navigateKyc = useCashoutKycNavigate();
   const { startCashout } = useCashoutEntry();
@@ -172,6 +176,14 @@ export const CashoutReview = () => {
     if (error.code === TRANSFI_ERROR_CODE.CASHOUT_INVALID_DETAILS) {
       setFieldErrors(error.details.fieldErrors ?? {});
       setModal(SEND_MODAL.OPEN_CASHOUT_DETAILS);
+      return;
+    }
+    // Out of range on the order-time check: back to the amount, where the same
+    // sentence shows on the field once these limits are in the cache.
+    const limits = limitsFromError(error);
+    if (limits) {
+      queryClient.setQueryData(cashoutLimitsKey(currency, paymentCode), limits);
+      setModal(SEND_MODAL.OPEN_CASHOUT_AMOUNT);
       return;
     }
     if (error.code === TRANSFI_ERROR_CODE.KYC_REQUIRED) {

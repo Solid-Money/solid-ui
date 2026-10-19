@@ -1,20 +1,34 @@
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
   createTransfiCashoutOrder,
   getTransfiCashoutConfig,
+  getTransfiCashoutLimits,
   getTransfiCashoutOrder,
   getTransfiCashoutPaymentMethods,
   getTransfiCashoutQuote,
   submitTransfiCashoutDeposit,
 } from '@/lib/api';
+import { limitsFromError } from '@/lib/cashoutLimits';
 import { TransfiError } from '@/lib/transfiErrors';
 import { withRefreshToken } from '@/lib/utils';
 
+import type { TransfiCashoutLimits, TransfiCashoutQuote } from '@/lib/types';
+
 export const TRANSFI_CASHOUT_CONFIG_KEY = 'transfiCashoutConfig';
 export const TRANSFI_CASHOUT_METHODS_KEY = 'transfiCashoutMethods';
+export const TRANSFI_CASHOUT_LIMITS_KEY = 'transfiCashoutLimits';
 export const TRANSFI_CASHOUT_QUOTE_KEY = 'transfiCashoutQuote';
 export const TRANSFI_CASHOUT_ORDER_KEY = 'transfiCashoutOrder';
+
+/** How long a payout method's limits are trusted before they are asked for again. */
+const LIMITS_STALE_MS = 5 * 60 * 1000;
 
 /** A 4xx is the server's verdict; retrying it only delays the screen that explains it. */
 const retryUnlessRefused = (failureCount: number, error: unknown) =>
@@ -45,6 +59,64 @@ export function useTransfiCashoutPaymentMethods(currency?: string) {
   });
 }
 
+export const cashoutLimitsKey = (currency?: string, paymentCode?: string) => [
+  TRANSFI_CASHOUT_LIMITS_KEY,
+  currency,
+  paymentCode,
+];
+
+/**
+ * TransFi's USDC limits for one payout method — they differ per method, so
+ * they are cached per method, and fetched as soon as one is chosen rather than
+ * after a quote is refused. Trusted for five minutes, and refreshed sooner by
+ * every quote that states them (see cashoutQuoteQuery).
+ */
+export function useTransfiCashoutLimits(currency?: string, paymentCode?: string) {
+  return useQuery({
+    queryKey: cashoutLimitsKey(currency, paymentCode),
+    queryFn: () =>
+      withRefreshToken(() => getTransfiCashoutLimits(currency as string, paymentCode as string)),
+    enabled: Boolean(currency) && Boolean(paymentCode),
+    staleTime: LIMITS_STALE_MS,
+    retry: retryUnlessRefused,
+  });
+}
+
+/**
+ * The quote query, shared by the live quote and the fresh one fetched on
+ * Review. Every response that states limits — a quote, or a refusal of an
+ * out-of-range amount — writes them into the limits cache, restarting its five
+ * minutes, so the screen always checks against the newest limits it has seen.
+ */
+export const cashoutQuoteQuery = (
+  queryClient: QueryClient,
+  amount: string,
+  currency?: string,
+  paymentCode?: string,
+) => ({
+  queryKey: [TRANSFI_CASHOUT_QUOTE_KEY, amount, currency, paymentCode],
+  queryFn: async ({ signal }: { signal?: AbortSignal }): Promise<TransfiCashoutQuote> => {
+    const rememberLimits = (limits?: Partial<TransfiCashoutLimits>) => {
+      if (limits?.minLimit == null || limits.maxLimit == null) return;
+      queryClient.setQueryData<TransfiCashoutLimits>(cashoutLimitsKey(currency, paymentCode), {
+        minLimit: limits.minLimit,
+        maxLimit: limits.maxLimit,
+      });
+    };
+    try {
+      const quote = await withRefreshToken(() =>
+        getTransfiCashoutQuote(amount, currency as string, paymentCode as string, signal),
+      );
+      rememberLimits(quote);
+      return quote;
+    } catch (error) {
+      rememberLimits(limitsFromError(error));
+      throw error;
+    }
+  },
+  retry: retryUnlessRefused,
+});
+
 /**
  * Live quote for a (debounced) USDC amount. Keeps the previous quote while the
  * next loads; callers must compare `usdcAmount` before trusting it.
@@ -55,13 +127,10 @@ export function useTransfiCashoutQuote(
   paymentCode?: string,
   enabled = true,
 ) {
+  const queryClient = useQueryClient();
   const numeric = Number(amount);
   return useQuery({
-    queryKey: [TRANSFI_CASHOUT_QUOTE_KEY, amount, currency, paymentCode],
-    queryFn: ({ signal }) =>
-      withRefreshToken(() =>
-        getTransfiCashoutQuote(amount, currency as string, paymentCode as string, signal),
-      ),
+    ...cashoutQuoteQuery(queryClient, amount, currency, paymentCode),
     enabled:
       enabled &&
       Boolean(currency) &&
@@ -69,7 +138,6 @@ export function useTransfiCashoutQuote(
       Number.isFinite(numeric) &&
       numeric > 0,
     placeholderData: keepPreviousData,
-    retry: retryUnlessRefused,
   });
 }
 

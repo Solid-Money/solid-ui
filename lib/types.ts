@@ -3473,6 +3473,12 @@ export interface TransfiCashoutQuote {
   maxLimit?: number;
 }
 
+/** How much USDC one cash-out may send through a payout method. */
+export interface TransfiCashoutLimits {
+  minLimit: number;
+  maxLimit: number;
+}
+
 /** Where to send the USDC for an opened cash-out. Only ever read from the backend. */
 export interface TransfiCashoutDepositInstructions {
   orderId: string;
