@@ -10,7 +10,7 @@ import {
   fetchTokenPricesByAddress,
   fetchTokenPricesBySymbol,
 } from '@/lib/api';
-import { ADDRESSES, isDevFeatureEnabled } from '@/lib/config';
+import { ADDRESSES } from '@/lib/config';
 import { fetchTokenBalancesWithFallback } from '@/lib/data-source';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import {
@@ -172,11 +172,11 @@ const soEURCQuoteRate = 0;
 
 /**
  * Whether a Base token is kept although the curated token list does not name it.
- * soEURC is kept where its vault is listed (QA/preview), so the withdraw flow can
- * find the position before the backend adds the share to its list.
+ * soEURC is kept in every build, so whoever holds it can find and withdraw the
+ * position before the backend adds the share to its list.
  */
 const isKeptUnlisted = (chainId: number, address: string) =>
-  isDevFeatureEnabled && chainId === BASE_CHAIN_ID && isSoEURCToken(address);
+  chainId === BASE_CHAIN_ID && isSoEURCToken(address);
 
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {

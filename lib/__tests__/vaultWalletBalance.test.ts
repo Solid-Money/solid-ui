@@ -208,11 +208,13 @@ describe('the EUR vault (soEURC)', () => {
       vaults: [{ address: ADDRESSES.base.soEurcVault, chainId: base.id }],
       depositConfig: { supportedChains: [base.id], supportedTokens: ['EURC'] },
     });
-    // Gated by build, not shown as "coming soon".
+    // Offered per user (useEurVaultAccess), never shown as "coming soon".
     expect(vaultFor(VaultType.EUR).isComingSoon).toBeFalsy();
   });
 
-  it('is absent when dev features are off (production)', () => {
+  // Listed in production too, so a soEURC held there is recognised and can be withdrawn. Who is
+  // offered it is per user: see useEurVaultAccess.
+  it('is listed last in production builds as well', () => {
     let vaults: Vault[] = [];
     jest.isolateModules(() => {
       jest.doMock('@/lib/config', () => ({
@@ -228,8 +230,8 @@ describe('the EUR vault (soEURC)', () => {
       VaultType.USDC,
       VaultType.FUSE,
       VaultType.ETH,
+      VaultType.EUR,
     ]);
-    expect(vaults.some(vault => vault.vaultToken === 'soEURC')).toBe(false);
   });
 
   it('takes EURC on Base only', () => {

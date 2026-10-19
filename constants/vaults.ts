@@ -8,7 +8,6 @@ import {
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-  isDevFeatureEnabled,
 } from '@/lib/config';
 import { Vault, VaultType } from '@/lib/types';
 
@@ -17,8 +16,9 @@ const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
 /**
  * soEURC — EURC on Base, earning in euros.
  *
- * In development: listed on QA/preview builds and absent from production, gated on
- * `isDevFeatureEnabled` below rather than `isComingSoon`, which would still show it.
+ * In every build's VAULTS, so a soEURC held anywhere is recognised and can be withdrawn. Who is
+ * OFFERED it is per user: everyone on QA/preview, the Wirex test users in production — see
+ * `useEurVaultAccess`, which the Earn row, savings vault list, deposit picker and deep link check.
  * v1 takes EURC on Base only, from the Solid wallet or a connected external wallet;
  * there is no fast withdraw and no on-ramp or bridge into it.
  */
@@ -125,5 +125,5 @@ export const VAULTS: Vault[] = [
   // Always last: `useSavingStore` persists the selected vault as an index into
   // this list, so inserting a vault ahead of the others would move a returning
   // user's selection onto a different vault.
-  ...(isDevFeatureEnabled ? [EUR_VAULT] : []),
+  EUR_VAULT,
 ];

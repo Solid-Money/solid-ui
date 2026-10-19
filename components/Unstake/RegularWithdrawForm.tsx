@@ -135,7 +135,8 @@ const RegularWithdrawForm = () => {
   const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
   const isSoEth = selectedToken?.contractTickerSymbol?.toLowerCase() === 'soeth';
   // soEURC withdraws in one step on Base, like soFUSE on Fuse, and is shown in EUR.
-  const isSoEurc = selectedToken?.contractTickerSymbol?.toLowerCase() === 'soeurc';
+  // The new Base deployments report the share's on-chain symbol as soEUR.
+  const isSoEurc = getVaultKey(selectedToken?.contractTickerSymbol) === 'EUR';
   const { data: exchangeRate } = useVaultExchangeRate(
     isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : isSoEurc ? 'EUR' : 'USDC',
   );

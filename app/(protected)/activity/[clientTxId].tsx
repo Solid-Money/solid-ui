@@ -1014,7 +1014,8 @@ export default function ActivityDetail() {
       isFuseVaultDepositSymbol(metaOutput));
   // soEURC deposits are a single teller call on Base, like soFUSE's on Fuse.
   const isSoEurcOnBase =
-    Number(chainId) === base.id && (symbolLower === 'eurc' || symbolLower === 'soeurc');
+    Number(chainId) === base.id &&
+    (symbolLower === 'eurc' || symbolLower === 'soeurc' || symbolLower === 'soeur');
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
@@ -1084,7 +1085,8 @@ export default function ActivityDetail() {
     (symbolLower === 'sousd' ||
       symbolLower === 'sofuse' ||
       symbolLower === 'soeth' ||
-      symbolLower === 'soeurc');
+      symbolLower === 'soeurc' ||
+      symbolLower === 'soeur');
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
   const hideSavingsAmount =
     isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));

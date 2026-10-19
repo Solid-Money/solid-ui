@@ -34,7 +34,7 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.ETH]: 'On your ETH. Interest is added all the time, and you keep your ETH exposure.',
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
   [VaultType.EUR]:
-    'On your euros. Yield is coming soon; until then your EURC is held and shown in euros, and you can withdraw it whenever you want.',
+    'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
@@ -114,7 +114,8 @@ export default function YieldProductView({
   const name = yieldProductName(vaultType);
   const isEur = isEurVault(vaultType);
   const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
-  const apyLabel = apy ? `${apy.toFixed(1)}%` : undefined;
+  // EUR Yield's rate is 0% for now, and shown as such rather than left blank.
+  const apyLabel = apy ? `${apy.toFixed(1)}%` : isEur ? '0.0%' : undefined;
   // Per day once that reaches a cent, else per month, as on Assets: a small balance would
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;
@@ -233,11 +234,6 @@ export default function YieldProductView({
               <Text className="text-center text-[36px] font-semibold leading-[44px] text-white">
                 Earn <Text className="text-[36px] font-semibold text-[#94F27F]">{apyLabel}</Text> a
                 year
-              </Text>
-            ) : isEur ? (
-              // No rate to wait for: soEURC does not earn yet, so no skeleton that never resolves.
-              <Text className="text-center text-[36px] font-semibold leading-[44px] text-white">
-                Save in euros
               </Text>
             ) : (
               <Skeleton className="h-11 w-64 rounded-xl bg-white/10" />

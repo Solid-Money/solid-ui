@@ -11,6 +11,7 @@ import faqs from '@/constants/faqs';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { VAULTS } from '@/constants/vaults';
 import { useDimension } from '@/hooks/useDimension';
+import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import SavingDepositBenefits from './SavingDepositBenefits';
@@ -23,6 +24,8 @@ import SavingVault from './SavingVault';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
+  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
+  const offeredVaults = VAULTS.filter(vault => isVaultOffered(vault.type, isEurVaultEnabled));
 
   return (
     <PageLayout>
@@ -53,7 +56,7 @@ export default function SavingsEmptyState() {
           {isScreenMedium ? (
             <View className="flex-row gap-4">
               <View className="flex-col gap-4">
-                {VAULTS.map(vault => (
+                {offeredVaults.map(vault => (
                   <SavingVault key={vault.name} vault={vault} />
                 ))}
               </View>
@@ -102,7 +105,7 @@ export default function SavingsEmptyState() {
                 contentContainerStyle={{ gap: 16, paddingHorizontal: 4 }}
                 style={{ marginHorizontal: -4 }}
               >
-                {VAULTS.map(vault => (
+                {offeredVaults.map(vault => (
                   <SavingVault key={vault.name} vault={vault} />
                 ))}
               </ScrollView>

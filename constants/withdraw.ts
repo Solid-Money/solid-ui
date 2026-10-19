@@ -6,6 +6,8 @@ export const SOLID_TOKEN_SYMBOLS = [
   'fusdc',
   'soeth',
   'soeurc',
+  // The same share's on-chain symbol on the Base deployments from Oct 15 2026 on.
+  'soeur',
 ] as const;
 
 export type SolidTokenSymbol = (typeof SOLID_TOKEN_SYMBOLS)[number];
@@ -82,7 +84,7 @@ export function getVaultKey(symbol: string | undefined): VaultKey | null {
   if (s === 'sousd' || s === 'sousdc' || s === 'fusdc') return 'USD';
   if (s === 'sofuse') return 'FUSE';
   if (s === 'soeth') return 'ETH';
-  if (s === 'soeurc') return 'EUR';
+  if (s === 'soeurc' || s === 'soeur') return 'EUR';
   return null;
 }
 
