@@ -78,7 +78,7 @@ describe('attach picker (iOS and Android)', () => {
     expect(html).toContain('if (room <= 0) { left += 1; return; }');
     // An empty file, or one read as nothing, is reported, never attached.
     expect(html).toContain("if (!file.size) { post({ type: 'error', name: name }); return; }");
-    expect(html).toContain("if (!data) { post({ type: 'error', name: name }); return; }");
+    expect(html).toContain('if (!data) { failed(); return; }');
     expect(attachPickerHtml(-1)).toContain('var room = 0;');
   });
 
@@ -128,6 +128,51 @@ describe('attach picker (iOS and Android)', () => {
       { type: 'error', name: 'empty.png' },
       { type: 'file', name: 'a.pdf', mime: '', size: 15 * 1024 * 1024, data: 'QUJD' },
       { type: 'done', left: 2 },
+    ]);
+  });
+
+  it('gives a slot back when a file cannot be read', async () => {
+    const posted: Record<string, unknown>[] = [];
+    const html = attachPickerHtml(1);
+    const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
+    const handlers: Record<string, () => void> = {};
+    const input = {
+      files: [] as { name: string; type: string; size: number }[],
+      value: 'x',
+      addEventListener: (event: string, handler: () => void) => {
+        handlers[event] = handler;
+      },
+    };
+    class FakeReader {
+      result = '';
+      onload: () => void = () => undefined;
+      onerror: () => void = () => undefined;
+      error = new Error('unreadable');
+      readAsDataURL(file: { name: string }) {
+        if (file.name === 'broken.png') {
+          setTimeout(() => this.onerror(), 0);
+          return;
+        }
+        this.result = 'data:x;base64,QUJD';
+        setTimeout(() => this.onload(), 0);
+      }
+    }
+    new Function('document', 'window', 'FileReader', script)(
+      { getElementById: () => input },
+      { ReactNativeWebView: { postMessage: (raw: string) => posted.push(JSON.parse(raw)) } },
+      FakeReader,
+    );
+    input.files = [
+      { name: 'broken.png', type: 'image/png', size: 3 },
+      { name: 'ok.png', type: 'image/png', size: 3 },
+    ];
+    handlers.change();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(posted).toEqual([
+      { type: 'start', count: 2 },
+      { type: 'error', name: 'broken.png' },
+      { type: 'file', name: 'ok.png', mime: 'image/png', size: 3, data: 'QUJD' },
+      { type: 'done', left: 0 },
     ]);
   });
 

@@ -78,10 +78,12 @@ input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
         if (!file.size) { post({ type: 'error', name: name }); return; }
         if (room <= 0) { left += 1; return; }
         room -= 1;
+        // A file that can't be read gives its slot back to the next one.
+        function failed(){ room += 1; post({ type: 'error', name: name }); }
         return read(file).then(function(data){
-          if (!data) { post({ type: 'error', name: name }); return; }
+          if (!data) { failed(); return; }
           base.data = data; post(base);
-        }, function(){ post({ type: 'error', name: name }); });
+        }, failed);
       });
     });
     chain.then(function(){ post({ type: 'done', left: left }); });
