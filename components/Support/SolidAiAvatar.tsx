@@ -4,6 +4,8 @@ import { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Image } from 'expo-image';
 
+import { getAsset } from '@/lib/assets';
+
 import SolidAiGradient from './SolidAiGradient';
 
 interface SolidAiAvatarProps {
@@ -35,7 +37,7 @@ function SolidAiAvatar({ size = 28, glow = false }: SolidAiAvatarProps) {
       <View style={[StyleSheet.absoluteFill, styles.core, { borderRadius: size / 2 }]}>
         <SolidAiGradient size={size} still={still} />
         <Image
-          source={require('@/assets/images/support/avatar-glass.svg')}
+          source={getAsset('images/support/avatar-glass.svg')}
           style={StyleSheet.absoluteFill}
           contentFit="fill"
           accessible={false}
@@ -57,7 +59,7 @@ function SolidAiAvatar({ size = 28, glow = false }: SolidAiAvatarProps) {
           <Circle cx={44} cy={44} r={43.5} fill="none" stroke={`url(#${rimId})`} strokeWidth={1} />
         </Svg>
         <Image
-          source={require('@/assets/images/support/avatar-spark.svg')}
+          source={getAsset('images/support/avatar-spark.svg')}
           accessible={false}
           contentFit="fill"
           style={{

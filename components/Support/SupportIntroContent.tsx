@@ -15,6 +15,7 @@ import SheetIconButton from '@/components/Card/NewCardDetails/SpendMode/SheetIco
 import { Button } from '@/components/ui/button';
 import { DialogTitle } from '@/components/ui/dialog';
 import { Text, TextClassOverrideContext } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 import SolidAiAvatar from './SolidAiAvatar';
 
@@ -22,19 +23,19 @@ import type { CardSheetPresentation } from '@/components/Card/NewCardDetails/Spe
 
 const POINTS = [
   {
-    source: require('@/assets/images/support/sparkles.svg'),
+    source: getAsset('images/support/sparkles.svg'),
     width: 20,
     height: 20,
     label: 'Answers in seconds, 24/7',
   },
   {
-    source: require('@/assets/images/support/users.svg'),
+    source: getAsset('images/support/users.svg'),
     width: 18.4167,
     height: 16.75,
     label: 'Ask for a person anytime',
   },
   {
-    source: require('@/assets/images/support/shield.svg'),
+    source: getAsset('images/support/shield.svg'),
     width: 15.0833,
     height: 18.4195,
     label: 'Never asks for your passwords',

@@ -1328,6 +1328,20 @@ export const ASSETS = {
     module: require('@/assets/images/security_unlock.png'),
     hash: '3c010e52',
   },
+  'images/send/br.svg': { module: require('@/assets/images/send/br.svg'), hash: 'b7ceb427' },
+  'images/send/eth.svg': { module: require('@/assets/images/send/eth.svg'), hash: '498d0512' },
+  'images/send/eu.svg': { module: require('@/assets/images/send/eu.svg'), hash: '485eab60' },
+  'images/send/link.svg': { module: require('@/assets/images/send/link.svg'), hash: 'da41d937' },
+  'images/send/ng.svg': { module: require('@/assets/images/send/ng.svg'), hash: 'a0c6bc6b' },
+  'images/send/qr.svg': { module: require('@/assets/images/send/qr.svg'), hash: 'd3b1e2c8' },
+  'images/send/solid.svg': { module: require('@/assets/images/send/solid.svg'), hash: '9ca2d9eb' },
+  'images/send/us.svg': { module: require('@/assets/images/send/us.svg'), hash: '92708194' },
+  'images/send/usdc.svg': { module: require('@/assets/images/send/usdc.svg'), hash: 'afa5d035' },
+  'images/send/usdt.svg': { module: require('@/assets/images/send/usdt.svg'), hash: 'ca99f36f' },
+  'images/send/wallet.svg': {
+    module: require('@/assets/images/send/wallet.svg'),
+    hash: 'e4f604bd',
+  },
   'images/settings.tsx': { module: require('@/assets/images/settings.tsx'), hash: '52cb1947' },
   'images/settings_account_details.png': {
     module: require('@/assets/images/settings_account_details.png'),
@@ -1666,6 +1680,26 @@ export const ASSETS = {
   'images/subscription-cashback/youtube.svg': {
     module: require('@/assets/images/subscription-cashback/youtube.svg'),
     hash: 'f587f87b',
+  },
+  'images/support/avatar-glass.svg': {
+    module: require('@/assets/images/support/avatar-glass.svg'),
+    hash: 'd9261c42',
+  },
+  'images/support/avatar-spark.svg': {
+    module: require('@/assets/images/support/avatar-spark.svg'),
+    hash: '7eddf11c',
+  },
+  'images/support/shield.svg': {
+    module: require('@/assets/images/support/shield.svg'),
+    hash: '29cde848',
+  },
+  'images/support/sparkles.svg': {
+    module: require('@/assets/images/support/sparkles.svg'),
+    hash: 'd6d87396',
+  },
+  'images/support/users.svg': {
+    module: require('@/assets/images/support/users.svg'),
+    hash: '4f114b27',
   },
   'images/support-svg.tsx': {
     module: require('@/assets/images/support-svg.tsx'),
