@@ -4752,7 +4752,7 @@ export const fetchHistoricalAPY = async (
   const params = new URLSearchParams({ days });
   // Every vault but the USD default names itself. soEURC used to fall to the
   // default and would have charted the USD vault's history as its own; the
-  // analytics API takes `vault=eur` and has no history for it until it earns.
+  // analytics API takes `vault=eur` and answers a flat 0% until it earns.
   switch (vault) {
     case VaultType.FUSE:
       params.set('vault', VaultType.FUSE);
