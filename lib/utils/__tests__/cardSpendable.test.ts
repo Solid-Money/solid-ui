@@ -1,7 +1,11 @@
 import { base, fuse, mainnet } from 'viem/chains';
 
 import { USDC, USDC_STARGATE, USDT_STARGATE } from '@/constants/addresses';
-import { CARD_SPENDABLE_ASSETS, CardSpendableAsset } from '@/constants/cardSpendableAssets';
+import {
+  CARD_SPENDABLE_ASSETS,
+  CardSpendableAsset,
+  describeCardSpendableAssets,
+} from '@/constants/cardSpendableAssets';
 import { ADDRESSES } from '@/lib/config';
 import { CardSpendDeployment, TokenBalance, TokenType } from '@/lib/types';
 import {
@@ -225,6 +229,25 @@ describe('cardSpendableAssetsFor', () => {
     const assets = cardSpendableAssetsFor([baseDeployment()]);
 
     expect(sumCardSpendableUSD([token({}), eurc()], assets)).toBeCloseTo(1.08 + 280.429, 2);
+  });
+
+  /** The Base list carries soEUR too once the instance allowlists it; it is not EURC. */
+  it('names soEUR on Base as soEUR, not EURC', () => {
+    const assets = cardSpendableAssetsFor([
+      baseDeployment({
+        spendTokens: [BASE_EURC.toLowerCase(), ADDRESSES.base.soEurcVault.toLowerCase()],
+      }),
+    ]);
+
+    expect(describeCardSpendableAssets(assets)).toBe(
+      'USDC, USDT and soUSD on Fuse and EURC and soEUR on Base for euro purchases',
+    );
+    expect(assets.find(asset => asset.symbol === 'EURC')?.addresses).toEqual([
+      BASE_EURC.toLowerCase(),
+    ]);
+    expect(assets.find(asset => asset.symbol === 'soEUR')?.addresses).toEqual([
+      ADDRESSES.base.soEurcVault.toLowerCase(),
+    ]);
   });
 
   it('matches EURC by the address the backend allowlists, not the ticker', () => {
