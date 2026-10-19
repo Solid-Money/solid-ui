@@ -90,10 +90,16 @@ export function useActivity() {
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
   // soEURC requests sit on their own queue, indexed (when at all) by the EUR
-  // subgraph — never by the USD one. Read only for users the vault is offered to.
+  // subgraph — never by the USD one. Read for users the vault is offered to, and for anyone
+  // with a soEURC withdraw to settle: the gate decides who is offered the vault, not whether a
+  // withdraw already made can show as complete.
   const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
+  const hasEurWithdraw = !!userEventsFromStore?.some(
+    activity =>
+      activity?.type === TransactionType.WITHDRAW && getVaultKey(activity.symbol) === 'EUR',
+  );
   const { data: eurTransactions } = useUserTransactions(
-    isEurVaultEnabled ? user?.safeAddress : undefined,
+    isEurVaultEnabled || hasEurWithdraw ? user?.safeAddress : undefined,
     VaultType.EUR,
   );
   const listedTokens = useListedTokens();

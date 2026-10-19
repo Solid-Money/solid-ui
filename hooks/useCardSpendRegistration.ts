@@ -649,7 +649,11 @@ const resolveBaseModeModule = async (
   );
   if (access?.enabled !== true) return undefined;
 
-  return (deployment.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as Address | undefined;
+  // Both gates are open, so Base should follow. Without an address it cannot, and that has to
+  // reach the cardholder as Base not following rather than as a Fuse-only switch that succeeded.
+  const moduleAddress = deployment.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress;
+  if (!moduleAddress) throw new Error('Base spend module address is not configured');
+  return moduleAddress as Address;
 };
 
 /**

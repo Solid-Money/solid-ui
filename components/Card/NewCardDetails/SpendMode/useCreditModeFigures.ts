@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatUnits } from 'viem';
 
 import { formatUsd } from '@/constants/cardSpendModule';
 import {
@@ -46,7 +47,7 @@ const COLLATERAL_LABEL: Record<string, { label: string; icon: CollateralRowFigur
 
 /** Always two decimals, as the rows are drawn — unlike `formatUsd`, which drops ".00". */
 const formatMoney = (amount: bigint, currency: 'USD' | 'EUR'): string =>
-  (Number(amount) / 1_000_000).toLocaleString('en-US', {
+  Number(formatUnits(amount, 6)).toLocaleString('en-US', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,

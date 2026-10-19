@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatUnits } from 'viem';
 import { base } from 'viem/chains';
 
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
@@ -46,8 +47,13 @@ const money = (amount: number, currency: 'USD' | 'EUR'): string =>
   });
 
 const units = (token: TokenBalance): number => {
-  const amount = Number(token.balance ?? 0) / 10 ** token.contractDecimals;
-  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+  let raw: bigint;
+  try {
+    raw = BigInt(token.balance ?? 0);
+  } catch {
+    return 0;
+  }
+  return raw > 0n ? Number(formatUnits(raw, token.contractDecimals)) : 0;
 };
 
 const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {

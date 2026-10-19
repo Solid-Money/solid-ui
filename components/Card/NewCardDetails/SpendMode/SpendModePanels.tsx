@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type {
@@ -59,35 +60,35 @@ export const creditPanelHeight = (collateralRows: number) =>
  */
 export const SPEND_MODE_NOTICE_HEIGHT = 63;
 
-const NOTICE_BACKGROUND = require('@/assets/images/spend-mode-credit-notice-bg.png');
-const NOTICE_BADGE = require('@/assets/images/spend-mode-credit-notice-badge.svg');
+const NOTICE_BACKGROUND = getAsset('images/spend-mode-credit-notice-bg.png');
+const NOTICE_BADGE = getAsset('images/spend-mode-credit-notice-badge.svg');
 const COLLATERAL_ICON = {
   usd: {
-    source: require('@/assets/images/spend-mode-collateral-usd.svg'),
+    source: getAsset('images/spend-mode-collateral-usd.svg'),
     width: 9.51181,
     height: 18.7791,
   },
   eur: {
-    source: require('@/assets/images/spend-mode-collateral-eur.svg'),
+    source: getAsset('images/spend-mode-collateral-eur.svg'),
     width: 17,
     height: 17,
   },
 } as const;
 
 const TOKEN_LOGO = {
-  usdc: require('@/assets/images/spend-mode-token-usdc.svg'),
-  usdt: require('@/assets/images/spend-mode-token-usdt.svg'),
-  eurc: require('@/assets/images/eurc.png'),
+  usdc: getAsset('images/spend-mode-token-usdc.svg'),
+  usdt: getAsset('images/spend-mode-token-usdt.svg'),
+  eurc: getAsset('images/eurc.png'),
 } as const;
 const YIELD_GLYPH = {
   usd: {
-    source: require('@/assets/images/spend-mode-yield-usd.svg'),
+    source: getAsset('images/spend-mode-yield-usd.svg'),
     width: 9.50464,
     height: 18.7649,
   },
   eur: COLLATERAL_ICON.eur,
 } as const;
-const BADGE_DOT = require('@/assets/images/spend-mode-badge-dot.svg');
+const BADGE_DOT = getAsset('images/spend-mode-badge-dot.svg');
 
 /**
  * A spendable asset's 32pt logo. The stablecoins use their token logos (USDT's is drawn 36.7pt
