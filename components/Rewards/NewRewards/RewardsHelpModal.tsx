@@ -118,7 +118,7 @@ const HelpPage = ({
               <Text
                 className="text-center text-base text-white/70 underline"
                 style={{
-                  fontFamily: 'MonaSans_700Bold',
+                  fontFamily: 'SolidLink_700Bold',
                   fontWeight: '700',
                   lineHeight: 18,
                 }}

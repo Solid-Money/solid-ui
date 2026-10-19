@@ -335,7 +335,8 @@ function RootLayout() {
         MonaSans_500Medium,
         MonaSans_700Bold,
         // The bundled font's underline thickness is 320/1000 em (6.4pt at 20pt).
-        // This identical-glyph variant uses 50/1000 em for the cashback links.
+        // This identical-glyph variant uses 50/1000 em for the cashback links
+        // and the rewards help "How to earn points?" link.
         SolidLink_700Bold: require('@/assets/fonts/SolidLink-Bold.ttf'),
         MonaSans_800ExtraBold,
         MonaSans_900Black,
