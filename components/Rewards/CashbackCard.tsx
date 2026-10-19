@@ -4,7 +4,11 @@ import { Image } from 'expo-image';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
-import { monthlyCashbackTotal, resolveCashbackProgress } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackHeadroom,
+  monthlyCashbackTotal,
+  resolveCashbackProgress,
+} from '@/lib/cashbackProgress';
 import { formatNumber } from '@/lib/utils';
 
 interface CashbackCardProps {
@@ -12,7 +16,13 @@ interface CashbackCardProps {
   /** Earned this month but still escrowed; counted into the figure below. */
   cashbackPendingThisMonth?: number;
   cashbackRate: number;
+  /** What this month's purchases are paid up to — see `monthlyCashbackCap`. */
   maxCashbackMonthly: number;
+  /**
+   * What a purchase made now can still earn this month. Absent on an older
+   * backend, where it is cap minus earned — see `monthlyCashbackHeadroom`.
+   */
+  cashbackHeadroomThisMonth?: number;
 }
 
 const CashbackCard = ({
@@ -20,6 +30,7 @@ const CashbackCard = ({
   cashbackPendingThisMonth,
   cashbackRate,
   maxCashbackMonthly,
+  cashbackHeadroomThisMonth,
 }: CashbackCardProps) => {
   const { isScreenMedium } = useDimension();
   // Settled and escrowed as one figure — see `monthlyCashbackTotal`.
@@ -31,7 +42,10 @@ const CashbackCard = ({
   // e.g., ($20 - $10) * 100 / 2 = $500 more spending needed
   // Escrowed cashback draws down the same cap when it matures, so counting it
   // into `earned` is also what stops this asking for spend that will be capped.
-  const remainingCashback = Math.max(0, maxCashbackMonthly - earned);
+  const remainingCashback = monthlyCashbackHeadroom(
+    { maxCashbackMonthly, cashbackHeadroomThisMonth },
+    earned,
+  );
   const remainingSpend = cashbackRate > 0 ? (remainingCashback * 100) / cashbackRate : 0;
 
   return (

@@ -1,4 +1,9 @@
-import { monthlyCashbackTotal, resolveCashbackProgress } from '@/lib/cashbackProgress';
+import {
+  monthlyCashbackCap,
+  monthlyCashbackHeadroom,
+  monthlyCashbackTotal,
+  resolveCashbackProgress,
+} from '@/lib/cashbackProgress';
 
 describe('monthlyCashbackTotal', () => {
   it('counts settled and escrowed cashback as one figure', () => {
@@ -38,5 +43,39 @@ describe('resolveCashbackProgress', () => {
   it('treats missing and nonsensical amounts as nothing earned', () => {
     expect(resolveCashbackProgress(Number.NaN, 150)).toBe(0);
     expect(resolveCashbackProgress(-20, 150)).toBe(0);
+  });
+});
+
+describe('monthlyCashbackCap', () => {
+  it("reads the cap this month's purchases are paid up to", () => {
+    // A Prime trial that ended mid-month: Core now, Prime's cap on what was
+    // bought during the trial.
+    expect(monthlyCashbackCap({ maxCashbackMonthly: 50, cashbackCapThisMonth: 100 })).toBe(100);
+  });
+
+  it("falls back to the tier's cap on an older backend", () => {
+    expect(monthlyCashbackCap({ maxCashbackMonthly: 50 })).toBe(50);
+  });
+
+  it('reads nothing before the rewards data lands', () => {
+    expect(monthlyCashbackCap(undefined)).toBe(0);
+  });
+});
+
+describe('monthlyCashbackHeadroom', () => {
+  it('quotes what a new purchase can still earn, not cap minus earned', () => {
+    // $92 of trial purchases against a $100 month: a purchase made now is a
+    // Core purchase, and Core's $50 is already used.
+    expect(
+      monthlyCashbackHeadroom(
+        { maxCashbackMonthly: 50, cashbackCapThisMonth: 100, cashbackHeadroomThisMonth: 0 },
+        92,
+      ),
+    ).toBe(0);
+  });
+
+  it('works out cap minus earned on an older backend', () => {
+    expect(monthlyCashbackHeadroom({ maxCashbackMonthly: 50 }, 20)).toBe(30);
+    expect(monthlyCashbackHeadroom({ maxCashbackMonthly: 50 }, 80)).toBe(0);
   });
 });

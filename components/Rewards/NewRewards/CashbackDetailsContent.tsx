@@ -35,6 +35,7 @@ const CashbackDetailsContent = ({
   cashbackThisMonth,
   cashbackPendingThisMonth,
   maxCashbackMonthly,
+  tierMonthlyCap,
   allTimeCashback,
   onGetMoreCashback,
   animationSession,
@@ -81,11 +82,30 @@ const CashbackDetailsContent = ({
         <Text className="text-xs text-white/50">Total includes pending cashback.</Text>
       </View>
       <Divider />
-      <StatRow label="Monthly cap">
-        <Text className="text-lg font-medium text-white">
-          {formatWholeDollars(maxCashbackMonthly)}
-        </Text>
-      </StatRow>
+      {/* The month's cap sits above the tier's only when purchases were made
+          under a bigger one — a trial that has since ended — and those keep
+          it. Saying so is what stops "$100" next to a Core rate reading as a
+          mistake, and new purchases count toward the tier's own cap. */}
+      {tierMonthlyCap !== undefined && maxCashbackMonthly > tierMonthlyCap ? (
+        <View className="gap-0.5 px-[19px] py-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-medium text-white/70">Monthly cap</Text>
+            <Text className="text-lg font-medium text-white">
+              {formatWholeDollars(maxCashbackMonthly)}
+            </Text>
+          </View>
+          <Text className="text-xs text-white/50">
+            Purchases made on a higher tier earlier this month keep its cap. New purchases count
+            toward your current {formatWholeDollars(tierMonthlyCap)} cap.
+          </Text>
+        </View>
+      ) : (
+        <StatRow label="Monthly cap">
+          <Text className="text-lg font-medium text-white">
+            {formatWholeDollars(maxCashbackMonthly)}
+          </Text>
+        </StatRow>
+      )}
       <Divider />
       <StatRow label="All time cashback">
         <Text className="text-lg font-medium text-white">

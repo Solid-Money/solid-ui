@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import { monthlyCashbackTotal } from '@/lib/cashbackProgress';
+import { monthlyCashbackCap, monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate, TIER_CASHBACK_RATES } from '@/lib/tierCashback';
 import { RewardsTier } from '@/lib/types';
 import { formatBalanceUSD } from '@/lib/utils';
@@ -44,7 +44,8 @@ const HomeCashbackCtaBanner = ({ className }: { className?: string }) => {
       cashbackRate={rate}
       cashbackThisMonth={cashbackThisMonth}
       cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-      maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+      maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
+      tierMonthlyCap={rewardsData?.maxCashbackMonthly}
       allTimeCashback={allTimeCashback}
       onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
       trigger={
