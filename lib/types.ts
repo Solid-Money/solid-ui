@@ -2571,6 +2571,8 @@ export interface RecordSwapFeeParams {
   baseTokenAmount?: string;
   feeAmountUsd: number;
   percentage?: number;
+  /** Chain the swap ran on. Always Fuse — anything else goes through LI.FI. */
+  chainId?: number;
 }
 
 export interface RecordStocksFeeParams {
