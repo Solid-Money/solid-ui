@@ -15,7 +15,10 @@ import type { SupportFile } from '@/lib/types/support';
 
 export interface AttachButtonProps {
   disabled?: boolean;
-  onPick: (files: SupportFile[]) => void;
+  /** How many more files the message can take; the picker reads no more than that. */
+  room: number;
+  /** `left`: files picked but not read because there was no room for them. */
+  onPick: (files: SupportFile[], left?: number) => void;
 }
 
 /** Whether this platform shows the button (the composer pads around it). */
@@ -45,10 +48,10 @@ const couldNotRead = (name: string) =>
  * in the in-app web view, whose file input opens the phone's own picker. See
  * lib/support/attachPicker.ts for why; the web uses AttachButton.web.tsx.
  */
-export default function AttachButton({ disabled, onPick }: AttachButtonProps) {
+export default function AttachButton({ disabled, room, onPick }: AttachButtonProps) {
   const [busy, setBusy] = useState(false);
   const picked = useRef<SupportFile[]>([]);
-  const source = useMemo(() => ({ html: attachPickerHtml() }), []);
+  const source = useMemo(() => ({ html: attachPickerHtml(room) }), [room]);
 
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -69,7 +72,7 @@ export default function AttachButton({ disabled, onPick }: AttachButtonProps) {
         const files = picked.current;
         picked.current = [];
         setBusy(false);
-        if (files.length) onPick(files);
+        if (files.length || message.left) onPick(files, message.left);
       }
     },
     [onPick],

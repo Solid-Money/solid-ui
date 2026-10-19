@@ -16,10 +16,8 @@ export type PickerMessage =
   | { type: 'start'; count: number }
   | { type: 'file'; name: string; mime: string; size: number; data: string | null }
   | { type: 'error'; name: string }
-  | { type: 'done' };
-
-/** Files over this are not read at all; the composer explains the limit. */
-const READ_LIMIT = Math.max(MAX_IMAGE_BYTES, MAX_PDF_BYTES);
+  /** `left`: files not read because the message had no room left for them. */
+  | { type: 'done'; left: number };
 
 const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,image/heic,application/pdf';
 
@@ -27,8 +25,17 @@ const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,image/heic,application
 const PAPERCLIP =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A1A1A1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/></svg>';
 
-/** The picker page: a round paperclip that fills the web view. */
-export const attachPickerHtml = (): string => `<!doctype html>
+/**
+ * The picker page: a round paperclip that fills the web view.
+ *
+ * `room` is how many more files the message can take. The page reads at most
+ * that many and only counts the rest, so a big selection never fills the
+ * cache with files the composer would turn away. A file over its own limit
+ * (10 MB for a photo, 20 MB for a PDF) is not read either: it is passed on
+ * without bytes, and the composer says why. An empty file is reported as one
+ * that could not be read.
+ */
+export const attachPickerHtml = (room: number): string => `<!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
@@ -50,21 +57,34 @@ input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
       reader.readAsDataURL(file);
     });
   }
+  function limit(file){
+    var type = (file.type || '').toLowerCase();
+    var pdf = type === 'application/pdf' || (!type && /\\.pdf$/i.test(file.name || ''));
+    return pdf ? ${MAX_PDF_BYTES} : ${MAX_IMAGE_BYTES};
+  }
   input.addEventListener('change', function(){
     var files = Array.prototype.slice.call(input.files || []);
     input.value = '';
     if (!files.length) return;
     post({ type: 'start', count: files.length });
+    var room = ${Math.max(0, Math.floor(room))};
+    var left = 0;
     var chain = Promise.resolve();
     files.forEach(function(file){
       chain = chain.then(function(){
-        var base = { type: 'file', name: file.name || '', mime: file.type || '', size: file.size };
-        if (file.size > ${READ_LIMIT}) { base.data = null; post(base); return; }
-        return read(file).then(function(data){ base.data = data; post(base); },
-          function(){ post({ type: 'error', name: file.name || '' }); });
+        var name = file.name || '';
+        var base = { type: 'file', name: name, mime: file.type || '', size: file.size };
+        if (file.size > limit(file)) { base.data = null; post(base); return; }
+        if (!file.size) { post({ type: 'error', name: name }); return; }
+        if (room <= 0) { left += 1; return; }
+        room -= 1;
+        return read(file).then(function(data){
+          if (!data) { post({ type: 'error', name: name }); return; }
+          base.data = data; post(base);
+        }, function(){ post({ type: 'error', name: name }); });
       });
     });
-    chain.then(function(){ post({ type: 'done' }); });
+    chain.then(function(){ post({ type: 'done', left: left }); });
   });
 })();
 </script></body></html>`;
@@ -83,7 +103,7 @@ export const parsePickerMessage = (raw: string): PickerMessage | null => {
     case 'start':
       return { type: 'start', count: Number(message.count) || 0 };
     case 'done':
-      return { type: 'done' };
+      return { type: 'done', left: Math.max(0, Math.floor(Number(message.left) || 0)) };
     case 'error':
       return { type: 'error', name: String(message.name ?? '') };
     case 'file':
@@ -127,9 +147,14 @@ export const pickedName = (name: string, mime: string): string => {
 /** Saves the picked bytes where the uploader can read them; returns a file:// uri. */
 export type SaveBase64 = (name: string, base64: string) => string;
 
+/** The most this file may weigh: 20 MB for a PDF, 10 MB for a photo. */
+export const pickedLimit = (mime: string): number =>
+  mime === 'application/pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+
 /**
- * The composer's file for one picked file. Without bytes (over the size
- * limit) it has no uri: the composer turns it away with the reason.
+ * The composer's file for one picked file. Without bytes because it is over
+ * its limit, it has no uri: the composer turns it away with the reason. Without
+ * bytes for any other reason it could not be read, and this throws.
  */
 export const supportFileFromPicker = (
   message: Extract<PickerMessage, { type: 'file' }>,
@@ -139,5 +164,6 @@ export const supportFileFromPicker = (
   const name = pickedName(message.name, mime);
   const file: SupportFile = { name, mime, size: message.size };
   if (message.data) file.uri = save(name, message.data);
+  else if (message.size <= pickedLimit(mime)) throw new Error(`${name} could not be read`);
   return file;
 };

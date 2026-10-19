@@ -11,7 +11,17 @@ jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }));
-jest.mock('@/components/Support/AttachButton', () => () => null);
+
+const attachProps: { current: any } = { current: null };
+jest.mock('@/components/Support/AttachButton', () => ({
+  __esModule: true,
+  attachAvailable: true,
+
+  default: (props: any) => {
+    attachProps.current = props;
+    return null;
+  },
+}));
 jest.mock('@/lib/support/sync', () => ({
   ACCEPTED_MIME: [
     'image/png',
@@ -76,5 +86,17 @@ describe('Composer', () => {
     expect(
       fileProblem({ name: 'big.pdf', mime: 'application/pdf', size: 15 * 1024 * 1024 }),
     ).toBeNull();
+  });
+
+  it('gives the picker the room left, and says so when picked files did not fit', () => {
+    let tree: any;
+    act(() => {
+      tree = create(<Composer onSend={jest.fn()} bottomInset={0} />);
+    });
+    expect(attachProps.current.room).toBe(5);
+    const photo = { name: 'a.png', mime: 'image/png', size: 3, uri: 'file:///a.png' };
+    act(() => attachProps.current.onPick([photo, { ...photo, name: 'b.png' }], 4));
+    expect(allText(tree)).toContain('Up to 5 files per message');
+    expect(attachProps.current.room).toBe(3);
   });
 });

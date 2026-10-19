@@ -63,11 +63,13 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
   }, [body, canSend, files, onSend]);
 
   const pick = useCallback(
-    (picked: SupportFile[]) => {
+    (picked: SupportFile[], left = 0) => {
       const problems = picked.map(fileProblem).filter(Boolean) as string[];
       const usable = picked.filter(file => !fileProblem(file));
       const room = MAX_ATTACHMENTS - files.length;
-      if (usable.length > room) problems.push(`Up to ${MAX_ATTACHMENTS} files per message`);
+      if (usable.length > room || left > 0) {
+        problems.push(`Up to ${MAX_ATTACHMENTS} files per message`);
+      }
       setFiles(current => [...current, ...usable.slice(0, Math.max(0, room))]);
       setProblem(problems[0] ?? null);
     },
@@ -140,7 +142,11 @@ const Composer = ({ onSend, bottomInset }: ComposerProps) => {
           focused ? 'border-white/25' : 'border-white/10',
         )}
       >
-        <AttachButton disabled={files.length >= MAX_ATTACHMENTS} onPick={pick} />
+        <AttachButton
+          disabled={files.length >= MAX_ATTACHMENTS}
+          room={MAX_ATTACHMENTS - files.length}
+          onPick={pick}
+        />
         <TextInput
           ref={inputRef}
           value={body}

@@ -54,7 +54,7 @@ describe('AttachButton (iOS and Android)', () => {
     const onPick = jest.fn();
     let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(<AttachButton onPick={onPick} />);
+      renderer = create(<AttachButton room={5} onPick={onPick} />);
     });
     send(renderer!, { type: 'start', count: 2 });
     send(renderer!, {
@@ -75,7 +75,8 @@ describe('AttachButton (iOS and Android)', () => {
     send(renderer!, { type: 'done' });
 
     expect(onPick).toHaveBeenCalledTimes(1);
-    const [files] = onPick.mock.calls[0];
+    const [files, left] = onPick.mock.calls[0];
+    expect(left).toBe(0);
     expect(files.map((file: { name: string }) => file.name)).toEqual([
       'IMG 1.jpeg',
       'Statement.pdf',
@@ -91,7 +92,7 @@ describe('AttachButton (iOS and Android)', () => {
     const onPick = jest.fn();
     let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(<AttachButton onPick={onPick} />);
+      renderer = create(<AttachButton room={5} onPick={onPick} />);
     });
     send(renderer!, { type: 'start', count: 2 });
     send(renderer!, { type: 'error', name: 'broken.pdf' });
@@ -103,10 +104,45 @@ describe('AttachButton (iOS and Android)', () => {
     expect(onPick.mock.calls[0][0]).toHaveLength(1);
   });
 
+  it('tells the composer how many files had no room, even when none was read', () => {
+    const onPick = jest.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AttachButton room={0} onPick={onPick} />);
+    });
+    send(renderer!, { type: 'start', count: 2 });
+    send(renderer!, { type: 'done', left: 2 });
+    expect(onPick).toHaveBeenCalledWith([], 2);
+  });
+
+  it('reports a file that arrived without bytes but under its limit as unreadable', () => {
+    const onPick = jest.fn();
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AttachButton room={5} onPick={onPick} />);
+    });
+    send(renderer!, { type: 'start', count: 1 });
+    send(renderer!, { type: 'file', name: 'empty.png', mime: 'image/png', size: 0, data: null });
+    send(renderer!, { type: 'done' });
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: "Couldn't attach empty.png" }),
+    );
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('builds the picker for the room the message has left', () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<AttachButton room={3} onPick={jest.fn()} />);
+    });
+    const source = renderer!.root.findByType('WebView').props.source as { html: string };
+    expect(source.html).toContain('var room = 3;');
+  });
+
   it('cannot be tapped while disabled', () => {
     let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(<AttachButton disabled onPick={jest.fn()} />);
+      renderer = create(<AttachButton disabled room={0} onPick={jest.fn()} />);
     });
     const box = renderer!.root.findByType('WebView').parent;
     expect(box.props.pointerEvents).toBe('none');
