@@ -1,10 +1,14 @@
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import { Text } from '@/components/ui/text';
 
 import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import type {
+  SpendableAssetIcon,
+  SpendableAssetRow,
+} from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 
 /**
@@ -14,10 +18,29 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  * same block shows the same number wherever it is placed.
  */
 
-/** Figma 25950:2984. Fixed, so the sheet can reserve room for any stack of these. */
-export const BALANCE_PANEL_HEIGHT = 106;
-/** Figma 25961:3504. See {@link BALANCE_PANEL_HEIGHT}. */
+/**
+ * Figma 29120:9486, which grows a row per spendable asset held: 23 above the header, the 50pt
+ * header, 16 below the last row; the divider (27) and the "Spendable assets" title (34) only when
+ * there is a row to title. A row is 48pt, or 56 with a second line. Fixed per row, so the sheet can
+ * reserve room for the panel before it renders.
+ */
+const BALANCE_HEADER_HEIGHT = 23 + 50;
+const BALANCE_ASSETS_TITLE_HEIGHT = 27 + 34;
+const BALANCE_PANEL_BOTTOM = 16;
+const assetRowHeight = (row: Pick<SpendableAssetRow, 'subtitle' | 'detail'>) =>
+  row.subtitle || row.detail ? 56 : 48;
+export const balancePanelHeight = (
+  rows: readonly Pick<SpendableAssetRow, 'subtitle' | 'detail'>[],
+) =>
+  BALANCE_HEADER_HEIGHT +
+  (rows.length
+    ? BALANCE_ASSETS_TITLE_HEIGHT + rows.reduce((sum, row) => sum + assetRowHeight(row), 0)
+    : 0) +
+  BALANCE_PANEL_BOTTOM;
+/** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
+/** Figma 29128:9537: 14 above and below the two-line label. */
+export const ENABLE_EURO_CARD_HEIGHT = 73;
 
 /**
  * Figma 29123:9483, which grows a 58pt row per collateral asset: the borrowed block and the
@@ -49,38 +72,145 @@ const COLLATERAL_ICON = {
   },
 } as const;
 
+const TOKEN_LOGO = {
+  usdc: require('@/assets/images/spend-mode-token-usdc.svg'),
+  usdt: require('@/assets/images/spend-mode-token-usdt.svg'),
+  eurc: require('@/assets/images/eurc.png'),
+} as const;
+const YIELD_GLYPH = {
+  usd: {
+    source: require('@/assets/images/spend-mode-yield-usd.svg'),
+    width: 9.50464,
+    height: 18.7649,
+  },
+  eur: COLLATERAL_ICON.eur,
+} as const;
+const BADGE_DOT = require('@/assets/images/spend-mode-badge-dot.svg');
+
+/**
+ * A spendable asset's 32pt logo. The stablecoins use their token logos (USDT's is drawn 36.7pt
+ * with its ring overhanging, as in Figma); a yield share is the yield icon with the dot badge
+ * (Figma "so-token / soUSD / badge dot").
+ */
+const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
+  if (icon === 'usdc' || icon === 'eurc') {
+    return (
+      <Image
+        accessible={false}
+        source={TOKEN_LOGO[icon]}
+        style={icon === 'eurc' ? styles.eurcLogo : styles.tokenLogo}
+      />
+    );
+  }
+  if (icon === 'usdt') {
+    return (
+      <View accessible={false} style={styles.tokenLogo}>
+        <Image source={TOKEN_LOGO.usdt} style={styles.usdtLogo} />
+      </View>
+    );
+  }
+
+  const glyph = icon === 'sousd' ? YIELD_GLYPH.usd : YIELD_GLYPH.eur;
+  return (
+    <View accessible={false} style={styles.tokenLogo}>
+      <View style={styles.yieldIcon}>
+        <Image source={glyph.source} style={{ width: glyph.width, height: glyph.height }} />
+      </View>
+      <Image source={BADGE_DOT} style={styles.badgeDot} />
+    </View>
+  );
+};
+
 interface BalancePanelProps {
+  /** "$246.50": every spendable asset, euro ones at their dollar value. */
   balance: string;
+  /** The assets behind it, one row each; the list is left out when the Safe holds none. */
+  rows: readonly SpendableAssetRow[];
   /**
    * Opens the add-funds flow. Without one the pill is not drawn: it used to render with
    * nothing behind it, and a button that ignores the tap reads as broken.
    */
   onAddFunds?: () => void;
+  /** The "?" beside "Spendable assets". */
+  onHelpPress?: () => void;
 }
 
 /**
- * "Your USD balance / $0.0" with the Add funds pill on the right.
- *
- * Deliberately not "USDC": the figure behind it is `useCardSpendableBalanceUSD`, which sums
- * every asset in `CARD_SPENDABLE_ASSETS` — USDC, USDT and soUSD on Fuse. Naming one of the
- * three told a cardholder holding USDT that the balance shown was somebody else's.
+ * "Your balance" with the Add funds pill, over the assets it is made of (Figma 29120:9486): USDC,
+ * USDT and soUSD on Fuse, and EURC on Base once euro spending is enabled, each with its own value.
+ * A euro asset reads in euros with its dollar value under it.
  */
-export const SpendModeBalancePanel = ({ balance, onAddFunds }: BalancePanelProps) => (
-  <View style={[styles.panel, styles.balancePanel]}>
-    <View style={styles.balanceText}>
-      <Text className="text-[16px] font-normal leading-[20px] text-white/70">Your USD balance</Text>
-      <Text className="text-[24px] font-medium leading-[28px] text-white">{balance}</Text>
+export const SpendModeBalancePanel = ({
+  balance,
+  rows,
+  onAddFunds,
+  onHelpPress,
+}: BalancePanelProps) => (
+  <View style={[styles.panel, styles.balancePanel, { height: balancePanelHeight(rows) }]}>
+    <View style={styles.balanceHeader}>
+      <View style={styles.balanceText}>
+        <Text className="text-[16px] font-normal leading-[16px] text-white/70">Your balance</Text>
+        <Text className="text-[24px] font-medium leading-[24px] text-white">{balance}</Text>
+      </View>
+      {onAddFunds ? (
+        <Pressable
+          accessibilityLabel="Add funds"
+          accessibilityRole="button"
+          className="transition-all active:scale-95 active:opacity-80"
+          onPress={onAddFunds}
+          style={styles.addFunds}
+        >
+          <Text className="text-[16px] font-semibold text-black">Add funds</Text>
+        </Pressable>
+      ) : null}
     </View>
-    {onAddFunds ? (
-      <Pressable
-        accessibilityLabel="Add funds"
-        accessibilityRole="button"
-        className="transition-all active:scale-95 active:opacity-80"
-        onPress={onAddFunds}
-        style={styles.addFunds}
-      >
-        <Text className="text-[16px] font-semibold text-black">Add funds</Text>
-      </Pressable>
+    {rows.length ? (
+      <>
+        <View style={styles.balanceDivider}>
+          <View style={styles.balanceDividerLine} />
+        </View>
+        <View style={styles.assetsTitle}>
+          <Text className="text-[18px] font-medium leading-[18px] text-white">
+            Spendable assets
+          </Text>
+          {onHelpPress ? (
+            <Pressable
+              accessibilityLabel="How spendable assets work"
+              accessibilityRole="button"
+              className="active:opacity-80"
+              hitSlop={12}
+              onPress={onHelpPress}
+            >
+              <HelpBadge />
+            </Pressable>
+          ) : (
+            <HelpBadge />
+          )}
+        </View>
+        {rows.map(row => (
+          <View key={row.key} style={[styles.assetRow, { height: assetRowHeight(row) }]}>
+            <AssetLogo icon={row.icon} />
+            <View style={styles.assetLeft}>
+              <Text className="text-[16px] font-medium leading-[20px] text-white">{row.name}</Text>
+              {row.subtitle ? (
+                <Text className="text-[14px] font-normal leading-[18px] text-white/50">
+                  {row.subtitle}
+                </Text>
+              ) : null}
+            </View>
+            <View style={styles.assetRight}>
+              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                {row.value}
+              </Text>
+              {row.detail ? (
+                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                  {row.detail}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ))}
+      </>
     ) : null}
   </View>
 );
@@ -233,15 +363,51 @@ export const SpendModeCreditPanel = ({
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#2B2B2B', borderRadius: 20, overflow: 'hidden' },
 
-  // The text block and the pill both centred in the panel.
-  balancePanel: {
+  // Figma 29120:9486: 23 above, 23 / 24 at the sides; rows below a full-bleed divider.
+  balancePanel: { paddingLeft: 23, paddingRight: 24, paddingTop: 23 },
+  balanceHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    height: BALANCE_PANEL_HEIGHT,
-    paddingLeft: 23,
-    paddingRight: 24,
+    height: 50,
+    justifyContent: 'space-between',
   },
-  balanceText: { flex: 1, gap: Platform.OS === 'ios' ? 8 : 10 },
+  balanceText: { flex: 1, gap: 10 },
+  // 27 tall with the line 20 down, running edge to edge past the panel's padding.
+  balanceDivider: { height: 27 },
+  balanceDividerLine: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    height: 1,
+    left: -23,
+    position: 'absolute',
+    right: -24,
+    top: 20,
+  },
+  assetsTitle: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    height: 34,
+    paddingBottom: 8,
+    paddingTop: 6,
+  },
+  assetRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  assetLeft: { flex: 1, gap: 2 },
+  assetRight: { alignItems: 'flex-end', gap: 2 },
+  tokenLogo: { height: 32, width: 32 },
+  eurcLogo: { borderRadius: 16, height: 32, width: 32 },
+  // 36.7pt in a 32pt slot: its ring overhangs by 2.35 on every side (inset -7.35%).
+  usdtLogo: { height: 36.7059, left: -2.35, position: 'absolute', top: -2.35, width: 36.7059 },
+  // Figma "Yield icon": 31.976 × 31.373, 0.31 down, the glyph centred.
+  yieldIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 31.373,
+    height: 31.373,
+    justifyContent: 'center',
+    marginTop: 0.31,
+    width: 31.976,
+  },
+  badgeDot: { height: 14, left: 20, position: 'absolute', top: 20, width: 14 },
   addFunds: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',

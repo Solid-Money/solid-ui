@@ -51,9 +51,9 @@ interface SpendModeCopy {
 export const SPEND_MODE_COPY: Record<SpendMode, SpendModeCopy> = {
   cash: {
     label: 'Cash',
-    // Not a single ticker: Cash draws on every asset in `CARD_SPENDABLE_ASSETS` — USDC,
-    // USDT and soUSD on Fuse — and the panel below it adds all three up.
-    caption: 'Spend your USD asset balance',
+    // Not a single ticker: Cash draws on every spendable asset — USDC, USDT and soUSD on
+    // Fuse, and EURC on Base once euro spending is on — and the panel below lists each.
+    caption: 'Spend your stablecoins',
     panels: ['balance'],
   },
   credit: {

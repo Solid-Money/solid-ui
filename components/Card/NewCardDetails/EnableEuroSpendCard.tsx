@@ -7,6 +7,11 @@ interface EnableEuroSpendCardProps {
   /** Message from the last failed attempt, shown in place of the subtitle. */
   error?: string;
   onEnable: () => void;
+  /**
+   * `pane` on the card screen; `sheet` inside the spend-mode sheet (Figma 29128:9537), where it
+   * sits on the sheet's panel colour and says what it spends without naming the chain.
+   */
+  variant?: 'pane' | 'sheet';
 }
 
 /**
@@ -29,16 +34,27 @@ interface EnableEuroSpendCardProps {
  * Laid out as the "Spend mode" row is (`SpendingModeCard`): a 23px card, 17px side inset, label
  * left and action right — so it reads as another row of the card pane rather than a promo banner.
  */
-const EnableEuroSpendCard = ({ isEnabling, error, onEnable }: EnableEuroSpendCardProps) => (
-  <View className="overflow-hidden rounded-[23px] bg-card" style={styles.row}>
+const EnableEuroSpendCard = ({
+  isEnabling,
+  error,
+  onEnable,
+  variant = 'pane',
+}: EnableEuroSpendCardProps) => (
+  <View
+    className={variant === 'sheet' ? 'overflow-hidden' : 'overflow-hidden rounded-[23px] bg-card'}
+    style={[styles.row, variant === 'sheet' && styles.sheetRow]}
+  >
     <View style={styles.label}>
       <Text className="text-[18px] font-medium leading-[25px] text-white">
         Enable euro spending
       </Text>
       <Text
-        className={`text-[14px] leading-[18px] ${error ? 'text-red-400' : 'text-muted-foreground'}`}
+        className={`text-[14px] leading-[18px] ${
+          error ? 'text-red-400' : variant === 'sheet' ? 'text-white/50' : 'text-muted-foreground'
+        }`}
       >
-        {error ?? 'Spend your EURC balance on Base'}
+        {error ??
+          (variant === 'sheet' ? 'Spend your EURC balance' : 'Spend your EURC balance on Base')}
       </Text>
     </View>
     <Pressable
@@ -72,6 +88,15 @@ const styles = StyleSheet.create({
     minHeight: 72,
     paddingHorizontal: 17,
     paddingVertical: 12,
+  },
+  // Figma 29128:9537: the sheet's panel colour and radius, 23 / 24 at the sides, 14 above and below.
+  sheetRow: {
+    backgroundColor: '#2B2B2B',
+    borderRadius: 20,
+    minHeight: 73,
+    paddingLeft: 23,
+    paddingRight: 24,
+    paddingVertical: 14,
   },
   label: { flex: 1, gap: 2, paddingRight: 12 },
   button: {

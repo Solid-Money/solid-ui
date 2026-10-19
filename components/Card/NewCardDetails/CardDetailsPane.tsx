@@ -388,10 +388,10 @@ const CardDetailsPane = () => {
             </HeroEnter>
           ) : null}
           {/* Wirex cards only, and gone for good once enabled — the backend stores the enablement per
-              chain, so it does not come back on another device. Placed directly under the spend
-              mode row because it is the same kind of thing: a property of how this card spends,
-              not a promotion. */}
-          {euroSpend.shouldOffer ? (
+              chain, so it does not come back on another device. Offered in the spend-mode sheet,
+              above the balance it adds EURC to (Figma 29128:9415), so it shows here only for a
+              card with no spend mode row to open that sheet from. */}
+          {euroSpend.shouldOffer && !spendModeFigures.canChangeMode ? (
             <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.euroSpendCard}>
               <EnableEuroSpendCard
                 isEnabling={euroSpend.isEnabling}
