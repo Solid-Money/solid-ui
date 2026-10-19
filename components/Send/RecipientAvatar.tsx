@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { CHAIN_ICONS } from '@/constants/chains';
+import { getAsset } from '@/lib/assets';
 import { SendRecipient } from '@/lib/sendRecipients';
 import { getColorForTransaction } from '@/lib/utils/cardHelpers';
 
@@ -37,7 +38,7 @@ export function RecipientAvatar({
           </Text>
         ) : (
           <Image
-            source={require('@/assets/images/send/wallet.svg')}
+            source={getAsset('images/send/wallet.svg')}
             style={{ width: 28, height: 28, tintColor: color.text }}
           />
         )}

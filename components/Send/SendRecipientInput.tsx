@@ -11,6 +11,7 @@ import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { recipientNextModal, useSendStore } from '@/store/useSendStore';
 
@@ -215,7 +216,7 @@ const SendRecipientInput: React.FC<SendRecipientInputProps> = ({
               <ScanAddress width={22} height={22} />
             ) : (
               <Image
-                source={require('@/assets/images/send/qr.svg')}
+                source={getAsset('images/send/qr.svg')}
                 style={{ width: 21.25, height: 21.25 }}
               />
             )}

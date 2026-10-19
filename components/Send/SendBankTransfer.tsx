@@ -9,6 +9,7 @@ import { canSendFrom } from '@/components/WirexBankAccount/railPresentation';
 import { WirexBankTransferModal } from '@/components/WirexBankAccount/WirexBankTransferModal';
 import { SEND_MODAL } from '@/constants/modals';
 import { useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
+import { getAsset } from '@/lib/assets';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -70,11 +71,7 @@ export function SendBankTransfer({
             onPress={() => setSelectedRail(rail)}
           >
             <Image
-              source={
-                isEuro
-                  ? require('@/assets/images/send/eu.svg')
-                  : require('@/assets/images/send/us.svg')
-              }
+              source={getAsset(isEuro ? 'images/send/eu.svg' : 'images/send/us.svg')}
               style={{ width: 30, height: 30 }}
             />
             <View className="flex-1 gap-1">

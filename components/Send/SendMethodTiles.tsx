@@ -9,17 +9,18 @@ import { useCashoutEntry } from '@/hooks/useCashout';
 import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
 
 const ICONS = {
-  usdc: require('@/assets/images/send/usdc.svg'),
-  usdt: require('@/assets/images/send/usdt.svg'),
-  eth: require('@/assets/images/send/eth.svg'),
-  ng: require('@/assets/images/send/ng.svg'),
-  br: require('@/assets/images/send/br.svg'),
-  eu: require('@/assets/images/send/eu.svg'),
-  us: require('@/assets/images/send/us.svg'),
+  usdc: getAsset('images/send/usdc.svg'),
+  usdt: getAsset('images/send/usdt.svg'),
+  eth: getAsset('images/send/eth.svg'),
+  ng: getAsset('images/send/ng.svg'),
+  br: getAsset('images/send/br.svg'),
+  eu: getAsset('images/send/eu.svg'),
+  us: getAsset('images/send/us.svg'),
 };
 
 const SHOW_ADDITIONAL_METHODS = false;
@@ -167,13 +168,13 @@ export function SendMethodTiles() {
               <View className="flex-row items-center">
                 <View className="h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-background bg-card">
                   <Image
-                    source={require('@/assets/images/send/solid.svg')}
+                    source={getAsset('images/send/solid.svg')}
                     style={{ width: 15.7265, height: 18, opacity: 0.85 }}
                   />
                 </View>
                 <View className="-ml-2 h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-card bg-popover">
                   <Image
-                    source={require('@/assets/images/send/link.svg')}
+                    source={getAsset('images/send/link.svg')}
                     style={{ width: 15, height: 15 }}
                   />
                 </View>
