@@ -157,6 +157,7 @@ import {
   TotalAPYResponse,
   TransfiCashoutConfig,
   TransfiCashoutDepositInstructions,
+  TransfiCashoutLimits,
   TransfiCashoutOrderStatus,
   TransfiCashoutPaymentMethod,
   TransfiCashoutQuote,
@@ -2051,6 +2052,20 @@ export const getTransfiCashoutPaymentMethods = async (
 ): Promise<TransfiCashoutPaymentMethod[]> => {
   const params = new URLSearchParams({ currency });
   const response = await fetch(`${CASHOUT_BASE()}/payment-methods?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  return response.json();
+};
+
+/** The USDC limits for one cash-out through a payout method. */
+export const getTransfiCashoutLimits = async (
+  currency: string,
+  paymentCode: string,
+): Promise<TransfiCashoutLimits> => {
+  const params = new URLSearchParams({ currency, paymentCode });
+  const response = await fetch(`${CASHOUT_BASE()}/limits?${params.toString()}`, {
     credentials: 'include',
     headers: transfiHeaders(),
   });
