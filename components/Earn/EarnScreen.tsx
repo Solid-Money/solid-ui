@@ -6,12 +6,12 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
 import { sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
-import { findVault } from '@/lib/vaults';
 
 import {
   interestOverPastDays,
@@ -35,6 +35,7 @@ export default function EarnScreen() {
   // soEURC, in euros, apart from every dollar figure below (see lib/vaultCurrency).
   const { eurValue, eurShares, isEurLoading } = useTotalSavingsUSD();
   const eurRate = useMaxAPY(VaultType.EUR);
+  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
 
   const rates = {
     [VaultType.USDC]: useMaxAPY(VaultType.USDC),
@@ -89,9 +90,8 @@ export default function EarnScreen() {
       ? `${weightedApy(usdProducts.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
       : `Up to ${Math.max(...usdProducts.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
 
-  // EUR Yield, where this build lists it: its own row, valued in euros, with "—" for the
-  // rate until it earns.
-  const products: EarnProduct[] = findVault(VaultType.EUR)
+  // EUR Yield, for users it is offered to: its own row, valued in euros.
+  const products: EarnProduct[] = isEurVaultEnabled
     ? [
         ...usdProducts,
         {

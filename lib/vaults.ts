@@ -22,7 +22,7 @@ const ALL_SUPPORTED_TOKENS = Array.from(
 /** The vaults a user can deposit into: every listed vault that is not marked coming soon. */
 export const LIVE_VAULTS = VAULTS.filter(vault => !vault.isComingSoon);
 
-/** The listed vault of a type — undefined for one this build does not list (soEURC in production). */
+/** The listed vault of a type. EUR is listed in every build; who is offered it is `useEurVaultAccess`. */
 export const findVault = (type: VaultType): Vault | undefined =>
   VAULTS.find(vault => vault.type === type);
 

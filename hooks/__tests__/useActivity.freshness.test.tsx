@@ -13,6 +13,9 @@ let mockWithdraws: { requestTxHash: string; requestStatus: string }[] | undefine
 let mockEurWithdraws: { requestTxHash: string; requestStatus: string }[] | undefined;
 jest.mock('@/hooks/useUser', () => ({ __esModule: true, default: () => ({ user: mockUser }) }));
 jest.mock('@/lib/config', () => ({ USER: 'user', isDevFeatureEnabled: true }));
+jest.mock('@/hooks/useEurVaultAccess', () => ({
+  useEurVaultAccess: () => ({ isEnabled: true, isLoading: false }),
+}));
 jest.mock('@/lib/mmvkStorage', () => ({
   __esModule: true,
   default: () => ({ getItem: () => null, setItem: jest.fn() }),

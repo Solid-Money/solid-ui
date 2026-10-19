@@ -1019,6 +1019,13 @@ export interface StatementDownload {
   content: string;
 }
 
+/** Whether the EUR vault may be offered to this user. See useEurVaultAccess. */
+export interface EurVaultAccessResponse {
+  enabled: boolean;
+  /** `cohort` — a Wirex test user. `open` — the gate is lifted. `not-in-cohort` — hidden. */
+  reason: 'cohort' | 'open' | 'not-in-cohort';
+}
+
 export interface CardSpendModeAccessResponse {
   /** Whether to render the spend-mode card and the borrow position at all. */
   enabled: boolean;

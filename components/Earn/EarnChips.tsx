@@ -87,7 +87,7 @@ export const EarnChip = ({
 
 /**
  * The small "4.5% APY" tag on list rows. Without a rate it shows nothing, or `emptyLabel`
- * for a product that has no rate yet (EUR Yield's "— APY").
+ * for a product whose rate is 0 (EUR Yield's "0.0% APY").
  */
 export const ApyTag = ({
   apy,

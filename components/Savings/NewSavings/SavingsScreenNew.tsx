@@ -7,6 +7,7 @@ import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
 import { VaultKey } from '@/constants/withdraw';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
@@ -39,7 +40,12 @@ export default function SavingsScreenNew() {
   const insets = useSafeAreaInsets();
 
   const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
-  const vaultType = isVaultType(vaultParam) ? vaultParam : VaultType.USDC;
+  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
+  // A deep link to a vault this user is not offered opens USD Yield instead.
+  const vaultType =
+    isVaultType(vaultParam) && isVaultOffered(vaultParam, isEurVaultEnabled)
+      ? vaultParam
+      : VaultType.USDC;
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isCreditOpen, setIsCreditOpen] = useState(false);
 

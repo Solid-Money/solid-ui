@@ -55,15 +55,15 @@ describe('vault FAQs', () => {
     }
   });
 
-  // No yield yet and a queued withdrawal: the copy must not promise either away.
-  it('tells EUR savers what they deposit, that yield is coming, and how long withdrawals take', () => {
+  // A queued withdrawal: the copy must not promise it away, nor announce yield as coming.
+  it('tells EUR savers what they deposit and how long withdrawals take', () => {
     const copy = getVaultFaqs(VaultType.EUR)
       .map(faq => `${faq.question} ${faq.answer}`)
       .join(' ');
 
     expect(copy).toContain('EURC');
     expect(copy).toContain('Base');
-    expect(copy).toMatch(/coming soon/i);
+    expect(copy).not.toMatch(/coming soon|not yet/i);
     expect(copy).toMatch(/3 days/);
     expect(copy).not.toMatch(/\d+(\.\d+)?%/);
   });

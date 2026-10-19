@@ -16,8 +16,7 @@ const NOTHING_TO_MANAGE: Benefit = {
 };
 
 /**
- * Only what is true of each product: soUSD backs the card, soETH and soFUSE do not, and
- * EUR Yield does not earn yet.
+ * Only what is true of each product: soUSD backs the card, soETH and soFUSE do not.
  */
 const BENEFITS: Record<VaultType, Benefit[]> = {
   [VaultType.USDC]: [
@@ -79,12 +78,7 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       title: 'Withdraw to EURC',
       body: 'Withdrawals go through a queue and take up to about 3 days.',
     },
-    {
-      key: 'yield',
-      icon: TrendingUp,
-      title: 'Yield coming soon',
-      body: 'This product does not earn yet. Its APY shows as — until it does.',
-    },
+    NOTHING_TO_MANAGE,
   ],
 };
 
