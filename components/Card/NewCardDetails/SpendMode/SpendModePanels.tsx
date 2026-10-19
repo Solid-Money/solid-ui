@@ -50,7 +50,9 @@ export const ENABLE_EURO_CARD_HEIGHT = 73;
 const CREDIT_PANEL_BASE_HEIGHT = 120 + 18 + 28 + 12;
 const COLLATERAL_ROW_HEIGHT = 58;
 export const creditPanelHeight = (collateralRows: number) =>
-  CREDIT_PANEL_BASE_HEIGHT + COLLATERAL_ROW_HEIGHT * collateralRows;
+  collateralRows > 0
+    ? CREDIT_PANEL_BASE_HEIGHT + COLLATERAL_ROW_HEIGHT * collateralRows
+    : BORROWED_PANEL_HEIGHT;
 /**
  * Figma 26974:14829, at its two-line wrap on the 419pt artboard. Not fixed like the panels:
  * a narrower sheet wraps the message to a third line, so the sheet measures the real one.
@@ -303,60 +305,76 @@ export const SpendModeCreditPanel = ({
   onHelpPress,
   ...borrowed
 }: CreditPanelProps) => (
-  <View style={[styles.panel, { height: creditPanelHeight(collateral.length) }]}>
-    <View style={styles.creditBorrowed}>
-      <BorrowedSummary {...borrowed} />
-    </View>
-    <View style={styles.divider} />
-    <View style={styles.collateral}>
-      <View style={styles.collateralTitle}>
-        <View style={styles.collateralTitleLeft}>
-          <Text className="text-[18px] font-medium leading-[18px] text-white">
-            Collateral assets
-          </Text>
-          {onHelpPress ? (
-            <Pressable
-              accessibilityLabel="How collateral works"
-              accessibilityRole="button"
-              className="active:opacity-80"
-              hitSlop={12}
-              onPress={onHelpPress}
-            >
-              <HelpBadge />
-            </Pressable>
-          ) : (
-            <HelpBadge />
-          )}
-        </View>
-        <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">Keeps earning</Text>
+  <View
+    style={[
+      styles.panel,
+      !collateral.length && styles.borrowedPanel,
+      { height: creditPanelHeight(collateral.length) },
+    ]}
+  >
+    {/* Without a row to list — a Safe the lens cannot read yet, or one on v1 — the panel is the
+        borrowed block alone, as before, rather than a collateral title over nothing. */}
+    {collateral.length ? (
+      <View style={styles.creditBorrowed}>
+        <BorrowedSummary {...borrowed} />
       </View>
-      {collateral.map(row => (
-        <View key={row.key} style={styles.collateralRow}>
-          <View accessible={false} style={styles.collateralIcon}>
-            <Image
-              source={COLLATERAL_ICON[row.icon].source}
-              style={{
-                width: COLLATERAL_ICON[row.icon].width,
-                height: COLLATERAL_ICON[row.icon].height,
-              }}
-            />
-          </View>
-          <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
-            {row.label}
-          </Text>
-          <View style={styles.collateralValue}>
-            <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
-              {row.value}
+    ) : (
+      <BorrowedSummary {...borrowed} />
+    )}
+    {collateral.length ? <View style={styles.divider} /> : null}
+    {collateral.length ? (
+      <View style={styles.collateral}>
+        <View style={styles.collateralTitle}>
+          <View style={styles.collateralTitleLeft}>
+            <Text className="text-[18px] font-medium leading-[18px] text-white">
+              Collateral assets
             </Text>
-            {row.usdEquivalent ? (
-              <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
-                {row.usdEquivalent}
-              </Text>
-            ) : null}
+            {onHelpPress ? (
+              <Pressable
+                accessibilityLabel="How collateral works"
+                accessibilityRole="button"
+                className="active:opacity-80"
+                hitSlop={12}
+                onPress={onHelpPress}
+              >
+                <HelpBadge />
+              </Pressable>
+            ) : (
+              <HelpBadge />
+            )}
           </View>
+          <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
+            Keeps earning
+          </Text>
         </View>
-      ))}
-    </View>
+        {collateral.map(row => (
+          <View key={row.key} style={styles.collateralRow}>
+            <View accessible={false} style={styles.collateralIcon}>
+              <Image
+                source={COLLATERAL_ICON[row.icon].source}
+                style={{
+                  width: COLLATERAL_ICON[row.icon].width,
+                  height: COLLATERAL_ICON[row.icon].height,
+                }}
+              />
+            </View>
+            <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
+              {row.label}
+            </Text>
+            <View style={styles.collateralValue}>
+              <Text className="text-right text-[16px] font-medium leading-[20px] text-white">
+                {row.value}
+              </Text>
+              {row.usdEquivalent ? (
+                <Text className="text-right text-[14px] font-normal leading-[18px] text-white/50">
+                  {row.usdEquivalent}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ))}
+      </View>
+    ) : null}
   </View>
 );
 

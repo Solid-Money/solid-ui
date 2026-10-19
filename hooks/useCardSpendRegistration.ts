@@ -612,31 +612,42 @@ const readBaseModeState = async (
 
 /**
  * The Base module a mode switch carries over to, or undefined when it does not carry over: the
- * cardholder is in the spend-mode cohort and has enabled euro spending on Base.
+ * cardholder has enabled euro spending on Base and is in the spend-mode cohort.
  *
  * Fetched when the switch runs rather than read from the hooks' render-time state, which reads
- * false while a query loads and after one fails. Throws when either gate cannot be answered, which
- * the caller treats as Base unreadable. The backend's module address wins over the build's, as in
- * `useEuroSpendEnablement`: the app can be weeks behind a redeploy.
+ * false while a query loads and after one fails. A request that fails falls back to the answer
+ * already cached, and only throws — which the caller treats as Base unreadable — when there is
+ * none. The deployments are asked first: a cardholder who never enabled Base, which is nearly every
+ * cardholder, is answered without the cohort lookup and can never be told Base did not follow.
+ * The backend's module address wins over the build's, as in `useEuroSpendEnablement`: the app can
+ * be weeks behind a redeploy.
  */
 const resolveBaseModeModule = async (
   queryClient: QueryClient,
   userId: string,
 ): Promise<Address | undefined> => {
-  const [access, deployments] = await Promise.all([
-    queryClient.fetchQuery({
-      queryKey: [CARD_SPEND_MODE_ACCESS_QUERY_KEY, userId],
-      queryFn: getCardSpendModeAccess,
-    }),
-    queryClient.fetchQuery({
-      queryKey: [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, userId],
-      queryFn: getCardSpendDeployments,
-    }),
-  ]);
-  if (access?.enabled !== true) return undefined;
+  const fetchOrCached = async <T>(queryKey: unknown[], queryFn: () => Promise<T>): Promise<T> => {
+    try {
+      return await queryClient.fetchQuery({ queryKey, queryFn });
+    } catch (error) {
+      const cached = queryClient.getQueryData<T>(queryKey);
+      if (cached !== undefined) return cached;
+      throw error;
+    }
+  };
 
+  const deployments = await fetchOrCached(
+    [CARD_SPEND_DEPLOYMENTS_QUERY_KEY, userId],
+    getCardSpendDeployments,
+  );
   const deployment = deployments?.deployments.find(entry => entry.chainId === base.id);
   if (deployment?.enabled !== true) return undefined;
+
+  const access = await fetchOrCached(
+    [CARD_SPEND_MODE_ACCESS_QUERY_KEY, userId],
+    getCardSpendModeAccess,
+  );
+  if (access?.enabled !== true) return undefined;
 
   return (deployment.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as Address | undefined;
 };
