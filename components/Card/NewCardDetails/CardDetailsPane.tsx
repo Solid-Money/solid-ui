@@ -56,6 +56,7 @@ import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
+import { monthlyCashbackCap } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
 import { CardStatus } from '@/lib/types';
 import {
@@ -455,7 +456,8 @@ const CardDetailsPane = () => {
               cashbackRate={resolveUserCashbackRate(rewardsData)}
               cashbackThisMonth={cashbackThisMonth}
               cashbackPendingThisMonth={rewardsData?.cashbackPendingThisMonth}
-              maxCashbackMonthly={rewardsData?.maxCashbackMonthly ?? 0}
+              maxCashbackMonthly={monthlyCashbackCap(rewardsData)}
+              tierMonthlyCap={rewardsData?.maxCashbackMonthly}
               allTimeCashback={allTimeCashback}
               onGetMoreCashback={handleGetMoreCashback}
             />

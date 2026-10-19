@@ -2080,7 +2080,27 @@ export interface RewardsUserData {
    * hides every pending label.
    */
   cashbackPendingThisMonth?: number;
+  /**
+   * The monthly cap of the tier the user holds now — what the tier advertises.
+   * For "how much can this month pay", read `monthlyCashbackCap` instead.
+   */
   maxCashbackMonthly: number;
+  /**
+   * The ceiling this month's purchases are actually paid up to, in USD.
+   *
+   * Usually equal to `maxCashbackMonthly`. Larger when purchases were made
+   * under a bigger cap: a Prime trial that ended mid-month keeps Prime's cap on
+   * what was bought during it. Absent on older backends — see
+   * `monthlyCashbackCap`, which falls back to the tier's cap.
+   */
+  cashbackCapThisMonth?: number;
+  /**
+   * What a purchase made now can still earn this month, in USD. Zero once
+   * earlier purchases have used up the current tier's cap, even when
+   * `cashbackCapThisMonth` is larger. Absent on older backends — see
+   * `monthlyCashbackHeadroom`.
+   */
+  cashbackHeadroomThisMonth?: number;
   /** Whether the user has joined the new rewards program. */
   hasOptedIn?: boolean;
   /** The user's old Solid Points total prior to conversion. */

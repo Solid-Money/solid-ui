@@ -4,7 +4,12 @@ import { Image } from 'expo-image';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
-import { monthlyCashbackTotal, resolveCashbackProgress } from '@/lib/cashbackProgress';
+import {
+  isMonthlyCashbackCapReached,
+  monthlyCashbackHeadroom,
+  monthlyCashbackTotal,
+  resolveCashbackProgress,
+} from '@/lib/cashbackProgress';
 import { formatNumber } from '@/lib/utils';
 
 interface CashbackCardProps {
@@ -12,7 +17,13 @@ interface CashbackCardProps {
   /** Earned this month but still escrowed; counted into the figure below. */
   cashbackPendingThisMonth?: number;
   cashbackRate: number;
+  /** What this month's purchases are paid up to — see `monthlyCashbackCap`. */
   maxCashbackMonthly: number;
+  /**
+   * What a purchase made now can still earn this month. Absent on an older
+   * backend, where it is cap minus earned — see `monthlyCashbackHeadroom`.
+   */
+  cashbackHeadroomThisMonth?: number;
 }
 
 const CashbackCard = ({
@@ -20,6 +31,7 @@ const CashbackCard = ({
   cashbackPendingThisMonth,
   cashbackRate,
   maxCashbackMonthly,
+  cashbackHeadroomThisMonth,
 }: CashbackCardProps) => {
   const { isScreenMedium } = useDimension();
   // Settled and escrowed as one figure — see `monthlyCashbackTotal`.
@@ -31,7 +43,11 @@ const CashbackCard = ({
   // e.g., ($20 - $10) * 100 / 2 = $500 more spending needed
   // Escrowed cashback draws down the same cap when it matures, so counting it
   // into `earned` is also what stops this asking for spend that will be capped.
-  const remainingCashback = Math.max(0, maxCashbackMonthly - earned);
+  const remainingCashback = monthlyCashbackHeadroom(
+    { maxCashbackMonthly, cashbackHeadroomThisMonth },
+    earned,
+  );
+  const capReached = isMonthlyCashbackCapReached(remainingCashback);
   const remainingSpend = cashbackRate > 0 ? (remainingCashback * 100) / cashbackRate : 0;
 
   return (
@@ -56,7 +72,9 @@ const CashbackCard = ({
         {maxCashbackMonthly > 0 && (
           <View className="gap-4">
             <Text className="text-base font-medium opacity-70">
-              Spend ${formatNumber(remainingSpend, 0, 0)} more for max cashback this month
+              {capReached
+                ? "You've reached max cashback this month"
+                : `Spend $${formatNumber(remainingSpend, 0, 0)} more for max cashback this month`}
             </Text>
             <View className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
               <View className="h-full rounded-full bg-brand" style={{ width: `${earnedPct}%` }} />
