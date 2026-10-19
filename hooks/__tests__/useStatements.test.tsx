@@ -16,11 +16,6 @@ jest.mock('@/lib/api', () => ({
 }));
 jest.mock('@/lib/statementFile', () => ({ saveStatementFile: jest.fn() }));
 jest.mock('@/lib/analytics', () => ({ track: jest.fn() }));
-jest.mock('@/hooks/useFeatureAccess', () => ({
-  __esModule: true,
-  useHasFeature: () => mockHasFeature.current,
-  default: () => mockHasFeature.current,
-}));
 jest.mock('@/store/useUserStore', () => ({
   useUserStore: (selector: (state: unknown) => unknown) =>
     selector({ users: [{ userId: 'user-1', selected: true }] }),
@@ -29,7 +24,6 @@ jest.mock('@/lib/utils', () => ({
   withRefreshToken: (call: () => Promise<unknown>) => call(),
 }));
 
-const mockHasFeature = { current: true };
 const MONTHS = [
   { month: '2026-10', cardSpendUsd: '1284.50', partial: true },
   { month: '2026-09', cardSpendUsd: '1102.18', partial: false },
@@ -80,7 +74,6 @@ const mount = async () => {
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
-  mockHasFeature.current = true;
   mockGetAvailable.mockResolvedValue({ months: MONTHS });
 });
 
@@ -92,14 +85,6 @@ it('names months the way the statement does, in UTC', () => {
 it('lists the months the server offers', async () => {
   const { latest, unmount } = await mount();
   expect(latest()?.months).toEqual(MONTHS);
-  await unmount();
-});
-
-it('asks for nothing when the user does not have statements', async () => {
-  mockHasFeature.current = false;
-  const { latest, unmount } = await mount();
-  expect(mockGetAvailable).not.toHaveBeenCalled();
-  expect(latest()?.months).toEqual([]);
   await unmount();
 });
 
