@@ -57,10 +57,14 @@ export const DEPOSIT_CASH_CURRENCY_COUNT = 1 + ALL_LOCAL_CURRENCIES.length;
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
 export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
 
+/** The EUR row's flag, shared by its TransFi and bank-account forms. */
+const EUR_ICON = CARD_FUND_LOCAL_CURRENCIES.find(currency => currency.code === 'EUR')?.icon;
+
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens its
  * methods (the virtual account's ACH/wire, Credit card, and Cash App in the US);
- * every other currency opens the TransFi onramp preseeded with it.
+ * EUR opens the user's own IBAN when Wirex issues their virtual account; every
+ * other currency opens the TransFi onramp preseeded with it.
  */
 const DepositCashOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
@@ -76,7 +80,14 @@ const DepositCashOptions = () => {
   // The local currencies are all TransFi; USD is not, so it stays.
   const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
 
-  const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
+  // A Wirex-routed user's euros go to an IBAN in their own name: no onramp
+  // spread, and no TransFi availability to depend on. Everyone else keeps
+  // TransFi for EUR. `loading` stays on TransFi so the row does not swap under
+  // a finger.
+  const hasEurBankAccount = virtualAccountProvider === 'wirex';
+  const localCurrencies = (
+    showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES
+  ).filter(currency => !hasEurBankAccount || currency.code !== 'EUR');
 
   // USD opens the chooser of its methods. The bank rail is usually there, but
   // a Wirex-issued virtual account has no bank rail and Credit card is for
@@ -92,6 +103,15 @@ const DepositCashOptions = () => {
 
   const handleUsdPress = () => {
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
+  };
+
+  const handleEurBankAccountPress = () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+      currency: 'EUR',
+      provider: 'wirex',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -125,6 +145,15 @@ const DepositCashOptions = () => {
           title="USD"
           chips={usdMethodChips}
           onPress={handleUsdPress}
+        />
+      ) : null}
+      {hasEurBankAccount ? (
+        <CardFundRow
+          className="min-h-[93px]"
+          icon={EUR_ICON}
+          title="EUR"
+          chips={['SEPA']}
+          onPress={handleEurBankAccountPress}
         />
       ) : null}
       {isTransfiAvailable
