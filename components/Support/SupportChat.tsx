@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Keyboard,
   KeyboardAvoidingView,
   LayoutChangeEvent,
   Linking,
@@ -9,6 +8,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,7 @@ import ReplayMask from '@/components/Support/ReplayMask';
 import SupportIntroSheet from '@/components/Support/SupportIntroSheet';
 import { Text } from '@/components/ui/text';
 import { useSupportChatScreen } from '@/hooks/useSupportChat';
+import { androidKeyboardLift, useChatKeyboard } from '@/lib/support/chatKeyboard';
 import { loadOlder, sendMessage } from '@/lib/support/sync';
 import { useSupportChatStore } from '@/store/useSupportChatStore';
 import { useSupportIntroStore } from '@/store/useSupportIntroStore';
@@ -44,26 +45,6 @@ import type { SupportFile } from '@/lib/types/support';
 const AT_BOTTOM_SLACK = 120;
 
 export const SUPPORT_EMAIL = 'hello@solid.xyz';
-
-const useKeyboardVisible = () => {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    const show = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setVisible(true),
-    );
-    const hide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setVisible(false),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  return visible;
-};
 
 const Welcome = ({
   aiEnabled,
@@ -122,7 +103,24 @@ const Unreachable = ({ onRetry }: { onRetry: () => void }) => (
 export default function SupportChat() {
   const { loadState, retry } = useSupportChatScreen();
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
+  const keyboard = useChatKeyboard();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  // Keep the largest window height seen at this width. A resize can arrive
+  // before keyboardDidShow, so keyboard.visible alone cannot establish the baseline.
+  const [fullWindow, setFullWindow] = useState({ width: windowWidth, height: windowHeight });
+  useEffect(() => {
+    setFullWindow(previous => {
+      if (previous.width !== windowWidth) return { width: windowWidth, height: windowHeight };
+      if (windowHeight > previous.height) return { ...previous, height: windowHeight };
+      return previous;
+    });
+  }, [windowHeight, windowWidth]);
+  const windowResize =
+    fullWindow.width === windowWidth ? Math.max(0, fullWindow.height - windowHeight) : 0;
+  const androidLift =
+    Platform.OS === 'android'
+      ? androidKeyboardLift(keyboard.height, insets.bottom, windowResize)
+      : 0;
   const listRef = useRef<FlashListRef<ChatRow>>(null);
   const [offsetTop, setOffsetTop] = useState(0);
   const wrapperRef = useRef<View>(null);
@@ -194,11 +192,18 @@ export default function SupportChat() {
     }
   }, []);
 
+  // The keyboard takes the bottom of the screen: keep the newest message in view above it,
+  // unless the customer had scrolled up to read something older.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !keyboard.visible || !atBottomRef.current) return;
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+  }, [keyboard.visible]);
+
   const handleOlder = useCallback(() => {
     if (hasOlder) loadOlder().catch(() => undefined);
   }, [hasOlder]);
 
-  // The keyboard avoider needs its distance from the top of the screen (the header above it).
+  // The iOS keyboard avoider needs its distance from the top of the screen (the header above it).
   const measure = useCallback(() => {
     wrapperRef.current?.measureInWindow((_x, y) =>
       setOffsetTop(current => (current === y ? current : y)),
@@ -218,10 +223,11 @@ export default function SupportChat() {
     <View ref={wrapperRef} onLayout={measure} className="flex-1">
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={
-          Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined
-        }
+        // iOS only: on Android the remaining keyboard overlap adds padding below.
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
         keyboardVerticalOffset={offsetTop}
+        style={androidLift > 0 ? { paddingBottom: androidLift } : undefined}
       >
         <ReplayMask style={{ flex: 1 }}>
           <IncidentBanner incidents={incidents} />
@@ -270,7 +276,7 @@ export default function SupportChat() {
           {draftContext && (
             <ContextCard context={draftContext} onRemove={() => setDraftContext(null)} />
           )}
-          <Composer onSend={send} bottomInset={keyboardVisible ? 0 : insets.bottom} />
+          <Composer onSend={send} bottomInset={keyboard.visible ? 0 : insets.bottom} />
         </ReplayMask>
         <SupportIntroSheet open={showIntro} onClose={closeIntro} />
       </KeyboardAvoidingView>
