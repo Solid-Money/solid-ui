@@ -145,6 +145,26 @@ describe('getNotificationRoute', () => {
       ).toEqual(path.CARD_INFO);
     });
 
+    it('opens Main currency for the EURC-arrived push, which links the card for older builds', () => {
+      expect(
+        getNotificationRoute({
+          type: 'deposit-completed',
+          fix: 'turn_on_euro',
+          link: link('/card?utm_source=eurc_arrived_euro_spending_off&utm_medium=push'),
+        }),
+      ).toEqual(path.CARD_MAIN_CURRENCY);
+    });
+
+    it('keeps a decline push with the same fix on its receipt', () => {
+      expect(
+        getNotificationRoute({
+          type: 'card-transaction',
+          transactionId: 'tx-1',
+          fix: 'turn_on_euro',
+        }),
+      ).not.toEqual(path.CARD_MAIN_CURRENCY);
+    });
+
     it('still opens the referral sheet where that is what the link says', () => {
       expect(
         getNotificationRoute({
