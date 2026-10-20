@@ -18,17 +18,22 @@ const current = (): ChatKeyboard => {
 /**
  * How far the support chat lifts its message bar while the Android keyboard is up.
  *
- * Android draws the app edge-to-edge, so the window no longer shrinks for the
- * keyboard: the keyboard covers the bottom of the screen, navigation bar
- * included. React Native's KeyboardAvoidingView works the overlap out from the
- * view's measured position against the keyboard's reported top, and on Android
- * those don't line up reliably: it left the whole message bar under the
- * keyboard, and a gap the size of the system bars after it closed. The
- * keyboard's own height doesn't depend on any of that. Android reports it
- * without the navigation bar the keyboard sits over, so that inset goes back on.
+ * Some Android windows resize for the keyboard even when the app draws edge to
+ * edge. Only the part of the keyboard that still overlaps the resized window
+ * needs padding. The keyboard height omits the navigation bar it covers, so
+ * include that inset before subtracting the window's resize.
  */
-export const androidKeyboardLift = (keyboardHeight: number, navigationBarInset: number): number =>
-  keyboardHeight > 0 ? Math.round(keyboardHeight + Math.max(navigationBarInset, 0)) : 0;
+export const androidKeyboardLift = (
+  keyboardHeight: number,
+  navigationBarInset: number,
+  windowResize: number,
+): number =>
+  keyboardHeight > 0
+    ? Math.max(
+        0,
+        Math.round(keyboardHeight + Math.max(navigationBarInset, 0) - Math.max(windowResize, 0)),
+      )
+    : 0;
 
 /** Whether the keyboard is up, and how tall it is, for the support chat. */
 export const useChatKeyboard = (): ChatKeyboard => {

@@ -9,18 +9,20 @@ const { act, create } = require('react-test-renderer');
 type Listener = (event: { endCoordinates: { height: number } }) => void;
 
 describe('androidKeyboardLift', () => {
-  it('lifts the message bar by the keyboard plus the navigation bar it covers', () => {
-    expect(androidKeyboardLift(300, 24)).toBe(324);
-    expect(androidKeyboardLift(287.6, 48)).toBe(336);
+  it('lifts by only the keyboard overlap left after the window resizes', () => {
+    expect(androidKeyboardLift(300, 24, 0)).toBe(324);
+    expect(androidKeyboardLift(300, 24, 200)).toBe(124);
+    expect(androidKeyboardLift(300, 24, 324)).toBe(0);
+    expect(androidKeyboardLift(287.6, 48, 0)).toBe(336);
   });
 
   it('stays put with no keyboard, or a floating one', () => {
-    expect(androidKeyboardLift(0, 24)).toBe(0);
-    expect(androidKeyboardLift(-24, 24)).toBe(0);
+    expect(androidKeyboardLift(0, 24, 0)).toBe(0);
+    expect(androidKeyboardLift(-24, 24, 0)).toBe(0);
   });
 
   it('never subtracts a bad inset', () => {
-    expect(androidKeyboardLift(300, -10)).toBe(300);
+    expect(androidKeyboardLift(300, -10, -20)).toBe(300);
   });
 });
 

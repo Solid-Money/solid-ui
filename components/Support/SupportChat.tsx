@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -103,8 +104,20 @@ export default function SupportChat() {
   const { loadState, retry } = useSupportChatScreen();
   const insets = useSafeAreaInsets();
   const keyboard = useChatKeyboard();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  // Keep the largest window height seen at this width. A resize can arrive
+  // before keyboardDidShow, so keyboard.visible alone cannot establish the baseline.
+  const fullWindowRef = useRef({ width: windowWidth, height: windowHeight });
+  if (fullWindowRef.current.width !== windowWidth) {
+    fullWindowRef.current = { width: windowWidth, height: windowHeight };
+  } else {
+    fullWindowRef.current.height = Math.max(fullWindowRef.current.height, windowHeight);
+  }
+  const windowResize = Math.max(0, fullWindowRef.current.height - windowHeight);
   const androidLift =
-    Platform.OS === 'android' ? androidKeyboardLift(keyboard.height, insets.bottom) : 0;
+    Platform.OS === 'android'
+      ? androidKeyboardLift(keyboard.height, insets.bottom, windowResize)
+      : 0;
   const listRef = useRef<FlashListRef<ChatRow>>(null);
   const [offsetTop, setOffsetTop] = useState(0);
   const wrapperRef = useRef<View>(null);
@@ -207,7 +220,7 @@ export default function SupportChat() {
     <View ref={wrapperRef} onLayout={measure} className="flex-1">
       <KeyboardAvoidingView
         className="flex-1"
-        // iOS only: on Android the lift below keeps the message bar above the keyboard.
+        // iOS only: on Android the remaining keyboard overlap adds padding below.
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         enabled={Platform.OS === 'ios'}
         keyboardVerticalOffset={offsetTop}
