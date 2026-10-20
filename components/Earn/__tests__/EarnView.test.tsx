@@ -17,8 +17,12 @@ jest.mock('@/components/Earn/EarnChips', () => {
   const { createElement } = jest.requireActual('react');
   return {
     EarnChip: ({ label }: { label: string }) => createElement('Text', null, label),
-    ApyTag: ({ apy }: { apy?: number }) =>
-      apy ? createElement('Text', null, `${apy.toFixed(1)}% APY`) : null,
+    ApyTag: ({ apy, emptyLabel }: { apy?: number; emptyLabel?: string }) =>
+      apy
+        ? createElement('Text', null, `${apy.toFixed(1)}% APY`)
+        : emptyLabel
+          ? createElement('Text', null, emptyLabel)
+          : null,
     CheckDot: 'CheckDot',
     LockIcon: 'LockIcon',
   };
@@ -116,4 +120,26 @@ it('waits for the figures rather than showing a wrong one', () => {
   expect(textContent()).not.toContain('$104.20');
   expect(textContent()).not.toContain('+$10.95');
   expect(root.root.findAllByType('Skeleton').length).toBeGreaterThanOrEqual(2);
+});
+
+// EUR Yield is listed apart, in euros: its own row, "0.0% APY" for now, and nothing
+// of it in the dollar headline (the screen passes a total of the USD products only).
+it('shows EUR Yield in euros at 0% APY', () => {
+  render({
+    products: [
+      ...funded,
+      product(VaultType.EUR, {
+        valueUsd: undefined,
+        valueEur: 1500,
+        shareAmount: 1500,
+        apy: undefined,
+      }),
+    ],
+  });
+  const text = textContent();
+  expect(text).toContain('Total in Earn $2990.00');
+  expect(text).toContain('€1,500.00');
+  expect(text).toContain('1,500.00 soEURC');
+  expect(text).toContain('0.0% APY');
+  expect(text).not.toContain('$1,500.00');
 });

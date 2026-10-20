@@ -62,6 +62,21 @@ export const toSpendMode = (raw: number | bigint): SpendMode =>
 
 export const toContractMode = (mode: SpendMode): ContractSpendMode => MODE_TO_CONTRACT[mode];
 
+/**
+ * Which instances a switch to `target` has to be sent to.
+ *
+ * Fuse unless it is already there or already on its way; Base only for a Safe live there (module
+ * enabled and registered) whose mode differs. `base` is undefined where Base is not read at all.
+ */
+export const modeSwitchTargets = (
+  target: SpendMode,
+  fuse: { mode: SpendMode; pendingMode: SpendMode | null },
+  base: { live: boolean; mode: SpendMode } | undefined,
+): { fuse: boolean; base: boolean } => ({
+  fuse: fuse.mode !== target && fuse.pendingMode !== target,
+  base: base?.live === true && base.mode !== target,
+});
+
 /** Whether a mode needs the v2 module at all. Cash is what v1 already does. */
 export const requiresV2 = (mode: SpendMode): boolean => mode !== 'cash';
 
@@ -169,6 +184,30 @@ export const borrowApyPercent = (ratePerSecondWad: bigint): number => {
   const perSecond = Number(ratePerSecondWad) / Number(WAD);
   const yearly = Math.expm1(perSecond * 365 * 24 * 60 * 60);
   return Number.isFinite(yearly) ? yearly * 100 : 0;
+};
+
+/**
+ * One rate to quote for credit drawn on several instances, each with its own per-second rate.
+ *
+ * What the cardholder actually pays when there is debt: the rates weighted by it. With nothing
+ * drawn there is nothing to weight, so the highest rate is quoted — a line that might be drawn on
+ * either instance is never advertised as cheaper than one of them would charge.
+ */
+export const combinedBorrowRate = (
+  instances: readonly { debtUsd: bigint; borrowApyPerSecond: bigint }[],
+): bigint => {
+  const totalDebt = instances.reduce((sum, instance) => sum + instance.debtUsd, 0n);
+  if (totalDebt > 0n) {
+    const weighted = instances.reduce(
+      (sum, instance) => sum + instance.debtUsd * instance.borrowApyPerSecond,
+      0n,
+    );
+    return weighted / totalDebt;
+  }
+  return instances.reduce(
+    (max, instance) => (instance.borrowApyPerSecond > max ? instance.borrowApyPerSecond : max),
+    0n,
+  );
 };
 
 /** "5.57%" — two decimals, matching how the rate is quoted in the sheets. */

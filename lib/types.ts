@@ -1051,6 +1051,13 @@ export interface StatementDownload {
   content: string;
 }
 
+/** Whether the EUR vault may be offered to this user. See useEurVaultAccess. */
+export interface EurVaultAccessResponse {
+  enabled: boolean;
+  /** `cohort` — a Wirex test user. `open` — the gate is lifted. `not-in-cohort` — hidden. */
+  reason: 'cohort' | 'open' | 'not-in-cohort';
+}
+
 export interface CardSpendModeAccessResponse {
   /** Whether to render the spend-mode card and the borrow position at all. */
   enabled: boolean;
@@ -3108,12 +3115,16 @@ export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
   eth: number;
+  /** soEURC. 0 until the vault earns (absent or null on older APIs) — all read as "no APY". */
+  eur?: number | null;
 }
 
 export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
   eth: APYs;
+  /** soEURC. Zeroes until the vault earns; absent or null on older APIs. Both read as "no APY". */
+  eur?: APYs | null;
 }
 
 export interface HistoricalAPYPoint {
@@ -3589,6 +3600,8 @@ export enum VaultType {
   FUSE = 'fuse',
   USDC = 'usdc',
   ETH = 'eth',
+  /** soEURC on Base. Held and shown in EUR — never converted into a USD total. */
+  EUR = 'eur',
 }
 
 export interface SavingsDataQuality {

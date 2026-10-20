@@ -1,27 +1,88 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { TransactionReceipt } from 'viem';
-import { mainnet } from 'viem/chains';
+import { type Address, type Chain, TransactionReceipt, zeroAddress } from 'viem';
+import { base, mainnet } from 'viem/chains';
 import { encodeFunctionData } from 'viem/utils';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { getVaultKey, VaultKey } from '@/constants/withdraw';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { BASE_WITHDRAW_REQUEST } from '@/hooks/useBaseWithdrawRequests';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
+import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { getSoUsdWithdrawChain, SOUSD_WITHDRAW_CHAINS } from '@/lib/soUsdWithdraw';
 import { Status, TransactionType } from '@/lib/types';
 
 import useUser from './useUser';
 
+type CancelWithdrawTarget = {
+  chain: Chain;
+  queue: Address;
+  shareSymbol: string;
+  shareAddress: Address;
+};
+
+/**
+ * The queue a vault's withdraw request is cancelled on. A request can only be
+ * cancelled on the queue that holds it, so this used to send every cancel to the
+ * soUSD queue on Ethereum whatever vault the request was for.
+ *
+ * soUSD has a queue on each chain it withdraws on, so its target also depends on
+ * the chain the request was queued on: see {@link getCancelWithdrawTarget}.
+ *
+ * `undefined` where a user cannot cancel at all, and the activity screen then
+ * offers no Cancel button: the soFUSE queue does not make
+ * `cancelOnChainWithdrawUsingRequestId` a public capability (read from its
+ * RolesAuthority on 2026-10-14), so a cancel there can only revert. The soEURC
+ * queues on Base, QA's and production's, both do (read 2026-10-15).
+ */
+const CANCEL_TARGETS: Record<Exclude<VaultKey, 'USD'>, CancelWithdrawTarget | undefined> = {
+  ETH:
+    ADDRESSES.ethereum.soEthBoringQueue.toLowerCase() === zeroAddress
+      ? undefined
+      : {
+          chain: mainnet,
+          queue: ADDRESSES.ethereum.soEthBoringQueue,
+          shareSymbol: 'soETH',
+          shareAddress: ADDRESSES.ethereum.soEthVault,
+        },
+  FUSE: undefined,
+  EUR: {
+    chain: base,
+    queue: ADDRESSES.base.soEurcBoringQueue,
+    shareSymbol: 'soEURC',
+    shareAddress: ADDRESSES.base.soEurcVault,
+  },
+};
+
+/** soUSD's queue on the chain the request was queued on; Ethereum when it names none. */
+const soUsdCancelTarget = (chainId: number | undefined): CancelWithdrawTarget => {
+  const { chain, vault, boringQueue } =
+    SOUSD_WITHDRAW_CHAINS[getSoUsdWithdrawChain(chainId) ?? mainnet.id];
+  return { chain, queue: boringQueue, shareSymbol: 'soUSD', shareAddress: vault };
+};
+
+/**
+ * Where a withdraw activity's request can be cancelled, from the share symbol it
+ * was recorded with and the chain it was queued on. An activity whose symbol
+ * names no vault keeps the old soUSD behaviour, which is what every cancellable
+ * request was before vaults diverged; requests made before soUSD moved to Base,
+ * and any activity without a chain, are on Ethereum.
+ */
+export const getCancelWithdrawTarget = (
+  symbol: string | undefined,
+  chainId?: number,
+): CancelWithdrawTarget | undefined => {
+  const key = getVaultKey(symbol) ?? 'USD';
+  return key === 'USD' ? soUsdCancelTarget(chainId) : CANCEL_TARGETS[key];
+};
+
 type CancelOnChainWithdrawResult = {
-  /**
-   * `chainId` is the chain the request was queued on; requests made before soUSD
-   * moved to Base, and any activity without a chain, are on Ethereum.
-   */
   cancelOnchainWithdraw: (
     requestId: `0x${string}`,
+    symbol?: string,
     chainId?: number,
   ) => Promise<TransactionReceipt>;
   cancelOnchainWithdrawStatus: Status;
@@ -37,9 +98,16 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   );
   const [error, setError] = useState<string | null>(null);
 
-  const cancelOnchainWithdraw = async (requestId: `0x${string}`, chainId?: number) => {
-    const { chain, vault, boringQueue } =
-      SOUSD_WITHDRAW_CHAINS[getSoUsdWithdrawChain(chainId) ?? mainnet.id];
+  /**
+   * `symbol` is the withdraw activity's share symbol and `chainId` the chain it
+   * was queued on; together they pick the queue.
+   */
+  const cancelOnchainWithdraw = async (
+    requestId: `0x${string}`,
+    symbol?: string,
+    chainId?: number,
+  ) => {
+    const target = getCancelWithdrawTarget(symbol, chainId);
     try {
       if (!user) {
         track(TRACKING_EVENTS.CANCEL_WITHDRAW_ERROR, {
@@ -51,29 +119,32 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
         throw new Error('User not found');
       }
 
+      if (!target) {
+        throw new Error('This withdrawal cannot be cancelled');
+      }
+
       track(TRACKING_EVENTS.CANCEL_WITHDRAW_INITIATED, {
         request_id: requestId,
-        chain_id: chain.id,
+        chain_id: target.chain.id,
         source: 'useCancelOnchainWithdraw',
       });
 
       setCancelOnchainWithdrawStatus(Status.PENDING);
       setError(null);
 
-      let transactions = [];
+      const transactions = [
+        {
+          to: target.queue,
+          data: encodeFunctionData({
+            abi: BoringQueue_ABI,
+            functionName: 'cancelOnChainWithdrawUsingRequestId',
+            args: [requestId],
+          }),
+          value: 0n,
+        },
+      ];
 
-      // Add cancel onchain withdraw transaction
-      transactions.push({
-        to: boringQueue,
-        data: encodeFunctionData({
-          abi: BoringQueue_ABI,
-          functionName: 'cancelOnChainWithdrawUsingRequestId',
-          args: [requestId],
-        }),
-        value: 0n,
-      });
-
-      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(target.chain, user.suborgId, user.signWith);
 
       const result = await trackTransaction(
         {
@@ -81,14 +152,14 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
           title: 'Cancel onchain withdraw',
           shortTitle: 'Cancel withdraw',
           amount: '0',
-          symbol: 'soUSD',
-          chainId: chain.id,
+          symbol: target.shareSymbol,
+          chainId: target.chain.id,
           fromAddress: user.safeAddress,
-          toAddress: boringQueue,
+          toAddress: target.queue,
           metadata: {
             description: 'Cancel onchain withdraw request',
             requestId,
-            tokenAddress: vault,
+            tokenAddress: target.shareAddress,
           },
         },
         onUserOpHash =>
@@ -96,7 +167,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
             smartAccountClient,
             transactions,
             'Cancel onchain withdraw failed',
-            chain,
+            target.chain,
             onUserOpHash,
           ),
       );
@@ -117,7 +188,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
       track(TRACKING_EVENTS.CANCEL_WITHDRAW_COMPLETED, {
         request_id: requestId,
         transaction_hash: transaction.transactionHash,
-        chain_id: chain.id,
+        chain_id: target.chain.id,
         source: 'useCancelOnchainWithdraw',
       });
 

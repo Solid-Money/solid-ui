@@ -1,3 +1,5 @@
+import { isDevFeatureEnabled } from '@/lib/config';
+
 import { SavingsHelpGlowColor } from './SavingsHelpGlow';
 
 export interface SavingsHelpSlide {
@@ -14,8 +16,10 @@ export const SAVINGS_HELP_SLIDES: SavingsHelpSlide[] = [
     key: 'deposit',
     glowColor: 'purple',
     title: 'Deposit & earn',
-    description:
-      'Deposit USDC, ETH, or FUSE into Savings and start earning at the current rate right away.',
+    // EURC only where the EUR vault is listed — the same gate as its VAULTS entry.
+    description: isDevFeatureEnabled
+      ? 'Deposit USDC, EURC, ETH, or FUSE into Savings and start earning at the current rate right away.'
+      : 'Deposit USDC, ETH, or FUSE into Savings and start earning at the current rate right away.',
     cta: 'Next',
   },
   {

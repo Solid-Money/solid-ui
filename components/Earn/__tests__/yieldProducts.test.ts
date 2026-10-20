@@ -1,5 +1,6 @@
 import {
   formatShareRate,
+  formatYieldAmount,
   formatYieldUsd,
   openYieldProduct,
   YIELD_PRODUCT_ORDER,
@@ -42,5 +43,16 @@ describe('yield products', () => {
     expect(formatYieldUsd(0.004)).toBe('<$0.01');
     expect(formatYieldUsd(0)).toBe('$0.00');
     expect(formatYieldUsd(undefined)).toBe('—');
+  });
+
+  // EUR Yield is held and shown in euros: its figures never take a dollar sign.
+  it('names and prices EUR Yield in euros', () => {
+    expect(yieldProductName(VaultType.EUR)).toBe('EUR Yield');
+    expect(YIELD_PRODUCT_ORDER).not.toContain(VaultType.EUR);
+    expect(formatShareRate(VaultType.EUR, 1)).toBe('1 soEURC = 1.0000 EURC');
+    expect(formatYieldAmount(2560, VaultType.EUR)).toBe('€2,560.00');
+    expect(formatYieldAmount(0.004, VaultType.EUR)).toBe('<€0.01');
+    expect(formatYieldAmount(undefined, VaultType.EUR)).toBe('—');
+    expect(formatYieldAmount(9.244, VaultType.USDC)).toBe('$9.24');
   });
 });

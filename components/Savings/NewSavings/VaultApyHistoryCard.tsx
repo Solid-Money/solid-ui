@@ -156,7 +156,7 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
         <Skeleton className="absolute left-5 top-[50px] h-[28px] w-[82px] bg-white/10" />
       ) : (
         <Text className="absolute left-5 top-[50px] text-[26px] font-semibold leading-[28px] text-white">
-          {currentApy.toFixed(2)}%
+          {`${currentApy.toFixed(2)}%`}
         </Text>
       )}
 

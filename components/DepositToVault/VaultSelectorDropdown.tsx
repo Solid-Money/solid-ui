@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
+import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { AssetPath, getAsset } from '@/lib/assets';
 import { Vault, VaultType } from '@/lib/types';
@@ -20,11 +21,14 @@ const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
   [VaultType.USDC]: 'images/usd-yield-4x.png',
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
+  // TODO(soEURC): the EURC coin mark until design supplies an EUR Yield product icon.
+  [VaultType.EUR]: 'images/eurc.png',
 };
 const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();
+  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
   const { selectVaultForDeposit } = useSavingStore(
     useShallow(state => ({
       selectVaultForDeposit: state.selectVaultForDeposit,
@@ -144,6 +148,9 @@ const VaultSelectorDropdown = () => {
           >
             <View className="overflow-hidden rounded-2xl bg-card">
               {VAULTS.map((vault, index) => {
+                // Mapped over VAULTS rather than a filtered copy: the index is what
+                // selectVaultForDeposit stores, so it must stay the VAULTS index.
+                if (!isVaultOffered(vault.type, isEurVaultEnabled)) return null;
                 const isSelected = vault.name === selectedVault.name;
                 const isComingSoon = !!vault.isComingSoon;
                 return (

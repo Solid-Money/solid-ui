@@ -88,6 +88,7 @@ import {
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
+  EurVaultAccessResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
   FeatureAccessResponse,
@@ -4410,6 +4411,23 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
   return response.json();
 };
 
+/** Whether the EUR vault may be offered to this user — see useEurVaultAccess. */
+export const getEurVaultAccess = async (): Promise<EurVaultAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/savings/eur/access`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 /** Which whitelisted features this user has — see useHasFeature. */
 export const getFeatureAccess = async (): Promise<FeatureAccessResponse> => {
   const jwt = getJWTToken();
@@ -4732,12 +4750,18 @@ export const fetchHistoricalAPY = async (
   vault?: VaultType,
 ): Promise<HistoricalAPYPoint[]> => {
   const params = new URLSearchParams({ days });
+  // Every vault but the USD default names itself. soEURC used to fall to the
+  // default and would have charted the USD vault's history as its own; the
+  // analytics API takes `vault=eur` and answers a flat 0% until it earns.
   switch (vault) {
     case VaultType.FUSE:
       params.set('vault', VaultType.FUSE);
       break;
     case VaultType.ETH:
       params.set('vault', VaultType.ETH);
+      break;
+    case VaultType.EUR:
+      params.set('vault', VaultType.EUR);
       break;
     default:
   }

@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { View } from 'react-native';
-import { ArrowUp, Award, CreditCard, RefreshCw, TrendingUp } from 'lucide-react-native';
+import { ArrowUp, Award, CreditCard, Euro, RefreshCw, TrendingUp } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { VaultType } from '@/lib/types';
@@ -15,7 +15,9 @@ const NOTHING_TO_MANAGE: Benefit = {
   body: 'Interest is added to your balance automatically. Nothing to claim.',
 };
 
-/** Only what is true of each product: soUSD backs the card, soETH and soFUSE do not. */
+/**
+ * Only what is true of each product: soUSD backs the card, soETH and soFUSE do not.
+ */
 const BENEFITS: Record<VaultType, Benefit[]> = {
   [VaultType.USDC]: [
     {
@@ -59,6 +61,22 @@ const BENEFITS: Record<VaultType, Benefit[]> = {
       icon: TrendingUp,
       title: 'Keep your FUSE',
       body: 'soFUSE tracks FUSE, so you keep your exposure and earn on top of it.',
+    },
+    NOTHING_TO_MANAGE,
+  ],
+  // TODO(soEURC): product to review this copy.
+  [VaultType.EUR]: [
+    {
+      key: 'euros',
+      icon: Euro,
+      title: 'Stays in euros',
+      body: 'Deposit EURC on Base. Your balance is shown in euros, never converted to dollars.',
+    },
+    {
+      key: 'withdraw',
+      icon: ArrowUp,
+      title: 'Withdraw to EURC',
+      body: 'Withdrawals go through a queue and take up to about 3 days.',
     },
     NOTHING_TO_MANAGE,
   ],

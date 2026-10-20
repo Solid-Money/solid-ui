@@ -190,6 +190,7 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
     vault.name.toLowerCase(),
   );
   const sevenDayApy = Math.max(apys?.sevenDay ?? 0, 0);
+  const sevenDayApyLabel = formatNumber(sevenDayApy, 1) + '%';
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;
@@ -237,9 +238,7 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
             ) : (
               <>
                 <Text className="mt-0.5 text-[32px] font-semibold leading-[35px] text-white">
-                  {selectedStrategy
-                    ? formatPercent(selectedStrategy.allocation)
-                    : formatNumber(sevenDayApy, 1) + '%'}
+                  {selectedStrategy ? formatPercent(selectedStrategy.allocation) : sevenDayApyLabel}
                 </Text>
                 {selectedStrategy && (
                   <>

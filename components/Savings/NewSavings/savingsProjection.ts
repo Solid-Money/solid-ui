@@ -1,4 +1,5 @@
-import { ChartPayload } from '@/lib/types';
+import { ChartPayload, VaultType } from '@/lib/types';
+import { isEurVault } from '@/lib/vaultCurrency';
 
 /** Simulation horizon and sampling for the "Simulate your savings" chart. */
 export const SIMULATE_YEARS = 10;
@@ -7,6 +8,18 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 // Fixed base time so the series is stable across renders (x is only used for
 // ordering; the chart shows no date axis).
 const BASE_TIME = 1704067200000; // 2024-01-01
+
+/** Illustrative rate for a USD-valued vault whose APY has not loaded or is reported as 0. */
+const FALLBACK_SIMULATION_APY = 5;
+
+/**
+ * The rate the projection runs at. A USD-valued vault with no reported APY keeps
+ * the illustrative 5%; soEURC projects at its reported rate, 0% for now.
+ */
+export const simulationApy = (vaultType: VaultType, apy: number | undefined) => {
+  if (apy !== undefined && Number.isFinite(apy) && apy > 0) return apy;
+  return isEurVault(vaultType) ? 0 : FALLBACK_SIMULATION_APY;
+};
 
 /**
  * Compound-growth projection: value(t) = principal * (1 + apy)^t over

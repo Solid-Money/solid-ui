@@ -1,7 +1,9 @@
 import {
+  getSavingsFundNetworks,
   getSavingsFundTokenGroups,
   offersExternalWalletFunding,
   SAVINGS_FUND_CRYPTO,
+  SAVINGS_FUND_EURC,
   SAVINGS_FUND_STABLECOINS,
 } from '@/components/Savings/SavingsFund/constants';
 import { VAULTS } from '@/constants/vaults';
@@ -41,6 +43,27 @@ describe('getSavingsFundTokenGroups', () => {
       const { stablecoins, crypto } = getSavingsFundTokenGroups('savings', vault.vaultToken);
 
       expect([...stablecoins, ...crypto].length).toBeGreaterThan(0);
+    }
+  });
+
+  // The backend deposits EURC that lands on Base into soEURC and refunds it from
+  // anywhere else, so the EUR vault offers EURC on Base and nothing more.
+  it('offers EURC on Base for the EUR vault, and only there', () => {
+    const eur = getSavingsFundTokenGroups('savings', 'soEURC');
+    expect(eur.stablecoins).toEqual([SAVINGS_FUND_EURC]);
+    expect(eur.crypto).toEqual([]);
+    expect(SAVINGS_FUND_EURC).toMatchObject({ vaultToken: 'soEURC', chainIds: [8453] });
+    expect(getSavingsFundNetworks('EURC').map(network => network.chainId)).toEqual([8453]);
+
+    // Not in the vault-less list, not at the card's soUSD gate, not on another vault.
+    for (const [intent, vaultToken] of [
+      ['savings', undefined],
+      ['card_deposit', undefined],
+      ['card_deposit', 'soEURC'],
+      ['savings', 'soUSD'],
+    ] as const) {
+      const { stablecoins, crypto } = getSavingsFundTokenGroups(intent, vaultToken);
+      expect([...stablecoins, ...crypto].map(token => token.symbol)).not.toContain('EURC');
     }
   });
 

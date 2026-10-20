@@ -101,6 +101,34 @@ export const baseEurcSpendableAsset = (addresses: string[]): CardSpendableAsset 
   qualifier: 'for euro purchases',
 });
 
+/**
+ * Everything the Base instance spends, as named entries: EURC, and soEUR once the instance
+ * allowlists it.
+ *
+ * The backend serves the instance's spend tokens as one list. Read as one EURC entry, soEUR on it
+ * was described to the cardholder as EURC; this names each by address, soEUR by this build's soEUR
+ * vault, and keeps every other address under EURC as before.
+ */
+export const baseSpendableAssets = (addresses: string[]): CardSpendableAsset[] => {
+  const soEur = ADDRESSES.base.soEurcVault.toLowerCase();
+  const lower = addresses.map(address => address.toLowerCase());
+  const eurc = lower.filter(address => address !== soEur);
+
+  return [
+    ...(eurc.length ? [baseEurcSpendableAsset(eurc)] : []),
+    ...(lower.includes(soEur)
+      ? [
+          {
+            symbol: 'soEUR',
+            chainIds: [base.id],
+            addresses: [soEur],
+            qualifier: 'for euro purchases',
+          },
+        ]
+      : []),
+  ];
+};
+
 const joinWithAnd = (items: string[]): string =>
   items.length <= 1
     ? (items[0] ?? '')

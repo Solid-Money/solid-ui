@@ -1,5 +1,5 @@
 import {
-  baseEurcSpendableAsset,
+  baseSpendableAssets,
   CARD_SPENDABLE_ASSETS,
   CardSpendableAsset,
 } from '@/constants/cardSpendableAssets';
@@ -87,7 +87,7 @@ export const cardSpendableAssetsFor = (
     (BASE_SPEND_DEPLOYMENT.spendTokenAddress ? [BASE_SPEND_DEPLOYMENT.spendTokenAddress] : []);
   if (!addresses.length) return CARD_SPENDABLE_ASSETS;
 
-  return [...CARD_SPENDABLE_ASSETS, baseEurcSpendableAsset(addresses)];
+  return [...CARD_SPENDABLE_ASSETS, ...baseSpendableAssets(addresses)];
 };
 
 /**

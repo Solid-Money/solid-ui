@@ -66,9 +66,26 @@ export const SAVINGS_FUND_CRYPTO: SavingsFundToken[] = [
   },
 ];
 
+/**
+ * EURC mints soEURC (the EUR vault, on Base), sent from Base only: the backend's
+ * savings deposit route deposits EURC that lands on Base into soEURC (for the
+ * Safe) and refunds EURC that arrives on any other chain.
+ *
+ * Offered on the EUR vault's own screen and nowhere else — not in the vault-less
+ * list, and never at the card's soUSD gate — so it follows that vault onto
+ * QA/preview builds only (see `EUR_VAULT`).
+ */
+export const SAVINGS_FUND_EURC: SavingsFundToken = {
+  symbol: 'EURC',
+  vaultToken: 'soEURC',
+  icon: getAsset('images/eurc.png'),
+  chainIds: [base.id],
+};
+
 export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
   ...SAVINGS_FUND_STABLECOINS,
   ...SAVINGS_FUND_CRYPTO,
+  SAVINGS_FUND_EURC,
 ];
 
 /**
@@ -77,8 +94,9 @@ export const SAVINGS_FUND_TOKENS: SavingsFundToken[] = [
  *
  * Each vault now has its own savings screen, so its Deposit button offers only
  * the tokens that mint its share token — USDC / USDT for soUSD, ETH for soETH,
- * WFUSE for soFUSE. `vaultToken` omitted means "no vault picked": the full list,
- * which is what the tests and any caller predating per-vault screens expect.
+ * WFUSE for soFUSE, EURC for soEURC. `vaultToken` omitted means "no vault
+ * picked": the full list, which is what the tests and any caller predating
+ * per-vault screens expect (EURC is not on it — see SAVINGS_FUND_EURC).
  *
  * `card_deposit` is the card's minimum-deposit gate, which completes off the
  * soUSD balance alone — so it offers only the stablecoins that mint soUSD,
@@ -93,9 +111,14 @@ export const getSavingsFundTokenGroups = (
   const targetVaultToken = intent === 'card_deposit' ? 'soUSD' : vaultToken;
   const forVault = (tokens: SavingsFundToken[]) =>
     targetVaultToken ? tokens.filter(token => token.vaultToken === targetVaultToken) : tokens;
+  // EURC only on the EUR vault's own screen.
+  const stablecoins =
+    targetVaultToken === SAVINGS_FUND_EURC.vaultToken
+      ? [...SAVINGS_FUND_STABLECOINS, SAVINGS_FUND_EURC]
+      : SAVINGS_FUND_STABLECOINS;
 
   return {
-    stablecoins: forVault(SAVINGS_FUND_STABLECOINS),
+    stablecoins: forVault(stablecoins),
     crypto: intent === 'card_deposit' ? [] : forVault(SAVINGS_FUND_CRYPTO),
   };
 };

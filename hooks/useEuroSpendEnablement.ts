@@ -106,7 +106,12 @@ interface EuroSpendEnablement {
 }
 
 /** Where "turn on euro spending" was tapped. Rides on the started event as `source`. */
-export type EuroSpendEnableSource = 'card_screen' | 'home_banner' | 'declined_receipt' | 'deposit';
+export type EuroSpendEnableSource =
+  | 'card_screen'
+  | 'home_banner'
+  | 'declined_receipt'
+  | 'deposit'
+  | 'spend_mode_sheet';
 
 /**
  * The user's spend-module deployments as the backend records them.

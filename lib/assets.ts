@@ -1434,6 +1434,18 @@ export const ASSETS = {
     hash: '13207041',
   },
   'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: '7b63e869' },
+  'images/spend-mode-badge-dot.svg': {
+    module: require('@/assets/images/spend-mode-badge-dot.svg'),
+    hash: 'ca18418a',
+  },
+  'images/spend-mode-collateral-eur.svg': {
+    module: require('@/assets/images/spend-mode-collateral-eur.svg'),
+    hash: '8b001621',
+  },
+  'images/spend-mode-collateral-usd.svg': {
+    module: require('@/assets/images/spend-mode-collateral-usd.svg'),
+    hash: '7a6755dc',
+  },
   'images/spend-mode-credit-notice-badge.svg': {
     module: require('@/assets/images/spend-mode-credit-notice-badge.svg'),
     hash: '04ab236e',
@@ -1441,6 +1453,18 @@ export const ASSETS = {
   'images/spend-mode-credit-notice-bg.png': {
     module: require('@/assets/images/spend-mode-credit-notice-bg.png'),
     hash: '37d02537',
+  },
+  'images/spend-mode-token-usdc.svg': {
+    module: require('@/assets/images/spend-mode-token-usdc.svg'),
+    hash: '313dd787',
+  },
+  'images/spend-mode-token-usdt.svg': {
+    module: require('@/assets/images/spend-mode-token-usdt.svg'),
+    hash: 'fd012dce',
+  },
+  'images/spend-mode-yield-usd.svg': {
+    module: require('@/assets/images/spend-mode-yield-usd.svg'),
+    hash: '115d5000',
   },
   'images/spend-yellow.png': {
     module: require('@/assets/images/spend-yellow.png'),

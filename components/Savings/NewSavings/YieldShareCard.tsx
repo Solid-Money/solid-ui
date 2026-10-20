@@ -5,6 +5,7 @@ import { ChevronRight, CreditCard } from 'lucide-react-native';
 import YieldIcon from '@/components/Earn/YieldIcon';
 import {
   formatShareRate,
+  formatYieldAmount,
   formatYieldUsd,
   yieldProductName,
   yieldVault,
@@ -65,6 +66,7 @@ const ShareRow = ({
 interface YieldShareCardProps {
   vaultType: VaultType;
   walletShares: number;
+  /** In the product's currency: euros for EUR Yield, dollars otherwise (as is `escrowedUsd`). */
   walletUsd: number | undefined;
   escrowedShares: number;
   escrowedUsd: number | undefined;
@@ -102,7 +104,7 @@ const YieldShareCard = ({
           icon={<YieldIcon vaultType={vaultType} badge="live" />}
           title={token}
           subtitle={`${formatTokenAmount(walletShares)} ${token}`}
-          value={formatYieldUsd(walletUsd)}
+          value={formatYieldAmount(walletUsd, vaultType)}
           detail="In your wallet"
           accessibilityLabel={`Open ${token}`}
           onPress={onOpenWallet}
@@ -121,7 +123,7 @@ const YieldShareCard = ({
           }
           title="Backing your card"
           subtitle={`${formatTokenAmount(escrowedShares)} ${token}`}
-          value={formatYieldUsd(escrowedUsd)}
+          value={formatYieldAmount(escrowedUsd, vaultType)}
           detail={
             debtUsd !== undefined && debtUsd > 0
               ? `${formatYieldUsd(debtUsd).replace(/\.00$/, '')} borrowed`
@@ -146,8 +148,9 @@ const YieldShareCard = ({
         ))}
       </View>
       <Text className="text-[13px] leading-[18px] text-white/50">
-        {token} is the token you hold for {product}. The number of {token} stays the same; each one
-        becomes worth more as interest is added.{rate ? ` ${rate}.` : ''}
+        {token} is the token you hold for {product}.{' '}
+        {`The number of ${token} stays the same; each one becomes worth more as interest is added.`}
+        {rate ? ` ${rate}.` : ''}
       </Text>
     </View>
   );

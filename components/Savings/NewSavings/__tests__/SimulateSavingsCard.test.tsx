@@ -1,6 +1,7 @@
 import React from 'react';
 
 import SimulateSavingsCard from '@/components/Savings/NewSavings/SimulateSavingsCard';
+import { VaultType } from '@/lib/types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { act, create } = require('react-test-renderer');
@@ -24,27 +25,31 @@ jest.mock('@/lib/utils', () => ({
 it('uses balances arriving after mount while retaining a manual selection between balance updates', () => {
   let tree: any;
   act(() => {
-    tree = create(<SimulateSavingsCard apy={5} />);
+    tree = create(<SimulateSavingsCard vaultType={VaultType.USDC} apy={5} />);
   });
   const dropdown = () => tree.root.findByType('AmountDropdown');
   expect(dropdown().props.amount).toBe(10000);
   act(() => {
-    tree.update(<SimulateSavingsCard apy={5} initialPrincipal={2450.4} />);
+    tree.update(
+      <SimulateSavingsCard vaultType={VaultType.USDC} apy={5} initialPrincipal={2450.4} />,
+    );
   });
   expect(dropdown().props.amount).toBe(2450);
   act(() => {
     dropdown().props.onSelect(100);
   });
   act(() => {
-    tree.update(<SimulateSavingsCard apy={6} initialPrincipal={2450.4} />);
+    tree.update(
+      <SimulateSavingsCard vaultType={VaultType.USDC} apy={6} initialPrincipal={2450.4} />,
+    );
   });
   expect(dropdown().props.amount).toBe(100);
   act(() => {
-    tree.update(<SimulateSavingsCard apy={6} initialPrincipal={3000} />);
+    tree.update(<SimulateSavingsCard vaultType={VaultType.USDC} apy={6} initialPrincipal={3000} />);
   });
   expect(dropdown().props.amount).toBe(3000);
   act(() => {
-    tree.update(<SimulateSavingsCard apy={6} />);
+    tree.update(<SimulateSavingsCard vaultType={VaultType.USDC} apy={6} />);
   });
   expect(dropdown().props.amount).toBe(3000);
   act(() => tree.unmount());
