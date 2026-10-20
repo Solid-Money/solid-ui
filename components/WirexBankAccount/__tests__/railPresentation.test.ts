@@ -267,4 +267,11 @@ describe('RAIL_PRESENTATION', () => {
     expect(blurb).toContain('euros');
     expect(blurb).toContain('in your own name');
   });
+
+  it('says the euros arrive as euros', () => {
+    // Paid on as EURC, never converted to dollars.
+    const { blurb } = RAIL_PRESENTATION[WirexBankAccountType.SEPA];
+    expect(blurb).toContain('EURC');
+    expect(blurb).not.toContain('dollars');
+  });
 });
