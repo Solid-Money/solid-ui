@@ -35,6 +35,7 @@ import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
   getNonce,
+  isHTTPError,
   isPasskeyPromptError,
   mergeCredentialIds,
   parseStampHeaderValueCredentialId,
@@ -302,34 +303,6 @@ const useUser = (): UseUserReturn => {
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
-      if (!user.safeAddress || user.safeAddress === '') {
-        console.warn('[useUser] updating safe address on login (missing on user)', {
-          userId: user._id,
-          safeAddress: smartAccountClient.account.address,
-        });
-
-        const resp = await withRefreshToken(() =>
-          updateSafeAddress(smartAccountClient.account.address),
-        );
-
-        if (!resp) {
-          const error = new Error('Error updating safe address on login');
-
-          Sentry.captureException(error, {
-            tags: {
-              type: 'safe_address_update_error',
-            },
-            user: {
-              id: user._id,
-              address: smartAccountClient.account.address,
-            },
-          });
-        }
-
-        // Mark as synced to avoid repeated attempts elsewhere
-        markSafeAddressSynced(user._id);
-      }
-
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         walletAddress: user.walletAddress,
@@ -354,6 +327,34 @@ const useUser = (): UseUserReturn => {
         hasPasskey: user.hasPasskey ?? true,
       };
       storeUser(selectedUser);
+
+      // An account whose signup failed after the server created it (the Safe
+      // address is worked out on the device, over our RPC) reaches login without
+      // one. Saved after `storeUser`: on native the request's JWT is read from
+      // the selected user in the store, and before it there was none — or
+      // another account's — so the save was refused with a 401 that failed the
+      // login, every time, and the account could never be opened.
+      //
+      // Best-effort: usePostSignupInit retries it once the app has loaded, for
+      // as long as the account is not marked synced.
+      if (!user.safeAddress) {
+        try {
+          await withRefreshToken(() => updateSafeAddress(selectedUser.safeAddress));
+          markSafeAddressSynced(user._id);
+        } catch (error) {
+          // 409: the server already holds one.
+          if (isHTTPError(error, 409)) {
+            markSafeAddressSynced(user._id);
+          } else {
+            console.warn('[useUser] failed to save the safe address on login', error);
+            Sentry.captureException(error, {
+              level: 'warning',
+              tags: { type: 'safe_address_update_error' },
+              user: { id: user._id, address: selectedUser.safeAddress },
+            });
+          }
+        }
+      }
 
       // Persist the recovered credential server-side. Fired after `storeUser`
       // because on native the request's JWT is read from the selected user in
