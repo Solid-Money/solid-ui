@@ -107,13 +107,16 @@ export default function SupportChat() {
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   // Keep the largest window height seen at this width. A resize can arrive
   // before keyboardDidShow, so keyboard.visible alone cannot establish the baseline.
-  const fullWindowRef = useRef({ width: windowWidth, height: windowHeight });
-  if (fullWindowRef.current.width !== windowWidth) {
-    fullWindowRef.current = { width: windowWidth, height: windowHeight };
-  } else {
-    fullWindowRef.current.height = Math.max(fullWindowRef.current.height, windowHeight);
-  }
-  const windowResize = Math.max(0, fullWindowRef.current.height - windowHeight);
+  const [fullWindow, setFullWindow] = useState({ width: windowWidth, height: windowHeight });
+  useEffect(() => {
+    setFullWindow(previous => {
+      if (previous.width !== windowWidth) return { width: windowWidth, height: windowHeight };
+      if (windowHeight > previous.height) return { ...previous, height: windowHeight };
+      return previous;
+    });
+  }, [windowHeight, windowWidth]);
+  const windowResize =
+    fullWindow.width === windowWidth ? Math.max(0, fullWindow.height - windowHeight) : 0;
   const androidLift =
     Platform.OS === 'android'
       ? androidKeyboardLift(keyboard.height, insets.bottom, windowResize)
