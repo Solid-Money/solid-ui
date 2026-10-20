@@ -147,15 +147,12 @@ export const canDepositToCard = (provider: CardProvider | null | undefined): boo
  *
  * Keyed on which provider issues the user's VIRTUAL ACCOUNT, not on who issues
  * their card. The exclusion only ever had one reason — a Wirex virtual account
- * supports no wire, and what it receives settles into the Wirex balance rather
- * than the Safe — and that is a fact about the account, not the card.
+ * is a EUR IBAN, with no wire or ACH — and that is a fact about the account,
+ * not the card. Its euros are offered as the Cash list's EUR row instead.
  *
- * Reading it off the card was the same answer only while a Wirex cardholder
- * necessarily got a Wirex account. They no longer do: Wirex has not launched
- * its virtual account, so every user is routed to a RAIN one, which does
- * support wire and ACH and does settle into the Safe. Keyed on the card, this
- * hid the rail from Wirex cardholders who had a perfectly good Rain account
- * waiting — the wallet offered them no USD bank option at all.
+ * Reading it off the card would hide the rail from a Wirex cardholder who
+ * opened a Rain account before Wirex launched its own; that account does
+ * support wire and ACH and does settle into the Safe.
  *
  * `loading` counts as having the rail, so the row does not pop in for everyone
  * while the lookup settles; the entry point re-reads the provider when pressed.

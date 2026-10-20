@@ -20,13 +20,14 @@ import { useDimension } from '@/hooks/useDimension';
 import { useOnboardingFeeQuote } from '@/hooks/useOnboardingFee';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
+import { checkVaAccess } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { checkProductAccess } from '@/lib/countryAccess';
 import { detectGeo } from '@/lib/geo';
-import { DepositModal, OnboardingFeeProduct } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { DepositModal, OnboardingFeeProduct, VaAccessResponse } from '@/lib/types';
+import { formatNumber, withRefreshToken } from '@/lib/utils';
 import { needsDocumentCountryCheck } from '@/lib/utils/virtualAccountDocumentCountry';
 import { getVirtualAccountRainStatus } from '@/lib/utils/virtualAccountRainStatus';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -90,6 +91,23 @@ const feeCell = (feeUsd: number | undefined): Benefit => {
     label: 'One-time\nsetup fee',
     textBadge: `$${formatNumber(feeUsd, 2, 0)}`,
   };
+};
+
+/**
+ * Ask the server about a Rain account on an ID from `countryCode`, passing where
+ * the app thinks the user lives — the same hint the bank screen routes on — so
+ * the two agree on the provider. Null when the check itself failed, which is
+ * not a no.
+ */
+const checkRainVirtualAccount = async (countryCode: string): Promise<VaAccessResponse | null> => {
+  try {
+    const residence =
+      useCountryStore.getState().countryInfo?.countryCode ?? (await detectGeo())?.countryCode;
+    return (await withRefreshToken(() => checkVaAccess(countryCode, residence))) ?? null;
+  } catch (error) {
+    console.error(`Error checking virtual account access for ${countryCode}:`, error);
+    return null;
+  }
 };
 
 const BenefitCell = ({ benefit }: { benefit: Benefit }) => (
@@ -205,6 +223,14 @@ export const VirtualAccountApplyModal = ({
     [onRequestDepositModal, setModal],
   );
 
+  const proceedToWirex = useCallback(() => {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+      provider: 'wirex',
+      rain_application_status: getVirtualAccountRainStatus(cardStatus) ?? 'not_started',
+    });
+    requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+  }, [cardStatus, requestDepositModal]);
+
   const proceed = useCallback(() => {
     // The Rain row's state, not the primary row's. For a Wirex cardholder the
     // primary row is their Wirex card, so the flat field read "not started"
@@ -222,11 +248,7 @@ export const VirtualAccountApplyModal = ({
     // Their details screen owns activation, including the "verify with Sumsub
     // first" state.
     if (action.type === 'wirex-details') {
-      track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
-        provider: 'wirex',
-        rain_application_status: rainStatus ?? 'not_started',
-      });
-      requestDepositModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+      proceedToWirex();
       return;
     }
 
@@ -251,7 +273,7 @@ export const VirtualAccountApplyModal = ({
     // which is exactly what "Verify now" looked like from the outside. Send
     // them to the page that carries the application's real state instead.
     router.push(action.type === 'rain-application' ? path.CARD_PENDING : path.KYC);
-  }, [cardStatus, requestDepositModal, router, setKycFlow, virtualAccountProvider]);
+  }, [cardStatus, proceedToWirex, requestDepositModal, router, setKycFlow, virtualAccountProvider]);
 
   /**
    * The verified KYC residence, when there is one — the document is checked
@@ -265,8 +287,10 @@ export const VirtualAccountApplyModal = ({
     const kycCountry = cardStatus?.country?.toUpperCase();
     if (!kycCountry) return null;
 
-    const hasAccess = await checkProductAccess('virtual_account', kycCountry);
-    if (hasAccess !== false) return null;
+    // Only Rain's answer can block here; a Wirex account is the bank screen's
+    // to decide, and the caller has already handed that case over.
+    const access = await checkRainVirtualAccount(kycCountry);
+    if (!access || access.provider === 'wirex' || access.hasAccess) return null;
 
     return {
       countryCode: kycCountry,
@@ -339,7 +363,17 @@ export const VirtualAccountApplyModal = ({
 
     setIsChecking(true);
     try {
-      const hasAccess = await checkProductAccess('virtual_account', documentCountry.code);
+      const access = await checkRainVirtualAccount(documentCountry.code);
+
+      // Where they live is an IBAN country after all — the routing answer
+      // changed under us, or arrived late. Their account is Wirex's, with no
+      // setup fee and no Didit check, so nothing is charged here.
+      if (access?.provider === 'wirex') {
+        setIsDocumentCountryStep(false);
+        proceedToWirex();
+        return;
+      }
+      const hasAccess = access ? access.hasAccess : null;
 
       track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_DOCUMENT_COUNTRY_CONFIRMED, {
         country_code: documentCountry.code,
@@ -387,7 +421,7 @@ export const VirtualAccountApplyModal = ({
     } finally {
       setIsChecking(false);
     }
-  }, [documentCountry, findBlockedKycResidence]);
+  }, [documentCountry, findBlockedKycResidence, proceedToWirex]);
 
   // "Change country" from the unavailable pop-up, back to the ID picker. Only
   // offered when the document answer is what blocked them: a verified

@@ -1,19 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { BankAccountDetailsView } from '@/components/DepositOption/VirtualAccountDetails/BankAccountDetailsView';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
+import {
+  useActivateWirexBankAccount,
+  useWirexBankOverview,
+  WIREX_BANK_OVERVIEW_KEY,
+} from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
+import { getWirexBankOverview } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { checkProductAccess } from '@/lib/countryAccess';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
-import { cn } from '@/lib/utils';
+import { cn, withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -24,6 +34,7 @@ import {
   unavailableReason,
   visibleRails as pickVisibleRails,
 } from './railPresentation';
+import { WirexResidenceStep } from './WirexResidenceStep';
 
 /** EUR / USD segmented control, shown only when the user has both rails. */
 const RailSwitcher = ({
@@ -153,8 +164,12 @@ export const WirexBankAccountDetails = ({
   const activate = useActivateWirexBankAccount();
   const walletLink = useWirexWalletLink();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setModal = useDepositStore(state => state.setModal);
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
+  const [isAskingResidence, setIsAskingResidence] = useState(false);
+  const [isConfirmingResidence, setIsConfirmingResidence] = useState(false);
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
   const visibleRails = useMemo(() => pickVisibleRails(overview), [overview]);
@@ -223,9 +238,68 @@ export const WirexBankAccountDetails = ({
    * modal open over it strands the user behind it on return.
    */
   function startVerification() {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, { provider: 'wirex' });
     useKycStore.getState().setKycFlow('va');
     setModal(DEPOSIT_MODAL.CLOSE);
     router.push(path.SUMSUB_KYC as never);
+  }
+
+  /**
+   * The server picked Wirex from where the app thinks the user is, and Sumsub
+   * will not start on that guess. Asked only until the user has named their
+   * country by hand — that answer is what the session is sent.
+   */
+  const needsResidence = !!overview?.residenceRequired && countrySource !== 'manual';
+
+  function handleVerifyPress() {
+    if (needsResidence) {
+      setIsAskingResidence(true);
+      return;
+    }
+    startVerification();
+  }
+
+  /**
+   * Record where they live, then re-ask routing on it: an IBAN country goes on
+   * to Sumsub, anywhere else gets the Rain account pitch instead.
+   */
+  async function confirmResidence(country: Country) {
+    const code = country.code.toUpperCase();
+    setIsConfirmingResidence(true);
+    try {
+      // `isAvailable` in the store means the CARD to everyone who reads it, so
+      // it is answered for the card, as the card's country screen does.
+      const cardAccess = await checkProductAccess('card', code);
+      useCountryStore.getState().setCountryInfo({
+        countryCode: code,
+        countryName: country.name,
+        isAvailable: cardAccess === true,
+        source: 'manual',
+      });
+      const routed = await queryClient.fetchQuery({
+        queryKey: [WIREX_BANK_OVERVIEW_KEY, code],
+        queryFn: () => withRefreshToken(() => getWirexBankOverview(code)),
+      });
+      setIsAskingResidence(false);
+      if (routed?.provider === 'wirex') {
+        startVerification();
+        return;
+      }
+      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: "Couldn't check your country",
+        text2: 'Please try again in a moment.',
+        props: { badgeText: '' },
+      });
+    } finally {
+      setIsConfirmingResidence(false);
+    }
+  }
+
+  if (isAskingResidence) {
+    return <WirexResidenceStep onConfirm={confirmResidence} isConfirming={isConfirmingResidence} />;
   }
 
   // Wirex serves this user's country but they have never verified. The button
@@ -235,13 +309,13 @@ export const WirexBankAccountDetails = ({
     return (
       <View className="flex-1 items-center justify-center gap-4 py-12">
         <Text className="text-center text-base text-white">
-          Verify your identity to open a bank account.
+          Verify your identity to open your euro account.
         </Text>
         <Text className="px-8 text-center text-sm text-white/60">
-          You will need a photo ID. If you already verified for a Solid card, this is the same check
-          — it takes a moment to pick up.
+          You will need a photo ID and a proof of address. It is the same check as the Solid card,
+          so you only do it once.
         </Text>
-        <Button className="h-12 rounded-2xl px-6" onPress={startVerification}>
+        <Button className="h-12 rounded-2xl px-6" onPress={handleVerifyPress}>
           <Text className="text-base font-bold text-black">Verify identity</Text>
         </Button>
       </View>

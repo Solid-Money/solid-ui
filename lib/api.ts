@@ -173,6 +173,7 @@ import {
   TransfiStatusResponse,
   UpdateActivityEvent,
   User,
+  VaAccessResponse,
   VaultBreakdown,
   VaultType,
   WalletEligibilityResponse,
@@ -1751,9 +1752,15 @@ const wirexBankHeaders = (withBody = false) => {
  * Always 200 — a user with no Wirex account comes back as
  * `{ rails: [], isWirexUser: false }` rather than a 404, so the caller reads
  * that flag instead of handling an error.
+ *
+ * `countryHint` is where the app thinks the user is. The server routes on it
+ * only for a user with no residence on file, and stores nothing.
  */
-export const getWirexBankOverview = async (): Promise<WirexBankOverviewDto> => {
-  const response = await fetch(WIREX_BANK_BASE, {
+export const getWirexBankOverview = async (countryHint?: string): Promise<WirexBankOverviewDto> => {
+  const url = new URL(WIREX_BANK_BASE);
+  if (countryHint) url.searchParams.append('country', countryHint.toUpperCase());
+
+  const response = await fetch(url.toString(), {
     credentials: 'include',
     headers: wirexBankHeaders(),
   });
@@ -2271,10 +2278,19 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
   return response.json();
 };
 
-export const checkVaAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+/**
+ * Whether the Rain virtual account can be opened on an ID from `countryCode`,
+ * and which provider the user's account comes from. `residence` is where the
+ * app thinks the user lives, used only when the server has none on file.
+ */
+export const checkVaAccess = async (
+  countryCode: string,
+  residence?: string,
+): Promise<VaAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/didit/check-va-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
   url.searchParams.append('countryCode', countryCode.toUpperCase());
+  if (residence) url.searchParams.append('residence', residence.toUpperCase());
 
   const response = await fetch(url.toString(), {
     credentials: 'include',

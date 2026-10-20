@@ -49,6 +49,15 @@ export interface CardAccessResponse {
   countryCode: string;
 }
 
+export interface VaAccessResponse extends CardAccessResponse {
+  /**
+   * Which provider the user's account comes from. When it is `wirex`,
+   * `hasAccess` is false — there is no Rain account to open — and the user
+   * belongs on the Wirex bank screen instead. Absent from older servers.
+   */
+  provider?: 'wirex' | 'rain';
+}
+
 export interface CardWaitlistResponse {
   isInWaitlist: boolean;
   email?: string;

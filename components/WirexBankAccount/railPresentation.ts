@@ -30,7 +30,11 @@ export const RAIL_PRESENTATION: Record<WirexBankAccountType, RailPresentation> =
   [WirexBankAccountType.SEPA]: {
     label: 'EUR',
     title: 'Virtual EUR account',
-    blurb: 'Receive euro transfers straight into your Solid account over SEPA',
+    // Wirex accepts only first-party deposits in euros: a transfer from someone
+    // else's account, or in another currency, is sent back. Deposits are paid
+    // into the Solid account in dollars.
+    blurb:
+      'Send euros by SEPA from a bank account in your own name. They arrive in your Solid account in dollars',
     flag: 'images/eu.png',
   },
   [WirexBankAccountType.ACH]: {
