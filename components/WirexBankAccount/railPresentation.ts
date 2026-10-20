@@ -31,10 +31,10 @@ export const RAIL_PRESENTATION: Record<WirexBankAccountType, RailPresentation> =
     label: 'EUR',
     title: 'Virtual EUR account',
     // Wirex accepts only first-party deposits in euros: a transfer from someone
-    // else's account, or in another currency, is sent back. Deposits are paid
-    // into the Solid account in dollars.
+    // else's account, or in another currency, is sent back. Deposits stay in
+    // euros end to end — they are paid into the Solid account as EURC.
     blurb:
-      'Send euros by SEPA from a bank account in your own name. They arrive in your Solid account in dollars',
+      'Send euros by SEPA from a bank account in your own name. They arrive in your Solid account as EURC',
     flag: 'images/eu.png',
   },
   [WirexBankAccountType.ACH]: {
