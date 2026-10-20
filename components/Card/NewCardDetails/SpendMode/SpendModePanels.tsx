@@ -40,8 +40,6 @@ export const balancePanelHeight = (
   BALANCE_PANEL_BOTTOM;
 /** Figma 25961:3504. Fixed, so the sheet can reserve room for any stack of these. */
 export const BORROWED_PANEL_HEIGHT = 126;
-/** Figma 29128:9537: 14 above and below the two-line label. */
-export const ENABLE_EURO_CARD_HEIGHT = 73;
 
 /**
  * Figma 29123:9483, which grows a 58pt row per collateral asset: the borrowed block and the

@@ -476,6 +476,26 @@ interface Balances {
    * something other than dollars and the quote is under a day old.
    */
   available_in_card_currency?: CardCurrencyAmount;
+  /**
+   * `available` in euros at the price the card spends EURC at, with that rate. Wirex cards only;
+   * what a euro main currency shows. Absent when the backend could not read the EURC price.
+   */
+  available_in_eur?: CardEurAmount;
+}
+
+/**
+ * The currency a Wirex cardholder picked as their main one: the currency their balances show in
+ * and that a purchase in a third currency is paid from first. Euro and dollar shops ignore it.
+ */
+export type MainCurrency = 'USD' | 'EUR';
+
+/** A Wirex card's spendable figure in euros, at the EURC price. */
+export interface CardEurAmount {
+  /** Decimal string, rounded down to the cent: "211.45". */
+  amount: string;
+  currency: 'eur';
+  /** USD per euro — the price the card spends EURC at, no card spread. */
+  usd_per_eur: number;
 }
 
 /** A Wirex card's spendable figure in the currency it is billed in. */
@@ -494,6 +514,8 @@ export interface CardCurrencyAmount {
 export interface CardSpendableResponse {
   available: { amount: string; currency: 'usd' };
   available_in_card_currency?: CardCurrencyAmount;
+  available_in_eur?: CardEurAmount;
+  main_currency?: MainCurrency;
 }
 
 interface CryptoAccount {
@@ -591,6 +613,8 @@ export interface CardDetailsResponseDto extends CardResponse {
    * the user's KYC residence.
    */
   issuing_country?: string;
+  /** Wirex cards only: the cardholder's main currency. Absent reads as dollars. */
+  main_currency?: MainCurrency;
 }
 
 /**

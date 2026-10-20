@@ -13,7 +13,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
 import { EASE_OUT_QUINT } from '@/components/Card/NewCardDetails/heroMotion';
 import {
   type CardSheetPresentation,
@@ -27,7 +26,6 @@ import {
   balancePanelHeight,
   BORROWED_PANEL_HEIGHT,
   creditPanelHeight,
-  ENABLE_EURO_CARD_HEIGHT,
   SPEND_MODE_NOTICE_HEIGHT,
   SpendModeBalancePanel,
   SpendModeBorrowedPanel,
@@ -60,8 +58,7 @@ import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMod
  *   action button     537
  *
  * A mode with no notice starts its first card closer: the balance panel
- * {@link CAPTION_TO_BALANCE_PANEL} below the caption (Figma 29120:9364), the "Enable euro
- * spending" card above it {@link CAPTION_TO_EURO_CARD} below (Figma 29128:9415), and Credit's
+ * {@link CAPTION_TO_BALANCE_PANEL} below the caption (Figma 29120:9364), and Credit's
  * panel {@link CAPTION_TO_CREDIT_PANEL} below (Figma 29123:9389).
  *
  * The heading is given a 36pt line box rather than Figma's 24, which would clip
@@ -73,12 +70,8 @@ const SUBTITLE_TO_CONTROL = 30;
 const CONTROL_TO_CAPTION = 19;
 /** Figma 29120:9364: the caption ends at 245, the balance panel starts at 277. */
 const CAPTION_TO_BALANCE_PANEL = 32;
-/** Figma 29128:9415: the caption ends at 246, the enable card starts at 271. */
-const CAPTION_TO_EURO_CARD = 25;
 /** The Credit frame with collateral (Figma 29123:9389) starts its panel closer: 246 → 276. */
 const CAPTION_TO_CREDIT_PANEL = 30;
-/** Figma 29128:9415: the enable card ends at 344, the balance panel starts at 359. */
-const EURO_CARD_TO_PANEL = 15;
 const CAPTION_TO_NOTICE = 17;
 const NOTICE_TO_PANEL = 42;
 const PANEL_GAP = 12;
@@ -88,8 +81,8 @@ export const SPEND_MODE_SHEET_TOP = 50;
 /** The sheet keeps this much below the button, before any safe-area inset. */
 export const SPEND_MODE_SHEET_BOTTOM = 57;
 
-/** A card in the stack: one of the mode's panels, or the "Enable euro spending" card. */
-type SheetCard = SpendModePanel | 'enableEuro';
+/** A card in the stack: one of the mode's panels. */
+type SheetCard = SpendModePanel;
 
 /** What sizes the cards: the rows the balance and Credit panels list. */
 interface StackSizes {
@@ -97,36 +90,20 @@ interface StackSizes {
   collateralRows: number;
 }
 
-/**
- * The cards a mode stacks under its caption. The enable card leads any mode that shows the
- * balance, while euro spending is still off: it is what adds EURC to that balance.
- */
-const cardsFor = (mode: SpendMode, offersEuroSpend: boolean): SheetCard[] => {
-  const panels = SPEND_MODE_COPY[mode].panels;
-  return offersEuroSpend && panels.includes('balance') ? ['enableEuro', ...panels] : [...panels];
-};
+/** The cards a mode stacks under its caption. */
+const cardsFor = (mode: SpendMode): SheetCard[] => [...SPEND_MODE_COPY[mode].panels];
 
 /** A card's height; the balance and Credit panels grow with the rows they list. */
 const cardHeight = (card: SheetCard, sizes: StackSizes) =>
-  card === 'enableEuro'
-    ? ENABLE_EURO_CARD_HEIGHT
-    : card === 'balance'
-      ? balancePanelHeight(sizes.balanceRows)
-      : card === 'borrowed'
-        ? BORROWED_PANEL_HEIGHT
-        : creditPanelHeight(sizes.collateralRows);
+  card === 'balance'
+    ? balancePanelHeight(sizes.balanceRows)
+    : card === 'borrowed'
+      ? BORROWED_PANEL_HEIGHT
+      : creditPanelHeight(sizes.collateralRows);
 
 /** Space from the caption to the first card's top, without any notice. */
 const captionToCard = (first: SheetCard | undefined) =>
-  first === 'enableEuro'
-    ? CAPTION_TO_EURO_CARD
-    : first === 'credit'
-      ? CAPTION_TO_CREDIT_PANEL
-      : CAPTION_TO_BALANCE_PANEL;
-
-/** Space above a card that follows another. */
-const gapBefore = (card: SheetCard, previous: SheetCard) =>
-  previous === 'enableEuro' ? EURO_CARD_TO_PANEL : PANEL_GAP;
+  first === 'credit' ? CAPTION_TO_CREDIT_PANEL : CAPTION_TO_BALANCE_PANEL;
 
 /** Space from the caption to the first card, through the notice when the mode has one. */
 const leadHeight = (mode: SpendMode, cards: readonly SheetCard[], noticeHeight: number) =>
@@ -143,18 +120,12 @@ const leadHeight = (mode: SpendMode, cards: readonly SheetCard[], noticeHeight: 
  * offered, a shorter mode leaves space below its card and nothing else moves, and a hidden
  * mode reserves no space at all.
  */
-const panelsMinHeight = (
-  modes: readonly SpendMode[],
-  noticeHeight: number,
-  sizes: StackSizes,
-  offersEuroSpend: boolean,
-) =>
+const panelsMinHeight = (modes: readonly SpendMode[], noticeHeight: number, sizes: StackSizes) =>
   Math.max(
     ...modes.map(mode => {
-      const cards = cardsFor(mode, offersEuroSpend);
+      const cards = cardsFor(mode);
       const heights = cards.reduce(
-        (sum, card, index) =>
-          sum + cardHeight(card, sizes) + (index > 0 ? gapBefore(card, cards[index - 1]) : 0),
+        (sum, card, index) => sum + cardHeight(card, sizes) + (index > 0 ? PANEL_GAP : 0),
         0,
       );
       return leadHeight(mode, cards, noticeHeight) + heights;
@@ -184,11 +155,6 @@ interface SpendModeSheetContentProps {
    * made of, and `cash`, the dollar balance a Cash purchase draws on, for the Cash segment.
    */
   balance: { total: string; cash: string; rows: readonly SpendableAssetRow[] };
-  /**
-   * "Enable euro spending", offered above the balance until euro spending is on. Absent when it
-   * is not offered.
-   */
-  euroSpend?: { isEnabling: boolean; error?: string; onEnable: () => void };
   /**
    * Bumped every time the sheet opens, which resets the selection so a sheet
    * reopened after browsing Credit doesn't come back still showing it.
@@ -225,7 +191,6 @@ const SpendModeSheetContent = ({
   figures,
   credit,
   balance,
-  euroSpend,
   session,
   onConfirm,
   isSwitching,
@@ -248,16 +213,15 @@ const SpendModeSheetContent = ({
     (event: LayoutChangeEvent) => setNoticeHeight(event.nativeEvent.layout.height),
     [],
   );
-  const offersEuroSpend = euroSpend !== undefined;
   const sizes = useMemo(
     () => ({ balanceRows: balance.rows, collateralRows: credit.collateral.length }),
     [balance.rows, credit.collateral.length],
   );
   const panelsStyle = useMemo(
-    () => ({ minHeight: panelsMinHeight(modes, noticeHeight, sizes, offersEuroSpend) }),
-    [modes, noticeHeight, sizes, offersEuroSpend],
+    () => ({ minHeight: panelsMinHeight(modes, noticeHeight, sizes) }),
+    [modes, noticeHeight, sizes],
   );
-  const cards = cardsFor(selected, offersEuroSpend);
+  const cards = cardsFor(selected);
   const segmentValue = useMemo(
     () => ({ ...figures.segmentValue, cash: balance.cash, credit: credit.availableToBorrow }),
     [figures.segmentValue, balance.cash, credit.availableToBorrow],
@@ -395,18 +359,8 @@ const SpendModeSheetContent = ({
             </View>
           ) : null}
           {cards.map((panel, index) => (
-            <View
-              key={panel}
-              style={index > 0 ? { marginTop: gapBefore(panel, cards[index - 1]) } : undefined}
-            >
-              {panel === 'enableEuro' && euroSpend ? (
-                <EnableEuroSpendCard
-                  variant="sheet"
-                  isEnabling={euroSpend.isEnabling}
-                  error={euroSpend.error}
-                  onEnable={euroSpend.onEnable}
-                />
-              ) : panel === 'balance' ? (
+            <View key={panel} style={index > 0 ? { marginTop: PANEL_GAP } : undefined}>
+              {panel === 'balance' ? (
                 <SpendModeBalancePanel
                   balance={balance.total}
                   rows={balance.rows}

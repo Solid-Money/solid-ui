@@ -48,6 +48,7 @@ describe('routeForLink', () => {
     ['/', path.HOME],
     ['/card', path.CARD_INFO],
     ['/card/activate', path.CARD_ACTIVATE],
+    ['/card/main-currency', path.CARD_MAIN_CURRENCY],
     ['/savings', path.SAVINGS],
     ['/activity', path.ACTIVITY],
     ['/referral', path.REFERRAL],

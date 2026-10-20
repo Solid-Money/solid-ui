@@ -27,7 +27,6 @@ import {
 import CardLinksList from '@/components/Card/NewCardDetails/CardLinksList';
 import CardRevealSection from '@/components/Card/NewCardDetails/CardRevealSection';
 import EnableCardSpendingCard from '@/components/Card/NewCardDetails/EnableCardSpendingCard';
-import EnableEuroSpendCard from '@/components/Card/NewCardDetails/EnableEuroSpendCard';
 import EnableRealTimeFundingCard from '@/components/Card/NewCardDetails/EnableRealTimeFundingCard';
 import { EASE_OUT_QUINT, HERO_ENTER, HeroEnter } from '@/components/Card/NewCardDetails/heroMotion';
 import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
@@ -52,7 +51,6 @@ import {
 } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
-import useEuroSpendEnablement from '@/hooks/useEuroSpendEnablement';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
@@ -134,7 +132,6 @@ const CardDetailsPane = () => {
   // Which funds the card draws on — cash, credit or both. UI only for now: the
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
-  const euroSpend = useEuroSpendEnablement();
   /**
    * Real-Time Funding: the card draws from the cardholder's own wallet at the
    * moment of the swipe, on an ERC-20 allowance they grant in advance.
@@ -387,19 +384,6 @@ const CardDetailsPane = () => {
               <SpendingModeCard mode={spendModeFigures.mode} onChangeMode={openSpendMode} />
             </HeroEnter>
           ) : null}
-          {/* Wirex cards only, and gone for good once enabled — the backend stores the enablement per
-              chain, so it does not come back on another device. Offered in the spend-mode sheet,
-              above the balance it adds EURC to (Figma 29128:9415), so it shows here only for a
-              card with no spend mode row to open that sheet from. */}
-          {euroSpend.shouldOffer && !spendModeFigures.canChangeMode ? (
-            <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.euroSpendCard}>
-              <EnableEuroSpendCard
-                isEnabling={euroSpend.isEnabling}
-                error={euroSpend.error}
-                onEnable={() => euroSpend.enable('card_screen')}
-              />
-            </HeroEnter>
-          ) : null}
           {/* Until the allowance is granted, Rain declines every authorization on
               this card — so this starts as a blocking task, not an option, and
               it sits with the other "how this card spends" rows rather than
@@ -561,7 +545,6 @@ const styles = StyleSheet.create({
   // to the spend-mode row, then 20 between each card down the stack.
   actionsRow: { marginTop: 51 },
   spendModeCard: { marginTop: 53 },
-  euroSpendCard: { marginTop: 20 },
   realTimeFundingCard: { marginTop: 20 },
   borrowPositionCard: { marginTop: 20 },
   cashbackCard: { marginTop: 20 },

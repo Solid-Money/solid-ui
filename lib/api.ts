@@ -109,6 +109,7 @@ import {
   LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
+  MainCurrency,
   MppCredentialsResponse,
   OnboardingFeeProduct,
   OnboardingFeeQuote,
@@ -4317,6 +4318,36 @@ export const getCardSpendable = async (): Promise<CardSpendableResponse> => {
     },
     credentials: 'include',
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Sets the Wirex cardholder's main currency. No transaction: it takes effect on the next payment.
+ *
+ * Euro is refused with a 400 until EURC is turned on for the card, so callers run that approval
+ * first. Switching back to dollars leaves EURC on.
+ */
+export const setCardMainCurrency = async (
+  mainCurrency: MainCurrency,
+): Promise<{ main_currency: MainCurrency }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/main-currency`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ main_currency: mainCurrency }),
+    },
+  );
 
   if (!response.ok) throw response;
 

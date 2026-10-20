@@ -4,9 +4,11 @@ import {
   chooseDeclineFix,
   declinedPaymentFigures,
   formatCardCurrency,
+  formatEur,
   roundUpShortfall,
   shortfallOf,
   spendableDisplay,
+  usdToEur,
 } from '@/lib/utils/cardCurrency';
 
 const EUR_SPENDABLE = {
@@ -190,5 +192,24 @@ describe('chooseDeclineFix', () => {
         shortfallUsd: 21.4,
       }),
     ).toBe('add_funds');
+  });
+});
+
+describe('euro main currency', () => {
+  it('converts dollars to euros at the EURC price, rounded down to the cent', () => {
+    // The design's pair: $246.50 at 1.1657 USD per euro.
+    expect(usdToEur(246.5, 1.1657)).toBe(211.46);
+    expect(usdToEur(160, 1.1657)).toBe(137.25);
+    expect(usdToEur(0, 1.1657)).toBe(0);
+  });
+
+  it('never rounds a cent up', () => {
+    expect(usdToEur(1.17, 1.17)).toBe(1);
+    expect(usdToEur(1.1699, 1.17)).toBe(0.99);
+  });
+
+  it('formats euros like dollars: cents only when there are any', () => {
+    expect(formatEur(211.45)).toBe('€211.45');
+    expect(formatEur(1000)).toBe('€1,000');
   });
 });
