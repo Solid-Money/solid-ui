@@ -15,7 +15,10 @@ import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { BASE_SPEND_DEPLOYMENT } from '@/constants/spendModuleDeployments';
+import {
+  BASE_SPEND_DEPLOYMENT,
+  isSpendDeploymentConfigured,
+} from '@/constants/spendModuleDeployments';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
 import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { useHoldsBaseEuros, useMainCurrency } from '@/hooks/useMainCurrency';
@@ -85,8 +88,22 @@ export default function MainCurrencyScreen() {
     }
   };
 
+  // Whether EURC can be turned on from here: this build has the Base addresses and the backend has
+  // not switched Base off. The Euro card stays on screen either way; only the approval waits.
+  const canTurnOnEurc =
+    isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT) && euro.deployment?.available !== false;
+
   const handleSwitch = () => {
     if (selected === 'EUR' && !euro.isEnabled) {
+      if (!canTurnOnEurc) {
+        Toast.show({
+          type: 'error',
+          text1: 'Euro is not available right now',
+          text2: 'Paying with EURC is switched off for the moment. Please try again later.',
+          props: { badgeText: '' },
+        });
+        return;
+      }
       euro.clearError();
       setIsApprovalOpen(true);
       return;

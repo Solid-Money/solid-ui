@@ -199,6 +199,12 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
         throw new Error('Paying with EURC is not available in this version of the app.');
       }
 
+      // The backend's kill switch. Its module address is then null and the build's would be used,
+      // so the user would sign an enablement the confirm then refuses to record.
+      if (deployment?.available === false) {
+        throw new Error('Paying with EURC is not available right now. Please try again later.');
+      }
+
       // The backend's address wins over the build's. The app can be weeks behind a redeploy, and
       // enabling a module the backend does not operate produces a Safe that consents to a contract
       // nothing will ever debit — a silent failure the user has no way to see.

@@ -17,7 +17,7 @@ import {
 } from '@/constants/spendModuleDeployments';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { CARD_STATUS_QUERY_KEY, useCardStatus } from '@/hooks/useCardStatus';
-import { useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
+import { useCardSpendDeployments, useEuroSpendEnablement } from '@/hooks/useEuroSpendEnablement';
 import { WALLET_ELIGIBILITY_KEY } from '@/hooks/useWalletEligibility';
 import { createCard, submitCardConsents } from '@/lib/api';
 import { showErrorToast } from '@/lib/errors';
@@ -87,6 +87,7 @@ export default function CardReady() {
   // The Base instance, which lets the card pay with EURC. Registered at activation beside Fuse, so
   // a new cardholder's card can pay euro shops from EURC without a second setup later.
   const euroSpend = useEuroSpendEnablement();
+  const { refetch: refetchSpendDeployments } = useCardSpendDeployments();
 
   const countryCode = useCountryStore(state => state.countryInfo?.countryCode);
   const setShouldShowWelcomePopup = useCardWelcomePopupStore(
@@ -276,6 +277,21 @@ export default function CardReady() {
       return true;
     } catch (error) {
       console.error('Error enabling EURC spending during activation:', error);
+
+      // The backend's record gets the last word, as the chain does for the Fuse grant: a confirm
+      // that landed while its response was lost is a finished grant. A user operation whose
+      // receipt timed out needs no new signature either — the next press reads the chain, finds
+      // both halves done and only confirms.
+      try {
+        const { data } = await refetchSpendDeployments();
+        const base = data?.deployments.find(
+          deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
+        );
+        if (base?.enabled) return true;
+      } catch {
+        // The read failed too; fall through and report the original failure.
+      }
+
       void showErrorToast(error, {
         action: 'card_activate',
         body: 'No card was created. Try again in a moment.',
