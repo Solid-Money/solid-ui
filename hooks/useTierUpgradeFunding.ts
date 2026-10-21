@@ -110,8 +110,18 @@ export const useCashPayment = ({
 
   return useMemo(() => {
     const coverUsd = arrivedFundingCoverUsd({ funding, feeUsd, fuseUsdc, coverPct });
+    const needUsd = fundingNeedUsd(feeUsd, fuseUsdc);
     const chosenKey = chosen ? `${chosen.chainId}:${chosen.address.toLowerCase()}` : undefined;
-    const picked = chosenKey ? tokens.find(token => cashTokenKey(token) === chosenKey) : undefined;
+    // A token on another chain is only honoured while Fuse is actually short:
+    // with the fee already there, there is nothing to bridge, and the charge
+    // is taken from USDC on Fuse whatever the row says.
+    const picked = chosenKey
+      ? tokens.find(
+          token =>
+            cashTokenKey(token) === chosenKey &&
+            (needUsd > 0 || !billingTokenAddress || isBillingToken(token, billingTokenAddress)),
+        )
+      : undefined;
     // Until the Fuse balance has been read, the default stays on USDC on Fuse:
     // picking a token on another chain off a balance of zero that is merely
     // still loading would flip the row from Base to Fuse a moment later.
@@ -135,7 +145,7 @@ export const useCashPayment = ({
       token,
       payingFromFuse,
       /** What is still missing on Fuse — what a bridged payment sends. */
-      needUsd: fundingNeedUsd(feeUsd, fuseUsdc),
+      needUsd,
       /** What an arrived bridged payment earns off the first charge. */
       coverUsd,
       coverPct,
