@@ -23,6 +23,7 @@ const tokenAmount = (raw: string, decimals: number) =>
 const WAIVE_COPY: Record<string, string> = {
   TierFree: 'Free on your tier',
   Disabled: 'Free',
+  TierUpgrade: 'Free for your upgrade',
 };
 
 /**

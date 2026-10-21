@@ -586,4 +586,10 @@ export const TIER_UPGRADE_MODAL = {
     name: 'open_token_selector',
     number: 1.5,
   },
+  // After the review: a payment from another chain is on its way to Fuse, and
+  // the membership is started from here once it lands.
+  OPEN_FUNDING_STATUS: {
+    name: 'open_funding_status',
+    number: 3,
+  },
 };

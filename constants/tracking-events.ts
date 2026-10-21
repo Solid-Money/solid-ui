@@ -557,6 +557,10 @@ export const TRACKING_EVENTS = {
   TIER_SUBSCRIBE_CANCELLED: 'tier_subscribe_cancelled',
   TIER_SUBSCRIBE_COMPLETED: 'tier_subscribe_completed',
   TIER_SUBSCRIBE_FAILED: 'tier_subscribe_failed',
+  // Paying the annual fee from another chain: the LI.FI swap into USDC on Fuse.
+  TIER_FUNDING_SWAP_PRESSED: 'tier_funding_swap_pressed',
+  TIER_FUNDING_SWAP_SENT: 'tier_funding_swap_sent',
+  TIER_FUNDING_SWAP_FAILED: 'tier_funding_swap_failed',
   TIER_SUBSCRIPTION_CANCEL_COMPLETED: 'tier_subscription_cancel_completed',
   TIER_SUBSCRIPTION_RESUME_COMPLETED: 'tier_subscription_resume_completed',
   TIER_MEMBERSHIP_SHEET_OPENED: 'tier_membership_sheet_opened',

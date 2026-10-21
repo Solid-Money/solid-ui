@@ -7,12 +7,14 @@ import Loading from '@/components/Loading';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
+import { CHAIN_NAMES } from '@/constants/chains';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useNativePriceUsd } from '@/hooks/useNativePriceUsd';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { useTierMembership, useTierUpgradeChainState } from '@/hooks/useTierMembership';
+import { useCashPayment } from '@/hooks/useTierUpgradeFunding';
 import { track } from '@/lib/analytics';
 import { openHelpLink } from '@/lib/help/links';
 import { lockTokenRow } from '@/lib/lockTokenRows';
@@ -39,7 +41,9 @@ import {
   nextPurchasableTier,
   remainingFuseForTier,
 } from '@/lib/tierUpgrade';
+import { tokenAmount, tokenUsd } from '@/lib/tierUpgradeFunding';
 import { RewardsTier, VaultType } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTierUpgradeStore } from '@/store/useTierUpgradeStore';
 
@@ -86,6 +90,7 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
   const selectToken = useTierUpgradeStore(state => state.selectToken);
   const chosenAsset = useTierUpgradeStore(state => state.lockAsset);
   const close = useTierUpgradeStore(state => state.close);
+  const showFunding = useTierUpgradeStore(state => state.showFunding);
 
   // The tier the opener named, else the cheapest they do not already hold — so
   // an "Upgrade" press from a screen that has no idea which tier it means still
@@ -96,6 +101,9 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
   // Memoised because the effect below depends on it: a fresh array every render
   // would re-run the effect every render for no reason.
   const routes = useMemo(() => availableRoutes(offer), [offer]);
+  // Called up here with the rest of the hooks: the early returns below would
+  // otherwise change how many run from one render to the next.
+  const payment = useCashPayment({ membership, chain, feeUsd: offer?.annualFeeUsd ?? 0 });
 
   // Settles on a route once the offer is known, and re-settles if the one in
   // hand stops being available — a tier taken off cash sale while the modal is
@@ -180,16 +188,28 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
   // row above the shortfall names.
   const shortfallFuse = Math.max(0, remainingFuse - paymentBalanceFuse);
 
+  // The cash route pays from whichever token the row above names, and only
+  // falls back to the Fuse-only check when the backend has not said which USDC
+  // it bills in — an older backend, which has no bridged route to offer.
   const affordable =
     route === 'cash'
-      ? canAffordUpgrade({
-          route,
-          offer,
-          lockedFuse: membership.lock.lockedFuse,
-          availableFuse: balances.sofuse,
-          availableUsdc,
-        })
+      ? payment.billingTokenAddress
+        ? payment.affordable
+        : canAffordUpgrade({
+            route,
+            offer,
+            lockedFuse: membership.lock.lockedFuse,
+            availableFuse: balances.sofuse,
+            availableUsdc,
+          })
       : canPayLockWith(paymentAsset, remainingFuse, balances);
+  // A bridged payment already on its way: the next step is to watch it land,
+  // not to start a second one.
+  const fundingInFlight = route === 'cash' && payment.funding.state === 'pending';
+  const cashToken = payment.token;
+  const cashChainName = cashToken ? (CHAIN_NAMES[cashToken.chainId] ?? 'another network') : '';
+  const inFlightUsdc =
+    payment.funding.state === 'pending' ? Number(payment.funding.swap.toAmount) || 0 : 0;
 
   const handleRoute = (next: typeof route) => {
     setRoute(next);
@@ -259,11 +279,39 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
       <View className="mt-5 overflow-hidden rounded-[20px] bg-[#1C1C1C]">
         {route === 'cash' ? (
           <>
+            {/* The token first, as on the lock route: it decides the balance
+                below and whether this is one signature or a bridge and two.
+                Static when USDC on Fuse is the only thing the user holds. */}
+            {payment.billingTokenAddress && cashToken ? (
+              <TierDetailRow label="Pay with" withDivider>
+                <WalletTokenButton
+                  selectedToken={cashToken}
+                  onPress={selectToken}
+                  disabled={payment.tokens.length < 2}
+                  tickerFontSize={16}
+                />
+              </TierDetailRow>
+            ) : null}
             <TierDetailRow label="Annual Fee" value={formatUsd(offer.annualFeeUsd)} withDivider />
-            <TierDetailRow
-              label="Your balance"
-              value={`${formatUsdHeld(availableUsdc).replace('$', '')} USDC`}
-            />
+            {payment.payingFromFuse || !cashToken ? (
+              <TierDetailRow
+                label="Your balance"
+                value={`${formatUsdHeld(availableUsdc).replace('$', '')} USDC`}
+                secondaryValue={
+                  fundingInFlight
+                    ? `+ ${formatNumber(inFlightUsdc, 2)} USDC on its way`
+                    : payment.coverUsd > 0
+                      ? `Bridge fees covered: ${formatUsd(payment.coverUsd)}`
+                      : undefined
+                }
+              />
+            ) : (
+              <TierDetailRow
+                label="Your balance"
+                value={`${formatNumber(tokenAmount(cashToken), 6)} ${cashToken.contractTickerSymbol}`}
+                secondaryValue={`≈ ${formatUsd(tokenUsd(cashToken))} on ${cashChainName}`}
+              />
+            )}
           </>
         ) : (
           <>
@@ -324,7 +372,11 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
 
       <Text className="mt-6 text-center text-[15px] leading-5 text-white/50">
         {route === 'cash'
-          ? `${keeping ? 'Keep' : 'Upgrade to'} the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee${keeping ? ' after your trial' : ''}. `
+          ? `${keeping ? 'Keep' : 'Upgrade to'} the ${offer.tier === RewardsTier.ULTRA ? 'Ultra' : 'Prime'} tier with\nan annual fee${keeping ? ' after your trial' : ''}. ${
+              !payment.payingFromFuse && cashToken
+                ? `Your ${cashToken.contractTickerSymbol} on ${cashChainName} is moved to Fuse for you, and the bridge fees are on us. `
+                : ''
+            }`
           : paymentAsset === 'soFUSE'
             ? `Locks the FUSE already in your Savings for ${formatLockDuration(membership.lock.durationDays)} to hold the tier. It keeps earning while it is locked. `
             : `Deposits your ${paymentAsset} into Savings and locks it for ${formatLockDuration(membership.lock.durationDays)} to hold the tier, in one transaction. It keeps earning while it is locked. `}
@@ -339,11 +391,17 @@ const UpgradeTierContent = ({ onRouteSelected }: UpgradeTierContentProps) => {
 
       <Button
         variant="brand"
-        onPress={affordable ? handleReview : handleTopUp}
+        onPress={fundingInFlight ? showFunding : affordable ? handleReview : handleTopUp}
         className="mt-8 h-14 rounded-full"
       >
         <Text className="text-base font-bold text-black">
-          {affordable ? (keeping ? 'Review' : 'Review upgrade') : 'Top up'}
+          {fundingInFlight
+            ? 'View payment progress'
+            : affordable
+              ? keeping
+                ? 'Review'
+                : 'Review upgrade'
+              : 'Top up'}
         </Text>
       </Button>
 
