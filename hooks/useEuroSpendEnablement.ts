@@ -185,7 +185,7 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
 
-  const { data, isLoading } = useCardSpendDeployments();
+  const { data, isLoading, refetch } = useCardSpendDeployments();
 
   const deployment = data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
 
@@ -199,18 +199,22 @@ export const useEuroSpendEnablement = (): EuroSpendEnablement => {
         throw new Error('Paying with EURC is not available in this version of the app.');
       }
 
-      // The backend's kill switch. Its module address is then null and the build's would be used,
-      // so the user would sign an enablement the confirm then refuses to record.
-      if (deployment?.available === false) {
+      // Nothing is signed until the backend has described the deployment: read it now if the
+      // screen's copy has not landed. Missing, switched off (`CASH_BASE_ENABLED=false`) or with no
+      // module address, there is nothing the confirm would record — signing anyway leaves a Safe
+      // consenting to a module no purchase will ever be routed to.
+      const confirmed =
+        deployment ??
+        (await refetch()).data?.deployments.find(d => d.chainId === BASE_SPEND_DEPLOYMENT.chainId);
+      if (!confirmed || confirmed.available === false || !confirmed.moduleAddress) {
         throw new Error('Paying with EURC is not available right now. Please try again later.');
       }
 
-      // The backend's address wins over the build's. The app can be weeks behind a redeploy, and
+      // Only the backend's address, never the build's. The app can be weeks behind a redeploy, and
       // enabling a module the backend does not operate produces a Safe that consents to a contract
       // nothing will ever debit — a silent failure the user has no way to see.
-      const moduleAddress = (deployment?.moduleAddress ??
-        BASE_SPEND_DEPLOYMENT.moduleAddress) as Address;
-      const safeAddress = (deployment?.safeAddress ?? user.safeAddress) as Address;
+      const moduleAddress = confirmed.moduleAddress as Address;
+      const safeAddress = (confirmed.safeAddress ?? user.safeAddress) as Address;
 
       // Read the chain immediately before building the batch, so a partially completed enablement
       // — one call landed, the other reverted or was abandoned — resumes rather than reverting on
