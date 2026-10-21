@@ -336,10 +336,13 @@ const useUser = (): UseUserReturn => {
       // login, every time, and the account could never be opened.
       //
       // Best-effort: usePostSignupInit retries it once the app has loaded, for
-      // as long as the account is not marked synced.
+      // as long as the account is not marked synced. So a refresh that fails
+      // here must not end the session this login has just opened.
       if (!user.safeAddress) {
         try {
-          await withRefreshToken(() => updateSafeAddress(selectedUser.safeAddress));
+          await withRefreshToken(() => updateSafeAddress(selectedUser.safeAddress), {
+            onError: () => {},
+          });
           markSafeAddressSynced(user._id);
         } catch (error) {
           // 409: the server already holds one.

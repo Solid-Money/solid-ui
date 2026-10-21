@@ -88,7 +88,9 @@ jest.mock('@/lib/analytics', () => ({
   track: jest.fn(),
   trackIdentity: jest.fn(),
 }));
-jest.mock('@/lib/intercom', () => ({ useIntercom: () => ({}) }));
+jest.mock('@/lib/intercom', () => ({
+  useIntercom: () => ({ boot: jest.fn(), shutdown: jest.fn() }),
+}));
 jest.mock('@/hooks/useAnalytics', () => ({ fetchIsDeposited: jest.fn(async () => 0) }));
 jest.mock('@/store/usePointsStore', () => ({
   usePointsStore: {
@@ -216,6 +218,26 @@ describe('login saves a missing Safe address', () => {
       expect.anything(),
       expect.objectContaining({ tags: { type: 'safe_address_update_error' } }),
     );
+  });
+
+  it('keeps the session when the save is refused and the refresh fails too', async () => {
+    // The refresh failing would end the session through the global logout
+    // handler — unselecting the account this login has just stored, while the
+    // login itself went on to report success and open the app.
+    mockFetch.mockImplementation(async (url: string) => ({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+      url,
+    }));
+
+    await logIn();
+
+    expect(saveRequests()).toHaveLength(1);
+    expect(useUserStore.getState().users.find(u => u.selected)?.userId).toBe('user-1');
+    expect(useUserStore.getState().safeAddressSynced['user-1']).toBeUndefined();
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith(path.HOME);
   });
 
   it('takes a 409 to mean the server already holds one', async () => {
