@@ -4,9 +4,11 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useReinitOnRefocus } from '@/components/kyc/useReinitOnRefocus';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
+import { WIREX_BANK_OVERVIEW_KEY } from '@/hooks/useWirexBankAccounts';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
 import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
@@ -14,6 +16,7 @@ import { resolveRoutingCountry } from '@/lib/kycProviderRouting';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
 import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -134,8 +137,9 @@ export function useDiditSession() {
   destinationRef.current =
     session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
   const retryRedirect = useCallback(() => {
-    router.replace((destinationRef.current ?? String(path.CARD_ACTIVATE)) as any);
-  }, [router]);
+    const fallback = kycFlow === 'va' ? path.CARD_PENDING : path.CARD_ACTIVATE;
+    router.replace((destinationRef.current ?? String(fallback)) as any);
+  }, [kycFlow, router]);
 
   /**
    * One automatic retry, because the hand-off is only ever a pass-through: if we
@@ -267,6 +271,23 @@ export function useDiditSession() {
         router.replace(path.CARD_COUNTRY_SELECTION as any);
         return;
       }
+      /**
+       * VIRTUAL_ACCOUNT_PROVIDER_MISMATCH (400): this user's account comes from
+       * Wirex — they verified with Sumsub already, live in an IBAN country, or
+       * an admin switched them. A Didit check would be a second verification,
+       * so the server refused it before the setup fee; send them to the Wirex
+       * bank screen, which owns their verification and account.
+       */
+      if (e?.code === 'VIRTUAL_ACCOUNT_PROVIDER_MISMATCH') {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+          provider: 'wirex',
+          action: 'provider_mismatch',
+        });
+        queryClient.invalidateQueries({ queryKey: [WIREX_BANK_OVERVIEW_KEY] });
+        useDepositStore.getState().setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+        router.replace(path.HOME as any);
+        return;
+      }
       // CARD_DEPOSIT_REQUIRED (400): the applicant is not holding the minimum
       // savings deposit, so the backend refuses to start a verification we would
       // be charged for. This is not an error state — it is the first step of the
@@ -312,7 +333,7 @@ export function useDiditSession() {
       setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
       void showErrorToast(e, { action: 'kyc' });
     }
-  }, [debugState, kycFlow, redirectBasedOnKycStatus, router]);
+  }, [debugState, kycFlow, queryClient, redirectBasedOnKycStatus, router]);
 
   const markStarted = useCallback(() => {
     // Persisted so the home screen can tell "started verification and walked

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { Minus, Plus } from 'lucide-react-native';
 
@@ -11,10 +12,15 @@ import {
   getCardFundLocalPaymentMethods,
 } from '@/components/Card/CardFund/localCurrencies';
 import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions';
+import { resolveEurCashRow } from '@/components/DepositOption/eurCashRow';
 import { Text } from '@/components/ui/text';
+import { WirexResidenceStep } from '@/components/WirexBankAccount/WirexResidenceStep';
+import { isTransfiProhibitedCountry } from '@/constants/compliance';
+import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useBuyCryptoEntry } from '@/hooks/useBuyCryptoEntry';
+import { useConfirmResidence } from '@/hooks/useConfirmResidence';
 import { useHasFeature } from '@/hooks/useFeatureAccess';
 import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { useIsCashAppAvailable } from '@/hooks/useOrchestra';
@@ -23,6 +29,7 @@ import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { canFundByUsdBankTransfer } from '@/lib/utils/cardHelpers';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useTransfiStore } from '@/store/useTransfiStore';
 
@@ -57,10 +64,15 @@ export const DEPOSIT_CASH_CURRENCY_COUNT = 1 + ALL_LOCAL_CURRENCIES.length;
 /** The flags the chooser's "Cash" row shows, in the order this screen lists them. */
 export const DEPOSIT_CASH_CLUSTER_ICONS = [CARD_FUND_USD_ICON, getAsset('images/flag-eur.png')];
 
+/** The EUR row's flag, shared by its TransFi and bank-account forms. */
+const EUR_ICON = CARD_FUND_LOCAL_CURRENCIES.find(currency => currency.code === 'EUR')?.icon;
+
 /**
  * "Deposit with cash" — the cash branch of the deposit chooser. USD opens its
  * methods (the virtual account's ACH/wire, Credit card, and Cash App in the US);
- * every other currency opens the TransFi onramp preseeded with it.
+ * EUR opens the user's own IBAN when Wirex issues their virtual account — first
+ * asking where they live when that is what would decide it; every other
+ * currency opens the TransFi onramp preseeded with it.
  */
 const DepositCashOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
@@ -70,13 +82,27 @@ const DepositCashOptions = () => {
   const [showAllCurrencies, setShowAllCurrencies] = useState(false);
   const isCashAppAvailable = useIsCashAppAvailable();
   const hasCreditCard = useHasFeature('onramper');
-  const { provider: virtualAccountProvider } = useVirtualAccountProvider();
+  const { provider: virtualAccountProvider, residenceRequired } = useVirtualAccountProvider();
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
+  const { confirmResidence, isConfirming: isConfirmingResidence } = useConfirmResidence();
+  const [isAskingResidence, setIsAskingResidence] = useState(false);
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
   // The local currencies are all TransFi; USD is not, so it stays.
   const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
 
-  const localCurrencies = showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES;
+  // A Wirex-routed user's euros go to an IBAN in their own name: no onramp
+  // spread, and no TransFi availability to depend on. Someone whose residence
+  // would decide it is asked first. Everyone else keeps TransFi for EUR.
+  const eurRow = resolveEurCashRow({
+    provider: virtualAccountProvider,
+    residenceRequired,
+    countryPickedByHand: countrySource === 'manual',
+  });
+  const hasEurBankAccount = eurRow !== 'onramp';
+  const localCurrencies = (
+    showAllCurrencies ? ALL_LOCAL_CURRENCIES : FEATURED_LOCAL_CURRENCIES
+  ).filter(currency => !hasEurBankAccount || currency.code !== 'EUR');
 
   // USD opens the chooser of its methods. The bank rail is usually there, but
   // a Wirex-issued virtual account has no bank rail and Credit card is for
@@ -92,6 +118,46 @@ const DepositCashOptions = () => {
 
   const handleUsdPress = () => {
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_USD_METHOD);
+  };
+
+  const openEurBankAccount = () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+      currency: 'EUR',
+      provider: 'wirex',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+  };
+
+  const handleEurBankAccountPress = () => {
+    if (eurRow === 'ask-residence') {
+      setIsAskingResidence(true);
+      return;
+    }
+    openEurBankAccount();
+  };
+
+  /** An IBAN country opens the account; anywhere else buys euros as before. */
+  const handleResidenceConfirmed = async (country: Country) => {
+    const routed = await confirmResidence(country);
+    if (!routed) return;
+    setIsAskingResidence(false);
+    if (routed === 'wirex') {
+      openEurBankAccount();
+      return;
+    }
+    // The country just confirmed, not the render's `isTransfiAvailable`: that
+    // was worked out before the answer was stored.
+    if (isTransfiProhibitedCountry(country.code)) {
+      Toast.show({
+        type: 'info',
+        text1: 'No euro bank account where you live',
+        text2: 'Deposit USD, or another currency below.',
+        props: { badgeText: '' },
+      });
+      return;
+    }
+    handleLocalCurrencyPress('EUR');
   };
 
   const handleLocalCurrencyPress = (code: string) => {
@@ -110,6 +176,15 @@ const DepositCashOptions = () => {
     void handleBuyCryptoPress();
   };
 
+  if (isAskingResidence) {
+    return (
+      <WirexResidenceStep
+        onConfirm={handleResidenceConfirmed}
+        isConfirming={isConfirmingResidence}
+      />
+    );
+  }
+
   return (
     <CardFundGroup>
       {usdMethodChips.length > 0 ? (
@@ -125,6 +200,15 @@ const DepositCashOptions = () => {
           title="USD"
           chips={usdMethodChips}
           onPress={handleUsdPress}
+        />
+      ) : null}
+      {hasEurBankAccount ? (
+        <CardFundRow
+          className="min-h-[93px]"
+          icon={EUR_ICON}
+          title="EUR"
+          chips={['SEPA']}
+          onPress={handleEurBankAccountPress}
         />
       ) : null}
       {isTransfiAvailable

@@ -5,15 +5,18 @@ import { useRouter } from 'expo-router';
 import { BankAccountDetailsView } from '@/components/DepositOption/VirtualAccountDetails/BankAccountDetailsView';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useConfirmResidence } from '@/hooks/useConfirmResidence';
 import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
 import { cn } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -24,6 +27,7 @@ import {
   unavailableReason,
   visibleRails as pickVisibleRails,
 } from './railPresentation';
+import { WirexResidenceStep } from './WirexResidenceStep';
 
 /** EUR / USD segmented control, shown only when the user has both rails. */
 const RailSwitcher = ({
@@ -154,7 +158,11 @@ export const WirexBankAccountDetails = ({
   const walletLink = useWirexWalletLink();
   const router = useRouter();
   const setModal = useDepositStore(state => state.setModal);
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
+  const [isAskingResidence, setIsAskingResidence] = useState(false);
+  const { confirmResidence: confirmResidenceCountry, isConfirming: isConfirmingResidence } =
+    useConfirmResidence();
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
   const visibleRails = useMemo(() => pickVisibleRails(overview), [overview]);
@@ -223,9 +231,44 @@ export const WirexBankAccountDetails = ({
    * modal open over it strands the user behind it on return.
    */
   function startVerification() {
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, { provider: 'wirex' });
     useKycStore.getState().setKycFlow('va');
     setModal(DEPOSIT_MODAL.CLOSE);
     router.push(path.SUMSUB_KYC as never);
+  }
+
+  /**
+   * The server picked Wirex from where the app thinks the user is, and Sumsub
+   * will not start on that guess. Asked only until the user has named their
+   * country by hand — that answer is what the session is sent.
+   */
+  const needsResidence = !!overview?.residenceRequired && countrySource !== 'manual';
+
+  function handleVerifyPress() {
+    if (needsResidence) {
+      setIsAskingResidence(true);
+      return;
+    }
+    startVerification();
+  }
+
+  /**
+   * Record where they live, then re-ask routing on it: an IBAN country goes on
+   * to Sumsub, anywhere else gets the Rain account pitch instead.
+   */
+  async function confirmResidence(country: Country) {
+    const routed = await confirmResidenceCountry(country);
+    if (!routed) return;
+    setIsAskingResidence(false);
+    if (routed === 'wirex') {
+      startVerification();
+      return;
+    }
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
+  }
+
+  if (isAskingResidence) {
+    return <WirexResidenceStep onConfirm={confirmResidence} isConfirming={isConfirmingResidence} />;
   }
 
   // Wirex serves this user's country but they have never verified. The button
@@ -235,13 +278,13 @@ export const WirexBankAccountDetails = ({
     return (
       <View className="flex-1 items-center justify-center gap-4 py-12">
         <Text className="text-center text-base text-white">
-          Verify your identity to open a bank account.
+          Verify your identity to open your euro account.
         </Text>
         <Text className="px-8 text-center text-sm text-white/60">
-          You will need a photo ID. If you already verified for a Solid card, this is the same check
-          — it takes a moment to pick up.
+          You will need a photo ID and a proof of address. It is the same check as the Solid card,
+          so you only do it once.
         </Text>
-        <Button className="h-12 rounded-2xl px-6" onPress={startVerification}>
+        <Button className="h-12 rounded-2xl px-6" onPress={handleVerifyPress}>
           <Text className="text-base font-bold text-black">Verify identity</Text>
         </Button>
       </View>
