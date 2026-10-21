@@ -1,3 +1,4 @@
+import { formatApyPercent } from '@/lib/apyFormat';
 import { type PortfolioAsset, sumKnownValues } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { USD_VAULT_TYPES } from '@/lib/vaultCurrency';
@@ -13,7 +14,7 @@ export type UsdVaultAmounts = Partial<VaultAmounts>;
 
 /** `4.5% APY`, or `— APY` for a vault with no rate yet — never an invented 0%. */
 export const formatVaultApyLabel = (apy: number | undefined) =>
-  apy === undefined ? '— APY' : `${apy.toFixed(1)}% APY`;
+  apy === undefined ? '— APY' : `${formatApyPercent(apy)} APY`;
 
 /**
  * Shown when the analytics API reports no yield for a vault, so a vault card

@@ -95,6 +95,12 @@ describe('formatVaultApyLabel', () => {
     expect(formatVaultApyLabel(4)).toBe('4.0% APY');
   });
 
+  it('shows two decimals under 1%, so a small rate is not "0.0%"', () => {
+    expect(formatVaultApyLabel(0.0365)).toBe('0.04% APY');
+    expect(formatVaultApyLabel(0.95)).toBe('0.95% APY');
+    expect(formatVaultApyLabel(0)).toBe('0.0% APY');
+  });
+
   it('shows a dash, not 0%, for a vault with no rate', () => {
     expect(formatVaultApyLabel(undefined)).toBe('— APY');
   });

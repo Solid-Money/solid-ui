@@ -4,6 +4,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { formatApyPercent } from '@/lib/apyFormat';
 import { cn } from '@/lib/utils';
 
 const GREEN = '#94F27F';
@@ -109,7 +110,7 @@ export const ApyTag = ({
   return (
     <View className="rounded-[6px] bg-[#94F27F]/15 px-[6px] py-[1px]">
       <Text className="text-[12px] font-medium leading-[16px] text-[#94F27F]">
-        {apy.toFixed(1)}% APY
+        {formatApyPercent(apy)} APY
       </Text>
     </View>
   );

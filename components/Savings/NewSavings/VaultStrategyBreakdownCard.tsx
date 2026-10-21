@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { protocolsImages } from '@/constants/protocols';
 import { VAULTS } from '@/constants/vaults';
 import { useAPYs, useVaultBreakdown } from '@/hooks/useAnalytics';
+import { formatApyPercent } from '@/lib/apyFormat';
 import { Minus } from '@/lib/icons/Minus';
 import { Plus } from '@/lib/icons/Plus';
 import { VaultBreakdown, VaultType } from '@/lib/types';
@@ -189,8 +190,7 @@ const VaultStrategyBreakdownCard = ({ vaultType, className }: VaultStrategyBreak
   const { data: strategies = [], isLoading: isBreakdownLoading } = useVaultBreakdown(
     vault.name.toLowerCase(),
   );
-  // Two decimals like the rows: one decimal rounds EUR's 0.04% down to "0%".
-  const sevenDayApyLabel = formatPercent(apys?.sevenDay ?? 0);
+  const sevenDayApyLabel = formatApyPercent(Math.max(apys?.sevenDay ?? 0, 0));
   const selectedStrategy = strategies[selectedStrategyIndex] ?? strategies[0];
   const visibleStrategies = isExpanded ? strategies : strategies.slice(0, COLLAPSED_STRATEGY_COUNT);
   const hasHiddenStrategies = strategies.length > COLLAPSED_STRATEGY_COUNT;

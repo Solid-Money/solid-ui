@@ -17,6 +17,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { formatApyPercent } from '@/lib/apyFormat';
 import { coinAssetPath, formatTokenAmount, PortfolioAsset } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
@@ -35,7 +36,7 @@ export const lockedFuseDescription = (amount: number | undefined, unlockAt?: str
 
 const apyLabel = (apy: number | undefined) =>
   apy !== undefined && Number.isFinite(apy) && apy > 0 ? (
-    <Text className="text-[14px] font-normal text-[#94F27F]">{apy.toFixed(1)}% APY</Text>
+    <Text className="text-[14px] font-normal text-[#94F27F]">{formatApyPercent(apy)} APY</Text>
   ) : undefined;
 
 /** EUR Yield's amount column (Figma 29123:9541): euros, with the dollar estimate beneath. */

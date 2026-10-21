@@ -19,6 +19,7 @@ import { useSavingsYield } from '@/hooks/useSavingsYield';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
+import { formatApyPercent } from '@/lib/apyFormat';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode, VaultType } from '@/lib/types';
@@ -142,7 +143,7 @@ const VaultSavingsSection = ({ vaultType }: VaultSavingsSectionProps) => {
           <Text className="text-lg font-semibold text-white">{display.name} savings</Text>
         </View>
         <Text className="text-base font-semibold text-brand">
-          {formatNumber(maxAPY ?? 0, 1)}% APY
+          {formatApyPercent(maxAPY ?? 0)} APY
         </Text>
       </View>
 

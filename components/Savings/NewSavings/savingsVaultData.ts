@@ -1,4 +1,5 @@
 import { VAULTS } from '@/constants/vaults';
+import { formatApyPercent } from '@/lib/apyFormat';
 import { VaultType } from '@/lib/types';
 
 import type { AssetPath } from '@/lib/assets';
@@ -35,5 +36,5 @@ export const getVaultDisplay = (type: VaultType): SavingsVaultDisplay =>
 /** APY formatted for display, e.g. "6.5% APY". Falls back to "—% APY" while loading. */
 export const formatApyLabel = (apy: number | undefined, isLoading: boolean) => {
   if (isLoading || apy === undefined) return '—';
-  return `${apy.toFixed(1)}%`;
+  return formatApyPercent(apy);
 };
