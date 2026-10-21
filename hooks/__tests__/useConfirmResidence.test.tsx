@@ -101,7 +101,9 @@ describe('useConfirmResidence', () => {
     });
   });
 
-  it('reports a failed lookup and resolves to null', async () => {
+  it('reports a failed lookup, resolves to null and stores nothing', async () => {
+    // A stored answer stops the question being asked again, so a lookup that
+    // failed must not leave one behind.
     mockOverview.mockRejectedValue(new Error('offline'));
     const latest = await renderHook();
 
@@ -114,6 +116,23 @@ describe('useConfirmResidence', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: "Couldn't check your country" }),
     );
+    expect(useCountryStore.getState().countryInfo).toBeNull();
     expect(latest().isConfirming).toBe(false);
+  });
+
+  it('stores nothing when the card check itself fails', async () => {
+    // Unknown is not "no card here": a manual pick never goes stale, so a
+    // stored false would hide the card in that country for good.
+    mockCardAccess.mockResolvedValue(null);
+    const latest = await renderHook();
+
+    let routed: string | null = 'unset';
+    await act(async () => {
+      routed = await latest().confirmResidence(FRANCE);
+    });
+
+    expect(routed).toBeNull();
+    expect(mockOverview).not.toHaveBeenCalled();
+    expect(useCountryStore.getState().countryInfo).toBeNull();
   });
 });

@@ -96,14 +96,15 @@ const feeCell = (feeUsd: number | undefined): Benefit => {
 
 /**
  * Ask the server about a Rain account on an ID from `countryCode`, passing where
- * the app thinks the user lives — the same hint the bank screen routes on — so
- * the two agree on the provider. Null when the check itself failed, which is
- * not a no.
+ * the user said they live — never an IP guess, which may only preselect a
+ * field and must not decide availability. A user who has not said is asked
+ * "Where do you live?" before this, wherever it would change the provider.
+ * Null when the check itself failed, which is not a no.
  */
 const checkRainVirtualAccount = async (countryCode: string): Promise<VaAccessResponse | null> => {
   try {
-    const residence =
-      useCountryStore.getState().countryInfo?.countryCode ?? (await detectGeo())?.countryCode;
+    const countryInfo = useCountryStore.getState().countryInfo;
+    const residence = countryInfo?.source === 'manual' ? countryInfo.countryCode : undefined;
     return (await withRefreshToken(() => checkVaAccess(countryCode, residence))) ?? null;
   } catch (error) {
     console.error(`Error checking virtual account access for ${countryCode}:`, error);

@@ -1674,10 +1674,12 @@ const wirexBankHeaders = (withBody = false) => {
  * only for a user with no residence on file, and stores nothing.
  */
 export const getWirexBankOverview = async (countryHint?: string): Promise<WirexBankOverviewDto> => {
-  const url = new URL(WIREX_BANK_BASE);
-  if (countryHint) url.searchParams.append('country', countryHint.toUpperCase());
+  // Not `new URL()`: the base is relative on web when the API is same-origin.
+  const query = countryHint
+    ? `?${new URLSearchParams({ country: countryHint.toUpperCase() }).toString()}`
+    : '';
 
-  const response = await fetch(url.toString(), {
+  const response = await fetch(`${WIREX_BANK_BASE}${query}`, {
     credentials: 'include',
     headers: wirexBankHeaders(),
   });
