@@ -38,6 +38,24 @@ const apyLabel = (apy: number | undefined) =>
     <Text className="text-[14px] font-normal text-[#94F27F]">{apy.toFixed(1)}% APY</Text>
   ) : undefined;
 
+/** EUR Yield's amount column (Figma 29123:9541): euros, with the dollar estimate beneath. */
+export const EurYieldAmount = ({
+  eurYield,
+}: {
+  eurYield: NonNullable<ReturnType<typeof usePortfolio>['eurYield']>;
+}) => (
+  <View className="shrink-0 items-end gap-[3px]">
+    <Text className="text-[16px] font-semibold text-white">
+      {formatYieldAmount(eurYield.valueEur, VaultType.EUR)}
+    </Text>
+    {eurYield.valueUsdEstimate !== undefined && (
+      <Text className="text-[14px] font-normal text-white/50">
+        ≈ {formatYieldUsd(eurYield.valueUsdEstimate)}
+      </Text>
+    )}
+  </View>
+);
+
 type HomeAsset = {
   key: string;
   value: number | undefined;
@@ -132,18 +150,7 @@ export default function HomeAssetsCard({
                 value={undefined}
                 icon={<YieldIcon vaultType={VaultType.EUR} />}
                 subtitle={apyLabel(portfolio.eurYield?.apy)}
-                trailing={
-                  <View className="shrink-0 items-end gap-[3px]">
-                    <Text className="text-[16px] font-semibold text-white">
-                      {formatYieldAmount(portfolio.eurYield?.valueEur, VaultType.EUR)}
-                    </Text>
-                    {portfolio.eurYield?.valueUsdEstimate !== undefined && (
-                      <Text className="text-[14px] font-normal text-white/50">
-                        ≈ {formatYieldUsd(portfolio.eurYield.valueUsdEstimate)}
-                      </Text>
-                    )}
-                  </View>
-                }
+                trailing={portfolio.eurYield && <EurYieldAmount eurYield={portfolio.eurYield} />}
                 onPress={onPress}
               />
             ),

@@ -9,7 +9,9 @@ import PortfolioIcon, { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIco
 import { BalanceHeadline } from '@/components/BalanceHeadline';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
-import { lockedFuseDescription } from '@/components/Home/NewHome/HomeAssetsCard';
+import YieldIcon from '@/components/Earn/YieldIcon';
+import { openYieldProduct, yieldVault } from '@/components/Earn/yieldProducts';
+import { EurYieldAmount, lockedFuseDescription } from '@/components/Home/NewHome/HomeAssetsCard';
 import { bankBalancesToShow } from '@/components/Home/NewHome/OtherBalancesDropdown/balanceTotals';
 import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
@@ -94,7 +96,10 @@ export function AssetsOverview({
     asset => asset.valueUsd === undefined || asset.valueUsd > 0,
   );
   const showLocked = (portfolio.lockedFuse ?? 0) > 0;
-  const showEarn = earnAssets.length > 0 || showLocked;
+  // soEURC is held in euros, so it is its own row rather than one of the USD earnAssets.
+  const eurYield =
+    portfolio.eurYield && portfolio.eurYield.valueEur > 0 ? portfolio.eurYield : undefined;
+  const showEarn = earnAssets.length > 0 || !!eurYield || showLocked;
   const showStable = stable.all.length > 0 || portfolio.hasCardBalance;
   const isEmpty = !showStable && !showEarn && crypto.all.length === 0;
   const hasDebt = (portfolio.debt ?? 0) > 0;
@@ -294,9 +299,25 @@ export function AssetsOverview({
                     />
                   </Fragment>
                 ))}
-                {showLocked && (
+                {eurYield && (
                   <>
                     {earnAssets.length > 0 && <Divider />}
+                    <AssetRow
+                      title={yieldVault(VaultType.EUR).vaultToken}
+                      value={undefined}
+                      isEarning
+                      // EUR Yield earns nothing yet, and Earn shows that as 0.0%, not "—".
+                      apy={eurYield.apy ?? 0}
+                      icon={<YieldIcon vaultType={VaultType.EUR} badge="live" />}
+                      subtitle={`${formatTokenAmount(eurYield.shareAmount)} ${yieldVault(VaultType.EUR).vaultToken}`}
+                      trailing={<EurYieldAmount eurYield={eurYield} />}
+                      onPress={() => router.push(openYieldProduct(VaultType.EUR) as Href)}
+                    />
+                  </>
+                )}
+                {showLocked && (
+                  <>
+                    {(earnAssets.length > 0 || !!eurYield) && <Divider />}
                     <AssetRow
                       title="Locked FUSE"
                       isEarning
