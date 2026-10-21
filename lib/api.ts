@@ -14,6 +14,7 @@ import {
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
+import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -158,6 +159,7 @@ import {
   TotalAPYResponse,
   TransfiCashoutConfig,
   TransfiCashoutDepositInstructions,
+  TransfiCashoutLimits,
   TransfiCashoutOrderStatus,
   TransfiCashoutPaymentMethod,
   TransfiCashoutQuote,
@@ -2064,6 +2066,23 @@ export const getTransfiCashoutPaymentMethods = async (
   });
   if (!response.ok) throw await toTransfiError(response);
   return response.json();
+};
+
+/** The USDC limits for one cash-out through a payout method. */
+export const getTransfiCashoutLimits = async (
+  currency: string,
+  paymentCode: string,
+): Promise<TransfiCashoutLimits> => {
+  const params = new URLSearchParams({ currency, paymentCode });
+  const response = await fetch(`${CASHOUT_BASE()}/limits?${params.toString()}`, {
+    credentials: 'include',
+    headers: transfiHeaders(),
+  });
+  if (!response.ok) throw await toTransfiError(response);
+  // A malformed body fails the query, and the screen checks only the balance.
+  const limits = readCashoutLimits(await response.json());
+  if (!limits) throw new Error('Cash-out limits response is malformed');
+  return limits;
 };
 
 /** What a USDC amount pays out in the chosen currency and method. */
