@@ -3044,7 +3044,9 @@ export interface VaultBreakdown {
   image?: string;
   link?: string;
   expiryDate: string;
-  amountUSD: number;
+  // One or the other: the EUR vault's positions come back as amountEUR.
+  amountUSD?: number;
+  amountEUR?: number;
   allocation: number;
   effectivePositionAPY: number;
   positionMaxAPY: number;

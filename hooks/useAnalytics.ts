@@ -640,6 +640,7 @@ export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBre
     image: vault.image,
     expiryDate: vault.expiryDate,
     amountUSD: vault.amountUSD,
+    amountEUR: vault.amountEUR,
     allocation: vault.allocation,
     effectivePositionAPY: vault.effectivePositionAPY < 0 ? 0 : vault.effectivePositionAPY,
     positionMaxAPY: vault.positionMaxAPY < 0 ? 0 : vault.positionMaxAPY,
