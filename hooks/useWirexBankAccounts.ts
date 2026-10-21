@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { replaceRail } from '@/components/WirexBankAccount/railPresentation';
 import {
@@ -15,6 +15,7 @@ import { detectGeo } from '@/lib/geo';
 import {
   WirexBankAccountType,
   WirexBankOverviewDto,
+  WirexBankRailStatusDto,
   WirexBankTransferEstimateRequest,
   WirexBankTransferExecuteRequest,
   WirexUnifiedBalanceDto,
@@ -73,9 +74,9 @@ export function useWirexBankOverview(enabled = true) {
     queryKey: [WIREX_BANK_OVERVIEW_KEY, countryHint ?? null],
     queryFn: () => withRefreshToken(() => getWirexBankOverview(countryHint)),
     enabled: enabled && isSignedIn,
-    // The hint can land after the first answer. Keep showing that answer while
-    // the new one loads, rather than dropping every caller back to `loading`.
-    placeholderData: keepPreviousData,
+    // No placeholder from another country's key: routing answers differ by
+    // country, and callers act on `provider` and `kycRequired` as soon as they
+    // read them. A hint that lands late shows `loading` briefly instead.
     retry: 1,
     refetchInterval: query => {
       const data = query.state.data as WirexBankOverviewDto | undefined;
@@ -143,6 +144,26 @@ export function useWirexBankRail(accountType: WirexBankAccountType) {
 }
 
 /**
+ * Put a freshly activated rail into the cached overviews.
+ *
+ * Overviews are cached per country hint. Only an answer that already routes to
+ * Wirex — the screen that activated it — is patched; any other was routed
+ * elsewhere and is simply out of date now that the user holds a Wirex
+ * account, so it is refetched rather than given a rail it never offered.
+ */
+function applyActivatedRail(queryClient: QueryClient, rail: WirexBankRailStatusDto) {
+  queryClient.setQueriesData<WirexBankOverviewDto>(
+    { queryKey: [WIREX_BANK_OVERVIEW_KEY] },
+    previous => (previous?.provider === 'wirex' ? replaceRail(previous, rail) : previous),
+  );
+  void queryClient.invalidateQueries({
+    queryKey: [WIREX_BANK_OVERVIEW_KEY],
+    predicate: query =>
+      (query.state.data as WirexBankOverviewDto | undefined)?.provider !== 'wirex',
+  });
+}
+
+/**
  * Provision a rail.
  *
  * The backend is idempotent, so this is safe to fire on a screen open as well
@@ -157,10 +178,7 @@ export function useActivateWirexBankAccount() {
       if (!rail) return;
       // Patch the one rail rather than invalidating: activation returns the
       // rail's full new state, and a refetch would flash the old one first.
-      queryClient.setQueriesData<WirexBankOverviewDto>(
-        { queryKey: [WIREX_BANK_OVERVIEW_KEY] },
-        previous => replaceRail(previous, rail),
-      );
+      applyActivatedRail(queryClient, rail);
     },
   });
 }
@@ -180,10 +198,7 @@ export function useCompleteWirexWalletLink() {
       withRefreshToken(() => completeWirexWalletLink(signedChallenge)),
     onSuccess: rail => {
       if (!rail) return;
-      queryClient.setQueriesData<WirexBankOverviewDto>(
-        { queryKey: [WIREX_BANK_OVERVIEW_KEY] },
-        previous => replaceRail(previous, rail),
-      );
+      applyActivatedRail(queryClient, rail);
     },
   });
 }

@@ -31,17 +31,23 @@ export const useConfirmResidence = () => {
       setIsConfirming(true);
       try {
         // `isAvailable` in the store means the CARD to everyone who reads it, so
-        // it is answered for the card, as the card's country screen does.
+        // it is answered for the card, as the card's country screen does. An
+        // unknown answer is not a no: a manual pick never goes stale, so a
+        // stored `false` would hide the card in that country for good.
         const cardAccess = await checkProductAccess('card', code);
-        useCountryStore.getState().setCountryInfo({
-          countryCode: code,
-          countryName: country.name,
-          isAvailable: cardAccess === true,
-          source: 'manual',
-        });
+        if (cardAccess === null) throw new Error('Card access check failed');
         const routed = await queryClient.fetchQuery({
           queryKey: [WIREX_BANK_OVERVIEW_KEY, code],
           queryFn: () => withRefreshToken(() => getWirexBankOverview(code)),
+        });
+        // Stored only once routing has answered: a stored answer is what stops
+        // the question being asked again, so a failed lookup must not leave
+        // one behind.
+        useCountryStore.getState().setCountryInfo({
+          countryCode: code,
+          countryName: country.name,
+          isAvailable: cardAccess,
+          source: 'manual',
         });
         return routed?.provider === 'wirex' ? 'wirex' : 'rain';
       } catch {
