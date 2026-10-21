@@ -395,7 +395,9 @@ export function AssetsOverview({
           </>
         )}
         <Text className="text-[13px] font-normal text-white/40">
-          Tap an asset for details. Values in USD; APY is variable. Yield is an estimate.
+          Tap an asset for details. Values in USD
+          {eurYield ? ', except soEURC: in euros, with an estimated USD value' : ''}; APY is
+          variable. Yield is an estimate.
         </Text>
       </View>
     </PageLayout>
