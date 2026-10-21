@@ -6,7 +6,7 @@ import { SaveStatementFile } from '@/lib/statementFile.types';
 // This file is only loaded on iOS and Android via Metro platform resolution (.native.ts).
 
 /**
- * Hands a statement CSV to the user as a file, not as text.
+ * Hands a statement — PDF or CSV — to the user as a file, not as text.
  *
  * iOS writes it to the cache and opens the share sheet on the file's URL, which
  * offers Save to Files, Mail and AirDrop. Android's share sheet in React Native
@@ -17,7 +17,7 @@ import { SaveStatementFile } from '@/lib/statementFile.types';
  * sharing module would be a new native dependency, and an over-the-air update
  * reaching a build without it would crash on this screen.
  */
-export const saveStatementFile: SaveStatementFile = async ({ filename, content }) => {
+export const saveStatementFile: SaveStatementFile = async ({ filename, content, mimeType }) => {
   if (Platform.OS === 'android') {
     let directory: Directory;
     try {
@@ -26,7 +26,7 @@ export const saveStatementFile: SaveStatementFile = async ({ filename, content }
       // Closing the picker rejects; that is the user saying no, not a failure.
       return 'cancelled';
     }
-    const file = directory.createFile(filename, 'text/csv');
+    const file = directory.createFile(filename, mimeType);
     file.write(content);
     return 'saved';
   }

@@ -140,6 +140,7 @@ import {
   SavingsSummaryResponse,
   SourceDepositInstructions,
   StatementDownload,
+  StatementFormat,
   StoreReviewPromptedResponse,
   SubmitPersonaKycResponse,
   SumsubSessionFlow,
@@ -4524,14 +4525,17 @@ export const getAvailableStatements = async (): Promise<AvailableStatementsRespo
 const STATEMENT_FILENAME = /filename="([^"]+)"/;
 
 /**
- * One month's statement — card activity and wallet transactions together — as
- * CSV text. The server names the file (it marks the current month `-partial`),
- * so the name is read from Content-Disposition and only rebuilt here if that
- * header is not exposed to the client.
+ * One month's statement — the wallet and the card as one account — as a PDF's
+ * bytes or as CSV text. The server names the file (it marks the current month
+ * `-partial`), so the name is read from Content-Disposition and only rebuilt
+ * here if that header is not exposed to the client.
  */
-export const downloadStatement = async (month: string): Promise<StatementDownload> => {
+export const downloadStatement = async (
+  month: string,
+  format: StatementFormat,
+): Promise<StatementDownload> => {
   const jwt = getJWTToken();
-  const params = new URLSearchParams({ month, format: 'csv' });
+  const params = new URLSearchParams({ month, format });
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/statements?${params.toString()}`,
@@ -4547,9 +4551,17 @@ export const downloadStatement = async (month: string): Promise<StatementDownloa
   if (!response.ok) throw response;
 
   const disposition = response.headers.get('Content-Disposition') ?? '';
-  const filename = STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.csv`;
+  const filename =
+    STATEMENT_FILENAME.exec(disposition)?.[1] ?? `solid-statement-${month}.${format}`;
 
-  return { filename, content: await response.text() };
+  if (format === 'pdf') {
+    return {
+      filename,
+      content: new Uint8Array(await response.arrayBuffer()),
+      mimeType: 'application/pdf',
+    };
+  }
+  return { filename, content: await response.text(), mimeType: 'text/csv' };
 };
 
 /**
