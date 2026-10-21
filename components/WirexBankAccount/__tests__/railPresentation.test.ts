@@ -260,4 +260,18 @@ describe('RAIL_PRESENTATION', () => {
       flag: 'images/us.png',
     });
   });
+
+  it('tells a payer the IBAN only takes euros from their own account', () => {
+    // Wirex sends back a deposit from someone else, or in another currency.
+    const { blurb } = RAIL_PRESENTATION[WirexBankAccountType.SEPA];
+    expect(blurb).toContain('euros');
+    expect(blurb).toContain('in your own name');
+  });
+
+  it('says the euros arrive as euros', () => {
+    // Paid on as EURC, never converted to dollars.
+    const { blurb } = RAIL_PRESENTATION[WirexBankAccountType.SEPA];
+    expect(blurb).toContain('EURC');
+    expect(blurb).not.toContain('dollars');
+  });
 });

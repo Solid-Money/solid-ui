@@ -14,7 +14,7 @@ import { track } from '@/lib/analytics';
 import { createSumsubSession, getSumsubVerificationStatus } from '@/lib/api';
 import { getUserErrorMessage, isSafeServerMessage, showErrorToast } from '@/lib/errors';
 import { isTransfiKycFlow, resumeTransfiKycFlow } from '@/lib/transfiKycFlow';
-import { KycStatus, SumsubSessionFlow } from '@/lib/types';
+import { DepositModal, KycStatus, SumsubSessionFlow } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -160,8 +160,23 @@ export function useSumsubSession() {
   destinationRef.current =
     session.phase === 'completed' ? (session.destination ?? null) : destinationRef.current;
   const retryRedirect = useCallback(() => {
-    router.replace((destinationRef.current ?? String(path.CARD_ACTIVATE)) as any);
-  }, [router]);
+    const fallback = kycFlow === 'va' ? path.HOME : path.CARD_ACTIVATE;
+    router.replace((destinationRef.current ?? String(fallback)) as any);
+  }, [kycFlow, router]);
+
+  /**
+   * Back to the bank screens on the home page, re-asking which provider serves
+   * the user: the virtual account's equivalent of sending a card applicant back
+   * through the country screen.
+   */
+  const returnToBankScreen = useCallback(
+    (modal: DepositModal) => {
+      queryClient.invalidateQueries({ queryKey: [WIREX_BANK_OVERVIEW_KEY] });
+      useDepositStore.getState().setModal(modal);
+      router.replace(path.HOME as any);
+    },
+    [queryClient, router],
+  );
 
   /**
    * One automatic retry, because the hand-off is only ever a pass-through: if we
@@ -266,11 +281,36 @@ export function useSumsubSession() {
        * country at all, it silently produced a verified user with no card.
        */
       if (e?.code === 'COUNTRY_REQUIRED') {
+        // The virtual account asks where the user lives on its own bank screen
+        // (`WirexResidenceStep`); the card's country screen would send them on
+        // to a card they did not ask for.
+        if (kycFlow === 'va') {
+          track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+            provider: 'wirex',
+            action: 'country_required',
+          });
+          returnToBankScreen(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_DETAILS);
+          return;
+        }
         track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
           action: 'country_required',
           kycProvider: 'sumsub',
         });
         router.replace(path.CARD_COUNTRY_SELECTION as any);
+        return;
+      }
+      /**
+       * VIRTUAL_ACCOUNT_PROVIDER_MISMATCH (400): this user's account is Rain's,
+       * not Wirex's — they verified with Didit already, an admin switched them,
+       * or they live outside the IBAN countries. A Sumsub check here would be a
+       * second verification, so send them to the Rain account instead.
+       */
+      if (e?.code === 'VIRTUAL_ACCOUNT_PROVIDER_MISMATCH') {
+        track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_KYC_REQUIRED, {
+          provider: 'rain',
+          action: 'provider_mismatch',
+        });
+        returnToBankScreen(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
         return;
       }
       /**
@@ -292,7 +332,15 @@ export function useSumsubSession() {
       setSession({ phase: 'error', message: getUserErrorMessage(e, { action: 'kyc' }) });
       void showErrorToast(e, { action: 'kyc' });
     }
-  }, [debugState, readDeclaredCountry, redirectBasedOnKycStatus, router, sumsubFlow]);
+  }, [
+    debugState,
+    kycFlow,
+    readDeclaredCountry,
+    redirectBasedOnKycStatus,
+    returnToBankScreen,
+    router,
+    sumsubFlow,
+  ]);
 
   const markStarted = useCallback(() => {
     setSession({ phase: 'started' });
@@ -358,8 +406,8 @@ export function useSumsubSession() {
       router.back();
       return;
     }
-    router.replace(path.CARD_ACTIVATE as any);
-  }, [router]);
+    router.replace((kycFlow === 'va' ? path.HOME : path.CARD_ACTIVATE) as any);
+  }, [kycFlow, router]);
 
   // `message` is the SDK's own text: reported, never shown.
   const onVerificationError = useCallback((message: string) => {

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { replaceRail } from '@/components/WirexBankAccount/railPresentation';
 import {
@@ -11,6 +11,7 @@ import {
   getWirexBankTransfers,
   initWirexWalletLink,
 } from '@/lib/api';
+import { detectGeo } from '@/lib/geo';
 import {
   WirexBankAccountType,
   WirexBankOverviewDto,
@@ -19,6 +20,7 @@ import {
   WirexUnifiedBalanceDto,
 } from '@/lib/types/wirex-bank';
 import { withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export const WIREX_BANK_OVERVIEW_KEY = 'wirexBankOverview';
@@ -34,16 +36,46 @@ const WIREX_BANK_TRANSFERS_KEY = 'wirexBankTransfers';
  */
 const PENDING_POLL_INTERVAL_MS = 15_000;
 
+/**
+ * Where the app thinks the user is: the country store (picked by hand, or a
+ * past IP lookup), else a fresh IP lookup. Only a routing hint — the server
+ * ignores it for anyone with a residence on file, and stores nothing.
+ */
+function useCountryHint(enabled: boolean): string | undefined {
+  const storedCountry = useCountryStore(state => state.countryInfo?.countryCode);
+  const [detectedCountry, setDetectedCountry] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (storedCountry || !enabled) return;
+    let cancelled = false;
+    // Memoised for the session by `detectGeo`, so every caller shares one lookup.
+    void detectGeo().then(geo => {
+      if (!cancelled && geo?.countryCode) setDetectedCountry(geo.countryCode);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, storedCountry]);
+
+  return (storedCountry ?? detectedCountry)?.toUpperCase();
+}
+
 /** Per-rail capability state plus any provisioned requisites. */
 export function useWirexBankOverview(enabled = true) {
   // The modal providers mounted at the root ask for this on every page, signed
   // in or not. Signed out, the answer is a 401 and a refresh-token round trip
   // (throttled per IP) on every page load, for nothing.
   const isSignedIn = useUserStore(state => state.users.some(user => user.selected));
+  // A user with no residence on file is routed on this, so a new user in an
+  // IBAN country is shown the Wirex account, not the Rain pitch.
+  const countryHint = useCountryHint(enabled && isSignedIn);
   return useQuery({
-    queryKey: [WIREX_BANK_OVERVIEW_KEY],
-    queryFn: () => withRefreshToken(() => getWirexBankOverview()),
+    queryKey: [WIREX_BANK_OVERVIEW_KEY, countryHint ?? null],
+    queryFn: () => withRefreshToken(() => getWirexBankOverview(countryHint)),
     enabled: enabled && isSignedIn,
+    // The hint can land after the first answer. Keep showing that answer while
+    // the new one loads, rather than dropping every caller back to `loading`.
+    placeholderData: keepPreviousData,
     retry: 1,
     refetchInterval: query => {
       const data = query.state.data as WirexBankOverviewDto | undefined;
@@ -125,8 +157,9 @@ export function useActivateWirexBankAccount() {
       if (!rail) return;
       // Patch the one rail rather than invalidating: activation returns the
       // rail's full new state, and a refetch would flash the old one first.
-      queryClient.setQueryData<WirexBankOverviewDto>([WIREX_BANK_OVERVIEW_KEY], previous =>
-        replaceRail(previous, rail),
+      queryClient.setQueriesData<WirexBankOverviewDto>(
+        { queryKey: [WIREX_BANK_OVERVIEW_KEY] },
+        previous => replaceRail(previous, rail),
       );
     },
   });
@@ -147,8 +180,9 @@ export function useCompleteWirexWalletLink() {
       withRefreshToken(() => completeWirexWalletLink(signedChallenge)),
     onSuccess: rail => {
       if (!rail) return;
-      queryClient.setQueryData<WirexBankOverviewDto>([WIREX_BANK_OVERVIEW_KEY], previous =>
-        replaceRail(previous, rail),
+      queryClient.setQueriesData<WirexBankOverviewDto>(
+        { queryKey: [WIREX_BANK_OVERVIEW_KEY] },
+        previous => replaceRail(previous, rail),
       );
     },
   });
