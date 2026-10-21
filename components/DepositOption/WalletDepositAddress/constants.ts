@@ -46,8 +46,9 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, number> = {
 
 /**
  * Overrides for the assets that are not worth ~$1 a unit, so every floor lands in
- * roughly the same place in dollars. Each of these exists on exactly one chain
- * (ETH/WETH on Ethereum, FUSE/WFUSE on Fuse), so the symbol alone identifies it.
+ * roughly the same place in dollars. Keyed by symbol alone: ETH and WETH are the
+ * same asset on Ethereum and Base, and the pipeline floors them at one dollar
+ * figure on every chain.
  */
 const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
   ETH: 0.005,
@@ -64,6 +65,30 @@ const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
 
 /** EURC, which the screen offers on `EURC_TOKENS`' chains rather than `BRIDGE_TOKENS`'. */
 const EURC_SYMBOL = 'EURC';
+
+/**
+ * Currencies the deposit address takes on a chain beyond what `BRIDGE_TOKENS`
+ * lists for it.
+ *
+ * Base carries USDT, ETH and WETH as well as USDC, but `BRIDGE_TOKENS[base.id]`
+ * stays USDC only: every surface that offers a token on a chain reads that map,
+ * so listing them there would also offer them for card funding, savings and
+ * bridging. Here they are only somewhere to send a transfer: ETH and WETH land
+ * in the Safe and stay as sent, and Base USDT is one the pipeline lists, so a
+ * Wirex cardholder's minted address takes it too.
+ */
+const EXTRA_WALLET_DEPOSIT_SYMBOLS: Record<number, string[]> = {
+  [base.id]: ['USDT', 'ETH', 'WETH'],
+};
+
+/**
+ * The chain the screen opens on, and that every currency it carries opens on.
+ *
+ * Base because it carries every currency on offer except the Fuse pair, and
+ * sending there costs a fraction of Ethereum's gas. FUSE and WFUSE exist on
+ * Fuse alone, so they open there.
+ */
+const DEFAULT_WALLET_DEPOSIT_CHAIN_ID = base.id;
 
 /**
  * Whether the screen offers EURC at all: to Wirex cardholders only.
@@ -129,14 +154,19 @@ export const getWalletDepositTokenIcon = (chainId: number, symbol: string): Imag
 
 /**
  * The currencies that chain accepts, in the order `BRIDGE_TOKENS` lists them,
- * then EURC where `EURC_TOKENS` lists it and `withEurc` (see
- * `offersWalletDepositEurc`) says to offer it.
+ * then `EXTRA_WALLET_DEPOSIT_SYMBOLS`', then EURC where `EURC_TOKENS` lists it
+ * and `withEurc` (see `offersWalletDepositEurc`) says to offer it.
  */
 export const getWalletDepositTokens = (chainId: number, withEurc = false): WalletDepositToken[] =>
-  [
-    ...getAllowedTokensForChain(chainId),
-    ...(withEurc && EURC_TOKENS[chainId] ? [EURC_SYMBOL] : []),
-  ].map(symbol => ({
+  // Deduplicated, so a currency `BRIDGE_TOKENS` later lists for the chain is not
+  // offered twice.
+  Array.from(
+    new Set([
+      ...getAllowedTokensForChain(chainId),
+      ...(EXTRA_WALLET_DEPOSIT_SYMBOLS[chainId] ?? []),
+      ...(withEurc && EURC_TOKENS[chainId] ? [EURC_SYMBOL] : []),
+    ]),
+  ).map(symbol => ({
     symbol,
     icon: getWalletDepositTokenIcon(chainId, symbol),
   }));
@@ -163,8 +193,8 @@ export const getWalletDepositNetworks = (): WalletDepositNetwork[] => {
  * The currency to show once `chainId` is chosen.
  *
  * A currency carries over between chains when the new one accepts it, so picking
- * a chain does not silently reset a deliberate choice. When it does not — USDT
- * is not offered on Base, ETH only exists on Ethereum — it falls back to what
+ * a chain does not silently reset a deliberate choice. When it does not — ETH
+ * is not offered on Polygon, FUSE only exists on Fuse — it falls back to what
  * the chain does carry, rather than leaving the screen quoting a minimum for a
  * pairing that does not exist.
  */
@@ -213,19 +243,18 @@ export const resolveWalletDepositMinimum = (
 };
 
 /**
- * The pairing the screen opens on: USDC on Fuse, falling back if either is off.
+ * The pairing the screen opens on: USDC on Base (see
+ * `DEFAULT_WALLET_DEPOSIT_CHAIN_ID`), falling back if either is off.
  *
- * Fuse rather than Ethereum because this address is the user's Safe on the
- * chain they pick, not a bridge — what lands on Ethereum stays on Ethereum.
- * Everything the app then spends that balance on lives on Fuse: the card, the
- * vaults, and the annual membership charge, which can only ever move Fuse
- * USDC.e. Opening on Ethereum put the most expensive gas and the one chain the
- * balance cannot be used from in front of the user by default.
+ * This address is the user's Safe on the chain they pick, not a bridge — what
+ * lands on Base stays on Base. A Wirex cardholder's USDC and USDT are the
+ * exception: they go to a minted address, which delivers them to the Safe on
+ * Fuse, with the fee for that bridge quoted under the QR.
  */
 export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: string } => {
   const networks = getWalletDepositNetworks();
-  const chainId = networks.some(network => network.chainId === fuse.id)
-    ? fuse.id
+  const chainId = networks.some(network => network.chainId === DEFAULT_WALLET_DEPOSIT_CHAIN_ID)
+    ? DEFAULT_WALLET_DEPOSIT_CHAIN_ID
     : (networks[0]?.chainId ?? mainnet.id);
   const tokens = getWalletDepositTokens(chainId);
   const symbol =
@@ -239,9 +268,10 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
  * the first step, taken before any chain is chosen.
  *
  * `TOKEN_DISPLAY_ORDER` leads, because a list derived from chain order put FUSE
- * and WFUSE above USDT and ETH purely because Fuse is the default chain, which
+ * and WFUSE above USDT and ETH purely because Fuse was the default chain, which
  * is not the order anyone looks for them in. Whatever is not named there follows
- * in network order. Each is drawn with the icon of the first chain carrying it.
+ * in network order, the default chain first. Each is drawn with the icon of the
+ * first chain carrying it.
  */
 export const getAllWalletDepositTokens = (withEurc = false): WalletDepositToken[] => {
   const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
