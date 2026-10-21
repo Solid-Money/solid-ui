@@ -15,6 +15,7 @@ import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions'
 import { resolveEurCashRow } from '@/components/DepositOption/eurCashRow';
 import { Text } from '@/components/ui/text';
 import { WirexResidenceStep } from '@/components/WirexBankAccount/WirexResidenceStep';
+import { isTransfiProhibitedCountry } from '@/constants/compliance';
 import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -145,7 +146,9 @@ const DepositCashOptions = () => {
       openEurBankAccount();
       return;
     }
-    if (!isTransfiAvailable) {
+    // The country just confirmed, not the render's `isTransfiAvailable`: that
+    // was worked out before the answer was stored.
+    if (isTransfiProhibitedCountry(country.code)) {
       Toast.show({
         type: 'info',
         text1: 'No euro bank account where you live',
