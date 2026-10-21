@@ -14,6 +14,7 @@ import {
   resolveWalletDepositSymbol,
   usesDirectDepositAddress,
 } from '@/components/DepositOption/WalletDepositAddress/constants';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CardProvider, DepositAsset } from '@/lib/types';
 
 // The module resolves icons through the asset barrel; what is under test is
@@ -35,6 +36,13 @@ describe('getWalletDepositMinimum', () => {
     expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(500);
   });
 
+  // The same asset on a cheaper chain: the override is by symbol, so Base does
+  // not quote 1 ETH from its chain floor.
+  it('floors ETH and WETH on Base the same as on Ethereum', () => {
+    expect(getWalletDepositMinimum(base.id, 'ETH')).toBe(0.005);
+    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe(0.005);
+  });
+
   it('falls back to a floor rather than none for an unlisted chain', () => {
     expect(getWalletDepositMinimum(999_999, 'USDC')).toBe(1);
   });
@@ -48,8 +56,21 @@ describe('getWalletDepositTokens', () => {
       'ETH',
       'WETH',
     ]);
-    // Base is USDC only — USDT there is deliberately not offered.
-    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual(['USDC']);
+    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual([
+      'USDC',
+      'USDT',
+      'ETH',
+      'WETH',
+    ]);
+  });
+
+  // Base's USDT, ETH and WETH are offered here only: `BRIDGE_TOKENS[base.id]`
+  // stays USDC alone, so card funding, savings and bridging are unchanged.
+  it('offers Base currencies beyond what BRIDGE_TOKENS lists for it', () => {
+    expect(Object.keys(BRIDGE_TOKENS[base.id].tokens ?? {})).toEqual(['USDC']);
+    expect(getWalletDepositTokens(polygon.id).map(token => token.symbol)).toEqual(
+      Object.keys(BRIDGE_TOKENS[polygon.id].tokens ?? {}),
+    );
   });
 
   it('returns nothing for a chain that is not supported', () => {
@@ -146,6 +167,16 @@ describe('resolveWalletDepositMinimum', () => {
     expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe(500);
   });
 
+  it('quotes the published Base WETH floor for ETH and WETH on Base', () => {
+    const assets = [
+      asset({ symbol: 'WETH', minimum: '0.004', decimals: 18 }),
+      asset({ chainId: base.id, chainName: 'Base', symbol: 'WETH', minimum: '0.0041' }),
+    ];
+
+    expect(resolveWalletDepositMinimum(base.id, 'ETH', assets)).toBe(0.0041);
+    expect(resolveWalletDepositMinimum(base.id, 'WETH', assets)).toBe(0.0041);
+  });
+
   it('does not take a published minimum from the wrong chain', () => {
     const assets = [asset({ chainId: base.id, chainName: 'Base', minimum: '99' })];
     expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe(10);
@@ -161,13 +192,15 @@ describe('resolveWalletDepositMinimum', () => {
 describe('resolveWalletDepositSymbol', () => {
   it('carries a currency over to a chain that accepts it', () => {
     expect(resolveWalletDepositSymbol(base.id, 'USDC')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(base.id, 'USDT')).toBe('USDT');
+    expect(resolveWalletDepositSymbol(base.id, 'ETH')).toBe('ETH');
     expect(resolveWalletDepositSymbol(mainnet.id, 'USDT')).toBe('USDT');
   });
 
   // Otherwise the screen would quote a minimum for a pairing that does not exist.
   it('falls back when the chain does not carry it', () => {
-    expect(resolveWalletDepositSymbol(base.id, 'USDT')).toBe('USDC');
-    expect(resolveWalletDepositSymbol(base.id, 'ETH')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(polygon.id, 'ETH')).toBe('USDC');
+    expect(resolveWalletDepositSymbol(base.id, 'FUSE')).toBe('USDC');
     expect(resolveWalletDepositSymbol(fuse.id, 'ETH')).toBe('FUSE');
   });
 
@@ -182,14 +215,13 @@ describe('resolveWalletDepositSymbol', () => {
 
 describe('getDefaultWalletDepositSelection', () => {
   /**
-   * Fuse, not Ethereum. The address shown is the user's Safe on whichever chain
-   * is picked — it is not a bridge — so a deposit made on the default lands on
-   * the default. Everything the balance is then spent on (the card, the vaults,
-   * the annual membership charge) is on Fuse, and the membership charge can
-   * only ever move Fuse USDC.e.
+   * Base: it carries every currency on offer but the Fuse pair, at a fraction of
+   * Ethereum's gas. The address shown is the user's Safe on whichever chain is
+   * picked — it is not a bridge — so a deposit made on the default lands on the
+   * default.
    */
-  it('opens on USDC over Fuse', () => {
-    expect(getDefaultWalletDepositSelection()).toEqual({ chainId: fuse.id, symbol: 'USDC' });
+  it('opens on USDC over Base', () => {
+    expect(getDefaultWalletDepositSelection()).toEqual({ chainId: base.id, symbol: 'USDC' });
   });
 
   it('offers USDC on the chain it opens on', () => {
@@ -211,14 +243,39 @@ describe('getAllWalletDepositTokens', () => {
     const symbols = getAllWalletDepositTokens().map(token => token.symbol);
     expect(symbols.slice(0, 3)).toEqual(['USDC', 'USDT', 'ETH']);
   });
+
+  it('follows them in network order, the default chain first', () => {
+    expect(getAllWalletDepositTokens().map(token => token.symbol)).toEqual([
+      'USDC',
+      'USDT',
+      'ETH',
+      'WETH',
+      'FUSE',
+      'WFUSE',
+    ]);
+  });
 });
 
 describe('getWalletDepositNetworksForToken', () => {
   it('only offers the chains that carry the currency', () => {
     expect(getWalletDepositNetworksForToken('ETH').map(network => network.chainId)).toEqual([
       mainnet.id,
+      base.id,
     ]);
-    expect(getWalletDepositNetworksForToken('USDT').map(network => network.chainId)).not.toContain(
+    expect(getWalletDepositNetworksForToken('WETH').map(network => network.chainId)).toEqual([
+      mainnet.id,
+      base.id,
+    ]);
+    expect(getWalletDepositNetworksForToken('FUSE').map(network => network.chainId)).toEqual([
+      fuse.id,
+    ]);
+  });
+
+  it('offers Base for every stablecoin', () => {
+    expect(getWalletDepositNetworksForToken('USDC').map(network => network.chainId)).toContain(
+      base.id,
+    );
+    expect(getWalletDepositNetworksForToken('USDT').map(network => network.chainId)).toContain(
       base.id,
     );
   });
@@ -229,18 +286,27 @@ describe('getWalletDepositNetworksForToken', () => {
 });
 
 describe('resolveWalletDepositChain', () => {
-  it('opens on Fuse when Fuse carries the currency', () => {
-    expect(resolveWalletDepositChain('USDC')).toBe(fuse.id);
+  it('opens every currency Base carries on Base', () => {
+    expect(resolveWalletDepositChain('USDC')).toBe(base.id);
+    expect(resolveWalletDepositChain('USDT')).toBe(base.id);
+    expect(resolveWalletDepositChain('ETH')).toBe(base.id);
+    expect(resolveWalletDepositChain('WETH')).toBe(base.id);
   });
 
-  it('falls back to a chain that carries it when Fuse does not', () => {
-    expect(resolveWalletDepositChain('ETH')).toBe(mainnet.id);
+  it('opens the Fuse currencies on Fuse, the only chain carrying them', () => {
+    expect(resolveWalletDepositChain('FUSE')).toBe(fuse.id);
+    expect(resolveWalletDepositChain('WFUSE')).toBe(fuse.id);
   });
 
   // Changing only the currency from the address screen should not move the chain.
   it('keeps the current chain when it carries the currency', () => {
     expect(resolveWalletDepositChain('USDC', polygon.id)).toBe(polygon.id);
-    expect(resolveWalletDepositChain('ETH', polygon.id)).toBe(mainnet.id);
+    expect(resolveWalletDepositChain('ETH', mainnet.id)).toBe(mainnet.id);
+  });
+
+  it('moves to Base when the current chain does not carry the currency', () => {
+    expect(resolveWalletDepositChain('ETH', polygon.id)).toBe(base.id);
+    expect(resolveWalletDepositChain('USDC', 999_999)).toBe(base.id);
   });
 });
 
@@ -258,7 +324,7 @@ describe('EURC', () => {
 
   it('is left out unless asked for', () => {
     expect(getAllWalletDepositTokens().map(token => token.symbol)).not.toContain('EURC');
-    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).toEqual(['USDC']);
+    expect(getWalletDepositTokens(base.id).map(token => token.symbol)).not.toContain('EURC');
   });
 
   it('follows the stablecoins in "Select token"', () => {
@@ -269,6 +335,9 @@ describe('EURC', () => {
   it('is offered on Base only', () => {
     expect(getWalletDepositTokens(base.id, true).map(token => token.symbol)).toEqual([
       'USDC',
+      'USDT',
+      'ETH',
+      'WETH',
       'EURC',
     ]);
     expect(getWalletDepositTokens(mainnet.id, true).map(token => token.symbol)).not.toContain(
