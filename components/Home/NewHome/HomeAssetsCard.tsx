@@ -7,7 +7,12 @@ import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
 import { isYieldShare, yieldHoldings } from '@/components/Earn/earnPortfolio';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { openYieldProduct, yieldProductName } from '@/components/Earn/yieldProducts';
+import {
+  formatYieldAmount,
+  formatYieldUsd,
+  openYieldProduct,
+  yieldProductName,
+} from '@/components/Earn/yieldProducts';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -114,6 +119,37 @@ export default function HomeAssetsCard({
         ),
       };
     }),
+    // EUR Yield is held in euros: its own row, the dollar estimate only beneath it and for order.
+    ...(portfolio.eurYield && portfolio.eurYield.valueEur > 0
+      ? [
+          {
+            key: `earn:${VaultType.EUR}`,
+            value: portfolio.eurYield.valueUsdEstimate ?? portfolio.eurYield.valueEur,
+            onPress: () => router.push(openYieldProduct(VaultType.EUR) as Href),
+            row: (onPress: () => void) => (
+              <AssetRow
+                title={yieldProductName(VaultType.EUR)}
+                value={undefined}
+                icon={<YieldIcon vaultType={VaultType.EUR} />}
+                subtitle={apyLabel(portfolio.eurYield?.apy)}
+                trailing={
+                  <View className="shrink-0 items-end gap-[3px]">
+                    <Text className="text-[16px] font-semibold text-white">
+                      {formatYieldAmount(portfolio.eurYield?.valueEur, VaultType.EUR)}
+                    </Text>
+                    {portfolio.eurYield?.valueUsdEstimate !== undefined && (
+                      <Text className="text-[14px] font-normal text-white/50">
+                        ≈ {formatYieldUsd(portfolio.eurYield.valueUsdEstimate)}
+                      </Text>
+                    )}
+                  </View>
+                }
+                onPress={onPress}
+              />
+            ),
+          },
+        ]
+      : []),
     ...((portfolio.lockedFuse ?? 0) > 0
       ? [
           {

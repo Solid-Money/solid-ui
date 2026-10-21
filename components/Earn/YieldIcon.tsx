@@ -4,14 +4,12 @@ import { Image } from 'expo-image';
 import { PORTFOLIO_ICONS } from '@/components/Assets/PortfolioIcon';
 import { VaultType } from '@/lib/types';
 
-// Required directly, like PORTFOLIO_ICONS: the asset registry pulls in animated marks.
-// TODO(soEURC): the EURC coin mark until design supplies an EUR Yield icon.
-const EURC_ICON = require('@/assets/images/eurc.png');
-
 // The ETH and FUSE marks are drawn on a 40.77 × 40 canvas with their own 10% circle;
-// the USD glyph is the bare "$", so it gets its circle here.
+// the USD and EUR glyphs are the bare "$" and "€", so they get their circle here.
 const CANVAS_RATIO = 40.7692 / 40;
 const USD_GLYPH = { width: 12.1184, height: 23.9253 };
+// Figma 29123:9532: a 17px euro on a 32 × 31.4 circle.
+const EUR_GLYPH = { width: 17 * (40 / 31.396), height: 17 * (40 / 31.396) };
 
 interface YieldIconProps {
   vaultType: VaultType;
@@ -36,10 +34,11 @@ export default function YieldIcon({
   const scale = size / 40;
   const dot = Math.max(Math.round(size * 0.24), 8);
   const ring = Math.max(Math.round(size * 0.05), 2);
+  const glyph = vaultType === VaultType.EUR ? EUR_GLYPH : USD_GLYPH;
 
   return (
     <View style={{ width: size * CANVAS_RATIO, height: size }}>
-      {vaultType === VaultType.USDC ? (
+      {vaultType === VaultType.USDC || vaultType === VaultType.EUR ? (
         <View
           className="items-center justify-center rounded-full"
           style={{
@@ -49,17 +48,11 @@ export default function YieldIcon({
           }}
         >
           <Image
-            source={PORTFOLIO_ICONS.usd}
+            source={vaultType === VaultType.EUR ? PORTFOLIO_ICONS.euro : PORTFOLIO_ICONS.usd}
             contentFit="contain"
-            style={{ width: USD_GLYPH.width * scale, height: USD_GLYPH.height * scale }}
+            style={{ width: glyph.width * scale, height: glyph.height * scale }}
           />
         </View>
-      ) : vaultType === VaultType.EUR ? (
-        <Image
-          source={EURC_ICON}
-          contentFit="contain"
-          style={{ width: size * CANVAS_RATIO, height: size, borderRadius: size }}
-        />
       ) : (
         <Image
           source={vaultType === VaultType.ETH ? PORTFOLIO_ICONS.eth : PORTFOLIO_ICONS.fuse}
