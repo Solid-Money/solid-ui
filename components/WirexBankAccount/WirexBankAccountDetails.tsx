@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { BankAccountDetailsView } from '@/components/DepositOption/VirtualAccountDetails/BankAccountDetailsView';
 import { Button } from '@/components/ui/button';
@@ -11,18 +9,13 @@ import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import {
-  useActivateWirexBankAccount,
-  useWirexBankOverview,
-  WIREX_BANK_OVERVIEW_KEY,
-} from '@/hooks/useWirexBankAccounts';
+import { useConfirmResidence } from '@/hooks/useConfirmResidence';
+import { useActivateWirexBankAccount, useWirexBankOverview } from '@/hooks/useWirexBankAccounts';
 import { useWirexWalletLink } from '@/hooks/useWirexWalletLink';
 import { track } from '@/lib/analytics';
-import { getWirexBankOverview } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import { checkProductAccess } from '@/lib/countryAccess';
 import { WirexBankAccountType, WirexBankRailStatusDto } from '@/lib/types/wirex-bank';
-import { cn, withRefreshToken } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -164,12 +157,12 @@ export const WirexBankAccountDetails = ({
   const activate = useActivateWirexBankAccount();
   const walletLink = useWirexWalletLink();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const setModal = useDepositStore(state => state.setModal);
   const countrySource = useCountryStore(state => state.countryInfo?.source);
   const [selected, setSelected] = useState<WirexBankAccountType | null>(initialAccountType ?? null);
   const [isAskingResidence, setIsAskingResidence] = useState(false);
-  const [isConfirmingResidence, setIsConfirmingResidence] = useState(false);
+  const { confirmResidence: confirmResidenceCountry, isConfirming: isConfirmingResidence } =
+    useConfirmResidence();
 
   /** Rails worth showing at all — an unavailable one with no account is noise. */
   const visibleRails = useMemo(() => pickVisibleRails(overview), [overview]);
@@ -264,38 +257,14 @@ export const WirexBankAccountDetails = ({
    * to Sumsub, anywhere else gets the Rain account pitch instead.
    */
   async function confirmResidence(country: Country) {
-    const code = country.code.toUpperCase();
-    setIsConfirmingResidence(true);
-    try {
-      // `isAvailable` in the store means the CARD to everyone who reads it, so
-      // it is answered for the card, as the card's country screen does.
-      const cardAccess = await checkProductAccess('card', code);
-      useCountryStore.getState().setCountryInfo({
-        countryCode: code,
-        countryName: country.name,
-        isAvailable: cardAccess === true,
-        source: 'manual',
-      });
-      const routed = await queryClient.fetchQuery({
-        queryKey: [WIREX_BANK_OVERVIEW_KEY, code],
-        queryFn: () => withRefreshToken(() => getWirexBankOverview(code)),
-      });
-      setIsAskingResidence(false);
-      if (routed?.provider === 'wirex') {
-        startVerification();
-        return;
-      }
-      setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: "Couldn't check your country",
-        text2: 'Please try again in a moment.',
-        props: { badgeText: '' },
-      });
-    } finally {
-      setIsConfirmingResidence(false);
+    const routed = await confirmResidenceCountry(country);
+    if (!routed) return;
+    setIsAskingResidence(false);
+    if (routed === 'wirex') {
+      startVerification();
+      return;
     }
+    setModal(DEPOSIT_MODAL.OPEN_VIRTUAL_ACCOUNT_APPLY);
   }
 
   if (isAskingResidence) {

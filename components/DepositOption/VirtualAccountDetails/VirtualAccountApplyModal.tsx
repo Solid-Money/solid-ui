@@ -16,6 +16,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useConfirmResidence } from '@/hooks/useConfirmResidence';
 import { useDimension } from '@/hooks/useDimension';
 import { useOnboardingFeeQuote } from '@/hooks/useOnboardingFee';
 import { useVirtualAccountProvider } from '@/hooks/useVirtualAccountProvider';
@@ -174,8 +175,11 @@ export const VirtualAccountApplyModal = ({
   // Which issuer would open this user's account. `loading` is neither — the CTA
   // waits rather than guessing, because guessing Rain is what sent Wirex users
   // into a verification they had already passed.
-  const { provider: virtualAccountProvider, isLoading: isResolvingProvider } =
-    useVirtualAccountProvider();
+  const {
+    provider: virtualAccountProvider,
+    isLoading: isResolvingProvider,
+    residenceRequired,
+  } = useVirtualAccountProvider();
 
   const [isChecking, setIsChecking] = useState(false);
   // Open once the region check passes. The sheet decides for itself whether
@@ -201,11 +205,32 @@ export const VirtualAccountApplyModal = ({
   const pickedByHand = useRef(false);
   const filteredCountries = useMemo(() => filterCountries(countrySearch), [countrySearch]);
 
+  // "Where do you live?" — asked before the pitch when the server chose Rain
+  // only from where the app thinks the user is. Bank accounts are opened by
+  // residence, so someone living in an IBAN country is moved to the Wirex EUR
+  // account here instead of being sold a USD one because of their IP. Not asked
+  // again once they have named a country by hand, here or anywhere else.
+  const countrySource = useCountryStore(state => state.countryInfo?.source);
+  const { confirmResidence, isConfirming: isConfirmingResidence } = useConfirmResidence();
+  const [residence, setResidence] = useState<Country | null>(null);
+  const [isResidenceAnswered, setIsResidenceAnswered] = useState(false);
+  const residencePickedByHand = useRef(false);
+  const isResidenceStep =
+    isConfirmingResidence ||
+    (virtualAccountProvider === 'rain' &&
+      residenceRequired &&
+      countrySource !== 'manual' &&
+      !isResidenceAnswered);
+
   // Funnel entry for the virtual account: everything downstream is measured
-  // against how many people saw this pitch.
+  // against how many people saw this pitch — so not before they have said
+  // where they live, which can send them to the Wirex account instead.
+  const isPitchViewTracked = useRef(false);
   useEffect(() => {
+    if (isPitchViewTracked.current || isResolvingProvider || isResidenceStep) return;
+    isPitchViewTracked.current = true;
     track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_PITCH_VIEWED);
-  }, []);
+  }, [isResidenceStep, isResolvingProvider]);
 
   // The dialog itself sits inside the overlay's 8pt inset. Adding the device's
   // safe-area plus 7pt places the hero and back button at y=59 on the Figma frame.
@@ -319,6 +344,55 @@ export const VirtualAccountApplyModal = ({
 
     setIsDocumentCountryStep(true);
   }, [cardStatus, proceed, virtualAccountProvider]);
+
+  // Preselect where they live from what the app already guessed. Only a
+  // suggestion, for the user to confirm or change; a manual pick always wins.
+  useEffect(() => {
+    if (!isResidenceStep) return;
+
+    let cancelled = false;
+    const preselect = async () => {
+      const known = useCountryStore.getState().countryInfo?.countryCode;
+      const code = known ?? (await detectGeo())?.countryCode;
+      const detected = code ? COUNTRIES.find(c => c.code === code.toUpperCase()) : undefined;
+
+      track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_RESIDENCE_VIEWED, {
+        provider: 'rain',
+        detected_country_code: detected?.code ?? null,
+      });
+
+      if (cancelled || !detected || residencePickedByHand.current) return;
+      setResidence(current => current ?? detected);
+    };
+    void preselect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isResidenceStep]);
+
+  const handleSelectResidence = useCallback((country: Country) => {
+    residencePickedByHand.current = true;
+    setResidence(country);
+    setCountrySearch(country.name);
+    setIsCountryDropdownOpen(false);
+  }, []);
+
+  const handleConfirmResidence = useCallback(async () => {
+    if (!residence) return;
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_RESIDENCE_CONFIRMED, {
+      provider: 'rain',
+      country_code: residence.code,
+      picked_by_hand: residencePickedByHand.current,
+    });
+
+    const routed = await confirmResidence(residence);
+    if (routed === 'wirex') {
+      proceedToWirex();
+      return;
+    }
+    if (routed === 'rain') setIsResidenceAnswered(true);
+  }, [confirmResidence, proceedToWirex, residence]);
 
   // Preselect the ID country from the IP. Only a suggestion: it is shown in the
   // field for the user to confirm or change, and a manual pick always wins.
@@ -461,6 +535,58 @@ export const VirtualAccountApplyModal = ({
         // pop-up only needs the remaining 7pt to hit y=59 on the Figma frame.
         topOffset={7}
       />
+    );
+  }
+
+  if (isResidenceStep) {
+    return (
+      <PinnedActionModalLayout
+        onBack={onClose}
+        topControl="close"
+        backTopOffset={heroTop}
+        actionFadeExtent={60}
+        actionHorizontalPadding={isDesktop ? 40 : 18}
+        actionPaddingBottom={isDesktop ? 55 : 0}
+        action={
+          <Button
+            variant="brand"
+            className="w-full rounded-full border-0 active:opacity-90"
+            style={{ height: CTA_HEIGHT }}
+            onPress={handleConfirmResidence}
+            disabled={!residence || isConfirmingResidence}
+          >
+            {isConfirmingResidence ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text className="text-[16px] font-semibold text-black">Continue</Text>
+            )}
+          </Button>
+        }
+      >
+        <View
+          style={{
+            paddingTop: heroTop + DOCUMENT_STEP_TOP_GAP,
+            marginHorizontal: isDesktop ? 40 : 18,
+          }}
+        >
+          <CountrySelector
+            selectedCountry={residence}
+            onOpenDropdown={handleOpenCountryDropdown}
+            showConfirmButton={false}
+            title="Where do you live?"
+            description="Bank accounts are opened in your country of residence, so this decides which account you can get."
+          />
+        </View>
+        <CountryDropdown
+          visible={isCountryDropdownOpen}
+          searchQuery={countrySearch}
+          filteredCountries={filteredCountries}
+          onClose={() => setIsCountryDropdownOpen(false)}
+          onSearchChange={setCountrySearch}
+          onCountrySelect={handleSelectResidence}
+          inDialog
+        />
+      </PinnedActionModalLayout>
     );
   }
 

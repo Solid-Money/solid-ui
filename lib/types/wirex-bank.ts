@@ -109,9 +109,10 @@ export interface WirexBankOverviewDto {
   /** Wirex serves this country but the user has not verified — send them to Sumsub. */
   kycRequired: boolean;
   /**
-   * Wirex was picked from the country the app sent, for a user with no
-   * residence on file. Sumsub will not start until they say where they live,
-   * so ask first. Absent from older servers.
+   * The provider was picked from the country the app sent, for a user with no
+   * residence on file, and where they live could change it. Ask before showing
+   * either provider's flow (Sumsub will not start without it either). Absent
+   * from older servers.
    */
   residenceRequired?: boolean;
   /**
