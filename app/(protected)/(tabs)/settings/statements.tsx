@@ -60,7 +60,7 @@ const MonthRow = ({
  */
 export default function Statements() {
   const { isDesktop } = useDimension();
-  const { hasStatements, months, isLoading, isError, pendingMonth, download } = useStatements();
+  const { months, isLoading, isError, pendingMonth, download } = useStatements();
 
   const handleDownload = async (month: string) => {
     if (pendingMonth) return;
@@ -121,12 +121,7 @@ export default function Statements() {
         </Text>
 
         <ProfileSectionLabel>Monthly statements</ProfileSectionLabel>
-        {/* The Settings row only shows for whitelisted users; this covers a deep link. */}
-        {!hasStatements ? (
-          <Text className="mt-2 px-1 text-sm text-[#8E8E8E]">
-            Statements aren&apos;t available on your account yet.
-          </Text>
-        ) : isLoading ? (
+        {isLoading ? (
           <ActivityIndicator className="mt-8" size="small" color="#8E8E8E" />
         ) : isError ? (
           <Text className="mt-2 px-1 text-sm text-[#8E8E8E]">

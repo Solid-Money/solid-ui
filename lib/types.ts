@@ -1046,7 +1046,7 @@ export interface WirexThreeDsDecisionResponse {
  * Features held back from the public. The server's whitelist decides who has
  * them — see useHasFeature.
  */
-export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'supportChat' | 'statements';
+export type WhitelistedFeature = 'cashApp' | 'onramper' | 'cashout' | 'supportChat';
 
 /** `GET /accounts/v1/feature-access`. */
 export interface FeatureAccessResponse {
@@ -3559,6 +3559,12 @@ export interface TransfiCashoutQuote {
   /** USDC limits for this corridor. */
   minLimit?: number;
   maxLimit?: number;
+}
+
+/** How much USDC one cash-out may send through a payout method. */
+export interface TransfiCashoutLimits {
+  minLimit: number;
+  maxLimit: number;
 }
 
 /** Where to send the USDC for an opened cash-out. Only ever read from the backend. */

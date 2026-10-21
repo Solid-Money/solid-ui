@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useHasFeature } from '@/hooks/useFeatureAccess';
 import { track } from '@/lib/analytics';
 import { downloadStatement, getAvailableStatements } from '@/lib/api';
 import { saveStatementFile } from '@/lib/statementFile';
@@ -24,14 +23,13 @@ const useSelectedUserId = () =>
  */
 export const useStatements = () => {
   const userId = useSelectedUserId();
-  const hasStatements = useHasFeature('statements');
   // The month being downloaded, so its row can show a spinner on its own.
   const [pendingMonth, setPendingMonth] = useState<string | null>(null);
 
   const months = useQuery({
     queryKey: [AVAILABLE_STATEMENTS_QUERY_KEY, userId],
     queryFn: () => withRefreshToken(() => getAvailableStatements()),
-    enabled: !!userId && hasStatements,
+    enabled: !!userId,
     retry: 1,
   });
 
@@ -52,7 +50,6 @@ export const useStatements = () => {
   });
 
   return {
-    hasStatements,
     months: months.data?.months ?? [],
     isLoading: months.isLoading,
     isError: months.isError,
