@@ -13,7 +13,6 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
-  offersWalletDepositEurc,
 } from './constants';
 
 const PILL_ICON_STYLE = { width: 20, height: 20, borderRadius: 10 };
@@ -101,7 +100,7 @@ const WalletDepositSelectors = ({
   return (
     <View className="flex-row items-center justify-center gap-x-2">
       <Pill
-        icon={getWalletDepositTokenIcon(chainId, symbol)}
+        icon={getWalletDepositTokenIcon(symbol)}
         label={symbol}
         onPress={() => {
           setWalletDeposit({ isChangingToken: true });
@@ -145,10 +144,9 @@ export const WalletDepositNetworkList = ({
   onDismiss,
 }: WalletDepositNetworkListProps) => {
   const { provider } = useCardProvider();
-  const withEurc = offersWalletDepositEurc(provider);
   const networks = useMemo(
-    () => getWalletDepositNetworksForToken(symbol, withEurc),
-    [symbol, withEurc],
+    () => getWalletDepositNetworksForToken(symbol, provider),
+    [symbol, provider],
   );
 
   return (

@@ -57,6 +57,7 @@ const TokenSelector: React.FC = () => {
     baseTokens,
     arbitrumTokens,
     bscTokens,
+    optimismTokens,
     isLoading,
   } = useWalletTokens();
 
@@ -69,6 +70,7 @@ const TokenSelector: React.FC = () => {
       ...baseTokens,
       ...arbitrumTokens,
       ...bscTokens,
+      ...optimismTokens,
     ];
     // In the bridge flow: the bridgeable Fuse stablecoins, plus the coin being
     // sent on its other chains, which leave the bridge for the regular send.
@@ -95,6 +97,7 @@ const TokenSelector: React.FC = () => {
     baseTokens,
     arbitrumTokens,
     bscTokens,
+    optimismTokens,
     isCrossChain,
     selectedToken,
   ]);

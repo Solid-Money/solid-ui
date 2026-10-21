@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
+import { isWalletDepositContract } from '@/constants/walletDepositTokens';
 import {
   fetchCoinPricesById,
   fetchTokenList,
@@ -75,6 +76,7 @@ interface BalanceData {
   baseTokens: TokenBalance[];
   arbitrumTokens: TokenBalance[];
   bscTokens: TokenBalance[];
+  optimismTokens: TokenBalance[];
   tokens: TokenBalance[];
   unifiedTokens: UnifiedTokenBalance[];
   isLoading: boolean;
@@ -91,6 +93,9 @@ const POLYGON_CHAIN_ID = 137;
 const BASE_CHAIN_ID = 8453;
 const ARBITRUM_CHAIN_ID = 42161;
 const BSC_CHAIN_ID = 56;
+// A deposit chain only: nothing bridges or saves from it, but what lands there
+// is the user's and has to show.
+const OPTIMISM_CHAIN_ID = 10;
 
 // ABI for AccountantWithRateProviders getRate function
 const ACCOUNTANT_ABI = [
@@ -129,6 +134,7 @@ const NATIVE_PRICE_FETCHERS: Record<number, () => Promise<string | undefined>> =
   [arbitrum.id]: makeNativePriceFetcher(arbitrum.id),
   [bsc.id]: makeNativePriceFetcher(bsc.id),
   [polygon.id]: makeNativePriceFetcher(polygon.id),
+  [optimism.id]: makeNativePriceFetcher(optimism.id),
 };
 
 const isZeroRate = (r: number | null | undefined) =>
@@ -187,6 +193,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     polygonResponse,
     arbitrumResponse,
     bscResponse,
+    optimismResponse,
     soUSDRate,
     soUSDBaseRate,
     soFUSERate,
@@ -197,12 +204,14 @@ const fetchTokenBalances = async (safeAddress: string) => {
     arbitrumBalance,
     bscBalance,
     polygonBalance,
+    optimismBalance,
     ethPrice,
     fusePrice,
     basePrice,
     arbitrumPrice,
     bscPrice,
     polygonPrice,
+    optimismPrice,
     tokenList,
   ] = await Promise.allSettled([
     // Token balances via the data-source dispatcher (Alchemy primary,
@@ -215,6 +224,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     fetchTokenBalancesWithFallback(POLYGON_CHAIN_ID, safeAddress),
     fetchTokenBalancesWithFallback(ARBITRUM_CHAIN_ID, safeAddress),
     fetchTokenBalancesWithFallback(BSC_CHAIN_ID, safeAddress),
+    fetchTokenBalancesWithFallback(OPTIMISM_CHAIN_ID, safeAddress),
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.accountant,
       abi: ACCOUNTANT_ABI,
@@ -259,12 +269,16 @@ const fetchTokenBalances = async (safeAddress: string) => {
     getBalance(publicClient(polygon.id), {
       address: safeAddress as `0x${string}`,
     }),
+    getBalance(publicClient(optimism.id), {
+      address: safeAddress as `0x${string}`,
+    }),
     NATIVE_PRICE_FETCHERS[mainnet.id](),
     NATIVE_PRICE_FETCHERS[fuse.id](),
     NATIVE_PRICE_FETCHERS[base.id](),
     NATIVE_PRICE_FETCHERS[arbitrum.id](),
     NATIVE_PRICE_FETCHERS[bsc.id](),
     NATIVE_PRICE_FETCHERS[polygon.id](),
+    NATIVE_PRICE_FETCHERS[optimism.id](),
     fetchTokenList({
       isActive: true,
     }),
@@ -276,6 +290,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let baseTokens: TokenBalance[] = [];
   let arbitrumTokens: TokenBalance[] = [];
   let bscTokens: TokenBalance[] = [];
+  let optimismTokens: TokenBalance[] = [];
   let soUSDRateNum = 0;
   let soUSDBaseRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
@@ -380,10 +395,12 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
   // soUSD shares are never in the swap list, but must still show: soUSD on Base
-  // is where a withdrawal sits between its bridge and its queue request.
+  // is where a withdrawal sits between its bridge and its queue request. So must
+  // anything the deposit screen told the user to send, listed for swapping or not.
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
     if (list.length === 0 || isSoUSDToken(address)) return true;
     if (isKeptUnlisted(chainId, address)) return true;
+    if (isWalletDepositContract(chainId, address)) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
@@ -465,6 +482,19 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, BSC_CHAIN_ID));
   } else {
     console.warn('Failed to fetch BSC balances:', bscResponse.reason);
+  }
+
+  // Process Optimism tokens
+  if (optimismResponse.status === PromiseStatus.FULFILLED) {
+    optimismTokens = optimismResponse.value
+      .filter(
+        item =>
+          item.token.type === TokenType.ERC20 &&
+          filterTokenList(tokenListData, OPTIMISM_CHAIN_ID, getAddress(item)),
+      )
+      .map(item => convertBlockscoutToTokenBalance(item, OPTIMISM_CHAIN_ID));
+  } else {
+    console.warn('Failed to fetch Optimism balances:', optimismResponse.reason);
   }
 
   // Process native token balances
@@ -594,6 +624,27 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
+  if (optimismBalance.status === PromiseStatus.FULFILLED && Number(optimismBalance.value)) {
+    const optimismPriceValue =
+      optimismPrice.status === PromiseStatus.FULFILLED ? Number(optimismPrice.value) : 0;
+    const optimismEthTokenFromList = tokenListData.find(
+      token => token.chainId === OPTIMISM_CHAIN_ID && token.symbol === 'ETH',
+    );
+    optimismTokens.push({
+      contractTickerSymbol: 'ETH',
+      contractName: 'Ether',
+      contractAddress: zeroAddress,
+      balance: optimismBalance.value.toString(),
+      quoteRate: optimismPriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: OPTIMISM_CHAIN_ID,
+      commonId: optimismEthTokenFromList?.commonId,
+      tokenId: optimismEthTokenFromList?.tokenId,
+    });
+  }
+
   let allTokens = [
     ...ethereumTokens,
     ...fuseTokens,
@@ -601,6 +652,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ...baseTokens,
     ...arbitrumTokens,
     ...bscTokens,
+    ...optimismTokens,
   ];
 
   // Fallback 1: Alchemy Prices by contract address. Alchemy's token balances
@@ -778,6 +830,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
   const bscTokensFinal = allTokens.filter(t => t.chainId === BSC_CHAIN_ID);
+  const optimismTokensFinal = allTokens.filter(t => t.chainId === OPTIMISM_CHAIN_ID);
 
   return {
     ...totals,
@@ -790,12 +843,14 @@ const fetchTokenBalances = async (safeAddress: string) => {
           [POLYGON_CHAIN_ID, polygonResponse],
           [ARBITRUM_CHAIN_ID, arbitrumResponse],
           [BSC_CHAIN_ID, bscResponse],
+          [OPTIMISM_CHAIN_ID, optimismResponse],
           [ETHEREUM_CHAIN_ID, ethBalance],
           [FUSE_CHAIN_ID, fuseBalance],
           [BASE_CHAIN_ID, baseBalance],
           [ARBITRUM_CHAIN_ID, arbitrumBalance],
           [BSC_CHAIN_ID, bscBalance],
           [POLYGON_CHAIN_ID, polygonBalance],
+          [OPTIMISM_CHAIN_ID, optimismBalance],
         ]
           .filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
           .map(([chainId]) => chainId as number),
@@ -807,6 +862,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     baseTokens: baseTokensFinal,
     arbitrumTokens: arbitrumTokensFinal,
     bscTokens: bscTokensFinal,
+    optimismTokens: optimismTokensFinal,
     tokens: allTokens,
     unifiedTokens,
   };
@@ -831,6 +887,7 @@ const EMPTY_BALANCE_DATA = {
   baseTokens: [] as TokenBalance[],
   arbitrumTokens: [] as TokenBalance[],
   bscTokens: [] as TokenBalance[],
+  optimismTokens: [] as TokenBalance[],
   tokens: [] as TokenBalance[],
   unifiedTokens: [] as UnifiedTokenBalance[],
 };

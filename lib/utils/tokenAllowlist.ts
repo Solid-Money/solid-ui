@@ -1,3 +1,4 @@
+import { getWalletDepositContracts } from '@/constants/walletDepositTokens';
 import { ActivityEvent, SwapTokenResponse, TransactionType } from '@/lib/types';
 
 /**
@@ -41,7 +42,14 @@ export const toListedTokens = (list: SwapTokenResponse[] | undefined): ListedTok
       keys.add(listedTokenKey(token.chainId, token.address));
     }
   }
-  return keys.size > 0 ? keys : null;
+  if (keys.size === 0) return null;
+
+  // What the deposit screen offers is listed too, as the balance list keeps it:
+  // a deposit someone was told to make must show as one, swappable or not.
+  for (const { chainId, address } of getWalletDepositContracts()) {
+    keys.add(listedTokenKey(chainId, address));
+  }
+  return keys;
 };
 
 /** Whether this activity is a token landing that the list does not name. */

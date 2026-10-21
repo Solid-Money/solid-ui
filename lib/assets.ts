@@ -151,6 +151,7 @@ export const ASSETS = {
     hash: '4c322514',
   },
   'images/Plus.tsx': { module: require('@/assets/images/Plus.tsx'), hash: '733906a0' },
+  'images/aave.png': { module: require('@/assets/images/aave.png'), hash: 'a6675512' },
   'images/activate_card.png': {
     module: require('@/assets/images/activate_card.png'),
     hash: '5dfaebb9',
@@ -192,6 +193,7 @@ export const ASSETS = {
     hash: '7d96415a',
   },
   'images/apple_pay.png': { module: require('@/assets/images/apple_pay.png'), hash: 'c12b79b1' },
+  'images/arb.png': { module: require('@/assets/images/arb.png'), hash: 'a0f75ab1' },
   'images/arbitrum.png': { module: require('@/assets/images/arbitrum.png'), hash: 'f6ebb536' },
   'images/assets-nav-bar-icon.tsx': {
     module: require('@/assets/images/assets-nav-bar-icon.tsx'),
@@ -366,6 +368,7 @@ export const ASSETS = {
     hash: '25299184',
   },
   'images/cards.png': { module: require('@/assets/images/cards.png'), hash: '6c671c63' },
+  'images/cbbtc.png': { module: require('@/assets/images/cbbtc.png'), hash: '7524ef4e' },
   'images/checkmark.tsx': { module: require('@/assets/images/checkmark.tsx'), hash: '66caebb4' },
   'images/copy.tsx': { module: require('@/assets/images/copy.tsx'), hash: '25734d53' },
   'images/delete-account.tsx': {
@@ -494,6 +497,7 @@ export const ASSETS = {
   'images/earn.png': { module: require('@/assets/images/earn.png'), hash: 'c1d01a5d' },
   'images/email.png': { module: require('@/assets/images/email.png'), hash: '7154e7ce' },
   'images/email.tsx': { module: require('@/assets/images/email.tsx'), hash: '1882cb4f' },
+  'images/ena.png': { module: require('@/assets/images/ena.png'), hash: 'e3147a64' },
   'images/eth-bitcoin-usdc-4x.png': {
     module: require('@/assets/images/eth-bitcoin-usdc-4x.png'),
     hash: '01661ca4',
@@ -712,6 +716,7 @@ export const ASSETS = {
     module: require('@/assets/images/mxn-fiat-currency.tsx'),
     hash: 'aa8e75e4',
   },
+  'images/near.png': { module: require('@/assets/images/near.png'), hash: 'ae5ecb7c' },
   'images/no_funds_deposit_icon.png': {
     module: require('@/assets/images/no_funds_deposit_icon.png'),
     hash: '69b1f817',
@@ -772,6 +777,7 @@ export const ASSETS = {
     module: require('@/assets/images/one-percent-cashback.png'),
     hash: 'e3f22ad7',
   },
+  'images/op.png': { module: require('@/assets/images/op.png'), hash: 'a183571d' },
   'images/overview-reallocation.png': {
     module: require('@/assets/images/overview-reallocation.png'),
     hash: '1fe69541',
@@ -796,6 +802,7 @@ export const ASSETS = {
     module: require('@/assets/images/passkey-svg.tsx'),
     hash: '63ee97b3',
   },
+  'images/paxg.png': { module: require('@/assets/images/paxg.png'), hash: 'b2a62a01' },
   'images/pendle.png': { module: require('@/assets/images/pendle.png'), hash: 'aceaea5e' },
   'images/percentage_circles.png': {
     module: require('@/assets/images/percentage_circles.png'),
@@ -1368,8 +1375,10 @@ export const ASSETS = {
     hash: 'd25eb3c2',
   },
   'images/sign-out.tsx': { module: require('@/assets/images/sign-out.tsx'), hash: 'deb2a605' },
+  'images/slvx.png': { module: require('@/assets/images/slvx.png'), hash: '220db66a' },
   'images/soeth-4x.png': { module: require('@/assets/images/soeth-4x.png'), hash: 'cbcdc20f' },
   'images/sofuse-4x.png': { module: require('@/assets/images/sofuse-4x.png'), hash: '1f01974a' },
+  'images/sol.png': { module: require('@/assets/images/sol.png'), hash: 'c167375b' },
   'images/solid-4x.png': { module: require('@/assets/images/solid-4x.png'), hash: 'f6579942' },
   'images/solid-black-large.png': {
     module: require('@/assets/images/solid-black-large.png'),
@@ -1747,6 +1756,7 @@ export const ASSETS = {
     module: require('@/assets/images/two-percent-yellow.png'),
     hash: '71c88645',
   },
+  'images/uni.png': { module: require('@/assets/images/uni.png'), hash: '1eafca7e' },
   'images/us.png': { module: require('@/assets/images/us.png'), hash: '5e8aa0bc' },
   'images/usd-fiat-currency.tsx': {
     module: require('@/assets/images/usd-fiat-currency.tsx'),
@@ -1833,6 +1843,7 @@ export const ASSETS = {
     module: require('@/assets/images/wave-texture.png'),
     hash: 'cf0cffad',
   },
+  'images/wbtc.png': { module: require('@/assets/images/wbtc.png'), hash: 'ccf4845e' },
   'images/welcome-card.png': {
     module: require('@/assets/images/welcome-card.png'),
     hash: '01502018',
@@ -1861,10 +1872,12 @@ export const ASSETS = {
     module: require('@/assets/images/withdraw_card_funds_with_shadow.png'),
     hash: '0930b6c1',
   },
+  'images/wld.png': { module: require('@/assets/images/wld.png'), hash: '60f9d16a' },
   'images/yellow_onboarding_bg.png': {
     module: require('@/assets/images/yellow_onboarding_bg.png'),
     hash: '6ed53629',
   },
+  'images/zec.png': { module: require('@/assets/images/zec.png'), hash: '659eb5c4' },
   'splash/splash-icon.png': {
     module: require('@/assets/splash/splash-icon.png'),
     hash: '15315f99',

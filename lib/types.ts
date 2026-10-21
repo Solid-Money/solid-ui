@@ -128,6 +128,12 @@ export interface DepositAssetsResponse {
   /** The dollar figure every asset's `minimum` is derived from. */
   minimumUsd: number;
   assets: DepositAsset[];
+  /**
+   * What the deposit screen offers that lands in the Safe as sent (PAXG, WBTC,
+   * OP, ...), apart from `assets` because the pipeline credits none of them.
+   * Absent from a backend older than these tokens.
+   */
+  walletAssets?: DepositAsset[];
   /** False when a minimum is a conservative fallback, not a live conversion. */
   pricesResolved: boolean;
 }
