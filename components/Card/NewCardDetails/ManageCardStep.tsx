@@ -6,6 +6,7 @@ import {
   AppleWalletRowIcon,
   ApprovalsRowIcon,
   EditLimitRowIcon,
+  MainCurrencyRowIcon,
   RowChevronIcon,
 } from '@/components/Card/NewCardDetails/icons';
 import { Text } from '@/components/ui/text';
@@ -20,6 +21,8 @@ interface ManageRowProps {
    * because a row has no corner to hang one on.
    */
   count?: number;
+  /** The current setting, right-aligned before the chevron — "US dollar". */
+  value?: string;
 }
 
 /**
@@ -29,10 +32,10 @@ interface ManageRowProps {
  * the two lists on the card surface read as one control, on a lighter card because this
  * one sits inside a sheet rather than on the screen background.
  */
-const ManageRow = ({ icon, label, onPress, count }: ManageRowProps) => (
+const ManageRow = ({ icon, label, onPress, count, value }: ManageRowProps) => (
   <Pressable
     accessibilityRole="button"
-    accessibilityLabel={count ? `${label}, ${count} waiting` : label}
+    accessibilityLabel={count ? `${label}, ${count} waiting` : value ? `${label}, ${value}` : label}
     onPress={onPress}
     style={styles.row}
     className="flex-row items-center web:hover:bg-white/5"
@@ -45,6 +48,11 @@ const ManageRow = ({ icon, label, onPress, count }: ManageRowProps) => (
       </View>
     ) : null}
     <View className="flex-1" />
+    {value ? (
+      <Text style={styles.value} className="text-[16px] text-white/50">
+        {value}
+      </Text>
+    ) : null}
     <RowChevronIcon />
   </Pressable>
 );
@@ -58,6 +66,8 @@ interface ManageCardStepProps {
   approvalsCount: number;
   showSpendControls?: boolean;
   onWithdraw?: () => void;
+  /** Wirex cards only: the "Main currency" row (Figma 29235:12797), last in the list. */
+  mainCurrency?: { label: string; onPress: () => void };
 }
 
 /**
@@ -77,6 +87,7 @@ const ManageCardStep = ({
   approvalsCount,
   showSpendControls = true,
   onWithdraw,
+  mainCurrency,
 }: ManageCardStepProps) => {
   // A phone can only provision into its own wallet, so the row names that one. Desktop
   // web has neither; the guide covers both there and Apple is the design's label.
@@ -116,6 +127,17 @@ const ManageCardStep = ({
           />
         </>
       ) : null}
+      {mainCurrency ? (
+        <>
+          <View style={styles.divider} />
+          <ManageRow
+            icon={<MainCurrencyRowIcon />}
+            label="Main currency"
+            value={mainCurrency.label}
+            onPress={mainCurrency.onPress}
+          />
+        </>
+      ) : null}
     </View>
   );
 };
@@ -125,6 +147,8 @@ const styles = StyleSheet.create({
   row: { paddingLeft: 26, paddingRight: 24, paddingVertical: 25 },
   iconSlot: { alignItems: 'center', marginRight: 13, width: 27 },
   divider: { backgroundColor: 'rgba(255, 255, 255, 0.1)', height: 1 },
+  // Figma 29235:12799: "US dollar" ends about 16pt before the chevron.
+  value: { marginRight: 16 },
   count: {
     alignItems: 'center',
     borderRadius: 9,

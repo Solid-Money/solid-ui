@@ -17,6 +17,7 @@ import {
   type CardBorrowPosition,
   useCardSpendRegistration,
 } from '@/hooks/useCardSpendRegistration';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
 import type { BorrowedSummaryFigures } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 
@@ -82,6 +83,8 @@ export const combineCreditFigures = (
   > | null,
   fuseBorrowApyPerSecond: bigint,
   positions: CardCreditPositions | undefined,
+  /** Formats a 6-decimal USD figure; the main currency's formatter on screen. */
+  format: (amount: bigint) => string = formatUsd,
 ): CreditModeFigures => {
   const instances = [
     {
@@ -98,11 +101,11 @@ export const combineCreditFigures = (
   const headroom = instances.reduce((sum, instance) => sum + instance.creditHeadroomUsd, 0n);
 
   return {
-    borrowed: formatUsd(debt),
-    creditLimit: formatUsd(line),
+    borrowed: format(debt),
+    creditLimit: format(line),
     borrowApy: formatApy(borrowApyPercent(combinedBorrowRate(instances))),
     borrowedProgress: borrowedProgress(debt, line),
-    availableToBorrow: formatUsd(headroom),
+    availableToBorrow: format(headroom),
     collateral: [
       ...(positions?.fuse?.collateral ?? []),
       ...(positions?.base?.collateral ?? []),
@@ -117,10 +120,11 @@ export const combineCreditFigures = (
 export const useCreditModeFigures = ({ enabled }: { enabled: boolean }): CreditModeFigures => {
   const { position, borrowApyPerSecond } = useCardSpendRegistration();
   const { data: positions } = useCardCreditPositions({ enabled });
+  const { formatMicroUsd } = useCardDisplayCurrency();
 
   return useMemo(
-    () => combineCreditFigures(position, borrowApyPerSecond, positions),
-    [position, borrowApyPerSecond, positions],
+    () => combineCreditFigures(position, borrowApyPerSecond, positions, formatMicroUsd),
+    [position, borrowApyPerSecond, positions, formatMicroUsd],
   );
 };
 

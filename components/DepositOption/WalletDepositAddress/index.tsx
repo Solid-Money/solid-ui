@@ -3,6 +3,7 @@ import { ActivityIndicator, ImageSourcePropType, Pressable, View } from 'react-n
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
 import { CARD_FUND_DESTINATION_TYPE } from '@/components/Card/CardFund/constants';
@@ -11,6 +12,8 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositFeeNotice from '@/components/DepositOption/DepositFeeNotice';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useDepositAssets } from '@/hooks/useDepositAssets';
 import { useDetectedDirectDeposit } from '@/hooks/useDetectedDirectDeposit';
@@ -82,10 +85,16 @@ const WalletDepositAddress = () => {
   // then — never a blank, which is the one thing this line must not show.
   const { data: depositAssets } = useDepositAssets();
   const minimum = resolveWalletDepositMinimum(chainId, symbol, depositAssets?.assets);
-  // EURC lands in the Safe on Base, where the card can only spend it once euro spending is
-  // on — said here, before the deposit, rather than by the first declined payment after it.
+  // EURC lands in the Safe on Base, where the card can only pay with it once it is turned on in
+  // Main currency — said here, before the deposit, rather than by the first declined payment.
   const euroSpend = useEuroSpendEnablement();
   const showsEuroSpendingNote = symbol === 'EURC' && euroSpend.shouldOffer;
+  const router = useRouter();
+  const setDepositModal = useDepositStore(state => state.setModal);
+  const openMainCurrency = useCallback(() => {
+    setDepositModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.CARD_MAIN_CURRENCY);
+  }, [router, setDepositModal]);
 
   // Only a minted address is watched, so only then is there anything to scan for.
   // The Safe is not registered with the pipeline; saying "scanning" over it would
@@ -208,21 +217,17 @@ const WalletDepositAddress = () => {
         {showsEuroSpendingNote ? (
           <View className="flex-row flex-wrap items-center justify-center gap-x-1">
             <Text className="text-center text-sm text-white/70">
-              {euroSpend.error ?? 'Your card can spend EURC once euro spending is on.'}
+              Set euro as your main currency to pay in euros.
             </Text>
-            {euroSpend.isEnabling ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Turn on euro spending"
-                onPress={() => euroSpend.enable('deposit')}
-                hitSlop={8}
-                className="web:hover:opacity-70"
-              >
-                <Text className="text-sm font-semibold text-brand underline">Turn on</Text>
-              </Pressable>
-            )}
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Main currency"
+              onPress={openMainCurrency}
+              hitSlop={8}
+              className="web:hover:opacity-70"
+            >
+              <Text className="text-sm font-semibold text-brand underline">Main currency</Text>
+            </Pressable>
           </View>
         ) : null}
         <DepositFeeNotice

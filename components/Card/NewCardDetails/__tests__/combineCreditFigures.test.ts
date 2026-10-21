@@ -8,6 +8,7 @@ import type {
 
 jest.mock('@/hooks/useCardCreditPositions', () => ({ useCardCreditPositions: jest.fn() }));
 jest.mock('@/hooks/useCardSpendRegistration', () => ({ useCardSpendRegistration: jest.fn() }));
+jest.mock('@/hooks/useMainCurrency', () => ({ useCardDisplayCurrency: jest.fn() }));
 
 const RATE = 1_243_680_656n;
 const SOUSD = '0x75333830E7014e909535389a6E5b0C02aA62ca27';
@@ -41,6 +42,16 @@ const fusePosition = {
 };
 
 describe('combineCreditFigures', () => {
+  it('formats the line, the debt and the headroom with the main currency’s formatter', () => {
+    const inEuros = (amount: bigint) => `€${(Number(amount) / 1_000_000 / 1.25).toFixed(2)}`;
+
+    const figures = combineCreditFigures(fusePosition, RATE, undefined, inEuros);
+
+    expect(figures.borrowed).toBe('€0.64');
+    expect(figures.creditLimit).toBe('€141.20');
+    expect(figures.availableToBorrow).toBe('€140.56');
+  });
+
   it('shows Fuse alone, with its soUSD row, for a Safe not live on Base', () => {
     const positions: CardCreditPositions = {
       fuse: instance({ collateral: [asset({ valueUsd: 230_000_000n })] }),

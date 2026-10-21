@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -9,6 +10,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { SWAP_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardSpendable } from '@/hooks/useCardSpendable';
 import { useUnusableEurc } from '@/hooks/useUnusableEurc';
@@ -73,7 +75,8 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
   const { data: spendable } = useCardSpendable({
     refetchInterval: covered ? false : UNCOVERED_POLL_MS,
   });
-  const { eurc, euroSpend } = useUnusableEurc();
+  const { eurc } = useUnusableEurc();
+  const router = useRouter();
   const { swappable } = useMovableHoldings();
 
   const figures = useMemo(
@@ -132,10 +135,11 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
     setIsFundOpen(true);
   }, [trackPress]);
 
+  // Opens Main currency, where the one-time approval that lets the card pay with EURC is.
   const turnOnEuro = useCallback(() => {
     trackPress('turn_on_euro');
-    euroSpend.enable('declined_receipt');
-  }, [euroSpend, trackPress]);
+    router.push(path.CARD_MAIN_CURRENCY);
+  }, [router, trackPress]);
 
   const swapUsd = (target ?? 0) * rateToUsd;
   const swapInput = holding ? swapAmountFor(swapUsd, holding) : undefined;
@@ -220,28 +224,11 @@ const NotEnoughToPayCard = ({ transaction }: NotEnoughToPayCardProps) => {
               </Pressable>
             </>
           ) : fix === 'turn_on_euro' ? (
-            <>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: euroSpend.isEnabling, busy: euroSpend.isEnabling }}
-                // Disabled while the enable user operation is in flight: a second batch against a
-                // Safe the first is registering reverts `AlreadyRegistered`.
-                disabled={euroSpend.isEnabling}
-                className={PRIMARY_BUTTON}
-                onPress={turnOnEuro}
-              >
-                {euroSpend.isEnabling ? (
-                  <ActivityIndicator color="black" size="small" />
-                ) : (
-                  <Text className="text-[16px] font-semibold text-black">
-                    Turn on euro spending
-                  </Text>
-                )}
-              </Pressable>
-              {euroSpend.error ? (
-                <Text className="text-center text-[14px] text-red-400">{euroSpend.error}</Text>
-              ) : null}
-            </>
+            <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={turnOnEuro}>
+              <Text className="text-[16px] font-semibold text-black">
+                Let your card pay with EURC
+              </Text>
+            </Pressable>
           ) : (
             <Pressable accessibilityRole="button" className={PRIMARY_BUTTON} onPress={openAddFunds}>
               <Text className="text-[16px] font-semibold text-black">Add funds</Text>

@@ -14,6 +14,7 @@ import {
   useCardSpendableAssets,
   useCardSpendableBalanceUSD,
 } from '@/hooks/useCardSpendableBalance';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 import { formatBalanceUSD } from '@/lib/utils';
 import { canDepositToCard, cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -273,12 +274,15 @@ export const SpendableBalanceRow = ({
   // The same list the figure is summed over, so a cardholder with euro spending enabled is told
   // their EURC on Base counts — and one without it is not.
   const assets = useCardSpendableAssets();
+  // A card figure, so it follows the main currency; the pie beside it keeps summing dollars.
+  const { inEuros, formatUsdAmount } = useCardDisplayCurrency();
 
   return (
     <BalanceRow
       color={CARD_COLOR}
       label="Spendable"
       value={spendableBalance}
+      formattedValue={inEuros ? formatUsdAmount(spendableBalance) : undefined}
       labelAccessory={
         <TooltipPopover text={spendableTooltip(assets)} analyticsContext="home_spendable_balance" />
       }

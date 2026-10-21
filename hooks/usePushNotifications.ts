@@ -50,8 +50,9 @@ type NotificationData = {
   declineCode?: string;
   /**
    * Insufficient-funds decline (Wirex) and EURC arrival: the fix the push led with —
-   * `turn_on_euro`, `swap` or `add_funds`. The tap still opens the receipt (or the card
-   * screen, via `link`), which works the fix out again from what the user holds by then.
+   * `turn_on_euro`, `swap` or `add_funds`. The tap still opens the receipt, which works the fix
+   * out again from what the user holds by then. EURC arrival links `/card` with `turn_on_euro`,
+   * which opens Main currency here and the card screen on builds from before it.
    */
   fix?: string;
   /** Insufficient-funds decline: the gap, as a decimal in `shortfallCurrency`. */
@@ -95,6 +96,7 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/': path.HOME,
   '/card': path.CARD_INFO,
   '/card/activate': path.CARD_ACTIVATE,
+  '/card/main-currency': path.CARD_MAIN_CURRENCY,
   '/savings': path.SAVINGS,
   '/activity': path.ACTIVITY,
   '/referral': path.REFERRAL,
@@ -188,6 +190,9 @@ function getNotificationRoute(data?: NotificationData): Href {
   }
 
   const linked = routeForLink(data?.link);
+  // The EURC-arrived push links `/card` so builds without Main currency still land somewhere
+  // useful; this build opens Main currency, where the approval it asks for is.
+  if (linked === path.CARD_INFO && data?.fix === 'turn_on_euro') return path.CARD_MAIN_CURRENCY;
   if (linked) return linked;
 
   // A support reply always opens the chat, whatever host its link was built with.

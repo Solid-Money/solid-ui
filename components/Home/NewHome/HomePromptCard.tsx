@@ -93,9 +93,8 @@ const DISMISS_LIFT = -18;
  * into issuance for all three verification banners: it runs the country gate for
  * a first-timer and resumes an application or a pending card for everyone else.
  *
- * The one exception is "Turn on euro spending" (see `wirexContent`): its flow is a
- * single signature owned by `useEuroSpendEnablement`, with no screen to send
- * anyone to, so the banner starts it in place.
+ * The EURC banner (see `wirexContent`) is a redirect too: to Main currency, where the
+ * one-time approval that lets the card pay with EURC is.
  */
 const CONTENT: Record<StaticPromptKey, PromptContent> = {
   // Figma 25141:7075
@@ -179,11 +178,9 @@ function wirexContent(
   {
     declined,
     eurc,
-    euroSpend,
   }: {
     declined: DeclinedPaymentPrompt | null;
     eurc: number;
-    euroSpend: ReturnType<typeof useUnusableEurc>['euroSpend'];
   },
 ): PromptContent | undefined {
   if (key === 'card-declined') {
@@ -205,16 +202,10 @@ function wirexContent(
   if (eurc <= 0) return undefined;
   // Figma 28856:9637. The euro figure rounded down: it is what the card would reach.
   return {
-    title: 'Turn on euro spending',
-    description:
-      euroSpend.error ??
-      `Your ${formatCardCurrency(Math.floor(eurc * 100) / 100, 'EUR')} EURC can't be used by your card yet.`,
+    title: 'Let your card pay with EURC',
+    description: `Your ${formatCardCurrency(Math.floor(eurc * 100) / 100, 'EUR')} EURC can't be used by your card yet.`,
     icon: <EuroCircle />,
-    cta: {
-      label: 'Turn on',
-      onPress: () => euroSpend.enable('home_banner'),
-      busy: euroSpend.isEnabling,
-    },
+    cta: { label: 'Turn on', href: path.CARD_MAIN_CURRENCY },
   };
 }
 
@@ -251,7 +242,7 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
   const declined = useDeclinedPaymentPrompt(
     promptKey === 'card-declined' && provider === CardProvider.WIREX,
   );
-  const { eurc, euroSpend } = useUnusableEurc();
+  const { eurc } = useUnusableEurc();
 
   const opacity = useSharedValue(1);
   const lift = useSharedValue(0);
@@ -273,7 +264,7 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
 
   const content =
     promptKey === 'card-declined' || promptKey === 'euro-spending'
-      ? wirexContent(promptKey, { declined, eurc, euroSpend })
+      ? wirexContent(promptKey, { declined, eurc })
       : CONTENT[promptKey];
   if (!content) return null;
 

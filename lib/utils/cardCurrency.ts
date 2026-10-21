@@ -272,3 +272,21 @@ export const chooseDeclineFix = ({
 
   return 'add_funds';
 };
+
+/** "€211.45", and "€211" for a round figure — the same shape `formatUsd` gives dollars. */
+export const formatEur = (euros: number): string => {
+  const fractionDigits = Number.isInteger(euros) ? 0 : 2;
+  return euros.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+};
+
+/**
+ * Dollars to euros at the card's EURC price, rounded down to the cent: a balance shown in euros
+ * must not promise a cent the card cannot pay, the rule the backend's euro figure follows too.
+ */
+export const usdToEur = (usd: number, usdPerEur: number): number =>
+  Math.floor((usd / usdPerEur) * 100 + 1e-9) / 100;
