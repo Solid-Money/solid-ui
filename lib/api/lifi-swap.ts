@@ -1,6 +1,11 @@
 import { getJWTToken, getPlatformHeaders } from '@/lib/api';
 import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
-import { LifiRouteOrder, LifiSwapQuote, LifiSwapStatus } from '@/lib/types/lifi-swap';
+import {
+  LifiRouteOrder,
+  LifiSwapPurpose,
+  LifiSwapQuote,
+  LifiSwapStatus,
+} from '@/lib/types/lifi-swap';
 
 /**
  * Cross-chain and non-Fuse swaps. Every call goes through our backend, which
@@ -52,6 +57,8 @@ export const fetchLifiSwapQuote = async (
     fromAmount: string;
     slippage?: number;
     order?: LifiRouteOrder;
+    /** Set for a swap that pays for a membership; the backend checks it. */
+    purpose?: LifiSwapPurpose;
   },
   signal?: AbortSignal,
 ): Promise<LifiSwapQuote> => {
@@ -63,6 +70,7 @@ export const fetchLifiSwapQuote = async (
     fromAmount: params.fromAmount,
     ...(params.slippage !== undefined ? { slippage: String(params.slippage) } : {}),
     ...(params.order ? { order: params.order } : {}),
+    ...(params.purpose ? { purpose: params.purpose } : {}),
   });
   const response = await fetch(`${BASE}/quote?${query.toString()}`, {
     method: 'GET',

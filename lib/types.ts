@@ -3921,6 +3921,25 @@ export interface TierSubscription {
   /** When a past-due membership finally loses its tier. */
   graceEndsAt: string | null;
   subscribedAt: string;
+  /**
+   * How the first payment was funded, when it was bridged in from another
+   * chain. Null when it was paid from USDC already on Fuse. Optional until
+   * every backend sends it.
+   */
+  funding?: TierSubscriptionFunding | null;
+}
+
+/** A first payment bridged in from another chain. */
+export interface TierSubscriptionFunding {
+  transactionHash: string;
+  fromChainId: number;
+  fromTokenSymbol: string | null;
+  /** What the user sent, in USD. */
+  sentUsd: string;
+  /** USDC that reached the Safe on Fuse. */
+  receivedUsd: string;
+  /** The bridge and swap cost the first charge absorbed. */
+  coverUsd: string;
 }
 
 /** Addresses the app builds the upgrade transactions against. */
@@ -3976,5 +3995,11 @@ export interface TierMembershipState {
    */
   legacyFuseOnly: boolean;
   memberSince: string | null;
+  /**
+   * The most of the annual fee, as a percentage, that bridge and swap costs
+   * may take when the first payment is bridged in from another chain. 0 or
+   * absent means a bridged payment has to arrive in full.
+   */
+  bridgeFeeCoverPct?: number;
   contracts: TierMembershipContracts;
 }

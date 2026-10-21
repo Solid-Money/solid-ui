@@ -10,7 +10,7 @@ import { recordLifiSwapFee } from '@/lib/api/lifi-swap';
 import { UserCopyError } from '@/lib/errors/UserCopyError';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-import { LifiSwapQuote } from '@/lib/types/lifi-swap';
+import { LifiSwapPurpose, LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain, publicClient } from '@/lib/wagmi';
@@ -41,7 +41,16 @@ export function useLifiSwapCallback() {
   const [isSending, setIsSending] = useState(false);
 
   const swap = useCallback(
-    async (quote: LifiSwapQuote): Promise<LifiSwapResult> => {
+    async (
+      quote: LifiSwapQuote,
+      options: {
+        /**
+         * Carried onto the tracked swap, so whatever it was for can find it
+         * again once it lands — a membership waiting on the USDC it brings.
+         */
+        purpose?: LifiSwapPurpose;
+      } = {},
+    ): Promise<LifiSwapResult> => {
       if (!user?.safeAddress || !user.suborgId || !user.signWith)
         throw new UserCopyError('Your wallet is not ready. Reopen the swap and try again.');
 
@@ -165,6 +174,8 @@ export function useLifiSwapCallback() {
           etaSeconds: quote.executionDurationSeconds,
           submittedAt: Date.now(),
           status: 'PENDING',
+          ...(options.purpose ? { purpose: options.purpose } : {}),
+          ...(quote.fromAmountUsd ? { fromAmountUsd: quote.fromAmountUsd } : {}),
         });
         return { kind: 'bridging', transactionHash, clientTxId };
       } catch (error: any) {

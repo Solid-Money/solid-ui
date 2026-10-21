@@ -2618,6 +2618,12 @@ export const confirmTierLock = async (body: {
 export const confirmTierSubscription = async (body: {
   tier: RewardsTier;
   transactionHash: string;
+  /**
+   * The cross-chain transfer that brought the USDC in, when it was bridged.
+   * The backend reads it back from LI.FI and lets the first charge absorb what
+   * the bridge took, so a transfer that landed a little short still pays.
+   */
+  funding?: { transactionHash: string; fromChainId: number };
 }): Promise<TierMembershipState> => {
   const jwt = getJWTToken();
   const response = await fetch(
