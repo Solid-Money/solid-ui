@@ -32,6 +32,11 @@ export function useVirtualAccountProvider(enabled = true): {
   provider: VirtualAccountProvider;
   /** Wirex serves them, but they must verify with Sumsub before they get an account. */
   kycRequired: boolean;
+  /**
+   * `provider` is only a guess from where the app thinks they are, and where
+   * they live could change it: ask before showing either provider's flow.
+   */
+  residenceRequired: boolean;
   isLoading: boolean;
 } {
   const { data, isLoading, isError } = useWirexBankOverview(enabled);
@@ -39,7 +44,7 @@ export function useVirtualAccountProvider(enabled = true): {
   // A failed lookup falls back to Rain rather than blocking: Rain is the
   // established path, and its own screens re-check eligibility anyway.
   if (isLoading && !isError) {
-    return { provider: 'loading', kycRequired: false, isLoading: true };
+    return { provider: 'loading', kycRequired: false, residenceRequired: false, isLoading: true };
   }
 
   return {
@@ -48,6 +53,7 @@ export function useVirtualAccountProvider(enabled = true): {
     // everyone — including existing Wirex users mid-deploy.
     provider: data?.provider ?? (data?.isWirexUser ? 'wirex' : 'rain'),
     kycRequired: data?.kycRequired ?? false,
+    residenceRequired: data?.residenceRequired ?? false,
     isLoading: false,
   };
 }
