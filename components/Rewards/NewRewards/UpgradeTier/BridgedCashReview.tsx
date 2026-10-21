@@ -134,7 +134,21 @@ const BridgedCashReview = ({ tier, feeUsd, payment }: BridgedCashReviewProps) =>
         setFailure('Could not refresh the quote. Try again.');
         return;
       }
-      if (BigInt(fresh.toAmount) < BigInt(quote.toAmountMin)) {
+      // The fresh quote's own worst case is what will be signed, so the check
+      // that turned the button on is run again on it: a fresh estimate near
+      // the old minimum carries a minimum a slippage band lower still.
+      const freshMin = Number(formatUnits(BigInt(fresh.toAmountMin), BILLING_DECIMALS));
+      const freshCover = estimateFundingCoverUsd({
+        feeUsd,
+        fuseUsdc: fuseUsdc + freshMin,
+        coverPct,
+        sentUsd: Number(fresh.fromAmountUsd),
+        receivedUsd: freshMin,
+      });
+      if (
+        BigInt(fresh.toAmount) < BigInt(quote.toAmountMin) ||
+        !covers(fuseUsdc + freshMin + freshCover, feeUsd)
+      ) {
         setFailure('The price changed. Check the new amount and try again.');
         return;
       }

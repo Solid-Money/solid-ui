@@ -115,11 +115,18 @@ export const useCashPayment = ({
     // A token on another chain is only honoured while Fuse is actually short:
     // with the fee already there, there is nothing to bridge, and the charge
     // is taken from USDC on Fuse whatever the row says.
+    // Nor while a bridged payment is on its way or has landed: it is paid from
+    // Fuse now, and honouring the token that started it would quote a second
+    // bridge for what the cover already absorbs, and judge readiness on that
+    // token's balance instead of on the USDC actually sitting on Fuse.
+    const fundingInHand = funding.state === 'pending' || funding.state === 'arrived';
     const picked = chosenKey
       ? tokens.find(
           token =>
             cashTokenKey(token) === chosenKey &&
-            (needUsd > 0 || !billingTokenAddress || isBillingToken(token, billingTokenAddress)),
+            ((needUsd > 0 && !fundingInHand) ||
+              !billingTokenAddress ||
+              isBillingToken(token, billingTokenAddress)),
         )
       : undefined;
     // Until the Fuse balance has been read, the default stays on USDC on Fuse:
