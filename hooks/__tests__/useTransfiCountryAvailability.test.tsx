@@ -1,5 +1,5 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useTransfiCountryAvailability } from '@/hooks/useTransfiCountryAvailability';
 import { getTransfiProhibitedCountries } from '@/lib/api';
@@ -72,6 +72,10 @@ describe('useTransfiCountryAvailability', () => {
     mockCountry.isResolving = false;
     mockFetch.mockReset();
   });
+  afterEach(() => {
+    jest.useRealTimers();
+    onlineManager.setOnline(true);
+  });
 
   it('hides TransFi in a country closed on the dashboard', async () => {
     mockCountry.countryCode = 'TR';
@@ -100,6 +104,17 @@ describe('useTransfiCountryAvailability', () => {
     const result = await run();
 
     expect(result.isAvailable).toBe(true);
+  });
+
+  it('offers nothing while the first read waits for the device to come online', async () => {
+    mockFetch.mockResolvedValue({ prohibitedCountries: [] });
+    onlineManager.setOnline(false);
+
+    const result = await run({ settle: false });
+
+    expect(result.isResolving).toBe(true);
+    expect(result.isAvailable).toBe(false);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('offers nothing while the dashboard list is still loading', async () => {
@@ -190,6 +205,18 @@ describe('useTransfiCountryAvailability', () => {
 
       expect(result.isResolving).toBe(true);
       expect(result.isAvailable).toBe(false);
+    });
+
+    /** A read paused while offline never starts, so its own timeout never runs. */
+    it('stops waiting for a read that does not settle and uses the old list', async () => {
+      mockFetch.mockReturnValue(new Promise(() => {}));
+      const result = await run({ settle: false, client: staleClient(['TR']) });
+
+      jest.useFakeTimers();
+      const check = result.checkCountryProhibited('TR');
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      await expect(check).resolves.toBe(true);
     });
 
     it('keeps the old list when the refresh fails', async () => {

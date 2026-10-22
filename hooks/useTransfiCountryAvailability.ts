@@ -14,18 +14,19 @@ import { useTransfiProhibitedCountries } from '@/hooks/useTransfiProhibitedCount
  * hide the rows; TransFi still refuses the order server-side.
  *
  * Prohibited means on the build's list or on the admin dashboard's, and the
- * dashboard's list is waited for the same way — on its first read and while a
- * list older than five minutes is read again — so a country closed there never
- * flashes its rows either.
+ * dashboard's list is waited for the same way — on its first read, while a
+ * list older than five minutes is read again, and while either waits for the
+ * device to come back online — so a country closed there never flashes its
+ * rows either.
  */
 export const useTransfiCountryAvailability = () => {
   const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
   const {
     countries: dashboardCountries,
-    isFetching: isFetchingDashboard,
+    isReading: isReadingDashboard,
     fetchCountries,
   } = useTransfiProhibitedCountries();
-  const isResolving = isResolvingCountry || isFetchingDashboard;
+  const isResolving = isResolvingCountry || isReadingDashboard;
 
   /**
    * For a country the user has just confirmed, not the one resolved here.

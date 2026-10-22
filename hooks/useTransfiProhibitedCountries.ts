@@ -10,6 +10,13 @@ const TRANSFI_PROHIBITED_COUNTRIES_QUERY = {
   retry: 1,
 };
 
+/**
+ * How long a confirmed-country check waits for the list before going on with
+ * the last one read. A read paused while offline does not start until the
+ * connection is back, so the request's own timeout cannot bound it.
+ */
+const CHECK_TIMEOUT_MS = 10_000;
+
 const normalizeCountries = (codes: readonly string[] | undefined) =>
   (codes ?? [])
     .filter((code): code is string => typeof code === 'string')
@@ -25,12 +32,14 @@ const normalizeCountries = (codes: readonly string[] | undefined) =>
  * in force, never "open everywhere". Retried once rather than the app's default
  * twice, because callers wait on it before showing TransFi at all.
  *
- * `isFetching` covers the first read and any re-read of a list past
- * `staleTime`, while `countries` may still be the old one.
+ * `isReading` covers the first read and any re-read of a list past
+ * `staleTime`, including one paused until the device is back online, while
+ * `countries` may still be the old list or none.
  */
 export const useTransfiProhibitedCountries = () => {
   const queryClient = useQueryClient();
-  const { data, isFetching } = useQuery(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
+  const { data, fetchStatus } = useQuery(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
+  const isReading = fetchStatus !== 'idle';
 
   const countries = useMemo(() => normalizeCountries(data?.prohibitedCountries), [data]);
 
@@ -42,18 +51,29 @@ export const useTransfiProhibitedCountries = () => {
    * list applies on top either way.
    */
   const fetchCountries = useCallback(async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const latest = await queryClient.fetchQuery(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
+      const latest = await Promise.race([
+        queryClient.fetchQuery(TRANSFI_PROHIBITED_COUNTRIES_QUERY),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Timed out reading the TransFi country list')),
+            CHECK_TIMEOUT_MS,
+          );
+        }),
+      ]);
       return normalizeCountries(latest.prohibitedCountries);
     } catch {
       const cached = queryClient.getQueryData<
         Awaited<ReturnType<typeof getTransfiProhibitedCountries>>
       >(TRANSFI_PROHIBITED_COUNTRIES_QUERY.queryKey);
       return normalizeCountries(cached?.prohibitedCountries);
+    } finally {
+      clearTimeout(timer);
     }
   }, [queryClient]);
 
-  return { countries, isFetching, fetchCountries };
+  return { countries, isReading, fetchCountries };
 };
 
 export default useTransfiProhibitedCountries;
