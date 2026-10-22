@@ -1,5 +1,6 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
 import { G_DOLLAR_LOGO_URI } from '@/constants/gooddollar';
+import { WALLET_DEPOSIT_TOKENS } from '@/constants/walletDepositTokens';
 
 import { AssetPath, getAsset } from './assets';
 import { TokenIcon } from './types';
@@ -73,11 +74,19 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: { uri: G_DOLLAR_LOGO_URI },
       };
-    default:
+    default: {
+      // The rest of what the deposit screen takes (PAXG, WBTC, SOL, ...), with
+      // the marks it draws them with, so a deposit looks the same once it lands.
+      const depositToken = WALLET_DEPOSIT_TOKENS.find(
+        token => token.symbol.toUpperCase() === tokenSymbol?.toUpperCase(),
+      );
+      if (depositToken) return { type: 'image', source: getAsset(depositToken.icon) };
+
       return {
         type: 'component',
         component: <DefaultTokenIcon size={size} symbol={tokenSymbol || 'T'} />,
       };
+    }
   }
 };
 

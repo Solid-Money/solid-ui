@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from 'react-native';
 import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, baseSepolia, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
 
@@ -255,6 +255,28 @@ export const getBridgeTokenDecimals = (chainId: number, tokenName: string): numb
   return token?.decimals ?? 6;
 };
 
+/**
+ * Chains the wallet holds tokens on that are not bridge sources.
+ *
+ * Kept out of `BRIDGE_TOKENS` for the same reason Base USDT is: every surface
+ * that offers a chain reads that map, so listing Optimism there would offer it
+ * for card funding, savings and withdrawals, none of which have a route on it.
+ * It is only somewhere a deposit lands (see `WALLET_DEPOSIT_TOKENS`), so it
+ * needs a name and an icon wherever a held token's chain is drawn.
+ */
+const WALLET_ONLY_CHAINS: BridgeTokens = {
+  [optimism.id]: {
+    name: 'Optimism',
+    icon: require('@/assets/images/op.png'),
+    sort: 7,
+  },
+};
+
+/**
+ * The name and icon to draw a chain with: a bridge source, or a chain the
+ * wallet only holds tokens on. Callers read `.name` and `.icon` off it
+ * unguarded, so a token held on Optimism must not come back undefined.
+ */
 export const getBridgeChain = (chainId: number) => {
-  return BRIDGE_TOKENS[chainId];
+  return BRIDGE_TOKENS[chainId] ?? WALLET_ONLY_CHAINS[chainId];
 };

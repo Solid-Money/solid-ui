@@ -5,7 +5,6 @@ import { Check, ChevronDown } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -13,8 +12,8 @@ import {
   getWalletDepositNetworks,
   getWalletDepositNetworksForToken,
   getWalletDepositTokenIcon,
-  offersWalletDepositEurc,
 } from './constants';
+import { useWalletDepositViewer } from './useWalletDepositViewer';
 
 const PILL_ICON_STYLE = { width: 20, height: 20, borderRadius: 10 };
 const ROW_ICON_STYLE = { width: 28, height: 28, borderRadius: 14 };
@@ -101,7 +100,7 @@ const WalletDepositSelectors = ({
   return (
     <View className="flex-row items-center justify-center gap-x-2">
       <Pill
-        icon={getWalletDepositTokenIcon(chainId, symbol)}
+        icon={getWalletDepositTokenIcon(symbol)}
         label={symbol}
         onPress={() => {
           setWalletDeposit({ isChangingToken: true });
@@ -144,11 +143,10 @@ export const WalletDepositNetworkList = ({
   onSelect,
   onDismiss,
 }: WalletDepositNetworkListProps) => {
-  const { provider } = useCardProvider();
-  const withEurc = offersWalletDepositEurc(provider);
+  const viewer = useWalletDepositViewer();
   const networks = useMemo(
-    () => getWalletDepositNetworksForToken(symbol, withEurc),
-    [symbol, withEurc],
+    () => getWalletDepositNetworksForToken(symbol, viewer),
+    [symbol, viewer],
   );
 
   return (

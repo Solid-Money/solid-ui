@@ -1,5 +1,5 @@
 import { ChainId } from '@cryptoalgebra/fuse-sdk';
-import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
+import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { getAsset } from '@/lib/assets';
 
@@ -15,6 +15,7 @@ export const CHAIN_NAMES: Record<number, string> = {
   [bsc.id]: 'BNB Chain',
   [polygon.id]: 'Polygon',
   [arbitrum.id]: 'Arbitrum',
+  [optimism.id]: 'Optimism',
 };
 
 export const CHAIN_ICONS: Record<number, ReturnType<typeof getAsset>> = {
@@ -24,4 +25,5 @@ export const CHAIN_ICONS: Record<number, ReturnType<typeof getAsset>> = {
   [bsc.id]: getAsset('images/bsc.png'),
   [polygon.id]: getAsset('images/polygon.png'),
   [arbitrum.id]: getAsset('images/arbitrum.png'),
+  [optimism.id]: getAsset('images/op.png'),
 };
