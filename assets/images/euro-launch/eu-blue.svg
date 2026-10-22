@@ -1,0 +1,20 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="214" height="214" viewBox="0 0 214 214" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="EU blue" filter="url(#filter0_d_0_198)">
+<circle cx="107" cy="95" r="79" fill="url(#paint0_radial_0_198)"/>
+</g>
+<defs>
+<filter id="filter0_d_0_198" x="0" y="0" width="214" height="214" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="12"/>
+<feGaussianBlur stdDeviation="14"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_198"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_198" result="shape"/>
+</filter>
+<radialGradient id="paint0_radial_0_198" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(107 95) scale(79)">
+<stop stop-color="#2954DB"/>
+<stop offset="1" stop-color="#17339E"/>
+</radialGradient>
+</defs>
+</svg>

@@ -267,6 +267,10 @@ export const ASSETS = {
     module: require('@/assets/images/card-apple-wallet.svg'),
     hash: '1e7e1963',
   },
+  'images/card-declined.tsx': {
+    module: require('@/assets/images/card-declined.tsx'),
+    hash: 'aca61dfe',
+  },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
   'images/card-edit-limit.svg': {
     module: require('@/assets/images/card-edit-limit.svg'),
@@ -517,6 +521,26 @@ export const ASSETS = {
     hash: 'db4e5f78',
   },
   'images/eurc.png': { module: require('@/assets/images/eurc.png'), hash: '8e00e6b6' },
+  'images/euro-circle.tsx': {
+    module: require('@/assets/images/euro-circle.tsx'),
+    hash: '7517fe19',
+  },
+  'images/euro-launch/coin-rim.svg': {
+    module: require('@/assets/images/euro-launch/coin-rim.svg'),
+    hash: '52bde45d',
+  },
+  'images/euro-launch/eu-blue.svg': {
+    module: require('@/assets/images/euro-launch/eu-blue.svg'),
+    hash: '242062c2',
+  },
+  'images/euro-launch/glow.svg': {
+    module: require('@/assets/images/euro-launch/glow.svg'),
+    hash: '7a9cf24b',
+  },
+  'images/euro-launch/rings-stars.svg': {
+    module: require('@/assets/images/euro-launch/rings-stars.svg'),
+    hash: 'ccd53b5a',
+  },
   'images/exclamation-mark.tsx': {
     module: require('@/assets/images/exclamation-mark.tsx'),
     hash: '0c62ca51',
@@ -826,6 +850,10 @@ export const ASSETS = {
   'images/portfolio/eth.svg': {
     module: require('@/assets/images/portfolio/eth.svg'),
     hash: '39342e23',
+  },
+  'images/portfolio/euro.svg': {
+    module: require('@/assets/images/portfolio/euro.svg'),
+    hash: '8b001621',
   },
   'images/portfolio/eye.svg': {
     module: require('@/assets/images/portfolio/eye.svg'),

@@ -8,6 +8,7 @@ import CardDetailsPane from '@/components/Card/NewCardDetails/CardDetailsPane';
 import { HERO_EXIT, HeroExit } from '@/components/Card/NewCardDetails/heroMotion';
 import SpendModeModals from '@/components/Card/NewCardDetails/SpendMode/SpendModeModals';
 import { useSpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import EuroLaunchPopup from '@/components/Home/NewHome/EuroLaunchPopup';
 import HomeAssetsCard from '@/components/Home/NewHome/HomeAssetsCard';
 import HomePromoBanners from '@/components/Home/NewHome/HomePromoBanners';
 import HomePromptCard from '@/components/Home/NewHome/HomePromptCard';
@@ -265,6 +266,11 @@ export default function HomeScreenNew() {
         <>
           <CardDetailsPane />
           <SpendModeModals figures={spendModeFigures} />
+          <EuroLaunchPopup
+            isWirexCardholder={showWirexTiles}
+            // Undefined until the card details answer, so the popup never guesses "not on euro".
+            mainCurrency={cardDetails ? (cardDetails.main_currency ?? 'USD') : undefined}
+          />
         </>
       }
       scrollEnabled={!isCardPaneOpen}
