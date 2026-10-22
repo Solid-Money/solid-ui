@@ -44,21 +44,24 @@ export const usePostSignupInit = (user: User | undefined) => {
             await withRefreshToken(() => updateSafeAddress(user.safeAddress));
             markSafeAddressSynced(user.userId);
           } catch (error: any) {
-            // 409 means safe address is already registered - this is expected, not an error
+            // 409 means safe address is already registered - this is expected, not an error.
+            // It must not end the initialization either: the balance and points
+            // below still have to load. Login saves the address too, so the two
+            // can race and this one is answered 409.
             if (error?.status === 409) {
               markSafeAddressSynced(user.userId);
-              return;
+            } else {
+              Sentry.captureException(error, {
+                tags: {
+                  type: 'safe_address_update_error_lazy',
+                },
+                user: {
+                  id: user.userId,
+                  address: user.safeAddress,
+                },
+                level: 'warning',
+              });
             }
-            Sentry.captureException(error, {
-              tags: {
-                type: 'safe_address_update_error_lazy',
-              },
-              user: {
-                id: user.userId,
-                address: user.safeAddress,
-              },
-              level: 'warning',
-            });
           }
         }
 
