@@ -5,6 +5,7 @@ import { base } from 'viem/chains';
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { useBalances } from '@/hooks/useBalances';
 import { useCardSpendableAssets } from '@/hooks/useCardSpendableBalance';
+import { useMainCurrency } from '@/hooks/useMainCurrency';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { TokenBalance } from '@/lib/types';
 import { matchesAsset } from '@/lib/utils/cardSpendable';
@@ -70,8 +71,9 @@ const ICON_BY_SYMBOL: Record<string, SpendableAssetIcon> = {
  *
  * Dollar assets are valued at their USD quote. EURC is a euro balance, so it reads in euros with
  * its dollar value under it. soEUR has no USD quote (`useBalances` keeps it in euros), so it is
- * valued at the soEUR accountant rate in euros, and in dollars through the same instance's EURC
- * quote when the Safe holds EURC to quote from.
+ * valued at the soEUR accountant rate in euros, and in dollars through the Safe's EURC quote — or,
+ * when it holds no EURC to quote from, the card's own euro rate. Without that fallback a Safe with
+ * soEUR and no EURC counted the soEUR as $0, and "Your balance" showed soUSD alone.
  *
  * Pure, so the rules can be tested without the queries behind them.
  */
@@ -79,14 +81,16 @@ export const buildSpendableAssetRows = (
   tokens: TokenBalance[] | undefined,
   assets: CardSpendableAsset[],
   soEurRate: number | undefined,
+  usdPerEur?: number,
 ): SpendableAssetBreakdown => {
   const held = tokens ?? [];
-  const eurcUsdQuote = held.find(
-    token =>
-      token.chainId === base.id &&
-      token.contractTickerSymbol?.toUpperCase() === 'EURC' &&
-      (token.quoteRate ?? 0) > 0,
-  )?.quoteRate;
+  const eurcUsdQuote =
+    held.find(
+      token =>
+        token.chainId === base.id &&
+        token.contractTickerSymbol?.toUpperCase() === 'EURC' &&
+        (token.quoteRate ?? 0) > 0,
+    )?.quoteRate ?? (usdPerEur && usdPerEur > 0 ? usdPerEur : undefined);
 
   const rows = assets.flatMap((asset, index): SpendableAssetRow[] => {
     const icon = asset.symbol ? ICON_BY_SYMBOL[asset.symbol] : undefined;
@@ -165,10 +169,11 @@ export const useSpendableAssetRows = (): SpendableAssetBreakdown => {
   const assets = useCardSpendableAssets();
   const holdsSoEur = assets.some(asset => asset.symbol === 'soEUR');
   const { data: soEurRate } = useVaultExchangeRate('EUR', holdsSoEur);
+  const { usdPerEur } = useMainCurrency();
 
   return useMemo(
-    () => buildSpendableAssetRows(tokens, assets, soEurRate),
-    [tokens, assets, soEurRate],
+    () => buildSpendableAssetRows(tokens, assets, soEurRate, usdPerEur),
+    [tokens, assets, soEurRate, usdPerEur],
   );
 };
 
