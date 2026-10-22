@@ -1,4 +1,5 @@
 import { ImageSourcePropType } from 'react-native';
+import { formatUnits, parseUnits } from 'viem';
 import { arbitrum, base, bsc, fuse, mainnet, optimism, polygon } from 'viem/chains';
 
 import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
@@ -47,14 +48,14 @@ export const WALLET_DEPOSIT_LEARN_URL =
  * These are the single source of truth for the minimum shown on the deposit
  * address screen; change them here rather than in the copy.
  */
-const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, number> = {
-  [mainnet.id]: 10,
-  [polygon.id]: 1,
-  [base.id]: 1,
-  [arbitrum.id]: 1,
-  [optimism.id]: 1,
-  [bsc.id]: 1,
-  [fuse.id]: 1,
+const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, string> = {
+  [mainnet.id]: '10',
+  [polygon.id]: '1',
+  [base.id]: '1',
+  [arbitrum.id]: '1',
+  [optimism.id]: '1',
+  [bsc.id]: '1',
+  [fuse.id]: '1',
 };
 
 /**
@@ -67,28 +68,45 @@ const MINIMUM_DEPOSIT_BY_CHAIN: Record<number, number> = {
  * `resolveWalletDepositMinimum`), so these round up: overstating a floor turns
  * away a deposit that would have counted, understating one strands it.
  */
-const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, number> = {
-  ETH: 0.005,
-  WETH: 0.005,
-  FUSE: 500,
-  WFUSE: 500,
-  PAXG: 0.003,
-  SLVx: 0.2,
-  WBTC: 0.00015,
-  cbBTC: 0.00015,
-  ZEC: 0.01,
-  UNI: 1.5,
-  NEAR: 2,
-  ENA: 50,
-  AAVE: 0.07,
-  SOL: 0.1,
-  WLD: 20,
-  ARB: 60,
-  OP: 80,
+const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
+  ETH: '0.005',
+  WETH: '0.005',
+  FUSE: '500',
+  WFUSE: '500',
+  PAXG: '0.003',
+  SLVx: '0.2',
+  WBTC: '0.00015',
+  cbBTC: '0.00015',
+  ZEC: '0.01',
+  UNI: '1.5',
+  NEAR: '2',
+  ENA: '50',
+  AAVE: '0.07',
+  SOL: '0.1',
+  WLD: '20',
+  ARB: '60',
+  OP: '80',
 };
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
-const DEFAULT_MINIMUM_DEPOSIT = 1;
+const DEFAULT_MINIMUM_DEPOSIT = '1';
+
+/**
+ * The precision a minimum is carried at, in token units. Every amount here is a
+ * decimal string turned into this many units with viem, never a float: the
+ * figure is the floor below which a deposit is not credited, so rounding it the
+ * wrong way is a quoted floor under the real one.
+ */
+const MINIMUM_PRECISION = 18;
+
+/** Whether a published minimum is a usable, positive decimal ("0.004", not "n/a" or "0"). */
+const isPositiveAmount = (value: string): boolean => {
+  try {
+    return parseUnits(value, MINIMUM_PRECISION) > 0n;
+  } catch {
+    return false;
+  }
+};
 
 /** The stablecoins the deposit pipeline has a route for. */
 const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
@@ -251,7 +269,7 @@ export const resolveWalletDepositSymbol = (
  * approximate figure immediately. `resolveWalletDepositMinimum` prefers the
  * live number whenever there is one.
  */
-export const getWalletDepositMinimum = (chainId: number, symbol: string): number =>
+export const getWalletDepositMinimum = (chainId: number, symbol: string): string =>
   MINIMUM_DEPOSIT_BY_TOKEN[symbol] ?? MINIMUM_DEPOSIT_BY_CHAIN[chainId] ?? DEFAULT_MINIMUM_DEPOSIT;
 
 /**
@@ -271,28 +289,36 @@ export const resolveWalletDepositMinimum = (
   chainId: number,
   symbol: string,
   assets?: DepositAsset[],
-): number => {
+): string => {
   const publishedFor = (wanted: string) =>
     assets?.find(asset => asset.chainId === chainId && asset.symbol === wanted);
   const published = publishedFor(WRAPPED_EQUIVALENT[symbol] ?? symbol) ?? publishedFor(symbol);
-  const parsed = published ? Number(published.minimum) : NaN;
 
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : getWalletDepositMinimum(chainId, symbol);
+  // Kept as the string the backend sent, so no float stands between its floor
+  // and the one printed.
+  return published && isPositiveAmount(published.minimum)
+    ? published.minimum
+    : getWalletDepositMinimum(chainId, symbol);
 };
 
 /**
  * A minimum as the screen prints it: two significant figures for an asset worth
  * thousands a unit (0.00012 WBTC), never fewer than four decimals, and rounded
- * up, so the floor quoted is never below the one it stands for.
+ * up, so the floor quoted is never below the one it stands for. In bigint
+ * units, so nothing is lost on the way.
  */
-export const formatWalletDepositMinimum = (minimum: number): string => {
-  const leadingZeros = minimum > 0 && minimum < 1 ? Math.floor(-Math.log10(minimum)) : 0;
-  const decimals = Math.min(Math.max(4, leadingZeros + 2), 18);
-  const factor = 10 ** decimals;
-  // The tolerance keeps float noise (0.005 * 1e4 = 50.000000000000007) from
-  // rounding a floor that is already exact up by one step.
-  const roundedUp = Math.ceil(minimum * factor - 1e-6) / factor;
-  return new Intl.NumberFormat('en-us', { maximumFractionDigits: decimals }).format(roundedUp);
+export const formatWalletDepositMinimum = (minimum: string): string => {
+  const units = parseUnits(minimum, MINIMUM_PRECISION);
+  const one = 10n ** BigInt(MINIMUM_PRECISION);
+  // Zeros between the point and the first significant digit: 3 for 0.0001194.
+  const leadingZeros = units > 0n && units < one ? MINIMUM_PRECISION - units.toString().length : 0;
+  const decimals = Math.min(Math.max(4, leadingZeros + 2), MINIMUM_PRECISION);
+  const step = 10n ** BigInt(MINIMUM_PRECISION - decimals);
+  const roundedUp = ((units + step - 1n) / step) * step;
+
+  const [whole, fraction] = formatUnits(roundedUp, MINIMUM_PRECISION).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return fraction ? `${grouped}.${fraction}` : grouped;
 };
 
 /**

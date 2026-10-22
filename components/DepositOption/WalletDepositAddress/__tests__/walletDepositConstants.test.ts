@@ -35,20 +35,20 @@ const chainIdsOf = (networks: { chainId: number }[]) => networks.map(network => 
 
 describe('getWalletDepositMinimum', () => {
   it('asks for more on Ethereum than on the chains its deposits are cheap to move on', () => {
-    expect(getWalletDepositMinimum(mainnet.id, 'USDC')).toBe(10);
-    expect(getWalletDepositMinimum(base.id, 'USDC')).toBe(1);
-    expect(getWalletDepositMinimum(arbitrum.id, 'USDT')).toBe(1);
-    expect(getWalletDepositMinimum(optimism.id, 'USDC')).toBe(1);
+    expect(getWalletDepositMinimum(mainnet.id, 'USDC')).toBe('10');
+    expect(getWalletDepositMinimum(base.id, 'USDC')).toBe('1');
+    expect(getWalletDepositMinimum(arbitrum.id, 'USDT')).toBe('1');
+    expect(getWalletDepositMinimum(optimism.id, 'USDC')).toBe('1');
   });
 
   // A floor is a number of tokens, so an asset that is not worth ~$1 a unit needs
   // its own — 10 ETH would be an absurd minimum, 1 FUSE a meaningless one.
   it('overrides the chain floor for currencies that are not worth ~$1 a unit', () => {
-    expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe(500);
-    expect(getWalletDepositMinimum(mainnet.id, 'WBTC')).toBe(0.00015);
-    expect(getWalletDepositMinimum(optimism.id, 'OP')).toBe(80);
+    expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe('0.005');
+    expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe('0.005');
+    expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe('500');
+    expect(getWalletDepositMinimum(mainnet.id, 'WBTC')).toBe('0.00015');
+    expect(getWalletDepositMinimum(optimism.id, 'OP')).toBe('80');
   });
 
   // Each currency the screen offers has a floor of its own, so none quotes the
@@ -65,31 +65,48 @@ describe('getWalletDepositMinimum', () => {
   // The same asset on a cheaper chain: the override is by symbol, so Base does
   // not quote 1 ETH from its chain floor.
   it('floors ETH and WETH on Base the same as on Ethereum', () => {
-    expect(getWalletDepositMinimum(base.id, 'ETH')).toBe(0.005);
-    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe(0.005);
+    expect(getWalletDepositMinimum(base.id, 'ETH')).toBe('0.005');
+    expect(getWalletDepositMinimum(base.id, 'WETH')).toBe('0.005');
   });
 
   it('falls back to a floor rather than none for an unlisted chain', () => {
-    expect(getWalletDepositMinimum(999_999, 'USDC')).toBe(1);
+    expect(getWalletDepositMinimum(999_999, 'USDC')).toBe('1');
   });
 });
 
 describe('formatWalletDepositMinimum', () => {
   it('prints whole and short floors as they are', () => {
-    expect(formatWalletDepositMinimum(10)).toBe('10');
-    expect(formatWalletDepositMinimum(0.005)).toBe('0.005');
-    expect(formatWalletDepositMinimum(48.33)).toBe('48.33');
+    expect(formatWalletDepositMinimum('10')).toBe('10');
+    expect(formatWalletDepositMinimum('0.005')).toBe('0.005');
+    expect(formatWalletDepositMinimum('48.33')).toBe('48.33');
   });
 
   // Four decimals would print 0.0001194 WBTC as 0.0001 — under the floor.
   it('keeps two significant figures for an asset worth thousands a unit', () => {
-    expect(formatWalletDepositMinimum(0.0001194)).toBe('0.00012');
-    expect(formatWalletDepositMinimum(0.00015)).toBe('0.00015');
+    expect(formatWalletDepositMinimum('0.0001194')).toBe('0.00012');
+    expect(formatWalletDepositMinimum('0.00015')).toBe('0.00015');
   });
 
   it('rounds up, never down', () => {
-    expect(formatWalletDepositMinimum(0.002422)).toBe('0.0025');
-    expect(formatWalletDepositMinimum(1.23451)).toBe('1.2346');
+    expect(formatWalletDepositMinimum('0.002422')).toBe('0.0025');
+    expect(formatWalletDepositMinimum('1.23451')).toBe('1.2346');
+  });
+
+  // A floor a hair above a display step: a float with a tolerance printed the
+  // step below it, which is under the floor.
+  it('rounds up a floor however little it is over a step', () => {
+    expect(formatWalletDepositMinimum('0.0050000000001')).toBe('0.0051');
+    expect(formatWalletDepositMinimum('10.000000000000000001')).toBe('10.0001');
+  });
+
+  it('leaves a floor that is already on a step as it is', () => {
+    expect(formatWalletDepositMinimum('0.1')).toBe('0.1');
+    expect(formatWalletDepositMinimum('0.001')).toBe('0.001');
+    expect(formatWalletDepositMinimum('500')).toBe('500');
+  });
+
+  it('groups the thousands of a large floor', () => {
+    expect(formatWalletDepositMinimum('1107.5')).toBe('1,107.5');
   });
 });
 
@@ -211,12 +228,12 @@ describe('resolveWalletDepositMinimum', () => {
   // The pipeline's figure is the only enforced one, so it wins whenever present.
   it('prefers the published minimum over the committed estimate', () => {
     const assets = [asset({ symbol: 'USDC', minimum: '25' })];
-    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe(25);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe('25');
   });
 
   it('falls back when the pipeline has not answered', () => {
-    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', undefined)).toBe(10);
-    expect(resolveWalletDepositMinimum(base.id, 'USDC', [])).toBe(1);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', undefined)).toBe('10');
+    expect(resolveWalletDepositMinimum(base.id, 'USDC', [])).toBe('1');
   });
 
   // The pipeline credits the wrapped contract; the screen offers the native.
@@ -226,9 +243,9 @@ describe('resolveWalletDepositMinimum', () => {
       asset({ chainId: fuse.id, chainName: 'Fuse', symbol: 'WFUSE', minimum: '500' }),
     ];
 
-    expect(resolveWalletDepositMinimum(mainnet.id, 'ETH', assets)).toBe(0.004);
-    expect(resolveWalletDepositMinimum(mainnet.id, 'WETH', assets)).toBe(0.004);
-    expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe(500);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'ETH', assets)).toBe('0.004');
+    expect(resolveWalletDepositMinimum(mainnet.id, 'WETH', assets)).toBe('0.004');
+    expect(resolveWalletDepositMinimum(fuse.id, 'FUSE', assets)).toBe('500');
   });
 
   // BNB Chain has no WETH to publish: its ETH is itself a token.
@@ -236,25 +253,25 @@ describe('resolveWalletDepositMinimum', () => {
     const assets = [
       asset({ chainId: bsc.id, chainName: 'BNB Chain', symbol: 'ETH', minimum: '0.0041' }),
     ];
-    expect(resolveWalletDepositMinimum(bsc.id, 'ETH', assets)).toBe(0.0041);
+    expect(resolveWalletDepositMinimum(bsc.id, 'ETH', assets)).toBe('0.0041');
   });
 
   it('quotes the published floor of a currency that lands in the Safe', () => {
     const assets = [
       asset({ chainId: arbitrum.id, chainName: 'Arbitrum', symbol: 'WBTC', minimum: '0.0001194' }),
     ];
-    expect(resolveWalletDepositMinimum(arbitrum.id, 'WBTC', assets)).toBe(0.0001194);
+    expect(resolveWalletDepositMinimum(arbitrum.id, 'WBTC', assets)).toBe('0.0001194');
   });
 
   it('does not take a published minimum from the wrong chain', () => {
     const assets = [asset({ chainId: base.id, chainName: 'Base', minimum: '99' })];
-    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe(10);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', assets)).toBe('10');
   });
 
   // A malformed or zero figure would quote "Send at least 0", which is no floor.
   it('ignores a published minimum that is not a usable number', () => {
-    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: '0' })])).toBe(10);
-    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: 'n/a' })])).toBe(10);
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: '0' })])).toBe('10');
+    expect(resolveWalletDepositMinimum(mainnet.id, 'USDC', [asset({ minimum: 'n/a' })])).toBe('10');
   });
 });
 
