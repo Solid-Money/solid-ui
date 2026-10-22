@@ -255,7 +255,7 @@ export const WirexBankAccountDetails = ({
       );
 
     if (activeRail.activationPath === 'walletLink') {
-      void walletLink.link().then(rail => tracked(rail));
+      void walletLink.link().then(({ rail, error }) => tracked(rail, error ?? undefined));
       return;
     }
 
