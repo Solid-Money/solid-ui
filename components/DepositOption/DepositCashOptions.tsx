@@ -15,7 +15,6 @@ import { getUsdMethodChips } from '@/components/DepositOption/DepositUsdOptions'
 import { resolveEurCashRow } from '@/components/DepositOption/eurCashRow';
 import { Text } from '@/components/ui/text';
 import { WirexResidenceStep } from '@/components/WirexBankAccount/WirexResidenceStep';
-import { isTransfiProhibitedCountry } from '@/constants/compliance';
 import { Country } from '@/constants/countries';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -89,7 +88,8 @@ const DepositCashOptions = () => {
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
   // The local currencies are all TransFi; USD is not, so it stays.
-  const { isAvailable: isTransfiAvailable } = useTransfiCountryAvailability();
+  const { isAvailable: isTransfiAvailable, isCountryProhibited: isTransfiProhibited } =
+    useTransfiCountryAvailability();
 
   // A Wirex-routed user's euros go to an IBAN in their own name: no onramp
   // spread, and no TransFi availability to depend on. Someone whose residence
@@ -148,7 +148,7 @@ const DepositCashOptions = () => {
     }
     // The country just confirmed, not the render's `isTransfiAvailable`: that
     // was worked out before the answer was stored.
-    if (isTransfiProhibitedCountry(country.code)) {
+    if (isTransfiProhibited(country.code)) {
       Toast.show({
         type: 'info',
         text1: 'No euro bank account where you live',

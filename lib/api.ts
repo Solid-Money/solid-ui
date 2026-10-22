@@ -5122,6 +5122,29 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
   return response.json();
 };
 
+/**
+ * Where TransFi's cash deposits and cash-outs are hidden, as set on the admin
+ * dashboard (Config → Countries). Public, and empty until someone sets it; the
+ * build's own list always applies on top.
+ */
+export const getTransfiProhibitedCountries = async (): Promise<{
+  prohibitedCountries: string[];
+}> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/country-access/transfi`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/landing-page-apy`,
