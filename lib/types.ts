@@ -1022,10 +1022,16 @@ export interface AvailableStatementsResponse {
   months: StatementMonth[];
 }
 
+/** A statement's two forms: a PDF to read, or a CSV for spreadsheets. */
+export type StatementFormat = 'pdf' | 'csv';
+
 /** A statement fetched from `GET /accounts/v1/statements`, ready to save. */
 export interface StatementDownload {
   filename: string;
-  content: string;
+  /** CSV text, or the PDF's bytes. */
+  content: string | Uint8Array;
+  /** The plain type, without parameters: `application/pdf` or `text/csv`. */
+  mimeType: string;
 }
 
 export interface CardSpendModeAccessResponse {

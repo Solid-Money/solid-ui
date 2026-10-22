@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Download } from 'lucide-react-native';
@@ -6,12 +6,13 @@ import { Download } from 'lucide-react-native';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { ProfileSectionLabel } from '@/components/Profile/ProfileRow';
+import StatementFormatSheet from '@/components/Statements/StatementFormatSheet';
 import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { formatStatementMonth, useStatements } from '@/hooks/useStatements';
-import { StatementMonth } from '@/lib/types';
+import { StatementFormat, StatementMonth } from '@/lib/types';
 import { cn, formatUSD } from '@/lib/utils';
 
 /** "In progress · $1,284.50 so far" for the current month, "$1,102.18 spent" for the rest. */
@@ -35,7 +36,7 @@ const MonthRow = ({
       onPress={onPress}
       disabled={isPending}
       accessibilityRole="button"
-      accessibilityLabel={`Download statement for ${title}`}
+      accessibilityLabel={`Statement for ${title}`}
       className="flex-row items-center gap-3 px-4 py-3.5 active:opacity-70 web:hover:bg-[#242424]"
     >
       <View className="flex-1">
@@ -54,18 +55,30 @@ const MonthRow = ({
 /**
  * Settings → Statements (Figma "Statements").
  *
- * One CSV per month with card activity and wallet transactions together —
- * purchases, refunds and top-ups alongside deposits, withdrawals, transfers and
- * Earn. Nothing is stored: each download is built from the records as they stand.
+ * One statement per month, the wallet and the card as one account: card
+ * purchases and refunds alongside deposits, withdrawals and transfers. Tapping a
+ * month asks for the form — a PDF to read, or a CSV for spreadsheets. Nothing is
+ * stored: each download is built from the records as they stand.
  */
 export default function Statements() {
   const { isDesktop } = useDimension();
   const { months, isLoading, isError, pendingMonth, download } = useStatements();
+  // The month the format sheet is for. Kept after closing, so the sheet still
+  // has a title while it animates away.
+  const [sheetMonth, setSheetMonth] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const handleDownload = async (month: string) => {
+  const openSheet = (month: string) => {
+    if (pendingMonth) return;
+    setSheetMonth(month);
+    setIsSheetOpen(true);
+  };
+
+  const handleDownload = async (month: string, format: StatementFormat) => {
+    setIsSheetOpen(false);
     if (pendingMonth) return;
     try {
-      const result = await download(month);
+      const result = await download(month, format);
       // iOS hands the file to the share sheet, which says what happened itself.
       if (result === 'saved') {
         Toast.show({
@@ -116,8 +129,8 @@ export default function Statements() {
         })}
       >
         <Text className="px-1 text-sm leading-5 text-[#8E8E8E]">
-          Every card purchase, refund and top-up for the month, together with all wallet activity —
-          deposits, withdrawals, transfers and Earn.
+          Every card purchase and refund for the month, with your deposits, withdrawals and
+          transfers — your wallet and card as one account.
         </Text>
 
         <ProfileSectionLabel>Monthly statements</ProfileSectionLabel>
@@ -135,7 +148,7 @@ export default function Statements() {
                 <MonthRow
                   month={month}
                   isPending={pendingMonth === month.month}
-                  onPress={() => void handleDownload(month.month)}
+                  onPress={() => openSheet(month.month)}
                 />
               </Fragment>
             ))}
@@ -143,10 +156,18 @@ export default function Statements() {
         )}
 
         <Text className="mt-3 px-1 text-sm leading-5 text-[#8E8E8E]">
-          Tap a month to download or share it as a CSV, for spreadsheets and tax tools.
+          Tap a month to get it as a PDF to read or share, or as a CSV for spreadsheets and tax
+          tools.
           {Platform.OS === 'android' ? ' You’ll choose a folder to save it to.' : ''}
         </Text>
       </View>
+
+      <StatementFormatSheet
+        month={sheetMonth}
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        onChoose={(month, format) => void handleDownload(month, format)}
+      />
     </PageLayout>
   );
 }

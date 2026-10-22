@@ -5,6 +5,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { downloadStatement, getAvailableStatements } from '@/lib/api';
 import { saveStatementFile } from '@/lib/statementFile';
+import { StatementFormat } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -15,7 +16,8 @@ const useSelectedUserId = () =>
 
 /**
  * The months a statement can be downloaded for, each with its card spend, and a
- * download that builds the month's CSV on the server and hands the file over.
+ * download that builds the month's statement on the server — a PDF to read or a
+ * CSV for spreadsheets — and hands the file over.
  *
  * Statements are built on request, never cached here: downloading a month again
  * always shows the latest data — a refund that landed late, a pending row that
@@ -34,15 +36,16 @@ export const useStatements = () => {
   });
 
   const download = useMutation({
-    mutationFn: async (month: string) => {
-      track(TRACKING_EVENTS.STATEMENT_DOWNLOAD_TAPPED, { month });
-      const file = await withRefreshToken(() => downloadStatement(month));
+    mutationFn: async ({ month, format }: { month: string; format: StatementFormat }) => {
+      track(TRACKING_EVENTS.STATEMENT_DOWNLOAD_TAPPED, { month, format });
+      const file = await withRefreshToken(() => downloadStatement(month, format));
       return saveStatementFile(file);
     },
-    onMutate: month => setPendingMonth(month),
-    onError: (error, month) => {
+    onMutate: ({ month }) => setPendingMonth(month),
+    onError: (error, { month, format }) => {
       track(TRACKING_EVENTS.STATEMENT_DOWNLOAD_FAILED, {
         month,
+        format,
         status: error instanceof Response ? error.status : undefined,
       });
     },
@@ -54,7 +57,7 @@ export const useStatements = () => {
     isLoading: months.isLoading,
     isError: months.isError,
     pendingMonth,
-    download: download.mutateAsync,
+    download: (month: string, format: StatementFormat) => download.mutateAsync({ month, format }),
   };
 };
 
