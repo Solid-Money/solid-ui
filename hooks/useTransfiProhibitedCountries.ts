@@ -33,15 +33,19 @@ export const useTransfiProhibitedCountries = () => {
   /**
    * The list as it stands now, for a decision taken after an await, when the
    * render's `countries` may be out of date: a request still in flight is
-   * waited for rather than read as empty, and a failed one is asked once more.
-   * A read that still fails leaves only the build's list, as everywhere else.
+   * waited for rather than read as empty, and a list older than `staleTime` is
+   * read again. A read that fails keeps the last list read, if any; the build's
+   * list applies on top either way.
    */
   const fetchCountries = useCallback(async () => {
     try {
-      const latest = await queryClient.ensureQueryData(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
+      const latest = await queryClient.fetchQuery(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
       return normalizeCountries(latest.prohibitedCountries);
     } catch {
-      return [];
+      const cached = queryClient.getQueryData<
+        Awaited<ReturnType<typeof getTransfiProhibitedCountries>>
+      >(TRANSFI_PROHIBITED_COUNTRIES_QUERY.queryKey);
+      return normalizeCountries(cached?.prohibitedCountries);
     }
   }, [queryClient]);
 

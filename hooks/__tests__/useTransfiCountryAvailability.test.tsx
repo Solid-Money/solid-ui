@@ -28,8 +28,11 @@ type Availability = ReturnType<typeof useTransfiCountryAvailability>;
  * `settle: false`, right after mounting. Settling can take the hook's one
  * retry (about a second) when the request fails.
  */
-const run = async ({ settle = true } = {}): Promise<Availability> => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+/** No garbage-collection timer, so a finished run leaves nothing for Jest to wait on. */
+const newClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+
+const run = async ({ settle = true, client = newClient() } = {}): Promise<Availability> => {
   const answers: Availability[] = [];
   const latest = () => answers[answers.length - 1];
   const Probe = () => {
@@ -135,5 +138,41 @@ describe('useTransfiCountryAvailability', () => {
 
     await expect(check).resolves.toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  describe('with a list read more than five minutes ago', () => {
+    const staleClient = (prohibitedCountries: string[]) => {
+      const client = newClient();
+      client.setQueryData(
+        ['transfi-prohibited-countries'],
+        { prohibitedCountries },
+        { updatedAt: Date.now() - 10 * 60 * 1000 },
+      );
+      return client;
+    };
+
+    it('checks a confirmed country against the refresh, not the old list', async () => {
+      let land: (value: { prohibitedCountries: string[] }) => void = () => {};
+      mockFetch.mockReturnValue(
+        new Promise(resolve => {
+          land = resolve;
+        }),
+      );
+
+      const result = await run({ settle: false, client: staleClient([]) });
+
+      const check = result.checkCountryProhibited('TR');
+      land({ prohibitedCountries: ['TR'] });
+
+      await expect(check).resolves.toBe(true);
+    });
+
+    it('keeps the old list when the refresh fails', async () => {
+      mockFetch.mockRejectedValue(new Error('offline'));
+
+      const result = await run({ client: staleClient(['TR']) });
+
+      await expect(result.checkCountryProhibited('TR')).resolves.toBe(true);
+    });
   });
 });
