@@ -167,6 +167,9 @@ export const TRACKING_EVENTS = {
   VIRTUAL_ACCOUNT_CREATION_FAILED: 'virtual_account_creation_failed',
   VIRTUAL_ACCOUNT_DETAILS_VIEWED: 'virtual_account_details_viewed',
   VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED: 'virtual_account_details_load_failed',
+  // A Wirex user whose bank account cannot be opened: carries Wirex's
+  // capability status, which is the reason.
+  VIRTUAL_ACCOUNT_UNAVAILABLE: 'virtual_account_unavailable',
   VIRTUAL_ACCOUNT_DETAIL_COPIED: 'virtual_account_detail_copied',
   // The one-time Rain setup fee. The drop-off between the sheet and the payment
   // is what tells us whether the fee is the thing stopping people, as distinct
