@@ -2,9 +2,10 @@ import { SaveStatementFile } from '@/lib/statementFile.types';
 
 // This file is only loaded on web via Metro platform resolution (.web.ts).
 
-/** Saves a statement CSV through the browser's own download. */
-export const saveStatementFile: SaveStatementFile = async ({ filename, content }) => {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+/** Saves a statement — PDF or CSV — through the browser's own download. */
+export const saveStatementFile: SaveStatementFile = async ({ filename, content, mimeType }) => {
+  const type = typeof content === 'string' ? `${mimeType};charset=utf-8` : mimeType;
+  const blob = new Blob([content as BlobPart], { type });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement('a');

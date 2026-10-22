@@ -88,22 +88,27 @@ it('lists the months the server offers', async () => {
   await unmount();
 });
 
-it('downloads the month and hands the file over', async () => {
-  const file = { filename: 'solid-statement-2026-09.csv', content: 'csv' };
+it('downloads the month in the chosen form and hands the file over', async () => {
+  const file = {
+    filename: 'solid-statement-2026-09.pdf',
+    content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+    mimeType: 'application/pdf',
+  };
   mockDownload.mockResolvedValue(file);
   mockSave.mockResolvedValue('saved');
   const { latest, unmount } = await mount();
 
   let result: unknown;
   await act(async () => {
-    result = await latest()?.download('2026-09');
+    result = await latest()?.download('2026-09', 'pdf');
   });
 
   expect(result).toBe('saved');
-  expect(mockDownload).toHaveBeenCalledWith('2026-09');
+  expect(mockDownload).toHaveBeenCalledWith('2026-09', 'pdf');
   expect(mockSave).toHaveBeenCalledWith(file);
   expect(track).toHaveBeenCalledWith(TRACKING_EVENTS.STATEMENT_DOWNLOAD_TAPPED, {
     month: '2026-09',
+    format: 'pdf',
   });
   expect(latest()?.pendingMonth).toBeNull();
   await unmount();
@@ -114,13 +119,13 @@ it('reports a failed download and clears the spinner', async () => {
   const { latest, unmount } = await mount();
 
   await act(async () => {
-    await expect(latest()?.download('2026-09')).rejects.toThrow();
+    await expect(latest()?.download('2026-09', 'csv')).rejects.toThrow();
   });
 
   expect(mockSave).not.toHaveBeenCalled();
   expect(track).toHaveBeenCalledWith(
     TRACKING_EVENTS.STATEMENT_DOWNLOAD_FAILED,
-    expect.objectContaining({ month: '2026-09' }),
+    expect.objectContaining({ month: '2026-09', format: 'csv' }),
   );
   expect(latest()?.pendingMonth).toBeNull();
   await unmount();
