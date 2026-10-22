@@ -9,6 +9,7 @@ import { TokenBalance, TokenType } from '@/lib/types';
 jest.mock('@/hooks/useBalances', () => ({ useBalances: jest.fn() }));
 jest.mock('@/hooks/useCardSpendableBalance', () => ({ useCardSpendableAssets: jest.fn() }));
 jest.mock('@/hooks/useVaultExchangeRate', () => ({ useVaultExchangeRate: jest.fn() }));
+jest.mock('@/hooks/useMainCurrency', () => ({ useMainCurrency: jest.fn() }));
 
 const EURC = '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42';
 
@@ -98,6 +99,30 @@ describe('buildSpendableAssetRows', () => {
     const soEur = rows.find(row => row.name === 'soEUR');
     expect(soEur).toMatchObject({ value: '€10.20', detail: '10.00 soEUR', subtitle: 'EUR Yield' });
     expect(soEur?.usd).toBeCloseTo(10.2 * 1.1658, 4);
+  });
+
+  it('values soEUR through the card euro rate when the Safe holds no EURC', () => {
+    const soUsd = HOLDINGS[2];
+    const { rows, totalUsd, dollarUsd } = buildSpendableAssetRows(
+      [
+        soUsd,
+        token({
+          contractTickerSymbol: 'soEUR',
+          contractAddress: ADDRESSES.base.soEurcVault,
+          balance: '10000000',
+          quoteRate: 0,
+          chainId: base.id,
+        }),
+      ],
+      [...CARD_SPENDABLE_ASSETS, ...baseSpendableAssets([EURC, ADDRESSES.base.soEurcVault])],
+      1.017,
+      1.125,
+    );
+
+    expect(rows.find(row => row.name === 'soEUR')?.usd).toBeCloseTo(10.17 * 1.125, 4);
+    // The balance counts both vaults; Cash, which pays dollar purchases, still counts soUSD alone.
+    expect(totalUsd).toBeCloseTo(18.47 * 1.0828 + 10.17 * 1.125, 4);
+    expect(dollarUsd).toBeCloseTo(18.47 * 1.0828, 4);
   });
 
   it('leaves out an asset the Safe does not hold', () => {
