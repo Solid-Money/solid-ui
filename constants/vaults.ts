@@ -16,9 +16,7 @@ const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
 /**
  * soEURC — EURC on Base, earning in euros.
  *
- * In every build's VAULTS, so a soEURC held anywhere is recognised and can be withdrawn. Who is
- * OFFERED it is per user: everyone on QA/preview, the Wirex test users in production — see
- * `useEurVaultAccess`, which the Earn row, savings vault list, deposit picker and deep link check.
+ * Offered to everyone, in every build, like the other vaults.
  * v1 takes EURC on Base only, from the Solid wallet or a connected external wallet;
  * there is no fast withdraw and no on-ramp or bridge into it.
  */

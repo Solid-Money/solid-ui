@@ -9,13 +9,12 @@ import { useActivityStore } from '@/store/useActivityStore';
 const { act, create } = require('react-test-renderer');
 
 const mockUser = { userId: 'account', safeAddress: '0xABC' };
-let mockWithdraws: { requestTxHash: string; requestStatus: string }[] | undefined;
-let mockEurWithdraws: { requestTxHash: string; requestStatus: string }[] | undefined;
+type MockWithdraw = { requestTxHash: string; requestStatus: string; requestId?: string };
+let mockWithdraws: MockWithdraw[] | undefined;
+let mockEurWithdraws: MockWithdraw[] | undefined;
+let mockEthWithdraws: MockWithdraw[] | undefined;
 jest.mock('@/hooks/useUser', () => ({ __esModule: true, default: () => ({ user: mockUser }) }));
 jest.mock('@/lib/config', () => ({ USER: 'user', isDevFeatureEnabled: true }));
-jest.mock('@/hooks/useEurVaultAccess', () => ({
-  useEurVaultAccess: () => ({ isEnabled: true, isLoading: false }),
-}));
 jest.mock('@/lib/mmvkStorage', () => ({
   __esModule: true,
   default: () => ({ getItem: () => null, setItem: jest.fn() }),
@@ -25,9 +24,18 @@ jest.mock('@/lib/api', () => ({
   fetchActivityEvents: jest.fn(async () => ({ docs: [], hasNextPage: false })),
 }));
 jest.mock('@/hooks/useAnalytics', () => ({
-  // The USD subgraph by default; the EUR one when asked for the 'eur' vault.
+  // The USD subgraph by default; each other vault's own when asked for it.
   useUserTransactions: (_address: string, vault?: string) => ({
-    data: { withdraws: vault === 'eur' ? mockEurWithdraws : mockWithdraws },
+    data: {
+      withdraws:
+        vault === 'eur'
+          ? mockEurWithdraws
+          : vault === 'eth'
+            ? mockEthWithdraws
+            : vault === 'fuse'
+              ? undefined
+              : mockWithdraws,
+    },
   }),
 }));
 jest.mock('@/hooks/useSyncActivities', () => ({
@@ -83,6 +91,7 @@ describe('Activity withdrawal status freshness', () => {
     mockListedTokens = null;
     mockBaseRequests = {};
     mockEurWithdraws = undefined;
+    mockEthWithdraws = undefined;
   });
   afterEach(() => {
     act(() => renderer.unmount());
@@ -243,5 +252,80 @@ describe('Activity withdrawal status freshness', () => {
       renderer.update(<Probe />);
     });
     expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.SUCCESS);
+  });
+
+  // soETH requests sit on the soETH queue: only its own subgraph can say one was solved.
+  it('resolves a soETH withdrawal from the soETH subgraph, not the USD one', async () => {
+    useActivityStore.setState({
+      events: { account: [{ ...withdrawal, symbol: 'soETH', hash: '0xeth', chainId: 1 }] },
+    });
+    mockWithdraws = [{ requestTxHash: '0xeth', requestStatus: 'SOLVED' }];
+    await act(async () => {
+      renderer = create(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.PROCESSING);
+
+    mockEthWithdraws = [{ requestTxHash: '0xeth', requestStatus: 'SOLVED', requestId: '0xreq' }];
+    await act(async () => {
+      renderer.update(<Probe />);
+    });
+    expect(results.at(-1)?.activities[0].status).toBe(TransactionStatus.SUCCESS);
+  });
+
+  describe('a soEURC withdrawal in the EUR subgraph', () => {
+    const eurWithdrawal: ActivityEvent = {
+      ...withdrawal,
+      symbol: 'soEURC',
+      hash: '0xeur',
+      chainId: 8453,
+    };
+    const eurOf = () => results.at(-1)?.activities.find(a => a.clientTxId === 'withdrawal');
+
+    it('is processing while queued, with its request id for a cancel', async () => {
+      useActivityStore.setState({ events: { account: [eurWithdrawal] } });
+      mockEurWithdraws = [{ requestTxHash: '0xeur', requestStatus: 'PENDING', requestId: '0xreq' }];
+      await act(async () => {
+        renderer = create(<Probe />);
+      });
+      expect(eurOf()?.status).toBe(TransactionStatus.PROCESSING);
+      expect(eurOf()?.requestId).toBe('0xreq');
+    });
+
+    it('is cancelled once the subgraph says so', async () => {
+      useActivityStore.setState({ events: { account: [eurWithdrawal] } });
+      mockEurWithdraws = [
+        { requestTxHash: '0xeur', requestStatus: 'CANCELLED', requestId: '0xreq' },
+      ];
+      await act(async () => {
+        renderer = create(<Probe />);
+      });
+      expect(eurOf()?.status).toBe(TransactionStatus.CANCELLED);
+    });
+
+    it('is cancelled as soon as the user cancels it, before the subgraph indexes it', async () => {
+      useActivityStore.setState({
+        events: {
+          account: [
+            eurWithdrawal,
+            {
+              clientTxId: 'cancel',
+              type: TransactionType.CANCEL_WITHDRAW,
+              status: TransactionStatus.SUCCESS,
+              amount: '0',
+              title: 'Cancel withdraw',
+              timestamp: '124',
+              symbol: 'soEURC',
+              chainId: 8453,
+              metadata: { requestId: '0xREQ' },
+            },
+          ],
+        },
+      });
+      mockEurWithdraws = [{ requestTxHash: '0xeur', requestStatus: 'PENDING', requestId: '0xreq' }];
+      await act(async () => {
+        renderer = create(<Probe />);
+      });
+      expect(eurOf()?.status).toBe(TransactionStatus.CANCELLED);
+    });
   });
 });

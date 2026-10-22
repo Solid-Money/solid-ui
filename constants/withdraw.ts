@@ -79,7 +79,8 @@ export const VAULT_META: Record<VaultKey, VaultMeta> = {
 
 /** Maps a token symbol to the vault it belongs to (null if not a vault token). */
 export function getVaultKey(symbol: string | undefined): VaultKey | null {
-  if (!symbol) return null;
+  // Persisted activity rows can be corrupt; never call toLowerCase on a non-string.
+  if (typeof symbol !== 'string' || !symbol) return null;
   const s = symbol.toLowerCase();
   if (s === 'sousd' || s === 'sousdc' || s === 'fusdc') return 'USD';
   if (s === 'sofuse') return 'FUSE';

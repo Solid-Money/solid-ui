@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Hash } from 'viem';
+import { Hash, Hex } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import { getVaultKey } from '@/constants/withdraw';
@@ -17,7 +17,6 @@ import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
 import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
-import { useEurVaultAccess } from './useEurVaultAccess';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -89,23 +88,35 @@ export function useActivity() {
   });
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
-  // soEURC requests sit on their own queue, indexed (when at all) by the EUR
-  // subgraph — never by the USD one. Read for users the vault is offered to, and for anyone
-  // with a soEURC withdraw to settle: the gate decides who is offered the vault, not whether a
-  // withdraw already made can show as complete.
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
-  const hasEurWithdraw = !!userEventsFromStore?.some(
-    activity =>
-      activity?.type === TransactionType.WITHDRAW && getVaultKey(activity.symbol) === 'EUR',
-  );
+  const withdrawVaults = useMemo(() => {
+    const vaults = new Set<string>();
+    for (const activity of userEventsFromStore ?? []) {
+      if (activity?.type !== TransactionType.WITHDRAW) continue;
+      const vault = getVaultKey(activity.symbol);
+      if (vault) vaults.add(vault);
+    }
+    return vaults;
+  }, [userEventsFromStore]);
+  // soEURC, soETH and soFUSE requests sit on their own queues, indexed by their own
+  // subgraphs — never by the USD one. Read only for users with a withdraw from that vault.
   const { data: eurTransactions } = useUserTransactions(
-    isEurVaultEnabled || hasEurWithdraw ? user?.safeAddress : undefined,
+    withdrawVaults.has('EUR') ? user?.safeAddress : undefined,
     VaultType.EUR,
+  );
+  const { data: ethTransactions } = useUserTransactions(
+    withdrawVaults.has('ETH') ? user?.safeAddress : undefined,
+    VaultType.ETH,
+  );
+  const { data: fuseTransactions } = useUserTransactions(
+    withdrawVaults.has('FUSE') ? user?.safeAddress : undefined,
+    VaultType.FUSE,
   );
   const listedTokens = useListedTokens();
 
   const withdraws = userTransactions?.withdraws;
   const eurWithdraws = eurTransactions?.withdraws;
+  const ethWithdraws = ethTransactions?.withdraws;
+  const fuseWithdraws = fuseTransactions?.withdraws;
   const baseWithdrawRequests = useBaseWithdrawRequests(userEventsFromStore);
 
   // Fetch a page of activities directly from the API and push to Zustand
@@ -246,9 +257,10 @@ export function useActivity() {
     // When subgraph data is unavailable we now show PROCESSING (not PENDING)
     // to reflect that the on-chain tx succeeded and the request is in the queue.
     //
-    // Each withdraw is matched against its own vault's subgraph: soEURC against
-    // the EUR one, everything else against the USD one. A soUSD request on Base is
-    // read from its queue above instead.
+    // Each withdraw is matched against its own vault's subgraph: soEURC, soETH and
+    // soFUSE against theirs, soUSD (or no vault) against the USD one. A soUSD request on Base is
+    // read from its queue above instead. A matched request carries its id, and a
+    // cancelled one reads as CANCELLED rather than staying PROCESSING.
     userEvents = userEvents.map(activity => {
       if (
         activity.type !== TransactionType.WITHDRAW ||
@@ -258,7 +270,15 @@ export function useActivity() {
         return activity;
       }
 
-      const vaultWithdraws = getVaultKey(activity.symbol) === 'EUR' ? eurWithdraws : withdraws;
+      const vault = getVaultKey(activity.symbol);
+      const vaultWithdraws =
+        vault === 'EUR'
+          ? eurWithdraws
+          : vault === 'ETH'
+            ? ethWithdraws
+            : vault === 'FUSE'
+              ? fuseWithdraws
+              : withdraws;
 
       // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
       // waiting for solver fulfillment) instead of PENDING which implies the
@@ -287,13 +307,27 @@ export function useActivity() {
         return false;
       });
 
-      if (matchingWithdraw?.requestStatus === 'SOLVED') {
-        return activity; // Keep SUCCESS
+      if (!matchingWithdraw) {
+        // Not indexed yet. Show PROCESSING rather than PENDING since the
+        // on-chain tx already succeeded.
+        return { ...activity, status: TransactionStatus.PROCESSING };
       }
-      // Request exists on subgraph but not solved yet → PROCESSING. No matching
-      // subgraph entry — the request may not have been indexed yet. Show
-      // PROCESSING rather than PENDING since the on-chain tx already succeeded.
-      return { ...activity, status: TransactionStatus.PROCESSING };
+
+      // The request id lets the activity screen offer a cancel where the
+      // request's queue allows one (soEURC on Base).
+      const requestId = (matchingWithdraw.requestId as Hex | undefined) || undefined;
+      if (matchingWithdraw.requestStatus === 'SOLVED') {
+        return { ...activity, requestId }; // Keep SUCCESS
+      }
+      // A cancel the user made in the app counts before the subgraph indexes it.
+      if (
+        matchingWithdraw.requestStatus === 'CANCELLED' ||
+        (requestId && cancelledRequestIds.has(requestId.toLowerCase()))
+      ) {
+        return { ...activity, requestId, status: TransactionStatus.CANCELLED };
+      }
+      // In the queue, not solved yet.
+      return { ...activity, requestId, status: TransactionStatus.PROCESSING };
     });
 
     return userEvents
@@ -317,6 +351,8 @@ export function useActivity() {
     user?.userId,
     withdraws,
     eurWithdraws,
+    ethWithdraws,
+    fuseWithdraws,
     listedTokens,
     baseWithdrawRequests,
   ]);

@@ -20,7 +20,7 @@ const STALE_MS = 5 * 60 * 1000;
  * while the backend gates them (`DEPOSIT_TOKENS_COHORT_ONLY`), so the answer
  * comes from the server rather than from the build.
  *
- * Fails closed, like `useEurVaultAccess`: `false` until the request answers and
+ * Fails closed, like `useCardSpendModeAccess`: `false` until the request answers and
  * `false` if it fails, so the screen lists what everyone is offered until the
  * server says otherwise.
  *

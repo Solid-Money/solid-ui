@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import AddEurcBanner from '@/components/Card/MainCurrency/AddEurcBanner';
 import CurrencyOptionCard from '@/components/Card/MainCurrency/CurrencyOptionCard';
@@ -59,9 +59,15 @@ export default function MainCurrencyScreen() {
   const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
   const setDepositModal = useDepositStore(state => state.setModal);
 
+  // `?currency=EUR` comes from the euro launch popup's "Switch to Euro": the page opens with Euro
+  // picked and the switch button up, so the cardholder finishes the switch here.
+  const { currency: requested } = useLocalSearchParams<{ currency?: string }>();
+
   // The card on screen. Follows the saved choice until the cardholder taps one, so a page opened
   // before the card details land does not stay on dollars once they say euro.
-  const [picked, setPicked] = useState<MainCurrency>();
+  const [picked, setPicked] = useState<MainCurrency | undefined>(() =>
+    CURRENCIES.find(currency => currency === requested),
+  );
   const selected = picked ?? saved;
   const [isApprovalOpen, setIsApprovalOpen] = useState(false);
 

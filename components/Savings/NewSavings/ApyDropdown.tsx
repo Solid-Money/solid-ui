@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import { ChevronDown } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { getAsset } from '@/lib/assets';
 import { VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -105,9 +104,6 @@ interface ApyDropdownProps {
  * by default on the redesigned savings screen.
  */
 const ApyDropdown = ({ vaultType, apyByType, onSelect, className }: ApyDropdownProps) => {
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
-  const vaults = SAVINGS_VAULTS.filter(vault => isVaultOffered(vault.type, isEurVaultEnabled));
-
   return (
     <View className={cn('items-center', className)}>
       <SelectSheet
@@ -115,7 +111,7 @@ const ApyDropdown = ({ vaultType, apyByType, onSelect, className }: ApyDropdownP
         title="Vault APY"
       >
         {dismiss =>
-          vaults.map(vault => (
+          SAVINGS_VAULTS.map(vault => (
             <VaultApyRow
               key={vault.type}
               vaultType={vault.type}
