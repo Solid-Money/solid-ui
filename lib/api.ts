@@ -82,6 +82,7 @@ import {
   Deposit,
   DepositAssetsResponse,
   DepositFeeQuote,
+  DepositTokensAccessResponse,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -4496,6 +4497,26 @@ export const getEurVaultAccess = async (): Promise<EurVaultAccessResponse> => {
     },
     credentials: 'include',
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Whether the new deposit tokens may be offered to this user — see useDepositTokensAccess. */
+export const getDepositTokensAccess = async (): Promise<DepositTokensAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/tokens/access`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
 
   if (!response.ok) throw response;
 

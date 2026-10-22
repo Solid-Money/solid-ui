@@ -38,6 +38,13 @@ export type WalletDepositTokenConfig = {
    * chain exchanges send them on.
    */
   homeChainId?: number;
+  /**
+   * The chains it is offered on to everyone. Any other chain in `contracts` —
+   * every one, for a token without this — is offered only to those given the
+   * new deposit tokens (see `useDepositTokensAccess`): the internal team in
+   * production while they are rolled out, everyone on qa/preview builds.
+   */
+  releasedOn?: number[];
   /** Only on qa/preview builds (see `isDevFeatureEnabled`). */
   devOnly?: boolean;
 };
@@ -58,6 +65,9 @@ export type WalletDepositTokenConfig = {
  * SOL, NEAR and ZEC are their wrapped ERC-20s: the address is an EVM one, so the
  * native coins cannot be sent to it. Each is listed only on the chains it has a
  * canonical bridged token on.
+ *
+ * Everything added with Optimism is still being rolled out: `releasedOn` holds
+ * the pairs every user had before, and the rest are offered only with access.
  */
 export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
   {
@@ -74,6 +84,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [bsc.id]: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
       [fuse.id]: '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9',
     },
+    releasedOn: [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id],
   },
   {
     symbol: 'USDT',
@@ -89,6 +100,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [bsc.id]: '0x55d398326f99059fF775485246999027B3197955',
       [fuse.id]: '0x3695Dd1D1D43B794C0B13eb8be8419Eb3ac22bf7',
     },
+    releasedOn: [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id],
   },
   {
     // Wirex cardholders only (see `offersWalletDepositEurc`), on the chains
@@ -100,6 +112,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     contracts: Object.fromEntries(
       Object.entries(EURC_TOKENS).map(([chainId, token]) => [chainId, token.address]),
     ),
+    releasedOn: Object.keys(EURC_TOKENS).map(Number),
   },
   {
     symbol: 'PAXG',
@@ -141,6 +154,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [optimism.id]: NATIVE_COIN,
       [bsc.id]: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8',
     },
+    releasedOn: [mainnet.id, base.id],
   },
   {
     // Base and BNB Chain carry the LayerZero WBTC, the same contract on both.
@@ -167,6 +181,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     contracts: {
       [fuse.id]: NATIVE_COIN,
     },
+    releasedOn: [fuse.id],
   },
   {
     symbol: 'cbBTC',
@@ -310,6 +325,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [arbitrum.id]: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
       [optimism.id]: '0x4200000000000000000000000000000000000006',
     },
+    releasedOn: [mainnet.id, base.id],
   },
   {
     symbol: 'WFUSE',
@@ -319,6 +335,7 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     contracts: {
       [fuse.id]: WRAPPED_FUSE,
     },
+    releasedOn: [fuse.id],
   },
 ];
 

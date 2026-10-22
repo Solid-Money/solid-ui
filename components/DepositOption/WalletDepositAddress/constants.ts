@@ -30,6 +30,17 @@ export type WalletDepositToken = {
 /** Who the screen is for, which decides EURC and where stablecoins go. */
 type WalletDepositProvider = CardProvider | null | undefined;
 
+/**
+ * Who the screen is for: their card issuer, and whether they are offered the
+ * deposit tokens still being rolled out (`useDepositTokensAccess`). Without
+ * `hasNewTokens` only what every user is offered is listed (see `releasedOn`),
+ * so a caller that leaves it out shows less rather than more.
+ */
+export type WalletDepositViewer = {
+  provider?: WalletDepositProvider;
+  hasNewTokens?: boolean;
+};
+
 /** Deposits land on the Safe within roughly the same window on every chain. */
 export const WALLET_DEPOSIT_ESTIMATED_TIME = '~3 min';
 
@@ -185,10 +196,14 @@ const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvi
 
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
+/** Whether everyone is offered the currency on this chain, not only those with access. */
+const isReleasedOn = (token: WalletDepositTokenConfig, chainId: number): boolean =>
+  token.releasedOn?.includes(chainId) ?? false;
+
 /** The chains a currency is taken on for this person, in "Select network" order. */
 const getTokenChainIds = (
   token: WalletDepositTokenConfig,
-  provider: WalletDepositProvider,
+  { provider, hasNewTokens = false }: WalletDepositViewer,
 ): number[] => {
   if (!isOffered(token, provider)) return [];
   const minted = usesDirectDepositAddress(token.symbol, provider);
@@ -197,6 +212,7 @@ const getTokenChainIds = (
     chainId =>
       token.contracts[chainId] !== undefined &&
       isOpenChain(chainId) &&
+      (hasNewTokens || isReleasedOn(token, chainId)) &&
       (!minted || isDirectDepositChain(chainId)),
   );
 };
@@ -220,9 +236,9 @@ export const getWalletDepositTokenIcon = (symbol: string): ImageSourcePropType =
 /** The currencies that chain accepts for this person, in "Select token" order. */
 export const getWalletDepositTokens = (
   chainId: number,
-  provider?: WalletDepositProvider,
+  viewer: WalletDepositViewer = {},
 ): WalletDepositToken[] =>
-  WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, provider).includes(chainId)).map(
+  WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, viewer).includes(chainId)).map(
     toWalletDepositToken,
   );
 
@@ -232,12 +248,19 @@ export const getWalletDepositTokens = (
  * The deposit address is the user's Safe, which is the same address on every
  * chain — the choice here only decides which currencies are on offer, what the
  * minimum is, and which logo the QR carries.
+ *
+ * With a viewer, only the chains carrying something offered to them; without
+ * one, every chain, for looking a chain's name and logo up.
  */
-export const getWalletDepositNetworks = (): WalletDepositNetwork[] =>
+export const getWalletDepositNetworks = (viewer?: WalletDepositViewer): WalletDepositNetwork[] =>
   WALLET_DEPOSIT_CHAIN_IDS.filter(
     chainId =>
       isOpenChain(chainId) &&
-      WALLET_DEPOSIT_TOKENS.some(token => token.contracts[chainId] !== undefined),
+      WALLET_DEPOSIT_TOKENS.some(token =>
+        viewer
+          ? getTokenChainIds(token, viewer).includes(chainId)
+          : token.contracts[chainId] !== undefined,
+      ),
   ).flatMap(chainId => {
     const chain = getBridgeChain(chainId);
     return chain ? [{ chainId, name: chain.name, icon: chain.icon }] : [];
@@ -255,9 +278,9 @@ export const getWalletDepositNetworks = (): WalletDepositNetwork[] =>
 export const resolveWalletDepositSymbol = (
   chainId: number,
   symbol?: string,
-  provider?: WalletDepositProvider,
+  viewer: WalletDepositViewer = {},
 ): string | undefined => {
-  const tokens = getWalletDepositTokens(chainId, provider);
+  const tokens = getWalletDepositTokens(chainId, viewer);
   return tokens.some(token => token.symbol === symbol) ? symbol : tokens[0]?.symbol;
 };
 
@@ -323,7 +346,8 @@ export const formatWalletDepositMinimum = (minimum: string): string => {
 
 /**
  * The pairing the screen opens on: USDC on Base (see
- * `DEFAULT_WALLET_DEPOSIT_CHAIN_ID`), falling back if either is off.
+ * `DEFAULT_WALLET_DEPOSIT_CHAIN_ID`), falling back if either is off. Both are
+ * offered to everyone, so this needs no viewer.
  *
  * This address is the user's Safe on the chain they pick, not a bridge — what
  * lands on Base stays on Base. A Wirex cardholder's USDC and USDT are the
@@ -348,8 +372,8 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
  * lists them: the stablecoins, gold and silver, then ETH and the rest, with the
  * wrapped natives last.
  */
-export const getAllWalletDepositTokens = (provider?: WalletDepositProvider): WalletDepositToken[] =>
-  WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, provider).length > 0).map(
+export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): WalletDepositToken[] =>
+  WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, viewer).length > 0).map(
     toWalletDepositToken,
   );
 
@@ -382,11 +406,11 @@ export const groupWalletDepositTokens = (
  */
 export const getWalletDepositNetworksForToken = (
   symbol?: string,
-  provider?: WalletDepositProvider,
+  viewer: WalletDepositViewer = {},
 ): WalletDepositNetwork[] => {
-  const networks = getWalletDepositNetworks();
+  const networks = getWalletDepositNetworks(viewer);
   const token = findToken(symbol);
-  const carrying = token ? getTokenChainIds(token, provider) : [];
+  const carrying = token ? getTokenChainIds(token, viewer) : [];
   const offered = networks.filter(network => carrying.includes(network.chainId));
 
   return offered.length ? offered : networks;
@@ -403,11 +427,9 @@ export const getWalletDepositNetworksForToken = (
 export const resolveWalletDepositChain = (
   symbol: string,
   currentChainId?: number,
-  provider?: WalletDepositProvider,
+  viewer: WalletDepositViewer = {},
 ): number => {
-  const carrying = getWalletDepositNetworksForToken(symbol, provider).map(
-    network => network.chainId,
-  );
+  const carrying = getWalletDepositNetworksForToken(symbol, viewer).map(network => network.chainId);
   if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
 
   const homeChainId = findToken(symbol)?.homeChainId;

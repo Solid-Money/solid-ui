@@ -27,9 +27,14 @@ jest.mock('@/lib/config', () => ({
 jest.mock('@/hooks/useCardProvider', () => ({
   useCardProvider: () => ({ provider: null }),
 }));
+jest.mock('@/hooks/useDepositTokensAccess', () => ({
+  useDepositTokensAccess: () => ({ isEnabled: mockAccess.isEnabled, isLoading: false }),
+}));
 jest.mock('@/store/useDepositStore', () => ({
   useDepositStore: (selector: (state: any) => unknown) => selector(mockDeposit),
 }));
+
+const mockAccess = { isEnabled: true };
 
 const mockDeposit = {
   walletDeposit: {} as { chainId?: number; symbol?: string; isChangingToken?: boolean },
@@ -57,6 +62,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   mockDeposit.walletDeposit = {};
+  mockAccess.isEnabled = true;
 });
 
 describe('WalletDepositTokens', () => {
@@ -71,6 +77,18 @@ describe('WalletDepositTokens', () => {
     expect(shown).not.toContain('EURC');
     // A row each: 19 tokens, EURC being a Wirex cardholder's alone.
     expect(root.root.findAllByType('ChevronRight')).toHaveLength(19);
+  });
+
+  it('lists only what everyone is offered for someone not given the new tokens', () => {
+    mockAccess.isEnabled = false;
+    const root = render();
+    const shown = texts(root);
+
+    expect(shown).not.toContain('Gold & silver');
+    expect(shown).not.toContain('PAXG');
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'ETH', 'WFUSE']));
+    // USDC, USDT, ETH, FUSE, WETH and WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(6);
   });
 
   it('narrows the list to what matches the ticker or name', () => {

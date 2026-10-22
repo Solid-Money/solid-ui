@@ -6,7 +6,6 @@ import { Check, ChevronRight, Search, X } from 'lucide-react-native';
 import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -17,6 +16,7 @@ import {
   resolveWalletDepositChain,
   WalletDepositToken,
 } from './constants';
+import { useWalletDepositViewer } from './useWalletDepositViewer';
 
 const TOKEN_ICON_STYLE = { width: 36, height: 36, borderRadius: 18 };
 
@@ -138,8 +138,8 @@ const WalletDepositTokens = () => {
   // picked reads as a decision already made for them.
   const selected = walletDeposit.isChangingToken ? walletDeposit.symbol : undefined;
 
-  const { provider } = useCardProvider();
-  const tokens = useMemo(() => getAllWalletDepositTokens(provider), [provider]);
+  const viewer = useWalletDepositViewer();
+  const tokens = useMemo(() => getAllWalletDepositTokens(viewer), [viewer]);
   const groups = useMemo(
     () =>
       groupWalletDepositTokens(tokens.filter(token => matchesWalletDepositSearch(token, query))),
@@ -150,7 +150,7 @@ const WalletDepositTokens = () => {
     Keyboard.dismiss();
     setWalletDeposit({
       symbol: token.symbol,
-      chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, provider),
+      chainId: resolveWalletDepositChain(token.symbol, walletDeposit.chainId, viewer),
       isChangingToken: false,
     });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);

@@ -1097,6 +1097,13 @@ export interface EurVaultAccessResponse {
   reason: 'cohort' | 'open' | 'not-in-cohort';
 }
 
+/** Whether the new deposit tokens may be offered to this user. See useDepositTokensAccess. */
+export interface DepositTokensAccessResponse {
+  enabled: boolean;
+  /** `cohort` — tagged on the internal team. `open` — rolled out to everyone. `not-in-cohort` — hidden. */
+  reason: 'cohort' | 'open' | 'not-in-cohort';
+}
+
 export interface CardSpendModeAccessResponse {
   /** Whether to render the spend-mode card and the borrow position at all. */
   enabled: boolean;

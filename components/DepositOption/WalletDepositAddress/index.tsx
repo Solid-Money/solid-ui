@@ -32,6 +32,7 @@ import {
   resolveWalletDepositSymbol,
   WALLET_DEPOSIT_LEARN_URL,
 } from './constants';
+import { useWalletDepositViewer } from './useWalletDepositViewer';
 import WalletDepositSelectors, { WalletDepositNetworkList } from './WalletDepositSelectors';
 
 /** Design caps the QR at 259px; below that it tracks the card width. */
@@ -80,6 +81,7 @@ const WalletDepositAddress = () => {
   // Wirex cardholders and people with no card both land here, and only the
   // cardholders are charged — see `getDepositFeeRatePpm`.
   const { provider } = useCardProvider();
+  const viewer = useWalletDepositViewer();
   const tokenIcon = getWalletDepositTokenIcon(symbol);
   // The pipeline's own floor when it has answered, the committed estimate until
   // then — never a blank, which is the one thing this line must not show.
@@ -127,11 +129,11 @@ const WalletDepositAddress = () => {
     (nextChainId: number) => {
       setWalletDeposit({
         chainId: nextChainId,
-        symbol: resolveWalletDepositSymbol(nextChainId, symbol, provider) ?? symbol,
+        symbol: resolveWalletDepositSymbol(nextChainId, symbol, viewer) ?? symbol,
       });
       setIsNetworkOpen(false);
     },
-    [provider, setWalletDeposit, symbol],
+    [setWalletDeposit, symbol, viewer],
   );
 
   return (
