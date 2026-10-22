@@ -24,6 +24,7 @@ import {
   detailRows,
   RAIL_PRESENTATION,
   selectActiveRail,
+  unavailableRail,
   unavailableReason,
   visibleRails as pickVisibleRails,
 } from './railPresentation';
@@ -184,9 +185,38 @@ export const WirexBankAccountDetails = ({
       activeRail.account?.canReceive
         ? TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_VIEWED
         : TRACKING_EVENTS.VIRTUAL_ACCOUNT_DETAILS_LOAD_FAILED,
-      { provider: 'wirex', rail: activeRail.accountType },
+      {
+        provider: 'wirex',
+        rail: activeRail.accountType,
+        capability_status: activeRail.capabilityStatus,
+        activation_path: activeRail.activationPath,
+        is_pending: activeRail.isPending,
+      },
     );
   }, [activeRail, isLoading]);
+
+  /**
+   * A Wirex user with nothing they can open. Shown with Wirex's own reason
+   * rather than a generic line, and tracked with it, so a stuck user can be
+   * explained from analytics as well as from the server's `[WirexVA]` log.
+   */
+  const closedRail = useMemo(
+    () =>
+      overview?.isWirexUser && overview.provider === 'wirex' && !overview.kycRequired
+        ? unavailableRail(overview)
+        : null,
+    [overview],
+  );
+  const closedStatus = closedRail?.capabilityStatus;
+  const closedType = closedRail?.accountType;
+  useEffect(() => {
+    if (isLoading || !closedType) return;
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_UNAVAILABLE, {
+      provider: 'wirex',
+      rail: closedType,
+      capability_status: closedStatus,
+    });
+  }, [closedStatus, closedType, isLoading]);
 
   /**
    * Start activation down whichever path the capability calls for.
@@ -197,18 +227,42 @@ export const WirexBankAccountDetails = ({
    */
   const handleActivate = useCallback(() => {
     if (!activeRail) return;
-    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED, {
+    const context = {
       provider: 'wirex',
       rail: activeRail.accountType,
       activation_path: activeRail.activationPath,
-    });
+    };
+    track(TRACKING_EVENTS.VIRTUAL_ACCOUNT_APPLY_PRESSED, context);
+
+    // Both outcomes are tracked with the rail Wirex left behind, so a user who
+    // pressed the button and is still without an IBAN shows why.
+    const tracked = (rail: WirexBankRailStatusDto | null | undefined, error?: unknown) =>
+      track(
+        rail
+          ? TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATED
+          : TRACKING_EVENTS.VIRTUAL_ACCOUNT_CREATION_FAILED,
+        {
+          ...context,
+          ...(rail && {
+            capability_status: rail.capabilityStatus,
+            is_pending: rail.isPending,
+            can_receive: !!rail.account?.canReceive,
+          }),
+          ...(error !== undefined && {
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        },
+      );
 
     if (activeRail.activationPath === 'walletLink') {
-      void walletLink.link();
+      void walletLink.link().then(({ rail, error }) => tracked(rail, error ?? undefined));
       return;
     }
 
-    activate.mutate(activeRail.accountType);
+    activate.mutate(activeRail.accountType, {
+      onSuccess: rail => tracked(rail),
+      onError: error => tracked(null, error),
+    });
   }, [activeRail, activate, walletLink]);
 
   if (isLoading) {
@@ -286,6 +340,25 @@ export const WirexBankAccountDetails = ({
         </Text>
         <Button className="h-12 rounded-2xl px-6" onPress={handleVerifyPress}>
           <Text className="text-base font-bold text-black">Verify identity</Text>
+        </Button>
+      </View>
+    );
+  }
+
+  // A Wirex user Wirex will not open an account for yet: say why, in Wirex's
+  // terms, instead of "No bank accounts are available". The status can change
+  // on Wirex's side (support finishing a verification level), so the check
+  // stays one tap away.
+  if (closedRail) {
+    return (
+      <View className="flex-1">
+        <RailPlaceholder rail={closedRail} onActivate={handleActivate} isActivating={false} />
+        <Button
+          variant="outline"
+          className="mx-auto mb-6 h-12 rounded-2xl px-6"
+          onPress={() => void refetch()}
+        >
+          <Text className="text-base font-semibold text-white">Check again</Text>
         </Button>
       </View>
     );

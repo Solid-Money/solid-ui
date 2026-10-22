@@ -75,13 +75,15 @@ export function detailRows(rail: WirexBankRailStatusDto): BankAccountDetailRow[]
 /**
  * Why a rail is closed to this user.
  *
- * `NotFulfilled` is the one that is actionable — the user can finish a higher
+ * `NotFulfilled` is the one that is actionable — Wirex wants a higher
  * verification level — so it must not be flattened into the generic message.
+ * The app has no screen for Wirex's extra levels yet, so it points at support
+ * rather than at a verification the user cannot start from here.
  */
 export function unavailableReason(capabilityStatus: string, label: string): string {
   switch (capabilityStatus) {
     case 'NotFulfilled':
-      return 'Finish identity verification and this will unlock.';
+      return "Wirex needs more identity verification before it can open this account. Contact support and we'll help you finish it.";
     case 'NotAvailable':
       return `${label} accounts aren't offered in your country of residence.`;
     default:
@@ -97,6 +99,18 @@ export function unavailableReason(capabilityStatus: string, label: string): stri
  */
 export function visibleRails(overview: WirexBankOverviewDto | undefined): WirexBankRailStatusDto[] {
   return (overview?.rails ?? []).filter(rail => rail.account || rail.canActivate || rail.isPending);
+}
+
+/**
+ * The rail to explain when none is worth showing: the first one the server
+ * lists (the rails it offers come first), so its capability status can say why
+ * it cannot be opened. Null while some rail is visible, or when there is none.
+ */
+export function unavailableRail(
+  overview: WirexBankOverviewDto | undefined,
+): WirexBankRailStatusDto | null {
+  if (visibleRails(overview).length > 0) return null;
+  return overview?.rails[0] ?? null;
 }
 
 /**
