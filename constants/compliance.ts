@@ -70,6 +70,10 @@ const DEFAULT_TRANSFI_PROHIBITED_COUNTRIES = ['UA', 'RU', 'BY'];
  * not offered there. Read from EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES so the
  * list can follow TransFi's without a code change; their published list is at
  * https://docs.transfi.com/docs/prohibited-countries.
+ *
+ * This is the floor baked into the build. The admin dashboard (Config →
+ * Countries) can add to it at runtime — see `useTransfiProhibitedCountries` —
+ * but never take a country off it.
  */
 export const TRANSFI_PROHIBITED_COUNTRIES: string[] =
   EXPO_PUBLIC_TRANSFI_PROHIBITED_COUNTRIES === undefined
@@ -78,8 +82,17 @@ export const TRANSFI_PROHIBITED_COUNTRIES: string[] =
         .map((code: string) => code.trim().toUpperCase())
         .filter(Boolean);
 
-export function isTransfiProhibitedCountry(countryCode: string | undefined): boolean {
-  return !!countryCode && TRANSFI_PROHIBITED_COUNTRIES.includes(countryCode.toUpperCase());
+/**
+ * Whether TransFi is hidden in this country: on the build's list, or on
+ * `dashboardCountries` — the list set on the admin dashboard, upper-cased.
+ */
+export function isTransfiProhibitedCountry(
+  countryCode: string | undefined,
+  dashboardCountries: readonly string[] = [],
+): boolean {
+  if (!countryCode) return false;
+  const code = countryCode.toUpperCase();
+  return TRANSFI_PROHIBITED_COUNTRIES.includes(code) || dashboardCountries.includes(code);
 }
 
 export type FeatureType = 'swap' | 'bridge' | 'buyCrypto' | 'bankTransfer' | 'card';
