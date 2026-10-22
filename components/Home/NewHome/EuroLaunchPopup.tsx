@@ -56,9 +56,9 @@ interface EuroLaunchPopupProps {
  * picked, where the first switch still needs the one-time EURC approval.
  *
  * It waits for the wallet screen to settle and for anything else that opens over it — What's
- * New, the card pane, a tier trial offer — so two popups never stack. It stays away while this
- * build or the backend has Base switched off, since the page it leads to could not finish the
- * switch.
+ * New, the card pane, a tier trial offer — so two popups never stack, and closes if the card pane
+ * opens over it. It stays away until the backend confirms Base is on and this build has its
+ * addresses, since the page it leads to could not otherwise finish the switch.
  */
 const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupProps) => {
   const router = useRouter();
@@ -77,8 +77,10 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === BASE_SPEND_DEPLOYMENT.chainId,
   );
+  // Only once the backend has said Base is on: an unanswered query must not open the popup and
+  // spend the user's one showing on a page that may not be able to finish the switch.
   const euroAvailable =
-    isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT) && baseDeployment?.available !== false;
+    isSpendDeploymentConfigured(BASE_SPEND_DEPLOYMENT) && baseDeployment?.available === true;
 
   const shouldOpen =
     !!userId &&
@@ -90,7 +92,10 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
     isHomeReady &&
     !isWhatsNewVisible &&
     !isCardPaneOpen &&
-    !rewards?.pendingTierTrial;
+    // Rewards must have answered before "no pending trial" means anything: the trial offer opens
+    // itself on the same screen, and the two must not stack.
+    !!rewards &&
+    !rewards.pendingTierTrial;
 
   useEffect(() => {
     if (!shouldOpen || !userId) return;
@@ -99,6 +104,12 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
     markSeen(userId);
     setIsOpen(true);
   }, [shouldOpen, userId, markSeen]);
+
+  // The card pane can open over the wallet screen without a tap on it — `/?screen=card-info` from
+  // a notification — and the sheet must not sit on top of it.
+  useEffect(() => {
+    if (isCardPaneOpen) setIsOpen(false);
+  }, [isCardPaneOpen]);
 
   const close = () => setIsOpen(false);
 
