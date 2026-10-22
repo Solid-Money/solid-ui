@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 
 import useUser from '@/hooks/useUser';
 import { getDepositTokensAccess } from '@/lib/api';
-import { isDevFeatureEnabled } from '@/lib/config';
 
 export const DEPOSIT_TOKENS_ACCESS_QUERY_KEY = 'depositTokensAccess';
 
@@ -15,14 +14,16 @@ const STALE_MS = 5 * 60 * 1000;
  * the tokens already offered elsewhere (see `releasedOn` in
  * `constants/walletDepositTokens`).
  *
- * QA and preview builds offer them to everyone. Production offers them only to
- * the internal team members tagged "New deposit tokens" on the admin dashboard
- * while the backend gates them (`DEPOSIT_TOKENS_COHORT_ONLY`), so the answer
- * comes from the server rather than from the build.
+ * The server decides, on every build: while `DEPOSIT_TOKENS_COHORT_ONLY` gates
+ * them (production) only the internal team members tagged "New deposit tokens"
+ * on the admin dashboard get them, and qa turns the gate off for everyone. The
+ * build is not asked, so a build with a missing or unexpected environment
+ * cannot open them by accident.
  *
- * Fails closed, like `useCardSpendModeAccess`: `false` until the request answers and
- * `false` if it fails, so the screen lists what everyone is offered until the
- * server says otherwise.
+ * Fails closed, like `useCardSpendModeAccess`: `false` until the request
+ * answers, and `false` while the latest request has failed, even if an earlier
+ * one said yes — so the screen lists what everyone is offered until the server
+ * says otherwise.
  *
  * This gates OFFERING them on the deposit screen. A balance or receive in one is
  * still shown: the tokens go to the user's own Safe, which anyone can send to.
@@ -30,20 +31,17 @@ const STALE_MS = 5 * 60 * 1000;
 export const useDepositTokensAccess = (): { isEnabled: boolean; isLoading: boolean } => {
   const { user } = useUser();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: [DEPOSIT_TOKENS_ACCESS_QUERY_KEY, user?.userId],
     queryFn: getDepositTokensAccess,
-    // Nothing to ask without a signed-in user (the request would 401), and nothing to ask on a
-    // build that offers them to everyone.
-    enabled: !isDevFeatureEnabled && !!user?.userId,
+    // Nothing to ask without a signed-in user, and the request would 401.
+    enabled: !!user?.userId,
     staleTime: STALE_MS,
     retry: 1,
   });
 
-  if (isDevFeatureEnabled) return { isEnabled: true, isLoading: false };
-
   return {
-    isEnabled: data?.enabled === true,
+    isEnabled: !isError && data?.enabled === true,
     isLoading: !!user?.userId && isLoading,
   };
 };
