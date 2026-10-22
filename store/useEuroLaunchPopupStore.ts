@@ -7,6 +7,8 @@ interface EuroLaunchPopupState {
   /** User ids the euro launch popup has already opened for on this device. */
   seen: Record<string, true>;
   markSeen: (userId: string) => void;
+  /** Gives the showing back, for a popup something else pushed aside before it was answered. */
+  clearSeen: (userId: string) => void;
 }
 
 const EURO_LAUNCH_POPUP_STORAGE_KEY = 'euro-launch-popup-storage';
@@ -25,6 +27,12 @@ export const useEuroLaunchPopupStore = create<EuroLaunchPopupState>()(
     set => ({
       seen: {},
       markSeen: (userId: string) => set(state => ({ seen: { ...state.seen, [userId]: true } })),
+      clearSeen: (userId: string) =>
+        set(state => {
+          const seen = { ...state.seen };
+          delete seen[userId];
+          return { seen };
+        }),
     }),
     {
       name: EURO_LAUNCH_POPUP_STORAGE_KEY,

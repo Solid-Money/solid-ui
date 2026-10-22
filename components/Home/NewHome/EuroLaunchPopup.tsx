@@ -56,8 +56,8 @@ interface EuroLaunchPopupProps {
  * picked, where the first switch still needs the one-time EURC approval.
  *
  * It waits for the wallet screen to settle and for anything else that opens over it — What's
- * New, the card pane, a tier trial offer — so two popups never stack, and closes if the card pane
- * opens over it. It stays away until the backend confirms Base is on and this build has its
+ * New, the card pane, a tier trial offer — so two popups never stack. If What's New or the card
+ * pane opens over it, it steps aside and comes back once they close. It stays away until the backend confirms Base is on and this build has its
  * addresses, since the page it leads to could not otherwise finish the switch.
  */
 const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupProps) => {
@@ -68,10 +68,15 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
 
   const seen = useEuroLaunchPopupStore(state => (userId ? !!state.seen[userId] : true));
   const markSeen = useEuroLaunchPopupStore(state => state.markSeen);
+  const clearSeen = useEuroLaunchPopupStore(state => state.clearSeen);
   const isHomeReady = useWhatsNewStore(state => state.isHomeReady);
   const isWhatsNewVisible = useWhatsNewStore(state => state.isVisible);
   const isCardPaneOpen = useCardPaneStore(state => state.isOpen);
-  const { data: rewards } = useRewardsUserData();
+  const {
+    data: rewards,
+    isFetching: isRewardsFetching,
+    isSuccess: isRewardsSuccess,
+  } = useRewardsUserData();
   const { data: spendDeployments } = useCardSpendDeployments();
 
   const baseDeployment = spendDeployments?.deployments.find(
@@ -92,8 +97,10 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
     isHomeReady &&
     !isWhatsNewVisible &&
     !isCardPaneOpen &&
-    // Rewards must have answered before "no pending trial" means anything: the trial offer opens
-    // itself on the same screen, and the two must not stack.
+    // Rewards must have answered, and not from a cache being refetched, before "no pending trial"
+    // means anything: the trial offer opens itself on the same screen, and the two must not stack.
+    isRewardsSuccess &&
+    !isRewardsFetching &&
     !!rewards &&
     !rewards.pendingTierTrial;
 
@@ -105,11 +112,15 @@ const EuroLaunchPopup = ({ isWirexCardholder, mainCurrency }: EuroLaunchPopupPro
     setIsOpen(true);
   }, [shouldOpen, userId, markSeen]);
 
-  // The card pane can open over the wallet screen without a tap on it — `/?screen=card-info` from
-  // a notification — and the sheet must not sit on top of it.
+  // What's New opens itself 3s after the wallet screen settles, and the card pane can open over it
+  // from `/?screen=card-info`; the sheet must not stay under either. Pushed aside is not answered,
+  // so the showing is given back and the sheet returns once the way is clear.
+  const isPushedAside = isWhatsNewVisible || isCardPaneOpen;
   useEffect(() => {
-    if (isCardPaneOpen) setIsOpen(false);
-  }, [isCardPaneOpen]);
+    if (!isPushedAside || !isOpen || !userId) return;
+    setIsOpen(false);
+    clearSeen(userId);
+  }, [isPushedAside, isOpen, userId, clearSeen]);
 
   const close = () => setIsOpen(false);
 
