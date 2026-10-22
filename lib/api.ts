@@ -5122,6 +5122,9 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
   return response.json();
 };
 
+/** How long the dashboard's TransFi list may take before the build's applies alone. */
+const TRANSFI_PROHIBITED_TIMEOUT_MS = 10_000;
+
 /**
  * Where TransFi's cash deposits and cash-outs are hidden, as set on the admin
  * dashboard (Config → Countries). Public, and empty until someone sets it; the
@@ -5130,7 +5133,9 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
 export const getTransfiProhibitedCountries = async (): Promise<{
   prohibitedCountries: string[];
 }> => {
-  const response = await fetch(
+  // Callers hold TransFi back until this settles, so a request that never
+  // answers must not hide it for good: time it out, and the build's list applies.
+  const response = await fetchWithTimeout(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/country-access/transfi`,
     {
       credentials: 'include',
@@ -5138,11 +5143,21 @@ export const getTransfiProhibitedCountries = async (): Promise<{
         ...getPlatformHeaders(),
       },
     },
+    TRANSFI_PROHIBITED_TIMEOUT_MS,
   );
 
   if (!response.ok) throw response;
 
-  return response.json();
+  const body: unknown = await response.json();
+  const countries = (body as { prohibitedCountries?: unknown } | null)?.prohibitedCountries;
+  // A malformed answer is a failed read, not an empty list: an empty list
+  // would quietly drop every country the dashboard closed.
+  if (!Array.isArray(countries)) {
+    throw new Error('Malformed TransFi prohibited-countries response');
+  }
+  return {
+    prohibitedCountries: countries.filter((code): code is string => typeof code === 'string'),
+  };
 };
 
 export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
