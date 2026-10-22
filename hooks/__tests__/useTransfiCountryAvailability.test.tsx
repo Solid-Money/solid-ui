@@ -53,7 +53,11 @@ const run = async ({ settle = true, client = newClient() } = {}): Promise<Availa
       await new Promise(resolve => setTimeout(resolve, settle ? 50 : 0));
     });
   } while (settle && latest().isResolving && Date.now() < deadline);
-  root.unmount();
+  // Inside act, so the query's unsubscribe lands now rather than in the middle
+  // of a check the test makes next (it cancels that check's pending retry).
+  await act(async () => {
+    root.unmount();
+  });
   return latest();
 };
 
@@ -118,6 +122,18 @@ describe('useTransfiCountryAvailability', () => {
     await expect(result.checkCountryProhibited('TR')).resolves.toBe(false);
   });
 
+  /** The app's client retries twice by default; the check waits on this one. */
+  it('asks once more, not twice, when checking a confirmed country fails', async () => {
+    mockFetch.mockRejectedValue(new Error('offline'));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 2, gcTime: Infinity } } });
+
+    const result = await run({ client });
+    mockFetch.mockClear();
+    await result.checkCountryProhibited('TR');
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
   /**
    * The EUR row's residence step can be confirmed before the dashboard list
    * lands; the confirmed country must still be checked against it.
@@ -165,6 +181,15 @@ describe('useTransfiCountryAvailability', () => {
       land({ prohibitedCountries: ['TR'] });
 
       await expect(check).resolves.toBe(true);
+    });
+
+    it('offers nothing while the list is being read again', async () => {
+      mockFetch.mockReturnValue(new Promise(() => {}));
+
+      const result = await run({ settle: false, client: staleClient([]) });
+
+      expect(result.isResolving).toBe(true);
+      expect(result.isAvailable).toBe(false);
     });
 
     it('keeps the old list when the refresh fails', async () => {
