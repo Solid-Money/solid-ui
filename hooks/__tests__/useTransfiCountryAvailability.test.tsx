@@ -74,7 +74,7 @@ describe('useTransfiCountryAvailability', () => {
 
     expect(result.isResolving).toBe(false);
     expect(result.isAvailable).toBe(false);
-    expect(result.isCountryProhibited('id')).toBe(true);
+    await expect(result.checkCountryProhibited('id')).resolves.toBe(true);
   });
 
   it("keeps the build's list when the dashboard's does not name it", async () => {
@@ -111,6 +111,29 @@ describe('useTransfiCountryAvailability', () => {
 
     expect(result.isResolving).toBe(false);
     expect(result.isAvailable).toBe(true);
-    expect(result.isCountryProhibited('RU')).toBe(true);
+    await expect(result.checkCountryProhibited('RU')).resolves.toBe(true);
+    await expect(result.checkCountryProhibited('TR')).resolves.toBe(false);
+  });
+
+  /**
+   * The EUR row's residence step can be confirmed before the dashboard list
+   * lands; the confirmed country must still be checked against it.
+   */
+  it('checks a confirmed country against a list that was still loading', async () => {
+    let land: (value: { prohibitedCountries: string[] }) => void = () => {};
+    mockFetch.mockReturnValue(
+      new Promise(resolve => {
+        land = resolve;
+      }),
+    );
+
+    const result = await run({ settle: false });
+    expect(result.isResolving).toBe(true);
+
+    const check = result.checkCountryProhibited('TR');
+    land({ prohibitedCountries: ['TR'] });
+
+    await expect(check).resolves.toBe(true);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

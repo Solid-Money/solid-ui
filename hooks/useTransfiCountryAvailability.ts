@@ -19,20 +19,28 @@ import { useTransfiProhibitedCountries } from '@/hooks/useTransfiProhibitedCount
  */
 export const useTransfiCountryAvailability = () => {
   const { countryCode, isResolving: isResolvingCountry } = useCashAppDepositAvailability();
-  const { countries: dashboardCountries, isLoading: isLoadingDashboard } =
-    useTransfiProhibitedCountries();
+  const {
+    countries: dashboardCountries,
+    isLoading: isLoadingDashboard,
+    fetchCountries,
+  } = useTransfiProhibitedCountries();
   const isResolving = isResolvingCountry || isLoadingDashboard;
 
-  /** For a country the user has just confirmed, not the one resolved here. */
-  const isCountryProhibited = useCallback(
-    (code: string | undefined) => isTransfiProhibitedCountry(code, dashboardCountries),
-    [dashboardCountries],
+  /**
+   * For a country the user has just confirmed, not the one resolved here.
+   * Checked against the dashboard's list as it stands when called — waited for
+   * if it is still loading — not the one this render saw: the caller has
+   * usually awaited something since.
+   */
+  const checkCountryProhibited = useCallback(
+    async (code: string | undefined) => isTransfiProhibitedCountry(code, await fetchCountries()),
+    [fetchCountries],
   );
 
   return {
-    isAvailable: !isResolving && !isCountryProhibited(countryCode),
+    isAvailable: !isResolving && !isTransfiProhibitedCountry(countryCode, dashboardCountries),
     isResolving,
-    isCountryProhibited,
+    checkCountryProhibited,
   };
 };
 

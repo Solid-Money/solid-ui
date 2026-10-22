@@ -1,7 +1,19 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getTransfiProhibitedCountries } from '@/lib/api';
+
+const TRANSFI_PROHIBITED_COUNTRIES_QUERY = {
+  queryKey: ['transfi-prohibited-countries'],
+  queryFn: getTransfiProhibitedCountries,
+  staleTime: 1000 * 60 * 5, // 5 minutes
+};
+
+const normalizeCountries = (codes: readonly string[] | undefined) =>
+  (codes ?? [])
+    .filter((code): code is string => typeof code === 'string')
+    .map(code => code.trim().toUpperCase())
+    .filter(Boolean);
 
 /**
  * The countries the admin dashboard (Config → Countries) hides TransFi in, on
@@ -13,23 +25,27 @@ import { getTransfiProhibitedCountries } from '@/lib/api';
  * times, because callers wait on it before showing TransFi at all.
  */
 export const useTransfiProhibitedCountries = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['transfi-prohibited-countries'],
-    queryFn: getTransfiProhibitedCountries,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: 1,
-  });
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({ ...TRANSFI_PROHIBITED_COUNTRIES_QUERY, retry: 1 });
 
-  const countries = useMemo(
-    () =>
-      (data?.prohibitedCountries ?? [])
-        .filter((code): code is string => typeof code === 'string')
-        .map(code => code.trim().toUpperCase())
-        .filter(Boolean),
-    [data],
-  );
+  const countries = useMemo(() => normalizeCountries(data?.prohibitedCountries), [data]);
 
-  return { countries, isLoading };
+  /**
+   * The list as it stands now, for a decision taken after an await, when the
+   * render's `countries` may be out of date: a request still in flight is
+   * waited for rather than read as empty, and a failed one is asked once more.
+   * A read that still fails leaves only the build's list, as everywhere else.
+   */
+  const fetchCountries = useCallback(async () => {
+    try {
+      const latest = await queryClient.ensureQueryData(TRANSFI_PROHIBITED_COUNTRIES_QUERY);
+      return normalizeCountries(latest.prohibitedCountries);
+    } catch {
+      return [];
+    }
+  }, [queryClient]);
+
+  return { countries, isLoading, fetchCountries };
 };
 
 export default useTransfiProhibitedCountries;

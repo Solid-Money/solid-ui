@@ -88,7 +88,7 @@ const DepositCashOptions = () => {
   const { isBuyCryptoAvailable } = useGeoCompliance();
   const { handleBuyCryptoPress } = useBuyCryptoEntry();
   // The local currencies are all TransFi; USD is not, so it stays.
-  const { isAvailable: isTransfiAvailable, isCountryProhibited: isTransfiProhibited } =
+  const { isAvailable: isTransfiAvailable, checkCountryProhibited: checkTransfiProhibited } =
     useTransfiCountryAvailability();
 
   // A Wirex-routed user's euros go to an IBAN in their own name: no onramp
@@ -147,8 +147,10 @@ const DepositCashOptions = () => {
       return;
     }
     // The country just confirmed, not the render's `isTransfiAvailable`: that
-    // was worked out before the answer was stored.
-    if (isTransfiProhibited(country.code)) {
+    // was worked out before the answer was stored. Checked against the
+    // dashboard's list as it stands now, which may not have landed when the
+    // user confirmed.
+    if (await checkTransfiProhibited(country.code)) {
       Toast.show({
         type: 'info',
         text1: 'No euro bank account where you live',
