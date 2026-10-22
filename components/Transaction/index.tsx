@@ -10,6 +10,7 @@ import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getTransactionCategory, TRANSACTION_DETAILS } from '@/constants/transaction';
+import { useContactNames } from '@/hooks/useContactNames';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import { getAsset } from '@/lib/assets';
@@ -22,6 +23,7 @@ import {
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { formatActivityTimestamp } from '@/lib/utils/activity';
+import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
 
 type TransactionClassNames = {
   container?: string;
@@ -39,6 +41,9 @@ interface TransactionProps {
   onPress?: () => void;
   clientTxId?: string;
   metadata?: Record<string, any>;
+  /** The other side of a send or receive, which names the row ("Sent to Alice"). */
+  fromAddress?: string;
+  toAddress?: string;
   timestamp?: string;
   showTimestamp?: boolean;
   isFirst?: boolean;
@@ -57,6 +62,8 @@ const Transaction = ({
   type,
   clientTxId,
   metadata,
+  fromAddress,
+  toAddress,
   timestamp,
   showTimestamp = true,
   isFirst = false,
@@ -66,6 +73,14 @@ const Transaction = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const { isScreenMedium } = useDimension();
+  // Only a send or receive is named by its counterparty, so only those rows need the contacts.
+  const contacts = useContactNames({
+    enabled: type === TransactionType.SEND || type === TransactionType.RECEIVE,
+  });
+  const displayTitle = getTransferTitle(
+    { type, title, status, amount, symbol: symbol ?? '', fromAddress, toAddress, metadata },
+    contacts,
+  );
 
   const isPending = status === TransactionStatus.PENDING;
   const isDetected = status === TransactionStatus.DETECTED;
@@ -255,7 +270,8 @@ const Transaction = ({
     if (isTransferredToSafe) return 'Sent to Safe';
     if (isCancelled) return 'Cancelled';
     if (isSuccess && isDeposit) return 'Complete';
-    return getTransactionCategory(type, title) ?? 'Unknown';
+    // "Card refund" for a refund the backend recognised, rather than a bare "Receive".
+    return getTransferCategory({ metadata }) ?? getTransactionCategory(type, title) ?? 'Unknown';
   };
 
   const formattedTimestamp = timestamp ? formatActivityTimestamp(timestamp) : null;
@@ -275,7 +291,7 @@ const Transaction = ({
         <ActivityTokenIcon tokenIcon={tokenIcon} size={44} badge={activityBadge} variant="list" />
         <View className="min-w-0 flex-shrink gap-0.5">
           <Text className="text-base font-medium web:text-lg" numberOfLines={1}>
-            {title}
+            {displayTitle}
           </Text>
           <View className="flex-row items-center gap-1">
             {isReward && (
@@ -404,7 +420,11 @@ function areTransactionPropsEqual(
     prevProps.isFirst === nextProps.isFirst &&
     prevProps.isLast === nextProps.isLast &&
     prevProps.classNames?.container === nextProps.classNames?.container &&
-    prevProps.metadata?.destinationType === nextProps.metadata?.destinationType
+    prevProps.metadata?.destinationType === nextProps.metadata?.destinationType &&
+    // The title and category are derived from these, not only from `title`.
+    prevProps.fromAddress === nextProps.fromAddress &&
+    prevProps.toAddress === nextProps.toAddress &&
+    prevProps.metadata?.transferContext?.kind === nextProps.metadata?.transferContext?.kind
   );
 }
 

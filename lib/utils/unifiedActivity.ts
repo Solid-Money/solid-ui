@@ -10,6 +10,7 @@ import {
   getCardMerchantName,
   getCardRefundLabel,
 } from '@/lib/utils/cardHelpers';
+import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
 
 /** The chips the Activity screen filters by. `PROGRESS` is not one of them. */
 export type ActivityFilter = ActivityTab.ALL | ActivityTab.WALLET | ActivityTab.CARD;
@@ -119,7 +120,17 @@ export const getUnifiedActivitySearchText = (item: UnifiedActivityItem): string 
       .join(' ')
       .toLowerCase();
   }
-  return [item.activity.title, item.activity.symbol].filter(Boolean).join(' ').toLowerCase();
+  // The row's own words — "Sent to 0x54c1...08fe", "Refund from UBER", "Card refund" — as well
+  // as the stored title, so a search for "refund" or "send" finds what the user is looking at.
+  return [
+    getTransferTitle(item.activity),
+    item.activity.title,
+    getTransferCategory(item.activity),
+    item.activity.symbol,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 };
 
 type FilterOptions = {
