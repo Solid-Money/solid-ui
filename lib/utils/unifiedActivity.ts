@@ -10,7 +10,11 @@ import {
   getCardMerchantName,
   getCardRefundLabel,
 } from '@/lib/utils/cardHelpers';
-import { getTransferCategory, getTransferTitle } from '@/lib/utils/transferPresentation';
+import {
+  ContactNames,
+  getTransferCategory,
+  getTransferTitle,
+} from '@/lib/utils/transferPresentation';
 
 /** The chips the Activity screen filters by. `PROGRESS` is not one of them. */
 export type ActivityFilter = ActivityTab.ALL | ActivityTab.WALLET | ActivityTab.CARD;
@@ -106,8 +110,16 @@ export const mergeActivityFeeds = (
   return [...walletItems, ...cardItems].sort((a, b) => b.timestamp - a.timestamp);
 };
 
-/** Everything on a row a search should look at: what the user can read on it. */
-export const getUnifiedActivitySearchText = (item: UnifiedActivityItem): string => {
+/**
+ * Everything on a row a search should look at: what the user can read on it.
+ *
+ * `contacts` are the names the rows show for saved addresses ("Sent to Alice"), so a search for
+ * Alice finds them.
+ */
+export const getUnifiedActivitySearchText = (
+  item: UnifiedActivityItem,
+  contacts?: ContactNames,
+): string => {
   if (item.kind === 'card') {
     return [
       getCardMerchantName(item.transaction),
@@ -123,7 +135,7 @@ export const getUnifiedActivitySearchText = (item: UnifiedActivityItem): string 
   // The row's own words — "Sent to 0x54c1...08fe", "Refund from UBER", "Card refund" — as well
   // as the stored title, so a search for "refund" or "send" finds what the user is looking at.
   return [
-    getTransferTitle(item.activity),
+    getTransferTitle(item.activity, contacts),
     item.activity.title,
     getTransferCategory(item.activity),
     item.activity.symbol,
@@ -137,17 +149,19 @@ type FilterOptions = {
   tab: ActivityFilter;
   /** Free-text search; blank means no search is running. */
   query?: string;
+  /** Saved contacts, so a search matches the names the rows show. */
+  contacts?: ContactNames;
 };
 
 export const filterUnifiedActivity = (
   items: UnifiedActivityItem[],
-  { tab, query }: FilterOptions,
+  { tab, query, contacts }: FilterOptions,
 ): UnifiedActivityItem[] => {
   const search = query?.trim().toLowerCase();
 
   return items.filter(item => {
     if (tab !== ActivityTab.ALL && item.tab !== tab) return false;
     if (!search) return true;
-    return getUnifiedActivitySearchText(item).includes(search);
+    return getUnifiedActivitySearchText(item, contacts).includes(search);
   });
 };

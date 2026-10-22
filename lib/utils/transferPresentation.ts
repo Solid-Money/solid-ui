@@ -1,3 +1,4 @@
+import { formatDecimalAmount } from '@/lib/support/formatAmount';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 
 /**
@@ -51,13 +52,32 @@ export type ContactNames = ReadonlyMap<string, string>;
 
 const KNOWN_KINDS = new Set<string>(Object.values(TransferContextKind));
 
-/** What the backend found this transfer to be, or undefined when it found nothing. */
+const textOrUndefined = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value : undefined;
+
+/**
+ * What the backend found this transfer to be, or undefined when it found nothing.
+ *
+ * Rebuilt field by field rather than cast: `metadata` is free-form, and the summary and names
+ * end up as text children, where anything but a string throws during render.
+ */
 export const getTransferContext = (
   activity: Pick<ActivityEvent, 'metadata'>,
 ): TransferContext | undefined => {
-  const context = activity.metadata?.transferContext;
+  const context: unknown = activity.metadata?.transferContext;
   if (!context || typeof context !== 'object') return undefined;
-  return KNOWN_KINDS.has(context.kind) ? (context as TransferContext) : undefined;
+
+  const raw = context as Record<string, unknown>;
+  if (typeof raw.kind !== 'string' || !KNOWN_KINDS.has(raw.kind)) return undefined;
+
+  return {
+    kind: raw.kind as TransferContextKind,
+    summary: textOrUndefined(raw.summary),
+    merchantName: textOrUndefined(raw.merchantName),
+    creditReason: textOrUndefined(raw.creditReason),
+    cardTransactionId: textOrUndefined(raw.cardTransactionId),
+    linkedClientTxId: textOrUndefined(raw.linkedClientTxId),
+  };
 };
 
 /** The row category for a transfer the backend named — "Card refund" rather than "Receive". */
@@ -99,13 +119,6 @@ const counterpartyOf = (activity: TransferActivity): string | undefined =>
  */
 const shortAddress = (address: string): string => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-/** An amount as the rows show it: up to six decimals, two once it is a whole unit or more. */
-const formatAmount = (amount: number): string =>
-  new Intl.NumberFormat('en-us', {
-    maximumFractionDigits: 6,
-    minimumFractionDigits: amount >= 1 ? 2 : 0,
-  }).format(amount);
-
 const counterpartyLabel = (address: string, contacts?: ContactNames): string =>
   contacts?.get(address.toLowerCase()) || shortAddress(address);
 
@@ -129,7 +142,8 @@ export const getTransferTitle = (activity: TransferActivity, contacts?: ContactN
   const title = activity.title ?? '';
   if (!isTransfer(activity.type)) return title;
   if (getTransferContext(activity)) return title;
-  if (!BARE_TRANSFER_TITLE.test(title.trim())) return title;
+  // A missing title is as bare as "Send USDC" — name it by the counterparty too.
+  if (title.trim() && !BARE_TRANSFER_TITLE.test(title.trim())) return title;
 
   const counterparty = counterpartyOf(activity);
   if (!counterparty) return title;
@@ -170,7 +184,9 @@ export const getTransferSummary = (
   const who = counterpartyLabel(counterparty, contacts);
   const amount = Number(activity.amount);
   const value = [
-    Number.isFinite(amount) && amount > 0 ? formatAmount(amount) : '',
+    // From the decimal string, not the float, so the digits match the detail screen's support
+    // card exactly.
+    Number.isFinite(amount) && amount > 0 ? formatDecimalAmount(activity.amount) : '',
     displaySymbol(activity.symbol),
   ]
     .filter(Boolean)

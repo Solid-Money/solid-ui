@@ -98,6 +98,10 @@ describe('getTransferTitle', () => {
     );
   });
 
+  it('names a transfer with no stored title by its counterparty too', () => {
+    expect(getTransferTitle(activity({ title: '' }))).toBe('Sent to 0xcD07...0271');
+  });
+
   it('keeps the stored title when the row has no counterparty', () => {
     expect(getTransferTitle(activity({ toAddress: undefined }))).toBe('Send USDC.e');
   });
@@ -145,12 +149,36 @@ describe('getTransferSummary', () => {
     );
   });
 
+  it('shows the amount’s own digits, cut rather than rounded through a float', () => {
+    expect(getTransferSummary(activity({ amount: '1.2345678' }))).toBe(
+      'You sent 1.234567 USDC.e from your wallet to 0xcD07...0271.',
+    );
+  });
+
   it('has nothing to say about other types', () => {
     expect(getTransferSummary(activity({ type: TransactionType.SWAP }))).toBeUndefined();
   });
 });
 
 describe('getTransferContext', () => {
+  it('drops a field that is not text, so it can never reach a text node', () => {
+    const context = getTransferContext(
+      refund({
+        metadata: {
+          transferContext: {
+            kind: TransferContextKind.CARD_REFUND,
+            summary: { not: 'text' },
+            merchantName: 42,
+          },
+        },
+      }),
+    );
+
+    expect(context).toEqual(expect.objectContaining({ kind: TransferContextKind.CARD_REFUND }));
+    expect(context?.summary).toBeUndefined();
+    expect(context?.merchantName).toBeUndefined();
+  });
+
   it('ignores a kind this build does not know, rather than trusting it', () => {
     expect(
       getTransferContext(activity({ metadata: { transferContext: { kind: 'something_new' } } })),
