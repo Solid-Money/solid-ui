@@ -86,6 +86,10 @@ describe('getTransferTitle', () => {
     expect(getTransferTitle(refund())).toBe('Refund from UBER');
   });
 
+  it('names a recognised transfer by its sender when it has no stored title', () => {
+    expect(getTransferTitle(refund({ title: '' }))).toBe('Received from 0x8678...646c');
+  });
+
   it('keeps a title someone wrote on purpose', () => {
     expect(getTransferTitle(activity({ title: 'Deposit USDC to Card' }))).toBe(
       'Deposit USDC to Card',

@@ -141,7 +141,7 @@ const didNotHappen = (status: TransactionStatus): boolean =>
 export const getTransferTitle = (activity: TransferActivity, contacts?: ContactNames): string => {
   const title = activity.title ?? '';
   if (!isTransfer(activity.type)) return title;
-  if (getTransferContext(activity)) return title;
+  if (getTransferContext(activity) && title.trim()) return title;
   // A missing title is as bare as "Send USDC" — name it by the counterparty too.
   if (title.trim() && !BARE_TRANSFER_TITLE.test(title.trim())) return title;
 
