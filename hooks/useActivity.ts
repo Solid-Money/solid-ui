@@ -17,7 +17,6 @@ import { useActivityActions } from './useActivityActions';
 import { useActivityRefresh } from './useActivityRefresh';
 import { useUserTransactions } from './useAnalytics';
 import { isBaseWithdrawRequest, useBaseWithdrawRequests } from './useBaseWithdrawRequests';
-import { useEurVaultAccess } from './useEurVaultAccess';
 
 export interface CreateActivityParams {
   type: TransactionType;
@@ -89,11 +88,6 @@ export function useActivity() {
   });
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
-  // soEURC requests sit on their own queue, indexed (when at all) by the EUR
-  // subgraph — never by the USD one. Read for users the vault is offered to, and for anyone
-  // with a soEURC withdraw to settle: the gate decides who is offered the vault, not whether a
-  // withdraw already made can show as complete.
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
   const withdrawVaults = useMemo(() => {
     const vaults = new Set<string>();
     for (const activity of userEventsFromStore ?? []) {
@@ -103,12 +97,12 @@ export function useActivity() {
     }
     return vaults;
   }, [userEventsFromStore]);
+  // soEURC, soETH and soFUSE requests sit on their own queues, indexed by their own
+  // subgraphs — never by the USD one. Read only for users with a withdraw from that vault.
   const { data: eurTransactions } = useUserTransactions(
-    isEurVaultEnabled || withdrawVaults.has('EUR') ? user?.safeAddress : undefined,
+    withdrawVaults.has('EUR') ? user?.safeAddress : undefined,
     VaultType.EUR,
   );
-  // soETH and soFUSE requests sit on their own queues too, indexed by their own
-  // subgraphs. Read only for users with a withdraw from that vault.
   const { data: ethTransactions } = useUserTransactions(
     withdrawVaults.has('ETH') ? user?.safeAddress : undefined,
     VaultType.ETH,
