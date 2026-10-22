@@ -6,7 +6,6 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
-import { useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
@@ -35,8 +34,6 @@ export default function EarnScreen() {
   // soEURC, in euros, apart from every dollar figure below (see lib/vaultCurrency).
   const { eurValue, eurShares, isEurLoading } = useTotalSavingsUSD();
   const eurRate = useMaxAPY(VaultType.EUR);
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
-
   const rates = {
     [VaultType.USDC]: useMaxAPY(VaultType.USDC),
     [VaultType.ETH]: useMaxAPY(VaultType.ETH),
@@ -90,20 +87,18 @@ export default function EarnScreen() {
       ? `${weightedApy(usdProducts.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
       : `Up to ${Math.max(...usdProducts.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
 
-  // EUR Yield, for users it is offered to: its own row, valued in euros.
-  const products: EarnProduct[] = isEurVaultEnabled
-    ? [
-        ...usdProducts,
-        {
-          type: VaultType.EUR,
-          valueUsd: undefined,
-          valueEur: isEurLoading ? undefined : eurValue,
-          shareAmount: eurShares ?? 0,
-          apy: resolveVaultApy(VaultType.EUR, eurRate.maxAPY),
-          isApyLoading: eurRate.isAPYsLoading,
-        },
-      ]
-    : usdProducts;
+  // EUR Yield: its own row, valued in euros.
+  const products: EarnProduct[] = [
+    ...usdProducts,
+    {
+      type: VaultType.EUR,
+      valueUsd: undefined,
+      valueEur: isEurLoading ? undefined : eurValue,
+      shareAmount: eurShares ?? 0,
+      apy: resolveVaultApy(VaultType.EUR, eurRate.maxAPY),
+      isApyLoading: eurRate.isAPYsLoading,
+    },
+  ];
 
   // Interest is read per product; a product with nothing in it has nothing to wait for.
   const funded = holdings.filter(holding => (holding.valueUsd ?? 0) > 0);

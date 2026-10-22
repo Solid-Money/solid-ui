@@ -7,7 +7,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
-import { isVaultOffered, useEurVaultAccess } from '@/hooks/useEurVaultAccess';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { AssetPath, getAsset } from '@/lib/assets';
 import { Vault, VaultType } from '@/lib/types';
@@ -28,7 +27,6 @@ const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vau
 
 const VaultSelectorDropdown = () => {
   const { vault: selectedVault } = useVaultDepositConfig();
-  const { isEnabled: isEurVaultEnabled } = useEurVaultAccess();
   const { selectVaultForDeposit } = useSavingStore(
     useShallow(state => ({
       selectVaultForDeposit: state.selectVaultForDeposit,
@@ -148,9 +146,6 @@ const VaultSelectorDropdown = () => {
           >
             <View className="overflow-hidden rounded-2xl bg-card">
               {VAULTS.map((vault, index) => {
-                // Mapped over VAULTS rather than a filtered copy: the index is what
-                // selectVaultForDeposit stores, so it must stay the VAULTS index.
-                if (!isVaultOffered(vault.type, isEurVaultEnabled)) return null;
                 const isSelected = vault.name === selectedVault.name;
                 const isComingSoon = !!vault.isComingSoon;
                 return (
