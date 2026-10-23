@@ -152,9 +152,9 @@ interface SpendModeSheetContentProps {
   credit: CreditModeFigures;
   /**
    * The balance panel's figures: "Your balance" across every spendable asset and the rows it is
-   * made of, and `cash`, the dollar balance a Cash purchase draws on, for the Cash segment.
+   * made of.
    */
-  balance: { total: string; cash: string; rows: readonly SpendableAssetRow[] };
+  balance: { total: string; rows: readonly SpendableAssetRow[] };
   /**
    * Bumped every time the sheet opens, which resets the selection so a sheet
    * reopened after browsing Credit doesn't come back still showing it.
@@ -222,9 +222,12 @@ const SpendModeSheetContent = ({
     [modes, noticeHeight, sizes],
   );
   const cards = cardsFor(selected);
+  // Cash keeps the figure the card screen and home tile show. It used to be the Fuse dollars
+  // alone, on the rule that a euro balance only pays euro purchases; under Main currency a
+  // dollar shop falls back to EURC, so the whole spendable balance is what Cash can draw on.
   const segmentValue = useMemo(
-    () => ({ ...figures.segmentValue, cash: balance.cash, credit: credit.availableToBorrow }),
-    [figures.segmentValue, balance.cash, credit.availableToBorrow],
+    () => ({ ...figures.segmentValue, credit: credit.availableToBorrow }),
+    [figures.segmentValue, credit.availableToBorrow],
   );
   const notice = SPEND_MODE_COPY[selected].notice;
 

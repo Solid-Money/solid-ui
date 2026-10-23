@@ -8,7 +8,6 @@ import SpendModeSheetContent, {
 import { useCreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import { useSpendableAssetRows } from '@/components/Card/NewCardDetails/SpendMode/useSpendableAssetRows';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
-import { ONE_USD } from '@/constants/cardSpendModule';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
 import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
@@ -36,19 +35,16 @@ const SpendModeSheet = ({
   const { switchMode, isSwitchingMode, error } = useCardSpendRegistration();
   // The assets the balance is made of — EURC among them once it is on for the card.
   const assets = useSpendableAssetRows();
-  const { formatMicroUsd, formatUsdAmount } = useCardDisplayCurrency();
+  const { formatUsdAmount } = useCardDisplayCurrency();
 
-  const balance = useMemo(() => {
-    const dollarMicro = BigInt(Math.max(0, Math.round(assets.dollarUsd * Number(ONE_USD))));
-    return {
+  const balance = useMemo(
+    () => ({
       // In the cardholder's main currency; the rows below keep each asset's own.
       total: formatUsdAmount(assets.totalUsd),
-      // Cash pays a dollar purchase from the Fuse set alone — a euro balance only pays euro
-      // purchases — so the segment quotes that, and tells an empty card what to do instead.
-      cash: dollarMicro > 0n ? formatMicroUsd(dollarMicro) : 'Add funds',
       rows: assets.rows,
-    };
-  }, [assets, formatMicroUsd, formatUsdAmount]);
+    }),
+    [assets, formatUsdAmount],
+  );
 
   const dismiss = useCallback(() => onOpenChange(false), [onOpenChange]);
 
