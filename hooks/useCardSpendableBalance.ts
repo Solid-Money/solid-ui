@@ -36,15 +36,21 @@ export const useCardSpendableAssets = (): CardSpendableAsset[] => {
  * Loading until the deployment list first answers, too. Balances are restored from disk on
  * launch, so without this the figure read the Fuse set alone — a euro cardholder's dollar
  * cents — and then jumped to the full balance when the list landed.
+ *
+ * "Not yet answered" is pending while fetching or paused: a launch offline pauses the query,
+ * and `isLoading` alone reads a paused query as settled. A failed list is an answer — the
+ * query leaves pending — and the figure falls back to the Fuse set, which the card can always
+ * reach. A disabled query (no user yet) is idle and does not hold the figure.
  */
 export const useCardSpendableBalanceUSD = (): { data: number; isLoading: boolean } => {
   const { tokens, isLoading } = useBalances();
-  const { isLoading: isDeploymentsLoading } = useCardSpendDeployments();
+  const { isPending, fetchStatus } = useCardSpendDeployments();
   const assets = useCardSpendableAssets();
 
   const data = useMemo(() => sumCardSpendableUSD(tokens, assets), [tokens, assets]);
+  const isDeploymentsUnanswered = isPending && fetchStatus !== 'idle';
 
-  return { data, isLoading: isLoading || isDeploymentsLoading };
+  return { data, isLoading: isLoading || isDeploymentsUnanswered };
 };
 
 export default useCardSpendableBalanceUSD;

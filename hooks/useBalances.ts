@@ -178,9 +178,27 @@ const soEURCQuoteRate = 0;
 const isKeptUnlisted = (chainId: number, address: string) =>
   chainId === BASE_CHAIN_ID && isSoEURCToken(address);
 
+/**
+ * How long a chain's token list or a token's price may stand in for a read that failed.
+ * Long enough to ride out a run of failed polls; short enough that a balance spent elsewhere
+ * stops reading as available within minutes, and a cache restored at launch carries nothing.
+ */
+const CARRY_OVER_MAX_AGE_MS = 5 * 60 * 1000;
+
+/** When each chain's token list, and each token's price, was last actually read. */
+interface ReadTimes {
+  chainReadAt?: Record<number, number>;
+  priceReadAt?: Record<string, number>;
+}
+
+type PreviousBalances = Pick<BalanceData, 'tokens'> & ReadTimes;
+
+const priceKey = (token: TokenBalance) =>
+  `${token.chainId}:${token.type}:${token.contractAddress?.toLowerCase()}`;
+
 // Fetch function for token balances. `previous` is the result already in the cache, used
 // only to stand in for a read that failed this time — see `lastKnownTokens`.
-const fetchTokenBalances = async (safeAddress: string, previous?: Pick<BalanceData, 'tokens'>) => {
+const fetchTokenBalances = async (safeAddress: string, previous?: PreviousBalances) => {
   const [
     baseResponse,
     ethereumResponse,
@@ -282,14 +300,36 @@ const fetchTokenBalances = async (safeAddress: string, previous?: Pick<BalanceDa
   let soFUSEQuoteRateUSD = 0;
   let soETHQuoteRateUSD = 0;
 
+  const now = Date.now();
+  // Carried values keep the time of the read they came from, never this poll's, so a run of
+  // failures ages them out however many polls pass.
+  const chainReadAt: Record<number, number> = {};
+  const priceReadAt: Record<string, number> = {};
+  const isFresh = (readAt: number | undefined): readAt is number =>
+    readAt !== undefined && now - readAt <= CARRY_OVER_MAX_AGE_MS;
+
   // A chain whose read failed keeps the ERC-20s it held on the last good read, rather than
   // reading as empty until the next poll. Every poll replaces the whole result, so one failed
   // Base read took EURC out of the card's spendable figure for that poll. `failedChainIds`
-  // still names the chain, so nothing reads the carried rows as a confirmed answer.
-  const lastKnownTokens = (chainId: number): TokenBalance[] =>
-    (previous?.tokens ?? []).filter(
-      token => token.chainId === chainId && token.type === TokenType.ERC20,
-    );
+  // still names the chain, so nothing reads the carried rows as a confirmed answer. Past
+  // CARRY_OVER_MAX_AGE_MS the chain reads as empty again.
+  const carriedPriceKeys = new Set<string>();
+  const lastKnownTokens = (chainId: number): TokenBalance[] => {
+    const readAt = previous?.chainReadAt?.[chainId];
+    if (!isFresh(readAt)) return [];
+    chainReadAt[chainId] = readAt;
+    return (previous?.tokens ?? [])
+      .filter(token => token.chainId === chainId && token.type === TokenType.ERC20)
+      .map(token => {
+        const key = priceKey(token);
+        if (isFresh(previous?.priceReadAt?.[key])) {
+          carriedPriceKeys.add(key);
+          return token;
+        }
+        // Its price is too old to show: price it again this poll, like a row just read.
+        return { ...token, quoteRate: 0 };
+      });
+  };
 
   // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
@@ -699,19 +739,32 @@ const fetchTokenBalances = async (safeAddress: string, previous?: Pick<BalanceDa
     });
   }
 
+  // Prices read this poll are stamped now. A carried chain's rows still hold the price of the
+  // read they came from, so they keep that read's stamp.
+  allTokens.forEach(t => {
+    if (isZeroRate(t.quoteRate)) return;
+    const key = priceKey(t);
+    const readAt = carriedPriceKeys.has(key) ? previous?.priceReadAt?.[key] : now;
+    if (readAt !== undefined) priceReadAt[key] = readAt;
+  });
+
   // Last resort: a token every lookup above left unpriced keeps the price it had on the last
-  // good read. Without it, one failed lookup valued EURC at $0 for that poll and the card's
-  // spendable figure dropped to the dollar balance alone. Shares priced off their own rate are
-  // left alone, as above.
+  // good read, for up to CARRY_OVER_MAX_AGE_MS. Without it, one failed lookup valued EURC at $0
+  // for that poll and the card's spendable figure dropped to the dollar balance alone. Shares
+  // priced off their own rate are left alone, as above.
   const previousRate = new Map(
     (previous?.tokens ?? [])
       .filter(t => !isZeroRate(t.quoteRate))
-      .map(t => [`${t.chainId}:${t.type}:${t.contractAddress?.toLowerCase()}`, t.quoteRate]),
+      .map(t => [priceKey(t), t.quoteRate]),
   );
   allTokens = allTokens.map(t => {
     if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
-    const rate = previousRate.get(`${t.chainId}:${t.type}:${t.contractAddress?.toLowerCase()}`);
-    return rate ? { ...t, quoteRate: rate } : t;
+    const key = priceKey(t);
+    const readAt = previous?.priceReadAt?.[key];
+    const rate = previousRate.get(key);
+    if (!rate || !isFresh(readAt)) return t;
+    priceReadAt[key] = readAt;
+    return { ...t, quoteRate: rate };
   });
 
   // Helper function to calculate token value
@@ -810,8 +863,21 @@ const fetchTokenBalances = async (safeAddress: string, previous?: Pick<BalanceDa
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
   const bscTokensFinal = allTokens.filter(t => t.chainId === BSC_CHAIN_ID);
 
+  for (const [chainId, response] of [
+    [BASE_CHAIN_ID, baseResponse],
+    [ETHEREUM_CHAIN_ID, ethereumResponse],
+    [FUSE_CHAIN_ID, fuseResponse],
+    [POLYGON_CHAIN_ID, polygonResponse],
+    [ARBITRUM_CHAIN_ID, arbitrumResponse],
+    [BSC_CHAIN_ID, bscResponse],
+  ] as const) {
+    if (response.status === PromiseStatus.FULFILLED) chainReadAt[chainId] = now;
+  }
+
   return {
     ...totals,
+    chainReadAt,
+    priceReadAt,
     failedChainIds: Array.from(
       new Set(
         [
@@ -870,7 +936,7 @@ const EMPTY_BALANCE_DATA = {
 export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
   queryKey: ['tokenBalances', safeAddress],
   queryFn: ({ client, queryKey }: QueryFunctionContext) =>
-    fetchTokenBalances(safeAddress!, client.getQueryData<Pick<BalanceData, 'tokens'>>(queryKey)),
+    fetchTokenBalances(safeAddress!, client.getQueryData<PreviousBalances>(queryKey)),
   enabled: !!safeAddress,
   staleTime: 30 * 1000,
   gcTime: 5 * 60 * 1000,
