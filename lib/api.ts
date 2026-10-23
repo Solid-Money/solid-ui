@@ -387,7 +387,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
       body: JSON.stringify({ safeAddress }),
     },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toApiError(response, 'Failed to link Safe address');
   return response.json();
 };
 
