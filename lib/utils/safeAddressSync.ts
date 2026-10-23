@@ -39,7 +39,8 @@ export const linkSafeAddress = async (
 ): Promise<void> => {
   for (let attempt = 0; ; attempt++) {
     try {
-      await link(safeAddress);
+      const result = await link(safeAddress);
+      if (result === false) throw new Error('Safe link returned false');
       return;
     } catch (error) {
       if (isSafeAlreadyLinked(error)) return;
