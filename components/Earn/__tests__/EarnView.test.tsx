@@ -122,9 +122,9 @@ it('waits for the figures rather than showing a wrong one', () => {
   expect(root.root.findAllByType('Skeleton').length).toBeGreaterThanOrEqual(2);
 });
 
-// EUR Yield is listed apart, in euros: its own row, "— APY" until it earns, and nothing
+// EUR Yield is listed apart, in euros: its own row, "0.0% APY" for now, and nothing
 // of it in the dollar headline (the screen passes a total of the USD products only).
-it('shows EUR Yield in euros with no rate yet', () => {
+it('shows EUR Yield in euros at 0% APY', () => {
   render({
     products: [
       ...funded,
@@ -140,6 +140,6 @@ it('shows EUR Yield in euros with no rate yet', () => {
   expect(text).toContain('Total in Earn $2990.00');
   expect(text).toContain('€1,500.00');
   expect(text).toContain('1,500.00 soEURC');
-  expect(text).toContain('— APY');
+  expect(text).toContain('0.0% APY');
   expect(text).not.toContain('$1,500.00');
 });

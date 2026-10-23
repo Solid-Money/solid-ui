@@ -2,9 +2,8 @@ import { useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 import { getVaultKey, VAULT_META, VaultKey, VaultMeta } from '@/constants/withdraw';
-import { TokenBalance, VaultType } from '@/lib/types';
+import { TokenBalance } from '@/lib/types';
 import { type VaultCurrency } from '@/lib/vaultCurrency';
-import { findVault } from '@/lib/vaults';
 
 import { useVaultExchangeRate } from './useVaultExchangeRate';
 import { useWalletTokens } from './useWalletTokens';
@@ -33,14 +32,13 @@ const tokenBalance = (token: TokenBalance) =>
  * Used by the withdraw flow to decide whether to show the vault selection screen
  * and to build the per-vault network dropdown.
  *
- * soEURC is grouped only where the EUR vault is listed (QA/preview builds), and is
- * valued in EUR from its accountant rate: its wallet token carries no USD quote.
+ * soEURC is grouped for whoever holds it, in every build, so a position can always be
+ * withdrawn. It is valued in EUR from its accountant rate: its wallet token carries no
+ * USD quote.
  */
 export const useSavingsVaults = () => {
   const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens, isLoading } = useWalletTokens();
-  const isEurListed = !!findVault(VaultType.EUR);
-  const hasEurTokens =
-    isEurListed && baseTokens.some(token => getVaultKey(token.contractTickerSymbol) === 'EUR');
+  const hasEurTokens = baseTokens.some(token => getVaultKey(token.contractTickerSymbol) === 'EUR');
   const { data: eurRate, isLoading: isEurRateLoading } = useVaultExchangeRate('EUR', hasEurTokens);
 
   const vaults = useMemo<SavingsVault[]>(() => {
@@ -50,7 +48,6 @@ export const useSavingsVaults = () => {
     for (const token of allTokens) {
       const key = getVaultKey(token.contractTickerSymbol);
       if (!key) continue;
-      if (key === 'EUR' && !isEurListed) continue;
       if (tokenBalance(token) <= 0) continue;
       const existing = grouped.get(key);
       if (existing) existing.push(token);
@@ -82,7 +79,7 @@ export const useSavingsVaults = () => {
         };
       })
       .sort((a, b) => b.balanceUSD - a.balanceUSD);
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens, isEurListed, eurRate]);
+  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens, eurRate]);
 
   return { vaults, isLoading: isLoading || (hasEurTokens && isEurRateLoading) };
 };

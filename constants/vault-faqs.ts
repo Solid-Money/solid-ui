@@ -101,10 +101,6 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
         'Send EURC on Base to your EUR savings deposit address, or move EURC you already hold in your Solid wallet. Only EURC on Base is supported for EUR Yield.',
     },
     {
-      question: 'Does EUR Yield earn interest yet?',
-      answer: 'Not yet. Yield is coming soon. Until it starts earning, its APY shows as —.',
-    },
-    {
       question: 'How fast can I withdraw?',
       answer:
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',

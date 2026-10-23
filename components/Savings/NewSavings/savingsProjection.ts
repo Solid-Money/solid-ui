@@ -14,8 +14,7 @@ const FALLBACK_SIMULATION_APY = 5;
 
 /**
  * The rate the projection runs at. A USD-valued vault with no reported APY keeps
- * the illustrative 5%; soEURC does not earn yet, so it projects at 0% rather than
- * at a rate it has never paid.
+ * the illustrative 5%; soEURC projects at its reported rate, 0% for now.
  */
 export const simulationApy = (vaultType: VaultType, apy: number | undefined) => {
   if (apy !== undefined && Number.isFinite(apy) && apy > 0) return apy;

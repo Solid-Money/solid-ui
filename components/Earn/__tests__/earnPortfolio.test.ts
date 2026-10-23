@@ -77,11 +77,11 @@ describe('resolveVaultApy', () => {
     expect(resolveVaultApy(vaultType, undefined)).toBe(expected);
   });
 
-  // The EUR vault does not earn yet: no invented rate, so its tile reads "—".
-  it('has no fallback rate for the EUR vault', () => {
-    expect(FALLBACK_VAULT_APY[VaultType.EUR]).toBeUndefined();
-    expect(resolveVaultApy(VaultType.EUR, 0)).toBeUndefined();
-    expect(resolveVaultApy(VaultType.EUR, undefined)).toBeUndefined();
+  // The EUR vault is 0% for now: its tile reads 0%, never another vault's indicative rate.
+  it('falls back to 0% for the EUR vault', () => {
+    expect(FALLBACK_VAULT_APY[VaultType.EUR]).toBe(0);
+    expect(resolveVaultApy(VaultType.EUR, 0)).toBe(0);
+    expect(resolveVaultApy(VaultType.EUR, undefined)).toBe(0);
   });
 
   it('falls back rather than showing a negative APY', () => {

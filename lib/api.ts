@@ -89,6 +89,7 @@ import {
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
   EphemeralKeyResponse,
+  EurVaultAccessResponse,
   ExchangeRateResponse,
   ExtensionCardsResponse,
   FeatureAccessResponse,
@@ -4328,6 +4329,23 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Whether the EUR vault may be offered to this user — see useEurVaultAccess. */
+export const getEurVaultAccess = async (): Promise<EurVaultAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/savings/eur/access`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
