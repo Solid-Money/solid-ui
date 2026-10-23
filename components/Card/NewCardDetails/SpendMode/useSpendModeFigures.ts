@@ -177,7 +177,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       segmentValue: {
         // The design's empty state: a cardholder with nothing to spend is told what to do
         // rather than shown a zero. "Funds", not a ticker — the balance above sums USDC,
-        // USDT and soUSD, so naming one of them would send the other two to the wrong place.
+        // USDT, soUSD and, once Base is enabled, EURC, so naming one would misdirect the rest.
         cash: cashMicro > 0n ? cashLabel : 'Add funds',
         credit: availableLabel,
         // `max`, not a sum — and the same rule the authorize path applies. One transaction

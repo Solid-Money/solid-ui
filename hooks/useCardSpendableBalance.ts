@@ -32,14 +32,19 @@ export const useCardSpendableAssets = (): CardSpendableAsset[] => {
  * belong to the card screen, where the permission is granted — showing them here
  * would make a fully funded account read as $0 spendable for the seconds before its
  * registration query lands.
+ *
+ * Loading until the deployment list first answers, too. Balances are restored from disk on
+ * launch, so without this the figure read the Fuse set alone — a euro cardholder's dollar
+ * cents — and then jumped to the full balance when the list landed.
  */
 export const useCardSpendableBalanceUSD = (): { data: number; isLoading: boolean } => {
   const { tokens, isLoading } = useBalances();
+  const { isLoading: isDeploymentsLoading } = useCardSpendDeployments();
   const assets = useCardSpendableAssets();
 
   const data = useMemo(() => sumCardSpendableUSD(tokens, assets), [tokens, assets]);
 
-  return { data, isLoading };
+  return { data, isLoading: isLoading || isDeploymentsLoading };
 };
 
 export default useCardSpendableBalanceUSD;

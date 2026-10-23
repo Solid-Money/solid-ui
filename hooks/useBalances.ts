@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { type QueryFunctionContext, useQuery } from '@tanstack/react-query';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
@@ -178,8 +178,9 @@ const soEURCQuoteRate = 0;
 const isKeptUnlisted = (chainId: number, address: string) =>
   chainId === BASE_CHAIN_ID && isSoEURCToken(address);
 
-// Fetch function for token balances
-const fetchTokenBalances = async (safeAddress: string) => {
+// Fetch function for token balances. `previous` is the result already in the cache, used
+// only to stand in for a read that failed this time — see `lastKnownTokens`.
+const fetchTokenBalances = async (safeAddress: string, previous?: Pick<BalanceData, 'tokens'>) => {
   const [
     baseResponse,
     ethereumResponse,
@@ -280,6 +281,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let soUSDBaseRateNum = 0;
   let soFUSEQuoteRateUSD = 0;
   let soETHQuoteRateUSD = 0;
+
+  // A chain whose read failed keeps the ERC-20s it held on the last good read, rather than
+  // reading as empty until the next poll. Every poll replaces the whole result, so one failed
+  // Base read took EURC out of the card's spendable figure for that poll. `failedChainIds`
+  // still names the chain, so nothing reads the carried rows as a confirmed answer.
+  const lastKnownTokens = (chainId: number): TokenBalance[] =>
+    (previous?.tokens ?? []).filter(
+      token => token.chainId === chainId && token.type === TokenType.ERC20,
+    );
 
   // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
@@ -400,6 +410,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
+    ethereumTokens = lastKnownTokens(ETHEREUM_CHAIN_ID);
   }
 
   // Process Base tokens
@@ -413,6 +424,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, BASE_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Base balances:', baseResponse.reason);
+    baseTokens = lastKnownTokens(BASE_CHAIN_ID);
   }
 
   // Process Fuse tokens (always Blockscout)
@@ -426,6 +438,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
+    fuseTokens = lastKnownTokens(FUSE_CHAIN_ID);
   }
 
   // Process Polygon tokens
@@ -439,6 +452,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, POLYGON_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Polygon balances:', polygonResponse.reason);
+    polygonTokens = lastKnownTokens(POLYGON_CHAIN_ID);
   }
 
   // Process Arbitrum tokens
@@ -452,6 +466,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, ARBITRUM_CHAIN_ID));
   } else {
     console.warn('Failed to fetch Arbitrum balances:', arbitrumResponse.reason);
+    arbitrumTokens = lastKnownTokens(ARBITRUM_CHAIN_ID);
   }
 
   // Process BSC tokens
@@ -465,6 +480,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       .map(item => convertBlockscoutToTokenBalance(item, BSC_CHAIN_ID));
   } else {
     console.warn('Failed to fetch BSC balances:', bscResponse.reason);
+    bscTokens = lastKnownTokens(BSC_CHAIN_ID);
   }
 
   // Process native token balances
@@ -683,6 +699,21 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
+  // Last resort: a token every lookup above left unpriced keeps the price it had on the last
+  // good read. Without it, one failed lookup valued EURC at $0 for that poll and the card's
+  // spendable figure dropped to the dollar balance alone. Shares priced off their own rate are
+  // left alone, as above.
+  const previousRate = new Map(
+    (previous?.tokens ?? [])
+      .filter(t => !isZeroRate(t.quoteRate))
+      .map(t => [`${t.chainId}:${t.type}:${t.contractAddress?.toLowerCase()}`, t.quoteRate]),
+  );
+  allTokens = allTokens.map(t => {
+    if (!isZeroRate(t.quoteRate) || isUnderlyingPricedShare(t.contractAddress)) return t;
+    const rate = previousRate.get(`${t.chainId}:${t.type}:${t.contractAddress?.toLowerCase()}`);
+    return rate ? { ...t, quoteRate: rate } : t;
+  });
+
   // Helper function to calculate token value
   const calculateTokenValue = (token: TokenBalance): CalculatedTokenValue => {
     const balance = Number(token.balance) / Math.pow(10, token.contractDecimals);
@@ -838,7 +869,8 @@ const EMPTY_BALANCE_DATA = {
 /** Shared by useBalances and the protected layout's prefetch. */
 export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
   queryKey: ['tokenBalances', safeAddress],
-  queryFn: () => fetchTokenBalances(safeAddress!),
+  queryFn: ({ client, queryKey }: QueryFunctionContext) =>
+    fetchTokenBalances(safeAddress!, client.getQueryData<Pick<BalanceData, 'tokens'>>(queryKey)),
   enabled: !!safeAddress,
   staleTime: 30 * 1000,
   gcTime: 5 * 60 * 1000,
