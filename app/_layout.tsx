@@ -116,6 +116,12 @@ Sentry.init({
   tracesSampleRate: 0,
   enableAutoSessionTracking: false,
 
+  // App hangs (iOS only). The SDK's 2s default turned every slow cold start on
+  // an old or overheated phone into its own one-event issue that nobody could
+  // act on. 5s is a freeze the person certainly noticed, and matches Android,
+  // where the SDK's ANR threshold is already 5s.
+  appHangTimeoutInterval: 5,
+
   // Error Filtering
   ignoreErrors: [
     'Network request failed',
