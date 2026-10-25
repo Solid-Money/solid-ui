@@ -48,6 +48,11 @@ export interface AiApiBilling {
   billingTokens: string[];
   /** Usage collected but not charged yet. */
   openChargeUsd: number;
+  /**
+   * The Wallet can't pay for what is used and not yet paid: requests are
+   * refused until funds arrive, without the account being paused.
+   */
+  walletShort: boolean;
 }
 
 export interface AiApiOverview {
