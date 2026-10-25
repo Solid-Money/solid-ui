@@ -38,8 +38,9 @@ const chargeDate = (fromDay?: string, toDay?: string, fallback?: Date) => {
 };
 
 /**
- * Figma "9 · Activity — daily AI agents charge": one day of every key's usage
- * as a single Wallet charge, which key spent what, and the cashback it earns.
+ * Figma "9 · Activity — daily AI agents charge": one charge of every key's
+ * usage from the Wallet, which key spent what, and the cashback it earns.
+ * Usage is charged every few dollars, so a busy day has several.
  */
 const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
   const meta = (activity.metadata ?? {}) as AiApiChargeMetadata;
@@ -116,7 +117,7 @@ const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
       ) : null}
 
       <Text className="text-center text-[12px] leading-[17px] text-white/45">
-        Your agents’ usage is grouped into one charge a day, so Activity stays readable.
+        Your agents’ usage is taken a few dollars at a time, so it never builds up.
       </Text>
     </View>
   );

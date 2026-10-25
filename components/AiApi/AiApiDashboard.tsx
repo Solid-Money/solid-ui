@@ -122,7 +122,7 @@ const StatusBanner = ({
 
   if (account.paused && account.pausedReason === 'wallet_empty') {
     // Once the Wallet covers what is owed, the button settles it now rather
-    // than leaving the agents stopped until the next hourly attempt.
+    // than leaving the agents stopped until the next attempt.
     const covered =
       billing.walletBalanceUsd !== null &&
       billing.openChargeUsd > 0 &&
@@ -170,6 +170,25 @@ const StatusBanner = ({
         actionLabel="Allow charges"
         isLoading={isAllowing}
         onAction={allowCharges}
+      />
+    );
+  }
+
+  // Not a pause: requests are refused while the Wallet can't pay for what is
+  // already used, and start again on their own once funds arrive.
+  if (billing.walletShort) {
+    return (
+      <AiApiBanner
+        icon={<CirclePause {...BANNER_ICON} />}
+        title="Your agents are paused"
+        body={`Your Wallet doesn’t have enough ${formatAiApiPaidFrom(
+          billing.billingTokens,
+        )} on Base to pay for what they use. Add funds and they start again within a minute.`}
+        actionLabel="Add funds"
+        onAction={() => {
+          track(TRACKING_EVENTS.AI_API_ADD_FUNDS_PRESSED);
+          onAddFunds();
+        }}
       />
     );
   }
@@ -352,7 +371,7 @@ const AiApiDashboard = ({
       </AiApiGroup>
 
       <Text className="text-[12px] leading-[17px] text-white/45">
-        Usage is taken from your Wallet once a day. Cashback is credited{' '}
+        Usage is taken from your Wallet as you go, a few dollars at a time. Cashback is credited{' '}
         {overview.cashbackSettlementDays} days after each charge, into USD Yield.
       </Text>
     </View>
