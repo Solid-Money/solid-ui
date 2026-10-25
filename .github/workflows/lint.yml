@@ -7,9 +7,10 @@ on:
     branches: [master, qa]
 
 # A new push to a PR makes the run for the previous commit moot, so stop paying
-# for it. Pushes to master/qa each keep their own run.
+# for it. Pushes to master/qa each keep their own run, even when both branches
+# point at the same commit.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The job only reads the checkout. Without this it would inherit the repo's
