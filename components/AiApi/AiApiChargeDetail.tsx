@@ -38,9 +38,9 @@ const chargeDate = (fromDay?: string, toDay?: string, fallback?: Date) => {
 };
 
 /**
- * Figma "9 · Activity — daily AI agents charge": one charge of every key's
- * usage from the Wallet, which key spent what, and the cashback it earns.
- * Usage is charged every few dollars, so a busy day has several.
+ * Figma "9 · Activity — daily AI agents charge": one day of every key's usage
+ * from the Wallet, which key spent what, and the cashback it earns. The day's
+ * usage is charged every few dollars, so its total is often several charges.
  */
 const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
   const meta = (activity.metadata ?? {}) as AiApiChargeMetadata;
@@ -52,6 +52,7 @@ const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
   const cashbackUsd = Number(meta.cashbackUsd ?? 0);
   const creditedOn = cashbackStatus === 'paid' ? meta.cashbackPaidAt : meta.cashbackPayoutAt;
   const daySummary = meta.toDay ? formatAiApiDay(meta.toDay) : formatAiApiShortDate(timestamp);
+  const chargeCount = meta.chargeCount ?? 1;
 
   return (
     <View className="gap-5">
@@ -77,6 +78,9 @@ const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
           />
         ))}
         <AiApiInfoRow label="Requests" value={requests.toLocaleString('en-US')} />
+        {chargeCount > 1 ? (
+          <AiApiInfoRow label="Charges" value={chargeCount.toLocaleString('en-US')} />
+        ) : null}
         <AiApiInfoRow label="Date" value={chargeDate(meta.fromDay, meta.toDay, timestamp)} />
         {statusLabel ? (
           <AiApiInfoRow
@@ -117,7 +121,7 @@ const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
       ) : null}
 
       <Text className="text-center text-[12px] leading-[17px] text-white/45">
-        Your agents’ usage is taken a few dollars at a time, so it never builds up.
+        Your agents’ usage for the day, taken from your Wallet a few dollars at a time.
       </Text>
     </View>
   );
