@@ -102,6 +102,7 @@ const ROUTE_BY_LINK_PATH: Record<string, Href> = {
   '/referral': path.REFERRAL,
   '/rewards': path.REWARDS,
   '/rewards/benefits': path.REWARDS_BENEFITS,
+  '/rewards/ai-api': path.AI_API,
   '/savings/fuse': path.SAVINGS_FUSE,
   '/support': path.SUPPORT,
 };
@@ -197,6 +198,10 @@ function getNotificationRoute(data?: NotificationData): Href {
 
   // A support reply always opens the chat, whatever host its link was built with.
   if (type === SUPPORT_PUSH_TYPE) return path.SUPPORT;
+
+  // AI API pushes (limit warning, limit reached, paused, cashback credited) all
+  // carry a link; this covers one whose link this build cannot read.
+  if (type?.startsWith('ai_api_')) return path.AI_API;
 
   // Legacy routing, for pushes that predate the deep link. Lifecycle types are
   // deliberately absent: they never had a branch here, so every one of them

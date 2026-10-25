@@ -54,6 +54,7 @@ describe('routeForLink', () => {
     ['/referral', path.REFERRAL],
     ['/rewards', path.REWARDS],
     ['/rewards/benefits', path.REWARDS_BENEFITS],
+    ['/rewards/ai-api', path.AI_API],
     ['/savings/fuse', path.SAVINGS_FUSE],
     ['/support', path.SUPPORT],
   ])('maps %s to its screen', (p, expected) => {
@@ -211,6 +212,8 @@ describe('getNotificationRoute', () => {
       ['rewards-using-card', path.CARD_INFO],
       ['rewards-fuse-vault', path.SAVINGS_FUSE],
       ['rewards-tier-reached', path.REWARDS],
+      ['ai_api_limit_reached', path.AI_API],
+      ['ai_api_paused', path.AI_API],
     ])('still routes %s on its type', (type, expected) => {
       expect(getNotificationRoute({ type })).toEqual(expected);
     });

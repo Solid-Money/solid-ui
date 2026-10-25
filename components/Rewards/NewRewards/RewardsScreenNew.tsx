@@ -13,10 +13,13 @@ import { Text } from '@/components/ui/text';
 import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { cardDetailsQueryOptions } from '@/hooks/cardDetailsQueryOptions';
+import { useAiApiOverview } from '@/hooks/useAiApi';
 import { useOptInToRewards, useReferralSummary, useRewardsUserData } from '@/hooks/useRewards';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTierMembership } from '@/hooks/useTierMembership';
+import { track } from '@/lib/analytics';
 import { monthlyCashbackCap, monthlyCashbackTotal } from '@/lib/cashbackProgress';
 import { isDevFeatureEnabled } from '@/lib/config';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
@@ -57,6 +60,7 @@ export default function RewardsScreenNew() {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions(selectedUserId));
   const { data: spinStatus } = useSpinStatus();
   const { data: membership } = useTierMembership();
+  const { data: aiApi } = useAiApiOverview();
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const { mutate: joinRewards, isPending: isJoining } = useOptInToRewards();
   const hasCompletedIntro = useRewardsIntroStore(
@@ -312,6 +316,20 @@ export default function RewardsScreenNew() {
             onGetMoreCashback={() => router.push(path.REWARDS_BENEFITS)}
             onReferralsPress={() => setIsReferralModalOpen(true)}
             onUpgradeSubscriptionTier={handleUpgradeTier}
+            aiApi={
+              aiApi?.available
+                ? {
+                    cashbackRate: aiApi.cashbackRate,
+                    isNew: aiApi.keys.length === 0,
+                    onPress: () => {
+                      track(TRACKING_EVENTS.AI_API_BENEFIT_PRESSED, {
+                        has_keys: aiApi.keys.length > 0,
+                      });
+                      router.push(path.AI_API);
+                    },
+                  }
+                : undefined
+            }
           />
         </View>
 
