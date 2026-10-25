@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { useCreateAiApiKey } from '@/hooks/useAiApi';
 import { cn } from '@/lib/utils';
 
-import { formatAiApiRate, formatAiApiUsd } from './aiApiFormat';
+import { formatAiApiPaidFrom, formatAiApiRate, formatAiApiUsd } from './aiApiFormat';
 import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiLimitOptions } from './AiApiPrimitives';
 
 /** The limit a new key starts on — the design's pre-selected option. */
@@ -38,7 +38,10 @@ interface AiApiCreateKeySheetProps {
   limitOptions: number[];
   maxLimitUsd: number;
   cashbackRate: number;
-  walletUsdcUsd: number | null;
+  /** The Wallet's billable balance on Base, USD; null when it cannot be read. */
+  walletBalanceUsd: number | null;
+  /** What a charge is drawn from, in order: `["USDC"]`, later `["USDC", "soUSD"]`. */
+  billingTokens: string[];
   /** The key exists; its secret is handed on to be shown once. */
   onCreated: (secret: string, name: string) => void;
 }
@@ -50,7 +53,8 @@ const CreateKeyBody = ({
   limitOptions,
   maxLimitUsd,
   cashbackRate,
-  walletUsdcUsd,
+  walletBalanceUsd,
+  billingTokens,
   onCreated,
 }: CardSheetBody & Omit<AiApiCreateKeySheetProps, 'isOpen' | 'onOpenChange'>) => {
   const { createKey, isCreating } = useCreateAiApiKey();
@@ -161,9 +165,11 @@ const CreateKeyBody = ({
           <View className="flex-1 gap-0.5">
             <Text className="text-[16px] font-semibold text-white">Wallet</Text>
             <Text className="text-[13px] text-white/55">
-              {walletUsdcUsd === null
-                ? 'USDC on your Wallet'
-                : `${formatAiApiUsd(walletUsdcUsd)} USDC available`}
+              {walletBalanceUsd === null
+                ? formatAiApiPaidFrom(billingTokens)
+                : `${formatAiApiUsd(walletBalanceUsd)} available · ${formatAiApiPaidFrom(
+                    billingTokens,
+                  )}`}
             </Text>
           </View>
         </View>

@@ -67,7 +67,7 @@ const AiApiChargeDetail = ({ activity }: { activity: ActivityEvent }) => {
       </View>
 
       <View className="gap-3 rounded-twice bg-card p-4">
-        <AiApiInfoRow label="Paid from" value="Wallet (USDC)" />
+        <AiApiInfoRow label="Paid from" value="Wallet" />
         {(meta.keys ?? []).map(key => (
           <AiApiInfoRow
             key={key.name}

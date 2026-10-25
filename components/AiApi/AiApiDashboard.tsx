@@ -24,6 +24,8 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiMonth,
+  formatAiApiPaidFrom,
+  formatAiApiRate,
   formatAiApiShortDate,
   formatAiApiTokens,
   formatAiApiUsd,
@@ -102,6 +104,7 @@ const StatusBanner = ({
         moduleAddress: billing.moduleAddress,
         moduleEnabled: billing.mandate?.moduleEnabled ?? false,
         periodSeconds: billing.periodSeconds,
+        chainId: billing.chainId,
       });
     } catch (error) {
       void showErrorToast(error, { action: 'ai_api_billing', title: 'Couldn’t allow charges' });
@@ -121,17 +124,19 @@ const StatusBanner = ({
     // Once the Wallet covers what is owed, the button settles it now rather
     // than leaving the agents stopped until the next hourly attempt.
     const covered =
-      billing.walletUsdcUsd !== null &&
+      billing.walletBalanceUsd !== null &&
       billing.openChargeUsd > 0 &&
-      billing.walletUsdcUsd >= billing.openChargeUsd;
+      billing.walletBalanceUsd >= billing.openChargeUsd;
     return (
       <AiApiBanner
         icon={<CirclePause {...BANNER_ICON} />}
         title="Your agents are paused"
         body={
           covered
-            ? 'Your Wallet has enough USDC again. Start your agents to settle the waiting charge.'
-            : 'Your Wallet is out of USDC. Add funds and they start again right away.'
+            ? 'Your Wallet has enough again. Start your agents to settle the waiting charge.'
+            : `Your Wallet doesn’t have enough ${formatAiApiPaidFrom(
+                billing.billingTokens,
+              )} on Base. Add funds and they start again right away.`
         }
         actionLabel={covered ? 'Start again' : 'Add funds'}
         isLoading={retry.isPending}
@@ -253,16 +258,26 @@ const AiApiDashboard = ({
         <AiApiRow
           icon={<Wallet {...ICON} />}
           title="Paid from"
+          subtitle={
+            billing.billingTokens.length > 0
+              ? `${formatAiApiPaidFrom(billing.billingTokens)} on Base`
+              : undefined
+          }
           value={
-            billing.walletUsdcUsd === null
+            billing.walletBalanceUsd === null
               ? 'Wallet'
-              : `Wallet · ${formatAiApiUsd(billing.walletUsdcUsd)}`
+              : `Wallet · ${formatAiApiUsd(billing.walletBalanceUsd)}`
           }
         />
         <AiApiDivider />
         <AiApiRow
           icon={<Percent {...ICON} />}
           title="Cashback this month"
+          subtitle={`${overview.cashbackTier} · ${formatAiApiRate(overview.cashbackRate)} back${
+            overview.cashbackMonthlyCapUsd > 0
+              ? `, up to ${formatAiApiLimit(overview.cashbackMonthlyCapUsd)} a month`
+              : ''
+          }`}
           value={formatAiApiCashback(month.cashbackUsd)}
         />
       </AiApiGroup>

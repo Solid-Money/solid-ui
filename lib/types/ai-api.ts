@@ -39,17 +39,25 @@ export interface AiApiBilling {
   requiredMandateUsd: number;
   /** True when the user must sign (again) before charges can work. */
   needsMandate: boolean;
-  /** The Wallet's USDC on Fuse — what charges are taken from. */
-  walletUsdcUsd: number | null;
+  /**
+   * What the Wallet holds of the billing tokens on Base, in USD — USDC at par,
+   * soUSD at its share price. The most one charge could take right now.
+   */
+  walletBalanceUsd: number | null;
+  /** The tokens a charge is drawn from, in order: `["USDC"]`, later `["USDC", "soUSD"]`. */
+  billingTokens: string[];
   /** Usage collected but not charged yet. */
   openChargeUsd: number;
 }
 
 export interface AiApiOverview {
   available: boolean;
-  /** 0.5 is 50%. */
+  /** The user's tier's AI cashback: 0.5 is 50%. */
   cashbackRate: number;
+  /** Their tier's monthly AI cashback cap, USD. 0 means no cap. */
   cashbackMonthlyCapUsd: number;
+  /** The tier those terms are for: Core, Prime or Ultra. */
+  cashbackTier: string;
   /** Days each charge's cashback is held before it lands in USD Yield. */
   cashbackSettlementDays: number;
   /** Base URL without `/v1`; null means "use the API host". */
@@ -96,6 +104,8 @@ export interface AiApiMandateRequired {
   code: 'mandate_required';
   requiredMandateUsd: number;
   periodSeconds: number;
+  /** The chain the mandate is signed on: Base. */
+  chainId: number;
   moduleAddress: string | null;
   moduleEnabled: boolean;
   message: string;
