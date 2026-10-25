@@ -313,6 +313,11 @@ export const SEND_MODAL = {
     name: 'open_cashout_review',
     number: 1.6,
   },
+  /** Moving USDC from Fuse to Base before the order is opened. */
+  OPEN_CASHOUT_BRIDGE: {
+    name: 'open_cashout_bridge',
+    number: 1.65,
+  },
   OPEN_CASHOUT_STATUS: {
     name: 'open_cashout_status',
     number: 1.7,
