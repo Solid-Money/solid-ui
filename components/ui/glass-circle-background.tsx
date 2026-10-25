@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, {
   Circle,
   Defs,
@@ -25,12 +25,13 @@ const GlassCircleBackground = ({
   const rimId = `${id}-glass-circle-rim`;
   const lightId = `${id}-glass-circle-light`;
   const rimWidth = 1.6;
+  // Web-only CSS, which React Native's ViewStyle doesn't declare
   const webGlassFrost =
     Platform.OS === 'web'
-      ? {
+      ? ({
           backdropFilter: `blur(${(size * 3) / 44}px)`,
           WebkitBackdropFilter: `blur(${(size * 3) / 44}px)`,
-        }
+        } as ViewStyle)
       : undefined;
 
   return (

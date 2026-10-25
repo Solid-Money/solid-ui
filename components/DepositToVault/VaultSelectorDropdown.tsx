@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Check, ChevronDown } from 'lucide-react-native';
@@ -111,14 +111,17 @@ const VaultSelectorDropdown = () => {
           {/* Backdrop to close on outside tap */}
           <Pressable
             onPress={closeDropdown}
-            style={{
-              position: Platform.OS === 'web' ? 'fixed' : 'absolute',
-              top: Platform.OS === 'web' ? 0 : -1000,
-              left: Platform.OS === 'web' ? 0 : -1000,
-              right: Platform.OS === 'web' ? 0 : -1000,
-              bottom: Platform.OS === 'web' ? 0 : -1000,
-              zIndex: 40,
-            }}
+            // `fixed` is web-only CSS, so React Native's ViewStyle doesn't know it
+            style={
+              {
+                position: Platform.OS === 'web' ? 'fixed' : 'absolute',
+                top: Platform.OS === 'web' ? 0 : -1000,
+                left: Platform.OS === 'web' ? 0 : -1000,
+                right: Platform.OS === 'web' ? 0 : -1000,
+                bottom: Platform.OS === 'web' ? 0 : -1000,
+                zIndex: 40,
+              } as ViewStyle
+            }
           />
           <Animated.View
             style={[
