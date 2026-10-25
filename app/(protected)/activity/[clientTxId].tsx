@@ -75,6 +75,7 @@ import {
   getDepositProgressRows,
   isDepositWithSteps,
   isSavingsDestination,
+  savingsProductName,
 } from '@/lib/utils/deposit-steps';
 import { getMerchantCategory } from '@/lib/utils/merchantCategory';
 import {
@@ -1217,7 +1218,9 @@ export default function ActivityDetail() {
     // amount until a mint lands), and a savings direct deposit is denominated in
     // the token that was sent, not in the share token it mints.
     return {
-      label: isSavingsDestination(finalActivity) ? 'Savings' : 'Wallet',
+      label: isSavingsDestination(finalActivity)
+        ? (savingsProductName(finalActivity) ?? 'Savings')
+        : 'Wallet',
       isCard: false,
     };
   }, [finalActivity]);

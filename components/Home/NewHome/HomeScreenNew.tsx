@@ -28,6 +28,7 @@ import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useDepositsOnItsWay } from '@/hooks/useDepositsOnItsWay';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
@@ -42,6 +43,12 @@ import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
+
+/** Assets, with what is on its way to USD Yield: its own component, so an activity update re-renders only it. */
+const HomeAssets = ({ portfolio }: { portfolio: ReturnType<typeof usePortfolio> }) => {
+  const { amountOnItsWay } = useDepositsOnItsWay();
+  return <HomeAssetsCard portfolio={portfolio} usdYieldOnItsWay={amountOnItsWay} />;
+};
 
 /**
  * Redesigned home/wallet screen (Apple "glass" style), shown only on qa/preview
@@ -348,7 +355,7 @@ export default function HomeScreenNew() {
         </View>
 
         <HeroExit spec={HERO_EXIT.belowCard}>
-          <HomeAssetsCard portfolio={portfolio} />
+          <HomeAssets portfolio={portfolio} />
         </HeroExit>
 
         <HeroExit spec={HERO_EXIT.belowCard}>

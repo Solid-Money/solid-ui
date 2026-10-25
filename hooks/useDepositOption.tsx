@@ -130,6 +130,10 @@ const useDepositOption = ({
   // desktop-only). Reading from the store avoids calling thirdweb hooks here,
   // so this always-mounted hook never crashes when the provider is absent.
   const { address, status } = externalWallet;
+  // The product a deposit from the Solid wallet lands in, for "It usually reaches USD Yield".
+  const depositProductName = useSavingStore(
+    state => (VAULTS[state.selectedVault] ?? VAULTS[0]).vaultName ?? 'savings',
+  );
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const { provider: virtualAccountProvider } = useVirtualAccountProvider();
@@ -257,10 +261,10 @@ const useDepositOption = ({
       const isDepositToSavings = depositFromSolid;
       return (
         <TransactionStatus
-          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer sent'}
+          title={isDepositToSavings ? 'Deposit on its way' : 'Transfer sent'}
           description={
             isDepositToSavings
-              ? 'Your deposit is being processed. This may take a few minutes.'
+              ? `It usually reaches ${depositProductName} in a few minutes.`
               : 'Your transfer has been sent. Funds will appear in your wallet shortly.'
           }
           amount={transaction.amount ?? 0}

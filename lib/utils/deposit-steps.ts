@@ -127,10 +127,30 @@ export function isSavingsDestination(activity: ActivityEvent): boolean {
   return !!symbol && VAULT_SHARE_SYMBOLS.includes(symbol);
 }
 
+/** The Earn product each share token is held in (constants/vaults `vaultName`). */
+const SAVINGS_PRODUCT_BY_SHARE: Record<string, string> = {
+  sousd: 'USD Yield',
+  soeth: 'ETH Yield',
+  sofuse: 'FUSE Yield',
+  soeurc: 'EUR Yield',
+  soeur: 'EUR Yield',
+};
+
+/**
+ * The Earn product a savings deposit lands in ("USD Yield"), from the share token
+ * it mints, or the one it is denominated in. Undefined when that isn't known.
+ */
+export function savingsProductName(activity: ActivityEvent): string | undefined {
+  if (!isSavingsDestination(activity)) return undefined;
+  const share = (activity.metadata?.vaultShareSymbol ?? activity.symbol)?.toLowerCase();
+  return share ? SAVINGS_PRODUCT_BY_SHARE[share] : undefined;
+}
+
+/** Where the deposit goes, as the progress rows end: "your card", "USD Yield". */
 function destinationLabel(activity: ActivityEvent): string {
-  if (activity.metadata?.destinationType === 'RAIN_CARD') return 'card';
-  if (isSavingsDestination(activity)) return 'savings';
-  return 'balance';
+  if (activity.metadata?.destinationType === 'RAIN_CARD') return 'your card';
+  if (isSavingsDestination(activity)) return savingsProductName(activity) ?? 'your savings';
+  return 'your balance';
 }
 
 /**
@@ -168,9 +188,9 @@ function depositingLabel(activity: ActivityEvent, state: DepositProgressState): 
   const symbol = activity.symbol ?? '';
   const destination = destinationLabel(activity);
 
-  if (state === 'complete') return `${symbol} added to your ${destination}`.trim();
-  if (state === 'failed') return `Failed to deposit ${symbol} to your ${destination}`.trim();
-  return `Depositing ${symbol} to your ${destination}`.trim();
+  if (state === 'complete') return `${symbol} added to ${destination}`.trim();
+  if (state === 'failed') return `Failed to deposit ${symbol} to ${destination}`.trim();
+  return `Depositing ${symbol} to ${destination}`.trim();
 }
 
 /**

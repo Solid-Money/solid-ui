@@ -6,6 +6,7 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import PageLayout from '@/components/PageLayout';
 import SavingsHelpModal from '@/components/Savings/NewSavings/SavingsHelpModal';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { useDepositsOnItsWay } from '@/hooks/useDepositsOnItsWay';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { useVaultInterestEarned } from '@/hooks/useVaultInterestEarned';
@@ -32,6 +33,7 @@ export default function EarnScreen() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   useVaultDetailPrefetch();
   const portfolio = usePortfolio();
+  const { deposits: depositsOnItsWay, amountOnItsWay } = useDepositsOnItsWay();
   // soEURC, in euros, apart from every dollar figure below (see lib/vaultCurrency).
   const { eurValue, eurShares, isEurLoading } = useTotalSavingsUSD();
   const eurRate = useMaxAPY(VaultType.EUR);
@@ -71,6 +73,7 @@ export default function EarnScreen() {
         : holding.valueUsd,
       shareAmount: holding.shareAmount,
       lockedFuse: isLocked ? lockedFuse : undefined,
+      onItsWayUsd: holding.type === VaultType.USDC ? amountOnItsWay : undefined,
       apy: apyOf(holding.type),
       isApyLoading: rates[holding.type].isAPYsLoading,
     };
@@ -155,6 +158,7 @@ export default function EarnScreen() {
         products={products}
         onOpenProduct={type => router.push(openYieldProduct(type) as Href)}
         boost={<EarnYieldBoostCard />}
+        depositsOnItsWay={depositsOnItsWay}
       />
     </PageLayout>
   );

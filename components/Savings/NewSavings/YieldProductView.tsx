@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { ChevronRight, Info } from 'lucide-react-native';
 
 import CountUp from '@/components/CountUp';
+import DepositOnItsWayRows from '@/components/Earn/DepositOnItsWayRows';
 import { EarnChip } from '@/components/Earn/EarnChips';
 import YieldIcon from '@/components/Earn/YieldIcon';
 import { formatYieldAmount, yieldProductName } from '@/components/Earn/yieldProducts';
@@ -9,6 +10,7 @@ import HeaderHelpButton from '@/components/Navbar/HeaderHelpButton';
 import { BackButton } from '@/components/ui/back-button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { type DepositOnItsWay, hasDepositMoving } from '@/lib/deposit/depositOnItsWay';
 import { yieldEstimate } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { getVaultCurrencySymbol, isEurVault } from '@/lib/vaultCurrency';
@@ -85,6 +87,8 @@ export interface YieldProductViewProps {
   onOpenHelp: () => void;
   onOpenWallet?: () => void;
   onOpenCredit?: () => void;
+  /** Deposits into this product that haven't reached it yet, one row each under the balance. */
+  depositsOnItsWay?: DepositOnItsWay[];
 }
 
 /**
@@ -110,8 +114,11 @@ export default function YieldProductView({
   onOpenHelp,
   onOpenWallet,
   onOpenCredit,
+  depositsOnItsWay = [],
 }: YieldProductViewProps) {
   const name = yieldProductName(vaultType);
+  // Nothing in it yet, but the first deposit is on its way: it takes Start earning's place.
+  const isFirstDepositMoving = !isFunded && hasDepositMoving(depositsOnItsWay);
   const isEur = isEurVault(vaultType);
   const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
   const apyLabel = apy ? `${apy.toFixed(1)}%` : undefined;
@@ -170,6 +177,8 @@ export default function YieldProductView({
             ) : null}
           </View>
 
+          <DepositOnItsWayRows deposits={depositsOnItsWay} className="mx-4" />
+
           <SavingsFundedActions vaultType={vaultType} />
 
           <View className="mx-4 flex-row rounded-[20px] bg-[#1C1C1C] py-[18px]">
@@ -222,6 +231,37 @@ export default function YieldProductView({
 
           {footer}
         </View>
+      ) : isFirstDepositMoving ? (
+        <View className="mt-6 gap-6">
+          <View className="items-center gap-3 px-4">
+            <View className="flex-row items-center gap-2">
+              <YieldIcon vaultType={vaultType} size={24} ringColor="#111111" />
+              <Text className="text-[16px] font-medium leading-5 text-white/70">{name}</Text>
+            </View>
+            <Text className="max-w-[340px] text-center text-[36px] font-semibold leading-[44px] text-white">
+              Your first deposit is on its way
+            </Text>
+            <Text className="max-w-[340px] text-center text-[15px] leading-[22px] text-white/60">
+              {apyLabel
+                ? `It starts earning ${apyLabel} a year as soon as it lands.`
+                : 'It starts earning as soon as it lands.'}
+            </Text>
+          </View>
+
+          <DepositOnItsWayRows deposits={depositsOnItsWay} className="mx-4" />
+
+          <SimulateSavingsCard vaultType={vaultType} apy={apy} />
+
+          <View className="mx-4">
+            <YieldBenefitsCard vaultType={vaultType} />
+          </View>
+
+          <VaultApyHistoryCard vaultType={vaultType} />
+
+          <HowItWorksRow onPress={onOpenHelp} />
+
+          {footer}
+        </View>
       ) : (
         <View className="mt-6 gap-6">
           <View className="items-center gap-3 px-4">
@@ -246,6 +286,9 @@ export default function YieldProductView({
               {INTRO[vaultType]}
             </Text>
           </View>
+
+          {/* Only a first deposit that didn't go through reaches here. */}
+          <DepositOnItsWayRows deposits={depositsOnItsWay} className="mx-4" />
 
           <StartEarningButton vaultType={vaultType} />
 

@@ -7,7 +7,11 @@ import AssetRow from '@/components/Assets/AssetRow';
 import PortfolioIcon from '@/components/Assets/PortfolioIcon';
 import { isYieldShare, yieldHoldings } from '@/components/Earn/earnPortfolio';
 import YieldIcon from '@/components/Earn/YieldIcon';
-import { openYieldProduct, yieldProductName } from '@/components/Earn/yieldProducts';
+import {
+  formatYieldUsd,
+  openYieldProduct,
+  yieldProductName,
+} from '@/components/Earn/yieldProducts';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -78,8 +82,11 @@ export const ShowMoreRow = ({
  */
 export default function HomeAssetsCard({
   portfolio,
+  usdYieldOnItsWay = 0,
 }: {
   portfolio: ReturnType<typeof usePortfolio>;
+  /** Dollars deposited into USD Yield that haven't reached it yet. */
+  usdYieldOnItsWay?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const openAssets = () => router.push(path.ASSETS);
@@ -92,23 +99,28 @@ export default function HomeAssetsCard({
   // don't cover — a production soUSD seen from a development build lands in the wallet's
   // tokens, and would otherwise show up here as a plain "soUSD" row.
   const cashAssets = [...portfolio.stableAssets, ...portfolio.cryptoAssets];
+  // A first deposit on its way lists USD Yield before anything has reached it, so the
+  // dollars that just left the wallet show where they are going.
+  const onItsWayOf = (type: VaultType) => (type === VaultType.USDC ? usdYieldOnItsWay : 0);
   const products = yieldHoldings(portfolio.earnAssets, cashAssets)
-    .filter(product => (product.valueUsd ?? 0) > 0)
+    .filter(product => (product.valueUsd ?? 0) > 0 || onItsWayOf(product.type) > 0)
     .map(({ type, valueUsd, apy }) => ({ type, value: valueUsd, apy }));
 
   const assets: HomeAsset[] = [
     ...products.map(({ type, value, apy }) => {
       const title = yieldProductName(type);
+      const onItsWay = onItsWayOf(type);
       return {
         key: `earn:${type}`,
-        value,
+        // Placed by what it will hold once the deposit lands.
+        value: onItsWay > 0 ? (value ?? 0) + onItsWay : value,
         onPress: () => router.push(openYieldProduct(type) as Href),
         row: (onPress: () => void) => (
           <AssetRow
             title={title}
             value={value}
             icon={<YieldIcon vaultType={type} />}
-            subtitle={apyLabel(apy)}
+            subtitle={onItsWay > 0 ? `+${formatYieldUsd(onItsWay)} on its way` : apyLabel(apy)}
             onPress={onPress}
           />
         ),

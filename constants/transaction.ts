@@ -276,9 +276,19 @@ export const isSourceReceiptFinalizable = (type: TransactionType): boolean =>
 export const CROSS_CHAIN_DEPOSIT_METADATA_KEY = 'isCrossChainDeposit';
 
 /**
+ * Metadata flag stamped by the deposit hooks whose only on-chain step is an
+ * approval: the backend pulls the funds and delivers them afterwards, so the
+ * approve receipt says nothing about the deposit. Unlike the cross-chain flag it
+ * holds for a same-chain deposit too (Solid wallet USDC on Ethereum into USD
+ * Yield), and the backend does not read it.
+ */
+export const DELIVERED_BY_BACKEND_METADATA_KEY = 'deliveredByBackend';
+
+/**
  * Whether a successful source-chain receipt means this specific activity is
  * done. Prefer this over `isSourceReceiptFinalizable`: it also rejects deposits
- * whose funds still have to cross a bridge before landing.
+ * whose funds still have to cross a bridge, or be pulled by the backend, before
+ * landing.
  *
  * A cross-chain deposit's source tx (approve / pull-from-user) mines in seconds
  * while the bridge fill + vault deposit take minutes, so finalizing on that
@@ -291,4 +301,5 @@ export const canFinalizeFromSourceReceipt = (activity: {
   metadata?: Record<string, any>;
 }): boolean =>
   isSourceReceiptFinalizable(activity.type) &&
-  activity.metadata?.[CROSS_CHAIN_DEPOSIT_METADATA_KEY] !== true;
+  activity.metadata?.[CROSS_CHAIN_DEPOSIT_METADATA_KEY] !== true &&
+  activity.metadata?.[DELIVERED_BY_BACKEND_METADATA_KEY] !== true;
