@@ -12,6 +12,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The job only reads the checkout. Without this it would inherit the repo's
+# default token permissions while running dependency install scripts.
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
