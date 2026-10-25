@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [master, qa]
 
+# A new push to a PR makes the run for the previous commit moot, so stop paying
+# for it. Pushes to master/qa each keep their own run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -26,6 +32,5 @@ jobs:
       - name: Run ESLint with Expo (includes Prettier)
         run: npm run lint
 
-      # Temporarily disabled - fix TypeScript errors first
-      # - name: TypeScript compilation check
-      #   run: npx tsc --noEmit
+      - name: TypeScript compilation check
+        run: npx tsc --noEmit
