@@ -117,8 +117,18 @@ export interface AiApiMandateRequired {
 }
 
 /** What a daily AI API charge carries in its activity metadata. */
+/** The metadata of the AI API's Activity row: one UTC day of usage. */
 export interface AiApiChargeMetadata {
-  chargeId?: string;
+  /** The UTC day the row covers, `YYYY-MM-DD`. */
+  day?: string;
+  /** How many charges the day's usage was taken in. */
+  chargeCount?: number;
+  charges?: {
+    chargeId: string;
+    amountUsd: string;
+    chargedAt: string | null;
+    transactionHash: string | null;
+  }[];
   fromDay?: string;
   toDay?: string;
   requests?: number;
