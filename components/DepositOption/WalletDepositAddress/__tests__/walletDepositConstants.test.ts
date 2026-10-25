@@ -473,6 +473,11 @@ describe('resolveWalletDepositChain', () => {
     expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('WETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbBTC', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('WBTC', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('UNI', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('ENA', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('AAVE', undefined, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('SOL', undefined, ALL)).toBe(base.id);
   });
 
   it("opens a currency on its home chain, the one it's sent on", () => {
@@ -481,7 +486,7 @@ describe('resolveWalletDepositChain', () => {
     expect(resolveWalletDepositChain('WLD', undefined, ALL)).toBe(optimism.id);
     expect(resolveWalletDepositChain('PAXG', undefined, ALL)).toBe(mainnet.id);
     expect(resolveWalletDepositChain('ZEC', undefined, ALL)).toBe(bsc.id);
-    expect(resolveWalletDepositChain('WBTC', undefined, ALL)).toBe(mainnet.id);
+    expect(resolveWalletDepositChain('NEAR', undefined, ALL)).toBe(bsc.id);
   });
 
   it('opens the Fuse currencies on Fuse, the only chain carrying them', () => {

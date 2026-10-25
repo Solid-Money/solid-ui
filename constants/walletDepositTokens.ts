@@ -33,9 +33,9 @@ export type WalletDepositTokenConfig = {
   /** More words the search matches, so "bitcoin" finds cbBTC as well as WBTC. */
   aliases?: string[];
   /**
-   * The chain the address opens on, where Base (the default) is not where the
-   * asset lives: ARB on Arbitrum, OP on Optimism, the wrapped coins on the
-   * chain exchanges send them on.
+   * The chain the address opens on, for a token Base (the default) does not
+   * carry: ARB on Arbitrum, OP on Optimism, PAXG on Ethereum, the wrapped coins
+   * on the chain exchanges send them on. A token on Base opens there.
    */
   homeChainId?: number;
   /**
@@ -171,7 +171,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [optimism.id]: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
       [bsc.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
     },
-    homeChainId: mainnet.id,
   },
   {
     symbol: 'FUSE',
@@ -219,7 +218,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [optimism.id]: '0x6fd9d7AD17242c41f7131d257212c54A0e816691',
       [bsc.id]: '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1',
     },
-    homeChainId: mainnet.id,
   },
   {
     // Binance-Peg NEAR, and the Rainbow Bridge's on Ethereum (24 decimals).
@@ -247,7 +245,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [optimism.id]: '0x58538e6A46E07434d7E7375Bc268D3cb839C0133',
       [bsc.id]: '0x58538e6A46E07434d7E7375Bc268D3cb839C0133',
     },
-    homeChainId: mainnet.id,
   },
   {
     symbol: 'AAVE',
@@ -262,7 +259,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [optimism.id]: '0x76FB31fb4af56892A25e32cFC43De717950c9278',
       [bsc.id]: '0xfb6115445Bff7b52FeB98650C87f44907E58f802',
     },
-    homeChainId: mainnet.id,
   },
   {
     // Wormhole's SOL on Ethereum, Polygon and Arbitrum, the Base–Solana bridge's
