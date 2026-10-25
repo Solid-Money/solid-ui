@@ -76,6 +76,7 @@ import {
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { getCashbackPurchaseId } from '@/lib/utils/cashbackActivity';
 import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
@@ -1064,6 +1065,22 @@ export default function ActivityDetail() {
   const displayTitle = finalActivity ? getTransferTitle(finalActivity, contacts) : '';
   const transferSummary = finalActivity ? getTransferSummary(finalActivity, contacts) : undefined;
 
+  // A cashback payout has no screen of its own: it is shown in the cashback section of the
+  // purchase that earned it (see `lib/utils/cashbackActivity`). The lists never show one, so a
+  // link straight to it — an old notification, a support message — opens that purchase instead.
+  const router = useRouter();
+  const { data: cashbacks } = useCashbacks({
+    enabled: finalActivity?.type === TransactionType.RECEIVE,
+  });
+  const cashbackPurchaseId =
+    finalActivity?.type === TransactionType.RECEIVE
+      ? getCashbackPurchaseId(finalActivity, cashbacks)
+      : undefined;
+
+  useEffect(() => {
+    if (cashbackPurchaseId) router.replace(`/activity/card-${cashbackPurchaseId}`);
+  }, [cashbackPurchaseId, router]);
+
   // Report unknown transaction types
   useEffect(() => {
     if (!finalActivity || transactionDetails) return;
@@ -1520,6 +1537,15 @@ export default function ActivityDetail() {
   if (isCardTransaction && cardTransactionDetail) {
     return (
       <CardTransactionDetail transaction={cardTransactionDetail} cardProvider={cardProvider} />
+    );
+  }
+
+  // A cashback payout on its way to the purchase it was earned on — see `cashbackPurchaseId`.
+  if (cashbackPurchaseId) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
     );
   }
 
