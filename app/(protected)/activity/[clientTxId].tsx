@@ -44,6 +44,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { cardTransactionQueryKey, useCardTransactionFromList } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import { useContactNames } from '@/hooks/useContactNames';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -75,6 +76,7 @@ import {
   isOutgoingCardTransaction,
   mergeCardTransactionDetails,
 } from '@/lib/utils/cardHelpers';
+import { getCashbackPurchaseId } from '@/lib/utils/cashbackActivity';
 import { CROSS_CHAIN_NETWORKS, NETWORK_ICONS } from '@/lib/utils/cross-chain-send';
 import {
   getDepositProgressRows,
@@ -89,6 +91,11 @@ import {
   getTransactionUsdAmount,
   SPENDING_CATEGORIES,
 } from '@/lib/utils/spendingInsights';
+import {
+  getTransferCategory,
+  getTransferSummary,
+  getTransferTitle,
+} from '@/lib/utils/transferPresentation';
 import { openSupportDrawer, SupportDrawerRequest } from '@/store/useSupportDrawerStore';
 
 type RowProps = {
@@ -1050,6 +1057,30 @@ export default function ActivityDetail() {
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
   const activityBadge = getActivityBadge(finalActivity?.type);
 
+  // A send or receive says who was on the other side and what it was for, not just "Send USDC.e"
+  // — see `lib/utils/transferPresentation`. Contacts only matter for those two types.
+  const isTransfer =
+    finalActivity?.type === TransactionType.SEND || finalActivity?.type === TransactionType.RECEIVE;
+  const contacts = useContactNames({ enabled: isTransfer });
+  const displayTitle = finalActivity ? getTransferTitle(finalActivity, contacts) : '';
+  const transferSummary = finalActivity ? getTransferSummary(finalActivity, contacts) : undefined;
+
+  // A cashback payout has no screen of its own: it is shown in the cashback section of the
+  // purchase that earned it (see `lib/utils/cashbackActivity`). The lists never show one, so a
+  // link straight to it — an old notification, a support message — opens that purchase instead.
+  const router = useRouter();
+  const { data: cashbacks } = useCashbacks({
+    enabled: finalActivity?.type === TransactionType.RECEIVE,
+  });
+  const cashbackPurchaseId =
+    finalActivity?.type === TransactionType.RECEIVE
+      ? getCashbackPurchaseId(finalActivity, cashbacks)
+      : undefined;
+
+  useEffect(() => {
+    if (cashbackPurchaseId) router.replace(`/activity/card-${cashbackPurchaseId}`);
+  }, [cashbackPurchaseId, router]);
+
   // Report unknown transaction types
   useEffect(() => {
     if (!finalActivity || transactionDetails) return;
@@ -1126,7 +1157,11 @@ export default function ActivityDetail() {
       return 'Complete';
     }
     if (!finalActivity) return 'Unknown';
-    return getTransactionCategory(finalActivity.type, finalActivity.title) ?? 'Unknown';
+    return (
+      getTransferCategory(finalActivity) ??
+      getTransactionCategory(finalActivity.type, finalActivity.title) ??
+      'Unknown'
+    );
   }, [finalActivity, isDeposit]);
 
   const tokenIcon = useMemo(
@@ -1464,11 +1499,12 @@ export default function ActivityDetail() {
     if (!finalActivity) return undefined;
     // From the decimal string, not a float, so the card shows the exact digits.
     const amount = `${statusSign}${formatDecimalAmount(finalActivity.amount)} ${formatSymbol(finalActivity.symbol)}`;
+    // The title the user is looking at, so the question names the row they tapped.
     return {
-      chatMessage: `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
-      context: { kind: 'activity', id: clientTxId, label: `${finalActivity.title} · ${amount}` },
+      chatMessage: `Question about transaction:\n\nTitle: ${displayTitle}\nAmount: ${amount}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `,
+      context: { kind: 'activity', id: clientTxId, label: `${displayTitle} · ${amount}` },
     };
-  }, [finalActivity, statusSign, clientTxId]);
+  }, [finalActivity, statusSign, clientTxId, displayTitle]);
 
   const missingTransactionContext = useMemo<SupportDrawerRequest | undefined>(
     () =>
@@ -1501,6 +1537,15 @@ export default function ActivityDetail() {
   if (isCardTransaction && cardTransactionDetail) {
     return (
       <CardTransactionDetail transaction={cardTransactionDetail} cardProvider={cardProvider} />
+    );
+  }
+
+  // A cashback payout on its way to the purchase it was earned on — see `cashbackPurchaseId`.
+  if (cashbackPurchaseId) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
     );
   }
 
@@ -1608,7 +1653,7 @@ export default function ActivityDetail() {
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
       <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <Back title={finalActivity.title} className="text-xl md:text-3xl" />
+        <Back title={displayTitle} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
           {tokenIcon &&
@@ -1641,6 +1686,12 @@ export default function ActivityDetail() {
               {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
             </Text>
           </View>
+
+          {/* What this transfer was, in a sentence: "UBER refunded a card payment. It was paid
+              back into your wallet in USDC.e." */}
+          {transferSummary && (
+            <Text className="text-center text-base text-white/70">{transferSummary}</Text>
+          )}
         </View>
 
         <View className="rounded-twice bg-card">

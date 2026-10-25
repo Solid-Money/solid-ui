@@ -188,6 +188,24 @@ describe('getUnifiedActivitySearchText', () => {
     expect(getUnifiedActivitySearchText(item)).toContain('atm fee');
   });
 
+  it('finds a transfer by the contact name its row shows', () => {
+    const [item] = mergeActivityFeeds(
+      [
+        activity({
+          title: 'Send USDC.e',
+          toAddress: '0xcD070Dce63cCDd1D726c71b458fD159237090271',
+        }),
+      ],
+      [],
+    );
+    const contacts = new Map([['0xcd070dce63ccdd1d726c71b458fd159237090271', 'Alice']]);
+
+    expect(getUnifiedActivitySearchText(item, contacts)).toContain('alice');
+    expect(
+      filterUnifiedActivity([item], { tab: ActivityTab.ALL, query: 'Alice', contacts }),
+    ).toHaveLength(1);
+  });
+
   it('finds a refund row by the word on it', () => {
     const [item] = mergeActivityFeeds(
       [],
