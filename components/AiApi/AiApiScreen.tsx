@@ -43,6 +43,7 @@ export default function AiApiScreen() {
   const { data: overview, isLoading, isError, refetch, isRefetching } = useAiApiOverview();
   const reveal = useAiApiRevealStore(state => state.reveal);
   const setDepositModal = useDepositStore(state => state.setModal);
+  const setWalletDeposit = useDepositStore(state => state.setWalletDeposit);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isKeySheetOpen, setIsKeySheetOpen] = useState(false);
@@ -109,6 +110,8 @@ export default function AiApiScreen() {
       !hasKeys || isIntroOpen ? (
         <AiApiIntro
           cashbackRate={overview.cashbackRate}
+          cashbackTier={overview.cashbackTier}
+          cashbackMonthlyCapUsd={overview.cashbackMonthlyCapUsd}
           settlementDays={overview.cashbackSettlementDays}
           modelCount={overview.models.length}
           ctaLabel={hasKeys ? 'New key' : 'Get API key'}
@@ -122,7 +125,17 @@ export default function AiApiScreen() {
           onNewKey={openCreate}
           onOpenSetup={openSetup}
           onOpenHowItWorks={() => setIsIntroOpen(true)}
-          onAddFunds={() => setDepositModal(DEPOSIT_MODAL.OPEN_OPTIONS)}
+          onAddFunds={() => {
+            // Straight to the address that funds AI API charges — USDC on the
+            // billing chain, Base — rather than the deposit chooser, whose
+            // default lands money in savings, which a charge cannot draw on.
+            setWalletDeposit({
+              symbol: 'USDC',
+              chainId: overview.billing.chainId,
+              isChangingToken: false,
+            });
+            setDepositModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
+          }}
         />
       );
   }
@@ -143,7 +156,8 @@ export default function AiApiScreen() {
               limitOptions={overview.limitOptionsUsd}
               maxLimitUsd={overview.maxMonthlyLimitUsd}
               cashbackRate={overview.cashbackRate}
-              walletUsdcUsd={overview.billing.walletUsdcUsd}
+              walletBalanceUsd={overview.billing.walletBalanceUsd}
+              billingTokens={overview.billing.billingTokens}
               onCreated={handleCreated}
             />
             <AiApiKeySheet

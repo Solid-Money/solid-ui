@@ -54,6 +54,8 @@ const HeroGlow = () => {
  */
 const AiApiIntro = ({
   cashbackRate,
+  cashbackTier,
+  cashbackMonthlyCapUsd,
   settlementDays,
   modelCount,
   ctaLabel = 'Get API key',
@@ -61,6 +63,10 @@ const AiApiIntro = ({
   isCtaLoading,
 }: {
   cashbackRate: number;
+  /** The user's tier, whose rate and cap these are: Core, Prime or Ultra. */
+  cashbackTier: string;
+  /** That tier's monthly AI cashback cap, USD. 0 means no cap. */
+  cashbackMonthlyCapUsd: number;
   settlementDays: number;
   modelCount: number;
   ctaLabel?: string;
@@ -156,8 +162,11 @@ const AiApiIntro = ({
       </View>
 
       <Text className="text-[12px] leading-[17px] text-white/45">
-        Every tier gets {rate} back. Cashback is credited {settlementDays} days after each charge,
-        into USD Yield.
+        Your {cashbackTier} tier gets {rate} back
+        {cashbackMonthlyCapUsd > 0
+          ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
+          : ''}
+        . Cashback is credited {settlementDays} days after each charge, into USD Yield.
       </Text>
 
       {onCta ? (

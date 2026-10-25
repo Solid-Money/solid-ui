@@ -76,3 +76,14 @@ export const maskAiApiKey = (last4: string): string => `…${last4}`;
 /** The limit progress, clamped to 0..1. */
 export const aiApiLimitProgress = (spentUsd: number, limitUsd: number): number =>
   limitUsd > 0 ? Math.min(1, Math.max(0, spentUsd / limitUsd)) : 0;
+
+/**
+ * The tokens a charge is drawn from, as a user reads them: `USDC`, or
+ * `USDC, then soUSD`. Empty — the list could not be read — says what is still
+ * true without naming a token.
+ */
+export const formatAiApiPaidFrom = (tokens: readonly string[]): string => {
+  if (tokens.length === 0) return 'Your Wallet';
+  if (tokens.length === 1) return tokens[0];
+  return `${tokens.slice(0, -1).join(', ')}, then ${tokens[tokens.length - 1]}`;
+};

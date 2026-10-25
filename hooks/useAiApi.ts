@@ -1,12 +1,12 @@
 import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Address, encodeFunctionData } from 'viem';
-import { fuse } from 'viem/chains';
+import { Address, type Chain, encodeFunctionData } from 'viem';
+import { base } from 'viem/chains';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { Safe_ABI } from '@/lib/abis/Safe';
-import { SolidSubscriptionModule_ABI } from '@/lib/abis/SolidSubscriptionModule';
+import { SolidUsageBillingModule_ABI } from '@/lib/abis/SolidUsageBillingModule';
 import { track } from '@/lib/analytics';
 import {
   confirmAiApiBilling,
@@ -27,8 +27,15 @@ import type {
   CreateAiApiKeyResponse,
 } from '@/lib/types/ai-api';
 
-/** USDC on Fuse — what the mandate is denominated in. */
+/** The mandate is in micro-USD: dollars with 6 decimals, whichever token pays. */
 const BILLING_DECIMALS = 6n;
+
+/**
+ * The chains the AI API's billing module can be on, by id. Base today. A chain
+ * the app does not know is refused rather than defaulted: signing a mandate on
+ * the wrong chain would enable a module nobody bills through.
+ */
+const BILLING_CHAINS: Record<number, Chain> = { [base.id]: base };
 
 export const aiApiQueryKey = (userId?: string) => ['ai-api', userId] as const;
 
@@ -84,20 +91,24 @@ export const useAllowAiApiCharges = () => {
       moduleAddress,
       moduleEnabled,
       periodSeconds,
+      chainId,
     }: {
       requiredMandateUsd: number;
       moduleAddress: string;
       moduleEnabled: boolean;
       periodSeconds: number;
+      chainId: number;
     }) => {
       if (!user?.suborgId || !user?.signWith || !user?.safeAddress) {
         throw new Error('Your wallet is still setting up. Please try again shortly.');
       }
+      const chain = BILLING_CHAINS[chainId];
+      if (!chain) throw new Error('This app version can’t set up AI API billing. Please update.');
 
       const mandate = BigInt(Math.ceil(requiredMandateUsd)) * 10n ** BILLING_DECIMALS;
       if (mandate <= 0n) throw new Error('Nothing to allow yet.');
 
-      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
       const result = await executeTransactions(
         smartAccountClient,
         [
@@ -117,7 +128,7 @@ export const useAllowAiApiCharges = () => {
           {
             to: moduleAddress as Address,
             data: encodeFunctionData({
-              abi: SolidSubscriptionModule_ABI,
+              abi: SolidUsageBillingModule_ABI,
               functionName: 'subscribe',
               args: [mandate, BigInt(periodSeconds)],
             }),
@@ -125,7 +136,7 @@ export const useAllowAiApiCharges = () => {
           },
         ],
         'Failed to allow AI API charges',
-        fuse,
+        chain,
       );
 
       if (result === USER_CANCELLED_TRANSACTION) {
@@ -182,6 +193,7 @@ export const useCreateAiApiKey = () => {
           moduleAddress: required.moduleAddress,
           moduleEnabled: required.moduleEnabled,
           periodSeconds: required.periodSeconds,
+          chainId: required.chainId,
         });
         if (!signed) return null;
 
@@ -234,6 +246,7 @@ export const useUpdateAiApiKey = () => {
           moduleAddress: required.moduleAddress,
           moduleEnabled: required.moduleEnabled,
           periodSeconds: required.periodSeconds,
+          chainId: required.chainId,
         });
         if (!signed) return null;
 

@@ -5,6 +5,7 @@ import {
   formatAiApiLastUsed,
   formatAiApiLimit,
   formatAiApiLongDate,
+  formatAiApiPaidFrom,
   formatAiApiRate,
   formatAiApiShortDate,
   formatAiApiTokens,
@@ -83,5 +84,17 @@ describe('keys and limits', () => {
     expect(aiApiLimitProgress(25, 50)).toBe(0.5);
     expect(aiApiLimitProgress(80, 50)).toBe(1);
     expect(aiApiLimitProgress(5, 0)).toBe(0);
+  });
+});
+
+describe('formatAiApiPaidFrom', () => {
+  it('names the billing tokens in the order a charge draws them', () => {
+    expect(formatAiApiPaidFrom(['USDC'])).toBe('USDC');
+    expect(formatAiApiPaidFrom(['USDC', 'soUSD'])).toBe('USDC, then soUSD');
+    expect(formatAiApiPaidFrom(['USDC', 'USDT', 'soUSD'])).toBe('USDC, USDT, then soUSD');
+  });
+
+  it('falls back to the Wallet when the list could not be read', () => {
+    expect(formatAiApiPaidFrom([])).toBe('Your Wallet');
   });
 });
