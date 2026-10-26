@@ -7,6 +7,7 @@ import { interestOverPastDays } from '@/components/Earn/earnPortfolio';
 import PageLayout from '@/components/PageLayout';
 import { VaultKey } from '@/constants/withdraw';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { useDepositsOnItsWay } from '@/hooks/useDepositsOnItsWay';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSavingsVaults } from '@/hooks/useSavingsVaults';
@@ -54,6 +55,9 @@ export default function SavingsScreenNew() {
   const { maxAPY, isAPYsLoading } = useMaxAPY(vaultType);
   const { data: apys } = useAPYs(vaultType);
   const interest = useVaultInterestEarned(vaultType);
+  // Only USD Yield deposits are followed on their way (from the Solid wallet's USDC).
+  const { deposits } = useDepositsOnItsWay();
+  const depositsOnItsWay = vaultType === VaultType.USDC ? deposits : [];
   const walletVault = walletVaults.find(item => item.key === VAULT_KEY_BY_TYPE[vaultType]);
   const asset = portfolio.earnAssets.find(item => item.vault.type === vaultType);
   // EUR Yield is held and shown in euros: the portfolio (a USD model) leaves it out, so
@@ -163,6 +167,7 @@ export default function SavingsScreenNew() {
           walletToken ? () => router.push(coinAssetPath(walletToken) as Href) : undefined
         }
         onOpenCredit={portfolio.creditDetailsAvailable ? () => setIsCreditOpen(true) : undefined}
+        depositsOnItsWay={depositsOnItsWay}
       />
     </PageLayout>
   );

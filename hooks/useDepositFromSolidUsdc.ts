@@ -4,7 +4,10 @@ import { base, mainnet } from 'viem/chains';
 import { useBlockNumber, useReadContract } from 'wagmi';
 
 import { getBridgeTokenDecimals } from '@/constants/bridge';
-import { CROSS_CHAIN_DEPOSIT_METADATA_KEY } from '@/constants/transaction';
+import {
+  CROSS_CHAIN_DEPOSIT_METADATA_KEY,
+  DELIVERED_BY_BACKEND_METADATA_KEY,
+} from '@/constants/transaction';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
@@ -88,6 +91,18 @@ const useDepositFromSolidUsdc = (
       ? 'usdc_solid_bridge_card'
       : 'usdc_solid_bridge';
 
+  // The backend replaces an activity's metadata on every update the app sends,
+  // so each update that carries metadata repeats these fields with it.
+  const activityMetadata = {
+    // The only transaction here is the approve; the backend pulls the funds and
+    // delivers them minutes later, so its receipt must not complete the deposit.
+    [DELIVERED_BY_BACKEND_METADATA_KEY]: true,
+    // Off-target chains also route through the bridge.
+    ...(isTargetChain ? {} : { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true }),
+    // Names USD Yield as where it lands: Activity detail, and the "on its way" row in Earn.
+    ...(isCard ? {} : { vaultShareSymbol: 'soUSD' }),
+  };
+
   const createEvent = async (amount: string, spender: Address, tokenSymbol: string) => {
     const clientTxId = await createActivity({
       title: isCard ? `Deposit ${tokenSymbol} to Card` : `Deposit ${tokenSymbol}`,
@@ -97,9 +112,7 @@ const useDepositFromSolidUsdc = (
       fromAddress: safeAddress,
       toAddress: spender,
       type: isCard ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
-      // Off-target chains route through the bridge, so the source-chain approve
-      // receipt must not be treated as the deposit completing.
-      metadata: isTargetChain ? undefined : { [CROSS_CHAIN_DEPOSIT_METADATA_KEY]: true },
+      metadata: activityMetadata,
     });
     return clientTxId;
   };
@@ -247,7 +260,10 @@ const useDepositFromSolidUsdc = (
           console.error('Sponsored Solid USDC deposit failed:', err);
           updateActivity(trackingId!, {
             status: TransactionStatus.PROCESSING,
-            metadata: { depositError: err?.message || 'Backend returned error' },
+            metadata: {
+              ...activityMetadata,
+              depositError: err?.message || 'Backend returned error',
+            },
           });
           setDepositStatus({ status: Status.ERROR });
         });
@@ -261,6 +277,7 @@ const useDepositFromSolidUsdc = (
         updateActivity(trackingId, {
           status: TransactionStatus.FAILED,
           metadata: {
+            ...activityMetadata,
             error: error?.message || 'Unknown error',
             failedAt: new Date().toISOString(),
           },

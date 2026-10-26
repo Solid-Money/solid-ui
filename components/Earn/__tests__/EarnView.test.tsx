@@ -3,12 +3,15 @@ import React from 'react';
 import EarnView, { type EarnProduct } from '@/components/Earn/EarnView';
 import { VaultType } from '@/lib/types';
 
+import type { DepositOnItsWay } from '@/lib/deposit/depositOnItsWay';
+
 const { act, create } = jest.requireActual('react-test-renderer');
 jest.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 jest.mock('@/components/ui/skeleton', () => 'Skeleton');
 jest.mock('@/components/Earn/YieldIcon', () => 'YieldIcon');
 jest.mock('@/components/Savings/NewSavings/SavingsFundedActions', () => 'FundedActions');
 jest.mock('@/components/Savings/NewSavings/StartEarningButton', () => 'StartEarning');
+jest.mock('@/components/Earn/DepositOnItsWayRows', () => 'DepositOnItsWayRows');
 jest.mock('@/components/BalanceHeadline', () => ({
   BalanceHeadline: ({ balance, label }: any) =>
     jest.requireActual('react').createElement('Text', null, `${label} $${balance.toFixed(2)}`),
@@ -142,4 +145,54 @@ it('shows EUR Yield in euros with no rate yet', () => {
   expect(text).toContain('1,500.00 soEURC');
   expect(text).toContain('— APY');
   expect(text).not.toContain('$1,500.00');
+});
+
+// Figma "Earn tab · deposit on its way": a deposit that left the wallet shows up in Earn
+// before it lands.
+describe('a USD Yield deposit on its way', () => {
+  const onItsWay: DepositOnItsWay = {
+    clientTxId: 'deposit-1',
+    amount: 100,
+    state: 'on_its_way',
+    sentAt: 0,
+  };
+  const rows = () => root.root.findAllByType('DepositOnItsWayRows');
+
+  it('lists it under the balance and on the USD Yield row', () => {
+    render({
+      depositsOnItsWay: [onItsWay],
+      products: [product(VaultType.USDC, { valueUsd: 2560, onItsWayUsd: 100 }), ...funded.slice(1)],
+    });
+    expect(rows()[0].props.deposits).toEqual([onItsWay]);
+    const text = textContent();
+    expect(text).toContain('+$100.00 on its way');
+    expect(text).not.toContain('soUSD');
+    expect(text).toContain('0.0752 soETH');
+    expect(root.root.findAllByType('FundedActions')).toHaveLength(1);
+  });
+
+  it("takes Start earning's place for a first deposit", () => {
+    render({
+      total: 0,
+      apyLabel: 'Up to 7.5% APY',
+      totalEarned: 0,
+      past30: 0,
+      depositsOnItsWay: [onItsWay],
+      products: [product(VaultType.USDC, { onItsWayUsd: 100 }), ...empty.slice(1)],
+    });
+    expect(rows()[0].props.deposits).toEqual([onItsWay]);
+    expect(root.root.findAllByType('StartEarning')).toHaveLength(0);
+    expect(textContent()).toContain('$0.00 | +$100.00 on its way');
+  });
+
+  it("still offers Start earning when the first deposit didn't go through", () => {
+    render({
+      total: 0,
+      apyLabel: 'Up to 7.5% APY',
+      products: empty,
+      depositsOnItsWay: [{ ...onItsWay, state: 'failed' }],
+    });
+    expect(root.root.findAllByType('StartEarning')).toHaveLength(1);
+    expect(textContent()).not.toContain('on its way');
+  });
 });

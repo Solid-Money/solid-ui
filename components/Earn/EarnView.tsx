@@ -7,11 +7,13 @@ import SavingsFundedActions from '@/components/Savings/NewSavings/SavingsFundedA
 import StartEarningButton from '@/components/Savings/NewSavings/StartEarningButton';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { type DepositOnItsWay, hasDepositMoving } from '@/lib/deposit/depositOnItsWay';
 import { formatTokenAmount } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { isEurVault } from '@/lib/vaultCurrency';
 
+import DepositOnItsWayRows from './DepositOnItsWayRows';
 import { ApyTag, CheckDot, EarnChip, LockIcon } from './EarnChips';
 import YieldIcon from './YieldIcon';
 import { formatYieldAmount, formatYieldUsd, yieldProductName, yieldVault } from './yieldProducts';
@@ -27,6 +29,8 @@ export type EarnProduct = {
   shareAmount: number;
   /** FUSE locked for a tier: soFUSE in the lock, still earning FUSE Yield's rate. */
   lockedFuse?: number;
+  /** USD Yield: dollars deposited that haven't reached it yet. */
+  onItsWayUsd?: number;
   apy: number | undefined;
   isApyLoading: boolean;
 };
@@ -79,6 +83,7 @@ const ProductRow = ({
   const value = isEur ? product.valueEur : product.valueUsd;
   const funded = !isLoading && (value ?? 0) > 0;
   const locked = (product.lockedFuse ?? 0) > 0;
+  const onItsWay = product.onItsWayUsd ?? 0;
 
   return (
     <Pressable
@@ -100,17 +105,19 @@ const ProductRow = ({
       </View>
       {isLoading ? (
         <Skeleton className="h-5 w-20 rounded-md bg-white/10" />
-      ) : funded ? (
+      ) : funded || onItsWay > 0 ? (
         <View className="shrink-0 items-end gap-[5px]">
           <Text className="text-[16px] font-semibold leading-5 text-white">
             {formatYieldAmount(value, product.type)}
           </Text>
           <View className="flex-row items-center gap-1">
-            {locked ? <LockIcon /> : null}
+            {locked && onItsWay <= 0 ? <LockIcon /> : null}
             <Text className="text-[13px] leading-[17px] text-white/50" numberOfLines={1}>
-              {locked
-                ? `${formatNumber(product.lockedFuse ?? 0, 0)} FUSE locked`
-                : `${formatTokenAmount(product.shareAmount)} ${token}`}
+              {onItsWay > 0
+                ? `+${formatYieldUsd(onItsWay)} on its way`
+                : locked
+                  ? `${formatNumber(product.lockedFuse ?? 0, 0)} FUSE locked`
+                  : `${formatTokenAmount(product.shareAmount)} ${token}`}
             </Text>
           </View>
         </View>
@@ -136,6 +143,8 @@ export interface EarnViewProps {
   onOpenProduct: (type: VaultType) => void;
   /** The yield boost card; it renders nothing for a user without one. */
   boost?: ReactNode;
+  /** USD Yield deposits that haven't reached Earn yet, one row each under the balance. */
+  depositsOnItsWay?: DepositOnItsWay[];
 }
 
 /**
@@ -152,8 +161,11 @@ export default function EarnView({
   products,
   onOpenProduct,
   boost,
+  depositsOnItsWay = [],
 }: EarnViewProps) {
   const isFunded = !isLoading && (total ?? 0) > 0;
+  // A first deposit on its way takes Start earning's place: it has been started.
+  const isFirstDepositMoving = !isFunded && hasDepositMoving(depositsOnItsWay);
 
   return (
     <View className="mx-auto w-full max-w-[419px] gap-6 px-4 pb-[140px] web:md:max-w-[40rem]">
@@ -173,13 +185,15 @@ export default function EarnView({
         )}
       </View>
 
+      <DepositOnItsWayRows deposits={depositsOnItsWay} />
+
       {isLoading ? (
         <Skeleton className="h-[50px] rounded-full bg-white/10" />
       ) : isFunded ? (
         <View className="-mx-4">
           <SavingsFundedActions vaultType={VaultType.USDC} />
         </View>
-      ) : (
+      ) : isFirstDepositMoving ? null : (
         <StartEarningButton vaultType={VaultType.USDC} className="px-0" source="earn_start" />
       )}
 

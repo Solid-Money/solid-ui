@@ -9,6 +9,7 @@ import {
   isDepositWithSteps,
   isSavingsDestination,
   normalizeDepositStep,
+  savingsProductName,
 } from '@/lib/utils/deposit-steps';
 
 /**
@@ -434,7 +435,7 @@ describe('getDepositProgressRows', () => {
     ).toBe(false);
   });
 
-  it('routes savings direct deposits to the savings destination', () => {
+  it('names the product a savings direct deposit lands in', () => {
     // The activity keeps the deposited token as its symbol (USDC here), so the
     // destination comes from the destinationType the webhook recorded.
     const rows = getDepositProgressRows(
@@ -448,10 +449,10 @@ describe('getDepositProgressRows', () => {
       }),
     );
 
-    expect(rows[2].label).toBe('Depositing USDC to your savings');
+    expect(rows[2].label).toBe('Depositing USDC to USD Yield');
   });
 
-  it('routes a native savings deposit to the savings destination', () => {
+  it('names the product a native savings deposit lands in', () => {
     const rows = getDepositProgressRows(
       directDeposit({
         symbol: 'ETH',
@@ -464,7 +465,7 @@ describe('getDepositProgressRows', () => {
       }),
     );
 
-    expect(rows[2].label).toBe('Depositing ETH to your savings');
+    expect(rows[2].label).toBe('Depositing ETH to ETH Yield');
   });
 
   it('uses wallet-transfer wording for connect-wallet deposits', () => {
@@ -478,6 +479,44 @@ describe('getDepositProgressRows', () => {
     );
 
     expect(rows[0].label).toBe('Sending 100 soUSD from your wallet');
-    expect(rows[2].label).toBe('Depositing soUSD to your savings');
+    expect(rows[2].label).toBe('Depositing soUSD to USD Yield');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// USD Yield deposits from the Solid wallet
+// ---------------------------------------------------------------------------
+describe('a USD Yield deposit from the Solid wallet', () => {
+  // As useDepositFromSolidUsdc records it: the USDC sent, the share token it mints.
+  const usdYieldDeposit = (status: TransactionStatus, depositStep?: string) =>
+    makeActivity({
+      type: TransactionType.DEPOSIT,
+      status,
+      symbol: 'USDC',
+      metadata: { vaultShareSymbol: 'soUSD', ...(depositStep ? { depositStep } : {}) },
+    });
+
+  it('says the USDC was added to USD Yield, not to the balance', () => {
+    const rows = getDepositProgressRows(usdYieldDeposit(TransactionStatus.SUCCESS, 'complete'));
+    expect(rows[2].label).toBe('USDC added to USD Yield');
+    expect(savingsProductName(usdYieldDeposit(TransactionStatus.SUCCESS))).toBe('USD Yield');
+  });
+
+  it('names USD Yield while it is moving and when it fails', () => {
+    expect(getDepositProgressRows(usdYieldDeposit(TransactionStatus.PROCESSING))[2].label).toBe(
+      'Depositing USDC to USD Yield',
+    );
+    expect(
+      getDepositProgressRows(usdYieldDeposit(TransactionStatus.FAILED, 'depositing'))[2].label,
+    ).toBe('Failed to deposit USDC to USD Yield');
+  });
+
+  it('still says "your balance" for a deposit that names no savings product', () => {
+    const wallet = makeActivity({
+      type: TransactionType.DEPOSIT,
+      status: TransactionStatus.SUCCESS,
+    });
+    expect(getDepositProgressRows(wallet)[2].label).toBe('USDC added to your balance');
+    expect(savingsProductName(wallet)).toBeUndefined();
   });
 });

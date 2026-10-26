@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { ActivityEvent, TransactionStatus } from '@/lib/types';
+import { getDepositStepIndex, normalizeDepositStep } from '@/lib/utils/deposit-steps';
 
 // Maximum events stored per user in the Zustand store (and MMKV).
 // Oldest events beyond this cap are evicted to prevent unbounded memory/disk growth.
@@ -96,6 +97,23 @@ function stripNullish(event: ActivityEvent): Partial<ActivityEvent> {
   return cleaned as Partial<ActivityEvent>;
 }
 
+/**
+ * Metadata that changes while the status stays put, and that the app acts on:
+ * the deposit step the backend writes after the status (where a deposit the
+ * monitor already marked SUCCESS from its approve receipt really is), and the
+ * backend call failure a deposit hook records on a PROCESSING row. A step only
+ * counts when it moves forward, so a stale page of history can't take it back.
+ */
+function hasTrackedMetadataChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
+  const incomingStep = getDepositStepIndex(normalizeDepositStep(incoming.metadata?.depositStep));
+  const existingStep = getDepositStepIndex(normalizeDepositStep(existing.metadata?.depositStep));
+  const depositError = incoming.metadata?.depositError;
+  return (
+    incomingStep > existingStep ||
+    (depositError !== undefined && depositError !== existing.metadata?.depositError)
+  );
+}
+
 // Helper to check if event data has actually changed
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   // A status downgrade is not a real change — it's a stale update
@@ -109,7 +127,8 @@ function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): bool
     existing.failureReason !== incoming.failureReason ||
     existing.amount !== incoming.amount ||
     existing.symbol !== incoming.symbol ||
-    existing.title !== incoming.title
+    existing.title !== incoming.title ||
+    hasTrackedMetadataChanged(existing, incoming)
   );
 }
 
