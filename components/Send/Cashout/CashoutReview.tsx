@@ -40,7 +40,7 @@ import { maskPayoutDestination, payoutHolderName, validatePayoutDetails } from '
 import { kycUpgradeLevel, TRANSFI_ERROR_CODE, TransfiError } from '@/lib/transfiErrors';
 import { TokenType, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { CROSS_CHAIN_SEND_DECIMALS, formatLD, OTHER_EXCHANGE } from '@/lib/utils/cross-chain-send';
+import { CROSS_CHAIN_SEND_DECIMALS, formatLD, OWN_WALLET } from '@/lib/utils/cross-chain-send';
 import { DepositProgressRow } from '@/lib/utils/deposit-steps';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
@@ -351,7 +351,7 @@ export const CashoutReview = () => {
           dstChainId: config.chainId,
           networkName: bridgeSource.networkName,
           recipient: user.safeAddress as Address,
-          exchange: OTHER_EXCHANGE,
+          exchange: OWN_WALLET,
           amount: formatUnits(BigInt(plan.amountLD), CROSS_CHAIN_SEND_DECIMALS),
           quote: plan,
         },
