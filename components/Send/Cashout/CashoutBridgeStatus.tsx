@@ -16,6 +16,7 @@ import { useTransfiCashoutConfig } from '@/hooks/useTransfiCashout';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import { fetchCrossChainSend } from '@/lib/api/cross-chain-send';
+import { sanitizeTechnicalMessage } from '@/lib/errors';
 import { CrossChainSendStatus } from '@/lib/types/cross-chain-send';
 import { withRefreshToken } from '@/lib/utils';
 import { formatLD } from '@/lib/utils/cross-chain-send';
@@ -94,7 +95,9 @@ export const CashoutBridgeStatus = () => {
     track(TRACKING_EVENTS.CASH_OUT_BRIDGE_FAILED, {
       send_id: sendId,
       status,
-      error_message: send?.failureReason,
+      // Sanitized like every error sent to analytics: the reason comes from the
+      // backend and may quote a provider's error. Empty when there is none.
+      error_message: sanitizeTechnicalMessage(send?.failureReason),
     });
   }, [failed, sendId, status, send?.failureReason]);
 
