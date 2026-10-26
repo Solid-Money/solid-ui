@@ -90,6 +90,9 @@ type Path = {
   POINTS_LEADERBOARD: Href;
   REWARDS: Href;
   REWARDS_BENEFITS: Href;
+  AI_API: Href;
+  AI_API_KEY: Href;
+  AI_API_SETUP: Href;
   OVERVIEW: Href;
   /**
    * @deprecated Same story as `CARD` — `/card-onboard` served the standalone card
@@ -157,6 +160,11 @@ export const path: Path = {
   POINTS_LEADERBOARD: '/points/leaderboard',
   REWARDS: '/rewards',
   REWARDS_BENEFITS: '/rewards/benefits',
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  AI_API: '/rewards/ai-api' as Href,
+  // The new key, shown once. Never carries the key itself — see useAiApiRevealStore.
+  AI_API_KEY: '/rewards/ai-api-key' as Href,
+  AI_API_SETUP: '/rewards/ai-api-setup' as Href,
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-onboard',
   CARD_WAITLIST_SUCCESS: '/card-onboard/success',

@@ -22,6 +22,7 @@ import ActivityStatusPill, {
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
 import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
+import AiApiChargeDetail from '@/components/AiApi/AiApiChargeDetail';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositStepper from '@/components/DepositStepper';
@@ -1426,6 +1427,19 @@ export default function ActivityDetail() {
           </View>
 
           <SupportSection transactionContext={missingTransactionContext} />
+        </View>
+      </PageLayout>
+    );
+  }
+
+  // One day of AI API usage: which keys spent it and the cashback it earns.
+  if (finalActivity.type === TransactionType.AI_API_CHARGE) {
+    return (
+      <PageLayout desktopOnly>
+        <View className="mx-auto w-full max-w-lg flex-1 gap-6 px-4 py-8 pb-32 md:py-12">
+          <Back title="" />
+          <AiApiChargeDetail activity={finalActivity} />
+          <SupportSection transactionContext={transactionContext} />
         </View>
       </PageLayout>
     );
