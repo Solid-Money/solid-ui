@@ -10,7 +10,7 @@ const STALE_MS = 5 * 60 * 1000;
 
 /**
  * Whether this user may be offered the deposit tokens still being rolled out:
- * PAXG, WBTC, cbBTC and the rest added with Optimism, and Optimism itself for
+ * WBTC, cbBTC, cbZEC, AAVE and SOL on Base, and Optimism for
  * the tokens already offered elsewhere (see `releasedOn` in
  * `constants/walletDepositTokens`).
  *

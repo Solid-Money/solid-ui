@@ -11,7 +11,6 @@ import {
   WalletDepositTokenGroup,
 } from '@/constants/walletDepositTokens';
 import { getAsset } from '@/lib/assets';
-import { isDevFeatureEnabled } from '@/lib/config';
 import { CardProvider, DepositAsset } from '@/lib/types';
 
 export type WalletDepositNetwork = {
@@ -84,19 +83,11 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   WETH: '0.005',
   FUSE: '500',
   WFUSE: '500',
-  PAXG: '0.003',
-  SLVx: '0.2',
   WBTC: '0.00015',
   cbBTC: '0.00015',
-  ZEC: '0.01',
-  UNI: '1.5',
-  NEAR: '2',
-  ENA: '50',
+  cbZEC: '0.01',
   AAVE: '0.07',
   SOL: '0.1',
-  WLD: '20',
-  ARB: '60',
-  OP: '80',
 };
 
 /** Used for a chain with no entry above, rather than claiming there is no floor. */
@@ -126,8 +117,7 @@ const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
 const EURC_SYMBOL = 'EURC';
 
 /**
- * The chain the screen opens on, and that every currency it carries opens on
- * unless it has a home of its own (see `homeChainId`).
+ * The chain the screen opens on, and that every currency it carries opens on.
  *
  * Base because it carries nearly every currency on offer, and sending there
  * costs a fraction of Ethereum's gas. FUSE and WFUSE exist on Fuse alone, so
@@ -188,11 +178,8 @@ const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
   WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol);
 
 /** Whether a currency is on offer to this person at all, on any chain. */
-const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvider): boolean => {
-  if (token.devOnly && !isDevFeatureEnabled) return false;
-  if (token.symbol === EURC_SYMBOL) return offersWalletDepositEurc(provider);
-  return true;
-};
+const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvider): boolean =>
+  token.symbol !== EURC_SYMBOL || offersWalletDepositEurc(provider);
 
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
@@ -369,8 +356,8 @@ export const getDefaultWalletDepositSelection = (): { chainId: number; symbol: s
 /**
  * Every currency the deposit address can take, each once, for "Select token" —
  * the first step, taken before any chain is chosen. In the order the design
- * lists them: the stablecoins, gold and silver, then ETH and the rest, with the
- * wrapped natives last.
+ * lists them: the stablecoins, then ETH and the rest, with the wrapped natives
+ * last.
  */
 export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): WalletDepositToken[] =>
   WALLET_DEPOSIT_TOKENS.filter(token => getTokenChainIds(token, viewer).length > 0).map(
@@ -379,8 +366,7 @@ export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): Wal
 
 /**
  * Whether a currency answers a search: by ticker or by name, so "btc" finds WBTC
- * and cbBTC and "gold" finds PAXG, plus the aliases a person might type instead
- * ("bitcoin", "paxos").
+ * and cbBTC, plus the aliases a person might type instead ("bitcoin", "zcash").
  */
 export const matchesWalletDepositSearch = (token: WalletDepositToken, query: string): boolean => {
   const needle = query.trim().toLowerCase();
@@ -420,8 +406,7 @@ export const getWalletDepositNetworksForToken = (
  * The chain the address opens on once `symbol` is picked.
  *
  * The current chain when it carries the currency, so changing only the currency
- * from the address screen keeps the chain. Otherwise the currency's own home
- * (ARB on Arbitrum, OP on Optimism), then the default chain (see
+ * from the address screen keeps the chain. Otherwise the default chain (see
  * `getDefaultWalletDepositSelection`) if it carries it, else the first that does.
  */
 export const resolveWalletDepositChain = (
@@ -431,9 +416,6 @@ export const resolveWalletDepositChain = (
 ): number => {
   const carrying = getWalletDepositNetworksForToken(symbol, viewer).map(network => network.chainId);
   if (currentChainId !== undefined && carrying.includes(currentChainId)) return currentChainId;
-
-  const homeChainId = findToken(symbol)?.homeChainId;
-  if (homeChainId !== undefined && carrying.includes(homeChainId)) return homeChainId;
 
   const { chainId: defaultChainId } = getDefaultWalletDepositSelection();
   return carrying.includes(defaultChainId) ? defaultChainId : (carrying[0] ?? defaultChainId);
