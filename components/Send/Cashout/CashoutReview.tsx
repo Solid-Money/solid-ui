@@ -36,6 +36,7 @@ import { getTransfiCashoutOrder } from '@/lib/api';
 import { bridgeShortfall } from '@/lib/cashoutBridge';
 import { formatCashoutFiat, formatCashoutRate } from '@/lib/cashoutFormat';
 import { limitsFromError } from '@/lib/cashoutLimits';
+import { sanitizeTechnicalMessage } from '@/lib/errors';
 import { maskPayoutDestination, payoutHolderName, validatePayoutDetails } from '@/lib/payoutFields';
 import { kycUpgradeLevel, TRANSFI_ERROR_CODE, TransfiError } from '@/lib/transfiErrors';
 import { TokenType, TransactionType } from '@/lib/types';
@@ -304,7 +305,9 @@ export const CashoutReview = () => {
       track(TRACKING_EVENTS.CASH_OUT_DEPOSIT_FAILED, {
         order_id: instructions.orderId,
         cancelled,
-        error_message: message,
+        // Sanitized: a failed user operation's message carries the bundler URL,
+        // API key included.
+        error_message: sanitizeTechnicalMessage(error),
       });
       // A cancelled signature moved nothing, so the same order can be funded on
       // a second try. Any other failure may have happened after the transfer
@@ -379,7 +382,10 @@ export const CashoutReview = () => {
       setModal(SEND_MODAL.OPEN_CASHOUT_BRIDGE);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      track(TRACKING_EVENTS.CASH_OUT_BRIDGE_FAILED, { error_message: message, currency });
+      track(TRACKING_EVENTS.CASH_OUT_BRIDGE_FAILED, {
+        error_message: sanitizeTechnicalMessage(error),
+        currency,
+      });
       // As with the send: a cancelled signature or an expired quote moved
       // nothing; anything else may have left Fuse, so Activity before a retry.
       if (error instanceof CrossChainSendQuoteExpiredError) {

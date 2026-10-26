@@ -23,12 +23,12 @@ import { DepositProgressRow } from '@/lib/utils/deposit-steps';
 import { useCashoutStore } from '@/store/useCashoutStore';
 import { useSendStore } from '@/store/useSendStore';
 
-const TERMINAL: ReadonlySet<CrossChainSendStatus> = new Set([
-  'delivered',
-  'failed',
-  'stuck',
-  'expired',
-]);
+// Not 'stuck': a stuck send can still land, and only polling sees it here.
+const TERMINAL: ReadonlySet<CrossChainSendStatus> = new Set(['delivered', 'failed', 'expired']);
+
+const POLL_MS = 5000;
+/** A stuck send is checked less often; it can take a while to clear. */
+const STUCK_POLL_MS = 30_000;
 
 /** How often the wallet balance is re-read while the landed USDC shows up in it. */
 const BALANCE_REFRESH_MS = 4000;
@@ -62,7 +62,8 @@ export const CashoutBridgeStatus = () => {
     enabled: !!sendId,
     refetchInterval: query => {
       const status = query.state.data?.status;
-      return status && TERMINAL.has(status) ? false : 5000;
+      if (status && TERMINAL.has(status)) return false;
+      return status === 'stuck' ? STUCK_POLL_MS : POLL_MS;
     },
   });
 
