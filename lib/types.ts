@@ -691,6 +691,18 @@ export interface CardStatusResponse {
   kycStatus?: KycStatus;
   /** Warning entries from Didit verification (e.g. DOCUMENT_EXPIRED) and Rain forward failures. */
   kycWarnings?: KycWarning[];
+  /**
+   * Wirex/Sumsub only: `RETRY` when Sumsub asked for a resubmission, `FINAL` for a terminal
+   * decline. `kycStatus: incomplete` alone cannot say which screen to show — a failed hand-off to
+   * Wirex writes the same status, and that is not a document the applicant can fix.
+   */
+  kycRejectType?: 'RETRY' | 'FINAL' | string;
+  /**
+   * Wirex/Sumsub only: Sumsub's review status (`init`, `pending`, `completed`, …). Present once
+   * the applicant has opened the identity check, so it tells "opened it and left" from "never
+   * started" on any device.
+   */
+  kycReviewStatus?: string;
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /**

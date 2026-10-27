@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
+import CardLivePopup from '@/components/Card/CardLivePopup';
 import CardWelcomePopup from '@/components/Card/CardWelcomePopup';
 import CardActionsRow from '@/components/Card/NewCardDetails/CardActionsRow';
 import CardCashbackCard from '@/components/Card/NewCardDetails/CardCashbackCard';
@@ -40,7 +41,7 @@ import { usePageLeft } from '@/components/Navbar/Sidebar';
 import CashbackDetailsSheet from '@/components/Rewards/NewRewards/CashbackDetailsSheet';
 import { formatUsd, onChainToUsd } from '@/constants/cardSpendModule';
 import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
-import { DigitalWalletType } from '@/constants/digital-wallet';
+import { DEVICE_DIGITAL_WALLET, DigitalWalletType } from '@/constants/digital-wallet';
 import { CARD_FROZEN_BY_SOLID_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -51,12 +52,13 @@ import {
 } from '@/hooks/useCardSpendRegistration';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCustomer } from '@/hooks/useCustomer';
+import { useOpenDepositFlow } from '@/hooks/useOpenDepositFlow';
 import useRainRealTimeFunding from '@/hooks/useRainRealTimeFunding';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { monthlyCashbackCap } from '@/lib/cashbackProgress';
 import { resolveUserCashbackRate } from '@/lib/tierCashback';
-import { CardStatus } from '@/lib/types';
+import { CardProvider, CardStatus } from '@/lib/types';
 import {
   canAddFundsToCard,
   canToggleCardFreeze,
@@ -113,6 +115,11 @@ const CardDetailsPane = () => {
   const { data: customer } = useCustomer();
   const { data: rewardsData } = useRewardsUserData();
   const { provider } = useCardProvider();
+  // Either read: the status names the issuer from KYC on, so the card-live popup is never preceded
+  // by a flash of Rain's while the card read catches up.
+  const isWirexCard =
+    provider === CardProvider.WIREX || cardStatus?.provider === CardProvider.WIREX;
+  const openDepositFlow = useOpenDepositFlow();
   const [isFreezing, setIsFreezing] = useState(false);
   // When Solid last refused an unfreeze. Until a card read newer than that lands,
   // the details on screen are the ones that offered it, so a refresh that fails
@@ -474,10 +481,28 @@ const CardDetailsPane = () => {
           <CardDetailsHeader onBack={close} />
         </View>
       </View>
-      <CardWelcomePopup
-        isOpen={isOpen && shouldShowWelcomePopup}
-        onClose={() => setShouldShowWelcomePopup(false)}
-      />
+      {isWirexCard ? (
+        <CardLivePopup
+          isOpen={isOpen && shouldShowWelcomePopup}
+          onClose={() => setShouldShowWelcomePopup(false)}
+          last4={cardDetails?.card_details?.last_4}
+          onAddFunds={
+            canAddFundsToCard(fundsAccess)
+              ? () => openDepositFlow({ source: 'card_live_popup', buttonText: 'Add funds' })
+              : undefined
+          }
+          wallet={DEVICE_DIGITAL_WALLET}
+          onAddToWallet={wallet => {
+            setWalletFromManage(wallet);
+            setIsAddToWalletOpen(true);
+          }}
+        />
+      ) : (
+        <CardWelcomePopup
+          isOpen={isOpen && shouldShowWelcomePopup}
+          onClose={() => setShouldShowWelcomePopup(false)}
+        />
+      )}
       <ManageCardSheet
         isOpen={isOpen && spendSheetSource !== null}
         onOpenChange={open => setSpendSheetSource(open ? 'spending_sheet' : null)}
