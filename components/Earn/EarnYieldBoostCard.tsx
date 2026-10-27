@@ -46,8 +46,9 @@ interface EarnYieldBoostCardProps {
  * and the claim.
  *
  * It sits on the Earn page rather than on a vault because it is earned on the
- * user's savings across all three vaults together, and paid in soFUSE whichever
- * vault the money is in. It renders nothing for a user with no boost and
+ * user's savings across every yield together — EUR Yield included, valued in
+ * dollars against the same cap — and paid in soFUSE whichever yield the money
+ * is in. It renders nothing for a user with no boost and
  * nothing to claim, so Core users don't see an empty box for a perk they
  * haven't unlocked — while someone who dropped a tier can still collect what
  * they earned at the old one.
