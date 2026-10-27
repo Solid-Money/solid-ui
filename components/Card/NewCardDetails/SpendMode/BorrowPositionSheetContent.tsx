@@ -40,12 +40,15 @@ const TRACK_TO_REPAY = 29;
 /** Between the two loans when the cardholder owes on Fuse and on Base. */
 const CARD_TO_CARD = 12;
 
-/** Names a loan by its chain while its collateral has not been read. */
 const CHAIN_NAME: Record<number, string> = { [fuse.id]: fuse.name, [base.id]: base.name };
 
-/** What a loan is called on its card: what it is borrowed against, else its chain. */
-const loanLabel = (position: { chainId: number; backedBy: string }): string =>
-  position.backedBy || CHAIN_NAME[position.chainId] || `Chain ${position.chainId}`;
+/**
+ * What a loan is called on its card: its chain. Not `backedBy`, which names every collateral
+ * asset the Safe holds there, loose balances included, so it can name a token the loan is not
+ * borrowed against.
+ */
+const loanLabel = (position: { chainId: number }): string =>
+  CHAIN_NAME[position.chainId] || `Chain ${position.chainId}`;
 
 /** The same slide the spend-mode sheet swaps its panels on, so the two sheets move alike. */
 const SWAP_DURATION = 240;
@@ -270,7 +273,6 @@ const PositionView = ({
               {hasTwo ? (
                 <Text
                   className="px-5 text-[14px] font-normal leading-[16px] text-white/50"
-                  numberOfLines={1}
                   style={styles.loanLabel}
                 >
                   {loanLabel(position)}
