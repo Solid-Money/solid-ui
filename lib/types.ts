@@ -738,6 +738,12 @@ export interface CardStatusResponse {
     kycStatus?: KycStatus | string;
     /** Didit approved, but the hand-off to Rain is held on the savings deposit. */
     forwardPendingDeposit?: boolean;
+    /**
+     * Didit approved, but Rain can never accept the answers (a US SSN that is
+     * not 9 digits), so the applicant has to verify again — the server allows a
+     * new Didit session for exactly this.
+     */
+    resubmitVerification?: boolean;
   };
   /**
    * User's KYC residence country (ISO 3166-1 alpha-2, e.g. "BD"). Taken from the
