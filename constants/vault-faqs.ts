@@ -105,6 +105,11 @@ const VAULT_FAQS: Record<VaultType, Faq[]> = {
       answer: 'Not yet. Yield is coming soon. Until it starts earning, its APY shows as —.',
     },
     {
+      question: 'Does EUR Yield count toward my yield boost?',
+      answer:
+        "Yes. On Prime and Ultra, your EUR Yield balance counts toward your tier's yield boost together with your other yields, at its value in dollars, up to your tier's limit. The boost is paid in soFUSE, and you claim it from Earn.",
+    },
+    {
       question: 'How fast can I withdraw?',
       answer:
         'Withdrawals go through a queue and take up to about 3 days. You receive EURC on Base in your Solid wallet.',
