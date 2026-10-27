@@ -63,8 +63,9 @@ export const useMainCurrency = () => {
  *
  * Every card figure is counted in dollars — the modules' unit — so a euro main currency converts
  * them for display at the price the card spends EURC at. When that rate is not known yet the
- * figures stay in dollars rather than guess one. Total wealth is not a card figure and stays in
- * dollars.
+ * figures stay in dollars rather than guess one. The home Balance follows too: a cardholder who
+ * switched to euros read a euro spendable tile under a dollar total, and asked why only half the
+ * screen switched.
  */
 export const useCardDisplayCurrency = () => {
   const { mainCurrency, usdPerEur } = useMainCurrency();
@@ -93,7 +94,15 @@ export const useCardDisplayCurrency = () => {
     [inEuros, usdPerEur],
   );
 
-  return { inEuros, usdPerEur, formatMicroUsd, formatUsdAmount };
+  /** A USD amount in the display currency, as a number — for figures that count up. */
+  const toDisplayAmount = useCallback(
+    (usd: number): number => (inEuros ? usdToEur(usd, usdPerEur!) : usd),
+    [inEuros, usdPerEur],
+  );
+
+  const symbol = inEuros ? '€' : '$';
+
+  return { inEuros, usdPerEur, symbol, formatMicroUsd, formatUsdAmount, toDisplayAmount };
 };
 
 /**

@@ -30,6 +30,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useHomePrompt } from '@/hooks/useHomePrompt';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
@@ -39,7 +40,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { markStartup, reportHomeContentReady } from '@/lib/startupTiming';
 import { CardProvider } from '@/lib/types';
-import { formatBalanceUSD, hasCard } from '@/lib/utils';
+import { formatBalance, hasCard } from '@/lib/utils';
 import { cardHoldsBalance } from '@/lib/utils/cardHelpers';
 import { useCardPaneStore } from '@/store/useCardPaneStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -75,6 +76,7 @@ export default function HomeScreenNew() {
   const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
   const { data: cardDetails, isLoading: isCardDetailsLoading } = useCardDetails();
   const { provider: cardProvider } = useCardProvider();
+  const { symbol: displaySymbol, toDisplayAmount } = useCardDisplayCurrency();
 
   const userHasCard = hasCard(cardStatus);
   const showWirexTiles = userHasCard && cardProvider === CardProvider.WIREX;
@@ -228,6 +230,9 @@ export default function HomeScreenNew() {
   // the Assets rows, Borrowed included, add up to it. Gross holdings are "Total assets" on the
   // overview. If debt couldn't be read the figure is flagged incomplete below the headline.
   const totalBalance = portfolio.netBalance;
+  // Shown in the main currency, like the card tiles beside it. The card details it reads are
+  // already part of the loading gate above, so the figure never flips from dollars to euros.
+  const displayTotal = totalBalance === undefined ? undefined : toDisplayAmount(totalBalance);
   // Whether the action row offers Swap and Send at all. Deliberately NOT
   // `depositCompleted` on its own: that only knows about wallet funding, and a
   // cardholder who funds their card directly has none of it — see
@@ -241,7 +246,9 @@ export default function HomeScreenNew() {
     cardHoldsOwnBalance,
   });
   const walletTitle =
-    isBalanceSectionLoading || totalBalance === undefined ? null : formatBalanceUSD(totalBalance);
+    isBalanceSectionLoading || displayTotal === undefined
+      ? null
+      : formatBalance(displayTotal, displaySymbol);
   // Which rung of the card funnel belongs under the card, if any — null once the
   // user is done or has snoozed the current one. See `resolveHomePromptStep`.
   const promptKey = useHomePrompt({ hasCard: userHasCard, depositCompleted });
@@ -292,7 +299,7 @@ export default function HomeScreenNew() {
               <Skeleton className="h-14 flex-1 rounded-full" />
             </View>
           </View>
-        ) : totalBalance === undefined ? (
+        ) : displayTotal === undefined ? (
           <View className="items-center gap-3">
             <Text className="text-[16px] text-white/70">Balance</Text>
             <Text className="text-[45px] font-semibold">—</Text>
@@ -308,7 +315,7 @@ export default function HomeScreenNew() {
         ) : (
           <View className="gap-5">
             <HeroExit spec={HERO_EXIT.balance}>
-              <WalletBalanceHeadline balance={totalBalance} />
+              <WalletBalanceHeadline balance={displayTotal} symbol={displaySymbol} />
               {portfolio.isError && (
                 <TouchableOpacity
                   accessibilityRole="button"
