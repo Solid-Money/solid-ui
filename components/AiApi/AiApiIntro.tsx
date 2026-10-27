@@ -1,10 +1,13 @@
 import { useId } from 'react';
-import { View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { Bot, KeyRound, Terminal } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Bot, KeyRound } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { type AssetPath, getAsset } from '@/lib/assets';
 
 import {
   formatAiApiCashback,
@@ -12,16 +15,66 @@ import {
   formatAiApiRate,
   formatAiApiUsd,
 } from './aiApiFormat';
-import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiIconTile, AiApiInfoRow } from './AiApiPrimitives';
+import AiApiHeroOrbit from './AiApiHeroOrbit';
+import { AI_API_BRAND, AI_API_ICON_STROKE, AiApiInfoRow } from './AiApiPrimitives';
 
-const AGENTS: { label: string; own?: boolean }[] = [
-  { label: 'Claude Code' },
-  { label: 'Codex' },
-  { label: 'OpenClaw' },
-  { label: 'Hermes' },
-  { label: 'OpenCode' },
-  { label: 'Your own agent', own: true },
+interface Agent {
+  label: string;
+  /** The logo tile's fill, top to bottom. */
+  colors: readonly [string, string, ...string[]];
+  /** The agent's mark; without one, the tile shows a bot for the user's own agent. */
+  mark?: { asset: AssetPath; size: number };
+}
+
+const AGENTS: Agent[] = [
+  {
+    label: 'Claude Code',
+    colors: ['#D97757', '#D97757'],
+    mark: { asset: 'images/ai-api/agent-claude-code.svg', size: 19 },
+  },
+  {
+    label: 'Codex',
+    colors: ['#B1A7FF', '#7A9DFF', '#3941FF'],
+    mark: { asset: 'images/ai-api/agent-codex.svg', size: 18 },
+  },
+  {
+    label: 'OpenClaw',
+    colors: ['#FF4D4D', '#991B1B'],
+    mark: { asset: 'images/ai-api/agent-openclaw.svg', size: 20 },
+  },
+  {
+    label: 'Hermes',
+    colors: ['#000000', '#000000'],
+    mark: { asset: 'images/ai-api/agent-hermes.svg', size: 22 },
+  },
+  {
+    label: 'OpenCode',
+    colors: ['#000000', '#000000'],
+    mark: { asset: 'images/ai-api/agent-opencode.svg', size: 16 },
+  },
+  { label: 'Your own agent', colors: [AI_API_BRAND, AI_API_BRAND] },
 ];
+
+/** An agent's logo: its colour, a white sheen from the top, a hairline edge, its mark. */
+const AgentLogo = ({ agent }: { agent: Agent }) => (
+  <LinearGradient colors={agent.colors} style={styles.agentLogo}>
+    <LinearGradient
+      colors={['rgba(255, 255, 255, 0.22)', 'rgba(255, 255, 255, 0)']}
+      locations={[0, 0.6]}
+      style={StyleSheet.absoluteFill}
+    />
+    <View className="absolute inset-0 rounded-2xl border border-white/[0.12]" />
+    {agent.mark ? (
+      <Image
+        source={getAsset(agent.mark.asset)}
+        style={{ width: agent.mark.size, height: agent.mark.size }}
+        contentFit="contain"
+      />
+    ) : (
+      <Bot size={18} color="#111111" strokeWidth={1.36} />
+    )}
+  </LinearGradient>
+);
 
 /** The example the intro prices: a round number, so the halving reads at a glance. */
 const EXAMPLE_SPEND_USD = 100;
@@ -78,40 +131,42 @@ const AiApiIntro = ({
 
   return (
     <View className="w-full gap-5 px-4">
-      <View className="items-center gap-2.5 overflow-hidden rounded-3xl bg-card px-6 py-7">
+      <View className="overflow-hidden rounded-3xl bg-card pb-7">
         <HeroGlow />
-        <AiApiIconTile size={64} tone="brand">
-          <Bot size={30} color={AI_API_BRAND} strokeWidth={AI_API_ICON_STROKE} />
-        </AiApiIconTile>
-        <Text className="mt-1 text-[64px] font-semibold leading-[68px] text-brand">{rate}</Text>
-        <Text className="text-center text-[22px] font-semibold text-white">
-          cashback to run your agents
-        </Text>
-        <Text className="text-center text-[15px] leading-[21px] text-white/65">
-          {modelCount > 1
-            ? `Get one API key for ${modelCount} AI models. `
-            : 'Get one API key for top AI models. '}
-          Pay as you go from your Wallet and get {cashbackRate >= 0.5 ? 'half' : rate} of it back.
-        </Text>
+        <AiApiHeroOrbit />
+        <View className="items-center px-6 pb-[7px] pt-0.5">
+          <Text className="text-[64px] font-semibold leading-[68px] text-white">{rate}</Text>
+          <Text className="text-center text-[22px] font-semibold leading-7 text-white">
+            cashback to run your agents
+          </Text>
+          <Text className="mt-4 text-center text-[15px] leading-[21px] text-white/65">
+            {modelCount > 1
+              ? `Get an API key for ${modelCount} AI models. `
+              : 'Get an API key for top AI models. '}
+            Pay as you go from your Wallet and get {cashbackRate >= 0.5 ? 'half' : rate} of it back.
+          </Text>
+        </View>
       </View>
 
       <View className="gap-2.5">
         <Text className="text-[14px] text-white/55">Works with</Text>
-        <View className="flex-row flex-wrap gap-2">
+        {/* Runs to the screen's edges, so it reads as a strip that scrolls. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="-mx-4"
+          contentContainerClassName="gap-2 px-4"
+        >
           {AGENTS.map(agent => (
             <View
               key={agent.label}
-              className="flex-row items-center gap-1.5 rounded-full bg-card px-3.5 py-2"
+              className="flex-row items-center gap-2 rounded-full bg-card py-1 pl-1 pr-3.5"
             >
-              {agent.own ? (
-                <Bot size={14} color="white" strokeWidth={AI_API_ICON_STROKE} />
-              ) : (
-                <Terminal size={14} color="white" strokeWidth={AI_API_ICON_STROKE} />
-              )}
+              <AgentLogo agent={agent} />
               <Text className="text-[14px] font-medium text-white">{agent.label}</Text>
             </View>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       <View className="gap-[18px] rounded-twice bg-card px-4 py-[18px]">
@@ -166,7 +221,8 @@ const AiApiIntro = ({
         {cashbackMonthlyCapUsd > 0
           ? `, up to ${formatAiApiLimit(cashbackMonthlyCapUsd)} a month`
           : ''}
-        . Cashback is credited {settlementDays} days after each charge, into USD Yield.
+        . Cashback is credited {settlementDays} days after each charge, into USD Yield. Keys are
+        issued through AntSeed, an open market for AI models.
       </Text>
 
       {onCta ? (
@@ -184,5 +240,16 @@ const AiApiIntro = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  agentLogo: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderRadius: 16,
+  },
+});
 
 export default AiApiIntro;

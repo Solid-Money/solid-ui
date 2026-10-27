@@ -1,0 +1,15 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="37.6364" height="37.6364" viewBox="0 0 37.6364 37.6364" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Google-gemini-icon 1" clip-path="url(#clip0_0_59)">
+<path id="Vector" d="M37.6377 18.8558C32.7548 19.1554 28.1501 21.2303 24.6909 24.6895C21.2317 28.1487 19.1568 32.7535 18.8572 37.6363H18.7819C18.4827 32.7533 16.408 28.1482 12.9487 24.6889C9.48941 21.2296 4.88437 19.1549 0.00133384 18.8558L0.00133384 18.7805C4.88437 18.4814 9.48941 16.4067 12.9487 12.9473C16.408 9.48804 18.4827 4.883 18.7819 -4.16825e-05L18.8572 -4.16825e-05C19.1568 4.88283 21.2317 9.48758 24.6909 12.9468C28.1501 16.406 32.7548 18.4809 37.6377 18.7805V18.8558Z" fill="url(#paint0_radial_0_59)"/>
+</g>
+<defs>
+<radialGradient id="paint0_radial_0_59" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(3.73674 15.2968) rotate(18.6832) scale(40.0592 320.899)">
+<stop offset="0.067" stop-color="#9168C0"/>
+<stop offset="0.343" stop-color="#5684D1"/>
+<stop offset="0.672" stop-color="#1BA1E3"/>
+</radialGradient>
+<clipPath id="clip0_0_59">
+<rect width="37.6364" height="37.6364" fill="white"/>
+</clipPath>
+</defs>
+</svg>
