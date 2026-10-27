@@ -6,6 +6,7 @@ import Animated, {
   FadeOutLeft,
   FadeOutRight,
 } from 'react-native-reanimated';
+import { base, fuse } from 'viem/chains';
 
 import {
   type CardSheetPresentation,
@@ -38,6 +39,13 @@ const RISK_TO_CANCEL = 36;
 const TRACK_TO_REPAY = 29;
 /** Between the two loans when the cardholder owes on Fuse and on Base. */
 const CARD_TO_CARD = 12;
+
+/** Names a loan by its chain while its collateral has not been read. */
+const CHAIN_NAME: Record<number, string> = { [fuse.id]: fuse.name, [base.id]: base.name };
+
+/** What a loan is called on its card: what it is borrowed against, else its chain. */
+const loanLabel = (position: { chainId: number; backedBy: string }): string =>
+  position.backedBy || CHAIN_NAME[position.chainId] || `Chain ${position.chainId}`;
 
 /** The same slide the spend-mode sheet swaps its panels on, so the two sheets move alike. */
 const SWAP_DURATION = 240;
@@ -257,13 +265,20 @@ const PositionView = ({
         positions.map((position, index) => (
           <View key={position.chainId}>
             <View style={[styles.positionCard, index > 0 && styles.nextCard]}>
+              {/* With two loans, each card says which it is, so the two Repay buttons are
+                  told apart without the collateral list. One loan needs no name. */}
+              {hasTwo ? (
+                <Text
+                  className="px-5 text-[14px] font-normal leading-[16px] text-white/50"
+                  numberOfLines={1}
+                  style={styles.loanLabel}
+                >
+                  {loanLabel(position)}
+                </Text>
+              ) : null}
               <BorrowedSummary {...position} />
               <Pressable
-                accessibilityLabel={
-                  hasTwo && position.backedBy
-                    ? `Repay the loan against ${position.backedBy}`
-                    : 'Repay'
-                }
+                accessibilityLabel={hasTwo ? `Repay the ${loanLabel(position)} loan` : 'Repay'}
                 accessibilityRole="button"
                 className="bg-brand transition-all active:scale-95 active:opacity-80"
                 onPress={() => onRepay(position.chainId)}
@@ -342,6 +357,7 @@ const styles = StyleSheet.create({
     marginTop: TRACK_TO_REPAY,
   },
   nextCard: { marginTop: CARD_TO_CARD },
+  loanLabel: { marginBottom: 10 },
   risk: {
     backgroundColor: 'rgba(195,66,72,0.15)',
     borderColor: 'rgba(195,66,72,0.6)',

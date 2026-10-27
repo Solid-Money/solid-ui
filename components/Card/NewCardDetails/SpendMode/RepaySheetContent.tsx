@@ -495,8 +495,10 @@ const CollateralSection = ({ collateral }: { collateral: readonly EscrowedCollat
       </Pressable>
 
       <Animated.View
+        // The first two hide the collapsed list from VoiceOver and TalkBack; web reads neither.
         accessibilityElementsHidden={!isOpen}
         importantForAccessibility={isOpen ? 'auto' : 'no-hide-descendants'}
+        aria-hidden={!isOpen}
         pointerEvents={isOpen ? 'auto' : 'none'}
         style={[styles.collateralBody, bodyStyle]}
       >
