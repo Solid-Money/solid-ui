@@ -45,10 +45,6 @@ export interface CollateralRowFigures {
 /** One instance's loan, as the borrow-position sheet lists it. */
 export interface BorrowPositionFigures extends BorrowedSummaryFigures {
   chainId: number;
-  /** The tab's name: the largest collateral, "+1" for each other one — "Bitcoin +1". */
-  label: string;
-  /** What is left to borrow on this instance alone. */
-  availableToBorrow: string;
   /** "USD Yield", "Bitcoin and EUR Yield": what this loan is borrowed against. Empty unread. */
   backedBy: string;
   /** How close this position is to liquidation. Each instance liquidates on its own. */
@@ -65,9 +61,9 @@ export interface CreditModeFigures extends BorrowedSummaryFigures {
   /** A line worth naming on any instance, drawn or not. */
   hasLine: boolean;
   /**
-   * The loans the borrow-position sheet lists, one per instance carrying debt: both when the
-   * cardholder owes on Fuse and on Base, only the one that does otherwise, and none when nothing
-   * is borrowed — the sheet then shows the combined line instead.
+   * The loans the borrow-position sheet lists, one card each under the combined headline: both
+   * when the cardholder owes on Fuse and on Base, only the one that does otherwise, and none when
+   * nothing is borrowed — the sheet then shows the combined line instead.
    */
   positions: BorrowPositionFigures[];
 }
@@ -109,12 +105,6 @@ const heldLabels = (collateral: readonly CreditCollateralAsset[] | undefined): s
     .sort((a, b) => (a.valueUsd === b.valueUsd ? 0 : a.valueUsd > b.valueUsd ? -1 : 1))
     .map(asset => COLLATERAL_LABEL[asset.symbol]?.label ?? asset.symbol)
     .filter(Boolean);
-
-/** A tab's name, falling back to the chain while the per-asset read is in flight. */
-const tabLabel = (chainId: number, labels: string[]): string => {
-  if (labels.length === 0) return chainId === fuseChain.id ? 'Fuse' : 'Base';
-  return labels.length === 1 ? labels[0] : `${labels[0]} +${labels.length - 1}`;
-};
 
 /** What one instance's loan is borrowed against: the collateral it holds, by name. */
 const backedBy = (collateral: readonly CreditCollateralAsset[] | undefined): string =>
@@ -199,8 +189,6 @@ export const combineCreditFigures = (
       .filter(instance => instance.debtUsd > 0n)
       .map(instance => ({
         chainId: instance.chainId,
-        label: tabLabel(instance.chainId, heldLabels(instance.collateral)),
-        availableToBorrow: format(instance.creditHeadroomUsd),
         borrowed: format(instance.debtUsd),
         creditLimit: format(instance.creditLineUsd),
         borrowApy: formatApy(borrowApyPercent(instance.borrowApyPerSecond)),

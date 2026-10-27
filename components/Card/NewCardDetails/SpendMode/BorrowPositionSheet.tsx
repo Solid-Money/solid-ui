@@ -110,6 +110,7 @@ const BorrowPositionSheet = ({ isOpen, onOpenChange }: BorrowPositionSheetProps)
       contentKey="borrow-position"
       designTop={BORROW_POSITION_SHEET_TOP}
       designBottom={BORROW_POSITION_SHEET_BOTTOM}
+      scrollable
     >
       {({ session, topPadding, presentation }) => (
         <BorrowPositionSheetContent
