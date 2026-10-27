@@ -84,7 +84,13 @@ export interface CreditCollateralAsset {
 /** One spend-module instance's credit position, from its lens. */
 export interface CreditInstancePosition {
   chainId: number;
+  /** The module the position lives on: what a repayment on this instance is sent to. */
+  moduleAddress: Address;
   debtUsd: bigint;
+  /** `healthFactor(safe)` on this instance's module. `2^256-1` with no debt. */
+  healthFactorWad: bigint;
+  /** False when some escrowed collateral here cannot be priced. */
+  fullyPriced: boolean;
   /** Escrowed power plus what the loose balance would add: the whole line, drawn or not. */
   creditLineUsd: bigint;
   /** What the line leaves to draw, as `useCardSpendRegistration` computes it for Fuse. */
@@ -130,7 +136,7 @@ const readCreditInstance = async (
   const client = publicClient(chainId);
   const module = { address: moduleAddress, abi: SolidCashModuleV2_ABI } as const;
 
-  const [pairedModule, availability, params, totalDebtUsd, borrowApyPerSecond] =
+  const [pairedModule, availability, params, totalDebtUsd, borrowApyPerSecond, healthFactor] =
     await client.multicall({
       allowFailure: true,
       contracts: [
@@ -144,6 +150,7 @@ const readCreditInstance = async (
         { ...module, functionName: 'getParams' },
         { ...module, functionName: 'totalDebtUsd' },
         { ...module, functionName: 'borrowApyPerSecond' },
+        { ...module, functionName: 'healthFactor', args: [safeAddress] },
       ],
     });
 
@@ -152,6 +159,7 @@ const readCreditInstance = async (
     params.status !== 'success' ||
     totalDebtUsd.status !== 'success' ||
     borrowApyPerSecond.status !== 'success' ||
+    healthFactor.status !== 'success' ||
     !isAddressEqual(pairedModule.result, moduleAddress)
   ) {
     return null;
@@ -221,7 +229,10 @@ const readCreditInstance = async (
 
   return {
     chainId,
+    moduleAddress,
     debtUsd: credit.debtUsd,
+    healthFactorWad: healthFactor.result as bigint,
+    fullyPriced: credit.fullyPriced,
     creditLineUsd: credit.borrowingPowerUsd + credit.prospectiveCollateralUsd,
     creditHeadroomUsd: creditHeadroom(
       credit,
@@ -244,23 +255,39 @@ const readCreditInstance = async (
  * Keyed under the registration query, so every write that refreshes the card's spend state —
  * a mode switch, a repay — refreshes this too.
  */
-export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
-  const { user } = useUser();
-  const safeAddress = user?.safeAddress as Address | undefined;
-
+/**
+ * The Base instance the card borrows on for this cardholder, when it does.
+ *
+ * The spend-mode cohort once they have enabled euro spending: the same Safes a mode switch is
+ * carried over to. The backend's Base module wins over the build's, as everywhere else; the lens
+ * comes from the build and is checked against it before anything it says is used. Shared with the
+ * repay flow, so a Base repayment goes to exactly the module the position was read from.
+ */
+export const useBaseCreditInstance = () => {
   const { isEnabled: isSpendModeCohort } = useCardSpendModeAccess();
   const { data: spendDeployments } = useCardSpendDeployments();
   const baseDeployment = spendDeployments?.deployments.find(
     deployment => deployment.chainId === base.id,
   );
-  // The backend's Base module wins over the build's, as everywhere else; the lens comes from the
-  // build and is checked against it before anything it says is used.
-  const baseModule = (baseDeployment?.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as
+  const moduleAddress = (baseDeployment?.moduleAddress ?? BASE_SPEND_DEPLOYMENT.moduleAddress) as
     | Address
     | undefined;
-  const baseLens = BASE_SPEND_DEPLOYMENT.spendLensAddress;
-  const readsBase =
-    isSpendModeCohort && baseDeployment?.enabled === true && !!baseModule && !!baseLens;
+  const lensAddress = BASE_SPEND_DEPLOYMENT.spendLensAddress as Address | undefined;
+  const isLive =
+    isSpendModeCohort && baseDeployment?.enabled === true && !!moduleAddress && !!lensAddress;
+
+  return { isLive, moduleAddress, lensAddress };
+};
+
+export const useCardCreditPositions = ({ enabled }: { enabled: boolean }) => {
+  const { user } = useUser();
+  const safeAddress = user?.safeAddress as Address | undefined;
+
+  const {
+    isLive: readsBase,
+    moduleAddress: baseModule,
+    lensAddress: baseLens,
+  } = useBaseCreditInstance();
   const readsFuse = isCardSpendV2Configured();
 
   return useQuery<CardCreditPositions>({

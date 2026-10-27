@@ -157,6 +157,13 @@ export const healthFactorToNumber = (wad: bigint): number | null => {
  * The thresholds are presentation, not protocol: the contract liquidates below 1.0 and
  * knows nothing about "caution". Warning early is the point — a cardholder who only learns
  * at 1.0 learns when it is already happening.
+ *
+ * But not so early that a healthy loan is flagged. `spendCredit` locks only enough collateral
+ * to borrow at `ltv × targetLtvBps`, so a fresh loan RESTS at `threshold / (ltv × target)`:
+ * about 1.11 for soUSD and soEUR (95 / (90 × 0.95)) and 1.23 for cbBTC. The old 1.25 caution
+ * line sat above every one of those, so every borrower saw "Getting close" from their first
+ * credit spend — beside a line they had barely touched, since loose collateral is not counted.
+ * Now "Getting close" is about a 5% price fall from liquidation, "At risk" about 2%.
  */
 export type BorrowRisk = 'none' | 'caution' | 'at-risk';
 
@@ -165,8 +172,8 @@ export const borrowRisk = (healthFactorWad: bigint, debtUsd: bigint): BorrowRisk
 
   const hf = healthFactorToNumber(healthFactorWad);
   if (hf === null) return 'none';
-  if (hf < 1.05) return 'at-risk';
-  if (hf < 1.25) return 'caution';
+  if (hf < 1.02) return 'at-risk';
+  if (hf < 1.05) return 'caution';
   return 'none';
 };
 

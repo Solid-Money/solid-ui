@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextStyle, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight } from 'lucide-react-native';
 
 import {
   type CardSheetPresentation,
@@ -16,6 +16,7 @@ import { Text } from '@/components/ui/text';
 import { formatUsd } from '@/constants/cardSpendModule';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
+  type EscrowedCollateral,
   formatRepayTokenAmount,
   maxRepayableUsd,
   parseUsdAmountText,
@@ -23,6 +24,7 @@ import {
   type RepaySource,
   repayTokenEstimate,
   sanitizeUsdAmountText,
+  tokenToUsdFloor,
   usdToAmountText,
 } from '@/lib/utils/cardRepay';
 
@@ -76,8 +78,9 @@ interface RepaySheetContentProps {
  * The repay step of the borrow-position sheet: how much, paid with what, and one button.
  *
  * The source list mixes the two ways the module can be paid. Wallet rows are tender tokens the
- * Safe holds loose; collateral rows spend the soUSD already escrowed against the loan, which
- * is how someone with nothing loose closes a position. The same token can appear twice, so
+ * Safe holds loose; collateral rows spend what is already escrowed against the loan — soUSD on
+ * Fuse; soEUR, cbBTC, SOL, AAVE or cbZEC on Base — which is how someone with nothing loose
+ * closes a position. The escrow itself is listed under "Borrowed assets". The same token can appear twice, so
  * every row and the balance line say which of the two it is.
  *
  * Nothing here decides what a repayment does — `quoteRepay` does, and the hook runs it again
@@ -359,6 +362,8 @@ const RepaySheetContent = ({
             </Animated.View>
           ) : null}
 
+          <CollateralSection collateral={state.collateral} />
+
           {note ? (
             <Text
               className="text-center text-[14px] font-normal leading-[18px]"
@@ -411,6 +416,82 @@ const SummaryRow = ({ label, value }: { label: string; value: string }) => (
     <Text className="text-[16px] font-medium leading-[18px] text-white">{value}</Text>
   </View>
 );
+
+/**
+ * "Borrowed assets": what the module holds against this loan. Collapsed to the total, with a
+ * chevron at the end of the row; open, one row per asset with its amount and what it is worth
+ * at the module's price — the figure a collateral repayment and a liquidation would both use.
+ * Left out entirely when nothing is locked, rather than drawn as a zero.
+ */
+const CollateralSection = ({ collateral }: { collateral: readonly EscrowedCollateral[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const rows = useMemo(
+    () =>
+      collateral
+        .filter(item => item.amount > 0n)
+        .map(item => ({
+          ...item,
+          valueUsd:
+            item.priceUsd > 0n ? tokenToUsdFloor(item.amount, item.priceUsd, item.decimals) : 0n,
+        }))
+        .sort((a, b) => (a.valueUsd === b.valueUsd ? 0 : a.valueUsd > b.valueUsd ? -1 : 1)),
+    [collateral],
+  );
+  if (rows.length === 0) return null;
+
+  const totalUsd = rows.reduce((sum, row) => sum + row.valueUsd, 0n);
+
+  return (
+    <View style={[styles.card, styles.collateral]}>
+      <Pressable
+        accessibilityLabel={`Borrowed assets, ${formatUsd(totalUsd)} locked`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+        className="transition-all active:opacity-80"
+        onPress={() => setIsOpen(open => !open)}
+        style={styles.collateralHeader}
+      >
+        <Text className="flex-1 text-[16px] font-normal leading-[18px] text-white/70">
+          Borrowed assets
+        </Text>
+        <Text className="text-[16px] font-medium leading-[18px] text-white">
+          {formatUsd(totalUsd)}
+        </Text>
+        <View style={isOpen ? styles.chevronOpen : null}>
+          <ChevronRight color="rgba(255,255,255,0.7)" size={18} />
+        </View>
+      </Pressable>
+
+      {isOpen ? (
+        <Animated.View
+          entering={FadeIn.duration(PICKER_FADE_IN)}
+          exiting={FadeOut.duration(PICKER_FADE_OUT)}
+          style={styles.collateralTable}
+        >
+          {rows.map(row => (
+            <View key={row.token} style={styles.collateralRow}>
+              <RenderTokenIcon
+                tokenIcon={getTokenIcon({ tokenSymbol: row.symbol, size: 28 })}
+                size={28}
+                tokenName={row.displaySymbol}
+              />
+              <Text
+                className="flex-1 text-[15px] font-medium leading-[18px] text-white"
+                numberOfLines={1}
+              >
+                {formatRepayTokenAmount(row.amount, row.decimals)} {row.displaySymbol}
+              </Text>
+              <Text className="text-[15px] font-medium leading-[18px] text-white">
+                {row.priceUsd > 0n ? formatUsd(row.valueUsd) : '—'}
+              </Text>
+            </View>
+          ))}
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+};
 
 interface SourceRowProps {
   source: RepaySource;
@@ -564,6 +645,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   picker: { marginTop: CARD_GAP, paddingVertical: 6 },
+  collateral: { marginTop: CARD_GAP },
+  collateralHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    height: 56,
+    paddingLeft: 20,
+    paddingRight: 16,
+  },
+  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  collateralTable: {
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: 1,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  collateralRow: { alignItems: 'center', flexDirection: 'row', gap: 12, height: 46 },
   sourceRow: {
     alignItems: 'center',
     flexDirection: 'row',

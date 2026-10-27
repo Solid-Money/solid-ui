@@ -13,11 +13,13 @@ import {
 } from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import RepaySheetContent from '@/components/Card/NewCardDetails/SpendMode/RepaySheetContent';
-import SheetIconButton from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
+import SheetIconButton, {
+  MODAL_CONTROL_SIZE,
+} from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import { BorrowedSummary } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import { Text } from '@/components/ui/text';
 
-import type { SpendModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
+import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type { CardRepayRequest, CardRepayState } from '@/hooks/useCardRepay';
 
 /**
@@ -36,6 +38,8 @@ const CARD_TO_RISK = 25;
 const RISK_TO_CANCEL = 36;
 /** Figma puts Repay 29 below the track and 23 above the card's bottom edge. */
 const TRACK_TO_REPAY = 29;
+/** Below the loan tabs, to the headline they switch. */
+const TABS_TO_HEADLINE = 24;
 
 /** The same slide the spend-mode sheet swaps its panels on, so the two sheets move alike. */
 const SWAP_DURATION = 240;
@@ -54,9 +58,11 @@ export interface BorrowPositionRepay {
 }
 
 interface BorrowPositionSheetContentProps {
-  figures: SpendModeFigures;
+  /** Across every instance, with one entry in `positions` per instance that carries debt. */
+  figures: CreditModeFigures;
   onDismiss: () => void;
-  repay: BorrowPositionRepay;
+  /** The repay step for each instance's loan, keyed by chain id. */
+  repays: Partial<Record<number, BorrowPositionRepay>>;
   /**
    * Bumped every time the sheet opens, which sends it back to the position — a sheet
    * reopened after backing out of a repayment should not come back halfway through one.
@@ -73,6 +79,11 @@ type SheetView = 'position' | 'repay';
 /**
  * The borrow-position sheet: the position itself, and the repay step behind its Repay button.
  *
+ * A cardholder can owe on Fuse and on Base at once, and the two are separate loans — each its
+ * own debt, collateral and liquidation — so each is shown and repaid on its own. Owing on both,
+ * the sheet opens on a tab per loan; owing on one, it shows that one alone; with nothing
+ * borrowed, the combined line, so the sheet still answers "what can I borrow".
+ *
  * Both live in one sheet rather than a second one stacked on top, because repaying is a
  * continuation of reading the position, not a new task — and a sheet that slides its content
  * sideways keeps the cardholder's place, where a second sheet rising over the first hides it.
@@ -82,43 +93,54 @@ type SheetView = 'position' | 'repay';
 const BorrowPositionSheetContent = ({
   figures,
   onDismiss,
-  repay,
+  repays,
   session,
   topPadding = BORROW_POSITION_SHEET_TOP,
   presentation = 'sheet',
 }: BorrowPositionSheetContentProps) => {
   // `hasMoved` keeps the sheet's own entrance free of a sideways slide: only a move between
   // the two views animates, never the first paint of a sheet that has just opened.
-  const [navigation, setNavigation] = useState<{ view: SheetView; hasMoved: boolean }>({
-    view: 'position',
-    hasMoved: false,
-  });
+  const [navigation, setNavigation] = useState<{
+    view: SheetView;
+    hasMoved: boolean;
+    /** Whose loan the repay step is repaying. */
+    chainId: number | null;
+  }>({ view: 'position', hasMoved: false, chainId: null });
+
+  // Which loan's tab is open. Kept here rather than in the position view, so coming back from
+  // a repayment lands on the loan that was just repaid.
+  const [tabChainId, setTabChainId] = useState<number | null>(null);
 
   useEffect(() => {
-    setNavigation({ view: 'position', hasMoved: false });
+    setNavigation({ view: 'position', hasMoved: false, chainId: null });
+    setTabChainId(null);
   }, [session]);
 
-  const { onRepay, onClearError } = repay;
-
-  const openRepay = useCallback(() => {
-    onClearError();
-    setNavigation({ view: 'repay', hasMoved: true });
-  }, [onClearError]);
+  const openRepay = useCallback(
+    (chainId: number) => {
+      repays[chainId]?.onClearError();
+      setNavigation({ view: 'repay', hasMoved: true, chainId });
+    },
+    [repays],
+  );
 
   const backToPosition = useCallback(() => {
-    setNavigation({ view: 'position', hasMoved: true });
+    setNavigation(current => ({ ...current, view: 'position', hasMoved: true }));
   }, []);
+
+  const { view, hasMoved, chainId } = navigation;
+  const repay = chainId === null ? undefined : repays[chainId];
+  const onRepay = repay?.onRepay;
 
   const confirmRepay = useCallback(
     async (request: CardRepayRequest) => {
+      if (!onRepay) return false;
       const repaid = await onRepay(request);
       if (repaid) backToPosition();
       return repaid;
     },
     [backToPosition, onRepay],
   );
-
-  const { view, hasMoved } = navigation;
 
   return (
     // Clipped, so the view sliding out does not paint over the sheet's rounded edge.
@@ -129,7 +151,7 @@ const BorrowPositionSheetContent = ({
     // be: a removed view animates out with the `exiting` it was last RENDERED with, which a
     // direction held in state would still have at its previous value.
     <View style={styles.stage}>
-      {view === 'position' ? (
+      {view === 'position' || !repay ? (
         <Animated.View
           key="position"
           entering={hasMoved ? FadeInLeft.duration(SWAP_DURATION) : undefined}
@@ -137,6 +159,8 @@ const BorrowPositionSheetContent = ({
         >
           <PositionView
             figures={figures}
+            tabChainId={tabChainId}
+            onSelectTab={setTabChainId}
             onDismiss={onDismiss}
             onRepay={openRepay}
             topPadding={topPadding}
@@ -157,7 +181,7 @@ const BorrowPositionSheetContent = ({
             onRepay={confirmRepay}
             isRepaying={repay.isRepaying}
             error={repay.error}
-            onClearError={onClearError}
+            onClearError={repay.onClearError}
             onBack={backToPosition}
             onDismiss={onDismiss}
             topPadding={topPadding}
@@ -170,9 +194,12 @@ const BorrowPositionSheetContent = ({
 };
 
 interface PositionViewProps {
-  figures: SpendModeFigures;
+  figures: CreditModeFigures;
+  /** The open tab, or null for the first. Only read when there are two loans. */
+  tabChainId: number | null;
+  onSelectTab: (chainId: number) => void;
   onDismiss: () => void;
-  onRepay: () => void;
+  onRepay: (chainId: number) => void;
   topPadding: number;
   presentation: CardSheetPresentation;
 }
@@ -181,96 +208,161 @@ interface PositionViewProps {
  * The borrow position (Figma 26134:23880): what is still available to borrow, at
  * what rate, the loan itself with a Repay button, and the liquidation warning.
  *
+ * With a loan on each instance, a tab row above switches every figure below it to that loan:
+ * its own headroom, rate, borrowed card and warning, because each instance borrows, accrues and
+ * liquidates on its own and a figure summed across them would describe neither.
+ *
  * The risk panel reads the health factor rather than always showing: the module
  * liquidates below 1.0, and the two bands above that are presentation — warning at
  * the boundary would tell someone their assets are being sold as it happens.
  */
 const PositionView = ({
   figures,
+  tabChainId,
+  onSelectTab,
   onDismiss,
   onRepay,
   topPadding,
   presentation,
-}: PositionViewProps) => (
-  <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
-    {/* Level with the headline rather than on a row above it: the figures are centred and
-        narrow, so the corner is free, and a row of its own is the height the modal was
-        wasting. Drawn first and absolute, so it lays out nothing. */}
-    {presentation === 'modal' ? (
-      <SheetIconButton
-        icon="close"
-        accessibilityLabel="Close"
-        onPress={onDismiss}
-        style={[styles.close, { top: topPadding }]}
-      />
-    ) : null}
-    <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
-      Available to borrow
-    </Text>
-    <Text className="text-center text-[45px] font-semibold leading-[63px] text-white">
-      {figures.availableToBorrow}
-    </Text>
+}: PositionViewProps) => {
+  const { positions } = figures;
+  // The open loan; the first when none is chosen yet or the chosen one has just been repaid.
+  const position =
+    positions.find(candidate => candidate.chainId === tabChainId) ?? positions[0] ?? null;
+  const hasTabs = positions.length > 1;
+  const isModal = presentation === 'modal';
 
-    <View style={styles.apy}>
-      <Text className="text-[16px] font-semibold text-white">{figures.borrowApy} APY</Text>
-      <HelpBadge />
-    </View>
+  // With nothing borrowed, the combined line: what the sheet answers before the first draw.
+  const shown = position ?? {
+    availableToBorrow: figures.availableToBorrow,
+    borrowApy: figures.borrowApy,
+    borrowed: figures.borrowed,
+    creditLimit: figures.creditLimit,
+    borrowedProgress: figures.borrowedProgress,
+    risk: 'none' as const,
+  };
 
-    <View style={styles.positionCard}>
-      <BorrowedSummary
-        borrowed={figures.borrowed}
-        creditLimit={figures.creditLimit}
-        borrowApy={figures.borrowApy}
-        borrowedProgress={figures.borrowedProgress}
-      />
-      {/* Nothing borrowed, nothing to repay. The sheet is now reachable before the first
-          draw — it is where a cardholder goes to see their line — and a Repay button on a
-          position of zero is an offer to do something that cannot be done. */}
-      {figures.hasPosition ? (
-        <Pressable
-          accessibilityLabel="Repay"
-          accessibilityRole="button"
-          className="bg-brand transition-all active:scale-95 active:opacity-80"
-          onPress={onRepay}
-          style={styles.repay}
-        >
-          <Text className="text-[16px] font-bold text-black">Repay</Text>
-        </Pressable>
+  return (
+    <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
+      {/* Level with the headline, or with the tabs when they lead, rather than on a row above
+          it: a row of its own is the height the modal was wasting. Drawn first and absolute,
+          so it lays out nothing. */}
+      {isModal ? (
+        <SheetIconButton
+          icon="close"
+          accessibilityLabel="Close"
+          onPress={onDismiss}
+          style={[styles.close, { top: topPadding }]}
+        />
       ) : null}
-    </View>
 
-    {/* Figma 26134:23892 — the only red on this screen, so the tint, the border
-        and the glyph all key off the one colour. Shown only when the position is
-        actually close to liquidation; a permanent warning is one nobody reads. */}
-    {figures.risk === 'none' ? null : (
-      <View style={styles.risk}>
-        <View style={styles.riskIcon}>
-          <Text className="text-[28px] font-medium leading-[28px] text-[#D96167]">!</Text>
+      {hasTabs ? (
+        <View
+          accessibilityRole="tablist"
+          style={[styles.tabs, isModal && { marginRight: MODAL_CONTROL_SIZE + 12 }]}
+        >
+          {positions.map(candidate => {
+            const isSelected = candidate.chainId === position?.chainId;
+            return (
+              <Pressable
+                key={candidate.chainId}
+                accessibilityLabel={`Loan against ${candidate.backedBy || candidate.label}`}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isSelected }}
+                className="transition-all active:opacity-80"
+                onPress={() => onSelectTab(candidate.chainId)}
+                style={[styles.tab, isSelected && styles.tabSelected]}
+              >
+                <Text
+                  numberOfLines={1}
+                  className={
+                    isSelected
+                      ? 'text-[15px] font-semibold text-white'
+                      : 'text-[15px] font-semibold text-white/50'
+                  }
+                >
+                  {candidate.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-        <View style={styles.riskText}>
-          <Text className="text-[18px] font-medium leading-[18px] text-[#D96167]">
-            {figures.risk === 'at-risk' ? 'At risk' : 'Getting close'}
-          </Text>
-          <Text className="mt-[7px] text-[16px] font-normal leading-[18px] text-white">
-            {figures.risk === 'at-risk'
-              ? 'Repay now to avoid your assets being sold to cover the loan'
-              : 'Repay some of your loan to keep your assets safe'}
-          </Text>
+      ) : null}
+
+      <View style={hasTabs ? styles.belowTabs : null}>
+        <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
+          Available to borrow
+        </Text>
+        <Text className="text-center text-[45px] font-semibold leading-[63px] text-white">
+          {shown.availableToBorrow}
+        </Text>
+
+        <View style={styles.apy}>
+          <Text className="text-[16px] font-semibold text-white">{shown.borrowApy} APY</Text>
+          <HelpBadge />
         </View>
+
+        <View style={styles.positionCard}>
+          <BorrowedSummary
+            borrowed={shown.borrowed}
+            creditLimit={shown.creditLimit}
+            borrowApy={shown.borrowApy}
+            borrowedProgress={shown.borrowedProgress}
+          />
+          {/* Nothing borrowed, nothing to repay. The sheet is reachable before the first
+              draw — it is where a cardholder goes to see their line — and a Repay button on
+              a position of zero is an offer to do something that cannot be done. */}
+          {position ? (
+            <Pressable
+              accessibilityLabel={
+                hasTabs && position.backedBy
+                  ? `Repay the loan against ${position.backedBy}`
+                  : 'Repay'
+              }
+              accessibilityRole="button"
+              className="bg-brand transition-all active:scale-95 active:opacity-80"
+              onPress={() => onRepay(position.chainId)}
+              style={styles.repay}
+            >
+              <Text className="text-[16px] font-bold text-black">Repay</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Figma 26134:23892 — the only red on this screen, so the tint, the border
+            and the glyph all key off the one colour. Shown only when this loan is
+            actually close to liquidation; a permanent warning is one nobody reads. */}
+        {shown.risk === 'none' ? null : (
+          <View style={styles.risk}>
+            <View style={styles.riskIcon}>
+              <Text className="text-[28px] font-medium leading-[28px] text-[#D96167]">!</Text>
+            </View>
+            <View style={styles.riskText}>
+              <Text className="text-[18px] font-medium leading-[18px] text-[#D96167]">
+                {shown.risk === 'at-risk' ? 'At risk' : 'Getting close'}
+              </Text>
+              <Text className="mt-[7px] text-[16px] font-normal leading-[18px] text-white">
+                {shown.risk === 'at-risk'
+                  ? 'Repay now to avoid your assets being sold to cover the loan'
+                  : 'Repay some of your loan to keep your assets safe'}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
-    )}
 
-    <Pressable
-      accessibilityLabel="Close"
-      accessibilityRole="button"
-      className="transition-all active:scale-95 active:opacity-80"
-      onPress={onDismiss}
-      style={styles.cancel}
-    >
-      <Text className="text-[16px] font-semibold text-white">Cancel</Text>
-    </Pressable>
-  </View>
-);
+      <Pressable
+        accessibilityLabel="Close"
+        accessibilityRole="button"
+        className="transition-all active:scale-95 active:opacity-80"
+        onPress={onDismiss}
+        style={styles.cancel}
+      >
+        <Text className="text-[16px] font-semibold text-white">Cancel</Text>
+      </Pressable>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   stage: { overflow: 'hidden' },
@@ -303,6 +395,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: TRACK_TO_REPAY,
   },
+  tabs: {
+    backgroundColor: '#2B2B2B',
+    borderRadius: 100,
+    flexDirection: 'row',
+    gap: 4,
+    height: MODAL_CONTROL_SIZE,
+    padding: 4,
+  },
+  tab: {
+    alignItems: 'center',
+    borderRadius: 100,
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  tabSelected: { backgroundColor: '#404040' },
+  belowTabs: { marginTop: TABS_TO_HEADLINE },
   risk: {
     backgroundColor: 'rgba(195,66,72,0.15)',
     borderColor: 'rgba(195,66,72,0.6)',

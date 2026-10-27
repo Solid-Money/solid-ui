@@ -5,7 +5,10 @@ import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 
-import type { CreditModeFigures } from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
+import type {
+  CollateralRowFigures,
+  CreditModeFigures,
+} from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import type {
   SpendableAssetIcon,
   SpendableAssetRow,
@@ -73,6 +76,14 @@ const COLLATERAL_ICON = {
   },
 } as const;
 
+/** The crypto Base takes as collateral, drawn with the marks the deposit screen uses. */
+const COLLATERAL_TOKEN_LOGO = {
+  cbbtc: getAsset('images/cbbtc.png'),
+  sol: getAsset('images/sol.png'),
+  aave: getAsset('images/aave.png'),
+  zec: getAsset('images/zec.png'),
+} as const;
+
 const TOKEN_LOGO = {
   usdc: getAsset('images/spend-mode-token-usdc.svg'),
   usdt: getAsset('images/spend-mode-token-usdt.svg'),
@@ -119,6 +130,23 @@ const AssetLogo = ({ icon }: { icon: SpendableAssetIcon }) => {
       </View>
       <Image source={BADGE_DOT} style={styles.badgeDot} />
     </View>
+  );
+};
+
+/** A collateral row's mark: the yield glyph in its tinted circle, or a token's own logo. */
+const CollateralLogo = ({ icon }: { icon: CollateralRowFigures['icon'] }) => {
+  if (icon === 'usd' || icon === 'eur') {
+    return (
+      <View accessible={false} style={styles.collateralIcon}>
+        <Image
+          source={COLLATERAL_ICON[icon].source}
+          style={{ width: COLLATERAL_ICON[icon].width, height: COLLATERAL_ICON[icon].height }}
+        />
+      </View>
+    );
+  }
+  return (
+    <Image accessible={false} source={COLLATERAL_TOKEN_LOGO[icon]} style={styles.collateralLogo} />
   );
 };
 
@@ -296,7 +324,7 @@ interface CreditPanelProps extends BorrowedSummaryFigures {
 /**
  * The Credit panel (Figma 29123:9483): the borrowed block over the assets that back it, on
  * every instance the card borrows on — soUSD on Fuse and, once euro spending is enabled, soEUR
- * on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
+ * and the crypto collateral (cbBTC, SOL, AAVE, cbZEC) on Base. A euro asset reads in euros with its dollar value under it, because the line it backs
  * is in dollars.
  */
 export const SpendModeCreditPanel = ({
@@ -342,21 +370,16 @@ export const SpendModeCreditPanel = ({
               <HelpBadge />
             )}
           </View>
-          <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
-            Keeps earning
-          </Text>
+          {/* True of the yield shares only: Bitcoin locked as collateral earns nothing. */}
+          {collateral.every(row => row.icon === 'usd' || row.icon === 'eur') ? (
+            <Text className="text-[14px] font-normal leading-[18px] text-[#94F27F]">
+              Keeps earning
+            </Text>
+          ) : null}
         </View>
         {collateral.map(row => (
           <View key={row.key} style={styles.collateralRow}>
-            <View accessible={false} style={styles.collateralIcon}>
-              <Image
-                source={COLLATERAL_ICON[row.icon].source}
-                style={{
-                  width: COLLATERAL_ICON[row.icon].width,
-                  height: COLLATERAL_ICON[row.icon].height,
-                }}
-              />
-            </View>
+            <CollateralLogo icon={row.icon} />
             <Text className="flex-1 text-[16px] font-medium leading-[20px] text-white">
               {row.label}
             </Text>
@@ -481,6 +504,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 32,
   },
+  collateralLogo: { borderRadius: 16, height: 32, width: 32 },
   collateralValue: { alignItems: 'flex-end', gap: 4 },
 
   // Figma places the badge at 15, the message at 50.5 and 12 from the top, and leaves 15
