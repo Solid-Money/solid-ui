@@ -149,6 +149,50 @@ export const ASSETS = {
     module: require('@/assets/images/agent-wallet.png'),
     hash: '297f7f78',
   },
+  'images/ai-api/agent-claude-code.svg': {
+    module: require('@/assets/images/ai-api/agent-claude-code.svg'),
+    hash: '0b202cc5',
+  },
+  'images/ai-api/agent-codex.svg': {
+    module: require('@/assets/images/ai-api/agent-codex.svg'),
+    hash: '0e255260',
+  },
+  'images/ai-api/agent-hermes.svg': {
+    module: require('@/assets/images/ai-api/agent-hermes.svg'),
+    hash: '98531892',
+  },
+  'images/ai-api/agent-openclaw.svg': {
+    module: require('@/assets/images/ai-api/agent-openclaw.svg'),
+    hash: 'cc6f424d',
+  },
+  'images/ai-api/agent-opencode.svg': {
+    module: require('@/assets/images/ai-api/agent-opencode.svg'),
+    hash: 'a5e54299',
+  },
+  'images/ai-api/model-claude.svg': {
+    module: require('@/assets/images/ai-api/model-claude.svg'),
+    hash: 'd0b1efce',
+  },
+  'images/ai-api/model-deepseek.svg': {
+    module: require('@/assets/images/ai-api/model-deepseek.svg'),
+    hash: 'a1c3b3d2',
+  },
+  'images/ai-api/model-gemini.svg': {
+    module: require('@/assets/images/ai-api/model-gemini.svg'),
+    hash: '1e881f7e',
+  },
+  'images/ai-api/model-meta.svg': {
+    module: require('@/assets/images/ai-api/model-meta.svg'),
+    hash: 'd9e9614a',
+  },
+  'images/ai-api/model-mistral.svg': {
+    module: require('@/assets/images/ai-api/model-mistral.svg'),
+    hash: 'a6759454',
+  },
+  'images/ai-api/model-openai.svg': {
+    module: require('@/assets/images/ai-api/model-openai.svg'),
+    hash: '1eae3bf1',
+  },
   'images/app-update-hero.png': {
     module: require('@/assets/images/app-update-hero.png'),
     hash: '4ac925b5',
