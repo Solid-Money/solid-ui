@@ -6,6 +6,7 @@ import Animated, {
   FadeOutLeft,
   FadeOutRight,
 } from 'react-native-reanimated';
+import { base, fuse } from 'viem/chains';
 
 import {
   type CardSheetPresentation,
@@ -13,9 +14,7 @@ import {
 } from '@/components/Card/NewCardDetails/SpendMode/CardBottomSheet.types';
 import HelpBadge from '@/components/Card/NewCardDetails/SpendMode/HelpBadge';
 import RepaySheetContent from '@/components/Card/NewCardDetails/SpendMode/RepaySheetContent';
-import SheetIconButton, {
-  MODAL_CONTROL_SIZE,
-} from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
+import SheetIconButton from '@/components/Card/NewCardDetails/SpendMode/SheetIconButton';
 import { BorrowedSummary } from '@/components/Card/NewCardDetails/SpendMode/SpendModePanels';
 import { Text } from '@/components/ui/text';
 
@@ -38,8 +37,18 @@ const CARD_TO_RISK = 25;
 const RISK_TO_CANCEL = 36;
 /** Figma puts Repay 29 below the track and 23 above the card's bottom edge. */
 const TRACK_TO_REPAY = 29;
-/** Below the loan tabs, to the headline they switch. */
-const TABS_TO_HEADLINE = 24;
+/** Between the two loans when the cardholder owes on Fuse and on Base. */
+const CARD_TO_CARD = 12;
+
+const CHAIN_NAME: Record<number, string> = { [fuse.id]: fuse.name, [base.id]: base.name };
+
+/**
+ * What a loan is called on its card: its chain. Not `backedBy`, which names every collateral
+ * asset the Safe holds there, loose balances included, so it can name a token the loan is not
+ * borrowed against.
+ */
+const loanLabel = (position: { chainId: number }): string =>
+  CHAIN_NAME[position.chainId] || `Chain ${position.chainId}`;
 
 /** The same slide the spend-mode sheet swaps its panels on, so the two sheets move alike. */
 const SWAP_DURATION = 240;
@@ -80,9 +89,10 @@ type SheetView = 'position' | 'repay';
  * The borrow-position sheet: the position itself, and the repay step behind its Repay button.
  *
  * A cardholder can owe on Fuse and on Base at once, and the two are separate loans — each its
- * own debt, collateral and liquidation — so each is shown and repaid on its own. Owing on both,
- * the sheet opens on a tab per loan; owing on one, it shows that one alone; with nothing
- * borrowed, the combined line, so the sheet still answers "what can I borrow".
+ * own debt, collateral and liquidation — so each is shown and repaid on its own: one card per
+ * loan, one below the other, under the combined figure available to borrow. Owing on one, that
+ * card alone; with nothing borrowed, the combined line, so the sheet still answers "what can I
+ * borrow".
  *
  * Both live in one sheet rather than a second one stacked on top, because repaying is a
  * continuation of reading the position, not a new task — and a sheet that slides its content
@@ -107,13 +117,8 @@ const BorrowPositionSheetContent = ({
     chainId: number | null;
   }>({ view: 'position', hasMoved: false, chainId: null });
 
-  // Which loan's tab is open. Kept here rather than in the position view, so coming back from
-  // a repayment lands on the loan that was just repaid.
-  const [tabChainId, setTabChainId] = useState<number | null>(null);
-
   useEffect(() => {
     setNavigation({ view: 'position', hasMoved: false, chainId: null });
-    setTabChainId(null);
   }, [session]);
 
   const openRepay = useCallback(
@@ -159,8 +164,6 @@ const BorrowPositionSheetContent = ({
         >
           <PositionView
             figures={figures}
-            tabChainId={tabChainId}
-            onSelectTab={setTabChainId}
             onDismiss={onDismiss}
             onRepay={openRepay}
             topPadding={topPadding}
@@ -195,9 +198,6 @@ const BorrowPositionSheetContent = ({
 
 interface PositionViewProps {
   figures: CreditModeFigures;
-  /** The open tab, or null for the first. Only read when there are two loans. */
-  tabChainId: number | null;
-  onSelectTab: (chainId: number) => void;
   onDismiss: () => void;
   onRepay: (chainId: number) => void;
   topPadding: number;
@@ -208,46 +208,31 @@ interface PositionViewProps {
  * The borrow position (Figma 26134:23880): what is still available to borrow, at
  * what rate, the loan itself with a Repay button, and the liquidation warning.
  *
- * With a loan on each instance, a tab row above switches every figure below it to that loan:
- * its own headroom, rate, borrowed card and warning, because each instance borrows, accrues and
- * liquidates on its own and a figure summed across them would describe neither.
+ * The headline and rate cover every instance — USD and EUR Yield are the same product, on two
+ * chains — and each loan below it is its own card with its own Repay, because each is repaid,
+ * and liquidated, on its own chain.
  *
  * The risk panel reads the health factor rather than always showing: the module
  * liquidates below 1.0, and the two bands above that are presentation — warning at
- * the boundary would tell someone their assets are being sold as it happens.
+ * the boundary would tell someone their assets are being sold as it happens. It sits under
+ * the loan it is about.
  */
 const PositionView = ({
   figures,
-  tabChainId,
-  onSelectTab,
   onDismiss,
   onRepay,
   topPadding,
   presentation,
 }: PositionViewProps) => {
   const { positions } = figures;
-  // The open loan; the first when none is chosen yet or the chosen one has just been repaid.
-  const position =
-    positions.find(candidate => candidate.chainId === tabChainId) ?? positions[0] ?? null;
-  const hasTabs = positions.length > 1;
-  const isModal = presentation === 'modal';
-
-  // With nothing borrowed, the combined line: what the sheet answers before the first draw.
-  const shown = position ?? {
-    availableToBorrow: figures.availableToBorrow,
-    borrowApy: figures.borrowApy,
-    borrowed: figures.borrowed,
-    creditLimit: figures.creditLimit,
-    borrowedProgress: figures.borrowedProgress,
-    risk: 'none' as const,
-  };
+  const hasTwo = positions.length > 1;
 
   return (
     <View style={{ paddingHorizontal: sheetBodyInset(presentation), paddingTop: topPadding }}>
-      {/* Level with the headline, or with the tabs when they lead, rather than on a row above
-          it: a row of its own is the height the modal was wasting. Drawn first and absolute,
-          so it lays out nothing. */}
-      {isModal ? (
+      {/* Level with the headline rather than on a row above it: the figures are centred and
+          narrow, so the corner is free, and a row of its own is the height the modal was
+          wasting. Drawn first and absolute, so it lays out nothing. */}
+      {presentation === 'modal' ? (
         <SheetIconButton
           icon="close"
           accessibilityLabel="Close"
@@ -255,101 +240,79 @@ const PositionView = ({
           style={[styles.close, { top: topPadding }]}
         />
       ) : null}
+      <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
+        Available to borrow
+      </Text>
+      <Text className="text-center text-[45px] font-semibold leading-[63px] text-white">
+        {figures.availableToBorrow}
+      </Text>
 
-      {hasTabs ? (
-        <View
-          accessibilityRole="tablist"
-          style={[styles.tabs, isModal && { marginRight: MODAL_CONTROL_SIZE + 12 }]}
-        >
-          {positions.map(candidate => {
-            const isSelected = candidate.chainId === position?.chainId;
-            return (
-              <Pressable
-                key={candidate.chainId}
-                accessibilityLabel={`Loan against ${candidate.backedBy || candidate.label}`}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isSelected }}
-                className="transition-all active:opacity-80"
-                onPress={() => onSelectTab(candidate.chainId)}
-                style={[styles.tab, isSelected && styles.tabSelected]}
-              >
-                <Text
-                  numberOfLines={1}
-                  className={
-                    isSelected
-                      ? 'text-[15px] font-semibold text-white'
-                      : 'text-[15px] font-semibold text-white/50'
-                  }
-                >
-                  {candidate.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+      <View style={styles.apy}>
+        <Text className="text-[16px] font-semibold text-white">{figures.borrowApy} APY</Text>
+        <HelpBadge />
+      </View>
 
-      <View style={hasTabs ? styles.belowTabs : null}>
-        <Text className="text-center text-[16px] font-medium leading-[23px] text-white/70">
-          Available to borrow
-        </Text>
-        <Text className="text-center text-[45px] font-semibold leading-[63px] text-white">
-          {shown.availableToBorrow}
-        </Text>
-
-        <View style={styles.apy}>
-          <Text className="text-[16px] font-semibold text-white">{shown.borrowApy} APY</Text>
-          <HelpBadge />
-        </View>
-
+      {positions.length === 0 ? (
+        // Nothing borrowed, nothing to repay. The sheet is reachable before the first draw —
+        // it is where a cardholder goes to see their line — and a Repay button on a position
+        // of zero is an offer to do something that cannot be done.
         <View style={styles.positionCard}>
           <BorrowedSummary
-            borrowed={shown.borrowed}
-            creditLimit={shown.creditLimit}
-            borrowApy={shown.borrowApy}
-            borrowedProgress={shown.borrowedProgress}
+            borrowed={figures.borrowed}
+            creditLimit={figures.creditLimit}
+            borrowApy={figures.borrowApy}
+            borrowedProgress={figures.borrowedProgress}
           />
-          {/* Nothing borrowed, nothing to repay. The sheet is reachable before the first
-              draw — it is where a cardholder goes to see their line — and a Repay button on
-              a position of zero is an offer to do something that cannot be done. */}
-          {position ? (
-            <Pressable
-              accessibilityLabel={
-                hasTabs && position.backedBy
-                  ? `Repay the loan against ${position.backedBy}`
-                  : 'Repay'
-              }
-              accessibilityRole="button"
-              className="bg-brand transition-all active:scale-95 active:opacity-80"
-              onPress={() => onRepay(position.chainId)}
-              style={styles.repay}
-            >
-              <Text className="text-[16px] font-bold text-black">Repay</Text>
-            </Pressable>
-          ) : null}
         </View>
+      ) : (
+        positions.map((position, index) => (
+          <View key={position.chainId}>
+            <View style={[styles.positionCard, index > 0 && styles.nextCard]}>
+              {/* With two loans, each card says which it is, so the two Repay buttons are
+                  told apart without the collateral list. One loan needs no name. */}
+              {hasTwo ? (
+                <Text
+                  className="px-5 text-[14px] font-normal leading-[16px] text-white/50"
+                  style={styles.loanLabel}
+                >
+                  {loanLabel(position)}
+                </Text>
+              ) : null}
+              <BorrowedSummary {...position} />
+              <Pressable
+                accessibilityLabel={hasTwo ? `Repay the ${loanLabel(position)} loan` : 'Repay'}
+                accessibilityRole="button"
+                className="bg-brand transition-all active:scale-95 active:opacity-80"
+                onPress={() => onRepay(position.chainId)}
+                style={styles.repay}
+              >
+                <Text className="text-[16px] font-bold text-black">Repay</Text>
+              </Pressable>
+            </View>
 
-        {/* Figma 26134:23892 — the only red on this screen, so the tint, the border
-            and the glyph all key off the one colour. Shown only when this loan is
-            actually close to liquidation; a permanent warning is one nobody reads. */}
-        {shown.risk === 'none' ? null : (
-          <View style={styles.risk}>
-            <View style={styles.riskIcon}>
-              <Text className="text-[28px] font-medium leading-[28px] text-[#D96167]">!</Text>
-            </View>
-            <View style={styles.riskText}>
-              <Text className="text-[18px] font-medium leading-[18px] text-[#D96167]">
-                {shown.risk === 'at-risk' ? 'At risk' : 'Getting close'}
-              </Text>
-              <Text className="mt-[7px] text-[16px] font-normal leading-[18px] text-white">
-                {shown.risk === 'at-risk'
-                  ? 'Repay now to avoid your assets being sold to cover the loan'
-                  : 'Repay some of your loan to keep your assets safe'}
-              </Text>
-            </View>
+            {/* Figma 26134:23892 — the only red on this screen, so the tint, the border
+                and the glyph all key off the one colour. Shown only when this loan is
+                actually close to liquidation; a permanent warning is one nobody reads. */}
+            {position.risk === 'none' ? null : (
+              <View style={styles.risk}>
+                <View style={styles.riskIcon}>
+                  <Text className="text-[28px] font-medium leading-[28px] text-[#D96167]">!</Text>
+                </View>
+                <View style={styles.riskText}>
+                  <Text className="text-[18px] font-medium leading-[18px] text-[#D96167]">
+                    {position.risk === 'at-risk' ? 'At risk' : 'Getting close'}
+                  </Text>
+                  <Text className="mt-[7px] text-[16px] font-normal leading-[18px] text-white">
+                    {position.risk === 'at-risk'
+                      ? 'Repay now to avoid your assets being sold to cover the loan'
+                      : 'Repay some of your loan to keep your assets safe'}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        ))
+      )}
 
       <Pressable
         accessibilityLabel="Close"
@@ -395,23 +358,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: TRACK_TO_REPAY,
   },
-  tabs: {
-    backgroundColor: '#2B2B2B',
-    borderRadius: 100,
-    flexDirection: 'row',
-    gap: 4,
-    height: MODAL_CONTROL_SIZE,
-    padding: 4,
-  },
-  tab: {
-    alignItems: 'center',
-    borderRadius: 100,
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  tabSelected: { backgroundColor: '#404040' },
-  belowTabs: { marginTop: TABS_TO_HEADLINE },
+  nextCard: { marginTop: CARD_TO_CARD },
+  loanLabel: { marginBottom: 10 },
   risk: {
     backgroundColor: 'rgba(195,66,72,0.15)',
     borderColor: 'rgba(195,66,72,0.6)',

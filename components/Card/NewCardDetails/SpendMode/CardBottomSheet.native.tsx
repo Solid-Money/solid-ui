@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet';
 
 import {
   SHEET_HANDLE_HEIGHT,
@@ -24,6 +29,7 @@ const CardBottomSheet = ({
   onOpenChange,
   designTop,
   designBottom,
+  scrollable = false,
   children,
 }: CardBottomSheetProps) => {
   const insets = useSafeAreaInsets();
@@ -78,11 +84,22 @@ const CardBottomSheet = ({
         height: SHEET_HANDLE_HEIGHT,
       }}
     >
-      <BottomSheetView style={{ paddingBottom: designBottom + insets.bottom }}>
-        {/* The handle is laid out above the body here, so it has already spent
-            part of the distance Figma measures from the sheet's top edge. */}
-        {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
-      </BottomSheetView>
+      {/* The handle is laid out above the body here, so it has already spent
+          part of the distance Figma measures from the sheet's top edge. */}
+      {scrollable ? (
+        // Gorhom sizes to a scroll view's content too, capped at the screen, so the sheet
+        // behaves exactly as below until the body outgrows it and then scrolls.
+        <BottomSheetScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: designBottom + insets.bottom }}
+        >
+          {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
+        </BottomSheetScrollView>
+      ) : (
+        <BottomSheetView style={{ paddingBottom: designBottom + insets.bottom }}>
+          {children({ session, topPadding: Math.max(designTop - SHEET_HANDLE_SPACE, 0) })}
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 };

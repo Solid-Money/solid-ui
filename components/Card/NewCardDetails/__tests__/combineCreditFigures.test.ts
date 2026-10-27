@@ -109,8 +109,6 @@ describe('combineCreditFigures', () => {
       positions: [
         {
           chainId: 122,
-          label: 'USD Yield',
-          availableToBorrow: '$175.70',
           borrowed: '$0.80',
           creditLimit: '$176.50',
           borrowApy: '4.00%',
@@ -200,17 +198,12 @@ describe('combineCreditFigures', () => {
         base: baseLoan(),
       });
 
-      expect(
-        figures.positions.map(position => [position.chainId, position.label, position.backedBy]),
-      ).toEqual([
-        [122, 'USD Yield', 'USD Yield'],
-        [8453, 'Bitcoin', 'Bitcoin'],
+      expect(figures.positions.map(position => [position.chainId, position.backedBy])).toEqual([
+        [122, 'USD Yield'],
+        [8453, 'Bitcoin'],
       ]);
-      // Each tab's headline is its own instance's headroom, not the sum.
-      expect(figures.positions.map(position => position.availableToBorrow)).toEqual([
-        '$175.70',
-        '$350',
-      ]);
+      // One headline across both: the sheet's "Available to borrow".
+      expect(figures.availableToBorrow).toBe('$525.70');
       expect(figures.positions[1]).toMatchObject({ borrowed: '$50', creditLimit: '$400' });
     });
 
@@ -264,7 +257,6 @@ describe('combineCreditFigures', () => {
       });
 
       expect(figures.positions[0].backedBy).toBe('Bitcoin, Solana and EUR Yield');
-      expect(figures.positions[0].label).toBe('Bitcoin +2');
     });
   });
 
