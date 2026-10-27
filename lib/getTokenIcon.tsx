@@ -69,6 +69,12 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/wfuse.png'),
       };
+    // Coinbase's wrapped ZEC, a Base collateral; the deposit list carries the mark as ZEC.
+    case 'CBZEC':
+      return {
+        type: 'image',
+        source: getAsset('images/zec.png'),
+      };
     case 'G$':
       return {
         type: 'image',

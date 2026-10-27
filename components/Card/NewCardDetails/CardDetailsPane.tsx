@@ -33,6 +33,7 @@ import ManageCardSheet from '@/components/Card/NewCardDetails/ManageCardSheet';
 import SpendingModeCard from '@/components/Card/NewCardDetails/SpendingModeCard';
 import BorrowPositionCard from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionCard';
 import BorrowPositionSheet from '@/components/Card/NewCardDetails/SpendMode/BorrowPositionSheet';
+import useCreditModeFigures from '@/components/Card/NewCardDetails/SpendMode/useCreditModeFigures';
 import useSpendModeFigures from '@/components/Card/NewCardDetails/SpendMode/useSpendModeFigures';
 import { useCardPaneVisibility } from '@/components/Card/NewCardDetails/useCardPaneVisibility';
 import RealTimeFundingModal from '@/components/Card/RealTimeFundingModal';
@@ -43,6 +44,7 @@ import { isCardSpendV2Configured } from '@/constants/cardSpendV2';
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { CARD_FROZEN_BY_SOLID_MESSAGE } from '@/constants/errors';
 import { path } from '@/constants/path';
+import { useBaseCreditInstance } from '@/hooks/useCardCreditPositions';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import {
@@ -132,6 +134,15 @@ const CardDetailsPane = () => {
   // Which funds the card draws on — cash, credit or both. UI only for now: the
   // sheet previews the three modes and never commits one.
   const spendModeFigures = useSpendModeFigures();
+  // The borrow-position card counts Base as well as Fuse, so a loan drawn only on Base still
+  // shows here. Base is read only for a cardholder live on it; everyone else reads Fuse alone,
+  // through the registration the figures above already use.
+  const { isLive: borrowsOnBase } = useBaseCreditInstance();
+  const creditFigures = useCreditModeFigures({ enabled: borrowsOnBase });
+  const showsBorrowPosition =
+    spendModeFigures.showsBorrowPosition ||
+    creditFigures.hasDebt ||
+    (spendModeFigures.canBorrow && creditFigures.hasLine);
   /**
    * Real-Time Funding: the card draws from the cardholder's own wallet at the
    * moment of the swipe, on an ERC-20 allowance they grant in advance.
@@ -422,13 +433,13 @@ const CardDetailsPane = () => {
               see `showsBorrowPosition`. A cardholder on Credit needs to see what they can
               spend against BEFORE they spend it; gating on the loan meant the first thing
               they learned about their own line was a decline. */}
-          {spendModeFigures.showsBorrowPosition ? (
+          {showsBorrowPosition ? (
             <HeroEnter spec={HERO_ENTER.borrowPosition} style={styles.borrowPositionCard}>
               <BorrowPositionCard
-                borrowed={spendModeFigures.borrowed}
-                creditLimit={spendModeFigures.creditLimit}
-                borrowApy={spendModeFigures.borrowApy}
-                borrowedProgress={spendModeFigures.borrowedProgress}
+                borrowed={creditFigures.borrowed}
+                creditLimit={creditFigures.creditLimit}
+                borrowApy={creditFigures.borrowApy}
+                borrowedProgress={creditFigures.borrowedProgress}
                 onPress={() => setIsBorrowPositionOpen(true)}
               />
             </HeroEnter>
