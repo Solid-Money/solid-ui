@@ -53,7 +53,8 @@ export type WalletDepositTokenConfig = {
  *   Base, and USDC and USDT on Fuse, each on that chain's cash module allowlist.
  * - Deposit it into a vault from the wallet (see `depositConfig` in
  *   `constants/vaults`): USDC and USDT into soUSD on every bridge chain, ETH and
- *   WETH into soETH on Ethereum, FUSE and WFUSE into soFUSE on Fuse.
+ *   WETH into soETH on Ethereum, FUSE and WFUSE into soFUSE on Fuse, EURC into
+ *   soEUR on Base.
  *
  * A Wirex cardholder's USDC, USDT and EURC go to a minted address instead, which
  * the pipeline delivers to their Safe on Fuse (EURC: on Base).
@@ -99,8 +100,9 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: [mainnet.id, polygon.id, base.id, arbitrum.id, bsc.id, fuse.id],
   },
   {
-    // Wirex cardholders only (see `offersWalletDepositEurc`), on the chains
-    // `EURC_TOKENS` lists, which the pipeline delivers from.
+    // On the chains `EURC_TOKENS` lists. A Wirex cardholder's goes through the
+    // pipeline to their Safe on Base, where the card spends it on euro purchases;
+    // anyone else's lands in the Safe on Base, where soEUR takes it.
     symbol: 'EURC',
     name: 'Euro Coin',
     group: 'stablecoins',

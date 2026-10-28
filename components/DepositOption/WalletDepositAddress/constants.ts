@@ -26,7 +26,7 @@ export type WalletDepositToken = {
   icon: ImageSourcePropType;
 };
 
-/** Who the screen is for, which decides EURC and where stablecoins go. */
+/** Who the screen is for, which decides where stablecoins go. */
 type WalletDepositProvider = CardProvider | null | undefined;
 
 /**
@@ -111,9 +111,6 @@ const isPositiveAmount = (value: string): boolean => {
 /** The stablecoins the deposit pipeline has a route for. */
 const DIRECT_DEPOSIT_SYMBOLS = new Set(['USDC', 'USDT', 'EURC']);
 
-/** EURC, which only a Wirex cardholder is offered. */
-const EURC_SYMBOL = 'EURC';
-
 /**
  * The chain the screen opens on, and that every currency it carries opens on.
  *
@@ -122,16 +119,6 @@ const EURC_SYMBOL = 'EURC';
  * they open there.
  */
 const DEFAULT_WALLET_DEPOSIT_CHAIN_ID = base.id;
-
-/**
- * Whether the screen offers EURC at all: to Wirex cardholders only.
- *
- * The pipeline delivers it as EURC to their Safe on Base, the balance the Base
- * spend-module instance sells for euro purchases. For anyone else it would be
- * a balance nothing spends, so they are not offered it.
- */
-export const offersWalletDepositEurc = (provider: WalletDepositProvider): boolean =>
-  provider === CardProvider.WIREX;
 
 /**
  * Whether the deposit address is one the pipeline mints, rather than the Safe.
@@ -173,10 +160,6 @@ const WRAPPED_EQUIVALENT: Record<string, string> = {
 const findToken = (symbol?: string): WalletDepositTokenConfig | undefined =>
   WALLET_DEPOSIT_TOKENS.find(token => token.symbol === symbol);
 
-/** Whether a currency is on offer to this person at all, on any chain. */
-const isOffered = (token: WalletDepositTokenConfig, provider: WalletDepositProvider): boolean =>
-  token.symbol !== EURC_SYMBOL || offersWalletDepositEurc(provider);
-
 const isOpenChain = (chainId: number): boolean => !getBridgeChain(chainId)?.isComingSoon;
 
 /** Whether everyone is offered the currency on this chain, not only those with access. */
@@ -188,7 +171,6 @@ const getTokenChainIds = (
   token: WalletDepositTokenConfig,
   { provider, hasNewTokens = false }: WalletDepositViewer,
 ): number[] => {
-  if (!isOffered(token, provider)) return [];
   const minted = usesDirectDepositAddress(token.symbol, provider);
 
   return WALLET_DEPOSIT_CHAIN_IDS.filter(

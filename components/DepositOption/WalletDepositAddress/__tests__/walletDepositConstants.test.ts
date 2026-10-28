@@ -11,7 +11,6 @@ import {
   getWalletDepositTokens,
   groupWalletDepositTokens,
   matchesWalletDepositSearch,
-  offersWalletDepositEurc,
   resolveWalletDepositChain,
   resolveWalletDepositMinimum,
   resolveWalletDepositSymbol,
@@ -109,6 +108,7 @@ describe('getWalletDepositTokens', () => {
     expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual([
       'USDC',
       'USDT',
+      'EURC',
       'cbBTC',
       'cbZEC',
       'AAVE',
@@ -400,6 +400,7 @@ describe('getAllWalletDepositTokens', () => {
     expect(symbolsOf(getAllWalletDepositTokens(ALL))).toEqual([
       'USDC',
       'USDT',
+      'EURC',
       'ETH',
       'FUSE',
       'cbBTC',
@@ -521,23 +522,11 @@ describe('resolveWalletDepositChain', () => {
  */
 describe('without the new deposit tokens', () => {
   it('offers only the currencies everyone is offered', () => {
-    expect(symbolsOf(getAllWalletDepositTokens())).toEqual([
-      'USDC',
-      'USDT',
-      'ETH',
-      'FUSE',
-      'WETH',
-      'WFUSE',
-    ]);
-    expect(symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX }))).toEqual([
-      'USDC',
-      'USDT',
-      'EURC',
-      'ETH',
-      'FUSE',
-      'WETH',
-      'WFUSE',
-    ]);
+    const released = ['USDC', 'USDT', 'EURC', 'ETH', 'FUSE', 'WETH', 'WFUSE'];
+    expect(symbolsOf(getAllWalletDepositTokens())).toEqual(released);
+    expect(symbolsOf(getAllWalletDepositTokens({ provider: CardProvider.WIREX }))).toEqual(
+      released,
+    );
   });
 
   it('offers each on the chains it is of use on', () => {
@@ -554,7 +543,7 @@ describe('without the new deposit tokens', () => {
   });
 
   it('lists per chain what lands of use there', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id))).toEqual(['USDC', 'USDT', 'WETH']);
+    expect(symbolsOf(getWalletDepositTokens(base.id))).toEqual(['USDC', 'USDT', 'EURC', 'WETH']);
     expect(symbolsOf(getWalletDepositTokens(mainnet.id))).toEqual(['USDC', 'USDT', 'ETH', 'WETH']);
     expect(symbolsOf(getWalletDepositTokens(polygon.id))).toEqual(['USDC', 'USDT']);
     expect(symbolsOf(getWalletDepositTokens(fuse.id))).toEqual(['USDC', 'USDT', 'FUSE', 'WFUSE']);
@@ -571,36 +560,41 @@ describe('without the new deposit tokens', () => {
 });
 
 /**
- * EURC is offered to Wirex cardholders only, on Base only, and through the
- * minted address - the pipeline delivers it to their Safe on Base.
+ * EURC is offered to everyone, on Base only. A Wirex cardholder's goes through
+ * the minted address, which the pipeline delivers to their Safe on Base, where
+ * the card spends it on euro purchases; anyone else's lands in the Safe on Base,
+ * where soEUR takes it.
  */
 describe('EURC', () => {
-  it('is offered to Wirex cardholders only', () => {
-    expect(offersWalletDepositEurc(CardProvider.WIREX)).toBe(true);
-    expect(offersWalletDepositEurc(CardProvider.RAIN)).toBe(false);
-    expect(offersWalletDepositEurc(null)).toBe(false);
-    expect(offersWalletDepositEurc(undefined)).toBe(false);
+  it('is offered to everyone', () => {
+    [ALL, WIREX, RAIN, {}].forEach(viewer => {
+      expect(symbolsOf(getAllWalletDepositTokens(viewer))).toContain('EURC');
+      expect(symbolsOf(getWalletDepositTokens(base.id, viewer))).toContain('EURC');
+    });
   });
 
-  it('is left out unless the cardholder is Wirex', () => {
-    expect(symbolsOf(getAllWalletDepositTokens(ALL))).not.toContain('EURC');
-    expect(symbolsOf(getAllWalletDepositTokens(RAIN))).not.toContain('EURC');
-    expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).not.toContain('EURC');
+  it('goes through the pipeline for a Wirex cardholder alone', () => {
+    expect(usesDirectDepositAddress('EURC', CardProvider.WIREX)).toBe(true);
+    expect(usesDirectDepositAddress('EURC', CardProvider.RAIN)).toBe(false);
+    expect(usesDirectDepositAddress('EURC', null)).toBe(false);
   });
 
   it('follows the other stablecoins in "Select token"', () => {
-    const symbols = symbolsOf(getAllWalletDepositTokens(WIREX));
-    expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
+    [ALL, WIREX].forEach(viewer => {
+      const symbols = symbolsOf(getAllWalletDepositTokens(viewer));
+      expect(symbols.slice(0, 4)).toEqual(['USDC', 'USDT', 'EURC', 'ETH']);
+    });
   });
 
   it('is offered on Base only', () => {
-    expect(symbolsOf(getWalletDepositTokens(base.id, WIREX))).toContain('EURC');
-    expect(symbolsOf(getWalletDepositTokens(mainnet.id, WIREX))).not.toContain('EURC');
-    expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', WIREX))).toEqual([base.id]);
+    [ALL, WIREX].forEach(viewer => {
+      expect(symbolsOf(getWalletDepositTokens(mainnet.id, viewer))).not.toContain('EURC');
+      expect(chainIdsOf(getWalletDepositNetworksForToken('EURC', viewer))).toEqual([base.id]);
+    });
   });
 
   it('opens on Base, whatever chain was showing', () => {
-    expect(resolveWalletDepositChain('EURC', undefined, WIREX)).toBe(base.id);
+    expect(resolveWalletDepositChain('EURC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('EURC', fuse.id, WIREX)).toBe(base.id);
   });
 

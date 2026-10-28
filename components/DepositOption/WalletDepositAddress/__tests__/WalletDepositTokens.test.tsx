@@ -70,9 +70,9 @@ describe('WalletDepositTokens', () => {
     expect(shown).toEqual(
       expect.arrayContaining(['cbZEC', 'Coinbase Wrapped ZEC', 'cbBTC', 'Coinbase Wrapped BTC']),
     );
-    expect(shown).not.toContain('EURC');
-    // A row each: 10 tokens, EURC being a Wirex cardholder's alone.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(10);
+    expect(shown).toContain('EURC');
+    // A row each: 11 tokens.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
   });
 
   it('lists only what everyone is offered for someone not given the new tokens', () => {
@@ -82,9 +82,9 @@ describe('WalletDepositTokens', () => {
 
     expect(shown).not.toContain('cbBTC');
     expect(shown).not.toContain('cbZEC');
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'ETH', 'WFUSE']));
-    // USDC, USDT, ETH, FUSE, WETH and WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(6);
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'EURC', 'ETH', 'WFUSE']));
+    // USDC, USDT, EURC, ETH, FUSE, WETH and WFUSE.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(7);
   });
 
   it('narrows the list to what matches the ticker or name', () => {
