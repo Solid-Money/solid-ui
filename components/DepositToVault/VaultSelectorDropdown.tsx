@@ -20,8 +20,7 @@ const PRODUCT_ICONS: Record<VaultType, AssetPath> = {
   [VaultType.USDC]: 'images/usd-yield-4x.png',
   [VaultType.ETH]: 'images/eth-yield-4x.png',
   [VaultType.FUSE]: 'images/fuse-yield-4x.png',
-  // TODO(soEURC): the EURC coin mark until design supplies an EUR Yield product icon.
-  [VaultType.EUR]: 'images/eurc.png',
+  [VaultType.EUR]: 'images/eur-yield-4x.png',
 };
 const getVaultIcon = (vault: Vault) => getAsset(PRODUCT_ICONS[vault.type] ?? vault.icon);
 
