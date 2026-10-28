@@ -1,5 +1,6 @@
 import { arbitrum, base, bsc, fuse, mainnet, polygon } from 'viem/chains';
 
+import { WRAPPED_FUSE } from '@/constants/addresses';
 import { EURC_TOKENS } from '@/constants/bridge';
 
 import type { AssetPath } from '@/lib/assets';
@@ -11,6 +12,9 @@ export const WALLET_DEPOSIT_TOKEN_GROUPS: { key: WalletDepositTokenGroup; label:
   { key: 'stablecoins', label: 'Stablecoins' },
   { key: 'crypto', label: 'Crypto' },
 ];
+
+/** A chain's own coin (ETH, FUSE), sent as value rather than through a contract. */
+export const NATIVE_COIN = 'native';
 
 export type WalletDepositTokenConfig = {
   symbol: string;
@@ -40,25 +44,24 @@ export type WalletDepositTokenConfig = {
  * Every currency the deposit address takes, in the order "Select token" lists
  * them within each group, and the chains each is taken on.
  *
- * Only what the card can spend once it lands. The address is the user's Safe
+ * Only pairings that are of use once they land. The address is the user's Safe
  * unless the pipeline mints one (see `usesDirectDepositAddress`), and nothing
- * moves what lands on the Safe, so a Safe deposit is offered only on the chains
- * the card spends from and only in the tokens it spends there (see
- * `CARD_SPEND_CHAIN_IDS`):
+ * moves what lands on the Safe, so each token is listed only on the chains where
+ * the Safe can do something with it:
  *
- * - Base: USDC, USDT, WETH, cbBTC, cbZEC, AAVE and SOL, each on the Base cash
- *   module's allowlist.
- * - Fuse: USDC and USDT, the Stargate contracts the Fuse cash module allowlists.
+ * - Spend it with the card: USDC, USDT, WETH, cbBTC, cbZEC, AAVE and SOL on
+ *   Base, and USDC and USDT on Fuse, each on that chain's cash module allowlist.
+ * - Deposit it into a vault from the wallet (see `depositConfig` in
+ *   `constants/vaults`): USDC and USDT into soUSD on every bridge chain, ETH and
+ *   WETH into soETH on Ethereum, FUSE and WFUSE into soFUSE on Fuse.
  *
  * A Wirex cardholder's USDC, USDT and EURC go to a minted address instead, which
- * the pipeline delivers to their Safe on Fuse (EURC: on Base), so for them the
- * stablecoins are offered on every chain the pipeline routes from. That is what
- * the other chains' USDC and USDT contracts are for.
+ * the pipeline delivers to their Safe on Fuse (EURC: on Base).
  *
- * Add a token or chain here only once the card can spend it there. ETH, FUSE and
- * WFUSE are not on any allowlist, and native ETH is not WETH, so none of them is
- * offered. SOL and cbZEC are wrapped ERC-20s: the address is an EVM one, so the
- * native coins cannot be sent to it.
+ * Add a token or chain here only if it is one of the two. ETH anywhere but
+ * Ethereum is neither (the Base cash module takes WETH, not ETH), nor is WETH off
+ * Ethereum and Base, so they are not offered. SOL and cbZEC are wrapped ERC-20s:
+ * the address is an EVM one, so the native coins cannot be sent to it.
  *
  * Deliberately not `BRIDGE_TOKENS`: every surface that offers a token on a chain
  * reads that map, so listing these there would offer them for card funding,
@@ -108,6 +111,28 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     releasedOn: Object.keys(EURC_TOKENS).map(Number),
   },
   {
+    // On Ethereum alone, where soETH takes it.
+    symbol: 'ETH',
+    name: 'Ether',
+    group: 'crypto',
+    icon: 'images/eth.png',
+    aliases: ['Ethereum'],
+    contracts: {
+      [mainnet.id]: NATIVE_COIN,
+    },
+    releasedOn: [mainnet.id],
+  },
+  {
+    symbol: 'FUSE',
+    name: 'Fuse',
+    group: 'crypto',
+    icon: 'images/fuse-4x.png',
+    contracts: {
+      [fuse.id]: NATIVE_COIN,
+    },
+    releasedOn: [fuse.id],
+  },
+  {
     symbol: 'cbBTC',
     name: 'Coinbase Wrapped BTC',
     group: 'crypto',
@@ -148,14 +173,26 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
     },
   },
   {
+    // soETH takes it on Ethereum; the Base cash module spends it on Base.
     symbol: 'WETH',
     name: 'Wrapped Ether',
     group: 'crypto',
     icon: 'images/weth.png',
     contracts: {
+      [mainnet.id]: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       [base.id]: '0x4200000000000000000000000000000000000006',
     },
-    releasedOn: [base.id],
+    releasedOn: [mainnet.id, base.id],
+  },
+  {
+    symbol: 'WFUSE',
+    name: 'Wrapped FUSE',
+    group: 'crypto',
+    icon: 'images/wfuse.png',
+    contracts: {
+      [fuse.id]: WRAPPED_FUSE,
+    },
+    releasedOn: [fuse.id],
   },
 ];
 
@@ -172,21 +209,14 @@ export const WALLET_DEPOSIT_CHAIN_IDS: readonly number[] = [
   fuse.id,
 ];
 
-/**
- * The chains the card spends from, and so the only ones the Safe is offered on:
- * a token that lands in the Safe anywhere else stays there, out of the card's
- * reach. The minted address is not bound by this (see `WALLET_DEPOSIT_TOKENS`).
- */
-export const CARD_SPEND_CHAIN_IDS: readonly number[] = [base.id, fuse.id];
-
 const depositContractKey = (chainId: number, address: string) =>
   `${chainId}:${address.toLowerCase()}`;
 
 const DEPOSIT_CONTRACT_KEYS: ReadonlySet<string> = new Set(
   WALLET_DEPOSIT_TOKENS.flatMap(token =>
-    Object.entries(token.contracts).map(([chainId, address]) =>
-      depositContractKey(Number(chainId), address),
-    ),
+    Object.entries(token.contracts)
+      .filter(([, address]) => address !== NATIVE_COIN)
+      .map(([chainId, address]) => depositContractKey(Number(chainId), address)),
   ),
 );
 
