@@ -169,6 +169,41 @@ const CONTENT: Record<StaticPromptKey, PromptContent> = {
 };
 
 /**
+ * The card funnel as the Wirex onboarding words it (Figma "Home banner · 3 states"). The banner
+ * follows where the applicant is, so each one opens the step it names: `/card/activate` resumes
+ * the check, shows the decision, or — once approved — opens the Approved screen directly.
+ *
+ * "Get your card" stays as today. The two states the design does not draw are worded to match the
+ * screens they open: the Checking screen, and the Declined screen, which gives no reason — so the
+ * banner no longer offers "See why".
+ */
+const WIREX_ONBOARDING_CONTENT: Partial<Record<StaticPromptKey, PromptContent>> = {
+  verification: {
+    title: 'Finish getting your card',
+    description: 'Pick up where you left off',
+    icon: <FaceScan />,
+    cta: { label: 'Continue', href: path.CARD_ACTIVATE },
+  },
+  'kyc-review': {
+    title: 'We’re checking your details',
+    description: 'We’ll send you a notification as soon as you’re approved',
+    icon: <FaceScan />,
+  },
+  'kyc-rejected': {
+    title: 'We can’t issue you a card',
+    description: 'Your Solid account still works: deposits, Earn, Send and rewards',
+    icon: <FaceScan expression="flat" />,
+    cta: { label: 'Details', href: path.CARD_ACTIVATE },
+  },
+  'activate-card': {
+    title: 'You’re approved',
+    description: 'Activate your card in one tap',
+    icon: <FaceScan />,
+    cta: { label: 'Activate card', href: path.CARD_ACTIVATE },
+  },
+};
+
+/**
  * The two Wirex steps, whose copy carries the cardholder's own figures — the declined payment and
  * what they have now, or the EURC their card cannot reach. `undefined` while the figures are not
  * in, which renders nothing rather than a banner with blanks in it.
@@ -262,10 +297,14 @@ const HomePromptCard = ({ promptKey, depositCompleted, className }: HomePromptCa
   // The terminal banner is a different card entirely: no icon, no CTA, no ✕.
   if (promptKey === 'cashback') return <HomeCashbackCtaBanner className={className} />;
 
+  // A Wirex applicant without a card reads the onboarding's own words; Rain and every cardholder
+  // read today's. `/cards/status` names the issuer from the first Sumsub session on.
+  const isWirexApplicant = cardStatus?.provider === CardProvider.WIREX;
   const content =
     promptKey === 'card-declined' || promptKey === 'euro-spending'
       ? wirexContent(promptKey, { declined, eurc })
-      : CONTENT[promptKey];
+      : ((isWirexApplicant ? WIREX_ONBOARDING_CONTENT[promptKey] : undefined) ??
+        CONTENT[promptKey]);
   if (!content) return null;
 
   const { title, description, icon, cta } = content;

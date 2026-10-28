@@ -49,6 +49,10 @@ export function hasStartedKyc(
 ): boolean {
   if (kycStartedAt != null) return true;
 
+  // Sumsub reports the applicant the moment the check is opened, on any device — the server's
+  // own version of the local marker, for the Wirex flow.
+  if (cardStatus?.kycReviewStatus) return true;
+
   const rainStatus = cardStatus?.rainApplicationStatus;
   if (rainStatus && rainStatus !== RainApplicationStatus.NOT_STARTED) return true;
 

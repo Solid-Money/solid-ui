@@ -367,6 +367,17 @@ export const TRACKING_EVENTS = {
   REGION_UNAVAILABLE_CONTINUE_PRESSED: 'region_unavailable_continue_pressed',
   REGION_UNAVAILABLE_CHANGE_COUNTRY_PRESSED: 'region_unavailable_change_country_pressed',
   CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
+  // Wirex card onboarding (Country → What you'll need → Sumsub → Checking → Approved →
+  // Activating → Card is live). One "viewed" per screen, keyed by `step`, so the funnel between
+  // opening the identity check and a live card — which no event covered — can be read end to end.
+  CARD_ONBOARDING_STEP_VIEWED: 'card_onboarding_step_viewed',
+  CARD_ONBOARDING_CTA_PRESSED: 'card_onboarding_cta_pressed',
+  // The card currency picked on the Approved screen, and whether it was the suggested one.
+  CARD_CURRENCY_SELECTED: 'card_currency_selected',
+  // Both activation approvals signed with one passkey prompt, or not — and why.
+  CARD_ACTIVATION_SIGNATURES: 'card_activation_signatures',
+  CARD_LIVE_POPUP_SHOWN: 'card_live_popup_shown',
+  CARD_LIVE_POPUP_ACTION: 'card_live_popup_action',
   // Pressed from the failure banner on /card/activate. Carries the failure
   // code, so a retry wave after an issuer outage is separable from a user
   // pressing again at a failure that will not clear.

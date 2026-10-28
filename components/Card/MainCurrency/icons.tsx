@@ -96,8 +96,15 @@ export const RadioUnselectedIcon = () => (
  * Figma 29236:9954 ("Icon / tick", 16% fill) and 29236:10597 ("Icon / check", 18% fill): the
  * same green tick on a faint disc, the check a shade stronger on the approval sheet's lighter box.
  */
-export const TickIcon = ({ fillOpacity = 0.16 }: { fillOpacity?: number }) => (
-  <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+export const TickIcon = ({
+  fillOpacity = 0.16,
+  size = 20,
+}: {
+  fillOpacity?: number;
+  /** 16 on the card country screen's availability line; 20 everywhere else. */
+  size?: number;
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 20 20" fill="none">
     <Path
       d="M10 20C15.5228 20 20 15.5228 20 10C20 4.47715 15.5228 0 10 0C4.47715 0 0 4.47715 0 10C0 15.5228 4.47715 20 10 20Z"
       fill="#94F27F"
