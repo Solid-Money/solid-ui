@@ -19,10 +19,13 @@ const SHARE_ICONS: Record<string, AssetPath> = {
   SOUSD: 'images/sousd-4x.png',
   SOETH: 'images/soeth-4x.png',
   SOFUSE: 'images/sofuse-4x.png',
+  // EUR Yield's share: its on-chain symbol is SOEUR, the app's name for it soEURC.
+  SOEUR: 'images/soeur-4x.png',
+  SOEURC: 'images/soeur-4x.png',
 };
 
 const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
-  // soUSD, soETH and soFUSE have canonical in-app marks: their product's mark with the
+  // soUSD, soETH, soFUSE and soEUR have canonical in-app marks: their product's mark with the
   // green live dot (Figma 28445:4885). External token metadata can return older logos, so
   // resolve them before the generic logoUrl override.
   const shareIcon = SHARE_ICONS[tokenSymbol?.toUpperCase() ?? ''];
@@ -49,10 +52,6 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         source: getAsset('images/usdt.png'),
       };
     case 'EURC':
-    // TODO(soEURC): the share reuses the EURC mark until design supplies a soEURC icon.
-    // SOEUR is the share's on-chain symbol, which wallet token lists show.
-    case 'SOEURC':
-    case 'SOEUR':
       return {
         type: 'image',
         source: getAsset('images/eurc.png'),

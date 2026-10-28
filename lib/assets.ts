@@ -524,6 +524,10 @@ export const ASSETS = {
     module: require('@/assets/images/eur-fiat-currency.tsx'),
     hash: 'db4e5f78',
   },
+  'images/eur-yield-4x.png': {
+    module: require('@/assets/images/eur-yield-4x.png'),
+    hash: 'fdc3f265',
+  },
   'images/eurc.png': { module: require('@/assets/images/eurc.png'), hash: '8e00e6b6' },
   'images/euro-circle.tsx': {
     module: require('@/assets/images/euro-circle.tsx'),
@@ -1405,6 +1409,7 @@ export const ASSETS = {
   'images/sign-out.tsx': { module: require('@/assets/images/sign-out.tsx'), hash: 'deb2a605' },
   'images/slvx.png': { module: require('@/assets/images/slvx.png'), hash: '220db66a' },
   'images/soeth-4x.png': { module: require('@/assets/images/soeth-4x.png'), hash: 'cbcdc20f' },
+  'images/soeur-4x.png': { module: require('@/assets/images/soeur-4x.png'), hash: '925097e8' },
   'images/sofuse-4x.png': { module: require('@/assets/images/sofuse-4x.png'), hash: '1f01974a' },
   'images/sol.png': { module: require('@/assets/images/sol.png'), hash: 'c167375b' },
   'images/solid-4x.png': { module: require('@/assets/images/solid-4x.png'), hash: 'f6579942' },

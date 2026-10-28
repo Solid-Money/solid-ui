@@ -20,6 +20,17 @@ describe('getTokenIcon', () => {
     });
   });
 
+  it('draws soEUR with the EUR Yield share mark, not the EURC coin, under either symbol', () => {
+    for (const tokenSymbol of ['soEUR', 'soEURC', 'SOEUR']) {
+      expect(getTokenIcon({ tokenSymbol })).toEqual({
+        type: 'image',
+        source: { asset: 'images/soeur-4x.png' },
+        bare: true,
+      });
+    }
+    expect(getTokenIcon({ tokenSymbol: 'EURC' }).source).toEqual({ asset: 'images/eurc.png' });
+  });
+
   it('keeps other coins as round logos', () => {
     expect(getTokenIcon({ tokenSymbol: 'USDC' }).bare).toBeUndefined();
     expect(getTokenIcon({ tokenSymbol: 'ETH' }).bare).toBeUndefined();
