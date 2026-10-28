@@ -21,6 +21,7 @@ import ActivityStatusPill, {
 } from '@/components/Activity/ActivityStatusPill';
 import ActivityTokenIcon, { getActivityBadge } from '@/components/Activity/ActivityTokenIcon';
 import CardActivityIcon from '@/components/Activity/CardActivityIcon';
+import CardCreditDetailsCard from '@/components/Activity/CardCreditDetailsCard';
 import CashbackDetailsCard from '@/components/Activity/CashbackDetailsCard';
 import AiApiChargeDetail from '@/components/AiApi/AiApiChargeDetail';
 import { CashbackDiamondIcon } from '@/components/Card/NewCardDetails/icons';
@@ -47,6 +48,7 @@ import { useCashbacks } from '@/hooks/useCashbacks';
 import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { cashbackBaseUsd, usedCardCredit } from '@/lib/cardCredit';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardProvider,
@@ -317,6 +319,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   // Money coming back, and what was taken out of it on the way. See `CardRefundDetails`.
   const refund = spend?.refund;
   const refundUrl = cardRefundExplorerUrl(refund);
+  // Card credit this purchase used, when it used any (Wirex only).
+  const cardCredit = usedCardCredit(transaction.card_credit) ? transaction.card_credit : undefined;
   const isApproved = transaction.status === 'approved';
   const isDeclined = transaction.status === 'declined';
   const isReversed = transaction.status === 'reversed';
@@ -353,9 +357,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
       refund?.cashback_deducted_usd &&
         `Cashback withheld from refund: ${refund.cashback_deducted_usd} USD`,
       refund?.tx_hash && `Refund tx: ${refund.tx_hash}`,
+      // Card credit changes what left the balance, so support needs the split.
+      cardCredit &&
+        `Card credit: ${cardCredit.used_usd} USD used, ${cardCredit.from_balance_usd} USD from balance (${cardCredit.state})`,
     ].filter(Boolean);
     return lines.length ? `\n${lines.join('\n')}` : '';
-  }, [spend, sweepHash, refund, transaction.usd_amount]);
+  }, [spend, sweepHash, refund, transaction.usd_amount, cardCredit]);
 
   const transactionContext = useMemo<SupportDrawerRequest>(
     () => ({
@@ -401,7 +408,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     () => cashbacks?.find(row => row.transactionId === transaction.id),
     [cashbacks, transaction.id],
   );
-  const purchaseUsd = useMemo(() => getTransactionUsdAmount(transaction), [transaction]);
+  // Cashback is earned on the part paid from the balance only: card credit
+  // earns none, so the cashback card measures against what the balance paid.
+  const purchaseUsd = useMemo(
+    () => cashbackBaseUsd(getTransactionUsdAmount(transaction), transaction.card_credit),
+    [transaction],
+  );
   const localDetails = transaction.local_transaction_details;
 
   // The bucket Insights files this purchase under, so the Category row can use
@@ -741,6 +753,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             {/* No "≈": the figure now carries a sign, and "≈ -$31.46" reads as
                 two operators. The activity row shows the conversion bare too. */}
             {usdEquivalent && <Text className="text-base text-white/50">{usdEquivalent}</Text>}
+            {/* Figma 29602:14103: said under the amount, because it changes
+                what the amount cost the balance. The split is in its own card. */}
+            {cardCredit && <Text className="text-base text-white/70">Paid with card credit</Text>}
             <Text className="text-base text-white/70">{format(postedDate, CARD_DATE_FORMAT)}</Text>
             {/* Status reads as a chip, the same one the activity row uses
                 (Figma 24781:7724 / 24781:7993), rather than as one more fact in
@@ -763,6 +778,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         </View>
 
         <DetailCard rows={merchantRows} />
+        {cardCredit && <CardCreditDetailsCard credit={cardCredit} />}
         {/* No cashback card for an excluded purchase: it earns nothing, and the
             receipt reads like any purchase with no cashback rather than
             calling attention to it. The activity row hides its label too. */}
