@@ -175,6 +175,15 @@ export const SOLID_WEBSITE_URL = isProduction
   ? 'https://www.solid.xyz'
   : 'https://solid-qa.webflow.io';
 
+/**
+ * The web app's own public origin, for links meant to open the app — the
+ * referral invite link (`/invite/CODE`) above all. `app.solid.xyz` serves the
+ * Universal Link / App Link files for every path, so the link opens the app
+ * when it is installed and the web build's invite page when it is not. QA has
+ * its own origin so a link shared from a QA build never lands in production.
+ */
+export const SOLID_APP_URL = isProduction ? 'https://app.solid.xyz' : 'https://app-qa.solid.xyz';
+
 type Addresses = {
   ethereum: {
     teller: Address;

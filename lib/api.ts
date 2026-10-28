@@ -59,6 +59,8 @@ import {
   CardAccessResponse,
   CardBalanceResponseDto,
   CardCollateralAvailableDto,
+  CardCreditHistoryResponse,
+  CardCreditSummary,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -131,7 +133,9 @@ import {
   RainRtfStatus,
   RecordStocksFeeParams,
   RecordSwapFeeParams,
+  ReferralInviteLookup,
   ReferralSummary,
+  ReferralV4Summary,
   RegionInterestPayload,
   ResumeRainForwardResponse,
   RewardsTier,
@@ -2340,6 +2344,94 @@ export const fetchReferralSummary = async (): Promise<ReferralSummary> => {
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Referral program v4: terms, totals, every invited friend (v4 and legacy) and
+ * the user's own invite. `terms.enabled === false` — or any failure, 404
+ * included while the endpoint is not deployed — means the app keeps today's
+ * referral program, so callers treat an error as "off", never as a blocker.
+ */
+export const fetchReferralV4Summary = async (): Promise<ReferralV4Summary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/referral/v4/summary`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Who a referral code belongs to and what the friend gets. Public — the invite
+ * page and the signup "Invite code" field read it before there is a session —
+ * so no auth header. An unknown code is `{ valid: false }`, not a 404.
+ */
+export const fetchReferralInvite = async (code: string): Promise<ReferralInviteLookup> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/referral/invite/${encodeURIComponent(code)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** The user's card credit: what is left, what is held, and where it came from. */
+export const fetchCardCreditSummary = async (): Promise<CardCreditSummary> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-credit`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Card credit grants, holds, spends and refunds, newest first. */
+export const fetchCardCreditHistory = async (
+  params: { limit?: number; before?: string } = {},
+): Promise<CardCreditHistoryResponse> => {
+  const jwt = getJWTToken();
+  const url = new URL('/accounts/v1/card-credit/history', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  if (params.limit) url.searchParams.set('limit', String(params.limit));
+  if (params.before) url.searchParams.set('before', params.before);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
   return response.json();
