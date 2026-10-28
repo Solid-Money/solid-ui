@@ -35,6 +35,7 @@ import {
 } from '@/lib/utils/signupAccountCreation';
 import { userFacingErrorMessage } from '@/lib/utils/userFacingError';
 import { useAttributionStore } from '@/store/useAttributionStore';
+import { useReferralStore } from '@/store/useReferralStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -347,6 +348,11 @@ export default function SignupCreating() {
         },
         { amplitude: false },
       );
+
+      // The code has done its job: the account carries it now. Forget it so
+      // the next signup on this device doesn't inherit someone else's invite.
+      useReferralStore.getState().clearReferralCode();
+      useAttributionStore.getState().clearReferralAttribution();
 
       // Navigate to home/notifications or redirectFrom page
       setStep('complete');

@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopHero } from '@/components/Onboarding';
+import InviteCodeField, { type InviteCodeStatus } from '@/components/Signup/InviteCodeField';
 import { BackButton } from '@/components/ui/back-button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,13 +19,17 @@ import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useDebounce from '@/hooks/useDebounce';
 import { useDimension } from '@/hooks/useDimension';
+import { useReferralInvite } from '@/hooks/useReferralInvite';
 import { track } from '@/lib/analytics';
 import { emailExists, initSignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { parseInviteCodeFromText } from '@/lib/referral/inviteCode';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { useAttributionStore } from '@/store/useAttributionStore';
+import { type ReferralCodeSource, useReferralStore } from '@/store/useReferralStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const emailSchema = z.object({
@@ -92,6 +98,57 @@ export default function SignupEmail() {
 
   const watchedEmail = watch('email');
 
+  // The optional invite code: prefilled from a link, the install referrer or a
+  // paste, editable, and checked against the public invite lookup as it settles.
+  const [inviteText, setInviteText] = useState('');
+  const [inviteSource, setInviteSource] = useState<ReferralCodeSource | null>(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [canPasteInvite, setCanPasteInvite] = useState(false);
+  const inviteCode = parseInviteCodeFromText(inviteText);
+  const debouncedInviteCode = useDebounce(inviteCode, 400);
+  const inviteLookup = useReferralInvite(debouncedInviteCode);
+  const reportedInvalidCodes = useRef(new Set<string>());
+
+  const inviteStatus = useMemo<InviteCodeStatus>(() => {
+    if (!inviteCode) return { kind: 'idle' };
+    if (debouncedInviteCode !== inviteCode || inviteLookup.isLoading) return { kind: 'checking' };
+    if (inviteLookup.data?.valid) return { kind: 'valid', lookup: inviteLookup.data };
+    if (inviteLookup.data) return { kind: 'invalid' };
+    if (inviteLookup.isError) return { kind: 'unverified' };
+    return { kind: 'idle' };
+  }, [
+    inviteCode,
+    debouncedInviteCode,
+    inviteLookup.isLoading,
+    inviteLookup.data,
+    inviteLookup.isError,
+  ]);
+
+  // Once per code: a code nobody owns is worth knowing about, whichever way it came.
+  useEffect(() => {
+    if (inviteStatus.kind !== 'invalid' || !inviteCode) return;
+    if (reportedInvalidCodes.current.has(inviteCode)) return;
+    reportedInvalidCodes.current.add(inviteCode);
+    track(TRACKING_EVENTS.INVITE_CODE_INVALID, { source: inviteSource ?? 'manual' });
+  }, [inviteStatus.kind, inviteCode, inviteSource]);
+
+  // iOS: offer the system paste control when there is text on the clipboard and
+  // no code yet — the invite page copies `solid-invite:CODE` before the App
+  // Store. `hasStringAsync` doesn't read the clipboard, so no paste prompt.
+  useEffect(() => {
+    if (!_hasHydrated || Platform.OS !== 'ios' || !Clipboard.isPasteButtonAvailable) return;
+    if (inviteCode) return;
+    let isActive = true;
+    Clipboard.hasStringAsync()
+      .then(hasString => {
+        if (isActive) setCanPasteInvite(hasString);
+      })
+      .catch(() => {});
+    return () => {
+      isActive = false;
+    };
+  }, [_hasHydrated, inviteCode]);
+
   // Clear rate limit error when email changes
   useEffect(() => {
     // Wait for store hydration before any actions
@@ -117,6 +174,16 @@ export default function SignupEmail() {
     if (existingReferral) {
       setReferralCode(existingReferral);
       console.warn('✅ Referral code preserved after reset:', existingReferral);
+    }
+
+    // Prefill the invite code field with it (or the attribution store's copy).
+    const prefill = parseInviteCodeFromText(
+      existingReferral || useAttributionStore.getState().attributionData.referral_code || '',
+    );
+    if (prefill) {
+      setInviteText(prefill);
+      setInviteSource(useReferralStore.getState().referralSource ?? 'link');
+      setIsInviteOpen(true);
     }
   }, [_hasHydrated, setReferralCode]);
 
@@ -151,15 +218,23 @@ export default function SignupEmail() {
       setMarketingConsent(data.marketingConsent);
       setLastOtpSentAt(Date.now());
 
-      // Store referral code with multi-source fallback for reliability
-      // Priority: URL params > referral store > attribution store
-      const storedReferralCode =
-        getReferralCodeForSignup() ||
-        useAttributionStore.getState().attributionData.referral_code ||
-        '';
-      if (storedReferralCode) {
-        setReferralCode(storedReferralCode);
-        console.warn('✅ Referral code saved to signup flow:', storedReferralCode);
+      // The invite code field decides the referral code: it was prefilled from
+      // the link / install referrer / attribution store, and the user may have
+      // changed or cleared it. A code the lookup says nobody owns isn't sent;
+      // one it couldn't check is, and the backend decides.
+      const codeToSend =
+        !inviteCode || inviteStatus.kind === 'invalid'
+          ? ''
+          : inviteStatus.kind === 'valid'
+            ? inviteStatus.lookup.code
+            : inviteCode;
+      setReferralCode(codeToSend);
+      if (codeToSend) {
+        console.warn('✅ Referral code saved to signup flow:', codeToSend);
+        if (inviteSource === 'manual') {
+          useReferralStore.getState().setReferralCode(codeToSend, 'manual');
+          track(TRACKING_EVENTS.INVITE_CODE_APPLIED, { source: 'manual' });
+        }
       }
 
       track(TRACKING_EVENTS.EMAIL_SUBMITTED, {
@@ -210,6 +285,38 @@ export default function SignupEmail() {
 
   // Show validation error, API error, or rate limit error
   const displayError = errors.email?.message || error || rateLimitError;
+
+  const handleInviteChange = (text: string) => {
+    setInviteText(text);
+    setInviteSource('manual');
+  };
+
+  const handlePasteInvite = (text: string) => {
+    setCanPasteInvite(false);
+    setIsInviteOpen(true);
+    const code = parseInviteCodeFromText(text);
+    // Whatever else was on the clipboard stays out of the field.
+    if (!code) {
+      track(TRACKING_EVENTS.INVITE_CODE_INVALID, { source: 'clipboard' });
+      return;
+    }
+    setInviteText(code);
+    setInviteSource('clipboard');
+    useReferralStore.getState().setReferralCode(code, 'clipboard');
+    track(TRACKING_EVENTS.INVITE_CODE_APPLIED, { source: 'clipboard' });
+  };
+
+  const inviteField = (
+    <InviteCodeField
+      value={inviteText}
+      onChangeText={handleInviteChange}
+      isOpen={isInviteOpen}
+      onOpen={() => setIsInviteOpen(true)}
+      status={inviteStatus}
+      showPasteButton={canPasteInvite && !inviteCode}
+      onPaste={handlePasteInvite}
+    />
+  );
 
   // Form content (shared between mobile and desktop)
   const formContent = (
@@ -270,6 +377,8 @@ export default function SignupEmail() {
               </Pressable>
             )}
           />
+
+          {inviteField}
 
           {displayError ? (
             <View className="flex-row items-center gap-2">
@@ -381,6 +490,8 @@ export default function SignupEmail() {
                     </Pressable>
                   )}
                 />
+
+                {inviteField}
 
                 {displayError ? (
                   <View className="flex-row items-center gap-2">
