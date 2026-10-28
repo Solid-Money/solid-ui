@@ -29,7 +29,7 @@ export type WalletDepositTokenConfig = {
    * decimals, and a supply worth sending to.
    */
   contracts: Record<number, string>;
-  /** More words the search matches, so "bitcoin" finds cbBTC as well as WBTC. */
+  /** More words the search matches, so "bitcoin" finds cbBTC and "zcash" finds cbZEC. */
   aliases?: string[];
   /**
    * The chains it is offered on to everyone. Any other chain in `contracts` —
@@ -53,9 +53,10 @@ export type WalletDepositTokenConfig = {
  * reads that map, so listing these there would offer them for card funding,
  * savings and bridging, none of which can take them.
  *
- * WBTC, cbBTC, cbZEC, AAVE and SOL are taken on Base alone: they are collateral
- * for spending on Base, which a balance on another chain cannot be. Add a token
- * here only if Base carries it and Chainlink has a USD feed for it there. SOL
+ * cbBTC, cbZEC, AAVE and SOL are taken on Base alone: they are collateral for
+ * spending on Base, which a balance on another chain cannot be. The address is
+ * the Safe and nothing bridges what lands on it, so offering one on another chain
+ * strands the deposit. Add a token here only if it is collateral on Base. SOL
  * and cbZEC are wrapped ERC-20s: the address is an EVM one, so the native coins
  * cannot be sent to it.
  *
@@ -122,17 +123,6 @@ export const WALLET_DEPOSIT_TOKENS: WalletDepositTokenConfig[] = [
       [bsc.id]: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8',
     },
     releasedOn: [mainnet.id, base.id],
-  },
-  {
-    // The LayerZero WBTC.
-    symbol: 'WBTC',
-    name: 'Wrapped Bitcoin',
-    group: 'crypto',
-    icon: 'images/wbtc.png',
-    aliases: ['Bitcoin', 'BTC'],
-    contracts: {
-      [base.id]: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
-    },
   },
   {
     symbol: 'FUSE',

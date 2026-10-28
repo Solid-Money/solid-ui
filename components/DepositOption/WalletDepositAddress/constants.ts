@@ -83,7 +83,6 @@ const MINIMUM_DEPOSIT_BY_TOKEN: Record<string, string> = {
   WETH: '0.005',
   FUSE: '500',
   WFUSE: '500',
-  WBTC: '0.00015',
   cbBTC: '0.00015',
   cbZEC: '0.01',
   AAVE: '0.07',
@@ -313,7 +312,7 @@ export const resolveWalletDepositMinimum = (
 
 /**
  * A minimum as the screen prints it: two significant figures for an asset worth
- * thousands a unit (0.00012 WBTC), never fewer than four decimals, and rounded
+ * thousands a unit (0.00012 cbBTC), never fewer than four decimals, and rounded
  * up, so the floor quoted is never below the one it stands for. In bigint
  * units, so nothing is lost on the way.
  */
@@ -365,8 +364,8 @@ export const getAllWalletDepositTokens = (viewer: WalletDepositViewer = {}): Wal
   );
 
 /**
- * Whether a currency answers a search: by ticker or by name, so "btc" finds WBTC
- * and cbBTC, plus the aliases a person might type instead ("bitcoin", "zcash").
+ * Whether a currency answers a search: by ticker or by name, so "btc" finds cbBTC,
+ * plus the aliases a person might type instead ("bitcoin", "zcash").
  */
 export const matchesWalletDepositSearch = (token: WalletDepositToken, query: string): boolean => {
   const needle = query.trim().toLowerCase();

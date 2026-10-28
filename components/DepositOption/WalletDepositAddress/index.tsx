@@ -208,7 +208,7 @@ const WalletDepositAddress = () => {
         <View className="flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
           <Text className="text-base font-medium text-white">Send at least</Text>
           <Image source={tokenIcon} style={INLINE_ICON_STYLE} contentFit="cover" />
-          {/* "10 USDC", "0.005 ETH" and "0.00012 WBTC" all read right, rounded up. */}
+          {/* "10 USDC", "0.005 ETH" and "0.00012 cbBTC" all read right, rounded up. */}
           <Text className="text-base font-medium text-white">{`${formatWalletDepositMinimum(minimum)} ${symbol} on the`}</Text>
           {network?.icon ? (
             <Image source={network.icon} style={INLINE_ICON_STYLE} contentFit="cover" />

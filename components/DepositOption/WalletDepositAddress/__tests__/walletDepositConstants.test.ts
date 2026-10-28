@@ -46,12 +46,12 @@ describe('getWalletDepositMinimum', () => {
     expect(getWalletDepositMinimum(mainnet.id, 'ETH')).toBe('0.005');
     expect(getWalletDepositMinimum(mainnet.id, 'WETH')).toBe('0.005');
     expect(getWalletDepositMinimum(fuse.id, 'FUSE')).toBe('500');
-    expect(getWalletDepositMinimum(base.id, 'WBTC')).toBe('0.00015');
+    expect(getWalletDepositMinimum(base.id, 'cbBTC')).toBe('0.00015');
     expect(getWalletDepositMinimum(base.id, 'cbZEC')).toBe('0.01');
   });
 
   // Each currency the screen offers has a floor of its own, so none quotes the
-  // chain's — "Send at least 10 WBTC" on Ethereum.
+  // chain's — "Send at least 1 cbBTC" on Base.
   it('has a floor for every currency that is not a dollar or euro stablecoin', () => {
     const stablecoins = new Set(['USDC', 'USDT', 'EURC']);
     WALLET_DEPOSIT_TOKENS.filter(token => !stablecoins.has(token.symbol)).forEach(token => {
@@ -80,7 +80,7 @@ describe('formatWalletDepositMinimum', () => {
     expect(formatWalletDepositMinimum('48.33')).toBe('48.33');
   });
 
-  // Four decimals would print 0.0001194 WBTC as 0.0001 — under the floor.
+  // Four decimals would print 0.0001194 cbBTC as 0.0001 — under the floor.
   it('keeps two significant figures for an asset worth thousands a unit', () => {
     expect(formatWalletDepositMinimum('0.0001194')).toBe('0.00012');
     expect(formatWalletDepositMinimum('0.00015')).toBe('0.00015');
@@ -115,7 +115,6 @@ describe('getWalletDepositTokens', () => {
       'USDC',
       'USDT',
       'ETH',
-      'WBTC',
       'cbBTC',
       'cbZEC',
       'AAVE',
@@ -140,7 +139,7 @@ describe('getWalletDepositTokens', () => {
   // They are collateral for spending on Base, which a balance on another chain
   // cannot be.
   it('takes the tokens beyond the stablecoins, ETH and FUSE on Base alone', () => {
-    ['WBTC', 'cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
+    ['cbBTC', 'cbZEC', 'AAVE', 'SOL'].forEach(symbol => {
       expect(chainIdsOf(getWalletDepositNetworksForToken(symbol, ALL))).toEqual([base.id]);
     });
   });
@@ -150,7 +149,7 @@ describe('getWalletDepositTokens', () => {
   it('offers currencies beyond what BRIDGE_TOKENS lists for the chain', () => {
     expect(Object.keys(BRIDGE_TOKENS[base.id].tokens ?? {})).toEqual(['USDC']);
     expect(symbolsOf(getWalletDepositTokens(base.id, ALL))).toEqual(
-      expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WETH', 'WBTC', 'cbBTC', 'SOL']),
+      expect.arrayContaining(['USDC', 'USDT', 'ETH', 'WETH', 'cbBTC', 'SOL']),
     );
     expect(BRIDGE_TOKENS[optimism.id]).toBeUndefined();
   });
@@ -217,7 +216,7 @@ describe('usesDirectDepositAddress', () => {
   // These have no route through the pipeline — they land in the Safe and stay as
   // the token that was sent, so there the Safe is the right answer.
   it('keeps the Safe for the currencies with no route, even for Wirex', () => {
-    ['ETH', 'WETH', 'FUSE', 'WFUSE', 'WBTC', 'cbZEC', 'SOL'].forEach(symbol => {
+    ['ETH', 'WETH', 'FUSE', 'WFUSE', 'cbBTC', 'cbZEC', 'SOL'].forEach(symbol => {
       expect(usesDirectDepositAddress(symbol, CardProvider.WIREX)).toBe(false);
     });
   });
@@ -267,9 +266,9 @@ describe('resolveWalletDepositMinimum', () => {
 
   it('quotes the published floor of a currency that lands in the Safe', () => {
     const assets = [
-      asset({ chainId: base.id, chainName: 'Base', symbol: 'WBTC', minimum: '0.0001194' }),
+      asset({ chainId: base.id, chainName: 'Base', symbol: 'cbBTC', minimum: '0.0001194' }),
     ];
-    expect(resolveWalletDepositMinimum(base.id, 'WBTC', assets)).toBe('0.0001194');
+    expect(resolveWalletDepositMinimum(base.id, 'cbBTC', assets)).toBe('0.0001194');
   });
 
   it('does not take a published minimum from the wrong chain', () => {
@@ -289,7 +288,7 @@ describe('resolveWalletDepositSymbol', () => {
     expect(resolveWalletDepositSymbol(base.id, 'USDC', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'USDT', ALL)).toBe('USDT');
     expect(resolveWalletDepositSymbol(base.id, 'ETH', ALL)).toBe('ETH');
-    expect(resolveWalletDepositSymbol(base.id, 'WBTC', ALL)).toBe('WBTC');
+    expect(resolveWalletDepositSymbol(base.id, 'cbBTC', ALL)).toBe('cbBTC');
   });
 
   // Otherwise the screen would quote a minimum for a pairing that does not exist.
@@ -297,7 +296,7 @@ describe('resolveWalletDepositSymbol', () => {
     expect(resolveWalletDepositSymbol(polygon.id, 'ETH', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(base.id, 'FUSE', ALL)).toBe('USDC');
     expect(resolveWalletDepositSymbol(fuse.id, 'ETH', ALL)).toBe('USDC');
-    expect(resolveWalletDepositSymbol(arbitrum.id, 'WBTC', ALL)).toBe('USDC');
+    expect(resolveWalletDepositSymbol(arbitrum.id, 'cbBTC', ALL)).toBe('USDC');
   });
 
   it("picks the chain's first currency when none was chosen yet", () => {
@@ -339,7 +338,6 @@ describe('getAllWalletDepositTokens', () => {
       'USDC',
       'USDT',
       'ETH',
-      'WBTC',
       'FUSE',
       'cbBTC',
       'cbZEC',
@@ -356,7 +354,6 @@ describe('getAllWalletDepositTokens', () => {
     );
     expect(names).toMatchObject({
       USDC: 'USD Coin',
-      WBTC: 'Wrapped Bitcoin',
       cbBTC: 'Coinbase Wrapped BTC',
       cbZEC: 'Coinbase Wrapped ZEC',
       WFUSE: 'Wrapped FUSE',
@@ -388,12 +385,12 @@ describe('matchesWalletDepositSearch', () => {
     );
 
   it('matches a ticker, whatever the case', () => {
-    expect(search('btc')).toEqual(['WBTC', 'cbBTC']);
+    expect(search('btc')).toEqual(['cbBTC']);
     expect(search('USDC')).toEqual(['USDC']);
   });
 
   it('matches a name', () => {
-    expect(search('bitcoin')).toEqual(['WBTC', 'cbBTC']);
+    expect(search('bitcoin')).toEqual(['cbBTC']);
     expect(search('coinbase')).toEqual(['cbBTC', 'cbZEC']);
     expect(search('solana')).toEqual(['SOL']);
   });
@@ -462,7 +459,6 @@ describe('resolveWalletDepositChain', () => {
     expect(resolveWalletDepositChain('ETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('WETH', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbBTC', undefined, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('WBTC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('cbZEC', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('AAVE', undefined, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('SOL', undefined, ALL)).toBe(base.id);
@@ -481,7 +477,7 @@ describe('resolveWalletDepositChain', () => {
 
   it('moves to Base when the current chain does not carry the currency', () => {
     expect(resolveWalletDepositChain('ETH', polygon.id, ALL)).toBe(base.id);
-    expect(resolveWalletDepositChain('WBTC', arbitrum.id, ALL)).toBe(base.id);
+    expect(resolveWalletDepositChain('cbBTC', arbitrum.id, ALL)).toBe(base.id);
     expect(resolveWalletDepositChain('USDC', 999_999, ALL)).toBe(base.id);
   });
 });
@@ -586,7 +582,7 @@ describe('EURC', () => {
 
 describe('isWalletDepositContract', () => {
   it('names each contract the screen offers, whatever the address case', () => {
-    expect(isWalletDepositContract(base.id, '0x0555e30da8f98308edb960aa94c0db47230d2b9c')).toBe(
+    expect(isWalletDepositContract(base.id, '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf')).toBe(
       true,
     );
     expect(isWalletDepositContract(base.id, '0xb2000000000000000000008501b13360000cb2ec')).toBe(
@@ -595,13 +591,16 @@ describe('isWalletDepositContract', () => {
   });
 
   it('matches on chain as well as address', () => {
-    expect(isWalletDepositContract(bsc.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(
+    expect(isWalletDepositContract(bsc.id, '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf')).toBe(
       false,
     );
   });
 
   it('names no contract of a token the screen does not take', () => {
-    // WBTC on Arbitrum, OP, and PAXG on Ethereum.
+    // WBTC on Base and Arbitrum, OP, and PAXG on Ethereum.
+    expect(isWalletDepositContract(base.id, '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c')).toBe(
+      false,
+    );
     expect(isWalletDepositContract(arbitrum.id, '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f')).toBe(
       false,
     );

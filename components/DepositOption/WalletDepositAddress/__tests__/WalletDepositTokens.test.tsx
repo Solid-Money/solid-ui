@@ -71,8 +71,8 @@ describe('WalletDepositTokens', () => {
       expect.arrayContaining(['cbZEC', 'Coinbase Wrapped ZEC', 'cbBTC', 'Coinbase Wrapped BTC']),
     );
     expect(shown).not.toContain('EURC');
-    // A row each: 11 tokens, EURC being a Wirex cardholder's alone.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(11);
+    // A row each: 10 tokens, EURC being a Wirex cardholder's alone.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(10);
   });
 
   it('lists only what everyone is offered for someone not given the new tokens', () => {
@@ -80,7 +80,7 @@ describe('WalletDepositTokens', () => {
     const root = render();
     const shown = texts(root);
 
-    expect(shown).not.toContain('WBTC');
+    expect(shown).not.toContain('cbBTC');
     expect(shown).not.toContain('cbZEC');
     expect(shown).toEqual(expect.arrayContaining(['USDC', 'ETH', 'WFUSE']));
     // USDC, USDT, ETH, FUSE, WETH and WFUSE.
@@ -92,7 +92,7 @@ describe('WalletDepositTokens', () => {
     search(root, 'btc');
 
     const shown = texts(root);
-    expect(shown).toEqual(expect.arrayContaining(['Crypto', 'WBTC', 'cbBTC']));
+    expect(shown).toEqual(expect.arrayContaining(['Crypto', 'cbBTC']));
     expect(shown).not.toContain('Stablecoins');
     expect(shown).not.toContain('USDC');
   });
@@ -141,13 +141,13 @@ describe('WalletDepositTokens', () => {
   it('moves to Base for a token the chain showing does not carry', () => {
     mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC', isChangingToken: true };
     const root = render();
-    const wbtc = root.root.find(
-      (node: any) => node.props.accessibilityLabel === 'WBTC, Wrapped Bitcoin',
+    const cbbtc = root.root.find(
+      (node: any) => node.props.accessibilityLabel === 'cbBTC, Coinbase Wrapped BTC',
     );
-    act(() => wbtc.props.onPress());
+    act(() => cbbtc.props.onPress());
 
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
-      symbol: 'WBTC',
+      symbol: 'cbBTC',
       chainId: base.id,
       isChangingToken: false,
     });
