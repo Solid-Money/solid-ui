@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
-import { useHasFeature } from '@/hooks/useFeatureAccess';
+import { useFeatureAccess, useHasFeature } from '@/hooks/useFeatureAccess';
 import { isSupportChatConfigured } from '@/lib/api/support';
 import { setSupportChatFocused } from '@/lib/support/focus';
 import { loadThread, markRead, syncThread } from '@/lib/support/sync';
@@ -17,6 +17,30 @@ import { useUserStore } from '@/store/useUserStore';
 export const useSupportChatEnabled = (): boolean => {
   const hasFeature = useHasFeature('supportChat');
   return hasFeature && isSupportChatConfigured();
+};
+
+export type SupportChatAvailability = 'loading' | 'on' | 'off' | 'error';
+
+/**
+ * For the chat screen itself: `loading` until the feature answer is in, so a
+ * notification tap doesn't send a whitelisted user to Intercom while it loads,
+ * and `error` when that answer couldn't be loaded (unknown, so not "off").
+ */
+export const useSupportChatAvailability = (): {
+  availability: SupportChatAvailability;
+  retry: () => void;
+} => {
+  const { hasFeature, ready, isError, retry } = useFeatureAccess('supportChat');
+  const availability: SupportChatAvailability = !isSupportChatConfigured()
+    ? 'off'
+    : !ready
+      ? 'loading'
+      : isError
+        ? 'error'
+        : hasFeature
+          ? 'on'
+          : 'off';
+  return { availability, retry };
 };
 
 /**

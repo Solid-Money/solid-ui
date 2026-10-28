@@ -21,7 +21,6 @@ import { useCameraPermissions } from 'expo-camera';
 import QRScannerCamera from '@/components/QRScanner/QRScannerCamera.native';
 import QRScannerPermission from '@/components/QRScanner/QRScannerPermission.native';
 import { Text } from '@/components/ui/text';
-import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useQRScanner } from '@/hooks/useQRScanner';
 import { track } from '@/lib/analytics';
@@ -38,7 +37,7 @@ const SendQRScanner: React.FC = () => {
 
   // Custom close handler - go back to search
   const handleClose = useCallback(() => {
-    setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+    setModal(useSendStore.getState().recipientModal);
   }, [setModal]);
 
   // Track scanner opened/closed

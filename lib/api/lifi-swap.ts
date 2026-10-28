@@ -3,6 +3,7 @@ import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
 import {
   LifiRouteOrder,
   LifiSwapDestinations,
+  LifiSwapPurpose,
   LifiSwapQuote,
   LifiSwapStatus,
 } from '@/lib/types/lifi-swap';
@@ -78,6 +79,8 @@ export const fetchLifiSwapQuote = async (
     fromAmount: string;
     slippage?: number;
     order?: LifiRouteOrder;
+    /** Set for a swap that pays for a membership; the backend checks it. */
+    purpose?: LifiSwapPurpose;
   },
   signal?: AbortSignal,
 ): Promise<LifiSwapQuote> => {
@@ -89,6 +92,7 @@ export const fetchLifiSwapQuote = async (
     fromAmount: params.fromAmount,
     ...(params.slippage !== undefined ? { slippage: String(params.slippage) } : {}),
     ...(params.order ? { order: params.order } : {}),
+    ...(params.purpose ? { purpose: params.purpose } : {}),
   });
   const response = await fetch(`${BASE}/quote?${query.toString()}`, {
     method: 'GET',

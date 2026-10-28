@@ -20,6 +20,7 @@ export type { ErrorContext, ErrorDetails, ErrorKind, UserError } from '@/lib/err
 export {
   getUserErrorMessage,
   isSafeServerMessage,
+  isSponsorshipLimitError,
   normalizeError,
   normalizeErrorAsync,
   toUserError,
@@ -29,6 +30,7 @@ export type { ErrorReport } from '@/lib/errors/report';
 export { activityFailureMetadata, eventIdForError } from '@/lib/errors/report';
 export { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 export { buildSupportContext, buildSupportMessage } from '@/lib/errors/supportMessage';
+export { UserCopyError } from '@/lib/errors/UserCopyError';
 
 /** What every `show*` helper resolves with, for callers that log or branch on it. */
 export interface ShownError {

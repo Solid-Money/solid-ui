@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { formatUsd, ONE_USD } from '@/constants/cardSpendModule';
+import { ONE_USD } from '@/constants/cardSpendModule';
 import {
   borrowApyPercent,
   borrowedProgress,
@@ -11,6 +11,7 @@ import {
 } from '@/constants/cardSpendV2';
 import useCardSpendableBalanceUSD from '@/hooks/useCardSpendableBalance';
 import { useCardSpendRegistration } from '@/hooks/useCardSpendRegistration';
+import { useCardDisplayCurrency } from '@/hooks/useMainCurrency';
 
 import type { SpendMode } from '@/components/Card/NewCardDetails/SpendMode/spendModes';
 
@@ -120,6 +121,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
   } = useCardSpendRegistration();
 
   const { data: cashBalanceUsd, isLoading: isBalanceLoading } = useCardSpendableBalanceUSD();
+  // Every figure here is counted in dollars; a euro main currency shows them in euros.
+  const { formatMicroUsd } = useCardDisplayCurrency();
 
   return useMemo(() => {
     const cashMicro = usdToMicro(cashBalanceUsd);
@@ -150,8 +153,8 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     // is still a position the cardholder owns and should be able to look at.
     const canBorrow = mode === 'credit' || mode === 'smart';
 
-    const cashLabel = formatUsd(cashMicro);
-    const availableLabel = formatUsd(creditHeadroom);
+    const cashLabel = formatMicroUsd(cashMicro);
+    const availableLabel = formatMicroUsd(creditHeadroom);
 
     return {
       mode,
@@ -159,13 +162,13 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       pendingMode,
 
       cashBalance: cashLabel,
-      borrowed: formatUsd(debt),
+      borrowed: formatMicroUsd(debt),
       // What the cardholder's collateral backs, drawn or not — which is what the
       // "borrowed / limit" pair means. Deliberately the collateral-derived figure rather
       // than `debt + available`: the latter is clamped by the rolling spend limits, so the
       // advertised credit line would shrink every time the cardholder bought lunch on
       // debit, which is not what a limit means to anyone reading it.
-      creditLimit: formatUsd(creditLine),
+      creditLimit: formatMicroUsd(creditLine),
       availableToBorrow: availableLabel,
       borrowApy: formatApy(apy),
       // Against the same line rendered beside it, so the bar and the figures agree.
@@ -174,14 +177,14 @@ export const useSpendModeFigures = (): SpendModeFigures => {
       segmentValue: {
         // The design's empty state: a cardholder with nothing to spend is told what to do
         // rather than shown a zero. "Funds", not a ticker — the balance above sums USDC,
-        // USDT and soUSD, so naming one of them would send the other two to the wrong place.
+        // USDT, soUSD and, once Base is enabled, EURC, so naming one would misdirect the rest.
         cash: cashMicro > 0n ? cashLabel : 'Add funds',
         credit: availableLabel,
         // `max`, not a sum — and the same rule the authorize path applies. One transaction
         // takes exactly one path, so the most Smart can fund is the larger of the two; the
         // two figures also overlap heavily, both deriving from the same balance, so adding
         // them would quote money the Safe does not have.
-        smart: formatUsd(cashMicro > creditHeadroom ? cashMicro : creditHeadroom),
+        smart: formatMicroUsd(cashMicro > creditHeadroom ? cashMicro : creditHeadroom),
       },
 
       hasPosition: debt > 0n,
@@ -203,6 +206,7 @@ export const useSpendModeFigures = (): SpendModeFigures => {
     cashBalanceUsd,
     isRegistrationLoading,
     isBalanceLoading,
+    formatMicroUsd,
   ]);
 };
 

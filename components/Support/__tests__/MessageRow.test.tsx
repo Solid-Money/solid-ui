@@ -12,6 +12,11 @@ import { message } from '@/lib/support/__tests__/fixtures';
 const { act, create } = require('react-test-renderer');
 
 const mockRetry = jest.fn();
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
 jest.mock('@/lib/support/sync', () => ({
   retryMessage: (id: string) => mockRetry(id),
   discardMessage: jest.fn(),

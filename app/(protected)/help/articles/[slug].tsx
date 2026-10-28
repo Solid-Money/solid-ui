@@ -40,6 +40,7 @@ export default function HelpArticleScreen() {
   }, [redirect, router]);
 
   const article = data && !isHelpRedirect(data) ? data : null;
+  const updatedAt = article?.updatedAt ? new Date(article.updatedAt) : null;
   const headerTitle = article?.collection?.name ?? 'Help Center';
 
   return (
@@ -86,9 +87,11 @@ export default function HelpArticleScreen() {
                 {article.description}
               </Text>
             )}
-            <Text className="mb-5 mt-2 text-xs text-white/40">
-              Updated {format(new Date(article.updatedAt), 'MMMM d, yyyy')}
-            </Text>
+            {updatedAt && Number.isFinite(updatedAt.getTime()) ? (
+              <Text className="mb-5 mt-2 text-xs text-white/40">
+                Updated {format(updatedAt, 'MMMM d, yyyy')}
+              </Text>
+            ) : null}
             <HelpMarkdown value={article.markdown} />
             <ArticleFeedback article={article} />
             {article.related.length > 0 && (

@@ -227,8 +227,16 @@ export const SEND_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_SEND_OPTIONS: {
+    name: 'open_send_options',
+    number: 0.5,
+  },
   OPEN_SEND_SEARCH: {
     name: 'open_send_search',
+    number: 1,
+  },
+  OPEN_BANK_TRANSFER: {
+    name: 'open_send_bank_transfer',
     number: 1,
   },
   /**
@@ -304,6 +312,11 @@ export const SEND_MODAL = {
   OPEN_CASHOUT_REVIEW: {
     name: 'open_cashout_review',
     number: 1.6,
+  },
+  /** Moving USDC from Fuse to Base before the order is opened. */
+  OPEN_CASHOUT_BRIDGE: {
+    name: 'open_cashout_bridge',
+    number: 1.65,
   },
   OPEN_CASHOUT_STATUS: {
     name: 'open_cashout_status',
@@ -600,5 +613,11 @@ export const TIER_UPGRADE_MODAL = {
   OPEN_TOKEN_SELECTOR: {
     name: 'open_token_selector',
     number: 1.5,
+  },
+  // After the review: a payment from another chain is on its way to Fuse, and
+  // the membership is started from here once it lands.
+  OPEN_FUNDING_STATUS: {
+    name: 'open_funding_status',
+    number: 3,
   },
 };

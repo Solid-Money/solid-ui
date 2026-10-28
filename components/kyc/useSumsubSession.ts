@@ -262,8 +262,9 @@ export function useSumsubSession() {
         setSession({
           phase: 'unavailable',
           message:
-            e?.message ||
-            'Identity verification is temporarily unavailable. Please try again shortly.',
+            typeof e?.message === 'string' && isSafeServerMessage(e.message)
+              ? e.message
+              : 'Identity verification is temporarily unavailable. Please try again shortly.',
         });
         return;
       }

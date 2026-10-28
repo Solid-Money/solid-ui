@@ -7,6 +7,10 @@ import { CrossChainSendQuote, CrossChainSendRecord } from '@/lib/types/cross-cha
 interface SendState {
   currentModal: SendModal;
   previousModal: SendModal;
+  /** Recipient screen to return to from the form, contact editor or scanner. */
+  recipientModal: SendModal;
+  /** Token-specific triggers skip the general send-method chooser. */
+  entryModal: SendModal;
   transaction: TransactionStatusModal;
   currentTokenAddress: string | null;
   selectedToken: TokenBalance | null;
@@ -32,6 +36,7 @@ interface SendState {
   /** Cross-chain send: the authorised send, tracked on the "On its way" screen. */
   crossChainSend: CrossChainSendRecord | null;
   setModal: (modal: SendModal) => void;
+  setEntryModal: (modal: SendModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setCurrentTokenAddress: (address: string) => void;
   setSelectedToken: (token: TokenBalance | null) => void;
@@ -49,6 +54,8 @@ interface SendState {
 }
 
 const EMPTY_FORM = {
+  entryModal: SEND_MODAL.OPEN_SEND_OPTIONS,
+  recipientModal: SEND_MODAL.OPEN_SEND_OPTIONS,
   transaction: {},
   currentTokenAddress: null,
   selectedToken: null,
@@ -72,7 +79,11 @@ export const useSendStore = create<SendState>()((set, get) => ({
     set({
       previousModal: get().currentModal,
       currentModal: modal,
+      ...([SEND_MODAL.OPEN_SEND_OPTIONS.name, SEND_MODAL.OPEN_SEND_SEARCH.name].includes(modal.name)
+        ? { recipientModal: modal }
+        : {}),
     }),
+  setEntryModal: entryModal => set({ entryModal }),
   setTransaction: transaction => set({ transaction }),
   setCurrentTokenAddress: address => set({ currentTokenAddress: address }),
   setSelectedToken: token => set({ selectedToken: token }),

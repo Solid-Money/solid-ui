@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { erc20Abi, TransactionReceipt } from 'viem';
@@ -18,7 +18,13 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import {
+  SOUSD_WITHDRAW_CHAIN_ID,
+  SOUSD_WITHDRAW_CHAINS,
+  SoUsdWithdrawChainId,
+} from '@/lib/soUsdWithdraw';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
+import { generateId } from '@/lib/utils/generate-id';
 import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
 import { useWithdrawSessionStore } from '@/store/useWithdrawSessionStore';
 
@@ -30,8 +36,20 @@ type BridgeResult = {
   error: string | null;
 };
 
-const useBridgeToMainnet = (): BridgeResult => {
+/**
+ * Step 1 of a soUSD withdrawal: bridge the shares from Fuse to the chain they
+ * are withdrawn on (Base, or Ethereum before the move), where step 2 queues them
+ * for USDC.
+ */
+const useBridgeForWithdraw = (
+  toChainId: SoUsdWithdrawChainId = SOUSD_WITHDRAW_CHAIN_ID,
+): BridgeResult => {
   const { user, safeAA } = useUser();
+  const destination = SOUSD_WITHDRAW_CHAINS[toChainId];
+  const bridgeWildCard = useMemo(
+    () => encodeAbiParameters(parseAbiParameters('uint32'), [destination.lzEid]),
+    [destination.lzEid],
+  );
   const { trackTransaction, updateActivity } = useActivityActions();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +61,7 @@ const useBridgeToMainnet = (): BridgeResult => {
     args: [
       BigInt(0),
       user?.safeAddress as Address,
-      encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
+      bridgeWildCard,
       ADDRESSES.fuse.nativeFeeToken,
     ],
     chainId: fuse.id,
@@ -58,7 +76,7 @@ const useBridgeToMainnet = (): BridgeResult => {
             amount: amount,
             error: 'User not found',
             step: 'validation',
-            source: 'useBridgeToMainnet',
+            source: 'useBridgeForWithdraw',
           });
           Sentry.captureException(error, {
             tags: {
@@ -77,8 +95,8 @@ const useBridgeToMainnet = (): BridgeResult => {
           amount: amount,
           fee: fee?.toString() || '0',
           from_chain: fuse.id,
-          to_chain: 1, // mainnet
-          source: 'useBridgeToMainnet',
+          to_chain: toChainId,
+          source: 'useBridgeForWithdraw',
         });
 
         setBridgeStatus(Status.PENDING);
@@ -87,7 +105,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         const amountWei = parseUnits(amount, 6);
 
         Sentry.addBreadcrumb({
-          message: 'Starting bridge to Mainnet transaction',
+          message: `Starting bridge to ${destination.name} transaction`,
           category: 'bridge',
           data: {
             amount,
@@ -118,7 +136,7 @@ const useBridgeToMainnet = (): BridgeResult => {
                 ADDRESSES.fuse.teller,
                 amountWei,
                 user.safeAddress as Address,
-                encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
+                bridgeWildCard,
               ],
             }),
             value: 0n,
@@ -127,9 +145,10 @@ const useBridgeToMainnet = (): BridgeResult => {
 
         const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-        let bridgeClientTxId: string | null = null;
+        const bridgeClientTxId = generateId();
         const result = await trackTransaction(
           {
+            clientTxId: bridgeClientTxId,
             type: TransactionType.BRIDGE_DEPOSIT,
             title: `Withdraw ${amount} soUSD`,
             shortTitle: `Withdraw ${amount}`,
@@ -139,13 +158,12 @@ const useBridgeToMainnet = (): BridgeResult => {
             fromAddress: user.safeAddress,
             toAddress: user.safeAddress,
             metadata: {
-              description: `Withdraw ${amount} soUSD from Fuse to Mainnet`,
+              description: `Withdraw ${amount} soUSD from Fuse to ${destination.name}`,
               fee: fee?.toString(),
               tokenAddress: ADDRESSES.fuse.vault,
             },
           },
           onUserOpHash => {
-            bridgeClientTxId = onUserOpHash;
             return executeTransactions(
               smartAccountClient,
               transactions,
@@ -154,13 +172,14 @@ const useBridgeToMainnet = (): BridgeResult => {
               hash => {
                 // Persist a resume session the moment the bridge tx is broadcast
                 // (after simulation passes). This way, if the user closes the flow
-                // before the Ethereum-side withdraw, it can be resumed on step 2.
+                // before the destination-side withdraw, it can be resumed on step 2.
                 if (user?.safeAddress) {
                   useWithdrawSessionStore.getState().setSession({
                     address: user.safeAddress,
                     vault: 'USD',
                     amount,
                     destinationSymbol: 'USDC',
+                    chainId: toChainId,
                     createdAt: Date.now(),
                   });
                 }
@@ -181,8 +200,8 @@ const useBridgeToMainnet = (): BridgeResult => {
             amount: amount,
             fee: fee?.toString() || '0',
             from_chain: fuse.id,
-            to_chain: 1,
-            source: 'useBridgeToMainnet',
+            to_chain: toChainId,
+            source: 'useBridgeForWithdraw',
           });
           Sentry.captureException(error, {
             tags: {
@@ -209,12 +228,12 @@ const useBridgeToMainnet = (): BridgeResult => {
           transaction_hash: transaction.transactionHash,
           fee: fee?.toString() || '0',
           from_chain: fuse.id,
-          to_chain: 1,
-          source: 'useBridgeToMainnet',
+          to_chain: toChainId,
+          source: 'useBridgeForWithdraw',
         });
 
         Sentry.addBreadcrumb({
-          message: 'Bridge to Mainnet transaction successful',
+          message: `Bridge to ${destination.name} transaction successful`,
           category: 'bridge',
           data: {
             amount,
@@ -250,11 +269,11 @@ const useBridgeToMainnet = (): BridgeResult => {
           amount: amount,
           fee: fee?.toString() || '0',
           from_chain: fuse.id,
-          to_chain: 1,
+          to_chain: toChainId,
           error: error instanceof Error ? error.message : 'Unknown error',
           user_cancelled: String(error).includes('cancelled'),
           step: 'execution',
-          source: 'useBridgeToMainnet',
+          source: 'useBridgeForWithdraw',
         });
 
         Sentry.captureException(error, {
@@ -281,10 +300,10 @@ const useBridgeToMainnet = (): BridgeResult => {
         throw error;
       }
     },
-    [user, fee, safeAA, trackTransaction, updateActivity],
+    [user, fee, safeAA, trackTransaction, updateActivity, toChainId, destination, bridgeWildCard],
   );
 
   return { bridge, bridgeStatus, error };
 };
 
-export default useBridgeToMainnet;
+export default useBridgeForWithdraw;

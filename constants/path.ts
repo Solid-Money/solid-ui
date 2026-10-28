@@ -76,8 +76,8 @@ type Path = {
    * deliver and a challenge nobody was told about still has to be answerable.
    */
   CARD_3DS: Href;
+  CARD_MAIN_CURRENCY: Href;
   CARD_ACTIVATE: Href;
-  CARD_KYC_MOBILE: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
   SETTINGS: Href;
@@ -147,8 +147,8 @@ export const path: Path = {
   CARD_READY: '/card/ready' as Href,
   CARD_PENDING: '/card/pending' as Href,
   CARD_3DS: '/card/3ds' as Href,
+  CARD_MAIN_CURRENCY: '/card/main-currency' as Href,
   CARD_ACTIVATE: '/card/activate',
-  CARD_KYC_MOBILE: '/card/kyc_mobile',
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
   SETTINGS: '/settings',

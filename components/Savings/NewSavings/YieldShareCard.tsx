@@ -13,7 +13,6 @@ import {
 import { Text } from '@/components/ui/text';
 import { formatTokenAmount } from '@/lib/portfolio';
 import { VaultType } from '@/lib/types';
-import { isEurVault } from '@/lib/vaultCurrency';
 
 const ShareRow = ({
   icon,
@@ -150,9 +149,7 @@ const YieldShareCard = ({
       </View>
       <Text className="text-[13px] leading-[18px] text-white/50">
         {token} is the token you hold for {product}.{' '}
-        {isEurVault(vaultType)
-          ? `Yield is coming soon; once it starts, each ${token} becomes worth more as interest is added.`
-          : `The number of ${token} stays the same; each one becomes worth more as interest is added.`}
+        {`The number of ${token} stays the same; each one becomes worth more as interest is added.`}
         {rate ? ` ${rate}.` : ''}
       </Text>
     </View>

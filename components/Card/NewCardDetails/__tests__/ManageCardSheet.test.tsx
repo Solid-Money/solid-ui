@@ -31,6 +31,13 @@ jest.mock('@/hooks/useWirexThreeDs', () => ({
 jest.mock('@/store/useCardWithdrawStore', () => ({
   useCardWithdrawStore: (select: any) => select({ setModal: mockWithdraw }),
 }));
+jest.mock('@/hooks/useCardProvider', () => ({
+  useCardProvider: () => ({ provider: mockWirex ? 'wirex' : 'rain' }),
+}));
+let mockMainCurrency = 'USD';
+jest.mock('@/hooks/useMainCurrency', () => ({
+  useMainCurrency: () => ({ mainCurrency: mockMainCurrency }),
+}));
 jest.mock('@/lib/assets', () => ({ getAsset: (asset: string) => asset }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/Card/NewCardDetails/EditSpendLimitStep', () => 'EditSpendLimitStep');
@@ -69,6 +76,7 @@ const press = (button: any) => {
 afterEach(() => {
   jest.clearAllMocks();
   mockWirex = true;
+  mockMainCurrency = 'USD';
 });
 
 test('Wirex exposes limits, wallet and pending approvals; closes before opening the next flow', () => {
@@ -77,11 +85,23 @@ test('Wirex exposes limits, wallet and pending approvals; closes before opening 
     'Edit limit',
     'Add to Apple Wallet',
     'Approvals, 1 waiting',
+    'Main currency, US dollar',
   ]);
   press(buttons[0]);
   press(buttons[2]);
   expect(props.onOpenChange).toHaveBeenCalledWith(false);
   expect(router.push).toHaveBeenCalledTimes(1);
+  act(() => tree.unmount());
+});
+
+test('Wirex opens Main currency from the last row, naming the saved currency', () => {
+  mockMainCurrency = 'EUR';
+  const { props, tree, buttons } = render();
+  const row = buttons.at(-1);
+  expect(row.props.accessibilityLabel).toBe('Main currency, Euro');
+  press(row);
+  expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  expect(router.push).toHaveBeenCalledWith('/card/main-currency');
   act(() => tree.unmount());
 });
 

@@ -14,10 +14,24 @@ jest.mock('@/lib/utils', () => ({
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
   formatNumber: (value: number) => String(value),
 }));
-jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ fetchQuery: jest.fn() }) }));
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ fetchQuery: mockState.fetchQuery }),
+}));
 jest.mock('@/hooks/useDebounce', () => ({ __esModule: true, default: (value: unknown) => value }));
 jest.mock('@/hooks/useCashout', () => ({
   useCashoutUsdc: () => ({ balanceWei: mockState.balanceWei, decimals: 6, isLoading: false }),
+}));
+jest.mock('@/lib/utils/cross-chain-send', () => ({
+  formatLD: (amountLD: string) => jest.requireActual('viem').formatUnits(BigInt(amountLD), 6),
+}));
+jest.mock('@/hooks/useCashoutBridge', () => ({
+  bridgePlanMessage: (error: Error) => error.message,
+  cashoutBridgeMaxQuery: () => ({ queryKey: ['max'] }),
+  useCashoutBridge: () => ({ source: mockState.bridge, isLoading: false }),
+  useCashoutBridgePlan: (_chainId: number, shortfallLD: bigint) => {
+    mockState.planned.push(shortfallLD);
+    return { data: mockState.plan, isFetching: false, error: mockState.planError ?? null };
+  },
 }));
 jest.mock('@/hooks/useTransfiCashout', () => ({
   cashoutQuoteQuery: jest.fn(),
@@ -51,12 +65,37 @@ const mockState: {
   quote?: Record<string, unknown>;
   setAmount: jest.Mock;
   quotedWhileValid: { amount: string; enabled: boolean }[];
+  fetchQuery: jest.Mock;
+  bridge?: Record<string, unknown>;
+  plan?: Record<string, unknown>;
+  planError?: Error;
+  planned: bigint[];
 } = {
   amount: '',
   balanceWei: 0n,
   limitsLoading: false,
   setAmount: jest.fn(),
   quotedWhileValid: [],
+  fetchQuery: jest.fn(),
+  planned: [],
+};
+
+/** 1,250 USDC on Fuse the bridge can move to Base. */
+const FUSE_SOURCE = {
+  balanceWei: parseUnits('1250', 6),
+  minLD: parseUnits('5', 6),
+  cap: { amountLD: parseUnits('1250', 6), reason: 'balance' },
+  networkName: 'Base',
+  etaMinutes: 2,
+};
+
+const QUOTE_100 = {
+  usdcAmount: '100',
+  fiatCurrency: 'ZMW',
+  paymentCode: 'zm_mobile_money',
+  fiatAmount: 2400,
+  totalFee: 12,
+  ...LIMITS,
 };
 
 const render = () => {
@@ -93,6 +132,11 @@ beforeEach(() => {
   mockState.quote = undefined;
   mockState.setAmount = jest.fn();
   mockState.quotedWhileValid = [];
+  mockState.fetchQuery = jest.fn();
+  mockState.bridge = undefined;
+  mockState.plan = undefined;
+  mockState.planError = undefined;
+  mockState.planned = [];
 });
 
 describe('CashoutAmount', () => {
@@ -180,5 +224,68 @@ describe('CashoutAmount', () => {
     const root = render();
     expect(texts(root)).toContain('Sent from your wallet on Base');
     expect(mockState.quotedWhileValid.at(-1)).toEqual({ amount: '1', enabled: true });
+  });
+
+  describe('with USDC on Fuse', () => {
+    beforeEach(() => {
+      mockState.balanceWei = parseUnits('12.4', 6);
+      mockState.bridge = FUSE_SOURCE;
+    });
+
+    it('counts Base and Fuse in one balance, and shows the split', () => {
+      const root = render();
+      expect(texts(root)).toContain('Balance 1262.4 USDC');
+      expect(rowValue(root, 'On Base').props.children).toBe('12.4 USDC');
+      expect(rowValue(root, 'On Fuse').props.children).toBe('1250 USDC');
+    });
+
+    it('sends from Base alone when Base covers the amount', () => {
+      mockState.amount = '10';
+      mockState.limits = undefined;
+      const root = render();
+      expect(texts(root)).toContain('Sent from your wallet on Base');
+      expect(mockState.planned.every(shortfall => shortfall === 0n)).toBe(true);
+    });
+
+    it('prices the shortfall from Fuse and enables Review once it is priced', () => {
+      mockState.amount = '100';
+      mockState.quote = QUOTE_100;
+      mockState.plan = { amountLD: '88000000', amountReceivedLD: '87600000', totalFeeLD: '400000' };
+      const root = render();
+      expect(mockState.planned.at(-1)).toBe(parseUnits('87.6', 6));
+      expect(texts(root)).toContain('87.6 USDC moves from Fuse to Base first. Takes about 2 min.');
+      expect(reviewButton(root).props.disabled).toBe(false);
+    });
+
+    it('holds Review until the move is priced', () => {
+      mockState.amount = '100';
+      mockState.quote = QUOTE_100;
+      expect(reviewButton(render()).props.disabled).toBe(true);
+    });
+
+    it('puts a move that can’t be made on the field', () => {
+      mockState.amount = '100';
+      mockState.quote = QUOTE_100;
+      mockState.planError = new Error('That’s over today’s limit for moving USDC from Fuse');
+      const root = render();
+      expect(texts(root)).toContain('That’s over today’s limit for moving USDC from Fuse');
+      expect(reviewButton(root).props.disabled).toBe(true);
+    });
+
+    it('fills Max with the Base balance plus what the move from Fuse would land', async () => {
+      mockState.limits = undefined;
+      mockState.fetchQuery.mockResolvedValue({ amountReceivedLD: parseUnits('1249.6', 6) });
+      const root = render();
+      await act(async () => maxButton(root).props.onPress());
+      expect(mockState.setAmount).toHaveBeenCalledWith('1262');
+    });
+
+    it('fills Max with the Base balance when the move can’t be priced', async () => {
+      mockState.limits = undefined;
+      mockState.fetchQuery.mockRejectedValue(new Error('down'));
+      const root = render();
+      await act(async () => maxButton(root).props.onPress());
+      expect(mockState.setAmount).toHaveBeenCalledWith('12.4');
+    });
   });
 });

@@ -1,11 +1,21 @@
 import { DEVICE_DIGITAL_WALLET } from '@/constants/digital-wallet';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useDeclinedPaymentPrompt } from '@/hooks/useDeclinedPaymentPrompt';
+import { useUnusableEurc } from '@/hooks/useUnusableEurc';
 import { useWalletEligibility } from '@/hooks/useWalletEligibility';
+import { CardProvider } from '@/lib/types';
 import { resolveHomePromptStep } from '@/lib/utils/homePromptStep';
 import { HomePromptKey, isHomePromptSnoozed, useHomePromptStore } from '@/store/useHomePromptStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useUserStore } from '@/store/useUserStore';
+
+/**
+ * The "Turn on euro spending" banner, held back for now. The step stays in the
+ * ladder so turning this back on is the whole change.
+ */
+const EURO_SPENDING_PROMPT_ENABLED = false;
 
 interface UseHomePromptParams {
   /** Whether the user already holds an active card. */
@@ -43,6 +53,13 @@ export function useHomePrompt({
     enabled: hasCard,
   });
 
+  // The two Wirex-only steps. Both reads are already on Home for a Wirex cardholder (the card
+  // history above, the spend tile's balance), and both are off for everyone else.
+  const { provider } = useCardProvider();
+  const isWirexCardholder = hasCard && provider === CardProvider.WIREX;
+  const declinedPayment = useDeclinedPaymentPrompt(isWirexCardholder);
+  const { eurc } = useUnusableEurc();
+
   const key = resolveHomePromptStep({
     hasCard,
     depositCompleted,
@@ -55,6 +72,8 @@ export function useHomePrompt({
     isCardSpendResolved: !isCardSpendLoading,
     wallet: walletPromptPossible ? DEVICE_DIGITAL_WALLET : null,
     eligibility,
+    hasUncoveredDecline: isWirexCardholder && !!declinedPayment,
+    holdsUnusableEurc: EURO_SPENDING_PROMPT_ENABLED && isWirexCardholder && eurc > 0,
   });
 
   if (!key || isHomePromptSnoozed(dismissedAt, key)) return null;

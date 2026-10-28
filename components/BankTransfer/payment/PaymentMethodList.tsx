@@ -206,7 +206,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
       try {
         if (err instanceof Response) {
-          const errorData = await err.json();
+          const errorData = await err.clone().json();
           errorCode = errorData.code || errorData.error || 'api_error';
 
           // Backend returns user-friendly message in errorData.message

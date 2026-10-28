@@ -116,7 +116,7 @@ describe('getDepositFeeRatePpm', () => {
       'with %s',
       (_label, provider) => {
         it.each([
-          ['soUSD', mainnet.id],
+          ['soUSD', base.id],
           ['soETH', mainnet.id],
           ['soFUSE', fuse.id],
           ['soEURC', base.id],

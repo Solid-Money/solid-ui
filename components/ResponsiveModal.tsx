@@ -61,6 +61,8 @@ export interface ResponsiveModalProps {
   showBackButton?: boolean;
   /** Use the 40px controls and 20px title from compact mobile design headers. */
   compactHeader?: boolean;
+  /** Use 40px header controls for screens designed with the smaller controls. */
+  compactControls?: boolean;
   onBackPress?: () => void;
   actionButton?: ReactNode;
 
@@ -96,6 +98,8 @@ export interface ResponsiveModalProps {
   mobilePresentation?: 'sheet' | 'drawer';
   /** Present the dialog edge-to-edge on iOS and Android. */
   nativeFullScreen?: boolean;
+  /** Distance from the top of the viewport to a mobile sheet's upper edge. */
+  mobileTopOffset?: number;
 }
 
 const ResponsiveModal = ({
@@ -114,6 +118,7 @@ const ResponsiveModal = ({
   gradientHeader = false,
   showBackButton = false,
   compactHeader = false,
+  compactControls = false,
   onBackPress,
   actionButton,
   shouldAnimate = previousModal.name !== 'close',
@@ -126,6 +131,7 @@ const ResponsiveModal = ({
   fillViewportHeight = false,
   mobilePresentation = 'sheet',
   nativeFullScreen = false,
+  mobileTopOffset,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
@@ -207,6 +213,7 @@ const ResponsiveModal = ({
         overlayClassName={overlayClassName}
         webPresentation={isDrawer ? 'bottom-sheet' : 'modal'}
         nativePresentation={isDrawer ? 'bottom-sheet' : 'modal'}
+        mobileTopOffset={!isDrawer && !useNativeFullScreen ? mobileTopOffset : undefined}
         className={cn(
           // Desktop popups get a uniform 40px inset. Three of the four sides live
           // here; the bottom stays 0 so the scroll viewport (and its bottom fade)
@@ -254,12 +261,14 @@ const ResponsiveModal = ({
                     variant="ghost"
                     size="icon"
                     className="h-[50px] w-[50px] shrink-0 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    style={compactControls ? { width: 40, height: 40 } : undefined}
+                    accessibilityLabel="Back"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 ) : (
-                  <View className="w-[50px] shrink-0" />
+                  <View className={cn('w-[50px] shrink-0', compactControls && 'w-10')} />
                 )}
                 {title ? (
                   // `flex-1` so the title takes the space between the two 50px
@@ -299,7 +308,10 @@ const ResponsiveModal = ({
                 )}
                 <View className="flex-row items-center gap-2">
                   {hasActionButton && actionButton}
-                  <DialogCloseButton />
+                  <DialogCloseButton
+                    accessibilityLabel="Close"
+                    style={compactControls ? { width: 40, height: 40 } : undefined}
+                  />
                 </View>
               </DialogHeader>
             ) : (

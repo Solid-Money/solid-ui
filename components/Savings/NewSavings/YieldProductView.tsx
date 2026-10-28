@@ -36,7 +36,7 @@ const INTRO: Record<VaultType, string> = {
   [VaultType.ETH]: 'On your ETH. Interest is added all the time, and you keep your ETH exposure.',
   [VaultType.FUSE]: 'On your FUSE. Interest is added all the time, and it counts toward your tier.',
   [VaultType.EUR]:
-    'On your euros. Yield is coming soon; until then your EURC is held and shown in euros, and you can withdraw it whenever you want.',
+    'On your euros. Your EURC is held and shown in euros, and you can withdraw it whenever you want.',
 };
 
 const HowItWorksRow = ({ onPress }: { onPress: () => void }) => (
@@ -121,7 +121,8 @@ export default function YieldProductView({
   const isFirstDepositMoving = !isFunded && hasDepositMoving(depositsOnItsWay);
   const isEur = isEurVault(vaultType);
   const formatAmount = (value: number | undefined) => formatYieldAmount(value, vaultType);
-  const apyLabel = apy ? `${apy.toFixed(1)}%` : undefined;
+  // EUR Yield's rate is 0% for now, and shown as such rather than left blank.
+  const apyLabel = apy ? `${apy.toFixed(1)}%` : isEur ? '0.0%' : undefined;
   // Per day once that reaches a cent, else per month, as on Assets: a small balance would
   // otherwise read "+$0.00 today".
   const rate = Math.max(apy ?? 0, 0) / 100;

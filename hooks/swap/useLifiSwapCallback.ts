@@ -7,9 +7,10 @@ import { CHAIN_NAMES } from '@/constants/chains';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import useUser from '@/hooks/useUser';
 import { recordLifiSwapFee } from '@/lib/api/lifi-swap';
+import { UserCopyError } from '@/lib/errors/UserCopyError';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-import { LifiSwapQuote } from '@/lib/types/lifi-swap';
+import { LifiSwapPurpose, LifiSwapQuote } from '@/lib/types/lifi-swap';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain, publicClient } from '@/lib/wagmi';
@@ -40,12 +41,21 @@ export function useLifiSwapCallback() {
   const [isSending, setIsSending] = useState(false);
 
   const swap = useCallback(
-    async (quote: LifiSwapQuote): Promise<LifiSwapResult> => {
+    async (
+      quote: LifiSwapQuote,
+      options: {
+        /**
+         * Carried onto the tracked swap, so whatever it was for can find it
+         * again once it lands — a membership waiting on the USDC it brings.
+         */
+        purpose?: LifiSwapPurpose;
+      } = {},
+    ): Promise<LifiSwapResult> => {
       if (!user?.safeAddress || !user.suborgId || !user.signWith)
-        throw new Error('Your wallet is not ready. Reopen the swap and try again.');
+        throw new UserCopyError('Your wallet is not ready. Reopen the swap and try again.');
 
       const chain = getChain(quote.fromChainId);
-      if (!chain) throw new Error('This network is not supported for swaps yet.');
+      if (!chain) throw new UserCopyError('This network is not supported for swaps yet.');
 
       const safe = user.safeAddress as Address;
       const fromAmount = BigInt(quote.fromAmount);
@@ -60,7 +70,7 @@ export function useLifiSwapCallback() {
           selectedRewardsUserId() !== user.userId ||
           useRewardsUpgradeStore.getState().session !== accountSession
         )
-          throw new Error('Account changed. Reopen the swap for the selected account.');
+          throw new UserCopyError('Account changed. Reopen the swap for the selected account.');
       };
       await assertAccount();
       setIsSending(true);
@@ -164,6 +174,8 @@ export function useLifiSwapCallback() {
           etaSeconds: quote.executionDurationSeconds,
           submittedAt: Date.now(),
           status: 'PENDING',
+          ...(options.purpose ? { purpose: options.purpose } : {}),
+          ...(quote.fromAmountUsd ? { fromAmountUsd: quote.fromAmountUsd } : {}),
         });
         return { kind: 'bridging', transactionHash, clientTxId };
       } catch (error: any) {
@@ -175,6 +187,8 @@ export function useLifiSwapCallback() {
           message.includes('user rejected')
         )
           return { kind: 'cancelled' };
+        // Our own copy for a known state (no gas money, account switched).
+        if (error instanceof UserCopyError) throw error;
 
         Sentry.captureException(error, {
           tags: { type: 'lifi_swap_execution_failed', fromChainId: quote.fromChainId },

@@ -100,7 +100,7 @@ const ProductRow = ({
         <ApyTag
           apy={product.apy}
           isLoading={product.isApyLoading}
-          emptyLabel={isEur ? '— APY' : undefined}
+          emptyLabel={isEur ? '0.0% APY' : undefined}
         />
       </View>
       {isLoading ? (

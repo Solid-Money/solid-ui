@@ -1,3 +1,4 @@
+import { zeroAddress } from 'viem';
 import { base, fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -7,7 +8,6 @@ import {
   EXPO_PUBLIC_MINIMUM_EUR_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-  isDevFeatureEnabled,
 } from '@/lib/config';
 import { Vault, VaultType } from '@/lib/types';
 
@@ -16,8 +16,7 @@ const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
 /**
  * soEURC — EURC on Base, earning in euros.
  *
- * In development: listed on QA/preview builds and absent from production, gated on
- * `isDevFeatureEnabled` below rather than `isComingSoon`, which would still show it.
+ * Offered to everyone, in every build, like the other vaults.
  * v1 takes EURC on Base only, from the Solid wallet or a connected external wallet;
  * there is no fast withdraw and no on-ramp or bridge into it.
  */
@@ -59,6 +58,11 @@ export const VAULTS: Vault[] = [
         address: ADDRESSES.fuse.vault,
         chainId: fuse.id,
       },
+      // Shares sit on Base between a withdrawal's bridge and its queue request.
+      // Kept last: screens that show one share address read vaults[0].
+      ...(ADDRESSES.base.vault !== zeroAddress
+        ? [{ address: ADDRESSES.base.vault, chainId: base.id }]
+        : []),
     ],
     depositConfig: {
       methods: [
@@ -119,5 +123,5 @@ export const VAULTS: Vault[] = [
   // Always last: `useSavingStore` persists the selected vault as an index into
   // this list, so inserting a vault ahead of the others would move a returning
   // user's selection onto a different vault.
-  ...(isDevFeatureEnabled ? [EUR_VAULT] : []),
+  EUR_VAULT,
 ];

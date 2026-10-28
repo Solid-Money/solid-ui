@@ -1,7 +1,9 @@
 import { BalanceHeadline } from '@/components/BalanceHeadline';
 
 interface WalletBalanceHeadlineProps {
+  /** Already in `symbol`'s currency — the cardholder's main currency. */
   balance: number;
+  symbol?: string;
 }
 
 /**
@@ -14,8 +16,8 @@ interface WalletBalanceHeadlineProps {
  * ("what is in my wallet?") that nobody was asking at a glance, and the number the
  * user came for was the small one underneath it.
  */
-const WalletBalanceHeadline = ({ balance }: WalletBalanceHeadlineProps) => {
-  return <BalanceHeadline balance={balance} label="Balance" />;
+const WalletBalanceHeadline = ({ balance, symbol }: WalletBalanceHeadlineProps) => {
+  return <BalanceHeadline balance={balance} label="Balance" symbol={symbol} />;
 };
 
 export default WalletBalanceHeadline;

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { zeroAddress } from 'viem';
 
+import CoinGeckoAttribution from '@/components/CoinGeckoAttribution';
 import { TokenBalance, TokenType } from '@/lib/types';
 
 import TokenCard from './TokenCard';
@@ -30,6 +31,7 @@ const TokenListMobile = ({ tokens }: TokenListProps) => {
           onPress={() => handleTokenPress(token)}
         />
       ))}
+      {tokens.length > 0 && <CoinGeckoAttribution />}
     </View>
   );
 };

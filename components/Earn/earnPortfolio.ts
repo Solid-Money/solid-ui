@@ -21,14 +21,13 @@ export const formatVaultApyLabel = (apy: number | undefined) =>
  * These are indicative rates, not measured ones — keep them in step with the
  * rates the vaults are actually expected to return.
  *
- * soEURC has none: it does not earn yet, so it shows "—" rather than a rate it
- * has never paid.
+ * soEURC is 0% for now, and shown as 0%.
  */
 export const FALLBACK_VAULT_APY: VaultApys = {
   [VaultType.USDC]: 4,
   [VaultType.ETH]: 2,
   [VaultType.FUSE]: 14,
-  [VaultType.EUR]: undefined,
+  [VaultType.EUR]: 0,
 };
 
 /** The reported APY when there is one, otherwise the vault's indicative rate (if it has one). */

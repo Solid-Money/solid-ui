@@ -16,6 +16,9 @@ import { useSendStore } from '@/store/useSendStore';
  */
 const SendModalProvider = () => {
   const {
+    customHeaderLayout,
+    fillViewportHeight,
+    hideHeader,
     shouldOpen,
     showBackButton,
     compactHeader,
@@ -52,6 +55,9 @@ const SendModalProvider = () => {
         title={getTitle()}
         contentClassName={getContentClassName()}
         containerClassName={getContainerClassName()}
+        titleClassName={customHeaderLayout ? 'h-14 pb-4 web:[font-synthesis:none]' : undefined}
+        mobileTopOffset={customHeaderLayout ? 72 : undefined}
+        compactControls={customHeaderLayout}
         showBackButton={showBackButton}
         compactHeader={compactHeader}
         onBackPress={handleBackPress}
@@ -59,6 +65,8 @@ const SendModalProvider = () => {
         isForward={isForward}
         contentKey={getContentKey()}
         disableScroll={getDisableScroll()}
+        hideHeader={hideHeader}
+        fillViewportHeight={fillViewportHeight}
       >
         {getContent()}
       </ResponsiveModal>

@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Badge / dot" clip-path="url(#clip0_0_48)">
+<path id="Vector" d="M7 14C10.866 14 14 10.866 14 7C14 3.13401 10.866 0 7 0C3.13401 0 0 3.13401 0 7C0 10.866 3.13401 14 7 14Z" fill="#111111"/>
+<path id="Vector_2" d="M7 11C9.20914 11 11 9.20914 11 7C11 4.79086 9.20914 3 7 3C4.79086 3 3 4.79086 3 7C3 9.20914 4.79086 11 7 11Z" fill="#94F27F" fill-opacity="0.22"/>
+<path id="Vector_3" d="M7 9.3C8.27026 9.3 9.3 8.27026 9.3 7C9.3 5.72975 8.27026 4.7 7 4.7C5.72975 4.7 4.7 5.72975 4.7 7C4.7 8.27026 5.72975 9.3 7 9.3Z" fill="#94F27F"/>
+</g>
+<defs>
+<clipPath id="clip0_0_48">
+<rect width="14" height="14" fill="white"/>
+</clipPath>
+</defs>
+</svg>

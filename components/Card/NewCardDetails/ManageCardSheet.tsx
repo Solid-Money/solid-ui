@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { Eye } from 'lucide-react-native';
 
+import { MAIN_CURRENCY_LABEL } from '@/components/Card/MainCurrency/mainCurrencyCopy';
 import EditSpendLimitStep, {
   SpendLimitField,
 } from '@/components/Card/NewCardDetails/EditSpendLimitStep';
@@ -15,11 +16,14 @@ import { formatUsd, onChainToUsd, usdToOnChain } from '@/constants/cardSpendModu
 import { DigitalWalletType } from '@/constants/digital-wallet';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import {
   CardSpendRegistrationSource,
   useCardSpendRegistration,
 } from '@/hooks/useCardSpendRegistration';
+import { useMainCurrency } from '@/hooks/useMainCurrency';
 import { useWirexThreeDs } from '@/hooks/useWirexThreeDs';
+import { CardProvider } from '@/lib/types';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
 /** Where in the sheet the user is. */
@@ -128,6 +132,9 @@ const ManageCardSheet = ({
   // Read here as well as on the action row: the count is what makes an approvals queue
   // worth a row, and a challenge whose push never arrived is otherwise invisible.
   const { requests: threeDsRequests } = useWirexThreeDs();
+  // Main currency is a Wirex card's: only it pays from EURC.
+  const { provider } = useCardProvider();
+  const { mainCurrency } = useMainCurrency();
   const setWithdrawModal = useCardWithdrawStore(state => state.setModal);
 
   const isBusy = isRegistering || isUpdatingLimit || isDisabling;
@@ -255,6 +262,11 @@ const ManageCardSheet = ({
     onAddToWallet?.(wallet);
   };
 
+  const handleMainCurrency = () => {
+    closeSheet();
+    router.push(path.CARD_MAIN_CURRENCY);
+  };
+
   const handleWithdraw = () => {
     closeSheet();
     setWithdrawModal(CARD_WITHDRAW_MODAL.OPEN_FORM);
@@ -367,6 +379,11 @@ const ManageCardSheet = ({
             approvalsCount={threeDsRequests.length}
             showSpendControls={isAvailable}
             onWithdraw={canWithdraw ? handleWithdraw : undefined}
+            mainCurrency={
+              provider === CardProvider.WIREX
+                ? { label: MAIN_CURRENCY_LABEL[mainCurrency], onPress: handleMainCurrency }
+                : undefined
+            }
           />
         )}
       </View>

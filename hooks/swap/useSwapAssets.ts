@@ -5,14 +5,13 @@ import { fuse } from 'viem/chains';
 
 import { NATIVE_SWAP_ASSETS, SWAP_CHAIN_IDS, swapAssetKey } from '@/constants/swapChains';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
+import { SWAP_TOKENS_ALL_CHAINS_KEY } from '@/hooks/useListedTokens';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { fetchTokenList } from '@/lib/api';
 import { SwapAsset, SwapAssetWithBalance } from '@/lib/types/lifi-swap';
 import { multicall3 } from '@/lib/utils/multicall';
 import { publicClient } from '@/lib/wagmi';
-
-const SWAP_TOKENS_ALL_CHAINS_KEY = ['swap-tokens', 'all-chains'];
 
 /**
  * Every token the swap form offers, on every swap chain, with the user's

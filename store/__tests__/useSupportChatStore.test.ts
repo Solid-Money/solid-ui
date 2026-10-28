@@ -34,13 +34,23 @@ describe('useSupportChatStore', () => {
     expect(state().unread).toBe(1);
   });
 
-  it('recounts from the messages once loaded', () => {
+  it('adds new replies to the count once loaded, and ignores the customer and the read ones', () => {
     state().setThread(thread({ messages: [message({ seq: 1 })], lastReadSeq: 1 }));
     state().receive([
       message({ seq: 5 }),
       message({ seq: 6, author: { type: 'user', name: null } }),
     ]);
     expect(state().unread).toBe(1);
+  });
+
+  it('keeps the server count for history it does not hold', () => {
+    const replies = [message({ seq: 30 }), message({ seq: 31 })];
+    state().setThread(thread({ messages: replies, unread: 12, lastReadSeq: 2 }));
+    state().receive([message({ seq: 32 })]);
+    expect(state().unread).toBe(13);
+    // A held message coming back (fresh file links) is not a new reply.
+    state().receive([{ ...replies[0], body: 'updated' }]);
+    expect(state().unread).toBe(13);
   });
 
   it('settles a pending send when its message arrives', () => {

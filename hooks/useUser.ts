@@ -21,7 +21,6 @@ import {
   login,
   logout as apiLogout,
   removePushToken,
-  updateSafeAddress,
   updateUserCredentialId,
 } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
@@ -43,6 +42,7 @@ import {
   withRefreshToken,
 } from '@/lib/utils';
 import { getPasskeyErrorDetails } from '@/lib/utils/passkeyErrors';
+import { linkSafeAddress } from '@/lib/utils/safeAddressSync';
 import { isNetworkError } from '@/lib/utils/userFacingError';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -308,13 +308,12 @@ const useUser = (): UseUserReturn => {
           safeAddress: smartAccountClient.account.address,
         });
 
-        const resp = await withRefreshToken(() =>
-          updateSafeAddress(smartAccountClient.account.address),
-        );
-
-        if (!resp) {
-          const error = new Error('Error updating safe address on login');
-
+        try {
+          // No retries here so login isn't held up; usePostSignupInit retries
+          // an unsynced Safe on a later launch.
+          await linkSafeAddress(smartAccountClient.account.address, { retryDelaysMs: [] });
+          markSafeAddressSynced(user._id);
+        } catch (error) {
           Sentry.captureException(error, {
             tags: {
               type: 'safe_address_update_error',
@@ -325,9 +324,6 @@ const useUser = (): UseUserReturn => {
             },
           });
         }
-
-        // Mark as synced to avoid repeated attempts elsewhere
-        markSafeAddressSynced(user._id);
       }
 
       const selectedUser: User = {
@@ -335,6 +331,7 @@ const useUser = (): UseUserReturn => {
         walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
+        createdAt: user.createdAt,
         signWith: user.walletAddress,
         suborgId: user.subOrganizationId,
         selected: true,
@@ -647,6 +644,7 @@ const useUser = (): UseUserReturn => {
         storeUser({
           ...selectedUser,
           selected: true,
+          createdAt: authedUser.createdAt ?? selectedUser.createdAt,
           tokens: authedUser.tokens || undefined,
           credentialId: stampedCredentialId ?? authedUser.credentialId ?? selectedUser.credentialId,
           // Prefer the backend's list (healed from Turnkey) over the local one,

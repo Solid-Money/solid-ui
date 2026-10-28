@@ -8,6 +8,7 @@ import PortfolioIcon from '@/components/Assets/PortfolioIcon';
 import { isYieldShare, yieldHoldings } from '@/components/Earn/earnPortfolio';
 import YieldIcon from '@/components/Earn/YieldIcon';
 import {
+  formatYieldAmount,
   formatYieldUsd,
   openYieldProduct,
   yieldProductName,
@@ -36,6 +37,24 @@ const apyLabel = (apy: number | undefined) =>
   apy !== undefined && Number.isFinite(apy) && apy > 0 ? (
     <Text className="text-[14px] font-normal text-[#94F27F]">{apy.toFixed(1)}% APY</Text>
   ) : undefined;
+
+/** EUR Yield's amount column (Figma 29123:9541): euros, with the dollar estimate beneath. */
+export const EurYieldAmount = ({
+  eurYield,
+}: {
+  eurYield: NonNullable<ReturnType<typeof usePortfolio>['eurYield']>;
+}) => (
+  <View className="shrink-0 items-end gap-[3px]">
+    <Text className="text-[16px] font-semibold text-white">
+      {formatYieldAmount(eurYield.valueEur, VaultType.EUR)}
+    </Text>
+    {eurYield.valueUsdEstimate !== undefined && (
+      <Text className="text-[14px] font-normal text-white/50">
+        ≈ {formatYieldUsd(eurYield.valueUsdEstimate)}
+      </Text>
+    )}
+  </View>
+);
 
 type HomeAsset = {
   key: string;
@@ -126,6 +145,26 @@ export default function HomeAssetsCard({
         ),
       };
     }),
+    // EUR Yield is held in euros: its own row, the dollar estimate only beneath it and for order.
+    ...(portfolio.eurYield && portfolio.eurYield.valueEur > 0
+      ? [
+          {
+            key: `earn:${VaultType.EUR}`,
+            value: portfolio.eurYield.valueUsdEstimate ?? portfolio.eurYield.valueEur,
+            onPress: () => router.push(openYieldProduct(VaultType.EUR) as Href),
+            row: (onPress: () => void) => (
+              <AssetRow
+                title={yieldProductName(VaultType.EUR)}
+                value={undefined}
+                icon={<YieldIcon vaultType={VaultType.EUR} />}
+                subtitle={apyLabel(portfolio.eurYield?.apy)}
+                trailing={portfolio.eurYield && <EurYieldAmount eurYield={portfolio.eurYield} />}
+                onPress={onPress}
+              />
+            ),
+          },
+        ]
+      : []),
     ...((portfolio.lockedFuse ?? 0) > 0
       ? [
           {

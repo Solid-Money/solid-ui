@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextStyle, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Check, ChevronDown } from 'lucide-react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { Check, ChevronDown, ChevronRight } from 'lucide-react-native';
 
 import {
   type CardSheetPresentation,
@@ -16,6 +23,7 @@ import { Text } from '@/components/ui/text';
 import { formatUsd } from '@/constants/cardSpendModule';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
+  type EscrowedCollateral,
   formatRepayTokenAmount,
   maxRepayableUsd,
   parseUsdAmountText,
@@ -23,6 +31,7 @@ import {
   type RepaySource,
   repayTokenEstimate,
   sanitizeUsdAmountText,
+  tokenToUsdFloor,
   usdToAmountText,
 } from '@/lib/utils/cardRepay';
 
@@ -46,6 +55,8 @@ const LOADING_HEIGHT = 260;
 const DISABLED_DIM = 0.45;
 const PICKER_FADE_IN = 180;
 const PICKER_FADE_OUT = 120;
+/** The collateral list opening and closing: its height, its fade and the chevron together. */
+const COLLATERAL_EXPAND_MS = 260;
 
 const RED = '#D96167';
 
@@ -76,8 +87,9 @@ interface RepaySheetContentProps {
  * The repay step of the borrow-position sheet: how much, paid with what, and one button.
  *
  * The source list mixes the two ways the module can be paid. Wallet rows are tender tokens the
- * Safe holds loose; collateral rows spend the soUSD already escrowed against the loan, which
- * is how someone with nothing loose closes a position. The same token can appear twice, so
+ * Safe holds loose; collateral rows spend what is already escrowed against the loan — soUSD on
+ * Fuse; soEUR, cbBTC, WETH, SOL, AAVE or cbZEC on Base — which is how someone with nothing loose
+ * closes a position. The escrow itself is listed under "Collateral locked". The same token can appear twice, so
  * every row and the balance line say which of the two it is.
  *
  * Nothing here decides what a repayment does — `quoteRepay` does, and the hook runs it again
@@ -359,6 +371,8 @@ const RepaySheetContent = ({
             </Animated.View>
           ) : null}
 
+          <CollateralSection collateral={state.collateral} />
+
           {note ? (
             <Text
               className="text-center text-[14px] font-normal leading-[18px]"
@@ -411,6 +425,112 @@ const SummaryRow = ({ label, value }: { label: string; value: string }) => (
     <Text className="text-[16px] font-medium leading-[18px] text-white">{value}</Text>
   </View>
 );
+
+/**
+ * "Collateral locked": what the module holds against this loan. Collapsed to the total, with a
+ * chevron at the end of the row; open, one row per asset with its amount and what it is worth
+ * at the module's price — the figure a collateral repayment and a liquidation would both use.
+ * Left out entirely when nothing is locked, rather than drawn as a zero.
+ *
+ * Opens by animating its height rather than fading the list in, so the card grows smoothly
+ * instead of snapping to its new size. The list is laid out once, absolutely, to be measured,
+ * and the clipping container eases between zero and that height with the chevron turning in
+ * step — the same on native and web, where layout transitions are not.
+ */
+const CollateralSection = ({ collateral }: { collateral: readonly EscrowedCollateral[] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const progress = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(isOpen ? 1 : 0, {
+      duration: COLLATERAL_EXPAND_MS,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isOpen, progress]);
+
+  const bodyStyle = useAnimatedStyle(() => ({
+    height: progress.value * contentHeight.value,
+    opacity: progress.value,
+  }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${progress.value * 90}deg` }],
+  }));
+
+  const rows = useMemo(
+    () =>
+      collateral
+        .filter(item => item.amount > 0n)
+        .map(item => ({
+          ...item,
+          valueUsd:
+            item.priceUsd > 0n ? tokenToUsdFloor(item.amount, item.priceUsd, item.decimals) : 0n,
+        }))
+        .sort((a, b) => (a.valueUsd === b.valueUsd ? 0 : a.valueUsd > b.valueUsd ? -1 : 1)),
+    [collateral],
+  );
+  if (rows.length === 0) return null;
+
+  const totalUsd = rows.reduce((sum, row) => sum + row.valueUsd, 0n);
+
+  return (
+    <View style={[styles.card, styles.collateral]}>
+      <Pressable
+        accessibilityLabel={`Collateral locked, ${formatUsd(totalUsd)}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+        className="transition-all active:opacity-80"
+        onPress={() => setIsOpen(open => !open)}
+        style={styles.collateralHeader}
+      >
+        <Text className="flex-1 text-[16px] font-normal leading-[18px] text-white/70">
+          Collateral locked
+        </Text>
+        <Text className="text-[16px] font-medium leading-[18px] text-white">
+          {formatUsd(totalUsd)}
+        </Text>
+        <Animated.View style={chevronStyle}>
+          <ChevronRight color="rgba(255,255,255,0.7)" size={18} />
+        </Animated.View>
+      </Pressable>
+
+      <Animated.View
+        // The first two hide the collapsed list from VoiceOver and TalkBack; web reads neither.
+        accessibilityElementsHidden={!isOpen}
+        importantForAccessibility={isOpen ? 'auto' : 'no-hide-descendants'}
+        aria-hidden={!isOpen}
+        pointerEvents={isOpen ? 'auto' : 'none'}
+        style={[styles.collateralBody, bodyStyle]}
+      >
+        <View
+          onLayout={event => {
+            contentHeight.value = event.nativeEvent.layout.height;
+          }}
+          style={styles.collateralTable}
+        >
+          {rows.map(row => (
+            <View key={row.token} style={styles.collateralRow}>
+              <RenderTokenIcon
+                tokenIcon={getTokenIcon({ tokenSymbol: row.symbol, size: 28 })}
+                size={28}
+                tokenName={row.displaySymbol}
+              />
+              <Text
+                className="flex-1 text-[15px] font-medium leading-[18px] text-white"
+                numberOfLines={1}
+              >
+                {formatRepayTokenAmount(row.amount, row.decimals)} {row.displaySymbol}
+              </Text>
+              <Text className="text-[15px] font-medium leading-[18px] text-white">
+                {row.priceUsd > 0n ? formatUsd(row.valueUsd) : '—'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </Animated.View>
+    </View>
+  );
+};
 
 interface SourceRowProps {
   source: RepaySource;
@@ -564,6 +684,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   picker: { marginTop: CARD_GAP, paddingVertical: 6 },
+  collateral: { marginTop: CARD_GAP },
+  collateralHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    height: 56,
+    paddingLeft: 20,
+    paddingRight: 16,
+  },
+  // Clips the list while it opens; the list inside is absolute so it can be measured at full size.
+  collateralBody: { overflow: 'hidden' },
+  collateralTable: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: 1,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  collateralRow: { alignItems: 'center', flexDirection: 'row', gap: 12, height: 46 },
   sourceRow: {
     alignItems: 'center',
     flexDirection: 'row',

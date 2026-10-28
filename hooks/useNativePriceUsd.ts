@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchCoinSimplePrice, fetchTokenPriceUsd } from '@/lib/api';
+import { fetchCoinPricesById, fetchTokenPriceUsd } from '@/lib/api';
 
 /**
  * How often native-token prices refresh. Polling this often costs no Prices API
@@ -11,8 +11,9 @@ import { fetchCoinSimplePrice, fetchTokenPriceUsd } from '@/lib/api';
 export const NATIVE_PRICE_REFRESH_MS = 5_000;
 
 /**
- * Native-token USD price fetcher for a chain (Alchemy first, CoinGecko fallback).
- * Shared by useTotalSavingsUSD (FUSE + ETH terms) and the per-vault savings card.
+ * Native-token USD price fetcher for a chain (Alchemy first, then CoinGecko
+ * through the backend's shared cache). Shared by useTotalSavingsUSD (FUSE + ETH
+ * terms) and the per-vault savings card.
  */
 export const makeNativePriceFetcher =
   (chainId: number) => async (): Promise<string | undefined> => {
@@ -25,8 +26,7 @@ export const makeNativePriceFetcher =
 
     const coinId = NATIVE_COINGECKO_TOKENS[chainId];
     if (!coinId) return undefined;
-    const priceMap = await fetchCoinSimplePrice([coinId]);
-    const usd = priceMap[coinId]?.usd;
+    const usd = (await fetchCoinPricesById([coinId]))[coinId];
     return usd != null && usd > 0 ? String(usd) : undefined;
   };
 

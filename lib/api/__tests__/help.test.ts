@@ -2,6 +2,12 @@
 
 jest.mock('@/lib/config', () => ({
   EXPO_PUBLIC_SUPPORT_API_BASE_URL: 'https://support.example.com/',
+  USER: { storageKey: 'help-test-user' },
+}));
+jest.mock('@/lib/mmvkStorage', () => () => ({
+  getItem: () => null,
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
 }));
 jest.mock('@/lib/api', () => ({
   getJWTToken: () => null,
@@ -38,6 +44,34 @@ describe('help center API client', () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       'https://support.example.com/support/v1/help/search?q=apple%20pay%20%26%20google&limit=20',
     );
+  });
+
+  it('refuses a help home it cannot show, instead of handing it to the screen and the cache', async () => {
+    const collection = {
+      slug: 'cards',
+      name: 'Cards',
+      description: '',
+      articleCount: 1,
+      articles: [
+        { id: 'a1', slug: 'apple-pay', title: 'Apple Pay', description: '', collection: null },
+      ],
+      children: [],
+    };
+    fetchMock.mockResolvedValueOnce(json(200, { collections: [collection], otherArticles: [] }));
+    await expect(help.getHelpHome()).resolves.toEqual({
+      collections: [collection],
+      otherArticles: [],
+    });
+
+    for (const body of [
+      { otherArticles: [] },
+      { collections: null, otherArticles: [] },
+      { collections: [{ ...collection, articles: undefined }], otherArticles: [] },
+      { collections: [], otherArticles: [{ slug: 'x' }] },
+    ]) {
+      fetchMock.mockResolvedValueOnce(json(200, body));
+      await expect(help.getHelpHome()).rejects.toMatchObject({ status: 502 });
+    }
   });
 
   it('votes on the exact version that was read', async () => {

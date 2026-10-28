@@ -1,3 +1,5 @@
+import { formatUnits, parseUnits } from 'viem';
+
 import { CardSpendableAsset } from '@/constants/cardSpendableAssets';
 import { TokenBalance } from '@/lib/types';
 import { isCardSpendable } from '@/lib/utils/cardSpendable';
@@ -105,4 +107,157 @@ export const getMovableHoldings = (
       ];
     })
     .sort((a, b) => b.valueUSD - a.valueUSD || b.amount - a.amount);
+};
+
+/**
+ * Below this a holding is dust: a swap would cost more in fees than it delivers,
+ * and listing it only pads the screen.
+ */
+export const MIN_SWAPPABLE_VALUE_USD = 1;
+
+/** soUSD, soETH, soFUSE: Solid vault shares, by the ticker convention every vault follows. */
+export const isSolidVaultShare = (symbol: string | undefined): boolean =>
+  /^so[A-Z]/.test(symbol ?? '');
+
+/** The quote rate is carried to a millionth of a dollar for the threshold check. */
+const RATE_SCALE = 1_000_000;
+
+/**
+ * Whether `token` is worth at least {@link MIN_SWAPPABLE_VALUE_USD}, decided in
+ * integers: the raw balance stays a bigint, the USD rate is fixed to six places,
+ * and the two meet only as `balance × rate ≥ threshold × 10^decimals`. A float
+ * balance would round an 18-decimal holding before the comparison ever ran.
+ */
+export const meetsSwapThreshold = (
+  balance: bigint,
+  decimals: number,
+  quoteRate: number,
+): boolean => {
+  if (!Number.isInteger(decimals) || decimals < 0) return false;
+  if (!Number.isFinite(quoteRate) || quoteRate <= 0) return false;
+  const rate = BigInt(Math.round(quoteRate * RATE_SCALE));
+  return balance * rate >= BigInt(MIN_SWAPPABLE_VALUE_USD * RATE_SCALE) * 10n ** BigInt(decimals);
+};
+
+/** The raw balance as a bigint, or 0 for anything unparseable. */
+const rawBalance = (token: TokenBalance): bigint => {
+  try {
+    return BigInt(token.balance || '0');
+  } catch {
+    return 0n;
+  }
+};
+
+/** A wallet holding the card cannot take as is, but an in-app swap can turn into one it can. */
+export interface SwappableHolding {
+  chainId: number;
+  symbol: string;
+  /** The token's contract, or the zero address for the chain's native currency. */
+  tokenAddress: string;
+  decimals: number;
+  /** Raw balance in token units — what a swap amount is capped against, exactly. */
+  balance: string;
+  /** `balance` scaled out of its decimals. */
+  amount: number;
+  /** `amount` at its quoted rate; at least {@link MIN_SWAPPABLE_VALUE_USD}. */
+  valueUSD: number;
+  logoUrl?: string;
+}
+
+/**
+ * What a Wirex cardholder holds that neither the card nor "Move from wallet" can
+ * use — ETH on Ethereum, POL, FUSE and the like — richest first.
+ *
+ * Exists because the alternative was telling the user their wallet holds nothing
+ * else. A cardholder who had just sent ~$390 of ETH on Ethereum to their Safe
+ * opened "Move from wallet", read that there was nothing to move, and concluded
+ * the money was stuck: the card takes stablecoins only, and the deposit pipeline
+ * refunds anything else. The in-app swap does reach it, though, cross-chain
+ * included, so the honest answer is "swap it first", with the way to do that.
+ *
+ * Qualifies when it is:
+ *
+ * 1. **On a chain the swap form quotes through LI.FI.** That is every swap chain
+ *    but Fuse, and passed in rather than imported to keep this module a leaf.
+ *    Fuse is left out on purpose: a Fuse-to-Fuse swap goes through Algebra, which
+ *    has no pool for most of the Fuse catalogue (legacy USDC, deprecated USDT),
+ *    so the row would open a form that cannot quote.
+ * 2. **Neither spendable nor movable.** Those two already have a better path, and
+ *    listing them here as well would offer a swap where a free move exists.
+ * 3. **Not a Solid savings share** (soUSD, soETH…). Those are the user's savings;
+ *    getting them to the card is a savings withdrawal, not a market sale.
+ * 4. **Priced, and worth at least {@link MIN_SWAPPABLE_VALUE_USD}.** The price is
+ *    also the guard against an unlisted token: the balances list falls back to
+ *    every token the indexer reports when the catalogue fails to load, and a
+ *    spam airdrop is the one thing that is never priced.
+ */
+export const getSwappableHoldings = (
+  tokens: TokenBalance[] | undefined,
+  routes: CardFundRoute[],
+  spendableAssets: CardSpendableAsset[],
+  lifiChainIds: readonly number[],
+): SwappableHolding[] => {
+  const routed = new Set(routes.map(route => `${route.chainId}:${route.address.toLowerCase()}`));
+
+  return (tokens ?? [])
+    .flatMap(token => {
+      if (!lifiChainIds.includes(token.chainId)) return [];
+      if (!token.contractAddress) return [];
+      if (isSolidVaultShare(token.contractTickerSymbol)) return [];
+      if (routed.has(`${token.chainId}:${token.contractAddress.toLowerCase()}`)) return [];
+      if (isCardSpendable(token, spendableAssets)) return [];
+
+      const balance = rawBalance(token);
+      const quoteRate = token.quoteRate ?? 0;
+      if (!meetsSwapThreshold(balance, token.contractDecimals, quoteRate)) return [];
+
+      // Numbers from here on are for display and ordering only.
+      const amount = Number(formatUnits(balance, token.contractDecimals));
+
+      return [
+        {
+          chainId: token.chainId,
+          symbol: token.contractTickerSymbol,
+          tokenAddress: token.contractAddress,
+          decimals: token.contractDecimals,
+          balance: balance.toString(),
+          amount,
+          valueUSD: amount * quoteRate,
+          logoUrl: token.logoUrl,
+        },
+      ];
+    })
+    .sort((a, b) => b.valueUSD - a.valueUSD);
+};
+
+/**
+ * The token amount that swaps for `usd`, in the holding's units: rounded up at six places (fewer
+ * when the token has fewer) so the swap never comes out a fraction short, and capped at what they
+ * hold. Exact-in, because the cross-chain form quotes nothing else.
+ *
+ * The cap is taken in the token's own integer units, against the raw balance: capped as a float
+ * and then rounded, a 0.1234567 ETH holding came out as "0.123457" — more than they hold, which
+ * the swap form refuses.
+ */
+export const swapAmountFor = (
+  usd: number,
+  holding: Pick<SwappableHolding, 'amount' | 'valueUSD' | 'balance' | 'decimals'>,
+) => {
+  const price = holding.valueUSD / holding.amount;
+  if (!Number.isFinite(price) || price <= 0) return undefined;
+  // Rounded up at the token's own precision when it has fewer than six places: `parseUnits` would
+  // otherwise round the extra places to nearest, and a 2-decimal token could come out short.
+  const places = Math.min(6, holding.decimals);
+  const scale = 10 ** places;
+  const wanted = Math.ceil((usd / price) * scale) / scale;
+  if (!Number.isFinite(wanted) || wanted <= 0) return undefined;
+  try {
+    const balance = BigInt(holding.balance);
+    const units = parseUnits(wanted.toFixed(places), holding.decimals);
+    const capped = units < balance ? units : balance;
+    return capped > 0n ? formatUnits(capped, holding.decimals) : undefined;
+  } catch {
+    // An unreadable balance or decimals: open the form empty rather than on a guess.
+    return undefined;
+  }
 };

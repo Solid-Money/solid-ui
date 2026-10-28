@@ -89,7 +89,8 @@ export default function CardPending() {
   }, [router, setDepositModal]);
 
   // Didit declined the virtual-account identity check before anything reached
-  // Rain, so a fresh verification is allowed.
+  // Rain — or approved answers Rain cannot accept — so a fresh verification is
+  // allowed.
   const handleRetryVerification = useCallback(() => {
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'retry_virtual_account_kyc',
@@ -260,6 +261,27 @@ export default function CardPending() {
           className="mt-6 h-12 w-full rounded-xl"
         >
           <Text className="text-base font-bold text-primary-foreground">Try again</Text>
+        </Button>
+      </CardStatusPage>
+    );
+  }
+
+  if (virtualAccountState === 'verification-resubmit') {
+    return (
+      <CardStatusPage
+        title="Re-enter your SSN"
+        description={
+          'Your ID check passed, but the Social Security\nNumber you entered is not a valid 9-digit number.\nVerify again and enter your full SSN, digits only.'
+        }
+        header="Identity Verification"
+        image={heroImage}
+      >
+        <Button
+          variant="brand"
+          onPress={handleRetryVerification}
+          className="mt-6 h-12 w-full rounded-xl"
+        >
+          <Text className="text-base font-bold text-primary-foreground">Re-enter SSN</Text>
         </Button>
       </CardStatusPage>
     );

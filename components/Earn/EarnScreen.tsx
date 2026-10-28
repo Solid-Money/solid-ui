@@ -92,21 +92,18 @@ export default function EarnScreen() {
       ? `${weightedApy(usdProducts.map(item => ({ valueUsd: item.valueUsd, apy: item.apy ?? 0 }))).toFixed(1)}% avg APY`
       : `Up to ${Math.max(...usdProducts.map(item => item.apy ?? 0)).toFixed(1)}% APY`;
 
-  // EUR Yield, where this build lists it: its own row, valued in euros, with "—" for the
-  // rate until it earns.
-  const products: EarnProduct[] = findVault(VaultType.EUR)
-    ? [
-        ...usdProducts,
-        {
-          type: VaultType.EUR,
-          valueUsd: undefined,
-          valueEur: isEurLoading ? undefined : eurValue,
-          shareAmount: eurShares ?? 0,
-          apy: resolveVaultApy(VaultType.EUR, eurRate.maxAPY),
-          isApyLoading: eurRate.isAPYsLoading,
-        },
-      ]
-    : usdProducts;
+  // EUR Yield: its own row, valued in euros.
+  const products: EarnProduct[] = [
+    ...usdProducts,
+    {
+      type: VaultType.EUR,
+      valueUsd: undefined,
+      valueEur: isEurLoading ? undefined : eurValue,
+      shareAmount: eurShares ?? 0,
+      apy: resolveVaultApy(VaultType.EUR, eurRate.maxAPY),
+      isApyLoading: eurRate.isAPYsLoading,
+    },
+  ];
 
   // Interest is read per product; a product with nothing in it has nothing to wait for.
   const funded = holdings.filter(holding => (holding.valueUsd ?? 0) > 0);

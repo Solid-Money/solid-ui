@@ -30,6 +30,12 @@ export interface SwapAssetWithBalance extends SwapAsset {
 /** Most received after fees, or quickest to arrive. */
 export type LifiRouteOrder = 'CHEAPEST' | 'FASTEST';
 
+/**
+ * Why a swap is being made, when that changes how it is priced. `tier_upgrade`
+ * pays for a membership in USDC on Fuse and is quoted without Solid's fee.
+ */
+export type LifiSwapPurpose = 'tier_upgrade';
+
 // Mirrors solid-backend lifi-swap/interfaces/lifi-swap.interface.ts.
 
 export interface LifiSwapToken {
@@ -84,7 +90,7 @@ export interface LifiSwapQuote {
   solidFee: {
     percentage: number;
     tierName: string;
-    waiveReason?: 'TierFree' | 'BelowMinimum' | 'Disabled';
+    waiveReason?: 'TierFree' | 'Disabled' | 'TierUpgrade';
   };
   transactionRequest: {
     to: Address;

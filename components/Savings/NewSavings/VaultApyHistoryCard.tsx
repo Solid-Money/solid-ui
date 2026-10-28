@@ -10,7 +10,6 @@ import { DEFAULT_HISTORICAL_APY_DAYS, useAPYs, useHistoricalAPY } from '@/hooks/
 import { useDimension } from '@/hooks/useDimension';
 import { APYs, VaultType } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isEurVault } from '@/lib/vaultCurrency';
 
 import SelectSheet from './SelectSheet';
 
@@ -136,8 +135,6 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
     return resampleHistory(validHistory, isDesktop ? DESKTOP_VISIBLE_BARS : MOBILE_VISIBLE_BARS);
   }, [history, isDesktop]);
   const currentApy = Math.max(apys?.[period.valueKey] ?? 0, 0);
-  // soEURC does not earn yet: "—" rather than a measured-looking 0.00%.
-  const hasNoApy = isEurVault(vaultType) && !(currentApy > 0);
 
   return (
     <View className="relative mx-4 h-[199px] overflow-hidden rounded-[20px] bg-[#1C1C1C]">
@@ -159,7 +156,7 @@ const VaultApyHistoryCard = ({ vaultType }: VaultApyHistoryCardProps) => {
         <Skeleton className="absolute left-5 top-[50px] h-[28px] w-[82px] bg-white/10" />
       ) : (
         <Text className="absolute left-5 top-[50px] text-[26px] font-semibold leading-[28px] text-white">
-          {hasNoApy ? '—' : `${currentApy.toFixed(2)}%`}
+          {`${currentApy.toFixed(2)}%`}
         </Text>
       )}
 

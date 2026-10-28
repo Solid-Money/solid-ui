@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'abitype';
 import { erc20Abi, maxUint256, TransactionReceipt } from 'viem';
-import { mainnet } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 
@@ -13,8 +12,8 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import { VAULT } from '@/hooks/useVault';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
-import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { SOUSD_WITHDRAW_CHAINS, SoUsdWithdrawChainId } from '@/lib/soUsdWithdraw';
 import { Status, TransactionType } from '@/lib/types';
 import {
   decodeRevertReason,
@@ -32,8 +31,13 @@ type WithdrawResult = {
   isAllowanceLoading: boolean;
 };
 
-const useWithdraw = (): WithdrawResult => {
+/**
+ * Step 2 of a soUSD withdrawal: queue the shares on `chainId` for that chain's
+ * USDC. Base for withdrawals bridged there, Ethereum for shares already on it.
+ */
+const useWithdraw = (chainId: SoUsdWithdrawChainId): WithdrawResult => {
   const { user, safeAA } = useUser();
+  const { chain, vault, boringQueue, usdc } = SOUSD_WITHDRAW_CHAINS[chainId];
   const { trackTransaction } = useActivityActions();
   const queryClient = useQueryClient();
   const [withdrawStatus, setWithdrawStatus] = useState<Status>(Status.IDLE);
@@ -45,10 +49,10 @@ const useWithdraw = (): WithdrawResult => {
     refetch: refetchAllowance,
   } = useReadContract({
     abi: erc20Abi,
-    address: ADDRESSES.ethereum.vault,
+    address: vault,
     functionName: 'allowance',
-    args: [user?.safeAddress as Address, ADDRESSES.ethereum.boringQueue],
-    chainId: mainnet.id,
+    args: [user?.safeAddress as Address, boringQueue],
+    chainId,
     query: {
       enabled: !!user?.safeAddress,
     },
@@ -84,6 +88,7 @@ const useWithdraw = (): WithdrawResult => {
         amount: amount,
         needs_approval: needsApproval,
         allowance: currentAllowance.toString(),
+        chain_id: chainId,
         source: 'withdraw_hook',
       });
 
@@ -94,11 +99,11 @@ const useWithdraw = (): WithdrawResult => {
 
       if (needsApproval) {
         transactions.push({
-          to: ADDRESSES.ethereum.vault,
+          to: vault,
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: 'approve',
-            args: [ADDRESSES.ethereum.boringQueue, maxUint256],
+            args: [boringQueue, maxUint256],
           }),
           value: 0n,
         });
@@ -106,16 +111,16 @@ const useWithdraw = (): WithdrawResult => {
 
       // Add deposit transaction
       transactions.push({
-        to: ADDRESSES.ethereum.boringQueue,
+        to: boringQueue,
         data: encodeFunctionData({
           abi: BoringQueue_ABI,
           functionName: 'requestOnChainWithdraw',
-          args: [ADDRESSES.ethereum.usdc, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
+          args: [usdc, amountWei, 1, WITHDRAW_SECONDS_TO_DEADLINE],
         }),
         value: 0n,
       });
 
-      const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
+      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
       const result = await trackTransaction(
         {
@@ -124,13 +129,13 @@ const useWithdraw = (): WithdrawResult => {
           shortTitle: `Withdraw ${amount}`,
           amount,
           symbol: 'soUSD',
-          chainId: mainnet.id,
+          chainId,
           fromAddress: user.safeAddress,
-          toAddress: ADDRESSES.ethereum.boringQueue,
+          toAddress: boringQueue,
           metadata: {
             description: `Withdraw ${amount} soUSD`,
             needsApproval,
-            tokenAddress: ADDRESSES.ethereum.vault,
+            tokenAddress: vault,
           },
         },
         onUserOpHash =>
@@ -138,7 +143,7 @@ const useWithdraw = (): WithdrawResult => {
             smartAccountClient,
             transactions,
             'Withdraw failed',
-            mainnet,
+            chain,
             onUserOpHash,
           ),
       );
@@ -156,6 +161,7 @@ const useWithdraw = (): WithdrawResult => {
         amount: amount,
         needs_approval: needsApproval,
         transaction_hash: transaction.transactionHash,
+        chain_id: chainId,
         source: 'withdraw_hook',
       });
 
@@ -191,6 +197,7 @@ const useWithdraw = (): WithdrawResult => {
         // distinct revert under one unreadable blob in analytics.
         revert_reason: revertReason,
         user_cancelled: isUserCancelledError(error),
+        chain_id: chainId,
         source: 'withdraw_hook',
       });
 

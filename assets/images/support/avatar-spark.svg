@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="58.08" height="62.48" viewBox="0 0 58.08 62.48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Spark" opacity="0.96" filter="url(#filter0_d_0_46)">
+<g clip-path="url(#clip0_0_46)">
+<path id="Vector" d="M29.04 7.04C30.3233 19.5433 39.6733 29.8283 51.04 31.24C39.6733 32.6517 30.3233 42.9367 29.04 55.44C27.7567 42.9367 18.4067 32.6517 7.04 31.24C18.4067 29.8283 27.7567 19.5433 29.04 7.04Z" fill="white"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_46" x="0" y="0" width="58.08" height="62.48" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="3.52"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_46"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_46" result="shape"/>
+</filter>
+<clipPath id="clip0_0_46">
+<rect width="44" height="48.4" fill="white" transform="translate(7.04 7.04)"/>
+</clipPath>
+</defs>
+</svg>

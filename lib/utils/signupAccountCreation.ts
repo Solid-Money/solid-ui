@@ -12,6 +12,7 @@
  *
  * Free of React Native imports so it can be unit-tested directly.
  */
+import { EMAIL_DOMAIN_NOT_ALLOWED_CODE } from '@/constants/errors';
 import { PasskeyErrorSeverity } from '@/lib/utils/passkeyErrors';
 import { isNetworkError } from '@/lib/utils/userFacingError';
 import { isUsernameTakenError } from '@/lib/utils/username';
@@ -25,6 +26,8 @@ export type AccountCreationRecovery =
   | 'verify_email'
   /** An account already exists for this email. */
   | 'log_in'
+  /** The email's domain is blocked: sign up with another address. */
+  | 'change_email'
   /** The passkey never reached the server. */
   | 'new_passkey';
 
@@ -32,6 +35,14 @@ const statusOf = (error: unknown): number | undefined => {
   const { status, statusCode } = (error ?? {}) as { status?: unknown; statusCode?: unknown };
   if (typeof status === 'number') return status;
   if (typeof statusCode === 'number') return statusCode;
+  return undefined;
+};
+
+/** The backend's error code, on the error itself or on its parsed body. */
+const codeOf = (error: unknown): string | undefined => {
+  const err = (error ?? {}) as { code?: unknown; data?: { code?: unknown } | null };
+  if (typeof err.code === 'string') return err.code;
+  if (typeof err.data?.code === 'string') return err.data.code;
   return undefined;
 };
 
@@ -44,6 +55,7 @@ export const getAccountCreationRecovery = (error: unknown): AccountCreationRecov
   const status = statusOf(error);
   const message = messageOf(error);
 
+  if (codeOf(error) === EMAIL_DOMAIN_NOT_ALLOWED_CODE) return 'change_email';
   if (isUsernameTakenError(error)) return 'choose_username';
   if (status === 409 && /already registered/i.test(message)) return 'log_in';
   if (status === 401 && /verification token/i.test(message)) return 'verify_email';
@@ -72,6 +84,7 @@ export const getAccountCreationSeverity = (
     // The server's rules doing their job, and the screen says what to do next.
     case 'choose_username':
     case 'log_in':
+    case 'change_email':
       return 'info';
     // Recoverable, but often enough would mean verifications expire too soon.
     case 'verify_email':

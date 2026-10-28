@@ -14,6 +14,7 @@ import {
 } from '@/constants/alchemy';
 import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { Cooldown, createBatchedLoader } from '@/lib/batchedLoader';
+import { readCashoutLimits } from '@/lib/cashoutLimits';
 import { fetchTokenTransferWithFallback } from '@/lib/data-source';
 import { sanitizeTechnicalMessage } from '@/lib/errors/sanitize';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
@@ -33,7 +34,6 @@ import { useUserStore } from '@/store/useUserStore';
 
 import {
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
-  EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
@@ -66,6 +66,7 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardSpendableResponse,
   CardSpendDeploymentConfirmRequest,
   CardSpendDeploymentsResponse,
   CardSpendModeAccessResponse,
@@ -76,12 +77,12 @@ import {
   CardWithdrawal,
   CardWithdrawalResponse,
   Cashback,
-  CoinHistoricalChart,
   ConfirmOnboardingFeeParams,
   CustomerFromBridgeResponse,
   Deposit,
   DepositAssetsResponse,
   DepositFeeQuote,
+  DepositTokensAccessResponse,
   DepositTransaction,
   DetectedDirectDepositResponse,
   DiditSessionResponse,
@@ -109,6 +110,7 @@ import {
   LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
+  MainCurrency,
   MppCredentialsResponse,
   OnboardingFeeProduct,
   OnboardingFeeQuote,
@@ -137,7 +139,6 @@ import {
   RewardsTier,
   RewardsUserData,
   SavingsSummaryResponse,
-  SearchCoin,
   SourceDepositInstructions,
   StatementDownload,
   StatementFormat,
@@ -226,8 +227,29 @@ const getRefreshToken = (): string | null => {
   return null;
 };
 
+// Renews an expired session before a request to the Solid APIs is sent, so it
+// isn't answered with a 401 first. Registered by lib/utils (ensureFreshAccessToken),
+// which imports this module and so can't be imported from here.
+let authPreflight: (() => Promise<void>) | null = null;
+export const setAuthPreflight = (preflight: () => Promise<void>) => {
+  authPreflight = preflight;
+};
+
+const SOLID_API_BASE_URLS = [
+  EXPO_PUBLIC_FLASH_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
+].filter(Boolean);
+
+const isSolidApiUrl = (url: string | undefined) =>
+  !!url && SOLID_API_BASE_URLS.some(base => url.startsWith(base));
+
 // Set up axios interceptor to add headers to all axios requests
-axios.interceptors.request.use(config => {
+axios.interceptors.request.use(async config => {
+  // Before reading the token below, so the request carries the renewed one.
+  if (authPreflight && isSolidApiUrl(config.url)) await authPreflight();
+
   const platformHeaders = getPlatformHeaders();
 
   config.headers = {
@@ -278,18 +300,15 @@ const captureAxiosError = (error: any) => {
 axios.interceptors.response.use(response => response, captureAxiosError);
 
 /**
- * Axios instance for third-party APIs (Alchemy Prices, CoinGecko).
+ * Axios instance for third-party APIs (Alchemy Prices).
  *
  * The global request interceptor above attaches the Solid backend Bearer JWT to
  * every axios request on iOS/Android. Third-party hosts either reject that
- * token or receive a credential they should never see:
- *
- *  - Alchemy treats an `Authorization: Bearer …` header as its own credential
- *    and ignores the API key in the URL path, so the request 401s. Every price
- *    lookup then resolves to 0 and balances render as $0.00 — on native only,
- *    since `getJWTToken()` returns null on web and no header is attached there.
- *  - CoinGecko authenticates via `x-cg-pro-api-key` and ignores the header, so
- *    it still works, but the user's access token leaves the app for no reason.
+ * token or receive a credential they should never see: Alchemy treats an
+ * `Authorization: Bearer …` header as its own credential and ignores the API
+ * key in the URL path, so the request 401s. Every price lookup then resolves to
+ * 0 and balances render as $0.00 — on native only, since `getJWTToken()`
+ * returns null on web and no header is attached there.
  *
  * `axios.create()` starts with no interceptors, so this instance sends neither
  * the JWT nor the platform headers. Error reporting is kept so failures against
@@ -368,7 +387,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
       body: JSON.stringify({ safeAddress }),
     },
   );
-  if (!response.ok) throw response;
+  if (!response.ok) throw await toApiError(response, 'Failed to link Safe address');
   return response.json();
 };
 
@@ -529,7 +548,12 @@ const BACKEND_PRICES_MAX_SYMBOL_LENGTH = 64;
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 let backendPricesPausedUntil = 0;
 
-type BackendPrices = { symbols: Record<string, number>; tokens: Record<string, number> };
+type BackendPrices = {
+  symbols: Record<string, number>;
+  tokens: Record<string, number>;
+  /** By lower-cased CoinGecko coin id. Empty from a backend that predates it. */
+  coins: Record<string, number>;
+};
 
 const positivePrices = (value: unknown): Record<string, number> | undefined => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
@@ -554,6 +578,7 @@ const positivePrices = (value: unknown): Record<string, number> | undefined => {
 const fetchBackendPrices = async (body: {
   symbols?: string[];
   tokens?: { chainId: number; address: string }[];
+  coinIds?: string[];
 }): Promise<BackendPrices | undefined> => {
   if (Date.now() < backendPricesPausedUntil) return undefined;
   try {
@@ -573,13 +598,20 @@ const fetchBackendPrices = async (body: {
       BACKEND_PRICES_TIMEOUT_MS,
     );
     if (!response.ok) throw new Error(`Backend prices responded ${response.status}`);
-    const data = (await response.json()) as { symbols?: unknown; tokens?: unknown };
+    const data = (await response.json()) as {
+      symbols?: unknown;
+      tokens?: unknown;
+      coins?: unknown;
+    };
     const symbols = positivePrices(data?.symbols);
     const tokens = positivePrices(data?.tokens);
+    // A backend released before coin ids were added answers without `coins`;
+    // that is "no coin prices", not a failure of the symbols and tokens.
+    const coins = data?.coins === undefined ? {} : positivePrices(data.coins);
     // Anything but the expected shape is a failure, not "no prices": a miss is
     // remembered for minutes, so a misrouted reply mustn't be taken for one.
-    if (!symbols || !tokens) throw new Error('Unexpected backend prices response');
-    return { symbols, tokens };
+    if (!symbols || !tokens || !coins) throw new Error('Unexpected backend prices response');
+    return { symbols, tokens, coins };
   } catch {
     backendPricesPausedUntil = Date.now() + BACKEND_PRICES_RETRY_MS;
     return undefined;
@@ -691,11 +723,64 @@ const alchemyPricesByAddress = createBatchedLoader<number>({
   },
 });
 
+/** What the backend route accepts as a CoinGecko coin id; anything else would fail the request. */
+const COIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,99}$/;
+
+/**
+ * Keyed by lower-cased CoinGecko coin id. Answered by the backend only: it
+ * prices every coin the app asks about from one CoinGecko cache shared by all
+ * users, so the app holds no CoinGecko key and never calls CoinGecko itself.
+ * The timings match the Alchemy lookups; the backend refreshes its cache every
+ * two minutes, so asking it more often than once a minute gains nothing.
+ */
+const coinPricesById = createBatchedLoader<number>({
+  ttlMs: ALCHEMY_PRICE_TTL_MS,
+  missTtlMs: ALCHEMY_PRICE_MISS_TTL_MS,
+  errorTtlMs: ALCHEMY_PRICE_ERROR_TTL_MS,
+  maxStaleMs: ALCHEMY_PRICE_MAX_STALE_MS,
+  chunk: ids => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += ALCHEMY_PRICE_BATCH_SIZE) {
+      chunks.push(ids.slice(i, i + ALCHEMY_PRICE_BATCH_SIZE));
+    }
+    return chunks;
+  },
+  fetchChunk: async ids => {
+    const fromBackend = await fetchBackendPrices({ coinIds: ids });
+    if (!fromBackend) throw new Error('Backend prices unavailable');
+    return new Map(Object.entries(fromBackend.coins));
+  },
+});
+
 /** Drops every cached price and lifts any pause on the backend or on Alchemy. */
 export const clearAlchemyPriceCache = () => {
   alchemyPricesBySymbol.clear();
   alchemyPricesByAddress.clear();
+  coinPricesById.clear();
   backendPricesPausedUntil = 0;
+};
+
+/**
+ * USD prices by CoinGecko coin id (e.g. `wrapped-bitcoin`), keyed by the ids as
+ * passed — the `tokenId` swap tokens carry, and the native coin ids.
+ *
+ * Served by the backend's shared CoinGecko cache; lookups started in the same
+ * tick share one request, and a price is reused by every caller for a minute.
+ * Never throws: an id without a price, or one the backend couldn't be asked
+ * about, is left out so the caller's next price source gets its turn.
+ */
+export const fetchCoinPricesById = async (ids: string[]): Promise<Record<string, number>> => {
+  const wanted = [
+    ...new Set(ids.filter(id => typeof id === 'string' && COIN_ID_PATTERN.test(id.toLowerCase()))),
+  ];
+  if (wanted.length === 0) return {};
+  const prices = await coinPricesById.load(wanted.map(id => id.toLowerCase()));
+  const byId: Record<string, number> = {};
+  for (const id of wanted) {
+    const price = prices.get(id.toLowerCase());
+    if (price !== undefined) byId[id] = price;
+  }
+  return byId;
 };
 
 /**
@@ -1997,7 +2082,10 @@ export const getTransfiCashoutLimits = async (
     headers: transfiHeaders(),
   });
   if (!response.ok) throw await toTransfiError(response);
-  return response.json();
+  // A malformed body fails the query, and the screen checks only the balance.
+  const limits = readCashoutLimits(await response.json());
+  if (!limits) throw new Error('Cash-out limits response is malformed');
+  return limits;
 };
 
 /** What a USDC amount pays out in the chosen currency and method. */
@@ -2061,8 +2149,8 @@ export const getTransfiCashoutOrder = async (
   return response.json();
 };
 
-/** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
-export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
+/** Rain MPP: wallet eligibility, or null when there is no card to provision. */
+export const getWalletEligibility = async (): Promise<WalletEligibilityResponse | null> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -2075,6 +2163,11 @@ export const getWalletEligibility = async (): Promise<WalletEligibilityResponse>
       },
     },
   );
+
+  // Card status can be cached after a card is removed or while one is being
+  // issued. The backend's "Card not found" is an empty eligibility result,
+  // rather than a failed operation to retry and print as a raw LogBox error.
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
@@ -2544,6 +2637,12 @@ export const confirmTierLock = async (body: {
 export const confirmTierSubscription = async (body: {
   tier: RewardsTier;
   transactionHash: string;
+  /**
+   * The cross-chain transfer that brought the USDC in, when it was bridged.
+   * The backend reads it back from LI.FI and lets the first charge absorb what
+   * the bridge took, so a transfer that landed a little short still pays.
+   */
+  funding?: { transactionHash: string; fromChainId: number };
 }): Promise<TierMembershipState> => {
   const jwt = getJWTToken();
   const response = await fetch(
@@ -4247,6 +4346,59 @@ export const getWirexCardRegistration = async (
 };
 
 /**
+ * What a Wirex card can spend right now, in dollars and in the card's own currency.
+ *
+ * The card-details `balances` figures without the Wirex reads that response makes, so the
+ * declined receipt can re-read it while the cardholder adds funds. 503 while the chain cannot be
+ * read, which callers treat as "unknown" rather than zero.
+ */
+export const getCardSpendable = async (): Promise<CardSpendableResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spendable`, {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Sets the Wirex cardholder's main currency. No transaction: it takes effect on the next payment.
+ *
+ * Euro is refused with a 400 until EURC is turned on for the card, so callers run that approval
+ * first. Switching back to dollars leaves EURC on.
+ */
+export const setCardMainCurrency = async (
+  mainCurrency: MainCurrency,
+): Promise<{ main_currency: MainCurrency }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/main-currency`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ main_currency: mainCurrency }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
  * Every spend-module deployment and whether this user has already enabled each one.
  *
  * Its own request rather than a field on the registration read, for the same reason the
@@ -4320,6 +4472,26 @@ export const getCardSpendModeAccess = async (): Promise<CardSpendModeAccessRespo
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/wirex/spend-mode/access`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Whether the new deposit tokens may be offered to this user — see useDepositTokensAccess. */
+export const getDepositTokensAccess = async (): Promise<DepositTokensAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/tokens/access`,
     {
       headers: {
         ...getPlatformHeaders(),
@@ -4662,46 +4834,6 @@ export const deleteDirectDepositSession = async (
   return response.json();
 };
 
-export const searchCoin = async (query: string) => {
-  const response = await externalAxios.get<SearchCoin>(
-    `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data;
-};
-
-export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1') => {
-  const response = await externalAxios.get<CoinHistoricalChart>(
-    `https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data;
-};
-
-export const fetchCoinSimplePrice = async (
-  coinIds: string[],
-): Promise<Record<string, { usd?: number }>> => {
-  if (coinIds.length === 0) return {};
-  const ids = [...new Set(coinIds)].filter(Boolean).join(',');
-  const response = await externalAxios.get<Record<string, { usd?: number }>>(
-    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-    {
-      headers: {
-        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
-      },
-    },
-  );
-  return response.data ?? {};
-};
-
 export const fetchHistoricalAPY = async (
   days: string = '30',
   vault?: VaultType,
@@ -4709,7 +4841,8 @@ export const fetchHistoricalAPY = async (
   const params = new URLSearchParams({ days });
   // Every vault but the USD default names itself. soEURC used to fall to the
   // default and would have charted the USD vault's history as its own; the
-  // analytics API takes `vault=eur` and has no history for it until it earns.
+  // analytics API takes `vault=eur` and answers from soEUR's own exchange-rate
+  // table (a flat 0% where that table is not configured).
   switch (vault) {
     case VaultType.FUSE:
       params.set('vault', VaultType.FUSE);
@@ -5004,6 +5137,44 @@ export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfi
   return response.json();
 };
 
+/** How long the dashboard's TransFi list may take before the build's applies alone. */
+const TRANSFI_PROHIBITED_TIMEOUT_MS = 10_000;
+
+/**
+ * Where TransFi's cash deposits and cash-outs are hidden, as set on the admin
+ * dashboard (Config → Countries). Public, and empty until someone sets it; the
+ * build's own list always applies on top.
+ */
+export const getTransfiProhibitedCountries = async (): Promise<{
+  prohibitedCountries: string[];
+}> => {
+  // Callers hold TransFi back until this settles, so a request that never
+  // answers must not hide it for good: time it out, and the build's list applies.
+  const response = await fetchWithTimeout(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/country-access/transfi`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+    TRANSFI_PROHIBITED_TIMEOUT_MS,
+  );
+
+  if (!response.ok) throw response;
+
+  const body: unknown = await response.json();
+  const countries = (body as { prohibitedCountries?: unknown } | null)?.prohibitedCountries;
+  // A malformed answer is a failed read, not an empty list: an empty list
+  // would quietly drop every country the dashboard closed.
+  if (!Array.isArray(countries)) {
+    throw new Error('Malformed TransFi prohibited-countries response');
+  }
+  return {
+    prohibitedCountries: countries.filter((code): code is string => typeof code === 'string'),
+  };
+};
+
 export const getLandingPageApy = async (): Promise<LandingPageApyConfig> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/landing-page-apy`,
@@ -5248,72 +5419,6 @@ export const fetchSavingsSummary = async (
     },
     credentials: 'include',
   });
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Which kinds of push the account wants, by category.
- *
- * 3D Secure approvals, security alerts and account notices are not in here:
- * those always go out.
- */
-export interface NotificationPreferences {
-  cardPayments: boolean;
-  depositsTransfers: boolean;
-  earn: boolean;
-  cashbackRewards: boolean;
-  productNews: boolean;
-}
-
-/**
- * The account's push preferences, or null when this backend does not offer
- * them yet (404) — the screen then leaves the categories out rather than
- * showing switches that change nothing.
- */
-export const getNotificationPreferences = async (): Promise<NotificationPreferences | null> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/notification-preferences`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (response.status === 404) return null;
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/** Change some push preferences. Returns the full set as saved. */
-export const updateNotificationPreferences = async (
-  changes: Partial<NotificationPreferences>,
-): Promise<NotificationPreferences> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/notification-preferences`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(changes),
-    },
-  );
 
   if (!response.ok) throw response;
 

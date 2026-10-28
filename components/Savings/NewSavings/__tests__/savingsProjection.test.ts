@@ -15,7 +15,7 @@ describe('simulationApy', () => {
     expect(simulationApy(VaultType.ETH, undefined)).toBe(5);
   });
 
-  // soEURC does not earn yet: its simulation must not show yield it never paid.
+  // soEURC is 0% for now: its simulation must not show yield it does not pay.
   it('projects the EUR vault flat until it reports a rate', () => {
     expect(simulationApy(VaultType.EUR, undefined)).toBe(0);
     expect(simulationApy(VaultType.EUR, 0)).toBe(0);

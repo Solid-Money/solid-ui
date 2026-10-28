@@ -15,7 +15,7 @@ import {
   getTransfiCashoutQuote,
   submitTransfiCashoutDeposit,
 } from '@/lib/api';
-import { limitsFromError } from '@/lib/cashoutLimits';
+import { limitsFromError, readCashoutLimits } from '@/lib/cashoutLimits';
 import { TransfiError } from '@/lib/transfiErrors';
 import { withRefreshToken } from '@/lib/utils';
 
@@ -96,12 +96,13 @@ export const cashoutQuoteQuery = (
 ) => ({
   queryKey: [TRANSFI_CASHOUT_QUOTE_KEY, amount, currency, paymentCode],
   queryFn: async ({ signal }: { signal?: AbortSignal }): Promise<TransfiCashoutQuote> => {
-    const rememberLimits = (limits?: Partial<TransfiCashoutLimits>) => {
-      if (limits?.minLimit == null || limits.maxLimit == null) return;
-      queryClient.setQueryData<TransfiCashoutLimits>(cashoutLimitsKey(currency, paymentCode), {
-        minLimit: limits.minLimit,
-        maxLimit: limits.maxLimit,
-      });
+    const rememberLimits = (stated?: Partial<TransfiCashoutLimits>) => {
+      const limits = readCashoutLimits(stated);
+      if (!limits) return;
+      queryClient.setQueryData<TransfiCashoutLimits>(
+        cashoutLimitsKey(currency, paymentCode),
+        limits,
+      );
     };
     try {
       const quote = await withRefreshToken(() =>
