@@ -1,5 +1,5 @@
 import React from 'react';
-import { arbitrum, base } from 'viem/chains';
+import { base, fuse } from 'viem/chains';
 
 import WalletDepositTokens from '@/components/DepositOption/WalletDepositAddress/WalletDepositTokens';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -71,8 +71,8 @@ describe('WalletDepositTokens', () => {
       expect.arrayContaining(['cbZEC', 'Coinbase Wrapped ZEC', 'cbBTC', 'Coinbase Wrapped BTC']),
     );
     expect(shown).not.toContain('EURC');
-    // A row each: 10 tokens, EURC being a Wirex cardholder's alone.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(10);
+    // A row each: 7 tokens, EURC being a Wirex cardholder's alone.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(7);
   });
 
   it('lists only what everyone is offered for someone not given the new tokens', () => {
@@ -82,9 +82,9 @@ describe('WalletDepositTokens', () => {
 
     expect(shown).not.toContain('cbBTC');
     expect(shown).not.toContain('cbZEC');
-    expect(shown).toEqual(expect.arrayContaining(['USDC', 'ETH', 'WFUSE']));
-    // USDC, USDT, ETH, FUSE, WETH and WFUSE.
-    expect(root.root.findAllByType('ChevronRight')).toHaveLength(6);
+    expect(shown).toEqual(expect.arrayContaining(['USDC', 'USDT', 'WETH']));
+    // USDC, USDT and WETH.
+    expect(root.root.findAllByType('ChevronRight')).toHaveLength(3);
   });
 
   it('narrows the list to what matches the ticker or name', () => {
@@ -126,20 +126,22 @@ describe('WalletDepositTokens', () => {
   });
 
   it('keeps the chain already showing when it carries the token', () => {
-    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC', isChangingToken: true };
+    mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC', isChangingToken: true };
     const root = render();
-    const eth = root.root.find((node: any) => node.props.accessibilityLabel === 'ETH, Ether');
-    act(() => eth.props.onPress());
+    const usdt = root.root.find(
+      (node: any) => node.props.accessibilityLabel === 'USDT, Tether USD',
+    );
+    act(() => usdt.props.onPress());
 
     expect(mockDeposit.setWalletDeposit).toHaveBeenCalledWith({
-      symbol: 'ETH',
-      chainId: arbitrum.id,
+      symbol: 'USDT',
+      chainId: fuse.id,
       isChangingToken: false,
     });
   });
 
   it('moves to Base for a token the chain showing does not carry', () => {
-    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC', isChangingToken: true };
+    mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC', isChangingToken: true };
     const root = render();
     const cbbtc = root.root.find(
       (node: any) => node.props.accessibilityLabel === 'cbBTC, Coinbase Wrapped BTC',
@@ -156,7 +158,7 @@ describe('WalletDepositTokens', () => {
   it('ticks the current token only when coming back to change it', () => {
     expect(render().root.findAllByType('Check')).toHaveLength(0);
 
-    mockDeposit.walletDeposit = { chainId: arbitrum.id, symbol: 'USDC', isChangingToken: true };
+    mockDeposit.walletDeposit = { chainId: fuse.id, symbol: 'USDC', isChangingToken: true };
     expect(render().root.findAllByType('Check')).toHaveLength(1);
   });
 });
